@@ -28,7 +28,8 @@
                 synth.control(control);
             }
             
-            synth.test(1000);
+            var testSynth = synth.init(synth.vibratoSine);
+            testSynth.play(10000);
         </script>
     </body>
 </html>

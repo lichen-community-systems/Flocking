@@ -177,19 +177,50 @@ var gfx = gfx || {};
         return wavetable;
     };
     
-    synth.init = function (sampleRate, bufferSize) {
-        var that = {};
-        that.sampleRate = sampleRate || 44100;
+    // TODO: 
+    // Timing is a mess
+    // Need a real scheduler
+    // Handle output buffers sensibly
+    // seamless input buffer handling for constant arguments like freq, mul and add are often
+    synth.init = function (graphFn, sampleRate, bufferSize) {
+        var that = {
+            sampleRate: sampleRate || 44100,
+            outAudio: new Audio(),
+            graphFn: graphFn,
+            playbackTimerId: null
+        };        
         that.bufferSize = bufferSize || that.sampleRate / 2;
-        that.outAudio = new Audio();
     
-        that.fillBuffer = function (val) {
+        that.constantBuffer = function (val) {
             var size = that.bufferSize;
             var buf = new Float32Array(size);
             for (var i = 0; i < size; i++) {
                 buf[i] = val;
             }
             return buf;
+        };
+        
+        that.play = function (duration) {
+            var writes = 0;
+            var interval = 1000 / (that.sampleRate / that.bufferSize);
+            var maxWrites = duration / interval;
+
+            var audioWriter = function () {
+                console.log(new Date());
+                that.out({}, that.graphFn(that), that.sampleRate);
+                
+                if (duration !== undefined && duration !== Infinity) {
+                    writes++;
+                    if (writes >= maxWrites) {
+                        that.stop();
+                    }
+                }
+            };
+            that.playbackTimerId = window.setInterval(audioWriter, interval);
+        };
+        
+        that.stop = function () {
+            window.clearInterval(that.playbackTimerId);
         };
         
         that.out = function (inputs, output, sampleRate) {
@@ -227,42 +258,19 @@ var gfx = gfx || {};
         return that;
     };
     
-    synth.test = function (duration) {
-        var sampleRate = 44100;
-        var testSynth = synth.init(sampleRate, 22050);
-        
-        // TODO: 
-        // Timing is a mess
-        // Need a real scheduler
-        // Handle output buffers sensibly
-        // seamless input buffer handling for constant arguments like freq, mul and add are often
-        var writes = 0;
-        var interval = 1000 / (sampleRate / testSynth.bufferSize); //  How often to write, in millis
-        var maxWrites = duration / interval;
-        
-        var id;
-        var writeAudio = function () {
-            console.log(new Date());
-            var ampMod = synth.sinOsc({
-                freq: testSynth.fillBuffer(1.0), 
-                mul: testSynth.fillBuffer(1.0), 
-                add: testSynth.fillBuffer(0)
-            }, new Float32Array(sampleRate), sampleRate);
-            
-            var sinOsc = synth.sinOsc({
-                freq: testSynth.fillBuffer(165),
-                mul: ampMod,
-                //mul: testSynth.fillBuffer(0.5),
-                add: testSynth.fillBuffer(0)
-            }, testSynth.outBuffer, sampleRate);
+    synth.vibratoSine = function (thatSynth) {
+        var ampMod = synth.sinOsc({
+            freq: thatSynth.constantBuffer(1.0), 
+            mul: thatSynth.constantBuffer(1.0), 
+            add: thatSynth.constantBuffer(0)
+        }, new Float32Array(thatSynth.sampleRate), thatSynth.sampleRate);
 
-            testSynth.out({}, testSynth.outBuffer, sampleRate);
-            
-            writes++;
-            if (writes >= maxWrites) {
-                window.clearInterval(id);
-            }
-        };
-        id = window.setInterval(writeAudio, interval);
+        var sinOsc = synth.sinOsc({
+            freq: thatSynth.constantBuffer(165),
+            mul: ampMod,
+            add: thatSynth.constantBuffer(0)
+        }, thatSynth.outBuffer, thatSynth.sampleRate);
+        
+        return sinOsc;
     };
 })();
