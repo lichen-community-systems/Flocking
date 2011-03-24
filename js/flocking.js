@@ -53,43 +53,20 @@ var flock = flock || {};
     /*********
      * Wires *
      *********/
-    // TODO: 
-    //  - Wires shouldn't do anything. Refactor constant wire as a ugen.
-    //  - Add better support for control and constant rate signals
     
     flock.wire = function (source) {
         var that = {
-            source: source,
-            rate: flock.defaults.rate // Only audio rate is currently supported.
+            source: source
         };
-        
-        that.pull = that.source[that.rate];
+        that.pull = that.source[that.source.rate];
         
         return that;
     };
     
-    flock.constantWire = function (val) {
-        var that = {
-            source: val,
-            rate: flock.rates.CONSTANT,
-            buffer: flock.constantBuffer(val, flock.defaults.sampleRate)
-        };
-        
-        that.pull = function (numSamps) {
-            var len = that.buffer.length;
-            if (numSamps < len) {
-                return that.buffer.subarray(0, numSamps);
-            } else if (numSamps === len) {
-                return that.buffer;
-            } else {
-                that.buffer = new Float32Array(numSamps);
-                return that.buffer;
-            }
-        };
-        
-        return that;
+    flock.constantWire = function (value, sampleRate) {
+        var ugen = flock.ugen.value({value: value}, null, sampleRate);
+        return flock.wire(ugen);
     };
-    
     
     /*******************
      * Unit Generators *
@@ -100,13 +77,14 @@ var flock = flock || {};
             inputs: inputs,
             output: output,
             sampleRate: sampleRate || flock.defaults.sampleRate,
+            rate: flock.rates.AUDIO,
             model: {}
         };
         
         return that;
     };
     
-    flock.mulAdder = function (that) {
+    flock.ugen.mulAdder = function (that) {
         that.inputs.add = that.inputs.add || flock.constantWire(0.0);
         that.inputs.mul = that.inputs.mul || flock.constantWire(1.0);
         
@@ -123,10 +101,30 @@ var flock = flock || {};
         
         return that;
     };
-     
+    
+    flock.ugen.value = function (inputs, output, sampleRate) {
+        var that = flock.ugen(inputs, output, sampleRate);
+        that.model.value = inputs.value;
+        that.buffer = flock.constantBuffer(that.model.value, that.sampleRate);
+        
+        that.audio = function (numSamps) {
+            var len = that.sampleRate;
+            if (numSamps < len) {
+                return that.buffer.subarray(0, numSamps);
+            } else if (numSamps === len) {
+                return that.buffer;
+            } else {
+                that.buffer = new Float32Array(numSamps);
+                return that.buffer;
+            }
+        };
+        
+        return that;
+    };
+    
     flock.ugen.sinOsc = function (inputs, output, sampleRate) {
         var that = flock.ugen(inputs, output, sampleRate);
-        flock.mulAdder(that);
+        flock.ugen.mulAdder(that);
         that.wavetable = flock.ugen.sinOsc.generateWavetable(that.sampleRate);
         that.model.phase = 0;
         
@@ -207,7 +205,7 @@ var flock = flock || {};
             playbackTimerId: null
         };        
         that.bufferSize = bufferSize || that.sampleRate / 2;
-        that.rootUGen = flock.parseUGenDef(that.graphDef, that.sampleRate, that.bufferSize);
+        that.rootUGen = flock.parse.ugenForDef(that.graphDef, that.sampleRate, that.bufferSize);
         
         that.play = function (duration) {
             if (duration === undefined && duration === Infinity) {
@@ -262,14 +260,18 @@ var flock = flock || {};
     /**********
      * Parser *
      **********/
+    flock.parse = flock.parse || {};
+    
      // TODO: 
      //  - parse ugens into an id-keyed hash so that they can be accessed directly if needed
      //  - create "input tokens" in definition format to expose variables to a synth
-    flock.parseUGenDef = function (ugenDef, sampleRate, bufferSize) {
+    flock.parse.ugenForDef = function (ugenDef, sampleRate, bufferSize) {
         var inputDefs = ugenDef.inputs;
         var inWires = {};
         for (var inputDef in inputDefs) {
-            inWires[inputDef] = flock.parseUGenDef.wireForInputDef(ugenDef.inputs[inputDef], sampleRate, bufferSize);
+            // Wire all inputs except value inputs.
+            inWires[inputDef] = inputDef === "value" ? ugenDef.inputs[inputDef] :
+                flock.parse.wireForInputDef(ugenDef.inputs[inputDef], sampleRate, bufferSize);
         }
         
         if (!ugenDef.ugen) {
@@ -279,21 +281,26 @@ var flock = flock || {};
         return flock.invokePath(ugenDef.ugen, [inWires, new Float32Array(bufferSize), sampleRate]);
     };
     
-    flock.parseUGenDef.inputDefWiringMap = {
-        "number": flock.constantWire,
-        "object": function () {
-            return flock.wire(flock.parseUGenDef.apply(null, arguments));
+    flock.parse.expandInputDef = function (inputDef) {
+        switch (typeof (inputDef)) {
+            case "number":
+                return {
+                    ugen: "flock.ugen.value",
+                    inputs: {
+                        value: inputDef
+                    }
+                };
+            case "object":
+                return inputDef;
+            default:
+                throw new Error("Invalid value type found in ugen definition.");
         }
     };
     
-    flock.parseUGenDef.wireForInputDef = function (val, sampleRate, bufferSize) {    
-        var wireFn = flock.parseUGenDef.inputDefWiringMap[typeof(val)];
-        if (!wireFn) {
-            throw new Error("Invalid value type found in ugen definition.");
-        }
-        return wireFn(val, sampleRate, bufferSize);
+    flock.parse.wireForInputDef = function (inputDef, sampleRate, bufferSize) {    
+        inputDef = flock.parse.expandInputDef(inputDef);
+        var ugen = flock.parse.ugenForDef(inputDef, sampleRate, bufferSize);
+        return flock.wire(ugen, sampleRate, bufferSize);
     };
-        
-
 
 })();
