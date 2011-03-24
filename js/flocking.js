@@ -73,6 +73,9 @@ var flock = flock || {};
     /*******************
      * Unit Generators *
      *******************/
+    // TODO:
+    //  - Add support for control-rate signals. This will require double buffering and calling pull() much more often.
+    //     (i.e. calling pull() at the control rate)
     
     flock.ugen = function (inputs, output, sampleRate) {
         var that = {
@@ -87,15 +90,39 @@ var flock = flock || {};
     };
     
     flock.ugen.mulAdder = function (that) {
-        that.inputs.add = that.inputs.add || flock.constantWire(0.0);
-        that.inputs.mul = that.inputs.mul || flock.constantWire(1.0);
-        
+        // Reads directly from the output buffer, overwriting it in place with modified values.
         that.mulAdd = function (numSamps) {
-            // Reads directly from the output buffer, overwriting it in place with modified values.
-            var mul = that.inputs.mul.pull(numSamps);
-            var add = that.inputs.add.pull(numSamps);
-            var output = that.output;
-            for (var i = 0; i < numSamps; i++) {
+            var output = that.output,
+                mul, add, i;
+            
+            // If we have no mul or add inputs, bail immediately.
+            if (!that.inputs.mul && !that.inputs.add) {
+                return output;
+            }
+            
+            // Only add.
+            if (!that.inputs.mul) {
+                add = that.inputs.add.pull(numSamps);
+                for (i = 0; i < numSamps; i++) {
+                    output[i] = output[i] + add[i];
+                }
+                
+                return output;
+            }
+            
+            // Only mul.
+            if (!that.inputs.add) {
+                mul = that.inputs.mul.pull(numSamps);
+                for (i = 0; i < numSamps; i++) {
+                    output[i] = output[i] * mul[i];
+                }
+                return output;
+            }
+            
+            // Both mul and add.
+            mul = that.inputs.mul.pull(numSamps);
+            add = that.inputs.add.pull(numSamps);
+            for (i = 0; i < numSamps; i++) {
                 output[i] = output[i] * mul[i] + add[i];
             }
             return output;
