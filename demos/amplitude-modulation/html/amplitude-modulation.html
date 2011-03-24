@@ -11,7 +11,7 @@
         <button id="vibrato-toggle">Play</button>
         <script type="text/javascript">
             // Create a new synth using the built-in vibrato sine synth graph.
-            var synth = flock.synth(flock.synth.vibratoSineGraph(440, 1.0), 44100, 11025);
+            var synth = flock.synth(flock.synth.vibratoSineGraph(440, 1.0));
             
             // Wire it up to a button on the page.
             var vibButton = document.getElementById("vibrato-toggle");

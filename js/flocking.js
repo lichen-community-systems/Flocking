@@ -68,6 +68,7 @@ var flock = flock || {};
         return flock.wire(ugen);
     };
     
+    
     /*******************
      * Unit Generators *
      *******************/
@@ -204,7 +205,7 @@ var flock = flock || {};
             graphDef: graphDef,
             playbackTimerId: null
         };        
-        that.bufferSize = bufferSize || that.sampleRate / 2;
+        that.bufferSize = bufferSize || that.sampleRate / 4;
         that.rootUGen = flock.parse.ugenForDef(that.graphDef, that.sampleRate, that.bufferSize);
         
         that.play = function (duration) {
