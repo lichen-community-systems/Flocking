@@ -9,9 +9,9 @@
     <body>
         <h1>Amplitude Modulation Demo</h1>
         <button id="vibrato-toggle">Play</button>
-        <script>
+        <script type="text/javascript">
             // Create a new synth using the built-in vibrato sine synth graph.
-            var synth = flock.synth(flock.synth.vibratoSineGraph(440, 1.0));
+            var synth = flock.synth(flock.synth.vibratoSineGraph(440, 1.0), 44100, 11025);
             
             // Wire it up to a button on the page.
             var vibButton = document.getElementById("vibrato-toggle");
