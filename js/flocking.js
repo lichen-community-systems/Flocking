@@ -11,6 +11,7 @@ var flock = flock || {};
     
     flock.defaults = {
         sampleRate: 44100,
+        bufferSize: 11025,
         rate: flock.rates.AUDIO
     };
     
@@ -106,7 +107,7 @@ var flock = flock || {};
     flock.ugen.value = function (inputs, output, sampleRate) {
         var that = flock.ugen(inputs, output, sampleRate);
         that.model.value = inputs.value;
-        that.buffer = flock.constantBuffer(that.model.value, that.sampleRate);
+        that.buffer = flock.constantBuffer(that.model.value, flock.defaults.bufferSize);
         
         that.audio = function (numSamps) {
             var len = that.sampleRate;
@@ -202,10 +203,10 @@ var flock = flock || {};
     flock.synth = function (graphDef, sampleRate, bufferSize) {
         var that = {
             sampleRate: sampleRate || flock.defaults.sampleRate,
+            bufferSize: bufferSize || flock.defaults.bufferSize,
             graphDef: graphDef,
             playbackTimerId: null
         };        
-        that.bufferSize = bufferSize || that.sampleRate / 4;
         that.rootUGen = flock.parse.ugenForDef(that.graphDef, that.sampleRate, that.bufferSize);
         
         that.play = function (duration) {
