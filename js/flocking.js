@@ -4,6 +4,8 @@ var flock = flock || {};
 
 (function () {
     
+    flock.OUT_UGEN_ID = "flocking-out";
+    
     flock.rates = {
         AUDIO: "audio",
         CONSTANT: "constant"
@@ -53,6 +55,11 @@ var flock = flock || {};
         return output;
     };
     
+    flock.pathParseError = function (path, token) {
+        throw new Error("Error parsing path: " + path + ". Segment '" + token + 
+            "' could not be resolved.");
+    };
+    
     flock.resolvePath = function (path, root) {
         var tokenized = path === "" ? [] : String(path).split(".");
         root = root || window;
@@ -60,8 +67,7 @@ var flock = flock || {};
         
         for (var i = 1; i < tokenized.length; i++) {
             if (valForSeg === null || valForSeg === undefined) {
-                throw new Error("Error parsing path: " + path + ". Segment '" + tokenized[i - 1] + 
-                    "' could not be resolved.");
+                flock.pathParseError(path, tokenized[i - 1]);
             }
             valForSeg = valForSeg[tokenized[i]];
         }
@@ -77,31 +83,22 @@ var flock = flock || {};
     };
     
     
-    /*********
-     * Wires *
-     *********/
-    
-    flock.wire = function (source) {
-        var that = {
-            source: source
-        };
-        that.pull = that.source[that.source.rate];
-        
-        return that;
-    };
-    
-    flock.constantWire = function (value, sampleRate) {
-        var ugen = flock.ugen.value({value: value}, null, sampleRate);
-        return flock.wire(ugen);
-    };
-    
-    
     /*******************
      * Unit Generators *
      *******************/
     // TODO:
     //  - Add support for control-rate signals. This will require double buffering and calling pull() much more often.
     //     (i.e. calling pull() at the control rate)
+    
+    flock.wire = function (source, sampleRate) {
+        var that = {
+            source: typeof (source) === "number" ? 
+                flock.ugen.value({value: source}, null, sampleRate) : source
+        };
+        that.pull = that.source[that.source.rate];
+        
+        return that;
+    };
     
     flock.ugen = function (inputs, output, sampleRate) {
         var that = {
@@ -243,12 +240,13 @@ var flock = flock || {};
             graphDef: graphDef,
             playbackTimerId: null
         };        
-        that.rootUGen = flock.parse.ugenForDef(that.graphDef, that.sampleRate, that.bufferSize);
+        that.ugens = flock.parse.graph(that.graphDef, that.sampleRate, that.bufferSize);
+        that.out = that.ugens[flock.OUT_UGEN_ID];
         
         that.play = function (duration) {
             if (duration === undefined && duration === Infinity) {
                 that.playbackTimerId = window.setInterval(function () {
-                    that.rootUGen.audio(that.bufferSize);
+                    that.out.audio(that.bufferSize);
                 }, interval);
                 return;
             }
@@ -258,7 +256,7 @@ var flock = flock || {};
             var maxWrites = duration / interval;
 
             var audioWriter = function () {
-                that.rootUGen.audio(that.bufferSize);                
+                that.out.audio(that.bufferSize);                
                 writes++;
                 if (writes >= maxWrites) {
                     that.stop();
@@ -270,7 +268,33 @@ var flock = flock || {};
         that.stop = function () {
             window.clearInterval(that.playbackTimerId);
         };
+    
+        // TODO: Replace this with a proxy?
+        that.input = function (path, val) {
+            // TODO: Hard-coded to two-segment paths.
+            var tokenized = path.split("."),
+                ugenId = tokenized[0],
+                input = tokenized[1];
                 
+            var ugen = that.ugens[ugenId];
+            if (!ugen) {
+                flock.pathParseError(path, ugenId);
+            }
+            
+            if (!ugen.inputs[input]) {
+                flock.pathParseError(path, input);
+            }
+
+            if (arguments.length < 2) {
+                // Get.
+                var inputSource = ugen.inputs[input].source;
+                return inputSource.model.value !== undefined ? inputSource.model.value : inputSource;
+            }
+                
+            // Set.
+            return ugen.inputs[input] = flock.wire(val, that.sampleRate);
+        };
+              
         return that;
     };
     
@@ -279,10 +303,12 @@ var flock = flock || {};
             ugen: "flock.ugen.out",
             inputs: {
                 source: {
+                    id: "carrier",
                     ugen: "flock.ugen.sinOsc",
                     inputs: {
                         freq: carrierFreq,
                         mul: {
+                            id: "mod",
                             ugen: "flock.ugen.sinOsc",
                             inputs: {
                                 freq: modFreq
@@ -300,16 +326,23 @@ var flock = flock || {};
      **********/
     flock.parse = flock.parse || {};
     
+    flock.parse.graph = function (ugenDef, sampleRate, bufferSize) {
+        var ugens = {};
+        var root = flock.parse.ugenForDef(ugenDef, sampleRate, bufferSize, ugens);
+        ugens[flock.OUT_UGEN_ID] = root;
+        return ugens;
+    };
+    
      // TODO: 
      //  - parse ugens into an id-keyed hash so that they can be accessed directly if needed
      //  - create "input tokens" in definition format to expose variables to a synth
-    flock.parse.ugenForDef = function (ugenDef, sampleRate, bufferSize) {
+    flock.parse.ugenForDef = function (ugenDef, sampleRate, bufferSize, ugens) {
         var inputDefs = ugenDef.inputs;
         var inWires = {};
         for (var inputDef in inputDefs) {
             // Wire all inputs except value inputs.
             inWires[inputDef] = inputDef === "value" ? ugenDef.inputs[inputDef] :
-                flock.parse.wireForInputDef(ugenDef.inputs[inputDef], sampleRate, bufferSize);
+                flock.parse.wireForInputDef(ugenDef.inputs[inputDef], sampleRate, bufferSize, ugens);
         }
         
         if (!ugenDef.ugen) {
@@ -335,10 +368,13 @@ var flock = flock || {};
         }
     };
     
-    flock.parse.wireForInputDef = function (inputDef, sampleRate, bufferSize) {    
+    flock.parse.wireForInputDef = function (inputDef, sampleRate, bufferSize, ugens) {    
         inputDef = flock.parse.expandInputDef(inputDef);
-        var ugen = flock.parse.ugenForDef(inputDef, sampleRate, bufferSize);
-        return flock.wire(ugen, sampleRate, bufferSize);
+        var ugen = flock.parse.ugenForDef(inputDef, sampleRate, bufferSize, ugens);
+        if (inputDef.id) {
+            ugens[inputDef.id] = ugen;
+        }
+        return flock.wire(ugen, sampleRate);
     };
 
 })();
