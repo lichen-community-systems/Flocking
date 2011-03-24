@@ -27,6 +27,32 @@ var flock = flock || {};
         return buf;
     };
     
+    flock.mul = function (mulWire, output, numSamps) {
+        var mul = mulWire.pull(numSamps);
+        for (var i = 0; i < numSamps; i++) {
+            output[i] = output[i] * mul[i];
+        }
+        return output;
+    };
+    
+    flock.add = function (addWire, output, numSamps) {
+        var add = addWire.pull(numSamps);
+        for (var i = 0; i < numSamps; i++) {
+            output[i] = output[i] + add[i];
+        }
+        
+        return output;
+    };
+    
+    flock.mulAdd = function (mulWire, addWire, output, numSamps) {
+        var mul = mulWire.pull(numSamps);
+        var add = addWire.pull(numSamps);
+        for (var i = 0; i < numSamps; i++) {
+            output[i] = output[i] * mul[i] + add[i];
+        }
+        return output;
+    };
+    
     flock.resolvePath = function (path, root) {
         var tokenized = path === "" ? [] : String(path).split(".");
         root = root || window;
@@ -91,41 +117,24 @@ var flock = flock || {};
     
     flock.ugen.mulAdder = function (that) {
         // Reads directly from the output buffer, overwriting it in place with modified values.
-        that.mulAdd = function (numSamps) {
-            var output = that.output,
-                mul, add, i;
-            
+        that.mulAdd = function (numSamps) {            
             // If we have no mul or add inputs, bail immediately.
             if (!that.inputs.mul && !that.inputs.add) {
-                return output;
+                return that.output;
             }
             
             // Only add.
             if (!that.inputs.mul) {
-                add = that.inputs.add.pull(numSamps);
-                for (i = 0; i < numSamps; i++) {
-                    output[i] = output[i] + add[i];
-                }
-                
-                return output;
+                return flock.add(that.inputs.add, that.output, numSamps);
             }
             
             // Only mul.
             if (!that.inputs.add) {
-                mul = that.inputs.mul.pull(numSamps);
-                for (i = 0; i < numSamps; i++) {
-                    output[i] = output[i] * mul[i];
-                }
-                return output;
+                return flock.mul(that.inputs.mul, that.output, numSamps);
             }
             
             // Both mul and add.
-            mul = that.inputs.mul.pull(numSamps);
-            add = that.inputs.add.pull(numSamps);
-            for (i = 0; i < numSamps; i++) {
-                output[i] = output[i] * mul[i] + add[i];
-            }
-            return output;
+            return flock.mulAdd(that.inputs.mul, that.inputs.add, that.output, numSamps);
         };
         
         return that;
