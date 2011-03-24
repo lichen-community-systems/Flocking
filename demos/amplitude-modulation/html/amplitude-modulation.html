@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <title>Flocking Amplitude Modulation (AM) Synthesis Demo</title>
+        <script src="../../../js/flocking.js"></script>
+    </head>
+    
+    <body>
+        <h1>Amplitude Modulation Demo</h1>
+        <button id="vibrato-toggle">Play</button>
+        <script>
+            // Create a new synth using the built-in vibrato sine synth graph.
+            var synth = flock.synth(flock.synth.vibratoSineGraph(440, 1.0));
+            
+            // Wire it up to a button on the page.
+            var vibButton = document.getElementById("vibrato-toggle");
+            var isPlaying = false;
+            vibButton.addEventListener("click", function (e) {
+                if (!isPlaying) {
+                    vibButton.innerHTML = "Pause";
+                    synth.play();
+                    isPlaying = true;
+                } else {
+                    vibButton.innerHTML = "Play";
+                    synth.stop();
+                    isPlaying = false;
+                }
+            }, false);
+        </script>
+    </body>
+</html>

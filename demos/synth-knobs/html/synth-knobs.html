@@ -2,8 +2,8 @@
 <html>
     <head>
         <title>Canvas Synth</title>
-        <link rel="stylesheet" href="canvas-synth.css" />
-        <script src="canvas-synth.js"></script>
+        <link rel="stylesheet" href="../css/synth-knobs.css" />
+        <script src="../../../js/flocking-gfx.js"></script>
     </head>
     
     <body>
@@ -25,11 +25,8 @@
             var controls = document.querySelectorAll(".control");
             for (var x = 0; x < controls.length; x++) {
                 var control = controls[x];
-                synth.control(control);
+                gfx.knobView(control);
             }
-            
-            var testSynth = synth.init(synth.vibratoSine);
-            testSynth.play(10000);
         </script>
     </body>
 </html>
