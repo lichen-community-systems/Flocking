@@ -140,7 +140,7 @@ var flock = flock || {};
     flock.ugen.value = function (inputs, output, sampleRate) {
         var that = flock.ugen(inputs, output, sampleRate);
         that.model.value = inputs.value;
-        that.buffer = flock.constantBuffer(that.model.value, flock.defaults.bufferSize);
+        that.buffer = flock.constantBuffer(that.model.value, that.sampleRate);
         
         that.audio = function (numSamps) {
             var len = that.sampleRate;
@@ -280,18 +280,24 @@ var flock = flock || {};
             if (!ugen) {
                 flock.pathParseError(path, ugenId);
             }
-            
-            if (!ugen.inputs[input]) {
-                flock.pathParseError(path, input);
-            }
 
+            // Get.
             if (arguments.length < 2) {
-                // Get.
+                if (!input) {
+                    return ugen;
+                }
+                
+                if (!ugen.inputs[input]) {
+                    flock.pathParseError(path, input);
+                }
                 var inputSource = ugen.inputs[input].source;
                 return inputSource.model.value !== undefined ? inputSource.model.value : inputSource;
             }
                 
             // Set.
+            if (!input) {
+                throw new Error("Setting a ugen directly is not currently supported.");
+            }
             return ugen.inputs[input] = flock.wire(val, that.sampleRate);
         };
               
@@ -324,6 +330,10 @@ var flock = flock || {};
     /**********
      * Parser *
      **********/
+    // TODO:
+    //  - Remove the need to specify the output ugen
+    //  - Support multiple channels.
+    
     flock.parse = flock.parse || {};
     
     flock.parse.graph = function (ugenDef, sampleRate, bufferSize) {
