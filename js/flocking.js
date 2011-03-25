@@ -206,7 +206,7 @@ var flock = flock || {};
             density: 0.0,
             scale: 0.0,
             threshold: 0.0,
-            sampleDur: 60 / (that.sampleRate * 32) // TODO: Why is this calculation wrong?
+            sampleDur: 1.0 / that.sampleRate
         };
         
         that.audio = function (numSamps) {
