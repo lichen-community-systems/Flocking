@@ -35,7 +35,32 @@ var flock = flock || {};
             return numKeys;
         };
         
+        var countNonZeroSamples = function (buffer) {
+            var numNonZero = 0;
+            for (var i = 0; i < buffer.length; i++) {
+                var samp = buffer[i];
+                numNonZero = (samp > 0.0) ? numNonZero + 1 : numNonZero;
+            }
+            return numNonZero;
+        };
+        
+        var checkSampleBoundary = function (buffer, min, max) {
+            var aboveMin = true,
+                belowMax = true;
+                
+            for (var i = 0; i < buffer.length; i++) {
+                var samp = buffer[i];
+                aboveMin = (samp >= min);
+                belowMax = (samp <= max);
+            }
+            
+            ok(aboveMin, "No samples in the buffer should go below " + min);
+            ok(belowMax, "No samples in the buffer should exceed " + max);
+        };
+        
+        
         module("Synth tests");
+        
         test("Get input values", function () {
             var synth = createSynth();
             
@@ -76,7 +101,9 @@ var flock = flock || {};
             equals(wire.source, testUGen, "The wire returned from setting a ugen should have the correct source.");
         });
 
+
         module("Parsing tests");
+        
         test("flock.parse.graph()", function () {
             var testGraph = {
                 ugen: "flock.ugen.out",
@@ -110,5 +137,21 @@ var flock = flock || {};
             ok(parsedUGens.mul.model.value, "...and it should be a real value ugen.");
         });
 
+
+        module("UGen tests");
+
+        test("flock.ugen.dust", function () {
+            var dust = flock.ugen.dust({
+                density: flock.wire(1.0, 44100)
+            }, new Float32Array(44100), 44100);
+            
+            var buffer = dust.audio(44100);
+            ok(buffer, "A buffer should be returned from dust.audio()");
+            equals(buffer.length, 44100, "And it should be the specified length.");
+            checkSampleBoundary(buffer, 0.0, 1.0);
+            var nonZero = countNonZeroSamples(buffer);
+            ok(nonZero < 3 && nonZero > 0, 
+                "There should be roughly two non-zero samples in a one-second buffer when run with a density of 2.0");
+        });
     };
 })();

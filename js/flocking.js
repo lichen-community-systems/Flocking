@@ -165,16 +165,25 @@ var flock = flock || {};
         
         // Scan the wavetable at the given frequency to generate the output.
         that.audio = function (numSamps) {
-            var freq = that.inputs.freq.pull(numSamps);
-            var tableLen = that.wavetable.length;
+            // Cache instance variables locally so we don't pay the cost of property lookup
+            // within the sample generation loop.
+            var freq = that.inputs.freq.pull(numSamps),
+                tableLen = that.wavetable.length,
+                output = that.output,
+                wavetable = that.wavetable,
+                phase = that.model.phase,
+                sampleRate = that.sampleRate;
+
             for (var i = 0; i < numSamps; i++) {
-                that.output[i] = that.wavetable[that.model.phase];
-                var increment = freq[i] * tableLen / that.sampleRate;
-                that.model.phase += increment;
-                if (that.model.phase > tableLen) {
-                    that.model.phase -= tableLen;
+                output[i] = wavetable[phase];
+                var increment = freq[i] * tableLen / sampleRate;
+                phase += increment;
+                if (phase > tableLen) {
+                    phase -= tableLen;
                 }
+                that.model.phase = phase;
             }
+            
             return that.mulAdd(numSamps);
         };
         
@@ -188,6 +197,40 @@ var flock = flock || {};
             wavetable[i] = Math.sin(i * scale);
         }
         return wavetable;
+    };
+    
+    flock.ugen.dust = function (inputs, output, sampleRate) {
+        var that = flock.ugen(inputs, output, sampleRate);
+        flock.ugen.mulAdder(that);
+        that.model = {
+            density: 0.0,
+            scale: 0.0,
+            threshold: 0.0,
+            sampleDur: 60 / (that.sampleRate * 32) // TODO: Why is this calculation wrong?
+        };
+        
+        that.audio = function (numSamps) {
+            var density = inputs.density.pull(numSamps)[0], // Assume density is control rate.
+                threshold, scale;
+                
+            if (density !== that.model.density) {
+                that.model.density = density;
+                threshold = that.model.threshold = density * that.model.sampleDur;
+                scale = that.model.scale = threshold > 0.0 ? 1.0 / threshold : 0.0;
+            } else {
+                threshold = that.model.threshold;
+                scale = that.model.scale;
+            }
+            
+            for (var i = 0; i < numSamps; i++) {
+                var rand = Math.random();
+                output[i] = (rand < threshold) ? rand * scale : 0.0;
+            }
+            
+            return that.mulAdd(numSamps);
+        };
+
+        return that;
     };
     
     flock.ugen.out = function (inputs, output, sampleRate) {

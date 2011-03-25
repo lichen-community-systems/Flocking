@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Noise Demo</title>
+        <script src="../../../js/flocking.js"></script>
+        <script src="../../shared/js/demo-utils.js"></script>
+    </head>
+    
+    <body>
+        <h1>Noise Demo</h1>
+        Dust: <button id="synth-toggle">Play</button>
+        <script type="text/javascript">
+            var synth = flock.synth({
+                ugen: "flock.ugen.out",
+                inputs: {
+                    source: {
+                        ugen: "flock.ugen.dust",
+                        inputs: {
+                            density: 200,
+                            mul: 0.5
+                        }
+                    }
+                }
+            });
+            
+            // Bind it to a play/pause toggle button.
+            demo.toggleButtonView("synth-toggle", synth);
+        </script>
+    </body>
+</html>
