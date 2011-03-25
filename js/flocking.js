@@ -13,8 +13,7 @@ var flock = flock || {};
     
     flock.defaults = {
         sampleRate: 44100,
-        bufferSize: 11025,
-        rate: flock.rates.AUDIO
+        bufferSize: 11025
     };
     
     /*************
@@ -269,7 +268,9 @@ var flock = flock || {};
             window.clearInterval(that.playbackTimerId);
         };
     
-        // TODO: Replace this with a proxy?
+        // TODO:
+        //  - Awkward stuff! 
+        //  - Replace with a proxy?
         that.input = function (path, val) {
             // TODO: Hard-coded to two-segment paths.
             var tokenized = path.split("."),
@@ -302,28 +303,6 @@ var flock = flock || {};
         };
               
         return that;
-    };
-    
-    flock.synth.vibratoSineGraph = function (carrierFreq, modFreq) {
-        return {
-            ugen: "flock.ugen.out",
-            inputs: {
-                source: {
-                    id: "carrier",
-                    ugen: "flock.ugen.sinOsc",
-                    inputs: {
-                        freq: carrierFreq,
-                        mul: {
-                            id: "mod",
-                            ugen: "flock.ugen.sinOsc",
-                            inputs: {
-                                freq: modFreq
-                            }
-                        }
-                    }
-                }
-            }
-        };
     };
     
     

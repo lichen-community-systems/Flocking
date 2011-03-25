@@ -1,17 +1,15 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Amplitude Modulation (AM) Synthesis Demo</title>
+        <title>Frequency Modulation (FM) Synthesis Demo</title>
         <script src="../../../js/flocking.js"></script>
         <script src="../../shared/js/demo-utils.js"></script>
     </head>
     
     <body>
-        <h1>Amplitude Modulation Demo</h1>
+        <h1>Frequency Modulation Demo</h1>
         <button id="synth-toggle">Play</button>
         <script type="text/javascript">
-            // Create a new synth consisting of a sine wave, 
-            // modulating its amplitude slowly with another sine wave.
             var synth = flock.synth({
                 ugen: "flock.ugen.out",
                 inputs: {
@@ -20,11 +18,11 @@
                         ugen: "flock.ugen.sinOsc",
                         inputs: {
                             freq: 440,
-                            mul: {
+                            add: {
                                 id: "mod",
                                 ugen: "flock.ugen.sinOsc",
                                 inputs: {
-                                    freq: 1.0
+                                    freq: 220
                                 }
                             }
                         }

@@ -8,17 +8,28 @@
     
     <body>
         <h1>Frequency Stair Stepping Demo</h1>
-        <button id="vibrato-toggle">Play</button>
+        <button id="synth-toggle">Play</button>
         <script type="text/javascript">
             // Create a new synth using the built-in vibrato sine synth graph.
-            var synth = flock.synth(flock.synth.vibratoSineGraph(55, 1.0));
+            var synth = flock.synth({
+                ugen: "flock.ugen.out",
+                inputs: {
+                    source: {
+                        id: "carrier",
+                        ugen: "flock.ugen.sinOsc",
+                        inputs: {
+                            freq: 55
+                        }
+                    }
+                }
+            });
             
             // Bind it to a play/pause toggle button.
-            var button = demo.playPauseButton("vibrato-toggle", synth);
+            var button = demo.playPauseButton("synth-toggle", synth);
             
             // TODO: This is a hack.
             button.addEventListener("click", function (e) {
-                var freq = 55;
+                var freq = synth.input("carrier.freq");
                 window.setInterval(function () {
                     freq *= 2;
                     synth.input("carrier.freq", freq);
