@@ -88,6 +88,7 @@ var flock = flock || {};
     // TODO:
     //  - Add support for control-rate signals. This will require double buffering and calling pull() much more often.
     //     (i.e. calling pull() at the control rate)
+    //  - Can wires be tossed altogether?
     
     flock.wire = function (source, sampleRate) {
         var that = {

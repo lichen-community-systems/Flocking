@@ -2,23 +2,29 @@ var demo = demo || {};
 
 (function () {
     
-    demo.playPauseButton = function(buttonId, synth) {
+    demo.toggleButtonView = function(buttonId, synth) {
+        var that = {
+            model: {
+                isPlaying: false
+            },
+            synth: synth,
+            button: document.getElementById(buttonId)
+        };
+        
         // Wire it up to a button on the page.
-        var button = document.getElementById(buttonId);
-        var isPlaying = false;
-        button.addEventListener("click", function (e) {
-            if (!isPlaying) {
-                button.innerHTML = "Pause";
-                synth.play();
-                isPlaying = true;
+        that.button.addEventListener("click", function (e) {
+            if (!that.model.isPlaying) {
+                that.button.innerHTML = "Pause";
+                that.synth.play();
+                that.model.isPlaying = true;
             } else {
-                button.innerHTML = "Play";
-                synth.stop();
-                isPlaying = false;
+                that.button.innerHTML = "Play";
+                that.synth.stop();
+                that.model.isPlaying = false;
             }
         }, false);
         
-        return button;
+        return that;
     };
     
 })();
