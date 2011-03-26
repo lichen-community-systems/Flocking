@@ -13,13 +13,20 @@ var flock = flock || {};
     
     flock.defaults = {
         sampleRate: 44100,
-        bufferSize: 11025
+        controlRate: 64,
+        bufferSize: 88200,
+        minLatency: 250,
+        writeInterval: 100
     };
     
     /*************
      * Utilities *
      *************/
     
+     flock.minBufferSize = function (sampleRate, chans, latency) {
+         return (sampleRate * chans) / (1000 / latency);
+     };
+     
     flock.constantBuffer = function (val, size) {
         var buf = new Float32Array(size);
         for (var i = 0; i < size; i++) {
@@ -235,37 +242,31 @@ var flock = flock || {};
     
     flock.ugen.out = function (inputs, output, sampleRate) {
         var that = flock.ugen(inputs, output, sampleRate);
-        that.audioEl = new Audio();
-        that.audioEl.mozSetup(2, that.sampleRate);
         
-        that.audio = function (numSamples) {
-            var output = that.inputs.source.pull(numSamples);
+        that.audio = function (numFrames, offset) {
+            var sourceBuf = that.inputs.source.pull(numFrames);
+            var output = that.output;
             
             // Handle multiple channels, including stereo expansion of a single channel.
-            var len = output.length,
-                left, right;
-            if (len === 2) {
+            var left, right;
+            if (sourceBuf.length === 2) {
                 // Assume we've got a stereo pair of output buffers
-                left = output[0];
-                right = output[1];
-                len = left.length;
-                if (len !== right.length) {
-                     throw new Error("Left and right output buffers must be the same length.");
-                }
+                left = sourceBuf[0];
+                right = sourceBuf[1];
             } else {
-                left = output;
-                right = output; 
+                left = sourceBuf;
+                right = sourceBuf; 
             }
 
             // Interleave each output channel into stereo frames.
-            var stereo = new Float32Array(len * 2);
-            for (var i = 0; i < len; i++) {
-                var frameIdx = i * 2;
-                stereo[frameIdx] = left[i];
-                stereo[frameIdx + 1] = right[i];
+            offset = offset || 0;
+            for (var i = 0 || 0; i < numFrames; i++) {
+                var frameIdx = i * 2 + offset;
+                output[frameIdx] = left[i];
+                output[frameIdx + 1] = right[i];
             }
             
-            that.audioEl.mozWriteAudio(stereo);
+            return output;
         };
         
         return that;
@@ -275,37 +276,51 @@ var flock = flock || {};
     /**********
      * Synths *
      **********/
-
-    flock.synth = function (graphDef, sampleRate, bufferSize) {
+    
+    var writeAudio = function (outUGen, audioEl, preBufferSize, playState) {
+        var needed = audioEl.mozCurrentSampleOffset() + preBufferSize - playState.written;
+        //var outBuf = outUGen.audio(needed);
+        var kr = flock.defaults.controlRate;
+        var numControlRateBuffers = Math.round(needed / kr);
+        var outBuf = new Float32Array(numControlRateBuffers * kr);
+        outUGen.output = outBuf;
+        for (var i = 0; i < numControlRateBuffers; i++) {
+            outUGen.audio(flock.defaults.controlRate, i * kr);
+        }
+        playState.written += audioEl.mozWriteAudio(outBuf);
+    };
+    
+    flock.synth = function (graphDef, options) {
+        // TODO: Consolidate options and model.
+        options = options || {};
         var that = {
-            sampleRate: sampleRate || flock.defaults.sampleRate,
-            bufferSize: bufferSize || flock.defaults.bufferSize,
-            graphDef: graphDef,
-            playbackTimerId: null
-        };        
-        that.ugens = flock.parse.graph(that.graphDef, that.sampleRate, that.bufferSize);
+            audioEl: new Audio(),
+            sampleRate: options.sampleRate || flock.defaults.sampleRate,
+            chans: 2, // TODO: Hardbaked to stereo. Add support for more and less channels.
+            bufferSize: options.bufferSize || flock.defaults.bufferSize,
+            writeInterval: options.writeInterval || flock.defaults.writeInterval,
+            playbackTimerId: null,
+            playState: {
+                written: 0,
+                total: null
+            },
+            model: graphDef
+        };
+        that.preBufferSize = flock.minBufferSize(that.sampleRate, that.chans, flock.defaults.minLatency);
+        that.ugens = flock.parse.graph(that.model, that.sampleRate, that.bufferSize);
         that.out = that.ugens[flock.OUT_UGEN_ID];
+        that.audioEl.mozSetup(that.chans, that.sampleRate);
         
         that.play = function (duration) {
-            if (duration === undefined && duration === Infinity) {
-                that.playbackTimerId = window.setInterval(function () {
-                    that.out.audio(that.bufferSize);
-                }, interval);
-                return;
-            }
-            
-            var writes = 0;
-            var interval = 1000 / (that.sampleRate / that.bufferSize);
-            var maxWrites = duration / interval;
+            that.playState.total = (duration === undefined) ? Infinity : 
+                duration * (that.sampleRate * that.numChans);
 
-            var audioWriter = function () {
-                that.out.audio(that.bufferSize);                
-                writes++;
-                if (writes >= maxWrites) {
+            that.playbackTimerId = window.setInterval(function () {
+                writeAudio(that.out, that.audioEl, that.preBufferSize, that.playState);
+                if (that.playState.written >= that.playState.total) {
                     that.stop();
                 }
-            };
-            that.playbackTimerId = window.setInterval(audioWriter, interval);
+            }, that.writeInterval);
         };
         
         that.stop = function () {
@@ -349,6 +364,7 @@ var flock = flock || {};
         return that;
     };
     
+
     
     /**********
      * Parser *
