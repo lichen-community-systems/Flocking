@@ -285,7 +285,7 @@ var flock = flock || {};
         var outBuf = new Float32Array(numControlRateBuffers * kr);
         outUGen.output = outBuf;
         for (var i = 0; i < numControlRateBuffers; i++) {
-            outUGen.audio(flock.defaults.controlRate, i * kr);
+            outUGen.audio(flock.defaults.controlRate, i * kr * 2);
         }
         playState.written += audioEl.mozWriteAudio(outBuf);
     };

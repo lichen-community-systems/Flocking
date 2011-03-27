@@ -189,119 +189,103 @@ var flock = flock || {};
             checkDensity(dust, density); 
         });
         
+        
+        var mockLeft = [
+            1, 2, 3, 4, 5,
+            6, 7, 8, 9, 10,
+            11, 12, 13, 14, 15,
+            16, 17, 18, 19, 20
+        ];
+        
+        var mockRight = [
+            20, 19, 18, 17, 16,
+            15, 14, 13, 12, 11,
+            10, 9, 8, 7, 6, 
+            5, 4, 3, 2, 1
+        ];
+        
+        var checkOutput = function (ugen, numSamps, expectedBuffer, msg) {
+            var actual = ugen.audio(numSamps);
+            deepEqual(actual, expectedBuffer, msg);
+        };
+        
         test("flock.ugen.out mono input", function () {
             // Test with a single mono input buffer.
-            var mockBuffer = [
-                1, 2, 3, 4, 5,
-                6, 7, 8, 9, 10,
-                11, 12, 13, 14, 15,
-                16, 17, 18, 19, 20
-            ];
-            
             var monoWire = {
                 pull: function (numSamps) {
-                    return mockBuffer;
+                    return mockLeft;
                 }
             };
             var out = flock.ugen.out({source: monoWire}, [], 44100);
+            
+            // Pull the whole buffer.
             var expected = [
                 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 
                 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 
                 12, 12, 13, 13, 14, 14, 15, 15, 16, 16,
                 17, 17, 18, 18, 19, 19, 20, 20
             ];
-            
-            // Pull the whole buffer.
-            var actual = out.audio(20);
-            equals(actual.length, 40, "The output buffer should be twice the size of the input buffer.");
-            deepEqual(actual, expected, 
+            checkOutput(out, 20, expected, 
                 "We should receive a stereo buffer containing two copies of the original input buffer.");
-            
-            
+             
             // Pull a partial buffer.
             expected = [
                 1, 1, 2, 2, 3, 3, 4, 4, 5, 5,
                 6, 6, 7, 7, 8, 8, 9, 9, 10, 10
             ];
             out.output = []; // Reset the output buffer so we don't get any spare stuff floating in it.
-            actual = out.audio(10);
-            equals(actual.length, 20, "The output buffer should be 20 samples long.");
-            deepEqual(actual, expected,
+            checkOutput(out, 10, expected, 
                 "We should receive a stereo buffer containing two copies of the first 10 items in the input buffer.");
         });
         
         test("flock.ugen.out stereo input", function () {
             // Test with two input buffers.
-            var mockLeft = [
-                1, 2, 3, 4, 5,
-                6, 7, 8, 9, 10,
-                11, 12, 13, 14, 15,
-                16, 17, 18, 19, 20
-            ];
-            
-            var mockRight = [
-                20, 19, 18, 17, 16,
-                15, 14, 13, 12, 11,
-                10, 9, 8, 7, 6, 
-                5, 4, 3, 2, 1
-            ];
-            
             var stereoWire = {
                 pull: function (numSamps) {
                     return [mockLeft, mockRight];
                 }
             };
             var out = flock.ugen.out({source: stereoWire}, [], 44100);
+            
+            // Pull the whole buffer. Expect a stereo interleaved buffer as the result, 
+            // containing two copies of the original input buffer.
             var expected = [
                 1, 20, 2, 19, 3, 18, 4, 17, 5, 16, 
                 6, 15, 7, 14, 8, 13, 9, 12, 10, 11, 11, 10, 
                 12, 9, 13, 8, 14, 7, 15, 6, 16, 5,
                 17, 4, 18, 3, 19, 2, 20, 1
             ];
-            
-            // Pull the whole buffer. Expect a stereo interleaved buffer as the result, 
-            // containing two copies of the original input buffer.
-            var actual = out.audio(20);
-            equals(actual.length, 40, "The output buffer should be twice the size of the input buffer.");
-            deepEqual(actual, expected, "We should receive a stereo buffer, with each buffer interleaved.");
+            checkOutput(out, 20, expected, "We should receive a stereo buffer, with each buffer interleaved.");
         });
         
         test("flock.ugen.out.audio() with offset", function () {
             // Test with a single mono input buffer.
-            var mockBuffer = [
-                1, 2, 3, 4, 5,
-                6, 7, 8, 9, 10,
-                11, 12, 13, 14, 15,
-                16, 17, 18, 19, 20
-            ];
-            
             var monoWire = {
                 pull: function (numSamps) {
-                    return mockBuffer;
+                    return mockLeft;
                 }
             };
             var out = flock.ugen.out({source: monoWire}, [], 44100);
             
             var expectedFirst = [1, 1, 2, 2];
-            expectedSecond = [1, 1, 2, 2, 1, 1, 2, 2];
-            expectedThird = [1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 3, 3];
+            var expectedSecond = [1, 1, 2, 2, 1, 1, 2, 2];
+            var expectedThird = [1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 3, 3];
             
             var actual = out.audio(2, 0);
             equals(actual.length, 4, "At the first control period, ",
                 "the output buffer should be twice the size of the input buffer.");
             deepEqual(actual, expectedFirst, 
                 "At the first control period, ",
-                " the output buffer should contain interleaved copies of the first two items, ",
+                "the output buffer should contain interleaved copies of the first two items, ",
                 "at the first four index slots.");
             
-            actual = out.audio(2, 2);
+            actual = out.audio(2, 4);
             equals(actual.length, 8, "At the second control period, the output buffer contain 8 items.");
-            deepEqual(actual, expectedSecond, 
-                "At the second control period...");
+            deepEqual(actual, expectedSecond, "The output buffer should match the expected buffer.");
             
-            actual = out.audio(3, 4);
+            actual = out.audio(3, 8);
             equals(actual.length, 14, "At the third control period, the output buffer should contain 14 items");
-            deepEqual(actual, expectedSecond, "At the third control period...");
+            deepEqual(actual, expectedThird, "The output buffer should match the expected buffer.");
         });
     };
 })();
