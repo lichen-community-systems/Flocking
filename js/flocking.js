@@ -14,7 +14,7 @@ var flock = flock || {};
     flock.defaults = {
         sampleRate: 44100,
         controlRate: 64,
-        bufferSize: 88200,
+        bufferSize: 22050,
         minLatency: 250,
         writeInterval: 100
     };
@@ -277,16 +277,26 @@ var flock = flock || {};
      * Synths *
      **********/
     
-    var writeAudio = function (outUGen, audioEl, preBufferSize, playState) {
-        var needed = audioEl.mozCurrentSampleOffset() + preBufferSize - playState.written;
-        //var outBuf = outUGen.audio(needed);
+    var writeControlRateAudio = function (outUGen, audioEl, preBufferSize, chans, playState) {
+        var currSamp = audioEl.mozCurrentSampleOffset();
+        var needed = currSamp + preBufferSize - playState.written;
         var kr = flock.defaults.controlRate;
-        var numControlRateBuffers = Math.round(needed / kr);
-        var outBuf = new Float32Array(numControlRateBuffers * kr);
+        var numKRBuffers = Math.round(needed / kr);
+        var bufSize = numKRBuffers * kr * chans;
+        var outBuf = new Float32Array(bufSize);
         outUGen.output = outBuf;
-        for (var i = 0; i < numControlRateBuffers; i++) {
-            outUGen.audio(flock.defaults.controlRate, i * kr * 2);
+        for (var i = 0; i < numKRBuffers; i++) {
+            outUGen.audio(kr, i * kr * chans);
         }
+        var written = audioEl.mozWriteAudio(outBuf);
+        playState.written = playState.written + written;  
+    };
+    
+    var writeAudio = function (outUGen, audioEl, preBufferSize, chans, playState) {
+        var needed = audioEl.mozCurrentSampleOffset() + preBufferSize - playState.written;
+        var outBuf = new Float32Array(needed * chans);
+        outUGen.output = outBuf;
+        outUGen.audio(needed);
         playState.written += audioEl.mozWriteAudio(outBuf);
     };
     
@@ -316,7 +326,7 @@ var flock = flock || {};
                 duration * (that.sampleRate * that.numChans);
 
             that.playbackTimerId = window.setInterval(function () {
-                writeAudio(that.out, that.audioEl, that.preBufferSize, that.playState);
+                writeAudio(that.out, that.audioEl, that.preBufferSize, that.chans, that.playState);
                 if (that.playState.written >= that.playState.total) {
                     that.stop();
                 }
