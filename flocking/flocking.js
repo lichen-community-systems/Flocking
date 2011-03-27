@@ -28,6 +28,7 @@ var flock = flock || {};
         writeInterval: 100
     };
     
+    
     /*************
      * Utilities *
      *************/
@@ -403,7 +404,6 @@ var flock = flock || {};
         return that;
     };
     
-
     
     /**********
      * Parser *
