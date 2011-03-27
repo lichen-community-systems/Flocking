@@ -235,6 +235,17 @@ var flock = flock || {};
         return that;
     };
     
+    flock.ugen.out = function (inputs, output, sampleRate) {
+        var that = flock.ugen(inputs, output, sampleRate);
+        
+        // Simple pass-through output.
+        that.gen = function (numSamps) {
+            return that.inputs.source.gen(numSamps);
+        };
+        
+        return that;
+    };
+    
     flock.ugen.stereoOut = function (inputs, output, sampleRate) {
         var that = flock.ugen(inputs, output, sampleRate);
         
@@ -321,7 +332,7 @@ var flock = flock || {};
             model: graphDef
         };
         that.preBufferSize = flock.minBufferSize(that.sampleRate, that.chans, flock.defaults.minLatency);
-        that.ugens = flock.parse.graph(that.model, that.sampleRate, that.bufferSize);
+        that.ugens = flock.parse.graph(that.model, that.sampleRate, that.bufferSize, that.chans);
         that.out = that.ugens[flock.OUT_UGEN_ID];
         that.audioEl.mozSetup(that.chans, that.sampleRate);
         
@@ -342,7 +353,8 @@ var flock = flock || {};
         };
     
         // TODO:
-        //  - Awkward stuff! 
+        //  - Awkward stuff! All this really does is shield the user from the presences of the "inputs" property
+        //      of a unit generator, and only up to two path segments.
         //  - Replace with a proxy?
         that.input = function (path, val) {
             // TODO: Hard-coded to two-segment paths.
@@ -391,10 +403,18 @@ var flock = flock || {};
     
     flock.parse = flock.parse || {};
     
-    flock.parse.graph = function (ugenDef, sampleRate, bufferSize) {
+    flock.parse.graph = function (ugenDef, sampleRate, bufferSize, chans) {
         var ugens = {};
         var root = flock.parse.ugenForDef(ugenDef, sampleRate, bufferSize, ugens);
-        ugens[flock.OUT_UGEN_ID] = root;
+        if (ugenDef.id !== flock.OUT_UGEN_ID) {
+            // User didn't give us an out ugen, so we need to create one automatically.
+            var outType = (chans === 2) ? "flock.ugen.stereoOut" : "flock.ugen.out";
+            var out = flock.parse.ugenForDef({
+                id: flock.OUT_UGEN_ID,
+                ugen: outType
+            }, sampleRate, bufferSize, ugens);
+            out.inputs.source = root;
+        }        
         return ugens;
     };
     
@@ -411,7 +431,11 @@ var flock = flock || {};
             throw new Error("Unit generator definition lacks a 'ugen' property; can't initialize the synth graph.");
         }
         
-        return flock.invokePath(ugenDef.ugen, [inputs, new Float32Array(bufferSize), sampleRate]);
+        var ugen = flock.invokePath(ugenDef.ugen, [inputs, new Float32Array(bufferSize), sampleRate]);
+        if (ugenDef.id) {
+            ugens[ugenDef.id] = ugen;
+        }
+        return ugen;
     };
     
     flock.parse.expandInputDef = function (inputDef) {
@@ -432,11 +456,7 @@ var flock = flock || {};
     
     flock.parse.ugenForInputDef = function (inputDef, sampleRate, bufferSize, ugens) {    
         inputDef = flock.parse.expandInputDef(inputDef);
-        var ugen = flock.parse.ugenForDef(inputDef, sampleRate, bufferSize, ugens);
-        if (inputDef.id) {
-            ugens[inputDef.id] = ugen;
-        }
-        return ugen;
+        return flock.parse.ugenForDef(inputDef, sampleRate, bufferSize, ugens);
     };
 
 })();

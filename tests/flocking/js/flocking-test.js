@@ -119,8 +119,41 @@ var flock = flock || {};
 
         module("Parsing tests");
         
-        test("flock.parse.graph()", function () {
-            var testGraph = {
+        var checkParsedTestGraph = function (graph) {
+            var parsedUGens = flock.parse.graph(graph, 1, 1, 2); // One sample buffer and sampleRate. Stereo output.
+                      
+            equals(countKeys(parsedUGens), 3, "There should be three named ugens.");            
+            ok(parsedUGens[flock.OUT_UGEN_ID], "The output ugen should be at the reserved key flock.OUT_UGEN_ID.");
+            
+            ok(parsedUGens.sine, "The sine ugen should be keyed by its id....");
+            ok(parsedUGens.sine.wavetable, "...and it should be a real sine ugen.");
+            
+            ok(parsedUGens.mul, "The mul ugen should be keyed by its id...");
+            ok(parsedUGens.mul.model.value, "...and it should be a real value ugen.");
+        };
+        
+        test("flock.parse.graph(), no output specified", function () {
+            var condensedTestGraph = {
+                id: "sine",
+                ugen: "flock.ugen.sinOsc",
+                inputs: {
+                    freq: 440,
+                    mul: {
+                        id: "mul",
+                        ugen: "flock.ugen.value",
+                        inputs: {
+                            value: 1.0
+                        }
+                    }
+                }
+            };
+
+            checkParsedTestGraph(condensedTestGraph);
+        });
+        
+        test("flock.parse.graph(), output specified", function () {
+            var expandedTestGraph = {
+                id: flock.OUT_UGEN_ID,
                 ugen: "flock.ugen.stereoOut",
                 inputs: {
                     source: {
@@ -139,16 +172,7 @@ var flock = flock || {};
                     }
                 }
             };
-            var parsedUGens = flock.parse.graph(testGraph, 1, 1);
-                      
-            equals(countKeys(parsedUGens), 3, "There should be three named ugens.");            
-            ok(parsedUGens[flock.OUT_UGEN_ID], "The output ugen should be at the reserved key flock.OUT_UGEN_ID.");
-            
-            ok(parsedUGens.sine, "The sine ugen should be keyed by its id....");
-            ok(parsedUGens.sine.wavetable, "...and it should be a real sine ugen.");
-            
-            ok(parsedUGens.mul, "The mul ugen should be keyed by its id...");
-            ok(parsedUGens.mul.model.value, "...and it should be a real value ugen.");
+            checkParsedTestGraph(expandedTestGraph);
         });
 
 

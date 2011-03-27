@@ -13,20 +13,15 @@
             // Create a new synth consisting of a sine wave, 
             // modulating its amplitude slowly with another sine wave.
             var synth = flock.synth({
-                ugen: "flock.ugen.stereoOut",
+                id: "carrier",
+                ugen: "flock.ugen.sinOsc",
                 inputs: {
-                    source: {
-                        id: "carrier",
+                    freq: 440,
+                    mul: {
+                        id: "mod",
                         ugen: "flock.ugen.sinOsc",
                         inputs: {
-                            freq: 440,
-                            mul: {
-                                id: "mod",
-                                ugen: "flock.ugen.sinOsc",
-                                inputs: {
-                                    freq: 1.0
-                                }
-                            }
+                            freq: 1.0
                         }
                     }
                 }

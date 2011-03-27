@@ -11,20 +11,15 @@
         <button id="synth-toggle">Play</button>
         <script type="text/javascript">
             var synth = flock.synth({
-                ugen: "flock.ugen.stereoOut",
+                id: "carrier",
+                ugen: "flock.ugen.sinOsc",
                 inputs: {
-                    source: {
-                        id: "carrier",
+                    freq: 440,
+                    add: {
+                        id: "mod",
                         ugen: "flock.ugen.sinOsc",
                         inputs: {
-                            freq: 440,
-                            add: {
-                                id: "mod",
-                                ugen: "flock.ugen.sinOsc",
-                                inputs: {
-                                    freq: 220
-                                }
-                            }
+                            freq: 220
                         }
                     }
                 }

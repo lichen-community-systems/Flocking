@@ -8,23 +8,20 @@
     
     <body>
         <h1>Noise Demo</h1>
-        Dust: <button id="synth-toggle">Play</button>
-        <script type="text/javascript">
-            var synth = flock.synth({
-                ugen: "flock.ugen.stereoOut",
+        <ul>
+            <li>Dust: <button id="dust-toggle">Play</button></li>
+        </ul>
+        
+        <script type="text/javascript">        
+            // Simple example of Dust generating random audio noise.
+            var dustSynth = flock.synth({
+                ugen: "flock.ugen.dust",
                 inputs: {
-                    source: {
-                        ugen: "flock.ugen.dust",
-                        inputs: {
-                            density: 200,
-                            mul: 0.5
-                        }
-                    }
+                    density: 200,
+                    mul: 0.5
                 }
-            });
-            
-            // Bind it to a play/pause toggle button.
-            demo.toggleButtonView("synth-toggle", synth);
+            });            
+            demo.toggleButtonView("dust-toggle", dustSynth);
         </script>
     </body>
 </html>

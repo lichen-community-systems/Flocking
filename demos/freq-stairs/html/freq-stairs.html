@@ -14,15 +14,10 @@
             
             // Create a new sine tone synth.
             var synth = flock.synth({
-                ugen: "flock.ugen.stereoOut",
+                id: "carrier",
+                ugen: "flock.ugen.sinOsc",
                 inputs: {
-                    source: {
-                        id: "carrier",
-                        ugen: "flock.ugen.sinOsc",
-                        inputs: {
-                            freq: startingFreq
-                        }
-                    }
+                    freq: startingFreq
                 }
             });
             
