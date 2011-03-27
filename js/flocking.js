@@ -14,7 +14,7 @@ var flock = flock || {};
     flock.defaults = {
         sampleRate: 44100,
         controlRate: 64,
-        bufferSize: 22050,
+        bufferSize: 44100,
         minLatency: 250,
         writeInterval: 100
     };
@@ -277,27 +277,34 @@ var flock = flock || {};
      * Synths *
      **********/
     
-    var writeControlRateAudio = function (outUGen, audioEl, preBufferSize, chans, playState) {
-        var currSamp = audioEl.mozCurrentSampleOffset();
-        var needed = currSamp + preBufferSize - playState.written;
-        var kr = flock.defaults.controlRate;
-        var numKRBuffers = Math.round(needed / kr);
-        var bufSize = numKRBuffers * kr * chans;
-        var outBuf = new Float32Array(bufSize);
-        outUGen.output = outBuf;
-        for (var i = 0; i < numKRBuffers; i++) {
-            outUGen.audio(kr, i * kr * chans);
+    // TODO: Deal with argument list.
+    var writeAudio = function (outUGen, audioEl, preBufferSize, chans, playState, writerFn) {
+        var needed = audioEl.mozCurrentSampleOffset() + preBufferSize - playState.written;
+        if (needed < 0) {
+            return; // Don't write if no more samples are needed.
         }
-        var written = audioEl.mozWriteAudio(outBuf);
-        playState.written = playState.written + written;  
+        
+        var outBuf = writerFn(outUGen, chans, needed);
+        playState.written += audioEl.mozWriteAudio(outBuf);
     };
     
-    var writeAudio = function (outUGen, audioEl, preBufferSize, chans, playState) {
-        var needed = audioEl.mozCurrentSampleOffset() + preBufferSize - playState.written;
-        var outBuf = new Float32Array(needed * chans);
-        outUGen.output = outBuf;
-        outUGen.audio(needed);
-        playState.written += audioEl.mozWriteAudio(outBuf);
+    var controlRateWriter = function (outUGen, chans, needed) {
+        // Figure out how many control periods worth of samples to generate.
+        // This means that we'll be writing slightly more or less than needed.
+        var kr = flock.defaults.controlRate;
+        var numBufs = Math.round(needed / kr);
+        // We're assuming that the output buffer is always going to be large enough to accommodate 'needed'.
+        var outBufSize = numBufs * kr * chans;
+        var outBuf;
+        for (var i = 0; i < numBufs; i++) {
+            outBuf = outUGen.audio(kr, i * kr * chans);
+        }
+        return outBuf.subarray(0, outBufSize);
+    };
+    
+    var onDemandWriter = function (outUGen, chans, needed) {
+        // We're assuming that the output buffer is always going to be large enough to accommodate 'needed'.
+        return outUGen.audio(needed).subarray(0, needed * chans);
     };
     
     flock.synth = function (graphDef, options) {
@@ -326,7 +333,7 @@ var flock = flock || {};
                 duration * (that.sampleRate * that.numChans);
 
             that.playbackTimerId = window.setInterval(function () {
-                writeAudio(that.out, that.audioEl, that.preBufferSize, that.chans, that.playState);
+                writeAudio(that.out, that.audioEl, that.preBufferSize, that.chans, that.playState, controlRateWriter);
                 if (that.playState.written >= that.playState.total) {
                     that.stop();
                 }
