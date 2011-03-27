@@ -1,6 +1,10 @@
+/*global module, test, expect, ok, equals, deepEqual, Float32Array*/
+
 var flock = flock || {};
 
 (function () {
+    "use strict";
+    
     flock.tests = function () {
         var simpleGraph = {
             ugen: "flock.ugen.stereoOut",
@@ -89,7 +93,7 @@ var flock = flock || {};
             // Get a ugen.
             var ugen = synth.input("mod");
             ok(ugen.audio, "A ugen returned from synth.input() should have an audio property...");
-            equals(typeof(ugen.audio), "function", "...of type function");
+            equals(typeof (ugen.audio), "function", "...of type function");
         });
         
         test("Set input values", function () {
@@ -180,8 +184,10 @@ var flock = flock || {};
 
         var checkDensity = function (dust, density) {
             // Run the algorithm 100x and average the results.
-            var nonZeroSum = 0;
-            var numRuns = 1500;
+            var nonZeroSum = 0,
+                numRuns = 1500,
+                buffer;
+                
             for (var i = 0; i < numRuns; i++) {
                 buffer = dust.audio(44100);
                 nonZeroSum += countNonZeroSamples(buffer);

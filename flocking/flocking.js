@@ -1,8 +1,9 @@
-"use strict";
+/*global Float32Array, Audio, window*/
 
 var flock = flock || {};
 
 (function () {
+    "use strict";
     
     flock.OUT_UGEN_ID = "flocking-out";
     
@@ -23,9 +24,9 @@ var flock = flock || {};
      * Utilities *
      *************/
     
-     flock.minBufferSize = function (sampleRate, chans, latency) {
-         return (sampleRate * chans) / (1000 / latency);
-     };
+    flock.minBufferSize = function (sampleRate, chans, latency) {
+        return (sampleRate * chans) / (1000 / latency);
+    };
      
     flock.constantBuffer = function (val, size) {
         var buf = new Float32Array(size);
@@ -82,7 +83,7 @@ var flock = flock || {};
     
     flock.invokePath = function (path, args, root) {
         var fn = flock.resolvePath(path, root);
-        if (typeof(fn) !== "function") {
+        if (typeof (fn) !== "function") {
             throw new Error("Path '" + path + "' does not resolve to a function.");
         }
         return fn.apply(null, args);
@@ -211,7 +212,8 @@ var flock = flock || {};
         
         that.audio = function (numSamps) {
             var density = inputs.density.gen(numSamps)[0], // Assume density is control rate.
-                threshold, scale;
+                threshold, 
+                scale;
                 
             if (density !== that.model.density) {
                 that.model.density = density;
@@ -266,7 +268,7 @@ var flock = flock || {};
 
             // Interleave each output channel into stereo frames.
             offset = offset || 0;
-            for (var i = 0 || 0; i < numFrames; i++) {
+            for (var i = 0; i < numFrames; i++) {
                 var frameIdx = i * 2 + offset;
                 output[frameIdx] = left[i];
                 output[frameIdx + 1] = right[i];
@@ -310,6 +312,7 @@ var flock = flock || {};
         return outBuf.subarray(0, outBufSize);
     };
     
+    // Deprecated and used only for testing.
     var onDemandWriter = function (outUGen, chans, needed) {
         // We're assuming that the output buffer is always going to be large enough to accommodate 'needed'.
         return outUGen.audio(needed).subarray(0, needed * chans);

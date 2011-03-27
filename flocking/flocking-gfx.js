@@ -1,13 +1,14 @@
-"use strict";
 
-var gfx = gfx || {};
+var flock = flock || {};
+flock.gfx = flock.gfx || {};
 
 (function () {
+    "use strict";
 
     /**
      * Sets various stroke and fill styles for the specified 2d context.
      */
-    gfx.strokeAndFill = function (ctx, shape) {
+    flock.gfx.strokeAndFill = function (ctx, shape) {
         ctx.fillStyle = shape.fill || ctx.fillStyle;
         ctx.strokeStyle = shape.strokeColor || ctx.strokeStyle;
         ctx.lineWidth = shape.strokeWidth || ctx.lineWidth;
@@ -25,8 +26,8 @@ var gfx = gfx || {};
      *        strokeColor: "gray",
      *    });
      */
-    gfx.pieChart = function (ctx, pieChart) {
-        gfx.strokeAndFill(ctx, pieChart);
+    flock.gfx.pieChart = function (ctx, pieChart) {
+        flock.gfx.strokeAndFill(ctx, pieChart);
         ctx.beginPath();
         ctx.moveTo(pieChart.x, pieChart.y);
         ctx.arc(pieChart.x, pieChart.y, pieChart.radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pieChart.percent / 100, false);
@@ -48,8 +49,8 @@ var gfx = gfx || {};
      *        strokeWidth: 3
      *    });
      */
-    gfx.circle = function (ctx, circle) {
-        gfx.strokeAndFill(ctx, circle);
+    flock.gfx.circle = function (ctx, circle) {
+        flock.gfx.strokeAndFill(ctx, circle);
         ctx.beginPath();
         ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2, false);
         ctx.closePath();
@@ -68,15 +69,15 @@ var gfx = gfx || {};
      *       width: 15
      *   });
      */
-    gfx.rect = function (ctx, rect) {
-        gfx.strokeAndFill(ctx, rect);
+    flock.gfx.rect = function (ctx, rect) {
+        flock.gfx.strokeAndFill(ctx, rect);
         ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
     };
     
     /**
      * Yep, it draws a line.
      * Example:
-     *    gfx.line(ctx, {
+     *    flock.gfx.line(ctx, {
      *        x: 0,
      *        y: 0,
      *        endX: 15,
@@ -85,21 +86,21 @@ var gfx = gfx || {};
      *        strokeWidth: 2
      *    });
      */
-    gfx.line = function (ctx, line) {
+    flock.gfx.line = function (ctx, line) {
         ctx.moveTo(line.x, line.y);
         ctx.lineTo(line.endX, line.endY);
         ctx.stroke();
     };
     
-    gfx.knob = function (ctx, knob) {
-        gfx.circle(ctx, knob);
+    flock.gfx.knob = function (ctx, knob) {
+        flock.gfx.circle(ctx, knob);
         
         var angle = (knob.atPos * 3.6) + 90; // Convert percentage to angle, shifting 0 degrees to the bottom.
         var theta = angle * (Math.PI / 180);
         var lineEndX = (Math.cos(theta) * knob.radius) * ctx.canvas.getAttribute("width");
         var lineEndY = (Math.sin(theta) * knob.radius) * ctx.canvas.getAttribute("height");
         
-        gfx.line(ctx, {
+        flock.gfx.line(ctx, {
             x: knob.x,
             y: knob.y,
             endX: lineEndX,
@@ -109,7 +110,7 @@ var gfx = gfx || {};
         });
     };
     
-    gfx.knobView = function (canvas, model) {
+    flock.gfx.knobView = function (canvas, model) {
         var that = {
             model: model || {
                 pos: 0
@@ -119,14 +120,12 @@ var gfx = gfx || {};
         var ctx = canvas.getContext("2d");
         canvas.addEventListener("click", function (e) {
             var x = e.pageX - canvas.offsetLeft, y = e.pageY - canvas.offsetTop;
-            console.log(x);
-            console.log(y);
             // TODO need to convert from Cartesian to unit circle.
             that.refreshView();
         }, false);
         
         that.refreshView = function () {
-            gfx.knob(ctx, {
+            flock.gfx.knob(ctx, {
                 radius: 20,
                 atPos: that.model.pos,
                 x: canvas.getAttribute("width") / 2,
