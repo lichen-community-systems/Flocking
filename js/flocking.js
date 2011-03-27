@@ -8,7 +8,7 @@ var flock = flock || {};
     
     flock.rates = {
         AUDIO: "audio",
-        CONSTANT: "constant"
+        CONTROL: "control"
     };
     
     flock.defaults = {
@@ -35,16 +35,16 @@ var flock = flock || {};
         return buf;
     };
     
-    flock.mul = function (mulWire, output, numSamps) {
-        var mul = mulWire.pull(numSamps);
+    flock.mul = function (mulInput, output, numSamps) {
+        var mul = mulInput.gen(numSamps);
         for (var i = 0; i < numSamps; i++) {
             output[i] = output[i] * mul[i];
         }
         return output;
     };
     
-    flock.add = function (addWire, output, numSamps) {
-        var add = addWire.pull(numSamps);
+    flock.add = function (addInput, output, numSamps) {
+        var add = addInput.gen(numSamps);
         for (var i = 0; i < numSamps; i++) {
             output[i] = output[i] + add[i];
         }
@@ -52,9 +52,9 @@ var flock = flock || {};
         return output;
     };
     
-    flock.mulAdd = function (mulWire, addWire, output, numSamps) {
-        var mul = mulWire.pull(numSamps);
-        var add = addWire.pull(numSamps);
+    flock.mulAdd = function (mulInput, addInput, output, numSamps) {
+        var mul = mulInput.gen(numSamps);
+        var add = addInput.gen(numSamps);
         for (var i = 0; i < numSamps; i++) {
             output[i] = output[i] * mul[i] + add[i];
         }
@@ -92,20 +92,6 @@ var flock = flock || {};
     /*******************
      * Unit Generators *
      *******************/
-    // TODO:
-    //  - Add support for control-rate signals. This will require double buffering and calling pull() much more often.
-    //     (i.e. calling pull() at the control rate)
-    //  - Can wires be tossed altogether?
-    
-    flock.wire = function (source, sampleRate) {
-        var that = {
-            source: typeof (source) === "number" ? 
-                flock.ugen.value({value: source}, null, sampleRate) : source
-        };
-        that.pull = that.source[that.source.rate];
-        
-        return that;
-    };
     
     flock.ugen = function (inputs, output, sampleRate) {
         var that = {
@@ -144,12 +130,14 @@ var flock = flock || {};
         return that;
     };
     
+    // TODO: Need to refactor or provide a convenience creator for flock.ugen.value().
     flock.ugen.value = function (inputs, output, sampleRate) {
         var that = flock.ugen(inputs, output, sampleRate);
+        that.rate = flock.rates.CONTROL;
         that.model.value = inputs.value;
         that.buffer = flock.constantBuffer(that.model.value, that.sampleRate);
         
-        that.audio = function (numSamps) {
+        that.control = function (numSamps) {
             var len = that.sampleRate;
             if (numSamps < len) {
                 return that.buffer.subarray(0, numSamps);
@@ -161,9 +149,12 @@ var flock = flock || {};
             }
         };
         
+        that.gen = that.control;
+        
         return that;
     };
     
+    // TODO: This algorithm aliases and distorts with non-integer frequency values.
     flock.ugen.sinOsc = function (inputs, output, sampleRate) {
         var that = flock.ugen(inputs, output, sampleRate);
         flock.ugen.mulAdder(that);
@@ -174,7 +165,7 @@ var flock = flock || {};
         that.audio = function (numSamps) {
             // Cache instance variables locally so we don't pay the cost of property lookup
             // within the sample generation loop.
-            var freq = that.inputs.freq.pull(numSamps),
+            var freq = that.inputs.freq.gen(numSamps),
                 tableLen = that.wavetable.length,
                 output = that.output,
                 wavetable = that.wavetable,
@@ -193,6 +184,8 @@ var flock = flock || {};
             
             return that.mulAdd(numSamps);
         };
+        
+        that.gen = that.audio;
         
         return that;
     };
@@ -217,7 +210,7 @@ var flock = flock || {};
         };
         
         that.audio = function (numSamps) {
-            var density = inputs.density.pull(numSamps)[0], // Assume density is control rate.
+            var density = inputs.density.gen(numSamps)[0], // Assume density is control rate.
                 threshold, scale;
                 
             if (density !== that.model.density) {
@@ -236,15 +229,17 @@ var flock = flock || {};
             
             return that.mulAdd(numSamps);
         };
-
+        
+        that.gen = that.audio;
+        
         return that;
     };
     
-    flock.ugen.out = function (inputs, output, sampleRate) {
+    flock.ugen.stereoOut = function (inputs, output, sampleRate) {
         var that = flock.ugen(inputs, output, sampleRate);
         
         that.audio = function (numFrames, offset) {
-            var sourceBuf = that.inputs.source.pull(numFrames);
+            var sourceBuf = that.inputs.source.gen(numFrames);
             var output = that.output;
             
             // Handle multiple channels, including stereo expansion of a single channel.
@@ -268,6 +263,8 @@ var flock = flock || {};
             
             return output;
         };
+        
+        that.gen = that.audio;
         
         return that;
     };
@@ -367,7 +364,7 @@ var flock = flock || {};
                 if (!ugen.inputs[input]) {
                     flock.pathParseError(path, input);
                 }
-                var inputSource = ugen.inputs[input].source;
+                var inputSource = ugen.inputs[input];
                 return inputSource.model.value !== undefined ? inputSource.model.value : inputSource;
             }
                 
@@ -375,7 +372,9 @@ var flock = flock || {};
             if (!input) {
                 throw new Error("Setting a ugen directly is not currently supported.");
             }
-            return ugen.inputs[input] = flock.wire(val, that.sampleRate);
+            return ugen.inputs[input] = typeof (val) === "number" ? 
+                flock.ugen.value({value: val}, new Float32Array(that.bufferSize), that.sampleRate) :
+                val;
         };
               
         return that;
@@ -399,23 +398,20 @@ var flock = flock || {};
         return ugens;
     };
     
-     // TODO: 
-     //  - parse ugens into an id-keyed hash so that they can be accessed directly if needed
-     //  - create "input tokens" in definition format to expose variables to a synth
     flock.parse.ugenForDef = function (ugenDef, sampleRate, bufferSize, ugens) {
         var inputDefs = ugenDef.inputs;
-        var inWires = {};
+        var inputs = {};
         for (var inputDef in inputDefs) {
-            // Wire all inputs except value inputs.
-            inWires[inputDef] = inputDef === "value" ? ugenDef.inputs[inputDef] :
-                flock.parse.wireForInputDef(ugenDef.inputs[inputDef], sampleRate, bufferSize, ugens);
+            // Create ugens for all inputs except value inputs.
+            inputs[inputDef] = inputDef === "value" ? ugenDef.inputs[inputDef] :
+                flock.parse.ugenForInputDef(ugenDef.inputs[inputDef], sampleRate, bufferSize, ugens);
         }
         
         if (!ugenDef.ugen) {
             throw new Error("Unit generator definition lacks a 'ugen' property; can't initialize the synth graph.");
         }
         
-        return flock.invokePath(ugenDef.ugen, [inWires, new Float32Array(bufferSize), sampleRate]);
+        return flock.invokePath(ugenDef.ugen, [inputs, new Float32Array(bufferSize), sampleRate]);
     };
     
     flock.parse.expandInputDef = function (inputDef) {
@@ -434,13 +430,13 @@ var flock = flock || {};
         }
     };
     
-    flock.parse.wireForInputDef = function (inputDef, sampleRate, bufferSize, ugens) {    
+    flock.parse.ugenForInputDef = function (inputDef, sampleRate, bufferSize, ugens) {    
         inputDef = flock.parse.expandInputDef(inputDef);
         var ugen = flock.parse.ugenForDef(inputDef, sampleRate, bufferSize, ugens);
         if (inputDef.id) {
             ugens[inputDef.id] = ugen;
         }
-        return flock.wire(ugen, sampleRate);
+        return ugen;
     };
 
 })();

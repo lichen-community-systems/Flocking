@@ -3,7 +3,7 @@ var flock = flock || {};
 (function () {
     flock.tests = function () {
         var simpleGraph = {
-            ugen: "flock.ugen.out",
+            ugen: "flock.ugen.stereoOut",
             inputs: {
                 source: {
                     id: "sine",
@@ -100,20 +100,20 @@ var flock = flock || {};
             // Setting simple values.
             synth.input("sine.freq", 220);
             equals(synth.input("sine.freq"), 220, "Setting 'sine.freq' should update the input value accordingly.");
-            equals(sineUGen.inputs.freq.source.model.value, 220, "And the underlying value ugen should also be updated.");
+            equals(sineUGen.inputs.freq.model.value, 220, "And the underlying value ugen should also be updated.");
             synth.input("sine.freq", 110);
             equals(synth.input("sine.freq"), 110, "Setting 'sine.freq' a second time should also work.");
-            equals(sineUGen.inputs.freq.source.model.value, 110, "And the underlying value ugen should also be updated.");
+            equals(sineUGen.inputs.freq.model.value, 110, "And the underlying value ugen should also be updated.");
             synth.input("mod.freq", 2.0);
             equals(synth.input("mod.freq"), 2.0, "Setting 'mod.freq' should update the input value.");
-            equals(modUGen.inputs.freq.source.model.value, 2.0, "And the underlying value ugen should also be updated.");
-            equals(modUGen.inputs.freq.source.buffer[0], 2.0, "Even the ugen's buffer should contain the new value.");
+            equals(modUGen.inputs.freq.model.value, 2.0, "And the underlying value ugen should also be updated.");
+            equals(modUGen.inputs.freq.buffer[0], 2.0, "Even the ugen's buffer should contain the new value.");
             
             // TODO: Set a ugen.
             var testUGen = flock.ugen.value({value: 8.0}, null, 1);
-            var wire = synth.input("sine.mul", testUGen);
-            equals(synth.ugens.sine.inputs.mul.source, testUGen, "The 'sine' ugen should be set to our test ugen.");
-            equals(wire.source, testUGen, "The wire returned from setting a ugen should have the correct source.");
+            var mulUGen = synth.input("sine.mul", testUGen);
+            equals(synth.ugens.sine.inputs.mul, testUGen, "The 'sine' ugen should be set to our test ugen.");
+            equals(mulUGen, testUGen, "The ugen should have the correct source.");
         });
 
 
@@ -121,7 +121,7 @@ var flock = flock || {};
         
         test("flock.parse.graph()", function () {
             var testGraph = {
-                ugen: "flock.ugen.out",
+                ugen: "flock.ugen.stereoOut",
                 inputs: {
                     source: {
                         id: "sine",
@@ -170,7 +170,7 @@ var flock = flock || {};
         test("flock.ugen.dust", function () {
             var density = 1.0;
             var dust = flock.ugen.dust({
-                density: flock.wire(density, 44100)
+                density: flock.ugen.value({value: density}, new Float32Array(44100), 44100)
             }, new Float32Array(44100), 44100);
             var buffer = dust.audio(44100);
             
@@ -185,7 +185,7 @@ var flock = flock || {};
 
             // And now try a density of 200.
             density = 200;
-            dust.inputs.density = flock.wire(density, 44100);
+            dust.inputs.density = flock.ugen.value({value: density}, new Float32Array(44100), 44100);
             checkDensity(dust, density); 
         });
         
@@ -197,6 +197,12 @@ var flock = flock || {};
             16, 17, 18, 19, 20
         ];
         
+        var monoMockUGen = {
+            gen: function (numSamps) {
+                return mockLeft;
+            }
+        };
+        
         var mockRight = [
             20, 19, 18, 17, 16,
             15, 14, 13, 12, 11,
@@ -204,19 +210,20 @@ var flock = flock || {};
             5, 4, 3, 2, 1
         ];
         
+        var stereoMockUGen = {
+            gen: function (numSamps) {
+                return [mockLeft, mockRight];
+            }
+        };
+        
         var checkOutput = function (ugen, numSamps, expectedBuffer, msg) {
             var actual = ugen.audio(numSamps);
             deepEqual(actual, expectedBuffer, msg);
         };
         
-        test("flock.ugen.out mono input", function () {
+        test("flock.ugen.stereoOut mono input", function () {
             // Test with a single mono input buffer.
-            var monoWire = {
-                pull: function (numSamps) {
-                    return mockLeft;
-                }
-            };
-            var out = flock.ugen.out({source: monoWire}, [], 44100);
+            var out = flock.ugen.stereoOut({source: monoMockUGen}, [], 44100);
             
             // Pull the whole buffer.
             var expected = [
@@ -238,14 +245,9 @@ var flock = flock || {};
                 "We should receive a stereo buffer containing two copies of the first 10 items in the input buffer.");
         });
         
-        test("flock.ugen.out stereo input", function () {
+        test("flock.ugen.stereoOut stereo input", function () {
             // Test with two input buffers.
-            var stereoWire = {
-                pull: function (numSamps) {
-                    return [mockLeft, mockRight];
-                }
-            };
-            var out = flock.ugen.out({source: stereoWire}, [], 44100);
+            var out = flock.ugen.stereoOut({source: stereoMockUGen}, [], 44100);
             
             // Pull the whole buffer. Expect a stereo interleaved buffer as the result, 
             // containing two copies of the original input buffer.
@@ -258,14 +260,9 @@ var flock = flock || {};
             checkOutput(out, 20, expected, "We should receive a stereo buffer, with each buffer interleaved.");
         });
         
-        test("flock.ugen.out.audio() with offset", function () {
+        test("flock.ugen.stereoOut.audio() with offset", function () {
             // Test with a single mono input buffer.
-            var monoWire = {
-                pull: function (numSamps) {
-                    return mockLeft;
-                }
-            };
-            var out = flock.ugen.out({source: monoWire}, [], 44100);
+            var out = flock.ugen.stereoOut({source: monoMockUGen}, [], 44100);
             
             var expectedFirst = [1, 1, 2, 2];
             var expectedSecond = [1, 1, 2, 2, 1, 1, 2, 2];
