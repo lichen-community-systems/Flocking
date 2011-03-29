@@ -42,7 +42,7 @@ Flocking is an early prototype. It has bugs, it's growing fast, and help is welc
 Using Flocking
 --------------
 
-At the moment, there are three key concepts in Flocking: Unit Generators (ugens), Synths, and SynthGraphDefs.
+At the moment, there are three key concepts in Flocking: Unit Generators (ugens), Synths, and SynthDefs.
 
 **Unit Generators** are the basic building blocks of synthesis. They have multiple inputs and a single output buffer, and 
 they do the primary work of generating or processing audio signals in Flocking. A unit generator can be wired up as an 
@@ -60,8 +60,8 @@ from unit generators at the control rate (by default, every 64 samples). Control
 slowly changing signals; they produce only a single sample per control period. Audio rate ugens produce values for every 
 sample.
 
-**SynthGraphDefs** wire together unit generators and are specified in a declarative markup. They're just JSON,
-and don't require any code or special API calls. Since SynthGraphDefs are declarative, they are uniquely suited to 
+**SynthDefs** wire together unit generators and are specified in a declarative markup. They're just JSON,
+and don't require any code or special API calls. Since SynthDefs are declarative, they are uniquely suited to 
 saving and sharing in plain text. Here's a simple example of a sine oscillator ("carrier") being amplitude modulated 
 by another sine oscillator ("mod"):
 
@@ -80,7 +80,7 @@ by another sine oscillator ("mod"):
         }
     }
 
-The SynthGraphDef format will be simplified in upcoming releases.
+The SynthDef format will be simplified in upcoming releases.
 
 Compatibility
 -------------

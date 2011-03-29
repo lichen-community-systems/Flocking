@@ -14,7 +14,7 @@ var flock = flock || {};
     "use strict";
     
     flock.tests = function () {
-        var simpleGraph = {
+        var simpleSynthDef = {
             ugen: "flock.ugen.stereoOut",
             inputs: {
                 source: {
@@ -34,8 +34,8 @@ var flock = flock || {};
             }
         };
         
-        var createSynth = function (graph) {
-            return flock.synth(graph || simpleGraph, 1, 1);
+        var createSynth = function (synthDef) {
+            return flock.synth(synthDef || simpleSynthDef, 1, 1);
         };
         
         var countKeys = function (obj) {
@@ -94,7 +94,7 @@ var flock = flock || {};
             expect(5);
             
             // Getting simple values.
-            equals(synth.input("sine.freq"), 440, "Getting 'sine.freq' should return the value set in the synth graph.");
+            equals(synth.input("sine.freq"), 440, "Getting 'sine.freq' should return the value set in the synthDef.");
             equals(synth.input("sine.freq"), 440, "Getting 'sine.freq' a second time should return the same value.");
             equals(synth.input("mod.freq"), 1.0, "Getting 'carrier.freq' should also return the initial value.");
             
@@ -131,8 +131,8 @@ var flock = flock || {};
 
         module("Parsing tests");
         
-        var checkParsedTestGraph = function (graph) {
-            var parsedUGens = flock.parse.graph(graph, 1, 1, 2); // One sample buffer and sampleRate. Stereo output.
+        var checkParsedTestSynthDef = function (synthDef) {
+            var parsedUGens = flock.parse.synthDef(synthDef, 1, 1, 2); // One sample buffer and sampleRate. Stereo output.
                       
             equals(countKeys(parsedUGens), 3, "There should be three named ugens.");            
             ok(parsedUGens[flock.OUT_UGEN_ID], "The output ugen should be at the reserved key flock.OUT_UGEN_ID.");
@@ -144,8 +144,8 @@ var flock = flock || {};
             ok(parsedUGens.mul.model.value, "...and it should be a real value ugen.");
         };
         
-        test("flock.parse.graph(), no output specified", function () {
-            var condensedTestGraph = {
+        test("flock.parse.synthDef(), no output specified", function () {
+            var condensedTestSynthDef = {
                 id: "sine",
                 ugen: "flock.ugen.sinOsc",
                 inputs: {
@@ -160,11 +160,11 @@ var flock = flock || {};
                 }
             };
 
-            checkParsedTestGraph(condensedTestGraph);
+            checkParsedTestSynthDef(condensedTestSynthDef);
         });
         
-        test("flock.parse.graph(), output specified", function () {
-            var expandedTestGraph = {
+        test("flock.parse.synthDef(), output specified", function () {
+            var expandedTestSynthDef = {
                 id: flock.OUT_UGEN_ID,
                 ugen: "flock.ugen.stereoOut",
                 inputs: {
@@ -184,7 +184,7 @@ var flock = flock || {};
                     }
                 }
             };
-            checkParsedTestGraph(expandedTestGraph);
+            checkParsedTestSynthDef(expandedTestSynthDef);
         });
 
 

@@ -24,7 +24,7 @@ var flock = flock || {};
         sampleRate: 44100,
         controlRate: 64,
         bufferSize: 44100,
-        minLatency: 250,
+        minLatency: 125,
         writeInterval: 100
     };
     
@@ -327,13 +327,19 @@ var flock = flock || {};
         return outUGen.audio(needed).subarray(0, needed * chans);
     };
     
-    flock.synth = function (graphDef, options) {
+    var setupOutput = function (that) {
+        that.out = that.ugens[flock.OUT_UGEN_ID];
+        that.out.output = new Float32Array(that.bufferSize);
+        that.audioEl.mozSetup(that.chans, that.sampleRate);
+    };
+    
+    flock.synth = function (def, options) {
         // TODO: Consolidate options and model.
         options = options || {};
         var that = {
             audioEl: new Audio(),
             sampleRate: options.sampleRate || flock.defaults.sampleRate,
-            chans: 2, // TODO: Hardbaked to stereo. Add support for more and less channels.
+            chans: options.chans || 2,
             bufferSize: options.bufferSize || flock.defaults.bufferSize,
             writeInterval: options.writeInterval || flock.defaults.writeInterval,
             playbackTimerId: null,
@@ -341,12 +347,11 @@ var flock = flock || {};
                 written: 0,
                 total: null
             },
-            model: graphDef
+            model: def
         };
         that.preBufferSize = flock.minBufferSize(that.sampleRate, that.chans, flock.defaults.minLatency);
-        that.ugens = flock.parse.graph(that.model, that.sampleRate, that.bufferSize, that.chans);
-        that.out = that.ugens[flock.OUT_UGEN_ID];
-        that.audioEl.mozSetup(that.chans, that.sampleRate);
+        that.ugens = flock.parse.synthDef(that.model, that.sampleRate, that.bufferSize, that.chans);
+
         
         that.play = function (duration) {
             that.playState.total = (duration === undefined) ? Infinity : 
@@ -400,7 +405,8 @@ var flock = flock || {};
                 flock.ugen.value({value: val}, new Float32Array(that.bufferSize), that.sampleRate) :
                 val;
         };
-              
+        
+        setupOutput(that);
         return that;
     };
     
@@ -414,7 +420,7 @@ var flock = flock || {};
     
     flock.parse = flock.parse || {};
     
-    flock.parse.graph = function (ugenDef, sampleRate, bufferSize, chans) {
+    flock.parse.synthDef = function (ugenDef, sampleRate, bufferSize, chans) {
         var ugens = {};
         var root = flock.parse.ugenForDef(ugenDef, sampleRate, bufferSize, ugens);
         if (ugenDef.id !== flock.OUT_UGEN_ID) {
@@ -442,7 +448,7 @@ var flock = flock || {};
             throw new Error("Unit generator definition lacks a 'ugen' property; can't initialize the synth graph.");
         }
         
-        var ugen = flock.invokePath(ugenDef.ugen, [inputs, new Float32Array(bufferSize), sampleRate]);
+        var ugen = flock.invokePath(ugenDef.ugen, [inputs, new Float32Array(flock.defaults.controlRate), sampleRate]);
         if (ugenDef.id) {
             ugens[ugenDef.id] = ugen;
         }
