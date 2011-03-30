@@ -25,7 +25,7 @@ var flock = flock || {};
         controlRate: 64,
         bufferSize: 44100,
         minLatency: 125,
-        writeInterval: 100
+        writeInterval: 50
     };
     
     
@@ -37,12 +37,17 @@ var flock = flock || {};
         return (sampleRate * chans) / (1000 / latency);
     };
      
-    flock.constantBuffer = function (val, size) {
-        var buf = new Float32Array(size);
-        for (var i = 0; i < size; i++) {
+    flock.fillBuffer = function (buf, val) {
+        var len = buf.length;
+        for (var i = 0; i < len; i++) {
             buf[i] = val;
         }
         return buf;
+    };
+    
+    flock.constantBuffer = function (val, size) {
+        var buf = new Float32Array(size);
+        return flock.fillBuffer(buf);
     };
     
     flock.mul = function (mulInput, output, numSamps) {
@@ -140,22 +145,20 @@ var flock = flock || {};
         return that;
     };
     
-    // TODO: Need to refactor or provide a convenience creator for flock.ugen.value().
     flock.ugen.value = function (inputs, output, sampleRate) {
         var that = flock.ugen(inputs, output, sampleRate);
         that.rate = flock.rates.CONTROL;
         that.model.value = inputs.value;
-        that.buffer = flock.constantBuffer(that.model.value, that.sampleRate);
+        flock.fillBuffer(that.output, that.model.value);
         
         that.control = function (numSamps) {
             var len = that.sampleRate;
-            if (numSamps < len) {
-                return that.buffer.subarray(0, numSamps);
-            } else if (numSamps === len) {
-                return that.buffer;
+            if (numSamps === len) {
+                return that.output;
+            } else if (numSamps < len) {
+                return that.output.subarray(0, numSamps);
             } else {
-                that.buffer = new Float32Array(numSamps);
-                return that.buffer;
+                return flock.constantBuffer(numSamps);
             }
         };
         
@@ -369,41 +372,29 @@ var flock = flock || {};
             window.clearInterval(that.playbackTimerId);
         };
     
-        // TODO:
-        //  - Awkward stuff! All this really does is shield the user from the presences of the "inputs" property
-        //      of a unit generator, and only up to two path segments.
-        //  - Replace with a proxy?
-        that.input = function (path, val) {
-            // TODO: Hard-coded to two-segment paths.
-            var tokenized = path.split("."),
-                ugenId = tokenized[0],
-                input = tokenized[1];
-                
-            var ugen = that.ugens[ugenId];
-            if (!ugen) {
-                flock.pathParseError(path, ugenId);
-            }
-
-            // Get.
-            if (arguments.length < 2) {
-                if (!input) {
-                    return ugen;
-                }
-                
-                if (!ugen.inputs[input]) {
-                    flock.pathParseError(path, input);
-                }
-                var inputSource = ugen.inputs[input];
-                return inputSource.model.value !== undefined ? inputSource.model.value : inputSource;
-            }
-                
-            // Set.
-            if (!input) {
+        that.getUGenPath = function (path) {
+            var input = flock.resolvePath(path, that.ugens);
+            return typeof (input.model.value) !== "undefined" ? input.model.value : input;
+        };
+        
+        that.setUGenPath = function (path, val) {
+            if (!path.indexOf(".") === -1) {
                 throw new Error("Setting a ugen directly is not currently supported.");
             }
-            return ugen.inputs[input] = typeof (val) === "number" ? 
-                flock.ugen.value({value: val}, new Float32Array(that.bufferSize), that.sampleRate) :
-                val;
+            var lastSegIdx = path.lastIndexOf(".");
+            var ugenPath = path.substring(0, lastSegIdx);
+            var inputName = path.substring(lastSegIdx + 1);
+            var inputs = flock.resolvePath(ugenPath, that.ugens);
+            return inputs[inputName] = flock.parse.ugenForInputDef(val);
+        };
+        
+        // TODO: Naming?
+        that.input = function (path, val) {
+            if (!path) {
+                return;
+            }
+            var expanded = path.replace(".", ".inputs.");
+            return arguments.length < 2 ? that.getUGenPath(expanded) : that.setUGenPath(expanded, val);
         };
         
         setupOutput(that);
