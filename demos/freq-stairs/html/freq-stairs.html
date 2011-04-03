@@ -29,11 +29,11 @@
             var timerId;
             buttonView.button.addEventListener("click", function (e) {
                 if (buttonView.model.isPlaying) {
-                    // Every second, double the frequency of the synth.
+                    // Every second, increase the frequency of the synth by a perfect fourth.
                     var freq = synth.input("carrier.freq");
                     timerId = window.setInterval(function () {
                         if (freq <= 3520) {
-                            freq *= 2;
+                            freq *= 4/3;
                             synth.input("carrier.freq", freq);
                         }
                     }, 1000);

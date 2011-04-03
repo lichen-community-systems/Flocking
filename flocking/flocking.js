@@ -14,6 +14,7 @@ var flock = flock || {};
     "use strict";
     
     flock.OUT_UGEN_ID = "flocking-out";
+    flock.TWOPI = 2.0 * Math.PI;
     
     flock.rates = {
         AUDIO: "audio",
@@ -21,6 +22,7 @@ var flock = flock || {};
     };
     
     flock.defaults = {
+        tableSize: 8192,
         sampleRate: 44100,
         controlRate: 64,
         bufferSize: 44100,
@@ -38,8 +40,9 @@ var flock = flock || {};
     };
      
     flock.fillBuffer = function (buf, val) {
-        var len = buf.length;
-        for (var i = 0; i < len; i++) {
+        var len = buf.length,
+            i;
+        for (i = 0; i < len; i++) {
             buf[i] = val;
         }
         return buf;
@@ -51,16 +54,18 @@ var flock = flock || {};
     };
     
     flock.mul = function (mulInput, output, numSamps) {
-        var mul = mulInput.gen(numSamps);
-        for (var i = 0; i < numSamps; i++) {
+        var mul = mulInput.gen(numSamps),
+            i;
+        for (i = 0; i < numSamps; i++) {
             output[i] = output[i] * mul[i];
         }
         return output;
     };
     
     flock.add = function (addInput, output, numSamps) {
-        var add = addInput.gen(numSamps);
-        for (var i = 0; i < numSamps; i++) {
+        var add = addInput.gen(numSamps),
+            i;
+        for (i = 0; i < numSamps; i++) {
             output[i] = output[i] + add[i];
         }
         
@@ -68,9 +73,10 @@ var flock = flock || {};
     };
     
     flock.mulAdd = function (mulInput, addInput, output, numSamps) {
-        var mul = mulInput.gen(numSamps);
-        var add = addInput.gen(numSamps);
-        for (var i = 0; i < numSamps; i++) {
+        var mul = mulInput.gen(numSamps),
+            add = addInput.gen(numSamps),
+            i;
+        for (i = 0; i < numSamps; i++) {
             output[i] = output[i] * mul[i] + add[i];
         }
         return output;
@@ -82,11 +88,12 @@ var flock = flock || {};
     };
     
     flock.resolvePath = function (path, root) {
-        var tokenized = path === "" ? [] : String(path).split(".");
         root = root || window;
-        var valForSeg = root[tokenized[0]];
+        var tokenized = path === "" ? [] : String(path).split("."),
+            valForSeg = root[tokenized[0]],
+            i;
         
-        for (var i = 1; i < tokenized.length; i++) {
+        for (i = 1; i < tokenized.length; i++) {
             if (valForSeg === null || valForSeg === undefined) {
                 flock.pathParseError(path, tokenized[i - 1]);
             }
@@ -153,13 +160,8 @@ var flock = flock || {};
         
         that.control = function (numSamps) {
             var len = that.sampleRate;
-            if (numSamps === len) {
-                return that.output;
-            } else if (numSamps < len) {
-                return that.output.subarray(0, numSamps);
-            } else {
-                return flock.constantBuffer(numSamps);
-            }
+            return numSamps === len ? that.output : 
+                numSamps < len ? that.output.subarray(0, numSamps) : flock.constantBuffer(numSamps);
         };
         
         that.gen = that.control;
@@ -171,7 +173,7 @@ var flock = flock || {};
     flock.ugen.sinOsc = function (inputs, output, sampleRate) {
         var that = flock.ugen(inputs, output, sampleRate);
         flock.ugen.mulAdder(that);
-        that.wavetable = flock.ugen.sinOsc.generateWavetable(that.sampleRate);
+        that.wavetable = flock.ugen.sinOsc.fillTable(flock.defaults.tableSize);
         that.model.phase = 0;
         
         // Scan the wavetable at the given frequency to generate the output.
@@ -183,11 +185,13 @@ var flock = flock || {};
                 output = that.output,
                 wavetable = that.wavetable,
                 phase = that.model.phase,
-                sampleRate = that.sampleRate;
+                sampleRate = that.sampleRate,
+                increment,
+                i;
 
-            for (var i = 0; i < numSamps; i++) {
-                output[i] = wavetable[phase];
-                var increment = freq[i] * tableLen / sampleRate;
+            for (i = 0; i < numSamps; i++) {
+                output[i] = wavetable[Math.round(phase)];
+                increment = freq[i] * tableLen / sampleRate;
                 phase += increment;
                 if (phase > tableLen) {
                     phase -= tableLen;
@@ -203,13 +207,16 @@ var flock = flock || {};
         return that;
     };
     
-    flock.ugen.sinOsc.generateWavetable = function (sampleRate) {
-        var scale = (2.0 * Math.PI) / sampleRate;
-        var wavetable = new Float32Array(sampleRate);
-        for (var i = 0; i < sampleRate; i++) {
-            wavetable[i] = Math.sin(i * scale);
+    flock.ugen.sinOsc.fillTable = function (size) {
+        var table = new Float32Array(size),
+            scale = flock.TWOPI / size,
+            i;
+            
+        for (i = 0; i < size; i++) {
+            table[i] = Math.sin(i * scale);
         }
-        return wavetable;
+        
+        return table;
     };
     
     flock.ugen.dust = function (inputs, output, sampleRate) {
@@ -225,7 +232,8 @@ var flock = flock || {};
         that.audio = function (numSamps) {
             var density = inputs.density.gen(numSamps)[0], // Assume density is control rate.
                 threshold, 
-                scale;
+                scale,
+                i;
                 
             if (density !== that.model.density) {
                 that.model.density = density;
@@ -236,7 +244,7 @@ var flock = flock || {};
                 scale = that.model.scale;
             }
             
-            for (var i = 0; i < numSamps; i++) {
+            for (i = 0; i < numSamps; i++) {
                 var rand = Math.random();
                 output[i] = (rand < threshold) ? rand * scale : 0.0;
             }
@@ -264,11 +272,14 @@ var flock = flock || {};
         var that = flock.ugen(inputs, output, sampleRate);
         
         that.audio = function (numFrames, offset) {
-            var sourceBuf = that.inputs.source.gen(numFrames);
-            var output = that.output;
+            var sourceBuf = that.inputs.source.gen(numFrames),
+                output = that.output,
+                left, 
+                right,
+                i,
+                frameIdx;
             
             // Handle multiple channels, including stereo expansion of a single channel.
-            var left, right;
             if (sourceBuf.length === 2) {
                 // Assume we've got a stereo pair of output buffers
                 left = sourceBuf[0];
@@ -280,8 +291,8 @@ var flock = flock || {};
 
             // Interleave each output channel into stereo frames.
             offset = offset || 0;
-            for (var i = 0; i < numFrames; i++) {
-                var frameIdx = i * 2 + offset;
+            for (i = 0; i < numFrames; i++) {
+                frameIdx = i * 2 + offset;
                 output[frameIdx] = left[i];
                 output[frameIdx + 1] = right[i];
             }
@@ -313,21 +324,16 @@ var flock = flock || {};
     var controlRateWriter = function (outUGen, chans, needed) {
         // Figure out how many control periods worth of samples to generate.
         // This means that we'll be writing slightly more or less than needed.
-        var kr = flock.defaults.controlRate;
-        var numBufs = Math.round(needed / kr);
-        // We're assuming that the output buffer is always going to be large enough to accommodate 'needed'.
-        var outBufSize = numBufs * kr * chans;
-        var outBuf;
-        for (var i = 0; i < numBufs; i++) {
+        var kr = flock.defaults.controlRate,
+            numBufs = Math.round(needed / kr),
+            // Assume the output buffer is going to be large enough to accommodate 'needed'.
+            outBufSize = numBufs * kr * chans,
+            outBuf,
+            i;
+        for (i = 0; i < numBufs; i++) {
             outBuf = outUGen.audio(kr, i * kr * chans);
         }
         return outBuf.subarray(0, outBufSize);
-    };
-    
-    // Deprecated and used only for testing.
-    var onDemandWriter = function (outUGen, chans, needed) {
-        // We're assuming that the output buffer is always going to be large enough to accommodate 'needed'.
-        return outUGen.audio(needed).subarray(0, needed * chans);
     };
     
     var setupOutput = function (that) {
@@ -355,7 +361,6 @@ var flock = flock || {};
         that.preBufferSize = flock.minBufferSize(that.sampleRate, that.chans, flock.defaults.minLatency);
         that.ugens = flock.parse.synthDef(that.model, that.sampleRate, that.bufferSize, that.chans);
 
-        
         that.play = function (duration) {
             that.playState.total = (duration === undefined) ? Infinity : 
                 duration * (that.sampleRate * that.numChans);
@@ -378,14 +383,16 @@ var flock = flock || {};
         };
         
         that.setUGenPath = function (path, val) {
-            if (!path.indexOf(".") === -1) {
+            if (path.indexOf(".") === -1) {
                 throw new Error("Setting a ugen directly is not currently supported.");
             }
             var lastSegIdx = path.lastIndexOf(".");
             var ugenPath = path.substring(0, lastSegIdx);
             var inputName = path.substring(lastSegIdx + 1);
             var inputs = flock.resolvePath(ugenPath, that.ugens);
-            return inputs[inputName] = flock.parse.ugenForInputDef(val);
+            var inputUGen = flock.parse.ugenForInputDef(val);
+            inputs[inputName] = inputUGen;
+            return inputUGen;
         };
         
         // TODO: Naming?
@@ -427,9 +434,11 @@ var flock = flock || {};
     };
     
     flock.parse.ugenForDef = function (ugenDef, sampleRate, bufferSize, ugens) {
-        var inputDefs = ugenDef.inputs;
-        var inputs = {};
-        for (var inputDef in inputDefs) {
+        var inputDefs = ugenDef.inputs,
+            inputs = {},
+            inputDef;
+            
+        for (inputDef in inputDefs) {
             // Create ugens for all inputs except value inputs.
             inputs[inputDef] = inputDef === "value" ? ugenDef.inputs[inputDef] :
                 flock.parse.ugenForInputDef(ugenDef.inputs[inputDef], sampleRate, bufferSize, ugens);
@@ -447,19 +456,21 @@ var flock = flock || {};
     };
     
     flock.parse.expandInputDef = function (inputDef) {
-        switch (typeof (inputDef)) {
-            case "number":
-                return {
-                    ugen: "flock.ugen.value",
-                    inputs: {
-                        value: inputDef
-                    }
-                };
-            case "object":
-                return inputDef;
-            default:
-                throw new Error("Invalid value type found in ugen definition.");
+        var type = typeof (inputDef);
+        if (type === "number") {
+            return {
+                ugen: "flock.ugen.value",
+                inputs: {
+                    value: inputDef
+                }
+            };
+        } 
+        
+        if (type === "object") {
+            return inputDef;
         }
+        
+        throw new Error("Invalid value type found in ugen definition.");
     };
     
     flock.parse.ugenForInputDef = function (inputDef, sampleRate, bufferSize, ugens) {    
@@ -467,4 +478,4 @@ var flock = flock || {};
         return flock.parse.ugenForDef(inputDef, sampleRate, bufferSize, ugens);
     };
 
-})();
+}());
