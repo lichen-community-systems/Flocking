@@ -169,7 +169,7 @@ var flock = flock || {};
         return that;
     };
     
-    // TODO: This algorithm aliases and distorts with non-integer frequency values.
+    // TODO: Add support for a phase input.
     flock.ugen.sinOsc = function (inputs, output, sampleRate) {
         var that = flock.ugen(inputs, output, sampleRate);
         flock.ugen.mulAdder(that);
@@ -270,9 +270,9 @@ var flock = flock || {};
     
     flock.ugen.stereoOut = function (inputs, output, sampleRate) {
         var that = flock.ugen(inputs, output, sampleRate);
-        
+
         that.audio = function (numFrames, offset) {
-            var sourceBuf = that.inputs.source.gen(numFrames),
+            var source = that.inputs.source,
                 output = that.output,
                 left, 
                 right,
@@ -280,15 +280,14 @@ var flock = flock || {};
                 frameIdx;
             
             // Handle multiple channels, including stereo expansion of a single channel.
-            if (sourceBuf.length === 2) {
-                // Assume we've got a stereo pair of output buffers
-                left = sourceBuf[0];
-                right = sourceBuf[1];
+            // TODO: Do this less often, introducing some kind of "input changed" event for ugens.
+            if (typeof (source.length) === "number") {
+                left = source[0].gen(numFrames);
+                right = source[1].gen(numFrames);
             } else {
-                left = sourceBuf;
-                right = sourceBuf; 
+                left = source.gen(numFrames);
+                right = left;
             }
-
             // Interleave each output channel into stereo frames.
             offset = offset || 0;
             for (i = 0; i < numFrames; i++) {
@@ -310,7 +309,6 @@ var flock = flock || {};
      * Synths *
      **********/
     
-    // TODO: Deal with argument list.
     var writeAudio = function (outUGen, audioEl, preBufferSize, chans, playState, writerFn) {
         var needed = audioEl.mozCurrentSampleOffset() + preBufferSize - playState.written;
         if (needed < 0) {
@@ -412,24 +410,36 @@ var flock = flock || {};
     /**********
      * Parser *
      **********/
-    // TODO:
-    //  - Remove the need to specify the output ugen
-    //  - Support multiple channels.
     
     flock.parse = flock.parse || {};
     
     flock.parse.synthDef = function (ugenDef, sampleRate, bufferSize, chans) {
-        var ugens = {};
-        var root = flock.parse.ugenForDef(ugenDef, sampleRate, bufferSize, ugens);
-        if (ugenDef.id !== flock.OUT_UGEN_ID) {
-            // User didn't give us an out ugen, so we need to create one automatically.
-            var outType = (chans === 2) ? "flock.ugen.stereoOut" : "flock.ugen.out";
-            var out = flock.parse.ugenForDef({
-                id: flock.OUT_UGEN_ID,
-                ugen: outType
-            }, sampleRate, bufferSize, ugens);
-            out.inputs.source = root;
-        }        
+        var ugens = {},
+            source,
+            i;
+        
+        if (typeof (ugenDef.length) === "number") {
+            // We've got multiple channels of output.
+            source = [];
+            for (i = 0; i < ugenDef.length; i++) {
+                source[i] = flock.parse.ugenForDef(ugenDef[i], sampleRate, bufferSize, ugens);
+            }
+        } else {
+            // Only one output source.
+            source = flock.parse.ugenForDef(ugenDef, sampleRate, bufferSize, ugens);
+            if (ugenDef.id === flock.OUT_UGEN_ID) {
+                return ugens;
+            }
+        }
+                
+        // User didn't give us an out ugen, so we need to create one automatically.
+        var outType = (chans === 2) ? "flock.ugen.stereoOut" : "flock.ugen.out";
+        var out = flock.parse.ugenForDef({
+            id: flock.OUT_UGEN_ID,
+            ugen: outType
+        }, sampleRate, bufferSize, ugens);
+        out.inputs.source = source;
+        
         return ugens;
     };
     

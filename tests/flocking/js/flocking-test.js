@@ -175,5 +175,32 @@ var flock = flock || {};
             };
             checkParsedTestSynthDef(expandedTestSynthDef);
         });
+        
+        test("flock.parse.synthDef() with multiple channels", function () {
+            var multiChanTestSynthDef = [
+                {
+                    id: "leftSine",
+                    ugen: "flock.ugen.sinOsc",
+                    inputs: {
+                        freq: 440
+                    }
+                },
+                {
+                    id: "rightSine",
+                    ugen: "flock.ugen.sinOsc",
+                    inputs: {
+                        freq: 444
+                    }
+                }
+            ];
+            
+            var parsedUGens = flock.parse.synthDef(multiChanTestSynthDef, 1, 1, 2);
+            equals(countKeys(parsedUGens), 3, "There should be three named ugens--the two sinOscs and the output.");
+            ok(parsedUGens.leftSine, "The left sine ugen should have been parsed correctly.");
+            ok(parsedUGens.rightSine, "The right sine ugen should have been parsed correctly.");
+            deepEqual(parsedUGens[flock.OUT_UGEN_ID].inputs.source, 
+                [parsedUGens.leftSine, parsedUGens.rightSine],
+                "The output ugen should have an array of sources, containing the left and right sine ugens.")
+        });
     };
 })();
