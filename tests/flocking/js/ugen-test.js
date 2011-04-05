@@ -84,12 +84,6 @@ var flock = flock || {};
         16, 17, 18, 19, 20
     ];
 
-    var monoMockUGen = {
-        gen: function (numSamps) {
-            return mockLeft;
-        }
-    };
-
     var mockRight = [
         20, 19, 18, 17, 16,
         15, 14, 13, 12, 11,
@@ -97,12 +91,14 @@ var flock = flock || {};
         5, 4, 3, 2, 1
     ];
 
-    var stereoMockUGen = {
-        gen: function (numSamps) {
-            return [mockLeft, mockRight];
-        }
+    var makeMockUGen = function (output) {
+        return {
+            gen: function (numSamps) {
+                return output;
+            }
+        };
     };
-
+    
     var checkOutput = function (ugen, numSamps, expectedBuffer, msg) {
         var actual = ugen.audio(numSamps);
         deepEqual(actual, expectedBuffer, msg);
@@ -110,7 +106,7 @@ var flock = flock || {};
 
     test("flock.ugen.stereoOut mono input", function () {
         // Test with a single mono input buffer.
-        var out = flock.ugen.stereoOut({source: monoMockUGen}, [], 44100);
+        var out = flock.ugen.stereoOut({source: makeMockUGen(mockLeft)}, [], 44100);
     
         // Pull the whole buffer.
         var expected = [
@@ -134,7 +130,12 @@ var flock = flock || {};
 
     test("flock.ugen.stereoOut stereo input", function () {
         // Test with two input buffers.
-        var out = flock.ugen.stereoOut({source: stereoMockUGen}, [], 44100);
+        var out = flock.ugen.stereoOut({
+            source: [
+                makeMockUGen(mockLeft), 
+                makeMockUGen(mockRight)
+            ]
+        }, [], 44100);
     
         // Pull the whole buffer. Expect a stereo interleaved buffer as the result, 
         // containing two copies of the original input buffer.
@@ -149,7 +150,7 @@ var flock = flock || {};
 
     test("flock.ugen.stereoOut.audio() with offset", function () {
         // Test with a single mono input buffer.
-        var out = flock.ugen.stereoOut({source: monoMockUGen}, [], 44100);
+        var out = flock.ugen.stereoOut({source: makeMockUGen(mockLeft)}, [], 44100);
     
         var expectedFirst = [1, 1, 2, 2];
         var expectedSecond = [1, 1, 2, 2, 1, 1, 2, 2];

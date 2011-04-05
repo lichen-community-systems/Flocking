@@ -127,7 +127,7 @@ var flock = flock || {};
             ok(parsedUGens[flock.OUT_UGEN_ID], "The output ugen should be at the reserved key flock.OUT_UGEN_ID.");
             
             ok(parsedUGens.sine, "The sine ugen should be keyed by its id....");
-            ok(parsedUGens.sine.wavetable, "...and it should be a real sine ugen.");
+            ok(parsedUGens.sine.inputs.table, "...and it should be a real sine ugen.");
             
             ok(parsedUGens.mul, "The mul ugen should be keyed by its id...");
             ok(parsedUGens.mul.model.value, "...and it should be a real value ugen.");

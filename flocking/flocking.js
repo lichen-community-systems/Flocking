@@ -170,10 +170,9 @@ var flock = flock || {};
     };
     
     // TODO: Add support for a phase input.
-    flock.ugen.sinOsc = function (inputs, output, sampleRate) {
+    flock.ugen.oscN = function (inputs, output, sampleRate) {
         var that = flock.ugen(inputs, output, sampleRate);
         flock.ugen.mulAdder(that);
-        that.wavetable = flock.ugen.sinOsc.fillTable(flock.defaults.tableSize);
         that.model.phase = 0;
         
         // Scan the wavetable at the given frequency to generate the output.
@@ -181,16 +180,16 @@ var flock = flock || {};
             // Cache instance variables locally so we don't pay the cost of property lookup
             // within the sample generation loop.
             var freq = that.inputs.freq.gen(numSamps),
-                tableLen = that.wavetable.length,
+                table = that.inputs.table,
+                tableLen = table.length,
                 output = that.output,
-                wavetable = that.wavetable,
                 phase = that.model.phase,
                 sampleRate = that.sampleRate,
                 increment,
                 i;
 
             for (i = 0; i < numSamps; i++) {
-                output[i] = wavetable[Math.round(phase)];
+                output[i] = table[Math.round(phase)];
                 increment = freq[i] * tableLen / sampleRate;
                 phase += increment;
                 if (phase > tableLen) {
@@ -204,6 +203,12 @@ var flock = flock || {};
         
         that.gen = that.audio;
         
+        return that;
+    };
+    
+    flock.ugen.sinOsc = function (inputs, output, sampleRate) {
+        var that = flock.ugen.oscN(inputs, output, sampleRate);
+        that.inputs.table = flock.ugen.sinOsc.fillTable(flock.defaults.tableSize);
         return that;
     };
     
