@@ -235,7 +235,7 @@ var flock = flock || {};
         };
         
         that.audio = function (numSamps) {
-            var density = inputs.density.gen(numSamps)[0], // Assume density is control rate.
+            var density = inputs.density.gen(1)[0], // Assume density is control rate.
                 threshold, 
                 scale,
                 i;
@@ -253,6 +253,51 @@ var flock = flock || {};
                 var rand = Math.random();
                 output[i] = (rand < threshold) ? rand * scale : 0.0;
             }
+            
+            return that.mulAdd(numSamps);
+        };
+        
+        that.gen = that.audio;
+        
+        return that;
+    };
+    
+    flock.ugen.lfNoise = function (inputs, output, sampleRate) {
+        var that = flock.ugen(inputs, output, sampleRate);
+        flock.ugen.mulAdder(that);
+        
+        that.model.counter = 0;
+        that.model.level = 0;
+        
+        that.audio = function (numSamps) {
+            var freq = inputs.freq.gen(1)[0], // Freq is kr.
+                remain = numSamps,
+                out = that.output,
+                counter = that.model.counter,
+                level = that.model.level,
+                currSamp = 0,
+                nsmps,
+                i;
+                
+            freq = freq > 0.001 ? freq : 0.001;
+            // TODO: Rewrite this algorithm.
+            do {
+                if (counter <= 0) {
+                    counter = that.sampleRate / freq;
+                    counter = counter > 1 ? counter : 1;
+                    level = Math.random();
+                }
+                nsmps = remain < counter ? remain : counter;
+                remain -= nsmps;
+                counter -= nsmps;
+                for (i = 0; i < nsmps; i++) {
+                    output[currSamp] = level;
+                    currSamp++;
+                }
+
+            } while (remain);
+            that.counter = counter;
+            that.level = level;
             
             return that.mulAdd(numSamps);
         };

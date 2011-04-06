@@ -10,6 +10,9 @@
         <h1>Noise Demo</h1>
         <ul>
             <li>Dust: <button id="dust-toggle">Play</button></li>
+            <li>LFNoise: <button id="lfNoise-toggle">Play</button></li>
+            <li>LFNoise controlling SinOsc frequency: <button id="lfNoiseSine-toggle">Play</button></li>
+            
         </ul>
         
         <script type="text/javascript">        
@@ -22,6 +25,32 @@
                 }
             });            
             demo.toggleButtonView("dust-toggle", dustSynth);
+            
+            // LFNoise generating random audio noise.
+            var lfNoiseSynth = flock.synth({
+                ugen: "flock.ugen.lfNoise",
+                inputs: {
+                    freq: 1000,
+                    mul: 0.25
+                }
+            });
+            demo.toggleButtonView("lfNoise-toggle", lfNoiseSynth);
+            
+            // LFNoise randomly changing the pitch of a sine oscillator every quarter second.
+            var lfNoiseSineSynth = flock.synth({
+                ugen: "flock.ugen.sinOsc",
+                inputs: {
+                    freq: {
+                        ugen: "flock.ugen.lfNoise",
+                        inputs: {
+                            freq: 4,
+                            mul: 400,
+                            add: 450
+                        }
+                    }
+                }
+            });            
+            demo.toggleButtonView("lfNoiseSine-toggle", lfNoiseSineSynth);
         </script>
     </body>
 </html>

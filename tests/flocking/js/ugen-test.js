@@ -173,4 +173,50 @@ var flock = flock || {};
         deepEqual(actual, expectedThird, "The output buffer should match the expected buffer.");
     });
     
+    var checkNoise = function (buffer, numSamps, expected) {
+        var minFound = Infinity;
+        var maxFound = 0.0;
+        var uniqueValues = {};
+        
+        for (var i = 0; i < numSamps; i++) {
+            var samp = buffer[i];
+            if (samp < minFound) {
+                minFound = samp;
+            } else if (samp > maxFound) {
+                maxFound = samp;
+            }
+            uniqueValues[samp] = samp;
+        }
+        
+        ok(minFound >= expected.minValue, 
+            "The buffer should not contain any values smaller than ", expected.minValue);
+        ok(maxFound <= expected.maxValue, 
+            "The buffer should not contain any values larger than ", expected.maxValue);
+        equals(flock.test.countKeys(uniqueValues), expected.numUniqueValues, 
+            "The buffer should contain approximately ", expected.numUniqueValues, " unique random values");
+    };
+    
+    test("flock.ugen.lfNoise()", function () {
+        var freq = flock.ugen.value({value: 4}, new Float32Array(44100), 44100);
+        var lfNoise = flock.ugen.lfNoise({freq: freq}, new Float32Array(44100), 44100);
+        
+        // One second worth of samples. The resulting buffer should contain 4 unique values.
+        var numSamps = 44100;
+        var output = lfNoise.gen(numSamps);
+        checkNoise(output, numSamps, {
+            numUniqueValues: 4, 
+            minValue: 0, 
+            maxValue: 1.0
+        });
+        
+        // Two seconds worth of samples. The resulting buffer should contain double the number of unique values.
+        numSamps = 88200;
+        output = lfNoise.gen(numSamps);
+        checkNoise(output, numSamps, {
+            numUniqueValues: 8,
+            minValue: 0,
+            maxValue: 1.0
+        });
+    });
+    
 })();

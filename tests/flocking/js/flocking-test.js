@@ -38,15 +38,6 @@ var flock = flock || {};
             return flock.synth(synthDef || simpleSynthDef, 1, 1);
         };
         
-        var countKeys = function (obj) {
-            var numKeys = 0,
-                key;
-            for (key in obj) {
-                numKeys++;
-            }
-            return numKeys;
-        };
-        
         module("Utility tests");
         
         test("flock.fillBuffer()", function () {
@@ -123,8 +114,9 @@ var flock = flock || {};
         var checkParsedTestSynthDef = function (synthDef) {
             var parsedUGens = flock.parse.synthDef(synthDef, 1, 1, 2); // One sample buffer and sampleRate. Stereo output.
                       
-            equals(countKeys(parsedUGens), 3, "There should be three named ugens.");            
-            ok(parsedUGens[flock.OUT_UGEN_ID], "The output ugen should be at the reserved key flock.OUT_UGEN_ID.");
+            equals(flock.test.countKeys(parsedUGens), 3, "There should be three named ugens.");            
+            ok(parsedUGens[flock.OUT_UGEN_ID], 
+                "The output ugen should be at the reserved key flock.OUT_UGEN_ID.");
             
             ok(parsedUGens.sine, "The sine ugen should be keyed by its id....");
             ok(parsedUGens.sine.inputs.table, "...and it should be a real sine ugen.");
@@ -195,7 +187,8 @@ var flock = flock || {};
             ];
             
             var parsedUGens = flock.parse.synthDef(multiChanTestSynthDef, 1, 1, 2);
-            equals(countKeys(parsedUGens), 3, "There should be three named ugens--the two sinOscs and the output.");
+            equals(flock.test.countKeys(parsedUGens), 3, 
+                "There should be three named ugens--the two sinOscs and the output.");
             ok(parsedUGens.leftSine, "The left sine ugen should have been parsed correctly.");
             ok(parsedUGens.rightSine, "The right sine ugen should have been parsed correctly.");
             deepEqual(parsedUGens[flock.OUT_UGEN_ID].inputs.source, 
