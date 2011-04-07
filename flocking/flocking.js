@@ -7,6 +7,8 @@
 */
 
 /*global Float32Array, Audio, window*/
+/*jslint white: true, funcinvoke: true, undef: true, newcap: true, regexp: true, browser: true, 
+    forin: true, continue: true, forvar: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
 var flock = flock || {};
 
@@ -159,7 +161,7 @@ var flock = flock || {};
         flock.fillBuffer(that.output, that.model.value);
         
         that.control = function (numSamps) {
-            var len = that.sampleRate;
+            var len = that.output.length;
             return numSamps === len ? that.output : 
                 numSamps < len ? that.output.subarray(0, numSamps) : flock.constantBuffer(numSamps);
         };
@@ -195,8 +197,8 @@ var flock = flock || {};
                 if (phase > tableLen) {
                     phase -= tableLen;
                 }
-                that.model.phase = phase;
             }
+            that.model.phase = phase;
             
             return that.mulAdd(numSamps);
         };
@@ -238,6 +240,7 @@ var flock = flock || {};
             var density = inputs.density.gen(1)[0], // Assume density is control rate.
                 threshold, 
                 scale,
+                val,
                 i;
                 
             if (density !== that.model.density) {
@@ -250,8 +253,8 @@ var flock = flock || {};
             }
             
             for (i = 0; i < numSamps; i++) {
-                var rand = Math.random();
-                output[i] = (rand < threshold) ? rand * scale : 0.0;
+                val = Math.random();
+                output[i] = (val < threshold) ? val * scale : 0.0;
             }
             
             return that.mulAdd(numSamps);
@@ -279,7 +282,6 @@ var flock = flock || {};
                 i;
                 
             freq = freq > 0.001 ? freq : 0.001;
-            // TODO: Rewrite this algorithm.
             do {
                 if (counter <= 0) {
                     counter = that.sampleRate / freq;
@@ -359,12 +361,14 @@ var flock = flock || {};
      **********/
     
     var writeAudio = function (outUGen, audioEl, preBufferSize, chans, playState, writerFn) {
-        var needed = audioEl.mozCurrentSampleOffset() + preBufferSize - playState.written;
+        var needed = audioEl.mozCurrentSampleOffset() + preBufferSize - playState.written,
+            outBuf;
+            
         if (needed < 0) {
             return; // Don't write if no more samples are needed.
         }
         
-        var outBuf = writerFn(outUGen, chans, needed);
+        outBuf = writerFn(outUGen, chans, needed);
         playState.written += audioEl.mozWriteAudio(outBuf);
     };
     
