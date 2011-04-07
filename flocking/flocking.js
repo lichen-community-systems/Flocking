@@ -170,7 +170,7 @@ var flock = flock || {};
     };
     
     // TODO: Add support for a phase input.
-    flock.ugen.oscN = function (inputs, output, sampleRate) {
+    flock.ugen.osc = function (inputs, output, sampleRate) {
         var that = flock.ugen(inputs, output, sampleRate);
         flock.ugen.mulAdder(that);
         that.model.phase = 0;
@@ -207,7 +207,7 @@ var flock = flock || {};
     };
     
     flock.ugen.sinOsc = function (inputs, output, sampleRate) {
-        var that = flock.ugen.oscN(inputs, output, sampleRate);
+        var that = flock.ugen.osc(inputs, output, sampleRate);
         that.inputs.table = flock.ugen.sinOsc.fillTable(flock.defaults.tableSize);
         return that;
     };
