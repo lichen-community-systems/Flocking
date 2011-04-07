@@ -265,7 +265,6 @@ var flock = flock || {};
     flock.ugen.lfNoise = function (inputs, output, sampleRate) {
         var that = flock.ugen(inputs, output, sampleRate);
         flock.ugen.mulAdder(that);
-        
         that.model.counter = 0;
         that.model.level = 0;
         
@@ -276,7 +275,7 @@ var flock = flock || {};
                 counter = that.model.counter,
                 level = that.model.level,
                 currSamp = 0,
-                nsmps,
+                sampsForLevel,
                 i;
                 
             freq = freq > 0.001 ? freq : 0.001;
@@ -287,17 +286,17 @@ var flock = flock || {};
                     counter = counter > 1 ? counter : 1;
                     level = Math.random();
                 }
-                nsmps = remain < counter ? remain : counter;
-                remain -= nsmps;
-                counter -= nsmps;
-                for (i = 0; i < nsmps; i++) {
-                    output[currSamp] = level;
+                sampsForLevel = remain < counter ? remain : counter;
+                remain -= sampsForLevel;
+                counter -= sampsForLevel;
+                for (i = 0; i < sampsForLevel; i++) {
+                    out[currSamp] = level;
                     currSamp++;
                 }
 
             } while (remain);
-            that.counter = counter;
-            that.level = level;
+            that.model.counter = counter;
+            that.model.level = level;
             
             return that.mulAdd(numSamps);
         };

@@ -189,34 +189,35 @@ var flock = flock || {};
         }
         
         ok(minFound >= expected.minValue, 
-            "The buffer should not contain any values smaller than ", expected.minValue);
+            "The buffer should not contain any values smaller than " + expected.minValue);
         ok(maxFound <= expected.maxValue, 
-            "The buffer should not contain any values larger than ", expected.maxValue);
+            "The buffer should not contain any values larger than " + expected.maxValue);
         equals(flock.test.countKeys(uniqueValues), expected.numUniqueValues, 
-            "The buffer should contain approximately ", expected.numUniqueValues, " unique random values");
+            "The buffer should contain approximately " + expected.numUniqueValues + " unique random values");
     };
     
-    test("flock.ugen.lfNoise()", function () {
-        var freq = flock.ugen.value({value: 4}, new Float32Array(44100), 44100);
-        var lfNoise = flock.ugen.lfNoise({freq: freq}, new Float32Array(44100), 44100);
-        
-        // One second worth of samples. The resulting buffer should contain 4 unique values.
-        var numSamps = 44100;
-        var output = lfNoise.gen(numSamps);
+    var generateAndCheckNoise = function (lfNoise, numSamps, expectedNumUniqueValues) {
+        var output = lfNoise.gen(numSamps).subarray(0, numSamps);
         checkNoise(output, numSamps, {
-            numUniqueValues: 4, 
+            numUniqueValues: expectedNumUniqueValues, 
             minValue: 0, 
             maxValue: 1.0
         });
+    };
+    
+    test("flock.ugen.lfNoise()", function () {
+        var freq = flock.ugen.value({value: 4}, new Float32Array(88200), 44100);
+        var lfNoise = flock.ugen.lfNoise({freq: freq}, new Float32Array(88200), 44100);
+        
+        // One second worth of samples. The resulting buffer should contain 4 unique values.
+        generateAndCheckNoise(lfNoise, 44100, 4);
+        
+        // Two half second chunks. 2 unique values each.
+        generateAndCheckNoise(lfNoise, 22050, 2);
+        generateAndCheckNoise(lfNoise, 22050, 2);
         
         // Two seconds worth of samples. The resulting buffer should contain double the number of unique values.
-        numSamps = 88200;
-        output = lfNoise.gen(numSamps);
-        checkNoise(output, numSamps, {
-            numUniqueValues: 8,
-            minValue: 0,
-            maxValue: 1.0
-        });
+        generateAndCheckNoise(lfNoise, 88200, 8);
     });
     
 })();
