@@ -359,7 +359,11 @@ var flock = flock || {};
     /**********
      * Synths *
      **********/
-    
+     /*
+         sampleRate: 44100,
+         chans: 2
+         bufferSize: minBufferSize
+     */
     flock.mozEnvironment = function (outUGen, options) {
         options = options || {};
         var that = {
@@ -494,11 +498,11 @@ var flock = flock || {};
             // We've got multiple channels of output.
             source = [];
             for (i = 0; i < ugenDef.length; i++) {
-                source[i] = flock.parse.ugenForDef(ugenDef[i], options.sampleRate, options.bufferSize, ugens);
+                source[i] = flock.parse.ugenForDef(ugenDef[i], options.sampleRate, ugens);
             }
         } else {
             // Only one output source.
-            source = flock.parse.ugenForDef(ugenDef, options.sampleRate, options.bufferSize, ugens);
+            source = flock.parse.ugenForDef(ugenDef, options.sampleRate, ugens);
             if (ugenDef.id === flock.OUT_UGEN_ID) {
                 return ugens;
             }
@@ -509,13 +513,13 @@ var flock = flock || {};
         var out = flock.parse.ugenForDef({
             id: flock.OUT_UGEN_ID,
             ugen: outType
-        }, options.sampleRate, options.bufferSize, ugens);
+        }, options.sampleRate, ugens);
         out.inputs.source = source;
         
         return ugens;
     };
     
-    flock.parse.ugenForDef = function (ugenDef, sampleRate, bufferSize, ugens) {
+    flock.parse.ugenForDef = function (ugenDef, sampleRate, ugens) {
         var inputDefs = ugenDef.inputs,
             inputs = {},
             inputDef;
@@ -523,7 +527,7 @@ var flock = flock || {};
         for (inputDef in inputDefs) {
             // Create ugens for all inputs except value inputs.
             inputs[inputDef] = inputDef === "value" ? ugenDef.inputs[inputDef] :
-                flock.parse.ugenForInputDef(ugenDef.inputs[inputDef], sampleRate, bufferSize, ugens);
+                flock.parse.ugenForInputDef(ugenDef.inputs[inputDef], sampleRate, ugens);
         }
         
         if (!ugenDef.ugen) {
@@ -555,9 +559,9 @@ var flock = flock || {};
         throw new Error("Invalid value type found in ugen definition.");
     };
     
-    flock.parse.ugenForInputDef = function (inputDef, sampleRate, bufferSize, ugens) {    
+    flock.parse.ugenForInputDef = function (inputDef, sampleRate, ugens) {
         inputDef = flock.parse.expandInputDef(inputDef);
-        return flock.parse.ugenForDef(inputDef, sampleRate, bufferSize, ugens);
+        return flock.parse.ugenForDef(inputDef, sampleRate, ugens);
     };
 
 }());
