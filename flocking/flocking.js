@@ -360,7 +360,52 @@ var flock = flock || {};
      * Synths *
      **********/
     
-    var writeAudio = function (outUGen, audioEl, preBufferSize, chans, playState, writerFn) {
+    flock.mozEnvironment = function (outUGen, options) {
+        options = options || {};
+        var that = {
+            audioEl: new Audio(),
+            outUGen: outUGen,
+            model: {
+                sampleRate: options.sampleRate,
+                chans: options.chans,
+                preBufferSize: flock.minBufferSize(options.sampleRate, options.chans, flock.defaults.minLatency),
+                bufferSize: options.bufferSize,
+                writeInterval: options.writeInterval || flock.defaults.writeInterval,
+                playState: {
+                    written: 0,
+                    total: null
+                }
+            }
+        };
+        that.audioEl.mozSetup(that.model.chans, that.model.sampleRate);
+        that.outUGen.output = new Float32Array(that.model.bufferSize);
+        that.playbackTimerId = null;
+        
+        that.play = function (duration) {
+            that.model.playState.total = (duration === undefined) ? Infinity : 
+                duration * (that.model.sampleRate * that.model.numChans);
+
+            that.playbackTimerId = window.setInterval(function () {
+                flock.mozEnvironment.write(that.outUGen, 
+                    that.audioEl, 
+                    that.model.preBufferSize, 
+                    that.model.chans, 
+                    that.model.playState, 
+                    flock.controlRateWriter);
+                if (that.model.playState.written >= that.model.playState.total) {
+                    that.stop();
+                }
+            }, that.writeInterval);
+        };
+        
+        that.stop = function () {
+            window.clearInterval(that.playbackTimerId);
+        };
+        
+        return that;
+    };
+    
+    flock.mozEnvironment.write = function (outUGen, audioEl, preBufferSize, chans, playState, writerFn) {
         var needed = audioEl.mozCurrentSampleOffset() + preBufferSize - playState.written,
             outBuf;
             
@@ -372,7 +417,7 @@ var flock = flock || {};
         playState.written += audioEl.mozWriteAudio(outBuf);
     };
     
-    var controlRateWriter = function (outUGen, chans, needed) {
+    flock.controlRateWriter = function (outUGen, chans, needed) {
         // Figure out how many control periods worth of samples to generate.
         // This means that we'll be writing slightly more or less than needed.
         var kr = flock.defaults.controlRate,
@@ -387,47 +432,22 @@ var flock = flock || {};
         return outBuf.subarray(0, outBufSize);
     };
     
-    var setupOutput = function (that) {
-        that.out = that.ugens[flock.OUT_UGEN_ID];
-        that.out.output = new Float32Array(that.bufferSize);
-        that.audioEl.mozSetup(that.chans, that.sampleRate);
-    };
-    
     flock.synth = function (def, options) {
-        // TODO: Consolidate options and model.
         options = options || {};
+        options.environment = options.environment || {};
+        options.environment.sampleRate = options.environment.sampleRate || flock.defaults.sampleRate;
+        options.environment.chans =  options.environment.chans || 2;
+        options.environment.bufferSize = options.environment.bufferSize || flock.defaults.bufferSize;
+        
         var that = {
-            audioEl: new Audio(),
-            sampleRate: options.sampleRate || flock.defaults.sampleRate,
-            chans: options.chans || 2,
-            bufferSize: options.bufferSize || flock.defaults.bufferSize,
-            writeInterval: options.writeInterval || flock.defaults.writeInterval,
-            playbackTimerId: null,
-            playState: {
-                written: 0,
-                total: null
-            },
             model: def
         };
-        that.preBufferSize = flock.minBufferSize(that.sampleRate, that.chans, flock.defaults.minLatency);
-        that.ugens = flock.parse.synthDef(that.model, that.sampleRate, that.bufferSize, that.chans);
-
-        that.play = function (duration) {
-            that.playState.total = (duration === undefined) ? Infinity : 
-                duration * (that.sampleRate * that.numChans);
-
-            that.playbackTimerId = window.setInterval(function () {
-                writeAudio(that.out, that.audioEl, that.preBufferSize, that.chans, that.playState, controlRateWriter);
-                if (that.playState.written >= that.playState.total) {
-                    that.stop();
-                }
-            }, that.writeInterval);
-        };
+        that.ugens = flock.parse.synthDef(that.model, options.environment);
+        that.environment = flock.mozEnvironment(that.ugens[flock.OUT_UGEN_ID], options.environment);
         
-        that.stop = function () {
-            window.clearInterval(that.playbackTimerId);
-        };
-    
+        that.play = that.environment.play;
+        that.stop = that.environment.stop;
+        
         that.getUGenPath = function (path) {
             var input = flock.resolvePath(path, that.ugens);
             return typeof (input.model.value) !== "undefined" ? input.model.value : input;
@@ -455,7 +475,6 @@ var flock = flock || {};
             return arguments.length < 2 ? that.getUGenPath(expanded) : that.setUGenPath(expanded, val);
         };
         
-        setupOutput(that);
         return that;
     };
     
@@ -466,7 +485,7 @@ var flock = flock || {};
     
     flock.parse = flock.parse || {};
     
-    flock.parse.synthDef = function (ugenDef, sampleRate, bufferSize, chans) {
+    flock.parse.synthDef = function (ugenDef, options) {
         var ugens = {},
             source,
             i;
@@ -475,22 +494,22 @@ var flock = flock || {};
             // We've got multiple channels of output.
             source = [];
             for (i = 0; i < ugenDef.length; i++) {
-                source[i] = flock.parse.ugenForDef(ugenDef[i], sampleRate, bufferSize, ugens);
+                source[i] = flock.parse.ugenForDef(ugenDef[i], options.sampleRate, options.bufferSize, ugens);
             }
         } else {
             // Only one output source.
-            source = flock.parse.ugenForDef(ugenDef, sampleRate, bufferSize, ugens);
+            source = flock.parse.ugenForDef(ugenDef, options.sampleRate, options.bufferSize, ugens);
             if (ugenDef.id === flock.OUT_UGEN_ID) {
                 return ugens;
             }
         }
                 
         // User didn't give us an out ugen, so we need to create one automatically.
-        var outType = (chans === 2) ? "flock.ugen.stereoOut" : "flock.ugen.out";
+        var outType = (options.chans === 2) ? "flock.ugen.stereoOut" : "flock.ugen.out";
         var out = flock.parse.ugenForDef({
             id: flock.OUT_UGEN_ID,
             ugen: outType
-        }, sampleRate, bufferSize, ugens);
+        }, options.sampleRate, options.bufferSize, ugens);
         out.inputs.source = source;
         
         return ugens;
