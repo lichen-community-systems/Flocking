@@ -27,7 +27,6 @@ var flock = flock || {};
         tableSize: 8192,
         sampleRate: 44100,
         controlRate: 64,
-        bufferSize: 44100,
         minLatency: 125,
         writeInterval: 50
     };
@@ -37,8 +36,9 @@ var flock = flock || {};
      * Utilities *
      *************/
     
-    flock.minBufferSize = function (sampleRate, chans, latency) {
-        return (sampleRate * chans) / (1000 / latency);
+    flock.minBufferSize = function (latency, audioSettings) {
+        var size = (audioSettings.sampleRate * audioSettings.chans) / (1000 / latency);
+        return Math.round(size);
     };
      
     flock.fillBuffer = function (buf, val) {
@@ -356,44 +356,43 @@ var flock = flock || {};
     };
     
     
-    /**********
-     * Synths *
-     **********/
-     /*
-         sampleRate: 44100,
-         chans: 2
-         bufferSize: minBufferSize
-     */
-    flock.mozEnvironment = function (outUGen, options) {
-        options = options || {};
+    /***********************
+     * Synths and Playback *
+     ***********************/
+
+    
+    flock.environment = function () {
+        var envFn = typeof (window.webkitAudioContext) !== "undefined" ?
+            flock.environment.webkit : flock.environment.moz;
+        return envFn.apply(null, arguments);
+    };
+    
+    flock.environment.moz = function (outUGen, audioSettings) {
         var that = {
             audioEl: new Audio(),
             outUGen: outUGen,
+            audioSettings: audioSettings,
             model: {
-                sampleRate: options.sampleRate,
-                chans: options.chans,
-                preBufferSize: flock.minBufferSize(options.sampleRate, options.chans, flock.defaults.minLatency),
-                bufferSize: options.bufferSize,
-                writeInterval: options.writeInterval || flock.defaults.writeInterval,
+                writeInterval: flock.defaults.writeInterval,
                 playState: {
                     written: 0,
                     total: null
                 }
             }
         };
-        that.audioEl.mozSetup(that.model.chans, that.model.sampleRate);
-        that.outUGen.output = new Float32Array(that.model.bufferSize);
+        that.audioSettings.bufferSize = flock.minBufferSize(flock.defaults.minLatency, that.audioSettings);
+        that.audioEl.mozSetup(that.audioSettings.chans, that.audioSettings.sampleRate);
+        that.outUGen.output = new Float32Array(that.audioSettings.bufferSize * that.audioSettings.chans);
         that.playbackTimerId = null;
         
         that.play = function (duration) {
             that.model.playState.total = (duration === undefined) ? Infinity : 
-                duration * (that.model.sampleRate * that.model.numChans);
+                duration * (that.audioSettings.sampleRate * that.audioSettings.numChans);
 
             that.playbackTimerId = window.setInterval(function () {
-                flock.mozEnvironment.write(that.outUGen, 
+                flock.environment.moz.write(that.outUGen, 
                     that.audioEl, 
-                    that.model.preBufferSize, 
-                    that.model.chans, 
+                    that.audioSettings,
                     that.model.playState, 
                     flock.controlRateWriter);
                 if (that.model.playState.written >= that.model.playState.total) {
@@ -409,16 +408,62 @@ var flock = flock || {};
         return that;
     };
     
-    flock.mozEnvironment.write = function (outUGen, audioEl, preBufferSize, chans, playState, writerFn) {
-        var needed = audioEl.mozCurrentSampleOffset() + preBufferSize - playState.written,
+    flock.environment.moz.write = function (outUGen, audioEl, audioSettings, playState, writerFn) {
+        var needed = audioEl.mozCurrentSampleOffset() + audioSettings.bufferSize - playState.written,
             outBuf;
             
         if (needed < 0) {
             return; // Don't write if no more samples are needed.
         }
         
-        outBuf = writerFn(outUGen, chans, needed);
+        outBuf = writerFn(outUGen, audioSettings.chans, needed);
         playState.written += audioEl.mozWriteAudio(outBuf);
+    };
+    
+    var setupWebKitEnv = function (that) {
+        that.jsNode.onaudioprocess = function (e) {
+            // TODO: Improve efficiency. Remove stereo assumptions.
+            var kr = flock.defaults.controlRate,
+                numBufs = that.audioSettings.bufferSize / kr,
+                chans = that.audioSettings.chans,
+                left = e.outputBuffer.getChannelData(0),
+                right = e.outputBuffer.getChannelData(1),
+                outBuf,
+                i;
+            for (i = 0; i < numBufs; i++) {
+                outBuf = that.outUGen.audio(kr, i * kr * chans);
+            }
+                
+            for (i = 0; i < outBuf.length / 2; i++) {
+                var frameIdx = i * 2;
+                left[i] = outBuf[frameIdx];
+                right[i] = outBuf[frameIdx + 1];
+            }
+        };
+        that.source.connect(that.jsNode);
+    };
+    
+    flock.environment.webkit = function (outUGen, audioSettings) {
+        var that = {
+            outUGen: outUGen,
+            audioSettings: audioSettings,
+            context: new webkitAudioContext()
+        };
+        that.audioSettings.bufferSize = 8192; // TODO: how does this relate to minimum latency?
+        that.source = that.context.createBufferSource();
+        that.jsNode = that.context.createJavaScriptNode(that.audioSettings.bufferSize);
+        
+        that.play = function () {
+            // TODO: Add support for duration.
+            that.jsNode.connect(that.context.destination);
+        };
+        
+        that.stop = function () {
+            that.jsNode.disconnect(that.context.destination);
+        };
+        
+        setupWebKitEnv(that);
+        return that;
     };
     
     flock.controlRateWriter = function (outUGen, chans, needed) {
@@ -438,25 +483,46 @@ var flock = flock || {};
     
     flock.synth = function (def, options) {
         options = options || {};
-        options.environment = options.environment || {};
-        options.environment.sampleRate = options.environment.sampleRate || flock.defaults.sampleRate;
-        options.environment.chans =  options.environment.chans || 2;
-        options.environment.bufferSize = options.environment.bufferSize || flock.defaults.bufferSize;
-        
         var that = {
-            model: def
+            model: def,
+            audioSettings: {
+                sampleRate: options.sampleRate || flock.defaults.sampleRate,
+                chans: options.chans || 2
+            }
         };
-        that.ugens = flock.parse.synthDef(that.model, options.environment);
-        that.environment = flock.mozEnvironment(that.ugens[flock.OUT_UGEN_ID], options.environment);
+        that.ugens = flock.parse.synthDef(that.model, that.audioSettings);
+        that.environment = flock.environment(that.ugens[flock.OUT_UGEN_ID], that.audioSettings);
         
+        /**
+         * Plays the synth.
+         *
+         * @param {Number} dur optional duration to play this synth in seconds
+         */ 
         that.play = that.environment.play;
+        
+        /**
+         * Stops the synth if it is currently playing.
+         */
         that.stop = that.environment.stop;
         
+        /**
+         * Gets the value of the ugen at the specified path.
+         *
+         * @param {String} path the ugen's path within the synth graph
+         * @return {Number|UGen} a scalar value in the case of a value ugen, otherwise the ugen itself
+         */
         that.getUGenPath = function (path) {
             var input = flock.resolvePath(path, that.ugens);
             return typeof (input.model.value) !== "undefined" ? input.model.value : input;
         };
         
+        /**
+         * Sets the value of the ugen at the specified path.
+         *
+         * @param {String} path the ugen's path within the synth graph
+         * @param {Number || UGenDef} val a scalar value (for Value ugens) or a UGenDef object
+         * @return {UGen} the newly created UGen that was set at the specified path
+         */
         that.setUGenPath = function (path, val) {
             if (path.indexOf(".") === -1) {
                 throw new Error("Setting a ugen directly is not currently supported.");
@@ -470,6 +536,13 @@ var flock = flock || {};
             return inputUGen;
         };
         
+        /**
+         * Gets or sets the value of a ugen at the specified path
+         *
+         * @param {String} path the ugen's path within the synth graph
+         * @param {Number || UGenDef} val an optional value to to set--either a a scalar or a UGenDef object
+         * @return {UGen} optionally, the newly created UGen that was set at the specified path
+         */
         // TODO: Naming?
         that.input = function (path, val) {
             if (!path) {

@@ -35,7 +35,10 @@ var flock = flock || {};
         };
         
         var createSynth = function (synthDef) {
-            return flock.synth(synthDef || simpleSynthDef, 1, 1);
+            return flock.synth(synthDef || simpleSynthDef, {
+                sampleRate: 1, 
+                chans: 1
+            });
         };
         
         module("Utility tests");
@@ -48,16 +51,24 @@ var flock = flock || {};
         });
         
         test("flock.minBufferSize()", function () {
-            var minSize = flock.minBufferSize(44100, 2, 500);
+            var audioSettings = {
+                sampleRate: 44100,
+                chans: 2
+            };
+            var minSize = flock.minBufferSize(500, audioSettings);
             equals(minSize, 44100, 
                 "The mininum buffer size for a 44100 KHz stereo signal with 500ms latency should be 44100");
-            minSize = flock.minBufferSize(44100, 1, 500);
+                
+            audioSettings.chans = 1;
+            minSize = flock.minBufferSize(500, audioSettings);
             equals(minSize, 22050, 
                 "The mininum buffer size for a 44100 KHz mono signal with 500ms latency should be 22050");
-            minSize = flock.minBufferSize(48000, 2, 250);
+            
+            audioSettings.sampleRate = 48000;
+            audioSettings.chans = 2;
+            minSize = flock.minBufferSize(250, audioSettings);
             equals(minSize, 24000, 
                 "The mininum buffer size for a 48000 KHz stereo signal with 250ms latency should be 24000");
-                
         });
         
         module("Synth tests");
