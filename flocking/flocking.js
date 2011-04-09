@@ -56,7 +56,7 @@ var flock = flock || {};
     };
     
     flock.mul = function (mulInput, output, numSamps) {
-        var mul = mulInput.gen(numSamps),
+        var mul = mulInput.audio(numSamps),
             i;
         for (i = 0; i < numSamps; i++) {
             output[i] = output[i] * mul[i];
@@ -65,7 +65,7 @@ var flock = flock || {};
     };
     
     flock.add = function (addInput, output, numSamps) {
-        var add = addInput.gen(numSamps),
+        var add = addInput.audio(numSamps),
             i;
         for (i = 0; i < numSamps; i++) {
             output[i] = output[i] + add[i];
@@ -75,8 +75,8 @@ var flock = flock || {};
     };
     
     flock.mulAdd = function (mulInput, addInput, output, numSamps) {
-        var mul = mulInput.gen(numSamps),
-            add = addInput.gen(numSamps),
+        var mul = mulInput.audio(numSamps),
+            add = addInput.audio(numSamps),
             i;
         for (i = 0; i < numSamps; i++) {
             output[i] = output[i] * mul[i] + add[i];
@@ -159,11 +159,19 @@ var flock = flock || {};
         that.rate = flock.rates.CONTROL;
         that.model.value = inputs.value;
         flock.fillBuffer(that.output, that.model.value);
+        that.constantBuffer = flock.fillBuffer(new Float32Array(1), that.model.value);
         
         that.control = function (numSamps) {
-            var len = that.output.length;
+            return that.constantBuffer;
+        };
+        
+        // This method is provided only for implementations that aren't bothering to check their input rate.
+        that.audio = function (numSamps) {
+            var o = that.output,
+                len = o.length,
+                slicer = typeof (Float32Array.prototype.slice) !== "undefined" ? o.slice : o.subarray;
             return numSamps === len ? that.output : 
-                numSamps < len ? that.output.subarray(0, numSamps) : flock.constantBuffer(numSamps);
+                numSamps < len ? slicer.apply(o, [0, numSamps]) : flock.constantBuffer(numSamps);
         };
         
         that.gen = that.control;
@@ -181,7 +189,7 @@ var flock = flock || {};
         that.audio = function (numSamps) {
             // Cache instance variables locally so we don't pay the cost of property lookup
             // within the sample generation loop.
-            var freq = that.inputs.freq.gen(numSamps),
+            var freq = that.inputs.freq.audio(numSamps),
                 table = that.inputs.table,
                 tableLen = table.length,
                 output = that.output,
@@ -339,6 +347,7 @@ var flock = flock || {};
                 left = source.gen(numFrames);
                 right = left;
             }
+            
             // Interleave each output channel into stereo frames.
             offset = offset || 0;
             for (i = 0; i < numFrames; i++) {
@@ -433,7 +442,7 @@ var flock = flock || {};
             for (i = 0; i < numBufs; i++) {
                 outBuf = that.outUGen.audio(kr, i * kr * chans);
             }
-                
+            
             for (i = 0; i < outBuf.length / 2; i++) {
                 var frameIdx = i * 2;
                 left[i] = outBuf[frameIdx];
@@ -452,6 +461,7 @@ var flock = flock || {};
         that.audioSettings.bufferSize = 8192; // TODO: how does this relate to minimum latency?
         that.source = that.context.createBufferSource();
         that.jsNode = that.context.createJavaScriptNode(that.audioSettings.bufferSize);
+        that.outUGen.output = new Float32Array(that.audioSettings.bufferSize * that.audioSettings.chans);
         
         that.play = function () {
             // TODO: Add support for duration.
@@ -459,7 +469,7 @@ var flock = flock || {};
         };
         
         that.stop = function () {
-            that.jsNode.disconnect(that.context.destination);
+            that.jsNode.disconnect(0);
         };
         
         setupWebKitEnv(that);
