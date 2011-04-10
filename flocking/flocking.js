@@ -14,7 +14,7 @@ var flock = flock || {};
 
 (function () {
     "use strict";
-    
+      
     flock.OUT_UGEN_ID = "flocking-out";
     flock.TWOPI = 2.0 * Math.PI;
     
@@ -163,6 +163,9 @@ var flock = flock || {};
     /*******************
      * Unit Generators *
      *******************/
+     
+    // TODO:
+    //  - Cache inputs and add an inputChanged event to speed up control vs. audio rate handling.
     
     flock.ugen = function (inputs, output, sampleRate) {
         var that = {
@@ -375,9 +378,11 @@ var flock = flock || {};
         var that = flock.ugen(inputs, output, sampleRate);
         
         // Simple pass-through output.
-        that.gen = function (numSamps) {
-            return that.inputs.source.gen(numSamps);
+        that.audio = function (numSamps) {
+            return [that.inputs.source.gen(numSamps)];
         };
+        
+        that.gen = that.audio;
         
         return that;
     };
@@ -387,11 +392,8 @@ var flock = flock || {};
 
         that.audio = function (numFrames, offset) {
             var source = that.inputs.source,
-                output = that.output,
                 left, 
-                right,
-                i,
-                frameIdx;
+                right;
             
             // Handle multiple channels, including stereo expansion of a single channel.
             // TODO: Do this less often, introducing some kind of "input changed" event for ugens.
@@ -403,15 +405,7 @@ var flock = flock || {};
                 right = left;
             }
             
-            // Interleave each output channel into stereo frames.
-            offset = offset || 0;
-            for (i = 0; i < numFrames; i++) {
-                frameIdx = i * 2 + offset;
-                output[frameIdx] = left[i];
-                output[frameIdx + 1] = right[i];
-            }
-            
-            return output;
+            return [left, right];
         };
         
         that.gen = that.audio;
@@ -457,8 +451,7 @@ var flock = flock || {};
                 flock.environment.moz.write(that.outUGen, 
                     that.audioEl, 
                     that.audioSettings,
-                    that.model.playState, 
-                    flock.controlRateWriter);
+                    that.model.playState);
                 if (that.model.playState.written >= that.model.playState.total) {
                     that.stop();
                 }
@@ -472,36 +465,58 @@ var flock = flock || {};
         return that;
     };
     
-    flock.environment.moz.write = function (outUGen, audioEl, audioSettings, playState, writerFn) {
-        var needed = audioEl.mozCurrentSampleOffset() + audioSettings.bufferSize - playState.written,
-            outBuf;
-            
+    flock.environment.moz.write = function (outUGen, audioEl, audioSettings, playState) {
+        var needed = audioEl.mozCurrentSampleOffset() + audioSettings.bufferSize - playState.written;
         if (needed < 0) {
             return; // Don't write if no more samples are needed.
         }
         
-        outBuf = writerFn(outUGen, audioSettings.chans, needed);
+        var kr = flock.defaults.controlRate,
+            chans = audioSettings.chans,
+            // Figure out how many control periods worth of samples to generate.
+            // This means that we'll probably be writing slightly more or less than needed.
+            numKRBufs = Math.round(needed / kr),
+            outBufSize = numKRBufs * kr * chans,
+            outBuf = new Float32Array(outBufSize);
+            
+        for (var i = 0; i < numKRBufs; i++) {
+            var krBufs = outUGen.audio(kr);
+            var offset = i * kr * chans;
+            
+            // Interleave each output channel.
+            for (var chan = 0; chan < chans; chan++) {
+                var krBuf = krBufs[chan];
+                for (var samp = 0; samp < kr; samp++) {
+                    var frameIdx = samp * chans + offset;
+                    outBuf[frameIdx + chan] = krBuf[samp]; 
+                }
+            }
+        }
+        
         playState.written += audioEl.mozWriteAudio(outBuf);
     };
     
     var setupWebKitEnv = function (that) {
         that.jsNode.onaudioprocess = function (e) {
-            // TODO: Improve efficiency. Remove stereo assumptions.
             var kr = flock.defaults.controlRate,
-                numBufs = that.audioSettings.bufferSize / kr,
                 chans = that.audioSettings.chans,
-                left = e.outputBuffer.getChannelData(0),
-                right = e.outputBuffer.getChannelData(1),
-                outBuf,
-                i;
-            for (i = 0; i < numBufs; i++) {
-                outBuf = that.outUGen.audio(kr, i * kr * chans);
-            }
-            
-            for (i = 0; i < outBuf.length / chans; i++) {
-                var frameIdx = i * chans;
-                left[i] = outBuf[frameIdx];
-                right[i] = outBuf[frameIdx + 1];
+                numKRBufs = that.audioSettings.bufferSize / kr,
+                outBufs = e.outputBuffer;
+
+            for (var i = 0; i < numKRBufs; i++) {
+                var krBufs = that.outUGen.audio(kr),
+                    offset= i * kr;
+
+                // Loop through each channel.
+                for (var chan = 0; chan < chans; chan++) {
+                    var outBuf = outBufs.getChannelData(chan),
+                        krBuf = krBufs[chan];
+                    
+                    // And output each generated sample.
+                    for (var samp = 0; samp < kr; samp++) {
+                        outBuf[samp + offset] = krBuf[samp];
+                    }
+                }
             }
         };
         that.source.connect(that.jsNode);
@@ -513,7 +528,7 @@ var flock = flock || {};
             audioSettings: audioSettings,
             context: new webkitAudioContext()
         };
-        that.audioSettings.bufferSize = 8192; // TODO: how does this relate to minimum latency?
+        that.audioSettings.bufferSize = 4096; // TODO: how does this relate to minimum latency?
         that.source = that.context.createBufferSource();
         that.jsNode = that.context.createJavaScriptNode(that.audioSettings.bufferSize);
         that.outUGen.output = new Float32Array(that.audioSettings.bufferSize * that.audioSettings.chans);
@@ -531,21 +546,6 @@ var flock = flock || {};
         return that;
     };
     
-    flock.controlRateWriter = function (outUGen, chans, needed) {
-        // Figure out how many control periods worth of samples to generate.
-        // This means that we'll be writing slightly more or less than needed.
-        var kr = flock.defaults.controlRate,
-            numBufs = Math.round(needed / kr),
-            // Assume the output buffer is going to be large enough to accommodate 'needed'.
-            outBufSize = numBufs * kr * chans,
-            outBuf,
-            i;
-        for (i = 0; i < numBufs; i++) {
-            outBuf = outUGen.audio(kr, i * kr * chans);
-        }
-        return outBuf.subarray(0, outBufSize);
-    };
-    
     flock.synth = function (def, options) {
         options = options || {};
         var that = {
@@ -555,6 +555,9 @@ var flock = flock || {};
                 chans: options.chans || 2
             }
         };
+        
+        // TODO: Support better effeciency in Chrome adding environment-sensitive output ugen support
+        //  (or by removing behaviour from the output ugens).
         that.ugens = flock.parse.synthDef(that.model, that.audioSettings);
         that.environment = flock.environment(that.ugens[flock.OUT_UGEN_ID], that.audioSettings);
         

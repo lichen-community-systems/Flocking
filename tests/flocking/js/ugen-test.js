@@ -198,7 +198,8 @@ var flock = flock || {};
     
     var generateAndCheckNoise = function (lfNoise, numSamps, expectedNumUniqueValues) {
         var outputBuffer = lfNoise.gen(numSamps);
-        var slicer = typeof (Float32Array.prototype.slice) ? outputBuffer.slice : outputBuffer.subarray;
+        var slicer = typeof (Float32Array.prototype.slice) === "undefined" ? outputBuffer.subarray : 
+            outputBuffer.slice;
         var slicedOutput = slicer.apply(outputBuffer, [0, numSamps]);
         checkNoise(slicedOutput, numSamps, {
             numUniqueValues: expectedNumUniqueValues, 
