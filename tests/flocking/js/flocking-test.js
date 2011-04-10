@@ -204,7 +204,7 @@ var flock = flock || {};
             ok(parsedUGens.rightSine, "The right sine ugen should have been parsed correctly.");
             deepEqual(parsedUGens[flock.OUT_UGEN_ID].inputs.source, 
                 [parsedUGens.leftSine, parsedUGens.rightSine],
-                "The output ugen should have an array of sources, containing the left and right sine ugens.")
+                "The output ugen should have an array of sources, containing the left and right sine ugens.");
         });
     };
 })();

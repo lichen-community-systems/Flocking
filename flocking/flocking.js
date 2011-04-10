@@ -55,11 +55,29 @@ var flock = flock || {};
         return flock.fillBuffer(buf);
     };
     
+    flock.krMul = function (mulInput, output, numSamps) {
+        var mul = mulInput.control(1)[0],
+            i;
+        for (i = 0; i < numSamps; i++) {
+            output[i] = output[i] * mul;
+        }
+        return output;
+    };
+    
     flock.mul = function (mulInput, output, numSamps) {
         var mul = mulInput.audio(numSamps),
             i;
         for (i = 0; i < numSamps; i++) {
             output[i] = output[i] * mul[i];
+        }
+        return output;
+    };
+    
+    flock.krAdd = function (addInput, output, numSamps) {
+        var add = addInput.control(1)[0],
+            i;
+        for (i = 0; i < numSamps; i++) {
+            output[i] = output[i] + add;
         }
         return output;
     };
@@ -70,7 +88,36 @@ var flock = flock || {};
         for (i = 0; i < numSamps; i++) {
             output[i] = output[i] + add[i];
         }
-        
+        return output;
+    };
+    
+    flock.krMulAdd = function (mulInput, addInput, output, numSamps) {
+        var mul = mulInput.control(1)[0],
+            add = addInput.audio(numSamps),
+            i;
+        for (i = 0; i < numSamps; i++) {
+            output[i] = output[i] * mul + add[i];
+        }
+        return output;
+    };
+    
+    flock.mulKrAdd = function (mulInput, addInput, output, numSamps) {
+        var mul = mulInput.audio(numSamps),
+            add = addInput.control(1)[0],
+            i;
+        for (i = 0; i < numSamps; i++) {
+            output[i] = output[i] * mul[i] + add;
+        }
+        return output;
+    };
+    
+    flock.krMulKrAdd = function (mulInput, addInput, output, numSamps) {
+        var mul = mulInput.control(1)[0],
+            add = addInput.control(1)[0],
+            i;
+        for (i = 0; i < numSamps; i++) {
+            output[i] = output[i] * mul + add;
+        }
         return output;
     };
     
@@ -129,26 +176,37 @@ var flock = flock || {};
         return that;
     };
     
-    flock.ugen.mulAdder = function (that) {
+    flock.ugen.mulAdd = function (inputs, output, sampleRate) {
+        var that = flock.ugen(inputs, output, sampleRate);
+        
         // Reads directly from the output buffer, overwriting it in place with modified values.
-        that.mulAdd = function (numSamps) {            
+        that.mulAdd = function (numSamps) {  
+            var mul = that.inputs.mul,
+                add = that.inputs.add,
+                fn;
+                
             // If we have no mul or add inputs, bail immediately.
-            if (!that.inputs.mul && !that.inputs.add) {
+            if (!mul && !add) {
                 return that.output;
             }
             
             // Only add.
-            if (!that.inputs.mul) {
-                return flock.add(that.inputs.add, that.output, numSamps);
+            if (!mul) {
+                fn = add.rate === flock.rates.CONTROL ? flock.krAdd : flock.add;
+                return fn(add, that.output, numSamps);
             }
             
             // Only mul.
-            if (!that.inputs.add) {
-                return flock.mul(that.inputs.mul, that.output, numSamps);
+            if (!add) {
+                fn = mul.rate === flock.rates.CONTROL ? flock.krMul : flock.mul;
+                return fn(mul, that.output, numSamps);
             }
             
             // Both mul and add.
-            return flock.mulAdd(that.inputs.mul, that.inputs.add, that.output, numSamps);
+            fn = mul.rate === flock.rates.CONTROL ? 
+                (add.rate === flock.rates.CONTROL ? flock.krMulKrAdd : flock.krMulAdd) :
+                (add.rate === flock.rates.CONTROL ? flock.mulKrAdd : flock.mulAdd);
+            return fn(mul, add, that.output, numSamps);
         };
         
         return that;
@@ -165,7 +223,7 @@ var flock = flock || {};
             return that.constantBuffer;
         };
         
-        // This method is provided only for implementations that aren't bothering to check their input rate.
+        // This method is provided only for implementations that don't bother to check the input rate.
         that.audio = function (numSamps) {
             var o = that.output,
                 len = o.length,
@@ -181,8 +239,7 @@ var flock = flock || {};
     
     // TODO: Add support for a phase input.
     flock.ugen.osc = function (inputs, output, sampleRate) {
-        var that = flock.ugen(inputs, output, sampleRate);
-        flock.ugen.mulAdder(that);
+        var that = flock.ugen.mulAdd(inputs, output, sampleRate);
         that.model.phase = 0;
         
         // Scan the wavetable at the given frequency to generate the output.
@@ -235,8 +292,7 @@ var flock = flock || {};
     };
     
     flock.ugen.dust = function (inputs, output, sampleRate) {
-        var that = flock.ugen(inputs, output, sampleRate);
-        flock.ugen.mulAdder(that);
+        var that = flock.ugen.mulAdd(inputs, output, sampleRate);
         that.model = {
             density: 0.0,
             scale: 0.0,
@@ -245,7 +301,7 @@ var flock = flock || {};
         };
         
         that.audio = function (numSamps) {
-            var density = inputs.density.gen(1)[0], // Assume density is control rate.
+            var density = inputs.density.gen(1)[0], // Density is kr.
                 threshold, 
                 scale,
                 val,
@@ -274,8 +330,7 @@ var flock = flock || {};
     };
     
     flock.ugen.lfNoise = function (inputs, output, sampleRate) {
-        var that = flock.ugen(inputs, output, sampleRate);
-        flock.ugen.mulAdder(that);
+        var that = flock.ugen.mulAdd(inputs, output, sampleRate);
         that.model.counter = 0;
         that.model.level = 0;
         
@@ -443,8 +498,8 @@ var flock = flock || {};
                 outBuf = that.outUGen.audio(kr, i * kr * chans);
             }
             
-            for (i = 0; i < outBuf.length / 2; i++) {
-                var frameIdx = i * 2;
+            for (i = 0; i < outBuf.length / chans; i++) {
+                var frameIdx = i * chans;
                 left[i] = outBuf[frameIdx];
                 right[i] = outBuf[frameIdx + 1];
             }

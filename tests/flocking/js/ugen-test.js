@@ -197,10 +197,12 @@ var flock = flock || {};
     };
     
     var generateAndCheckNoise = function (lfNoise, numSamps, expectedNumUniqueValues) {
-        var output = lfNoise.gen(numSamps).subarray(0, numSamps);
-        checkNoise(output, numSamps, {
+        var outputBuffer = lfNoise.gen(numSamps);
+        var slicer = typeof (Float32Array.prototype.slice) ? outputBuffer.slice : outputBuffer.subarray;
+        var slicedOutput = slicer.apply(outputBuffer, [0, numSamps]);
+        checkNoise(slicedOutput, numSamps, {
             numUniqueValues: expectedNumUniqueValues, 
-            minValue: 0, 
+            minValue: 0,
             maxValue: 1.0
         });
     };
@@ -218,6 +220,134 @@ var flock = flock || {};
         
         // Two seconds worth of samples. The resulting buffer should contain double the number of unique values.
         generateAndCheckNoise(lfNoise, 88200, 8);
+    });
+    
+    
+    module("mul & add tests");
+    
+    var testSignal = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+    var krInput = {
+        rate: flock.rates.CONTROL,
+        control: function (numSamps) {
+            return testSignal;
+        }
+    };
+    var audioInput = {
+        rate: flock.rates.AUDIO,
+        audio: function (numSamps) {
+            return testSignal;
+        }
+    };
+    
+    var generateTestOutput = function () {
+        return [10, 10, 10, 10, 10, 10, 10, 10, 10, 10];
+    };
+
+    var signalTest = function (fn, input, expected, msg) {
+        var output = generateTestOutput(),
+            actual;
+        if (typeof (input.length) === "number") {
+            actual = fn(input[0], input[1], output, 10);
+        } else {
+            actual = fn(input, output, 10);
+        }
+        deepEqual(actual, expected, msg);
+    };
+    
+    test("flock.krMul()", function () {
+        var expected = [20, 20, 20, 20, 20, 20, 20, 20, 20, 20];
+        signalTest(flock.krMul, krInput, expected, 
+            "krMul() should use only the first value of the signal as a multiplier.");
+    });
+    
+    test("flock.mul()", function () {
+        var expected = [20, 30, 40, 50, 60, 70, 80, 90, 100, 110];
+        signalTest(flock.mul, audioInput, expected, 
+            "mul() should use each value in the signal as a multiplier.");
+    });
+    
+    test("flock.krAdd()", function () {
+        var expected = [12, 12, 12, 12, 12, 12, 12, 12, 12, 12];
+        signalTest(flock.krAdd, krInput, expected, 
+            "krAdd() should use only the first value of the signal for addition.");
+    });
+    
+    test("flock.add()", function () {
+        var expected = [12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+        signalTest(flock.add, audioInput, expected, 
+            "add() should use each value in the signal for addition.");
+    });
+    
+    test("flock.krMulKrAdd()", function () {
+        var expected = [22, 22, 22, 22, 22, 22, 22, 22, 22, 22];
+        signalTest(flock.krMulKrAdd, [krInput, krInput], expected,
+            "krMulKrAdd() should use the first value of both the mul and add signals.");
+    });
+    
+    test("flock.krMulAdd()", function () {
+        var expected = [22, 23, 24, 25, 26, 27, 28, 29, 30, 31];
+        signalTest(flock.krMulAdd, [krInput, audioInput], expected,
+            "krMulAdd() should use the first value of the mul signal and all values of the add signal.");
+    });
+    
+    test("flock.mulKrAdd()", function () {
+        var expected = [22, 32, 42, 52, 62, 72, 82, 92, 102, 112];
+        signalTest(flock.mulKrAdd, [audioInput, krInput], expected,
+            "mulKrAdd() should use all values of the mul signal and the first value of the add signal.");
+    });
+    
+    test("flock.mulAdd()", function () {
+        var expected = [22, 33, 44, 55, 66, 77, 88, 99, 110, 121];
+        signalTest(flock.mulAdd, [audioInput, audioInput], expected,
+            "mulKrAdd() should useall values of both the mul and add signals.");
+    });
+    
+    var mulAddUGenTest = function (mulInput, addInput, expected, msg) {
+        var ugen = flock.ugen.mulAdd({mul: mulInput, add: addInput}, generateTestOutput(), 44100);
+        var actual = ugen.mulAdd(10);
+        deepEqual(actual, expected, msg);
+    };
+    
+    test("flock.ugen.mulAdd()", function () {
+        // kr mul
+        var expected = [20, 20, 20, 20, 20, 20, 20, 20, 20, 20];
+        mulAddUGenTest(krInput, undefined, expected, 
+            "flock.ugen.mulAdd() with control rate mul should use the first value of the mul signal.");
+            
+        // ar mul
+        expected = [20, 30, 40, 50, 60, 70, 80, 90, 100, 110];
+        mulAddUGenTest(audioInput, undefined, expected, 
+            "flock.ugen.mulAdd() with audio rate mul should use alll values of the mul signal.");
+            
+        // kr add
+        expected = [12, 12, 12, 12, 12, 12, 12, 12, 12, 12];
+        mulAddUGenTest(undefined, krInput, expected, 
+            "flock.ugen.mulAdd() with control rate add should use the first value of the add signal.");
+
+        // ar add
+        expected = [12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+        mulAddUGenTest(undefined, audioInput, expected, 
+            "flock.ugen.mulAdd() with audio rate add shoudl use all values of the mul signal.");
+            
+        // kr mul, kr add
+        expected = [22, 22, 22, 22, 22, 22, 22, 22, 22, 22];
+        mulAddUGenTest(krInput, krInput, expected, 
+            "flock.ugen.mulAdd() with control rate mul and add inputs should use the first value of both signals.");
+            
+        // kr mul, audio add
+        expected = [22, 23, 24, 25, 26, 27, 28, 29, 30, 31];
+        mulAddUGenTest(krInput, audioInput, expected, 
+            "flock.ugen.mulAdd(), kr mul, audio add: should use the first value of the mul signal and all add values.");
+        
+        // ar mul, kr add
+        expected = [22, 32, 42, 52, 62, 72, 82, 92, 102, 112];
+        mulAddUGenTest(audioInput, krInput, expected, 
+            "flock.ugen.mulAdd(), ar mul, kr add: should use all values of the mul signal and the first add value.");
+                
+        // audio mul, audio add
+        expected = [22, 33, 44, 55, 66, 77, 88, 99, 110, 121];
+        mulAddUGenTest(audioInput, audioInput, expected, 
+            "flock.ugen.mulAdd() with audio rate mul and add inputs should use all values of both signals.");
     });
     
 })();
