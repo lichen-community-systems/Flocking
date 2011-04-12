@@ -35,6 +35,93 @@ var flock = flock || {};
         ok(aboveMin, "No samples in the buffer should go below " + min);
         ok(belowMax, "No samples in the buffer should exceed " + max);
     };
+
+    var mockLeft = [
+        1, 2, 3, 4, 5,
+        6, 7, 8, 9, 10,
+        11, 12, 13, 14, 15,
+        16, 17, 18, 19, 20
+    ];
+
+    var mockRight = [
+        20, 19, 18, 17, 16,
+        15, 14, 13, 12, 11,
+        10, 9, 8, 7, 6, 
+        5, 4, 3, 2, 1
+    ];
+
+    var makeMockUGen = function (output) {
+        return {
+            gen: function (numSamps) {
+                return output;
+            }
+        };
+    };
+    
+    module("Output tests");
+    
+    var checkOutput = function (numSamps, chans, outUGen, expectedBuffer, msg) {
+        var kr = flock.defaults.controlRate;
+        flock.defaults.controlRate = 20;
+        var actual = flock.interleavedDemandWriter(numSamps, outUGen, {
+            chans: chans
+        });
+        deepEqual(actual, expectedBuffer, msg);
+        flock.defaults.controlRate = kr;
+    };
+
+    test("flock.interleavedDemandWriter() mono input, mono output", function () {
+        // Test with a single input buffer being multiplexed by stereoOut.
+        var out = flock.ugen.stereoOut({source: makeMockUGen(mockLeft)}, [], 44100);
+
+        // Pull the whole buffer.
+        var expected = new Float32Array([
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
+        ]);
+        checkOutput(40, 1, out, expected, 
+            "We should receive a mono buffer containing two copies of the original input buffer.");
+
+        // Pull a partial buffer.
+        expected = new Float32Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+        checkOutput(20, 1, out, expected, 
+            "We should receive a mono buffer containing the input buffer unmodified.");
+    });
+    
+    test("flock.interleavedDemandWriter() mono input, stereo output", function () {
+        // Test with a single mono input buffer.
+        var out = flock.ugen.stereoOut({source: makeMockUGen(mockLeft)}, [], 44100);
+
+        // Pull the whole buffer.
+        var expected = new Float32Array([
+            1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 
+            6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 
+            12, 12, 13, 13, 14, 14, 15, 15, 16, 16,
+            17, 17, 18, 18, 19, 19, 20, 20
+        ]);
+        checkOutput(20, 2, out, expected, 
+            "We should receive a stereo buffer containing two copies of the original input buffer.");
+    });
+
+    test("flock.interleavedDemandWriter() stereo input", function () {
+        // Test with two input buffers.
+        var out = flock.ugen.stereoOut({
+            source: [
+                makeMockUGen(mockLeft), 
+                makeMockUGen(mockRight)
+            ]
+        }, [], 44100);
+
+        // Pull the whole buffer. Expect a stereo interleaved buffer as the result, 
+        // containing two copies of the original input buffer.
+        var expected = new Float32Array([
+            1, 20, 2, 19, 3, 18, 4, 17, 5, 16, 
+            6, 15, 7, 14, 8, 13, 9, 12, 10, 11, 11, 10, 
+            12, 9, 13, 8, 14, 7, 15, 6, 16, 5,
+            17, 4, 18, 3, 19, 2, 20, 1
+        ]);
+        checkOutput(20, 2, out, expected, "We should receive a stereo buffer, with each buffer interleaved.");
+    });
     
     
     module("UGen tests");
@@ -74,103 +161,6 @@ var flock = flock || {};
         density = 200;
         dust.inputs.density = flock.ugen.value({value: density}, new Float32Array(44100), 44100);
         checkDensity(dust, density); 
-    });
-
-
-    var mockLeft = [
-        1, 2, 3, 4, 5,
-        6, 7, 8, 9, 10,
-        11, 12, 13, 14, 15,
-        16, 17, 18, 19, 20
-    ];
-
-    var mockRight = [
-        20, 19, 18, 17, 16,
-        15, 14, 13, 12, 11,
-        10, 9, 8, 7, 6, 
-        5, 4, 3, 2, 1
-    ];
-
-    var makeMockUGen = function (output) {
-        return {
-            gen: function (numSamps) {
-                return output;
-            }
-        };
-    };
-    
-    var checkOutput = function (ugen, numSamps, expectedBuffer, msg) {
-        var actual = ugen.audio(numSamps);
-        deepEqual(actual, expectedBuffer, msg);
-    };
-
-    test("flock.ugen.stereoOut mono input", function () {
-        // Test with a single mono input buffer.
-        var out = flock.ugen.stereoOut({source: makeMockUGen(mockLeft)}, [], 44100);
-    
-        // Pull the whole buffer.
-        var expected = [
-            1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 
-            6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 
-            12, 12, 13, 13, 14, 14, 15, 15, 16, 16,
-            17, 17, 18, 18, 19, 19, 20, 20
-        ];
-        checkOutput(out, 20, expected, 
-            "We should receive a stereo buffer containing two copies of the original input buffer.");
-     
-        // Pull a partial buffer.
-        expected = [
-            1, 1, 2, 2, 3, 3, 4, 4, 5, 5,
-            6, 6, 7, 7, 8, 8, 9, 9, 10, 10
-        ];
-        out.output = []; // Reset the output buffer so we don't get any spare stuff floating in it.
-        checkOutput(out, 10, expected, 
-            "We should receive a stereo buffer containing two copies of the first 10 items in the input buffer.");
-    });
-
-    test("flock.ugen.stereoOut stereo input", function () {
-        // Test with two input buffers.
-        var out = flock.ugen.stereoOut({
-            source: [
-                makeMockUGen(mockLeft), 
-                makeMockUGen(mockRight)
-            ]
-        }, [], 44100);
-    
-        // Pull the whole buffer. Expect a stereo interleaved buffer as the result, 
-        // containing two copies of the original input buffer.
-        var expected = [
-            1, 20, 2, 19, 3, 18, 4, 17, 5, 16, 
-            6, 15, 7, 14, 8, 13, 9, 12, 10, 11, 11, 10, 
-            12, 9, 13, 8, 14, 7, 15, 6, 16, 5,
-            17, 4, 18, 3, 19, 2, 20, 1
-        ];
-        checkOutput(out, 20, expected, "We should receive a stereo buffer, with each buffer interleaved.");
-    });
-
-    test("flock.ugen.stereoOut.audio() with offset", function () {
-        // Test with a single mono input buffer.
-        var out = flock.ugen.stereoOut({source: makeMockUGen(mockLeft)}, [], 44100);
-    
-        var expectedFirst = [1, 1, 2, 2];
-        var expectedSecond = [1, 1, 2, 2, 1, 1, 2, 2];
-        var expectedThird = [1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 3, 3];
-    
-        var actual = out.audio(2, 0);
-        equals(actual.length, 4, "At the first control period, ",
-            "the output buffer should be twice the size of the input buffer.");
-        deepEqual(actual, expectedFirst, 
-            "At the first control period, ",
-            "the output buffer should contain interleaved copies of the first two items, ",
-            "at the first four index slots.");
-    
-        actual = out.audio(2, 4);
-        equals(actual.length, 8, "At the second control period, the output buffer contain 8 items.");
-        deepEqual(actual, expectedSecond, "The output buffer should match the expected buffer.");
-    
-        actual = out.audio(3, 8);
-        equals(actual.length, 14, "At the third control period, the output buffer should contain 14 items");
-        deepEqual(actual, expectedThird, "The output buffer should match the expected buffer.");
     });
     
     var checkNoise = function (buffer, numSamps, expected) {

@@ -390,7 +390,7 @@ var flock = flock || {};
     flock.ugen.stereoOut = function (inputs, output, sampleRate) {
         var that = flock.ugen(inputs, output, sampleRate);
 
-        that.audio = function (numFrames, offset) {
+        that.audio = function (numFrames) {
             var source = that.inputs.source,
                 left, 
                 right;
@@ -418,6 +418,41 @@ var flock = flock || {};
      * Synths and Playback *
      ***********************/
 
+    
+    /**
+     * Generates an interleaved audio buffer from the output unit generator for the specified
+     * 'needed' number of samples. This need not be a power of two, but will be more efficient if it is.
+     *
+     * @param {Number} needed the number of samples to generate
+     * @param {UGen} outUGen the output unit generator from which to draw samples
+     * @param {Object} audioSettings the current audio system settings
+     * @return a channel-interleaved output buffer containing roughly the number of needed samples
+     */
+    flock.interleavedDemandWriter = function (needed, outUGen, audioSettings) {
+        var kr = flock.defaults.controlRate,
+            chans = audioSettings.chans,
+            // Figure out how many control periods worth of samples to generate.
+            // This means that we'll probably be writing slightly more or less than needed.
+            numKRBufs = Math.round(needed / kr),
+            outBufSize = numKRBufs * kr * chans,
+            outBuf = new Float32Array(outBufSize);
+            
+        for (var i = 0; i < numKRBufs; i++) {
+            var krBufs = outUGen.audio(kr);
+            var offset = i * kr * chans;
+            
+            // Interleave each output channel.
+            for (var chan = 0; chan < chans; chan++) {
+                var krBuf = krBufs[chan];
+                for (var samp = 0; samp < kr; samp++) {
+                    var frameIdx = samp * chans + offset;
+                    outBuf[frameIdx + chan] = krBuf[samp];
+                }
+            }
+        }
+        
+        return outBuf;
+    };
     
     flock.environment = function () {
         var envFn = typeof (window.webkitAudioContext) !== "undefined" ?
@@ -448,11 +483,17 @@ var flock = flock || {};
                 duration * (that.audioSettings.sampleRate * that.audioSettings.numChans);
 
             that.playbackTimerId = window.setInterval(function () {
-                flock.environment.moz.write(that.outUGen, 
-                    that.audioEl, 
-                    that.audioSettings,
-                    that.model.playState);
-                if (that.model.playState.written >= that.model.playState.total) {
+                var playState = that.model.playState;
+                var needed = that.audioEl.mozCurrentSampleOffset() + 
+                    that.audioSettings.bufferSize - that.model.playState.written;
+                if (needed < 0) {
+                    return; // Don't write if no more samples are needed.
+                }
+                
+                var outBuf = flock.interleavedDemandWriter(needed, that.outUGen, that.audioSettings);
+                
+                playState.written += that.audioEl.mozWriteAudio(outBuf);
+                if (playState.written >= playState.total) {
                     that.stop();
                 }
             }, that.writeInterval);
@@ -464,38 +505,7 @@ var flock = flock || {};
         
         return that;
     };
-    
-    flock.environment.moz.write = function (outUGen, audioEl, audioSettings, playState) {
-        var needed = audioEl.mozCurrentSampleOffset() + audioSettings.bufferSize - playState.written;
-        if (needed < 0) {
-            return; // Don't write if no more samples are needed.
-        }
-        
-        var kr = flock.defaults.controlRate,
-            chans = audioSettings.chans,
-            // Figure out how many control periods worth of samples to generate.
-            // This means that we'll probably be writing slightly more or less than needed.
-            numKRBufs = Math.round(needed / kr),
-            outBufSize = numKRBufs * kr * chans,
-            outBuf = new Float32Array(outBufSize);
-            
-        for (var i = 0; i < numKRBufs; i++) {
-            var krBufs = outUGen.audio(kr);
-            var offset = i * kr * chans;
-            
-            // Interleave each output channel.
-            for (var chan = 0; chan < chans; chan++) {
-                var krBuf = krBufs[chan];
-                for (var samp = 0; samp < kr; samp++) {
-                    var frameIdx = samp * chans + offset;
-                    outBuf[frameIdx + chan] = krBuf[samp]; 
-                }
-            }
-        }
-        
-        playState.written += audioEl.mozWriteAudio(outBuf);
-    };
-    
+
     var setupWebKitEnv = function (that) {
         that.jsNode.onaudioprocess = function (e) {
             var kr = flock.defaults.controlRate,
