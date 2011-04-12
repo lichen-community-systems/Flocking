@@ -7,7 +7,7 @@ What is Flocking?
 Flocking is a simple audio synthesis toolkit that runs inside your Web browser. 
 It doesn't require Flash or any other proprietary plugins. 
 Written entirely in JavaScript, Flocking is designed for artists and musicians building creative Web-based 
-sound projects. It is built on top of Firefox 4's awesome new Audio Data API.
+sound projects. It is built on top of Firefox 4's awesome new Audio Data API and WebKit's WebAudio API.
 
 Flocking was inspired by the [SuperCollider](http://supercollider.sourceforge.net/) desktop synthesis 
 environment. If you're familiar with SuperCollider, you'll feel at home with Flocking.
@@ -85,9 +85,9 @@ The SynthDef format will be simplified in upcoming releases.
 Compatibility
 -------------
 
-Flocking currently depends on the Audio Data API in Firefox 4. It won't work on other browsers.
+Flocking works with Firefox 4's Audio Data API and WebKit's Web Audio API. At the moment it supports Firefox 4 out of the box and the latest Chrome 10. It won't work on other browsers.
 
-Google has introduced a competing API, the Web Audio API. Support for it is planned in a future version of Flocking.
+Web Audio support in Chrome is still experimental, so you need to manually configure it before it will play audio. To set it up, type "about:flags" into the URL bar and enable the "Web Audio" option at the bottom of the list.
 
 Licensing
 ---------
