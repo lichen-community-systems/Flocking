@@ -421,7 +421,8 @@ var flock = flock || {};
     
     /**
      * Generates an interleaved audio buffer from the output unit generator for the specified
-     * 'needed' number of samples. This need not be a power of two, but will be more efficient if it is.
+     * 'needed' number of samples. If number of needed samples isn't divisble by the control rate,
+     * the output buffer's size will be rounded up to the nearest control period.
      *
      * @param {Number} needed the number of samples to generate
      * @param {UGen} outUGen the output unit generator from which to draw samples
@@ -460,32 +461,25 @@ var flock = flock || {};
         return envFn.apply(null, arguments);
     };
     
-    flock.environment.moz = function (outUGen, audioSettings) {
+    flock.environment.moz = function (outUGen, audioSettings, model) {
         var that = {
             audioEl: new Audio(),
             outUGen: outUGen,
             audioSettings: audioSettings,
-            model: {
-                writeInterval: flock.defaults.writeInterval,
-                playState: {
-                    written: 0,
-                    total: null
-                }
-            }
+            model: model
         };
+        that.model.writeInterval = that.model.writeInterval || flock.defaults.writeInterval;
         that.audioSettings.bufferSize = flock.minBufferSize(flock.defaults.minLatency, that.audioSettings);
         that.audioEl.mozSetup(that.audioSettings.chans, that.audioSettings.sampleRate);
         that.outUGen.output = new Float32Array(that.audioSettings.bufferSize * that.audioSettings.chans);
         that.playbackTimerId = null;
         
-        that.play = function (duration) {
-            that.model.playState.total = (duration === undefined) ? Infinity : 
-                duration * (that.audioSettings.sampleRate * that.audioSettings.numChans);
-
+        that.play = function () {
+            // TODO: Protect against playing when we're already playing.
             that.playbackTimerId = window.setInterval(function () {
-                var playState = that.model.playState;
+                var playState = that.model;
                 var needed = that.audioEl.mozCurrentSampleOffset() + 
-                    that.audioSettings.bufferSize - that.model.playState.written;
+                    that.audioSettings.bufferSize - playState.written;
                 if (needed < 0) {
                     return; // Don't write if no more samples are needed.
                 }
@@ -509,8 +503,10 @@ var flock = flock || {};
     var setupWebKitEnv = function (that) {
         that.jsNode.onaudioprocess = function (e) {
             var kr = flock.defaults.controlRate,
+                playState = that.model,
                 chans = that.audioSettings.chans,
-                numKRBufs = that.audioSettings.bufferSize / kr,
+                bufSize = that.audioSettings.bufferSize,
+                numKRBufs = bufSize / kr,
                 outBufs = e.outputBuffer;
 
             for (var i = 0; i < numKRBufs; i++) {
@@ -528,15 +524,21 @@ var flock = flock || {};
                     }
                 }
             }
+            
+            playState.written += bufSize * chans;
+            if (playState.written >= playState.total) {
+                that.stop();
+            }
         };
         that.source.connect(that.jsNode);
     };
     
-    flock.environment.webkit = function (outUGen, audioSettings) {
+    flock.environment.webkit = function (outUGen, audioSettings, model) {
         var that = {
             outUGen: outUGen,
             audioSettings: audioSettings,
-            context: new webkitAudioContext()
+            context: new webkitAudioContext(),
+            model: model
         };
         that.audioSettings.bufferSize = 4096; // TODO: how does this relate to minimum latency?
         that.source = that.context.createBufferSource();
@@ -544,7 +546,6 @@ var flock = flock || {};
         that.outUGen.output = new Float32Array(that.audioSettings.bufferSize * that.audioSettings.chans);
         
         that.play = function () {
-            // TODO: Add support for duration.
             that.jsNode.connect(that.context.destination);
         };
         
@@ -559,24 +560,35 @@ var flock = flock || {};
     flock.synth = function (def, options) {
         options = options || {};
         var that = {
-            model: def,
             audioSettings: {
                 sampleRate: options.sampleRate || flock.defaults.sampleRate,
                 chans: options.chans || 2
+            },
+            model: {
+                synthDef: def,
+                playState: {
+                    written: 0,
+                    total: null
+                }
             }
         };
-        
-        // TODO: Support better effeciency in Chrome adding environment-sensitive output ugen support
-        //  (or by removing behaviour from the output ugens).
-        that.ugens = flock.parse.synthDef(that.model, that.audioSettings);
-        that.environment = flock.environment(that.ugens[flock.OUT_UGEN_ID], that.audioSettings);
+        that.ugens = flock.parse.synthDef(that.model.synthDef, that.audioSettings);
+        that.environment = flock.environment(that.ugens[flock.OUT_UGEN_ID], 
+            that.audioSettings, that.model.playState);
         
         /**
          * Plays the synth.
          *
          * @param {Number} dur optional duration to play this synth in seconds
          */ 
-        that.play = that.environment.play;
+        that.play = function (dur) {
+            var playState = that.model.playState,
+                sps = dur * (that.audioSettings.sampleRate * that.audioSettings.chans);
+                
+            playState.total = dur === undefined ? Infinity :
+                playState.total === Infinity ? sps : playState.written + sps;
+            that.environment.play();
+        };
         
         /**
          * Stops the synth if it is currently playing.
