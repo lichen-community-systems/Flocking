@@ -332,6 +332,7 @@ var flock = flock || {};
         return that;
     };
     
+    // TODO: Implement control rate version of this algorithm.
     flock.ugen.lfNoise = function (inputs, output, sampleRate) {
         var that = flock.ugen.mulAdd(inputs, output, sampleRate);
         that.model.counter = 0;
@@ -476,12 +477,16 @@ var flock = flock || {};
         
         that.play = function () {
             // TODO: Protect against playing when we're already playing.
+            if (that.playbackTimerId) {
+                return;
+            }
+            
             that.playbackTimerId = window.setInterval(function () {
                 var playState = that.model;
                 var needed = that.audioEl.mozCurrentSampleOffset() + 
                     that.audioSettings.bufferSize - playState.written;
                 if (needed < 0) {
-                    return; // Don't write if no more samples are needed.
+                    return;
                 }
                 
                 var outBuf = flock.interleavedDemandWriter(needed, that.outUGen, that.audioSettings);
@@ -495,6 +500,7 @@ var flock = flock || {};
         
         that.stop = function () {
             window.clearInterval(that.playbackTimerId);
+            that.playbackTimerId = null;
         };
         
         return that;
@@ -518,7 +524,7 @@ var flock = flock || {};
                     var outBuf = outBufs.getChannelData(chan),
                         krBuf = krBufs[chan];
                     
-                    // And output each generated sample.
+                    // And output each sample.
                     for (var samp = 0; samp < kr; samp++) {
                         outBuf[samp + offset] = krBuf[samp];
                     }

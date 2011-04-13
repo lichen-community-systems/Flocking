@@ -33,10 +33,10 @@ Flocking is an early prototype. It has bugs, it's growing fast, and help is welc
 
 ### Short Term To Dos###
  * Full support for control rate signals in all unit generators
- * Improved synthesis algorithms, especially for sinOsc
  * Simplified synthDef syntax and parser
+ * Canvas-based scope for viewing audio signals
+ * Polish up the Canvas-based gfx lib for hotter demos with graphical knobs and switches
  * More unit generators!
- * Support for Chrome's Web Audio API
  
  
 Using Flocking
