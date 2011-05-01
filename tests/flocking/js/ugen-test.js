@@ -12,29 +12,6 @@ var flock = flock || {};
 
 (function () {
     "use strict";
-        
-    var countNonZeroSamples = function (buffer) {
-        var numNonZero = 0;
-        for (var i = 0; i < buffer.length; i++) {
-            var samp = buffer[i];
-            numNonZero = (samp > 0.0) ? numNonZero + 1 : numNonZero;
-        }
-        return numNonZero;
-    };
-    
-    var checkSampleBoundary = function (buffer, min, max) {
-        var aboveMin = true,
-            belowMax = true;
-            
-        for (var i = 0; i < buffer.length; i++) {
-            var samp = buffer[i];
-            aboveMin = (samp >= min);
-            belowMax = (samp <= max);
-        }
-        
-        ok(aboveMin, "No samples in the buffer should go below " + min);
-        ok(belowMax, "No samples in the buffer should exceed " + max);
-    };
 
     var mockLeft = [
         1, 2, 3, 4, 5,
@@ -123,45 +100,7 @@ var flock = flock || {};
         checkOutput(20, 2, out, expected, "We should receive a stereo buffer, with each buffer interleaved.");
     });
     
-    
-    module("UGen tests");
-
-    var checkDensity = function (dust, density) {
-        // Run the algorithm 100x and average the results.
-        var nonZeroSum = 0,
-            numRuns = 1500,
-            buffer;
-        
-        for (var i = 0; i < numRuns; i++) {
-            buffer = dust.audio(44100);
-            nonZeroSum += countNonZeroSamples(buffer);
-        }
-        var avgNumNonZeroSamples = nonZeroSum / numRuns;
-        equals(Math.round(avgNumNonZeroSamples), density, 
-            "There should be roughly " + density + " non-zero samples in a one-second buffer.");
-    };
-
-    test("flock.ugen.dust", function () {
-        var density = 1.0;
-        var dust = flock.ugen.dust({
-            density: flock.ugen.value({value: density}, new Float32Array(44100), 44100)
-        }, new Float32Array(44100), 44100);
-        var buffer = dust.audio(44100);
-    
-        // Check basic details about the buffer: it should be the correct length,
-        // and never contain values above 1.0.
-        ok(buffer, "A buffer should be returned from dust.audio()");
-        equals(buffer.length, 44100, "And it should be the specified length.");
-        checkSampleBoundary(buffer, 0.0, 1.0);
-    
-        // Check that the buffer contains an avg. density of 1.0 non-zero samples per second.
-        checkDensity(dust, density);
-
-        // And now try a density of 200.
-        density = 200;
-        dust.inputs.density = flock.ugen.value({value: density}, new Float32Array(44100), 44100);
-        checkDensity(dust, density); 
-    });
+    module("LFNoise tests");
     
     var checkNoise = function (buffer, numSamps, expected) {
         var minFound = Infinity;
@@ -339,6 +278,69 @@ var flock = flock || {};
         expected = [22, 33, 44, 55, 66, 77, 88, 99, 110, 121];
         mulAddUGenTest(audioInput, audioInput, expected, 
             "flock.ugen.mulAdd() with audio rate mul and add inputs should use all values of both signals.");
+    });
+    
+    module("flock.ugen.osc() tests");
+    
+    var makeOsc = function (freq, table, bufferSize, sampleRate) {
+        var freqUGen = flock.ugen.value({value: freq}, new Float32Array(bufferSize), sampleRate);
+        var osc = flock.ugen.osc({freq: freqUGen}, new Float32Array(bufferSize), sampleRate);
+        osc.inputs.table = table;
+        return osc;
+    };
+    
+    var checkOsc = function (testSpec, expected, msg) {
+        var osc = makeOsc(testSpec.freq, testSpec.table, testSpec.numSamps, testSpec.sampleRate);
+        var actual = osc.gen(testSpec.numSamps);
+        deepEqual(actual, expected, msg);
+    };
+    
+    test("flock.ugen.osc() simple table lookup", function () {
+        var table = new Float32Array([1, 2, 3, 4]);
+        
+        checkOsc({
+            freq: 1,
+            sampleRate: 1,
+            numSamps: 1,
+            table: table
+        }, new Float32Array([1]), 
+        "At a frequency of 1 and sampling rate of 1, we should only get the first value in the table.");
+        
+        checkOsc({
+            freq: 1,
+            sampleRate: 4,
+            numSamps: 4,
+            table: table
+        }, 
+        table,
+        "At a frequency of 1 and sampling rate of 4, requesting 4 samples should return the whole table.");
+
+        checkOsc({
+            freq: 1,
+            sampleRate: 4,
+            numSamps: 8,
+            table: table
+        }, 
+        new Float32Array([1, 2, 3, 4, 1, 2, 3, 4]),
+        "At a frequency of 1 and sampling rate of 4, requesting 8 samples should return the whole table twice.");
+        
+        checkOsc({
+            freq: 2,
+            sampleRate: 4,
+            numSamps: 4,
+            table: table
+        }, 
+        new Float32Array([1, 3, 1, 3]),
+        "At a frequency of 2 and sampling rate of 4, requesting 4 samples should return the first and third samples.");
+        
+        checkOsc({
+            freq: 2,
+            sampleRate: 4,
+            numSamps: 16,
+            table: table
+        }, 
+        new Float32Array([1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3]),
+        "At a frequency of 2 and sampling rate of 4, 16 samples should still consist of the first and third samples.");
     });
     
 })();

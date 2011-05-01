@@ -262,7 +262,7 @@ var flock = flock || {};
                 output[i] = table[Math.round(phase)];
                 increment = freq[i] * tableLen / sampleRate;
                 phase += increment;
-                if (phase > tableLen) {
+                if (phase >= tableLen) {
                     phase -= tableLen;
                 }
             }
@@ -278,6 +278,7 @@ var flock = flock || {};
     
     flock.ugen.sinOsc = function (inputs, output, sampleRate) {
         var that = flock.ugen.osc(inputs, output, sampleRate);
+        // TODO: The table input here isn't a standard ugen input.
         that.inputs.table = flock.ugen.sinOsc.fillTable(flock.defaults.tableSize);
         return that;
     };
