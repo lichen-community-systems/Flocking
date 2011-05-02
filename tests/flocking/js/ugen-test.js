@@ -38,13 +38,13 @@ var flock = flock || {};
     module("Output tests");
     
     var checkOutput = function (numSamps, chans, outUGen, expectedBuffer, msg) {
-        var kr = flock.defaults.controlRate;
-        flock.defaults.controlRate = 20;
         var actual = flock.interleavedDemandWriter(numSamps, outUGen, {
+            rates: {
+                control: 20
+            },
             chans: chans
         });
         deepEqual(actual, expectedBuffer, msg);
-        flock.defaults.controlRate = kr;
     };
 
     test("flock.interleavedDemandWriter() mono input, mono output", function () {
@@ -156,17 +156,17 @@ var flock = flock || {};
     module("mul & add tests");
     
     var testSignal = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+    var genFn = function (numSamps) {
+        return testSignal;
+    };
+    
     var krInput = {
         rate: flock.rates.CONTROL,
-        control: function (numSamps) {
-            return testSignal;
-        }
+        gen: genFn
     };
     var audioInput = {
         rate: flock.rates.AUDIO,
-        audio: function (numSamps) {
-            return testSignal;
-        }
+        gen: genFn
     };
     
     var generateTestOutput = function () {

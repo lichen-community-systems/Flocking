@@ -34,24 +34,21 @@ var flock = flock || {};
     };
     
     var createSynth = function (synthDef) {
-        return flock.synth(synthDef || simpleSynthDef, {
-            sampleRate: 1, 
+        return flock.synth(synthDef, {
+            sampleRate: 1,
             chans: 1
         });
     };
     
     module("Utility tests");
     
-    test("flock.fillBuffer()", function () {
-        var actual = flock.fillBuffer(new Float32Array(3), 42);
-        var expected = new Float32Array([42, 42, 42]);
-        deepEqual(actual, expected, 
-            "fillBuffer() should fill a three-element buffer with three instance of the specified value of 42.");
-    });
-    
     test("flock.minBufferSize()", function () {
         var audioSettings = {
-            sampleRate: 44100,
+            rates: {
+                audio: 44100,
+                control: 64,
+                constant: 1
+            },
             chans: 2
         };
         var minSize = flock.minBufferSize(500, audioSettings);
@@ -63,7 +60,7 @@ var flock = flock || {};
         equals(minSize, 22050, 
             "The mininum buffer size for a 44100 KHz mono signal with 500ms latency should be 22050");
         
-        audioSettings.sampleRate = 48000;
+        audioSettings.rates.audio = 48000;
         audioSettings.chans = 2;
         minSize = flock.minBufferSize(250, audioSettings);
         equals(minSize, 24000, 
@@ -73,7 +70,7 @@ var flock = flock || {};
     module("Synth tests");
     
     test("Get input values", function () {
-        var synth = createSynth();
+        var synth = createSynth(simpleSynthDef);
         
         expect(5);
         
@@ -85,11 +82,11 @@ var flock = flock || {};
         // Get a ugen.
         var ugen = synth.input("mod");
         ok(ugen.gen, "A ugen returned from synth.input() should have a gen() property...");
-        equals(typeof (ugen.audio), "function", "...of type function");
+        equals(typeof (ugen.gen), "function", "...of type function");
     });
     
     test("Set input values", function () {
-        var synth = createSynth(),
+        var synth = createSynth(simpleSynthDef),
             sineUGen = synth.ugens.sine,
             modUGen = synth.ugens.mod;
         
@@ -122,7 +119,14 @@ var flock = flock || {};
     module("Parsing tests");
     
     var checkParsedTestSynthDef = function (synthDef) {
-        var parsedUGens = flock.parse.synthDef(synthDef, 1, 1, 2); // One sample buffer and sampleRate. Stereo output.
+        var parsedUGens = flock.parse.synthDef(synthDef, {
+            rates: {
+                audio: 1,
+                control: 1,
+                constant: 1
+            },
+            chans: 2
+        });
                   
         equals(flock.test.countKeys(parsedUGens), 3, "There should be three named ugens.");            
         ok(parsedUGens[flock.OUT_UGEN_ID], 
@@ -196,7 +200,14 @@ var flock = flock || {};
             }
         ];
         
-        var parsedUGens = flock.parse.synthDef(multiChanTestSynthDef, 1, 1, 2);
+        var parsedUGens = flock.parse.synthDef(multiChanTestSynthDef, {
+            rates: {
+                audio: 1,
+                control: 1,
+                constant: 1
+            },
+            chans: 2
+        });
         equals(flock.test.countKeys(parsedUGens), 3, 
             "There should be three named ugens--the two sinOscs and the output.");
         ok(parsedUGens.leftSine, "The left sine ugen should have been parsed correctly.");
