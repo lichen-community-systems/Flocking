@@ -221,7 +221,7 @@ var flock = flock || {};
     flock.ugen.osc = function (inputs, output, sampleRate) {
         var that = flock.ugen.mulAdd(inputs, output, sampleRate);
         that.model.phase = 0;
-          
+
         that.krFreqGen = function (numSamps) {
             var freq = that.inputs.freq.gen(1)[0],
                 table = that.inputs.table,
@@ -267,11 +267,11 @@ var flock = flock || {};
             return that.mulAdd(numSamps);
         };
         
-        that.onInputChange = function () {
+        that.onInputChanged = function () {
             that.gen = that.inputs.freq.rate === flock.rates.AUDIO ? that.arFreqGen : that.krFreqGen;
         };
         
-        that.onInputChange();
+        that.onInputChanged();
         return that;
     };
         
@@ -411,7 +411,6 @@ var flock = flock || {};
      * Synths and Playback *
      ***********************/
 
-    
     /**
      * Generates an interleaved audio buffer from the output unit generator for the specified
      * 'needed' number of samples. If number of needed samples isn't divisble by the control rate,
@@ -694,22 +693,27 @@ var flock = flock || {};
         return ugens;
     };
     
-    flock.parse.makeUGen = function (ugenDef, inputs, rates) {
+    flock.parse.makeUGen = function (ugenDef, parsedInputs, rates) {
         // Assume audio rate if no rate was specified by the user.
         if (!ugenDef.rate) {
             ugenDef.rate = flock.rates.AUDIO;
         }
         
-        // Audio rate ugens will generate a kr-sized buffer of samples.
-        var size = ugenDef.rate === flock.rates.AUDIO ? rates[flock.rates.CONTROL] : 1,
-            rate = rates[ugenDef.rate],
-            buffer;
-        if (size === undefined) {
-            throw new Error("The ugenDef's specified rate is not valid.");
+        var buffer = new Float32Array(ugenDef.rate === flock.rates.AUDIO ? rates.control : 1),
+            rate;
+        
+        // Set the ugen's sample rate value according to the rate the user specified.
+        if (ugenDef.rate === flock.rates.AUDIO) {
+            rate = rates.audio;
+        } else if (ugenDef.rate === flock.rates.CONTROL) {
+            rate = rates.audio / rates.control;
+        } else {
+            rate = 1;
         }
-        buffer = new Float32Array(size);
             
-        return flock.invokePath(ugenDef.ugen, [inputs, buffer, rate]);
+        // TODO: All ugens are still currently audio rate, but when we add control rate versions,
+        // we need some way to instantiate a ugen at a certain rate.
+        return flock.invokePath(ugenDef.ugen, [parsedInputs, buffer, rate]);
     };
     
     flock.parse.ugenForDef = function (ugenDef, rates, ugens) {
