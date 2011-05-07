@@ -56,8 +56,8 @@ var flock = flock || {};
     test("flock.ugen.dust", function () {
         var density = 1.0;
         var dust = flock.ugen.dust({
-            density: flock.ugen.value({value: density}, new Float32Array(44100), 44100)
-        }, new Float32Array(44100), 44100);
+            density: flock.ugen.value({value: density}, new Float32Array(44100))
+        }, new Float32Array(44100));
         var buffer = dust.gen(44100);
 
         // Check basic details about the buffer: it should be the correct length,
@@ -71,7 +71,7 @@ var flock = flock || {};
 
         // And now try a density of 200.
         density = 200;
-        dust.inputs.density = flock.ugen.value({value: density}, new Float32Array(44100), 44100);
+        dust.inputs.density = flock.ugen.value({value: density}, new Float32Array(44100));
         checkDensity(dust, density); 
     });
 

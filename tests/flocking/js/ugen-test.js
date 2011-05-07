@@ -49,7 +49,7 @@ var flock = flock || {};
 
     test("flock.interleavedDemandWriter() mono input, mono output", function () {
         // Test with a single input buffer being multiplexed by stereoOut.
-        var out = flock.ugen.stereoOut({source: makeMockUGen(mockLeft)}, [], 44100);
+        var out = flock.ugen.stereoOut({source: makeMockUGen(mockLeft)}, []);
 
         // Pull the whole buffer.
         var expected = new Float32Array([
@@ -67,7 +67,7 @@ var flock = flock || {};
     
     test("flock.interleavedDemandWriter() mono input, stereo output", function () {
         // Test with a single mono input buffer.
-        var out = flock.ugen.stereoOut({source: makeMockUGen(mockLeft)}, [], 44100);
+        var out = flock.ugen.stereoOut({source: makeMockUGen(mockLeft)}, []);
 
         // Pull the whole buffer.
         var expected = new Float32Array([
@@ -87,7 +87,7 @@ var flock = flock || {};
                 makeMockUGen(mockLeft), 
                 makeMockUGen(mockRight)
             ]
-        }, [], 44100);
+        }, []);
 
         // Pull the whole buffer. Expect a stereo interleaved buffer as the result, 
         // containing two copies of the original input buffer.
@@ -138,8 +138,8 @@ var flock = flock || {};
     };
     
     test("flock.ugen.lfNoise()", function () {
-        var freq = flock.ugen.value({value: 4}, new Float32Array(88200), 44100);
-        var lfNoise = flock.ugen.lfNoise({freq: freq}, new Float32Array(88200), 44100);
+        var freq = flock.ugen.value({value: 4}, new Float32Array(88200));
+        var lfNoise = flock.ugen.lfNoise({freq: freq}, new Float32Array(88200));
         
         // One second worth of samples. The resulting buffer should contain 4 unique values.
         generateAndCheckNoise(lfNoise, 44100, 4);
@@ -233,7 +233,7 @@ var flock = flock || {};
     });
     
     var mulAddUGenTest = function (mulInput, addInput, expected, msg) {
-        var ugen = flock.ugen.mulAdd({mul: mulInput, add: addInput}, generateTestOutput(), 44100);
+        var ugen = flock.ugen.mulAdd({mul: mulInput, add: addInput}, generateTestOutput());
         var actual = ugen.mulAdd(10);
         deepEqual(actual, expected, msg);
     };
@@ -283,8 +283,12 @@ var flock = flock || {};
     module("flock.ugen.osc() tests");
     
     var makeOsc = function (freq, table, bufferSize, sampleRate) {
-        var freqUGen = flock.ugen.value({value: freq}, new Float32Array(bufferSize), sampleRate);
-        var osc = flock.ugen.osc({freq: freqUGen}, new Float32Array(bufferSize), sampleRate);
+        var ugenOptions = {
+            sampleRate: sampleRate
+        };
+        
+        var freqUGen = flock.ugen.value({value: freq}, new Float32Array(bufferSize), ugenOptions);
+        var osc = flock.ugen.osc({freq: freqUGen}, new Float32Array(bufferSize), ugenOptions);
         osc.inputs.table = table;
         return osc;
     };

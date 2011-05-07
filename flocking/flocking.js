@@ -153,24 +153,23 @@ var flock = flock || {};
     /*******************
      * Unit Generators *
      *******************/
-     
-    // TODO:
-    //  - Cache inputs and add an inputChanged event to speed up control vs. audio rate handling.
-    
-    flock.ugen = function (inputs, output, sampleRate) {
+         
+    flock.ugen = function (inputs, output, options) {
+        options = options || {};
+        
         var that = {
             inputs: inputs,
             output: output,
-            sampleRate: sampleRate || flock.defaults.rates.audio,
-            rate: flock.rates.AUDIO,
+            sampleRate: options.sampleRate || flock.defaults.rates.audio,
+            rate: options.rate || flock.rates.AUDIO,
             model: {}
         };
         
         return that;
     };
     
-    flock.ugen.mulAdd = function (inputs, output, sampleRate) {
-        var that = flock.ugen(inputs, output, sampleRate);
+    flock.ugen.mulAdd = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
         
         // Reads directly from the output buffer, overwriting it in place with modified values.
         that.mulAdd = function (numSamps) {  
@@ -205,9 +204,9 @@ var flock = flock || {};
         return that;
     };
     
-    flock.ugen.value = function (inputs, output, sampleRate) {
-        var that = flock.ugen(inputs, output, sampleRate);
-        that.rate = flock.rates.CONSTANT;
+    flock.ugen.value = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        that.rate = flock.rates.CONSTANT; // Value ugens should always be constant rate.
         that.output[0] = that.model.value = inputs.value;
         
         that.gen = function (numSamps) {
@@ -218,8 +217,8 @@ var flock = flock || {};
     };
     
     // TODO: Add support for a phase input.
-    flock.ugen.osc = function (inputs, output, sampleRate) {
-        var that = flock.ugen.mulAdd(inputs, output, sampleRate);
+    flock.ugen.osc = function (inputs, output, options) {
+        var that = flock.ugen.mulAdd(inputs, output, options);
         that.model.phase = 0;
 
         that.krFreqGen = function (numSamps) {
@@ -275,8 +274,8 @@ var flock = flock || {};
         return that;
     };
         
-    flock.ugen.sinOsc = function (inputs, output, sampleRate) {
-        var that = flock.ugen.osc(inputs, output, sampleRate);
+    flock.ugen.sinOsc = function (inputs, output, options) {
+        var that = flock.ugen.osc(inputs, output, options);
         // TODO: The table input here isn't a standard ugen input.
         that.inputs.table = flock.ugen.sinOsc.fillTable(flock.defaults.tableSize);
         return that;
@@ -294,8 +293,8 @@ var flock = flock || {};
         return table;
     };
     
-    flock.ugen.dust = function (inputs, output, sampleRate) {
-        var that = flock.ugen.mulAdd(inputs, output, sampleRate);
+    flock.ugen.dust = function (inputs, output, options) {
+        var that = flock.ugen.mulAdd(inputs, output, options);
         that.model = {
             density: 0.0,
             scale: 0.0,
@@ -331,8 +330,8 @@ var flock = flock || {};
     };
     
     // TODO: Implement control rate version of this algorithm.
-    flock.ugen.lfNoise = function (inputs, output, sampleRate) {
-        var that = flock.ugen.mulAdd(inputs, output, sampleRate);
+    flock.ugen.lfNoise = function (inputs, output, options) {
+        var that = flock.ugen.mulAdd(inputs, output, options);
         that.model.counter = 0;
         that.model.level = 0;
         
@@ -371,8 +370,8 @@ var flock = flock || {};
         return that;
     };
     
-    flock.ugen.out = function (inputs, output, sampleRate) {
-        var that = flock.ugen(inputs, output, sampleRate);
+    flock.ugen.out = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
         
         // Simple pass-through output.
         that.gen = function (numSamps) {
@@ -382,27 +381,27 @@ var flock = flock || {};
         return that;
     };
     
-    flock.ugen.stereoOut = function (inputs, output, sampleRate) {
-        var that = flock.ugen(inputs, output, sampleRate);
+    flock.ugen.stereoOut = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
 
-        that.gen = function (numFrames) {
-            var source = that.inputs.source,
-                left, 
-                right;
-            
-            // Handle multiple channels, including stereo expansion of a single channel.
-            // TODO: Do this less often, introducing some kind of "input changed" event for ugens.
-            if (typeof (source.length) === "number") {
-                left = source[0].gen(numFrames);
-                right = source[1].gen(numFrames);
-            } else {
-                left = source.gen(numFrames);
-                right = left;
-            }
-            
-            return [left, right];
+        that.stereoInputGen = function (numFrames) {
+            var source = that.inputs.source;
+            return [source[0].gen(numFrames), source[1].gen(numFrames)];
         };
-                
+        
+        that.monoInputGen = function (numFrames) {
+            var source = that.inputs.source,
+                left = source.gen(numFrames),
+                right = left;
+            return [left, right];    
+        };
+        
+        that.onInputChanged = function () {
+            // Handle multiple channels, including stereo expansion of a single channel.
+            that.gen = typeof (that.inputs.source.length) === "number" ? that.stereoInputGen : that.monoInputGen;
+        };
+        
+        that.onInputChanged();
         return that;
     };
     
@@ -467,7 +466,7 @@ var flock = flock || {};
         that.playbackTimerId = null;
         
         that.play = function () {
-            // TODO: Protect against playing when we're already playing.
+            // Don't play if we're already playing.
             if (that.playbackTimerId) {
                 return;
             }
@@ -634,6 +633,7 @@ var flock = flock || {};
             var inputs = flock.resolvePath(ugenPath, that.ugens);
             var inputUGen = flock.parse.ugenForInputDef(val, that.audioSettings.rates);
             inputs[inputName] = inputUGen;
+            // TODO: Fire onInputChanged()
             return inputUGen;
         };
         
@@ -664,32 +664,20 @@ var flock = flock || {};
     flock.parse = flock.parse || {};
     
     flock.parse.synthDef = function (ugenDef, options) {
-        var ugens = {},
-            source,
-            i;
+        var ugens = {};
         
-        if (typeof (ugenDef.length) === "number") {
-            // We've got multiple channels of output.
-            source = [];
-            for (i = 0; i < ugenDef.length; i++) {
-                source[i] = flock.parse.ugenForDef(ugenDef[i], options.rates, ugens);
-            }
-        } else {
-            // Only one output source.
-            source = flock.parse.ugenForDef(ugenDef, options.rates, ugens);
-            if (ugenDef.id === flock.OUT_UGEN_ID) {
-                return ugens;
-            }
+        // We didn't get an out ugen specified, so we need to make one.
+        if (typeof (ugenDef.length) === "number" || ugenDef.id !== flock.OUT_UGEN_ID) {
+            ugenDef = {
+                id: flock.OUT_UGEN_ID,
+                ugen: (options.chans === 2) ? "flock.ugen.stereoOut" : "flock.ugen.out",
+                inputs: {
+                    source: ugenDef
+                }
+            };
         }
-                
-        // User didn't give us an out ugen, so we need to create one automatically.
-        var outType = (options.chans === 2) ? "flock.ugen.stereoOut" : "flock.ugen.out";
-        var out = flock.parse.ugenForDef({
-            id: flock.OUT_UGEN_ID,
-            ugen: outType
-        }, options.rates, ugens);
-        out.inputs.source = source;
         
+        flock.parse.ugenForDef(ugenDef, options.rates, ugens);
         return ugens;
     };
     
@@ -700,26 +688,46 @@ var flock = flock || {};
         }
         
         var buffer = new Float32Array(ugenDef.rate === flock.rates.AUDIO ? rates.control : 1),
-            rate;
+            sampleRate;
         
         // Set the ugen's sample rate value according to the rate the user specified.
         if (ugenDef.rate === flock.rates.AUDIO) {
-            rate = rates.audio;
+            sampleRate = rates.audio;
         } else if (ugenDef.rate === flock.rates.CONTROL) {
-            rate = rates.audio / rates.control;
+            sampleRate = rates.audio / rates.control;
         } else {
-            rate = 1;
+            sampleRate = 1;
         }
             
-        // TODO: All ugens are still currently audio rate, but when we add control rate versions,
-        // we need some way to instantiate a ugen at a certain rate.
-        return flock.invokePath(ugenDef.ugen, [parsedInputs, buffer, rate]);
+        return flock.invokePath(ugenDef.ugen, [
+            parsedInputs, 
+            buffer, 
+            {
+                sampleRate: sampleRate,
+                rate: ugenDef.rate
+            }
+        ]);
     };
     
     flock.parse.ugenForDef = function (ugenDef, rates, ugens) {
-        var inputDefs = ugenDef.inputs,
-            inputs = {},
-            inputDef;
+        var expandedUGens,
+            inputDefs,
+            inputs,
+            inputDef,
+            i;
+            
+        // We received an array of ugen defs.
+        if (typeof (ugenDef.length) === "number") {
+            expandedUGens = [];
+            for (i = 0; i < ugenDef.length; i++) {
+                expandedUGens[i] = flock.parse.ugenForDef(ugenDef[i], rates, ugens);
+            }
+            return expandedUGens;
+        }
+
+        // A single ugen def.
+        inputDefs = ugenDef.inputs;
+        inputs = {};
             
         for (inputDef in inputDefs) {
             // Create ugens for all inputs except value inputs.
