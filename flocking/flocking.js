@@ -627,13 +627,17 @@ var flock = flock || {};
             if (path.indexOf(".") === -1) {
                 throw new Error("Setting a ugen directly is not currently supported.");
             }
-            var lastSegIdx = path.lastIndexOf(".");
-            var ugenPath = path.substring(0, lastSegIdx);
-            var inputName = path.substring(lastSegIdx + 1);
-            var inputs = flock.resolvePath(ugenPath, that.ugens);
-            var inputUGen = flock.parse.ugenForInputDef(val, that.audioSettings.rates);
-            inputs[inputName] = inputUGen;
-            // TODO: Fire onInputChanged()
+            
+            var lastSegIdx = path.lastIndexOf("."),
+                ugenInputPath = path.substring(0, lastSegIdx),
+                ugenPath = ugenInputPath.substring(0, ugenInputPath.lastIndexOf(".")),
+                inputName = path.substring(lastSegIdx + 1),
+                ugen = flock.resolvePath(ugenPath, that.ugens),
+                inputUGen = flock.parse.ugenForInputDef(val, that.audioSettings.rates);
+                
+            ugen.inputs[inputName] = inputUGen;
+            ugen.onInputChanged();
+            
             return inputUGen;
         };
         
@@ -709,25 +713,33 @@ var flock = flock || {};
         ]);
     };
     
-    flock.parse.ugenForDef = function (ugenDef, rates, ugens) {
-        var expandedUGens,
-            inputDefs,
-            inputs,
-            inputDef,
+    flock.parse.ugensForDefs = function (ugenDefs, rates, ugens) {
+        var parsed = [],
             i;
-            
+        for (i = 0; i < ugenDefs.length; i++) {
+            parsed[i] = flock.parse.ugenForDef(ugenDefs[i], rates, ugens);
+        }
+        return parsed;
+    };
+    
+    /**
+     * Creates a unit generator for the specified unit generator definition spec.
+     *
+     * ugenDefs are plain old JSON objects describing the characteristics of the desired unit generator, including:
+     *      - ugen: the type of unit generator, as string (e.g. "flock.ugen.sinOsc")
+     *      - rate: the rate at which the ugen should be run, either "audio", "control", or "constant"
+     *      - id: an optional unique name for the unit generator, which will make it available as a synth input
+     *      - inputs: a JSON object containing named key/value pairs for inputs to the unit generator
+     */
+    flock.parse.ugenForDef = function (ugenDef, rates, ugens) {
         // We received an array of ugen defs.
         if (typeof (ugenDef.length) === "number") {
-            expandedUGens = [];
-            for (i = 0; i < ugenDef.length; i++) {
-                expandedUGens[i] = flock.parse.ugenForDef(ugenDef[i], rates, ugens);
-            }
-            return expandedUGens;
+            return flock.parse.ugensForDefs(ugenDef, rates, ugens);
         }
-
-        // A single ugen def.
-        inputDefs = ugenDef.inputs;
-        inputs = {};
+        
+        var inputDefs = ugenDef.inputs,
+            inputs = {},
+            inputDef;
             
         for (inputDef in inputDefs) {
             // Create ugens for all inputs except value inputs.
@@ -740,7 +752,7 @@ var flock = flock || {};
         }
         
         var ugen = flock.parse.makeUGen(ugenDef, inputs, rates);
-        if (ugenDef.id) {
+        if (ugenDef.id && ugens) {
             ugens[ugenDef.id] = ugen;
         }
         return ugen;

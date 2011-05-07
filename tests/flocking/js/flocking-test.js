@@ -115,6 +115,35 @@ var flock = flock || {};
             "The ugen should be set up correctly.");
     });
 
+    test("Set input values, onInputChanged event", function () {
+        flock.tests = {};
+        flock.tests.ugens = {};
+        
+        var didOnInputChangedFire = false;
+        flock.tests.ugens.mockUGen = function (inputs, output, options) {
+            var that = flock.ugen(inputs, output, options);
+            that.gen = function () {};
+            that.onInputChanged = function () {
+                didOnInputChangedFire = true;
+            };
+            return that;
+        };
+        
+        var synth = createSynth({
+            id: "mock",
+            ugen: "flock.tests.ugens.mockUGen",
+            inputs: {
+                cat: 12
+            }
+        });
+        
+        synth.input("mock.cat");
+        ok(!didOnInputChangedFire, "The onInputChanged event should not fire when an input is read.");
+        didOnInputChangedFire = false;
+        synth.input("mock.cat", 42);
+        ok(didOnInputChangedFire, "The onInputChanged event should fire when an input is changed.");
+    });
+
 
     module("Parsing tests");
     
