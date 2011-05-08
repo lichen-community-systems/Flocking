@@ -236,6 +236,8 @@ var flock = flock || {};
                 phase += increment;
                 if (phase >= tableLen) {
                     phase -= tableLen;
+                } else if (phase < 0) {
+                    phase += tableLen;
                 }
             }
             that.model.phase = phase;
@@ -259,6 +261,8 @@ var flock = flock || {};
                 phase += increment;
                 if (phase >= tableLen) {
                     phase -= tableLen;
+                } else if (phase < 0) {
+                    phase += tableLen;
                 }
             }
             that.model.phase = phase;
