@@ -14,8 +14,9 @@ var flock = flock || {};
 
 (function () {
     "use strict";
-      
+    
     flock.OUT_UGEN_ID = "flocking-out";
+    flock.ALL_UGENS_ID = "flocking-all";
     flock.TWOPI = 2.0 * Math.PI;
     
     flock.rates = {
@@ -673,6 +674,7 @@ var flock = flock || {};
     
     flock.parse.synthDef = function (ugenDef, options) {
         var ugens = {};
+        ugens[flock.ALL_UGENS_ID] = [];
         
         // We didn't get an out ugen specified, so we need to make one.
         if (typeof (ugenDef.length) === "number" || ugenDef.id !== flock.OUT_UGEN_ID) {
@@ -757,7 +759,9 @@ var flock = flock || {};
         
         var ugen = flock.parse.makeUGen(ugenDef, inputs, rates);
         if (ugenDef.id && ugens) {
+            // TODO: Refactor this into a separate strategy.
             ugens[ugenDef.id] = ugen;
+            ugens[flock.ALL_UGENS_ID].push(ugen);
         }
         return ugen;
     };

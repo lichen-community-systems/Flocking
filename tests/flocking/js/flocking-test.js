@@ -147,6 +147,13 @@ var flock = flock || {};
 
     module("Parsing tests");
     
+    var checkRegisteredUGens = function (ugens) {
+        equals(flock.test.countKeys(ugens), 4, "There should be four registered ugens.");            
+        ok(ugens[flock.OUT_UGEN_ID], 
+            "The output ugen should be at the reserved key flock.OUT_UGEN_ID.");
+        equals(ugens[flock.ALL_UGENS_ID].length, 3, "There should be three real ugens in the 'all' list, including the output.");
+    };
+    
     var checkParsedTestSynthDef = function (synthDef) {
         var parsedUGens = flock.parse.synthDef(synthDef, {
             rates: {
@@ -156,11 +163,8 @@ var flock = flock || {};
             },
             chans: 2
         });
-                  
-        equals(flock.test.countKeys(parsedUGens), 3, "There should be three named ugens.");            
-        ok(parsedUGens[flock.OUT_UGEN_ID], 
-            "The output ugen should be at the reserved key flock.OUT_UGEN_ID.");
         
+        checkRegisteredUGens(parsedUGens);
         ok(parsedUGens.sine, "The sine ugen should be keyed by its id....");
         ok(parsedUGens.sine.inputs.table, "...and it should be a real sine ugen.");
         
@@ -237,8 +241,7 @@ var flock = flock || {};
             },
             chans: 2
         });
-        equals(flock.test.countKeys(parsedUGens), 3, 
-            "There should be three named ugens--the two sinOscs and the output.");
+        checkRegisteredUGens(parsedUGens);
         ok(parsedUGens.leftSine, "The left sine ugen should have been parsed correctly.");
         ok(parsedUGens.rightSine, "The right sine ugen should have been parsed correctly.");
         deepEqual(parsedUGens[flock.OUT_UGEN_ID].inputs.source, 
