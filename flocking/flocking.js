@@ -221,8 +221,9 @@ var flock = flock || {};
         var that = flock.ugen.mulAdd(inputs, output, options);
         that.model.phase = 0;
 
-        that.krFreqGen = function (numSamps) {
+        that.krFreqKrPhaseGen = function (numSamps) {
             var freq = that.inputs.freq.gen(1)[0],
+                phasein = that.inputs.phase.gen(1)[0],
                 table = that.inputs.table,
                 tableLen = table.length,
                 sampleRate = that.sampleRate,
@@ -232,7 +233,13 @@ var flock = flock || {};
                 i;
 
             for (i = 0; i < numSamps; i++) {
-                output[i] = table[Math.round(phase)];
+                var z = phase + (phasein * (1.0 / flock.TWOPI) * tableLen);
+                if (z >= tableLen) {
+                    z -= tableLen;
+                } else if (z < 0) {
+                    z += tableLen;
+                }
+                output[i] = table[Math.round(z)];
                 phase += increment;
                 if (phase >= tableLen) {
                     phase -= tableLen;
@@ -245,8 +252,40 @@ var flock = flock || {};
             return that.mulAdd(numSamps);
         };
         
-        that.arFreqGen = function (numSamps) {
+        that.krFreqArPhaseGen = function (numSamps) {
+            var freq = that.inputs.freq.gen(1)[0],
+                phasein = that.inputs.phase.gen(numSamps),
+                table = that.inputs.table,
+                tableLen = table.length,
+                sampleRate = that.sampleRate,
+                output = that.output,
+                phase = that.model.phase,
+                increment = freq * tableLen / sampleRate,
+                i;
+
+            for (i = 0; i < numSamps; i++) {
+                var z = phase + (phasein[i] * (1.0 / flock.TWOPI) * tableLen);
+                if (z >= tableLen) {
+                    z -= tableLen;
+                } else if (z < 0) {
+                    z += tableLen;
+                }
+                output[i] = table[Math.round(z)];
+                phase += increment;
+                if (phase >= tableLen) {
+                    phase -= tableLen;
+                } else if (phase < 0) {
+                    phase += tableLen;
+                }
+            }
+            that.model.phase = phase;
+            
+            return that.mulAdd(numSamps);
+        };
+        
+        that.arFreqArPhaseGen = function (numSamps) {
             var freq = that.inputs.freq.gen(numSamps),
+                phasein = that.inputs.phase.gen(numSamps),
                 table = that.inputs.table,
                 tableLen = table.length,
                 sampleRate = that.sampleRate,
@@ -256,7 +295,13 @@ var flock = flock || {};
                 i;
 
             for (i = 0; i < numSamps; i++) {
-                output[i] = table[Math.round(phase)];
+                var z = phase + (phasein[i] * (1.0 / flock.TWOPI) * tableLen);
+                if (z >= tableLen) {
+                    z -= tableLen;
+                } else if (z < 0) {
+                    z += tableLen;
+                }
+                output[i] = table[Math.round(z)];
                 increment = freq[i] * tableLen / sampleRate;
                 phase += increment;
                 if (phase >= tableLen) {
@@ -271,7 +316,18 @@ var flock = flock || {};
         };
         
         that.onInputChanged = function () {
-            that.gen = that.inputs.freq.rate === flock.rates.AUDIO ? that.arFreqGen : that.krFreqGen;
+            if (!that.inputs.phase) {
+                that.inputs.phase = flock.ugen.value({value: 0.0}, new Float32Array(1));
+            }
+            
+            var freqRate = that.inputs.freq.rate,
+                phaseRate = that.inputs.phase.rate;
+            
+            if (freqRate === flock.rates.AUDIO) {
+                that.gen = phaseRate === flock.rates.AUDIO ? that.arFreqArPhaseGen : that.arFreqKrPhaseGen;
+            } else {
+                that.gen = phaseRate === flock.rates.AUDIO ? that.krFreqArPhaseGen : that.krFreqKrPhaseGen;
+            }
         };
         
         that.onInputChanged();
