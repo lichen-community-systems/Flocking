@@ -87,8 +87,8 @@ var flock = flock || {};
     
     test("Set input values", function () {
         var synth = createSynth(simpleSynthDef),
-            sineUGen = synth.ugens.sine,
-            modUGen = synth.ugens.mod;
+            sineUGen = synth.inputUGens.sine,
+            modUGen = synth.inputUGens.mod;
         
         // Setting simple values.
         synth.input("sine.freq", 220);
@@ -110,8 +110,8 @@ var flock = flock || {};
             }
         };
         var dust = synth.input("sine.mul", testUGenDef);
-        equals(synth.ugens.sine.inputs.mul, dust, "The 'mul' ugen should be set to our test Dust ugen.");
-        equals(synth.ugens.sine.inputs.mul.inputs.density.model. value, 200, 
+        equals(synth.inputUGens.sine.inputs.mul, dust, "The 'mul' ugen should be set to our test Dust ugen.");
+        equals(synth.inputUGens.sine.inputs.mul.inputs.density.model. value, 200, 
             "The ugen should be set up correctly.");
     });
 
