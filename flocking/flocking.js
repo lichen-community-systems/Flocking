@@ -17,6 +17,7 @@ var flock = flock || {};
       
     flock.OUT_UGEN_ID = "flocking-out";
     flock.TWOPI = 2.0 * Math.PI;
+    flock.RTWOPI = 1.0 / flock.TWOPI;
     
     flock.rates = {
         AUDIO: "audio",
@@ -221,97 +222,128 @@ var flock = flock || {};
         var that = flock.ugen.mulAdd(inputs, output, options);
         that.model.phase = 0;
 
-        that.krFreqKrPhaseGen = function (numSamps) {
+        that.krFreqKrPhase = function (numSamps) {
             var freq = that.inputs.freq.gen(1)[0],
-                phasein = that.inputs.phase.gen(1)[0],
+                phase = that.inputs.phase.gen(1)[0],
                 table = that.inputs.table,
                 tableLen = table.length,
                 sampleRate = that.sampleRate,
+                freqInc = freq * tableLen / sampleRate,
+                phaseInc = phase * flock.RTWOPI * tableLen,
                 output = that.output,
-                phase = that.model.phase,
-                increment = freq * tableLen / sampleRate,
-                i;
+                phaseAccum = that.model.phase,
+                i,
+                idx;
 
             for (i = 0; i < numSamps; i++) {
-                var z = phase + (phasein * (1.0 / flock.TWOPI) * tableLen);
-                if (z >= tableLen) {
-                    z -= tableLen;
-                } else if (z < 0) {
-                    z += tableLen;
+                idx = phaseAccum + phaseInc;
+                if (idx >= tableLen) {
+                    idx -= tableLen;
+                } else if (idx < 0) {
+                    idx += tableLen;
                 }
-                output[i] = table[Math.round(z)];
-                phase += increment;
-                if (phase >= tableLen) {
-                    phase -= tableLen;
-                } else if (phase < 0) {
-                    phase += tableLen;
+                
+                output[i] = table[Math.round(idx)];
+                phaseAccum += freqInc;
+                if (phaseAccum >= tableLen) {
+                    phaseAccum -= tableLen;
+                } else if (phaseAccum < 0) {
+                    phaseAccum += tableLen;
                 }
             }
-            that.model.phase = phase;
-            
+            that.model.phase = phaseAccum;
             return that.mulAdd(numSamps);
         };
         
-        that.krFreqArPhaseGen = function (numSamps) {
+        that.krFreqArPhase = function (numSamps) {
             var freq = that.inputs.freq.gen(1)[0],
-                phasein = that.inputs.phase.gen(numSamps),
+                phase = that.inputs.phase.gen(numSamps),
                 table = that.inputs.table,
                 tableLen = table.length,
                 sampleRate = that.sampleRate,
+                freqInc = freq * tableLen / sampleRate,
                 output = that.output,
-                phase = that.model.phase,
-                increment = freq * tableLen / sampleRate,
-                i;
+                phaseAccum = that.model.phase,
+                i,
+                idx;
 
             for (i = 0; i < numSamps; i++) {
-                var z = phase + (phasein[i] * (1.0 / flock.TWOPI) * tableLen);
-                if (z >= tableLen) {
-                    z -= tableLen;
-                } else if (z < 0) {
-                    z += tableLen;
+                idx = phaseAccum + phase[i] * flock.RTWOPI * tableLen;
+                if (idx >= tableLen) {
+                    idx -= tableLen;
+                } else if (idx < 0) {
+                    idx += tableLen;
                 }
-                output[i] = table[Math.round(z)];
-                phase += increment;
-                if (phase >= tableLen) {
-                    phase -= tableLen;
-                } else if (phase < 0) {
-                    phase += tableLen;
+                output[i] = table[Math.round(idx)];
+                phaseAccum += freqInc;
+                if (phaseAccum >= tableLen) {
+                    phaseAccum -= tableLen;
+                } else if (phaseAccum < 0) {
+                    phaseAccum += tableLen;
                 }
             }
-            that.model.phase = phase;
-            
+            that.model.phase = phaseAccum;
             return that.mulAdd(numSamps);
         };
-        
-        that.arFreqArPhaseGen = function (numSamps) {
+
+        that.arFreqKrPhase = function (numSamps) {
             var freq = that.inputs.freq.gen(numSamps),
-                phasein = that.inputs.phase.gen(numSamps),
+                phase = that.inputs.phase.gen(1)[0],
+                table = that.inputs.table,
+                tableLen = table.length,
+                sampleRate = that.sampleRate,
+                phaseInc = phase * flock.RTWOPI * tableLen,
+                output = that.output,
+                phaseAccum = that.model.phase,
+                i,
+                idx;
+
+            for (i = 0; i < numSamps; i++) {
+                idx = phaseAccum + phaseInc;
+                if (idx >= tableLen) {
+                    idx -= tableLen;
+                } else if (idx < 0) {
+                    idx += tableLen;
+                }
+                output[i] = table[Math.round(idx)];
+                phaseAccum += freq[i] * tableLen / sampleRate;
+                if (phaseAccum >= tableLen) {
+                    phaseAccum -= tableLen;
+                } else if (phaseAccum < 0) {
+                    phaseAccum += tableLen;
+                }
+            }
+            that.model.phase = phaseAccum;
+            return that.mulAdd(numSamps);
+        };
+                
+        that.arFreqArPhase = function (numSamps) {
+            var freq = that.inputs.freq.gen(numSamps),
+                phase = that.inputs.phase.gen(numSamps),
                 table = that.inputs.table,
                 tableLen = table.length,
                 sampleRate = that.sampleRate,
                 output = that.output,
-                phase = that.model.phase,
-                increment,
-                i;
+                phaseAccum = that.model.phase,
+                i,
+                idx;
 
             for (i = 0; i < numSamps; i++) {
-                var z = phase + (phasein[i] * (1.0 / flock.TWOPI) * tableLen);
-                if (z >= tableLen) {
-                    z -= tableLen;
-                } else if (z < 0) {
-                    z += tableLen;
+                idx = phaseAccum + phase[i] * flock.RTWOPI * tableLen;
+                if (idx >= tableLen) {
+                    idx -= tableLen;
+                } else if (idx < 0) {
+                    idx += tableLen;
                 }
-                output[i] = table[Math.round(z)];
-                increment = freq[i] * tableLen / sampleRate;
-                phase += increment;
-                if (phase >= tableLen) {
-                    phase -= tableLen;
-                } else if (phase < 0) {
-                    phase += tableLen;
+                output[i] = table[Math.round(idx)];
+                phaseAccum += freq[i] * tableLen / sampleRate;
+                if (phaseAccum >= tableLen) {
+                    phaseAccum -= tableLen;
+                } else if (phaseAccum < 0) {
+                    phaseAccum += tableLen;
                 }
             }
-            that.model.phase = phase;
-            
+            that.model.phase = phaseAccum;
             return that.mulAdd(numSamps);
         };
         
@@ -324,9 +356,9 @@ var flock = flock || {};
                 phaseRate = that.inputs.phase.rate;
             
             if (freqRate === flock.rates.AUDIO) {
-                that.gen = phaseRate === flock.rates.AUDIO ? that.arFreqArPhaseGen : that.arFreqKrPhaseGen;
+                that.gen = phaseRate === flock.rates.AUDIO ? that.arFreqArPhase : that.arFreqKrPhase;
             } else {
-                that.gen = phaseRate === flock.rates.AUDIO ? that.krFreqArPhaseGen : that.krFreqKrPhaseGen;
+                that.gen = phaseRate === flock.rates.AUDIO ? that.krFreqArPhase : that.krFreqKrPhase;
             }
         };
         
