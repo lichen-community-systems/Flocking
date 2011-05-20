@@ -32,7 +32,7 @@ Status
 Flocking is an early prototype. It has bugs, it's growing fast, and help is welcome and appreciated.
 
 ### Short Term To Dos###
- * Full support for control rate signals in all unit generators
+ * Support for multiple synths and buses
  * Simplified synthDef syntax and parser
  * Canvas-based scope for viewing audio signals
  * Polish up the Canvas-based gfx lib for hotter demos with graphical knobs and switches
@@ -85,7 +85,7 @@ The SynthDef format will be simplified in upcoming releases.
 Compatibility
 -------------
 
-Flocking works with Firefox 4's Audio Data API and WebKit's Web Audio API. At the moment it supports Firefox 4 out of the box and the latest Chrome 10. It won't work on other browsers.
+Flocking works with Firefox 4's Audio Data API and WebKit's Web Audio API. Web Kit support is limited to Chrome 10 at the moment. It won't work on other browsers.
 
 Web Audio support in Chrome is still experimental, so you need to manually configure it before it will play audio. To set it up, type "about:flags" into the URL bar and enable the "Web Audio" option at the bottom of the list.
 
@@ -98,9 +98,9 @@ project. The text of the MIT and GPL licenses are at the root of the Flocking di
 Credits
 -------
 
-Flocking was written by Colin Clark. It was named after a piece by [James Tenney](http://www.plainsound.org/JTwork.html), 
-a teacher, composer, and early pioneer of computer music. I hope you find this library useful enough to create projects 
-as beautiful and inspiring as Jim's _Flocking_.
+Flocking was written by Colin Clark. It is named after a piece by [James Tenney](http://www.plainsound.org/JTwork.html), 
+who was a brilliant composer, thinker, and early pioneer of computer music. 
+I hope you find this library useful enough to create projects as beautiful and inspiring as Jim's _Flocking_.
 
 Thanks to Dave Humphrey and his team for their awesome work on the Firefox 4 Audio Data API. Thanks to Alex Geddie 
 for teaching me a ton about synthesis and computer music.
