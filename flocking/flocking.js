@@ -52,7 +52,6 @@ var flock = flock || {};
         for (i = 0; i < numSamps; i++) {
             output[i] = output[i] * mul;
         }
-        return output;
     };
     
     flock.mul = function (mulInput, output, numSamps) {
@@ -61,7 +60,6 @@ var flock = flock || {};
         for (i = 0; i < numSamps; i++) {
             output[i] = output[i] * mul[i];
         }
-        return output;
     };
     
     flock.krAdd = function (addInput, output, numSamps) {
@@ -70,7 +68,6 @@ var flock = flock || {};
         for (i = 0; i < numSamps; i++) {
             output[i] = output[i] + add;
         }
-        return output;
     };
     
     flock.add = function (addInput, output, numSamps) {
@@ -79,7 +76,6 @@ var flock = flock || {};
         for (i = 0; i < numSamps; i++) {
             output[i] = output[i] + add[i];
         }
-        return output;
     };
     
     flock.krMulAdd = function (mulInput, addInput, output, numSamps) {
@@ -89,7 +85,6 @@ var flock = flock || {};
         for (i = 0; i < numSamps; i++) {
             output[i] = output[i] * mul + add[i];
         }
-        return output;
     };
     
     flock.mulKrAdd = function (mulInput, addInput, output, numSamps) {
@@ -99,7 +94,6 @@ var flock = flock || {};
         for (i = 0; i < numSamps; i++) {
             output[i] = output[i] * mul[i] + add;
         }
-        return output;
     };
     
     flock.krMulKrAdd = function (mulInput, addInput, output, numSamps) {
@@ -109,7 +103,6 @@ var flock = flock || {};
         for (i = 0; i < numSamps; i++) {
             output[i] = output[i] * mul + add;
         }
-        return output;
     };
     
     flock.mulAdd = function (mulInput, addInput, output, numSamps) {
@@ -119,7 +112,6 @@ var flock = flock || {};
         for (i = 0; i < numSamps; i++) {
             output[i] = output[i] * mul[i] + add[i];
         }
-        return output;
     };
     
     flock.pathParseError = function (path, token) {
@@ -525,7 +517,6 @@ var flock = flock || {};
         that.audioSettings.bufferSize = 4096; // TODO: how does this relate to minimum latency?
         that.source = that.context.createBufferSource();
         that.jsNode = that.context.createJavaScriptNode(that.audioSettings.bufferSize);
-        that.outUGen.output = new Float32Array(that.audioSettings.bufferSize * that.audioSettings.chans);
         
         that.play = function () {
             that.jsNode.connect(that.context.destination);
