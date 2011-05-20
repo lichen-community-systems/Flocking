@@ -42,10 +42,10 @@ var flock = flock || {};
         // Run the algorithm 100x and average the results.
         var nonZeroSum = 0,
             numRuns = 1500,
-            buffer;
+            buffer = dust.output;
     
         for (var i = 0; i < numRuns; i++) {
-            buffer = dust.gen(44100);
+            dust.gen(44100);
             nonZeroSum += countNonZeroSamples(buffer);
         }
         var avgNumNonZeroSamples = nonZeroSum / numRuns;
@@ -58,8 +58,9 @@ var flock = flock || {};
         var dust = flock.ugen.dust({
             density: flock.ugen.value({value: density}, new Float32Array(44100))
         }, new Float32Array(44100));
-        var buffer = dust.gen(44100);
-
+        dust.gen(44100);
+        var buffer = dust.output;
+        
         // Check basic details about the buffer: it should be the correct length,
         // and never contain values above 1.0.
         ok(buffer, "A buffer should be returned from dust.audio()");

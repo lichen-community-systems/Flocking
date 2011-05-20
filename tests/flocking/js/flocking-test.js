@@ -87,8 +87,8 @@ var flock = flock || {};
     
     test("Set input values", function () {
         var synth = createSynth(simpleSynthDef),
-            sineUGen = synth.ugens.sine,
-            modUGen = synth.ugens.mod;
+            sineUGen = synth.inputUGens.sine,
+            modUGen = synth.inputUGens.mod;
         
         // Setting simple values.
         synth.input("sine.freq", 220);
@@ -110,8 +110,8 @@ var flock = flock || {};
             }
         };
         var dust = synth.input("sine.mul", testUGenDef);
-        equals(synth.ugens.sine.inputs.mul, dust, "The 'mul' ugen should be set to our test Dust ugen.");
-        equals(synth.ugens.sine.inputs.mul.inputs.density.model. value, 200, 
+        equals(synth.inputUGens.sine.inputs.mul, dust, "The 'mul' ugen should be set to our test Dust ugen.");
+        equals(synth.inputUGens.sine.inputs.mul.inputs.density.model. value, 200, 
             "The ugen should be set up correctly.");
     });
 
@@ -147,14 +147,15 @@ var flock = flock || {};
 
     module("Parsing tests");
     
-    var checkRegisteredUGens = function (ugens) {
+    var checkRegisteredUGens = function (ugens, expectedNumEvals) {
         equals(flock.test.countKeys(ugens), 4, "There should be four registered ugens.");            
         ok(ugens[flock.OUT_UGEN_ID], 
             "The output ugen should be at the reserved key flock.OUT_UGEN_ID.");
-        equals(ugens[flock.ALL_UGENS_ID].length, 3, "There should be three real ugens in the 'all' list, including the output.");
+        equals(ugens[flock.ALL_UGENS_ID].length, expectedNumEvals, 
+            "There should be " + expectedNumEvals + " real ugens in the 'all' list, including the output.");
     };
     
-    var checkParsedTestSynthDef = function (synthDef) {
+    var checkParsedTestSynthDef = function (synthDef, expectedNumEvalUGens) {
         var parsedUGens = flock.parse.synthDef(synthDef, {
             rates: {
                 audio: 1,
@@ -164,7 +165,7 @@ var flock = flock || {};
             chans: 2
         });
         
-        checkRegisteredUGens(parsedUGens);
+        checkRegisteredUGens(parsedUGens, expectedNumEvalUGens);
         ok(parsedUGens.sine, "The sine ugen should be keyed by its id....");
         ok(parsedUGens.sine.inputs.table, "...and it should be a real sine ugen.");
         
@@ -188,7 +189,7 @@ var flock = flock || {};
             }
         };
 
-        checkParsedTestSynthDef(condensedTestSynthDef);
+        checkParsedTestSynthDef(condensedTestSynthDef, 1);
     });
     
     test("flock.parse.synthDef(), output specified", function () {
@@ -212,7 +213,7 @@ var flock = flock || {};
                 }
             }
         };
-        checkParsedTestSynthDef(expandedTestSynthDef);
+        checkParsedTestSynthDef(expandedTestSynthDef, 1);
     });
     
     test("flock.parse.synthDef() with multiple channels", function () {
@@ -241,7 +242,7 @@ var flock = flock || {};
             },
             chans: 2
         });
-        checkRegisteredUGens(parsedUGens);
+        checkRegisteredUGens(parsedUGens, 2);
         ok(parsedUGens.leftSine, "The left sine ugen should have been parsed correctly.");
         ok(parsedUGens.rightSine, "The right sine ugen should have been parsed correctly.");
         deepEqual(parsedUGens[flock.OUT_UGEN_ID].inputs.source, 

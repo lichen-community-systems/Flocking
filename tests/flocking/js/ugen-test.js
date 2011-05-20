@@ -28,28 +28,34 @@ var flock = flock || {};
     ];
 
     var makeMockUGen = function (output) {
-        return {
+        var that = {
+            output: output,
             gen: function (numSamps) {
-                return output;
+                that.output = output;
             }
         };
+        return that;
     };
     
     module("Output tests");
     
     var checkOutput = function (numSamps, chans, outUGen, expectedBuffer, msg) {
-        var actual = flock.interleavedDemandWriter(numSamps, outUGen, {
+        var audioSettings = {
             rates: {
                 control: 20
             },
             chans: chans
-        });
+        };
+        
+        var mockEval = function () {};
+        var actual = flock.interleavedDemandWriter(numSamps, mockEval, outUGen, audioSettings);
         deepEqual(actual, expectedBuffer, msg);
     };
 
     test("flock.interleavedDemandWriter() mono input, mono output", function () {
         // Test with a single input buffer being multiplexed by stereoOut.
-        var out = flock.ugen.stereoOut({source: makeMockUGen(mockLeft)}, []);
+        var mockLeftUGen = makeMockUGen(mockLeft);
+        var out = flock.ugen.stereoOut({source: mockLeftUGen}, []);
 
         // Pull the whole buffer.
         var expected = new Float32Array([
@@ -67,7 +73,8 @@ var flock = flock || {};
     
     test("flock.interleavedDemandWriter() mono input, stereo output", function () {
         // Test with a single mono input buffer.
-        var out = flock.ugen.stereoOut({source: makeMockUGen(mockLeft)}, []);
+        var mockLeftUGen = makeMockUGen(mockLeft);
+        var out = flock.ugen.stereoOut({source: mockLeftUGen}, []);
 
         // Pull the whole buffer.
         var expected = new Float32Array([
@@ -100,6 +107,7 @@ var flock = flock || {};
         checkOutput(20, 2, out, expected, "We should receive a stereo buffer, with each buffer interleaved.");
     });
     
+    
     module("LFNoise tests");
     
     var checkNoise = function (buffer, numSamps, expected) {
@@ -126,7 +134,8 @@ var flock = flock || {};
     };
     
     var generateAndCheckNoise = function (lfNoise, numSamps, expectedNumUniqueValues) {
-        var outputBuffer = lfNoise.gen(numSamps);
+        lfNoise.gen(numSamps);
+        var outputBuffer = lfNoise.output;
         var slicer = typeof (Float32Array.prototype.slice) === "undefined" ? outputBuffer.subarray : 
             outputBuffer.slice;
         var slicedOutput = slicer.apply(outputBuffer, [0, numSamps]);
@@ -162,11 +171,11 @@ var flock = flock || {};
     
     var krInput = {
         rate: flock.rates.CONTROL,
-        gen: genFn
+        output: testSignal
     };
     var audioInput = {
         rate: flock.rates.AUDIO,
-        gen: genFn
+        output: testSignal
     };
     
     var generateTestOutput = function () {
@@ -174,14 +183,13 @@ var flock = flock || {};
     };
 
     var signalTest = function (fn, input, expected, msg) {
-        var output = generateTestOutput(),
-            actual;
+        var output = generateTestOutput();
         if (typeof (input.length) === "number") {
-            actual = fn(input[0], input[1], output, 10);
+            fn(input[0], input[1], output, 10);
         } else {
-            actual = fn(input, output, 10);
+            fn(input, output, 10);
         }
-        deepEqual(actual, expected, msg);
+        deepEqual(output, expected, msg);
     };
     
     test("flock.krMul()", function () {
@@ -234,8 +242,8 @@ var flock = flock || {};
     
     var mulAddUGenTest = function (mulInput, addInput, expected, msg) {
         var ugen = flock.ugen.mulAdd({mul: mulInput, add: addInput}, generateTestOutput());
-        var actual = ugen.mulAdd(10);
-        deepEqual(actual, expected, msg);
+        ugen.mulAdd(10);
+        deepEqual(ugen.output, expected, msg);
     };
     
     test("flock.ugen.mulAdd()", function () {
@@ -295,8 +303,8 @@ var flock = flock || {};
     
     var checkOsc = function (testSpec, expected, msg) {
         var osc = makeOsc(testSpec.freq, testSpec.table, testSpec.numSamps, testSpec.sampleRate);
-        var actual = osc.gen(testSpec.numSamps);
-        deepEqual(actual, expected, msg);
+        osc.gen(testSpec.numSamps);
+        deepEqual(osc.output, expected, msg);
     };
     
     test("flock.ugen.osc() simple table lookup", function () {
