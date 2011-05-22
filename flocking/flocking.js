@@ -485,26 +485,26 @@ var flock = flock || {};
      * @param {Object} audioSettings the current audio system settings
      * @return a channel-interleaved output buffer containing roughly the number of needed samples
      */
-    flock.interleavedDemandWriter = function (needed, evalFn, outUGen, audioSettings) {
+    flock.interleavedDemandWriter = function (needed, evalFn, speakers, audioSettings) {
         var kr = audioSettings.rates.control,
             chans = audioSettings.chans,
             // Figure out how many control periods worth of samples to generate.
             // This means that we'll probably be writing slightly more or less than needed.
             numKRBufs = Math.round(needed / kr),
             outBufSize = numKRBufs * kr * chans,
-            outBuf = new Float32Array(outBufSize);
+            outBuf = new Float32Array(outBufSize); // TODO: Don't generate a new buffer each time through.
             
         for (var i = 0; i < numKRBufs; i++) {
             evalFn();
-            var krBufs = outUGen.output;
+            var sourceBufs = speakers;
             var offset = i * kr * chans;
             
             // Interleave each output channel.
             for (var chan = 0; chan < chans; chan++) {
-                var krBuf = krBufs[chan];
+                var sourceBuf = sourceBufs[chan];
                 for (var samp = 0; samp < kr; samp++) {
                     var frameIdx = samp * chans + offset;
-                    outBuf[frameIdx + chan] = krBuf[samp];
+                    outBuf[frameIdx + chan] = sourceBuf[samp];
                 }
             }
         }
@@ -512,78 +512,166 @@ var flock = flock || {};
         return outBuf;
     };
     
-    flock.environment = function () {
-        var envFn = typeof (window.webkitAudioContext) !== "undefined" ?
-            flock.environment.webkit : flock.environment.moz;
-        return envFn.apply(null, arguments);
+    var setupEnviro = function (that) {
+        var setupFn = typeof (window.webkitAudioContext) !== "undefined" ?
+            flock.enviro.webkit : flock.enviro.moz;
+        setupFn(that);
     };
     
-    flock.environment.moz = function (evalFn, outUGen, audioSettings, model) {
+    flock.enviro = function (options) {
+        options = options || {};        
         var that = {
-            audioEl: new Audio(),
-            evalFn: evalFn,
-            outUGen: outUGen,
-            audioSettings: audioSettings,
-            model: model
+            audioSettings: {
+                rates: {
+                    audio: options.sampleRate || flock.defaults.rates.audio,
+                    control: options.controlRate || flock.defaults.rates.control,
+                    constant: options.constantRate || flock.defaults.rates.constant
+                },
+                chans: options.chans || 2
+            },
+            model: {
+                playState: {
+                    written: 0,
+                    total: null
+                }
+            },
+            nodes: []
         };
+        that.buffers = flock.enviro.createAudioBuffers(16, that.audioSettings.rates.control);
+        that.speakers = that.buffers.splice(0, that.audioSettings.chans);
+        
+        /**
+         * Starts generating samples from all synths.
+         *
+         * @param {Number} dur optional duration to play in seconds
+         */
+        that.play = function (dur) {
+            var playState = that.model.playState,
+                sps = dur * (that.audioSettings.rates.audio * that.audioSettings.chans);
+                
+            playState.total = dur === undefined ? Infinity :
+                playState.total === Infinity ? sps : playState.written + sps;
+            that.registerCallback();
+        };
+        
+        /**
+         * Stops generating samples from all synths.
+         */
+        that.stop = function () {
+            that.unregisterCallback();
+        };
+        
+        that.gen = function () {
+            flock.enviro.evalGraph(that.nodes, that.audioSettings.rates.control);
+        };
+        
+        that.head = function (node) {
+            that.nodes.unshift(node);
+        };
+        
+        that.before = function (refNode, node) {
+            var refIdx = that.nodes.indexOf(refNode);
+            that.at(refIdx, node);
+        };
+        
+        that.after = function (refNode, node) {
+            var refIdx = that.nodes.indexOf(refNode);
+            that.at(refIdx + 1, node);
+        };
+        
+        that.at = function (idx, node) {
+            that.nodes.splice(idx, 0, node);
+        };
+        
+        that.tail = function (node) {
+            that.nodes.push(node);
+        };
+
+        setupEnviro(that);
+        return that;
+    };
+
+    flock.enviro.createAudioBuffers = function (numBufs, kr) {
+        var bufs = [],
+            i;
+        for (i = 0; i < numBufs; i++) {
+            bufs[i] = new Float32Array(kr);
+        }
+        return bufs;
+    };
+    
+    flock.enviro.evalGraph = function (nodes, kr) {
+        var i,
+            node;
+        for (i = 0; i < nodes.length; i++) {
+            node = nodes[i];
+            node.gen(node.rate === flock.rates.AUDIO ? kr : 1);
+        }
+    };
+    
+    /**
+     * Mixes in Firefox-specific Audio Data API implementations for outputting audio
+     *
+     * @param that the environment to mix into
+     */
+    flock.enviro.moz = function (that) {
+        that.audioEl = new Audio();
         that.model.writeInterval = that.model.writeInterval || flock.defaults.writeInterval;
         that.audioSettings.bufferSize = flock.minBufferSize(flock.defaults.minLatency, that.audioSettings);
         that.audioEl.mozSetup(that.audioSettings.chans, that.audioSettings.rates.audio);
         that.playbackTimerId = null;
         
-        that.play = function () {
+        that.registerCallback = function () {
             // Don't play if we're already playing.
             if (that.playbackTimerId) {
                 return;
             }
             
             that.playbackTimerId = window.setInterval(function () {
-                var playState = that.model;
+                var playState = that.model.playState;
                 var needed = that.audioEl.mozCurrentSampleOffset() + 
                     that.audioSettings.bufferSize - playState.written;
                 if (needed < 0) {
                     return;
                 }
                 
-                var outBuf = flock.interleavedDemandWriter(needed, that.evalFn, that.outUGen, that.audioSettings);
-                
+                var outBuf = flock.interleavedDemandWriter(needed, that.gen, that.speakers, that.audioSettings);
                 playState.written += that.audioEl.mozWriteAudio(outBuf);
                 if (playState.written >= playState.total) {
                     that.stop();
                 }
-            }, that.writeInterval);
+            }, that.model.writeInterval);
         };
         
-        that.stop = function () {
+        that.unregisterCallback = function () {
             window.clearInterval(that.playbackTimerId);
             that.playbackTimerId = null;
-        };
-        
-        return that;
+        };        
     };
 
-    var setupWebKitEnv = function (that) {
+
+    var setupWebKitEnviro = function (that) {
         that.jsNode.onaudioprocess = function (e) {
             var kr = flock.defaults.rates.control,
                 playState = that.model,
                 chans = that.audioSettings.chans,
                 bufSize = that.audioSettings.bufferSize,
                 numKRBufs = bufSize / kr,
+                sourceBufs = that.speakers,
                 outBufs = e.outputBuffer;
 
             for (var i = 0; i < numKRBufs; i++) {
-                that.evalFn();
-                var krBufs = that.outUGen.output,
-                    offset= i * kr;
+                that.gen();
+                var offset = i * kr;
 
                 // Loop through each channel.
                 for (var chan = 0; chan < chans; chan++) {
-                    var outBuf = outBufs.getChannelData(chan),
-                        krBuf = krBufs[chan];
+                    var sourceBuf = sourceBufs[chan],
+                        outBuf = outBufs.getChannelData(chan);
                     
                     // And output each sample.
                     for (var samp = 0; samp < kr; samp++) {
-                        outBuf[samp + offset] = krBuf[samp];
+                        outBuf[samp + offset] = sourceBuf[samp];
                     }
                 }
             }
@@ -596,60 +684,44 @@ var flock = flock || {};
         that.source.connect(that.jsNode);
     };
     
-    flock.environment.webkit = function (evalFn, outUGen, audioSettings, model) {
-        var that = {
-            evalFn: evalFn,
-            outUGen: outUGen,
-            audioSettings: audioSettings,
-            context: new webkitAudioContext(),
-            model: model
-        };
+    
+    /**
+     * Mixes in WebKit-specific Web Audio API implementations for outputting audio
+     *
+     * @param that the environment to mix into
+     */
+    flock.enviro.webkit = function (that) {
+        that.context = new webkitAudioContext();
         that.audioSettings.bufferSize = 4096; // TODO: how does this relate to minimum latency?
         that.source = that.context.createBufferSource();
         that.jsNode = that.context.createJavaScriptNode(that.audioSettings.bufferSize);
         
-        that.play = function () {
+        that.registerCallback = function () {
             that.jsNode.connect(that.context.destination);
         };
         
-        that.stop = function () {
+        that.unregisterCallback = function () {
             that.jsNode.disconnect(0);
         };
         
-        setupWebKitEnv(that);
-        return that;
+        setupWebKitEnviro(that);
     };
     
-    flock.environment.evalGraph = function (nodes, kr) {
-        var i,
-            node;
-        for (i = 0; i < nodes.length; i++) {
-            node = nodes[i];
-            node.gen(node.rate === flock.rates.AUDIO ? kr : 1);
-        }
-    };
+    // Immediately register a singleton environment for the page.
+    // Users are free to replace this with their own if needed.
+    // TODO: Avoid dorky globalism?
+    flock.enviro.shared = flock.enviro();
     
-    flock.synth = function (def, options) {
-        options = options || {};
+    
+    flock.synth = function (def) {
         var that = {
             rate: flock.rates.AUDIO,
-            audioSettings: {
-                rates: {
-                    audio: options.sampleRate || flock.defaults.rates.audio,
-                    control: options.controlRate || flock.defaults.rates.control,
-                    constant: options.constantRate || flock.defaults.rates.constant
-                },
-                chans: options.chans || 2
-            },
             model: {
-                synthDef: def,
-                playState: {
-                    written: 0,
-                    total: null
-                }
+                synthDef: def
             }
         };
-        that.inputUGens = flock.parse.synthDef(that.model.synthDef, that.audioSettings);
+        that.enviro = flock.enviro.shared;
+        that.inputUGens = flock.parse.synthDef(that.model.synthDef, that.enviro.audioSettings);
         that.ugens = that.inputUGens[flock.ALL_UGENS_ID];
         that.out = that.inputUGens[flock.OUT_UGEN_ID];
         
@@ -661,21 +733,7 @@ var flock = flock || {};
          */
         that.gen = function () {
             // Synths always evaluate their ugen graph at the audio rate.
-            flock.environment.evalGraph(that.ugens, that.audioSettings.rates.control);
-        };
-        
-        /**
-         * Plays the synth.
-         *
-         * @param {Number} dur optional duration to play this synth in seconds
-         */ 
-        that.play = function (dur) {
-            var playState = that.model.playState,
-                sps = dur * (that.audioSettings.rates.audio * that.audioSettings.chans);
-                
-            playState.total = dur === undefined ? Infinity :
-                playState.total === Infinity ? sps : playState.written + sps;
-            that.environment.play();
+            flock.enviro.evalGraph(that.ugens, that.enviro.audioSettings.rates.control);
         };
         
         /**
@@ -729,13 +787,21 @@ var flock = flock || {};
             var expanded = path.replace(".", ".inputs.");
             return arguments.length < 2 ? that.getUGenPath(expanded) : that.setUGenPath(expanded, val);
         };
-        
-        that.environment = flock.environment(that.gen, that.out, that.audioSettings, that.model.playState);
+                
+        /**
+         * Plays the synth.
+         *
+         * @param {Number} dur optional duration to play this synth in seconds
+         */
+        that.play = that.enviro.play;
         
         /**
          * Stops the synth if it is currently playing.
          */
-        that.stop = that.environment.stop;
+        that.stop = that.enviro.stop;
+        
+        // TODO: Invert this somehow.
+        that.enviro.tail(that);
         
         return that;
     };
