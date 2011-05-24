@@ -14,7 +14,7 @@ var flock = flock || {};
     "use strict";
     
     var simpleSynthDef = {
-        ugen: "flock.ugen.stereoOut",
+        ugen: "flock.ugen.out",
         inputs: {
             source: {
                 id: "sine",
@@ -29,7 +29,8 @@ var flock = flock || {};
                         }
                     }
                 }
-            }
+            },
+            buffer: 0
         }
     };
     
@@ -195,7 +196,7 @@ var flock = flock || {};
     test("flock.parse.synthDef(), output specified", function () {
         var expandedTestSynthDef = {
             id: flock.OUT_UGEN_ID,
-            ugen: "flock.ugen.stereoOut",
+            ugen: "flock.ugen.out",
             inputs: {
                 source: {
                     id: "sine",
@@ -210,7 +211,8 @@ var flock = flock || {};
                             }
                         }
                     }
-                }
+                },
+                buffer: 0
             }
         };
         checkParsedTestSynthDef(expandedTestSynthDef, 1);

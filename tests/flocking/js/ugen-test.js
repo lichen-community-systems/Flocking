@@ -37,6 +37,16 @@ var flock = flock || {};
         return that;
     };
     
+    var bufferValueUGen = flock.ugen.value({value: 0}, new Float32Array(1));
+    var stereoExpandValueUGen = flock.ugen.value({value: 2}, new Float32Array(1));
+    
+    // TODO: Awkward mock globalism.
+    flock.enviro.shared = {
+        buffers: []
+    };
+    
+    // TODO: Create these graphs declaratively!
+    
     module("Output tests");
     
     var checkOutput = function (numSamps, chans, outUGen, expectedBuffer, msg) {
@@ -48,14 +58,14 @@ var flock = flock || {};
         };
         
         var mockEval = function () {};
-        var actual = flock.interleavedDemandWriter(numSamps, mockEval, outUGen, audioSettings);
+        var actual = flock.interleavedDemandWriter(numSamps, mockEval, flock.enviro.shared.buffers, audioSettings);
         deepEqual(actual, expectedBuffer, msg);
     };
 
     test("flock.interleavedDemandWriter() mono input, mono output", function () {
-        // Test with a single input buffer being multiplexed by stereoOut.
+        // Test with a single input buffer being multiplexed by ugen.out.
         var mockLeftUGen = makeMockUGen(mockLeft);
-        var out = flock.ugen.stereoOut({source: mockLeftUGen}, []);
+        var out = flock.ugen.out({source: mockLeftUGen, buffer: bufferValueUGen}, []);
 
         // Pull the whole buffer.
         var expected = new Float32Array([
@@ -74,7 +84,7 @@ var flock = flock || {};
     test("flock.interleavedDemandWriter() mono input, stereo output", function () {
         // Test with a single mono input buffer.
         var mockLeftUGen = makeMockUGen(mockLeft);
-        var out = flock.ugen.stereoOut({source: mockLeftUGen}, []);
+        var out = flock.ugen.out({source: mockLeftUGen, buffer: bufferValueUGen, expand: stereoExpandValueUGen}, []);
 
         // Pull the whole buffer.
         var expected = new Float32Array([
@@ -89,11 +99,12 @@ var flock = flock || {};
 
     test("flock.interleavedDemandWriter() stereo input", function () {
         // Test with two input buffers.
-        var out = flock.ugen.stereoOut({
+        var out = flock.ugen.out({
             source: [
                 makeMockUGen(mockLeft), 
                 makeMockUGen(mockRight)
-            ]
+            ],
+            buffer: bufferValueUGen
         }, []);
 
         // Pull the whole buffer. Expect a stereo interleaved buffer as the result, 

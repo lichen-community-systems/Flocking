@@ -20,7 +20,7 @@ var flock = flock || {};
             periods = Math.ceil(44100 * duration / kr),
             i;
         for (i = 0; i < periods; i++) {
-            flock.environment.evalGraph(ugens, kr);
+            flock.enviro.evalGraph(ugens, kr);
         }
     };
     
@@ -45,17 +45,19 @@ var flock = flock || {};
         ok(actual <= expectedCeiling, msg + " Actual is: " + actual + ".");
     };
     
-    test("flock.ugen.value with flock.ugen.stereoOut", function () {
+    test("flock.ugen.value with stereo flock.ugen.out", function () {
         var synth = flock.synth({
             id: flock.OUT_UGEN_ID,
-            ugen: "flock.ugen.stereoOut",
+            ugen: "flock.ugen.out",
             inputs: {
                 source: {
                     ugen: "flock.ugen.value",
                     inputs: {
                         value: 12
                     }
-                }
+                },
+                buffer: 0,
+                expand: 2
             }
         });
         

@@ -450,20 +450,42 @@ var flock = flock || {};
     
     flock.ugen.out = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.output = that.inputs.source.output;
-        return that;
-    };
-    
-    flock.ugen.stereoOut = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
+        
+        that.krBufferMultiChan = function () {
+            var source = that.inputs.source,
+                buffers = flock.enviro.shared.buffers,
+                bufStart = that.inputs.buffer.output[0],
+                i;
+                
+            for (i = 0; i < source.length; i++) {
+                buffers[bufStart + i] = source[i].output;
+            }
+        };
+        
+        that.krBufferExpandSingle = function () {
+            var source = that.inputs.source,
+                buffers = flock.enviro.shared.buffers,
+                bufStart = that.inputs.buffer.output[0],
+                chans = that.model.chans,
+                i;
+                
+            for (i = 0; i < chans; i++) {
+                buffers[bufStart + i] = source.output;
+            }
+        };
         
         that.onInputChanged = function () {
-            var source = that.inputs.source;
-            if (typeof (source.length) === "number") {
-                that.output = [source[0].output, source[1].output];
-            } else {
-                that.output = [source.output, source.output];
+            var isMulti = typeof (that.inputs.source.length) === "number",
+                genFn = isMulti ? that.krBufferMultiChan : that.krBufferExpandSingle;            
+            
+            // The bus input is changing at control rate, so register the gen function.
+            if (that.inputs.buffer.rate === flock.rates.CONTROL) {
+                that.gen = genFn;
             }
+
+            // Setup the outputs right away.
+            that.model.chans = that.inputs.expand ? that.inputs.expand.output[0] : 1; // Assume constant rate.
+            genFn();
         };
         
         that.onInputChanged();
@@ -485,7 +507,7 @@ var flock = flock || {};
      * @param {Object} audioSettings the current audio system settings
      * @return a channel-interleaved output buffer containing roughly the number of needed samples
      */
-    flock.interleavedDemandWriter = function (needed, evalFn, speakers, audioSettings) {
+    flock.interleavedDemandWriter = function (needed, evalFn, sourceBufs, audioSettings) {
         var kr = audioSettings.rates.control,
             chans = audioSettings.chans,
             // Figure out how many control periods worth of samples to generate.
@@ -496,7 +518,6 @@ var flock = flock || {};
             
         for (var i = 0; i < numKRBufs; i++) {
             evalFn();
-            var sourceBufs = speakers;
             var offset = i * kr * chans;
             
             // Interleave each output channel.
@@ -538,7 +559,6 @@ var flock = flock || {};
             nodes: []
         };
         that.buffers = flock.enviro.createAudioBuffers(16, that.audioSettings.rates.control);
-        that.speakers = that.buffers.splice(0, that.audioSettings.chans);
         
         /**
          * Starts generating samples from all synths.
@@ -635,7 +655,7 @@ var flock = flock || {};
                     return;
                 }
                 
-                var outBuf = flock.interleavedDemandWriter(needed, that.gen, that.speakers, that.audioSettings);
+                var outBuf = flock.interleavedDemandWriter(needed, that.gen, that.buffers, that.audioSettings);
                 playState.written += that.audioEl.mozWriteAudio(outBuf);
                 if (playState.written >= playState.total) {
                     that.stop();
@@ -657,7 +677,7 @@ var flock = flock || {};
                 chans = that.audioSettings.chans,
                 bufSize = that.audioSettings.bufferSize,
                 numKRBufs = bufSize / kr,
-                sourceBufs = that.speakers,
+                sourceBufs = that.buffers,
                 outBufs = e.outputBuffer;
 
             for (var i = 0; i < numKRBufs; i++) {
@@ -764,7 +784,7 @@ var flock = flock || {};
                 ugenPath = ugenInputPath.substring(0, ugenInputPath.lastIndexOf(".")),
                 inputName = path.substring(lastSegIdx + 1),
                 ugen = flock.resolvePath(ugenPath, that.inputUGens),
-                inputUGen = flock.parse.ugenForInputDef(val, that.audioSettings.rates);
+                inputUGen = flock.parse.ugenForInputDef(val, that.enviro.audioSettings.rates);
                 
             ugen.inputs[inputName] = inputUGen;
             ugen.onInputChanged();
@@ -821,9 +841,11 @@ var flock = flock || {};
         if (typeof (ugenDef.length) === "number" || ugenDef.id !== flock.OUT_UGEN_ID) {
             ugenDef = {
                 id: flock.OUT_UGEN_ID,
-                ugen: (options.chans === 2) ? "flock.ugen.stereoOut" : "flock.ugen.out",
+                ugen: "flock.ugen.out",
                 inputs: {
-                    source: ugenDef
+                    source: ugenDef,
+                    buffer: 0,
+                    expand: options.chans
                 }
             };
         }
