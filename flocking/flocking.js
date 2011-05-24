@@ -475,17 +475,9 @@ var flock = flock || {};
         };
         
         that.onInputChanged = function () {
-            var isMulti = typeof (that.inputs.source.length) === "number",
-                genFn = isMulti ? that.krBufferMultiChan : that.krBufferExpandSingle;            
-            
-            // The bus input is changing at control rate, so register the gen function.
-            if (that.inputs.buffer.rate === flock.rates.CONTROL) {
-                that.gen = genFn;
-            }
-
-            // Setup the outputs right away.
+            var isMulti = typeof (that.inputs.source.length) === "number";
+            that.gen = isMulti ? that.krBufferMultiChan : that.krBufferExpandSingle;            
             that.model.chans = that.inputs.expand ? that.inputs.expand.output[0] : 1; // Assume constant rate.
-            genFn();
         };
         
         that.onInputChanged();
@@ -605,6 +597,11 @@ var flock = flock || {};
         
         that.tail = function (node) {
             that.nodes.push(node);
+        };
+        
+        that.remove = function (node) {
+            var idx = that.nodes.indexOf(node);
+            that.nodes.splice(idx, 1);
         };
 
         setupEnviro(that);
@@ -809,20 +806,26 @@ var flock = flock || {};
         };
                 
         /**
-         * Plays the synth.
+         * Plays the synth. This is a convenience method that will add the synth to the tail of the
+         * environment's node graph and then play the environmnent.
          *
          * @param {Number} dur optional duration to play this synth in seconds
          */
-        that.play = that.enviro.play;
+        that.play = function () {
+            that.enviro.tail(that);
+            that.enviro.play();
+        };
         
         /**
          * Stops the synth if it is currently playing.
+         * This is a convenience method that will remove the synth from the environment's node graph
+         * and then stop the environment.
          */
-        that.stop = that.enviro.stop;
-        
-        // TODO: Invert this somehow.
-        that.enviro.tail(that);
-        
+        that.stop = function () {
+            that.enviro.stop();
+            that.enviro.remove(that);
+        };
+                
         return that;
     };
     
