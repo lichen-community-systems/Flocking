@@ -68,8 +68,8 @@ var flock = flock || {};
     
     module("flock.ugen.sinOsc tests");
     
-    var checkSinGen = function (inputs, expectedCeil, msg) {
-        var sinOsc = flock.ugen.sinOsc(inputs, new Float32Array(64)),
+    var checkUGen = function (ugenName, inputs, expectedCeil, msg) {
+        var sinOsc = flock.invokePath(ugenName, [inputs, new Float32Array(64)]),
             ugens = [sinOsc];
             
         for (var inputName in inputs) {
@@ -82,48 +82,81 @@ var flock = flock || {};
         assertCeiling(avg, expectedCeil, msg);
     };
     
-    test("Plain audio rate flock.ugen.sinOsc", function () {
-        var crFreq = flock.ugen.value({value: 440}, new Float32Array(1));
-        var crPhase = flock.ugen.value({value: 20}, new Float32Array(1));
+    var crFreq = flock.ugen.value({value: 440}, new Float32Array(1));
+    var crPhase = flock.ugen.value({value: 20}, new Float32Array(1));
+    var krSinFreq = flock.ugen.sinOsc({freq: crPhase}, new Float32Array(1), {rate: "control"});
+    var krSinPhase = flock.ugen.sinOsc({freq: crPhase}, new Float32Array(1), {rate: "control"});
+    var arSinFreq = flock.ugen.sinOsc({freq: flock.ugen.value({value: 123}, new Float32Array(1))}, new Float32Array(64));
+    var arSinPhase = flock.ugen.sinOsc({freq: crPhase}, new Float32Array(64));
+    
+    var testConfigs = [
+        {
+            inputs: {
+                freq: crFreq
+            },
+            maxDur: 45
+        },
+        {
+            inputs: {
+                freq: crFreq,
+                phase: crPhase
+            },
+            maxDur: 45
+        },
+        {
+            inputs: {
+                freq: krSinFreq
+            },
+            maxDur: 45
+        },
+        {
+            inputs: {
+                freq: krSinFreq,
+                phase: krSinPhase
+            },
+            maxDur: 45
+        },
+        {
+            inputs: {
+                freq: arSinFreq
+            },
+            maxDur: 90
+        },
+        {
+            inputs: {
+                freq: arSinFreq,
+                phase: arSinPhase
+            },
+            maxDur: 135
+        }
         
-        // Audio rate with constant rate freq input.
-        var inputs = {
-            freq: crFreq
-        };
-        checkSinGen(inputs, 45, 
-            "Generating a 1 second signal from flock.ugen.sinOsc with a constant frequency should take less than 45ms.");
-        
-        // Audio rate with constant rate freq and phase inputs.
-        inputs.phase = crPhase;
-        checkSinGen(inputs, 45,
-            "Generating a 1 second signal from flock.ugen.sinOsc with constant freq and phase inputs should take less than 45ms.");
-        
-        // Audio rate with control rate freq input.
-        var krSinFreq = flock.ugen.sinOsc({freq: crPhase}, new Float32Array(1), {rate: "control"});
-        inputs = {
-            freq: krSinFreq
-        };
-        checkSinGen(inputs, 45,
-            "Generating a 1 second signal from sinOsc with a control rate sinOsc freq input should take less than 45ms.");
-        
-        // Audio rate with control rate freq and phase inputs.
-        var krSinPhase = flock.ugen.sinOsc({freq: crPhase}, new Float32Array(1), {rate: "control"});
-        inputs.phase = krSinPhase;
-        checkSinGen(inputs, 45,
-            "Generating a 1 second signal from sinOsc with control rate freq and phase sinOsc inputs should take less than 45ms.");
-        
-        // Audio rate with audio rate freq input.
-        var arSinFreq = flock.ugen.sinOsc({freq: flock.ugen.value({value: 123}, new Float32Array(1))}, new Float32Array(64));
-        inputs = {
-            freq: arSinFreq
-        };
-        checkSinGen(inputs, 90,
-            "Generating a 1 second signal from sinOsc with an audio rate sinOsc freq input should take less than 90ms.");
-        
-        // Audio rate with audio rate freq and phase inputs.
-        var arSinPhase = flock.ugen.sinOsc({freq: crPhase}, new Float32Array(64));
-        inputs.phase = arSinPhase;
-        checkSinGen(inputs, 135,
-            "Generating a 1 second signal from sinOsc with audio rate freq and phase sinOsc inputs should take less than 135 ms.");
-    });
+    ];
+    
+    var runTest = function (ugenName, inputs, maxDur, msg) {
+        test(msg, function () {
+            checkUGen(ugenName, inputs, maxDur, "Should take no longer than " + maxDur + " seconds.");
+        });
+    }
+    var testConfigurations = function (ugenName, configs) {
+        var i,
+            config,
+            inputs,
+            inputName,
+            input,
+            msg;
+            
+        for (i = 0; i < configs.length; i++) {
+            config = configs[i];
+            inputs = config.inputs;
+            msg = "1 sec. signal from " + ugenName + " with ";
+            
+            for (inputName in inputs) {
+                input = inputs[inputName];
+                msg += input.rate + " rate " + inputName + ", ";
+            }
+            runTest(ugenName, inputs, config.maxDur, msg);
+        }
+    };
+    
+    testConfigurations("flock.ugen.sinOsc", testConfigs);
 })();
