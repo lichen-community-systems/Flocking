@@ -168,54 +168,43 @@ var flock = flock || {};
         
         checkRegisteredUGens(parsedUGens, expectedNumEvalUGens);
         ok(parsedUGens.sine, "The sine ugen should be keyed by its id....");
-        ok(parsedUGens.sine.inputs.table, "...and it should be a real sine ugen.");
+        equals(0, parsedUGens.sine.model.phase, "...and it should be a real osc ugen.");
         
         ok(parsedUGens.mul, "The mul ugen should be keyed by its id...");
         ok(parsedUGens.mul.model.value, "...and it should be a real value ugen.");
     };
     
-    test("flock.parse.synthDef(), no output specified", function () {
-        var condensedTestSynthDef = {
-            id: "sine",
-            ugen: "flock.ugen.sinOsc",
-            inputs: {
-                freq: 440,
-                mul: {
-                    id: "mul",
-                    ugen: "flock.ugen.value",
-                    inputs: {
-                        value: 1.0
-                    }
+    var condensedTestSynthDef = {
+        id: "sine",
+        ugen: "flock.ugen.sinOsc",
+        inputs: {
+            freq: 440,
+            mul: {
+                id: "mul",
+                ugen: "flock.ugen.value",
+                inputs: {
+                    value: 1.0
                 }
             }
-        };
-
-        checkParsedTestSynthDef(condensedTestSynthDef, 1);
-    });
+        }
+    };    
     
+    
+    var expandedTestSynthDef = {
+        id: flock.OUT_UGEN_ID,
+        ugen: "flock.ugen.out",
+        inputs: {
+            source: condensedTestSynthDef,
+            buffer: 0
+        }
+    };
+    
+    test("flock.parse.synthDef(), no output specified", function () {
+        checkParsedTestSynthDef(condensedTestSynthDef, 2);
+    });
+
     test("flock.parse.synthDef(), output specified", function () {
-        var expandedTestSynthDef = {
-            id: flock.OUT_UGEN_ID,
-            ugen: "flock.ugen.out",
-            inputs: {
-                source: {
-                    id: "sine",
-                    ugen: "flock.ugen.sinOsc",
-                    inputs: {
-                        freq: 440,
-                        mul: {
-                            id: "mul",
-                            ugen: "flock.ugen.value",
-                            inputs: {
-                                value: 1.0
-                            }
-                        }
-                    }
-                },
-                buffer: 0
-            }
-        };
-        checkParsedTestSynthDef(expandedTestSynthDef, 1);
+        checkParsedTestSynthDef(expandedTestSynthDef, 2);
     });
     
     test("flock.parse.synthDef() with multiple channels", function () {
@@ -244,7 +233,7 @@ var flock = flock || {};
             },
             chans: 2
         });
-        checkRegisteredUGens(parsedUGens, 2);
+        checkRegisteredUGens(parsedUGens, 3);
         ok(parsedUGens.leftSine, "The left sine ugen should have been parsed correctly.");
         ok(parsedUGens.rightSine, "The right sine ugen should have been parsed correctly.");
         deepEqual(parsedUGens[flock.OUT_UGEN_ID].inputs.source, 

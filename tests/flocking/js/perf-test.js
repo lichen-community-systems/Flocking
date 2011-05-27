@@ -61,16 +61,16 @@ var flock = flock || {};
             }
         });
         
-        var avg = runTimingTest(synth.ugens, 1, 10);
-        assertCeiling(avg, 2, 
-            "Generating and outputting 1 second of stereo signal from flock.ugen.value should take less than 2.1 ms.");
+        var avg = runTimingTest(synth.ugens, 1, 25);
+        assertCeiling(avg, 2.5, 
+            "Generating and outputting 1 second of stereo signal from flock.ugen.value should take less than 2.5 ms.");
     });
     
     module("flock.ugen.sinOsc tests");
     
     var checkUGen = function (ugenName, inputs, expectedCeil, msg) {
-        var sinOsc = flock.invokePath(ugenName, [inputs, new Float32Array(64)]),
-            ugens = [sinOsc];
+        var ugen = flock.invokePath(ugenName, [inputs, new Float32Array(64)]),
+            ugens = [ugen];
             
         for (var inputName in inputs) {
             var input = inputs[inputName];
@@ -78,7 +78,7 @@ var flock = flock || {};
                 ugens.push(input);
             }
         }
-        var avg = runTimingTest(ugens, 1, 10);
+        var avg = runTimingTest(ugens, 1, 25);
         assertCeiling(avg, expectedCeil, msg);
     };
     

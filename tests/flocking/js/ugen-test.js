@@ -40,11 +40,6 @@ var flock = flock || {};
     var bufferValueUGen = flock.ugen.value({value: 0}, new Float32Array(1));
     var stereoExpandValueUGen = flock.ugen.value({value: 2}, new Float32Array(1));
     
-    // TODO: Awkward mock globalism.
-    flock.enviro.shared = {
-        buffers: []
-    };
-    
     // TODO: Create these graphs declaratively!
     
     module("Output tests");
@@ -57,8 +52,10 @@ var flock = flock || {};
             chans: chans
         };
         
-        var mockEval = function () {};
-        var actual = flock.interleavedDemandWriter(numSamps, mockEval, flock.enviro.shared.buffers, audioSettings);
+        var evalFn = function () {
+            outUGen.gen(numSamps);
+        };
+        var actual = flock.interleavedDemandWriter(numSamps, evalFn, flock.enviro.shared.buffers, audioSettings);
         deepEqual(actual, expectedBuffer, msg);
     };
 
@@ -306,9 +303,11 @@ var flock = flock || {};
             sampleRate: sampleRate
         };
         
-        var freqUGen = flock.ugen.value({value: freq}, new Float32Array(bufferSize), ugenOptions);
-        var osc = flock.ugen.osc({freq: freqUGen}, new Float32Array(bufferSize), ugenOptions);
-        osc.inputs.table = table;
+        var inputs = {
+            freq: flock.ugen.value({value: freq}, new Float32Array(bufferSize), ugenOptions),
+            table: table
+        };
+        var osc = flock.ugen.osc(inputs, new Float32Array(bufferSize), ugenOptions);
         return osc;
     };
     
