@@ -83,11 +83,11 @@ var flock = flock || {};
     };
     
     var crFreq = flock.ugen.value({value: 440}, new Float32Array(1));
-    var crPhase = flock.ugen.value({value: 20}, new Float32Array(1));
-    var krSinFreq = flock.ugen.sinOsc({freq: crPhase}, new Float32Array(1), {rate: "control"});
-    var krSinPhase = flock.ugen.sinOsc({freq: crPhase}, new Float32Array(1), {rate: "control"});
+    var crPhase = flock.ugen.value({value: flock.TWOPI}, new Float32Array(1));
+    var krSinFreq = flock.ugen.sinOsc({freq: flock.ugen.value({value: 20}, new Float32Array(1))}, new Float32Array(1), {rate: "control"});
+    var krSinPhase = flock.ugen.sinOsc({freq: crFreq, mul: crPhase}, new Float32Array(1), {rate: "control"});
     var arSinFreq = flock.ugen.sinOsc({freq: flock.ugen.value({value: 123}, new Float32Array(1))}, new Float32Array(64));
-    var arSinPhase = flock.ugen.sinOsc({freq: crPhase}, new Float32Array(64));
+    var arSinPhase = flock.ugen.sinOsc({freq: crFreq, mul: crPhase}, new Float32Array(64));
     
     var testConfigs = [
         {

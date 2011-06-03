@@ -18,7 +18,6 @@ var flock = flock || {};
     flock.OUT_UGEN_ID = "flocking-out";
     flock.ALL_UGENS_ID = "flocking-all";
     flock.TWOPI = 2.0 * Math.PI;
-    flock.RTWOPI = 1.0 / flock.TWOPI;
     
     flock.rates = {
         AUDIO: "audio",
@@ -201,7 +200,6 @@ var flock = flock || {};
         return that;
     };
     
-    // TODO: Add support for a phase input.
     flock.ugen.osc = function (inputs, output, options) {
         var that = flock.ugen.mulAdd(inputs, output, options);
         that.model.phase = 0.0;
@@ -340,7 +338,7 @@ var flock = flock || {};
             // TODO: The table input here isn't a standard ugen input. Does this matter?
             that.model.tableLen = that.inputs.table.length;
             that.model.tableIncHz = that.model.tableLen / that.sampleRate;
-            that.model.tableIncRad =  flock.RTWOPI * that.model.tableLen;
+            that.model.tableIncRad =  that.model.tableLen / flock.TWOPI;
         };
         
         that.onInputChanged();
@@ -360,12 +358,12 @@ var flock = flock || {};
         }
     };
     
-    flock.ugen.lookupSin = function (inputs, output, options) {
+    flock.ugen.sinOsc = function (inputs, output, options) {
         inputs.table = flock.ugen.sinOsc.fillTable(flock.defaults.tableSize);
         return flock.ugen.osc(inputs, output, options);
     };
     
-    flock.ugen.sin.fillTable = function (size) {
+    flock.ugen.sinOsc.fillTable = function (size) {
         var table = new Float32Array(size),
             scale = flock.TWOPI / size,
             i;
@@ -377,7 +375,7 @@ var flock = flock || {};
         return table;
     };
     
-    flock.ugen.sinOsc = function (inputs, output, options) {
+    flock.ugen.sin = function (inputs, output, options) {
         var that = flock.ugen.mulAdd(inputs, output, options);
         that.model.phase = 0.0;
         
