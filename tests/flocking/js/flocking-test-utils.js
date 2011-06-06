@@ -26,4 +26,27 @@ var flock = flock || {};
         return numKeys;
     };
     
+    flock.test.fillBuffer = function (start, end, skip) {
+        var buf = [],
+            count = 0,
+            val;
+        skip = skip !== undefined ? skip : 1;
+        
+        for (val = start; val <= end; val += skip) {
+            buf[count] = val;
+            count++;
+        }
+        
+        return new Float32Array(buf);
+    };
+    
+    flock.test.constantBuffer = function (size, val) {
+        var buf = new Float32Array(size),
+            i;
+        for (i = 0; i < size; i++) {
+            buf[i] = val;
+        }
+        return buf;
+    }
+    
 }());

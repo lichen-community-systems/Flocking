@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Line Demo</title>
+        
+        <link rel="stylesheet" type="text/css" href="../../shared/css/demos.css" />
+        
+        <script src="../../../flocking/flocking.js"></script>
+        <script src="../../shared/js/demo-utils.js"></script>
+    </head>
+    
+    <body>
+        <h1>Line Demo</h1>
+        <table>
+            <tr>
+                <th>Line w/ SinOsc Freq</th>
+                <td><button id="line-freq">Play</button></td>
+            </tr>
+            <tr>
+                <th>Line w/ Modulated SinOsc Freq</th>
+                <td><button id="complex-line-freq">Play</button></td>
+            </tr>
+            <tr>
+                <th>Line w/ SinOsc Phase</th>
+                <td><button id="line-phase">Play</button></td>
+            </tr>
+        </table>
+        
+        <script type="text/javascript">        
+            // An ascending sinOsc glissando using a line ugen.
+            var lineFreqSynth = flock.synth({
+                ugen: "flock.ugen.sinOsc",
+                inputs: {
+                    freq: {
+                        ugen: "flock.ugen.xLine",
+                        rate: "control",
+                        inputs: {
+                            duration: 1.0,
+                            start: 2000,
+                            end: 200
+                        }
+                    },
+                    mul: 0.5
+                }
+            });            
+            demo.toggleButtonView("line-freq", lineFreqSynth);
+            
+            var complexLineFreqSynth = flock.synth({
+                ugen: "flock.ugen.sinOsc",
+                inputs: {
+                    freq: {
+                        ugen: "flock.ugen.sinOsc",
+                        inputs: {
+                            freq: {
+                                ugen: "flock.ugen.xLine",
+                                rate: "control",
+                                inputs: {
+                                    start: 1,
+                                    end: 1000,
+                                    duration: 9
+                                }
+                            },
+                            mul: 200,
+                            add: 800
+                        }
+                    },
+                    mul: 0.25
+                }
+            });
+            demo.toggleButtonView("complex-line-freq", complexLineFreqSynth);
+                        
+            // Line modulating the phase of a sine oscillator.
+            var linePhaseSynth = flock.synth({
+                ugen: "flock.ugen.sinOsc",
+                inputs: {
+                    freq: 800,
+                    phase: {
+                        ugen: "flock.ugen.sinOsc",
+                        inputs: {
+                            freq: {
+                                ugen: "flock.ugen.xLine",
+                                rate: "control",
+                                inputs: {
+                                    start: 1,
+                                    end: 1000,
+                                    duration: 9
+                                },
+                                mul: flock.TWOPI
+                            },
+                            mul: 0.25
+                        }
+                    }
+                }
+            });
+            demo.toggleButtonView("line-phase", linePhaseSynth);
+        </script>
+    </body>
+</html>

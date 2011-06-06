@@ -365,4 +365,51 @@ var flock = flock || {};
         "At a frequency of 2 and sampling rate of 4, 16 samples should still consist of the first and third samples.");
     });
     
+    
+    /*******************
+     * Line ugen tests *
+     *******************/
+     
+    var lineDef = {
+        ugen: "flock.ugen.line",
+        rate: flock.rates.AUDIO,
+        inputs: {
+            duration: 0.00146, // 64 samples.
+            start: 0,
+            end: 64
+        }
+    };
+     
+    test("flock.ugen.line()", function () {
+        var line = flock.parse.ugenForDef(lineDef);
+        
+        line.gen(64);
+        var expected = flock.test.fillBuffer(0, 63);
+        deepEqual(line.output, expected, "Line should generate all samples for its duration but one.");
+        
+        line.gen(64);
+        expected = flock.test.constantBuffer(64, 64);
+        deepEqual(line.output, expected, "After the line's duration is finished, it should constantly output the end value.");
+    });
+    
+    test("flock.ugen.line() partial generation.", function () {
+        var line = flock.parse.ugenForDef(lineDef);
+        
+        line.gen(32);
+        
+        // It's a 64 sample buffer, so split it in half to test it.
+        var expectedFirst = flock.test.fillBuffer(0, 31);
+        var expectedEmpty = flock.test.constantBuffer(32, 0);
+        deepEqual(line.output.subarray(0, 32), expectedFirst, "The first half of the line's values should but generated.");
+        deepEqual(line.output.subarray(32), expectedEmpty, "The last 32 samples of the buffer should be empty.");
+        
+        line.gen(32);
+        var expectedSecond = flock.test.fillBuffer(32, 63);
+        deepEqual(line.output.subarray(0, 32), expectedSecond, "The second half of the line's values should be generated.");
+        deepEqual(line.output.subarray(32), expectedEmpty, "The last 32 samples of the buffer should be empty.");
+        
+        line.gen(32);
+        var expectedConstant = flock.test.constantBuffer(32, 64);
+        deepEqual(line.output.subarray(0, 32), expectedConstant, "After the line's duration is finished, it should constantly output the end value.");
+    });
 })();

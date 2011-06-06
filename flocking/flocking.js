@@ -480,9 +480,9 @@ var flock = flock || {};
         return that;
     };
     
-    // TODO: Implement control rate version of this algorithm.
     flock.ugen.lfNoise = function (inputs, output, options) {
         var that = flock.ugen.mulAdd(inputs, output, options);
+        that.rate = flock.rates.AUDIO; // TODO: Implement control rate version of this algorithm.
         that.model.counter = 0;
         that.model.level = 0;
         
@@ -518,6 +518,95 @@ var flock = flock || {};
             that.mulAdd(numSamps);
         };
                 
+        return that;
+    };
+    
+    flock.ugen.line = function (inputs, output, options) {
+        var that = flock.ugen.mulAdd(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var stepSize = that.model.stepSize,
+                numSteps = that.model.numSteps,
+                numLevelVals = numSteps >= numSamps ? numSamps : numSteps,
+                numEndVals = numSamps - numLevelVals,
+                level = that.model.level,
+                out = that.output,
+                i;
+            
+            for (i = 0; i < numLevelVals; i++) {
+                out[i] = level;
+                numSteps--;
+                level += stepSize;
+            }
+            
+            // TODO: Implement a more efficient gen algorithm when the line has finished.
+            if (numEndVals > 0) {
+                for (i = 0; i < numEndVals; i++) {
+                    out[i] = level;
+                }
+            }
+            
+            that.model.level = level;
+            that.model.numSteps = numSteps;
+        };
+        
+        that.onInputChanged = function () {
+            // Any change in input value will restart the line.
+            that.model.start = that.inputs.start.output[0];
+            that.model.end = that.inputs.end.output[0];
+            that.model.numSteps = Math.round(that.inputs.duration.output[0] * that.sampleRate); // Duration is seconds.
+            if (that.model.numSteps === 0) {
+                that.model.stepSize = 0.0;
+                that.model.level = that.model.end;
+            } else {
+                that.model.stepSize = (that.model.end - that.model.start) / that.model.numSteps;
+                that.model.level = that.model.start;
+            }
+        };
+        
+        that.onInputChanged();
+        return that;
+    };
+    
+    flock.ugen.xLine = function (inputs, output, options) {
+        var that = flock.ugen.mulAdd(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var multiplier = that.model.multiplier,
+                numSteps = that.model.numSteps,
+                numLevelVals = numSteps >= numSamps ? numSamps : numSteps,
+                numEndVals = numSamps - numLevelVals,
+                level = that.model.level,
+                out = that.output,
+                i;
+            
+            for (i = 0; i < numLevelVals; i++) {
+                out[i] = level;
+                numSteps--;
+                level *= multiplier;
+            }
+            
+            // TODO: Implement a more efficient gen algorithm when the line has finished.
+            if (numEndVals > 0) {
+                for (i = 0; i < numEndVals; i++) {
+                    out[i] = level;
+                }
+            }
+            
+            that.model.level = level;
+            that.model.numSteps = numSteps;
+        };
+        
+        that.onInputChanged = function () {
+            // Any change in input value will restart the line.
+            that.model.start = that.inputs.start.output[0];
+            that.model.end = that.inputs.end.output[0];
+            that.model.numSteps = Math.round(that.inputs.duration.output[0] * that.sampleRate);
+            that.model.multiplier = Math.pow(that.model.end / that.model.start, 1.0 / that.model.numSteps);
+            that.model.level = that.model.start;
+        };
+        
+        that.onInputChanged();
         return that;
     };
     
@@ -977,6 +1066,8 @@ var flock = flock || {};
      *      - inputs: a JSON object containing named key/value pairs for inputs to the unit generator
      */
     flock.parse.ugenForDef = function (ugenDef, rates, ugens) {
+        rates = rates || flock.defaults.rates;
+        
         // We received an array of ugen defs.
         if (typeof (ugenDef.length) === "number") {
             return flock.parse.ugensForDefs(ugenDef, rates, ugens);

@@ -1,0 +1,11 @@
+th, td {
+    background-color: #DDDDDD;
+    padding: 10px;
+}
+th {
+    text-align: left;
+    width: 130px;
+}
+td {
+    width: 50px;
+}
