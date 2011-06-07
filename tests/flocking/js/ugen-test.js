@@ -398,18 +398,19 @@ var flock = flock || {};
         line.gen(32);
         
         // It's a 64 sample buffer, so split it in half to test it.
-        var expectedFirst = flock.test.fillBuffer(0, 31);
-        var expectedEmpty = flock.test.constantBuffer(32, 0);
-        deepEqual(line.output.subarray(0, 32), expectedFirst, "The first half of the line's values should but generated.");
-        deepEqual(line.output.subarray(32), expectedEmpty, "The last 32 samples of the buffer should be empty.");
-        
+        flock.test.assertArrayEquals(line.output.subarray(0, 32), flock.test.fillBuffer(0, 31), 
+            "The first half of the line's values should but generated.");
+        flock.test.assertArrayEquals(line.output.subarray(32), flock.test.constantBuffer(32, 0),
+            "The last 32 samples of the buffer should be empty.");
+
         line.gen(32);
-        var expectedSecond = flock.test.fillBuffer(32, 63);
-        deepEqual(line.output.subarray(0, 32), expectedSecond, "The second half of the line's values should be generated.");
-        deepEqual(line.output.subarray(32), expectedEmpty, "The last 32 samples of the buffer should be empty.");
-        
+        flock.test.assertArrayEquals(line.output.subarray(0, 32), flock.test.fillBuffer(32, 63), 
+            "The second half of the line's values should be generated.");
+        flock.test.assertArrayEquals(line.output.subarray(32), flock.test.constantBuffer(32, 0),
+            "The last 32 samples of the buffer should be empty.");
+                    
         line.gen(32);
-        var expectedConstant = flock.test.constantBuffer(32, 64);
-        deepEqual(line.output.subarray(0, 32), expectedConstant, "After the line's duration is finished, it should constantly output the end value.");
+        flock.test.assertArrayEquals(line.output.subarray(0, 32), flock.test.constantBuffer(32, 64),
+            "After the line's duration is finished, it should constantly output the end value.");
     });
 })();

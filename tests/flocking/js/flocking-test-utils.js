@@ -47,6 +47,11 @@ var flock = flock || {};
             buf[i] = val;
         }
         return buf;
-    }
+    };
     
+    flock.test.assertArrayEquals = function (actual, expected, msg) {
+        for (var i = 0; i < expected.length; i++) {
+            equals(actual[i], expected[i], msg);
+        }
+    };
 }());

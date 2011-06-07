@@ -217,14 +217,14 @@ var flock = flock || {};
                 idx;
 
             for (i = 0; i < numSamps; i++) {
-                idx = phaseAccum + phaseInc;
+                idx = Math.round(phaseAccum + phaseInc);
                 if (idx >= tableLen) {
                     idx -= tableLen;
                 } else if (idx < 0) {
                     idx += tableLen;
                 }
                 
-                output[i] = table[Math.round(idx)];
+                output[i] = table[idx];
                 phaseAccum += freqInc;
                 if (phaseAccum >= tableLen) {
                     phaseAccum -= tableLen;
@@ -250,13 +250,13 @@ var flock = flock || {};
                 idx;
 
             for (i = 0; i < numSamps; i++) {
-                idx = phaseAccum + phase[i] * tableIncRad;
+                idx = Math.round(phaseAccum + phase[i] * tableIncRad);
                 if (idx >= tableLen) {
                     idx -= tableLen;
                 } else if (idx < 0) {
                     idx += tableLen;
                 }
-                output[i] = table[Math.round(idx)];
+                output[i] = table[idx];
                 phaseAccum += freqInc;
                 if (phaseAccum >= tableLen) {
                     phaseAccum -= tableLen;
@@ -281,13 +281,13 @@ var flock = flock || {};
                 idx;
 
             for (i = 0; i < numSamps; i++) {
-                idx = phaseAccum + phaseInc;
+                idx = Math.round(phaseAccum + phaseInc);
                 if (idx >= tableLen) {
                     idx -= tableLen;
                 } else if (idx < 0) {
                     idx += tableLen;
                 }
-                output[i] = table[Math.round(idx)];
+                output[i] = table[idx];
                 phaseAccum += freq[i] * tableIncHz;
                 if (phaseAccum >= tableLen) {
                     phaseAccum -= tableLen;
@@ -312,13 +312,13 @@ var flock = flock || {};
                 idx;
 
             for (i = 0; i < numSamps; i++) {
-                idx = phaseAccum + phase[i] * tableIncRad;
+                idx = Math.round(phaseAccum + phase[i] * tableIncRad);
                 if (idx >= tableLen) {
                     idx -= tableLen;
                 } else if (idx < 0) {
                     idx += tableLen;
                 }
-                output[i] = table[Math.round(idx)];
+                output[i] = table[idx];
                 phaseAccum += freq[i] * tableIncHz;
                 if (phaseAccum >= tableLen) {
                     phaseAccum -= tableLen;
@@ -548,6 +548,8 @@ var flock = flock || {};
             
             that.model.level = level;
             that.model.numSteps = numSteps;
+            
+            that.mulAdd(numSamps);
         };
         
         that.onInputChanged = function () {
@@ -595,6 +597,8 @@ var flock = flock || {};
             
             that.model.level = level;
             that.model.numSteps = numSteps;
+            
+            that.mulAdd(numSamps);
         };
         
         that.onInputChanged = function () {
