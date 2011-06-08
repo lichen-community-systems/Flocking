@@ -13,15 +13,11 @@
             var synth = flock.synth({
                 id: "carrier",
                 ugen: "flock.ugen.sinOsc",
-                inputs: {
-                    freq: 440,
-                    add: {
-                        id: "mod",
-                        ugen: "flock.ugen.sinOsc",
-                        inputs: {
-                            freq: 220
-                        }
-                    }
+                freq: 440,
+                add: {
+                    id: "mod",
+                    ugen: "flock.ugen.sinOsc",
+                    freq: 220
                 }
             });
             

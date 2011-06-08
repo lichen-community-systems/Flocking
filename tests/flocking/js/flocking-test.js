@@ -177,18 +177,13 @@ var flock = flock || {};
     var condensedTestSynthDef = {
         id: "sine",
         ugen: "flock.ugen.sinOsc",
-        inputs: {
-            freq: 440,
-            mul: {
-                id: "mul",
-                ugen: "flock.ugen.value",
-                inputs: {
-                    value: 1.0
-                }
-            }
+        freq: 440,
+        mul: {
+            id: "mul",
+            ugen: "flock.ugen.value",
+            value: 1.0
         }
-    };    
-    
+    };
     
     var expandedTestSynthDef = {
         id: flock.OUT_UGEN_ID,
@@ -240,4 +235,36 @@ var flock = flock || {};
             [parsedUGens.leftSine, parsedUGens.rightSine],
             "The output ugen should have an array of sources, containing the left and right sine ugens.");
     });
+    
+    test("flock.parse.synthDef() with mix of compressed and expanded ugenDefs", function () {
+        var mixedSynthDef = {
+            id: "carrier",
+            ugen: "flock.ugen.sinOsc",
+            freq: {
+                id: "mod",
+                ugen: "flock.ugen.sinOsc",
+                inputs: {
+                    freq: 440,
+                    phase: {
+                        id: "line",
+                        ugen: "flock.ugen.xLine",
+                        start: 1,
+                        end: 10,
+                        duration: 2
+                    }
+                }
+            }
+        };
+    
+        var ugens = flock.parse.synthDef(mixedSynthDef, {chans: 2});
+        equals(ugens["carrier"].inputs.freq, ugens["mod"], 
+            "The modulator should have been set as the frequency input to the carrier.");
+        equals(ugens["mod"].inputs.freq.model.value, 440, 
+            "The modulator's frequency should be 440.");
+        equals(ugens["mod"].inputs.phase, ugens["line"],
+            "The modulator's phase input should be set to the line ugen.");
+        equals(ugens["line"].inputs.end.model.value, 10, 
+            "The line's inputs should be set correctly.");
+    });
+    
 })();

@@ -1023,6 +1023,25 @@ var flock = flock || {};
         return ugens;
     };
     
+    flock.parse.reservedWords = ["id", "ugen", "rate", "inputs", "options"];
+    
+    flock.parse.expandUGenDef = function (ugenDef) {
+        var inputs = {},
+            prop;
+           
+        // Copy any non-reserved properties from the top-level ugenDef object into the inputs property.
+        for (prop in ugenDef) {
+            if (flock.parse.reservedWords.indexOf(prop) === -1) {
+                inputs[prop] = ugenDef[prop];
+                delete ugenDef[prop];
+            }
+        }
+        ugenDef.inputs = inputs;
+        
+        return ugenDef;
+    };
+    
+    
     flock.parse.makeUGen = function (ugenDef, parsedInputs, rates) {
         // Assume audio rate if no rate was specified by the user.
         if (!ugenDef.rate) {
@@ -1075,6 +1094,10 @@ var flock = flock || {};
         // We received an array of ugen defs.
         if (typeof (ugenDef.length) === "number") {
             return flock.parse.ugensForDefs(ugenDef, rates, ugens);
+        }
+        
+        if (!ugenDef.inputs) {
+            ugenDef = flock.parse.expandUGenDef(ugenDef);
         }
         
         var inputDefs = ugenDef.inputs,
