@@ -267,4 +267,34 @@ var flock = flock || {};
             "The line's inputs should be set correctly.");
     });
     
+    test("flock.parse.ugenForDef rate expansion", function () {
+        var ugenDef = {
+            ugen: "flock.ugen.sinOsc",
+            rate: "kr",
+            freq: {
+                ugen: "flock.ugen.sinOsc",
+                rate: flock.rates.AUDIO,
+                freq: 440
+            },
+            mul: {
+                ugen: "flock.ugen.lfNoise",
+                rate: "ar"
+            },
+            add: {
+                ugen: "flock.ugen.dust",
+                rate: "cr"
+            }
+        };
+        
+        var parsed = flock.parse.ugenForDef(ugenDef);
+        equals(parsed.rate, flock.rates.CONTROL, 
+            "A compressed control rate should be expanded to its full value.");
+        equals(parsed.inputs.freq.rate, flock.rates.AUDIO, 
+            "An already-expanded audio rate should not be mangled.");
+        equals(parsed.inputs.mul.rate, flock.rates.AUDIO, 
+            "A compressed audio rate should be expanded to its full value.");
+        equals(parsed.inputs.add.rate, flock.rates.CONSTANT, 
+            "A compressed constant rate should be expanded to its full value.");
+    });
+    
 })();

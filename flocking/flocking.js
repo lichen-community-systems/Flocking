@@ -1023,25 +1023,6 @@ var flock = flock || {};
         return ugens;
     };
     
-    flock.parse.reservedWords = ["id", "ugen", "rate", "inputs", "options"];
-    
-    flock.parse.expandUGenDef = function (ugenDef) {
-        var inputs = {},
-            prop;
-           
-        // Copy any non-reserved properties from the top-level ugenDef object into the inputs property.
-        for (prop in ugenDef) {
-            if (flock.parse.reservedWords.indexOf(prop) === -1) {
-                inputs[prop] = ugenDef[prop];
-                delete ugenDef[prop];
-            }
-        }
-        ugenDef.inputs = inputs;
-        
-        return ugenDef;
-    };
-    
-    
     flock.parse.makeUGen = function (ugenDef, parsedInputs, rates) {
         // Assume audio rate if no rate was specified by the user.
         if (!ugenDef.rate) {
@@ -1070,6 +1051,36 @@ var flock = flock || {};
         ]);
     };
     
+    
+    flock.parse.reservedWords = ["id", "ugen", "rate", "inputs", "options"];
+    
+    flock.parse.expandUGenDef = function (ugenDef) {
+        var inputs = {},
+            prop;
+           
+        // Copy any non-reserved properties from the top-level ugenDef object into the inputs property.
+        for (prop in ugenDef) {
+            if (flock.parse.reservedWords.indexOf(prop) === -1) {
+                inputs[prop] = ugenDef[prop];
+                delete ugenDef[prop];
+            }
+        }
+        ugenDef.inputs = inputs;
+        
+        return ugenDef;
+    };
+    
+    flock.parse.rateMap = {
+        "ar": flock.rates.AUDIO,
+        "kr": flock.rates.CONTROL,
+        "cr": flock.rates.CONSTANT
+    };
+    
+    flock.parse.expandRate = function (ugenDef) {
+        ugenDef.rate = flock.parse.rateMap[ugenDef.rate] || ugenDef.rate;
+        return ugenDef;
+    };
+    
     flock.parse.ugensForDefs = function (ugenDefs, rates, ugens) {
         var parsed = [],
             i;
@@ -1087,6 +1098,8 @@ var flock = flock || {};
      *      - rate: the rate at which the ugen should be run, either "audio", "control", or "constant"
      *      - id: an optional unique name for the unit generator, which will make it available as a synth input
      *      - inputs: a JSON object containing named key/value pairs for inputs to the unit generator
+     *           OR
+     *      - inputs keyed by name at the top level of the ugenDef
      */
     flock.parse.ugenForDef = function (ugenDef, rates, ugens) {
         rates = rates || flock.defaults.rates;
@@ -1099,6 +1112,8 @@ var flock = flock || {};
         if (!ugenDef.inputs) {
             ugenDef = flock.parse.expandUGenDef(ugenDef);
         }
+        
+        flock.parse.expandRate(ugenDef);
         
         var inputDefs = ugenDef.inputs,
             inputs = {},
