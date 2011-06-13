@@ -95,7 +95,7 @@ Credits
 -------
 
 Flocking was written by Colin Clark. It is named after a piece by [James Tenney](http://www.plainsound.org/JTwork.html), 
-a composer, thinker, and early pioneer of computer music who was, as my composition teacher, a huge influence on me. 
+a composer, thinker, and early pioneer of computer music who my composition teacher and a huge influence. 
 I hope you find this library useful enough to create projects as beautiful and inspiring as Jim's _Flocking_.
 
 Thanks to Dave Humphrey and his team for their awesome work on the Firefox 4 Audio Data API. Thanks to Alex Geddie 
