@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Scope Demo</title>
+
+        <script src="../../../flocking/flocking-core.js"></script>
+        <script src="../../../flocking/flocking-parser.js"></script>
+        <script src="../../../flocking/flocking-ugens.js"></script>
+        <script src="../../../flocking/flocking-gfx.js"></script>
+        
+        <script src="../../shared/js/demo-utils.js"></script>
+    </head>
+    
+    <body>
+        <h1>Scope Demo</h1>
+        <canvas id="scope-canvas" height="200" width="325"></canvas>
+        
+        <script type="text/javascript">
+            var canvas = document.getElementById("scope-canvas");
+            
+            // Fill a buffer with a 3 Hz sine wave to display in the scope.
+            var buf = new Float32Array(200);
+            for (var i = 0; i < buf.length; i++) {
+                buf[i] = Math.sin(i * 2 * Math.PI * 3 / buf.length);
+            }
+            
+            // Render the scope into the Canvas.
+            flock.gfx.scope(canvas, {
+                values: buf,
+                scaleY: 0.75,
+                strokeColor: "#777777",
+                strokeWidth: 3
+            });
+            
+        </script>
+    </body>
+</html>
