@@ -146,4 +146,37 @@ flock.gfx = flock.gfx || {};
         that.refreshView();
     };
     
+    flock.gfx.scope = function (canvas, scope) {        
+        var ctx = canvas.getContext("2d"),
+            h = canvas.height,
+            w = canvas.width,
+            vals = scope.values,
+            len = vals.length,
+            min = scope.min || -1.0,
+            max = scope.max || 1.0,
+            magX = scope.scaleX || scope.scale || 1.0,
+            magY = scope.scaleY || scope.scale || 1.0,
+            scaleX = (w / len) * magX,
+            centerY = h / (max - min),
+            scaleY = centerY * magY,
+            i;
+
+        // TODO: Saving, transforming, and restoring will be costly 
+        //       if the scope gets updated within the sample generation cycle.
+        // Transform the canvas to shift 0 to the centre point of the canvas and flip the coordinate system.
+        ctx.save();
+        ctx.translate(0, h + min * centerY);
+        ctx.scale(1, -1);
+        
+        // Draw the waveform.
+        flock.gfx.strokeAndFill(ctx, scope);
+        ctx.beginPath();
+        ctx.moveTo(0, vals[0]);
+        for (i = 1; i < len; i++) {
+            ctx.lineTo(i * scaleX, vals[i] * scaleY);
+        }
+        ctx.stroke();
+        ctx.restore();
+    };
+    
 })();
