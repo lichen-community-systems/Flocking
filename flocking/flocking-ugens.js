@@ -23,6 +23,7 @@ var flock = flock || {};
             output: output,
             sampleRate: options.sampleRate || flock.defaults.rates.audio,
             rate: options.rate || flock.rates.AUDIO,
+            options: options,
             model: {}
         };
     
@@ -584,5 +585,45 @@ var flock = flock || {};
         that.onInputChanged();
         return that;
     };
-
+    
+    flock.ugen.scope = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        // TODO: Move more of this code to the scopeView widget.
+        that.model.spf = that.sampleRate / flock.defaults.fps;
+        that.model.bufIdx = 0;
+        
+        // Setup the scopeView widget. 
+        that.model.scope = that.options.styles;
+        that.model.scope.values = new Float32Array(that.model.spf);
+        that.scopeView = flock.gfx.scopeView(that.options.canvas, that.model.scope);
+        
+        that.gen = function (numSamps) {
+            var spf = that.model.spf,
+                bufIdx = that.model.bufIdx,
+                buf = that.model.scope.values,
+                i;
+            
+            for (i = 0; i < numSamps; i++) {
+                buf[bufIdx] = that.inputs.source.output[i];
+                bufIdx = bufIdx < spf ? bufIdx + 1 : 0;
+            }
+            that.model.bufIdx = bufIdx;
+        };
+        
+        that.drawScope = function () {
+            requestAnimationFrame(that.drawScope);
+            that.scopeView.refreshView();
+        };
+        
+        that.onInputChanged = function () {
+            // Pass "source" input directly back as output from this ugen.
+            that.output = that.inputs.source.output;
+        };
+        
+        that.onInputChanged();
+        that.drawScope();
+        return that;
+    };
+    
 }());

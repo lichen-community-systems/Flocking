@@ -56,13 +56,14 @@ var flock = flock || {};
             sampleRate = 1;
         }
         
+        ugenDef.options = ugenDef.options || {};
+        ugenDef.options.sampleRate = sampleRate;
+        ugenDef.options.rate = ugenDef.rate;
+        
         return flock.invokePath(ugenDef.ugen, [
             parsedInputs, 
             buffer, 
-            {
-                sampleRate: sampleRate,
-                rate: ugenDef.rate
-            }
+            ugenDef.options
         ]);
     };
 

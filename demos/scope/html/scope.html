@@ -3,6 +3,8 @@
     <head>
         <title>Scope Demo</title>
 
+        <link rel="stylesheet" type="text/css" href="../../shared/css/demos.css" />
+
         <script src="../../../flocking/flocking-core.js"></script>
         <script src="../../../flocking/flocking-parser.js"></script>
         <script src="../../../flocking/flocking-ugens.js"></script>
@@ -13,25 +15,55 @@
     
     <body>
         <h1>Scope Demo</h1>
-        <canvas id="scope-canvas" height="200" width="325"></canvas>
+        
+        <table>
+            <tr>
+                <th>3 Hz Sine Wave</th>
+                <td><canvas id="static-scope" height="150" width="325"></canvas></td>
+            </tr>
+            <tr>
+                <th>440 Hz Sine Wave with Scope UGen</th>
+                <td>
+                    <canvas id="dynamic-scope" height="150" width="325"></canvas>
+                    <button id="synth-toggle">Play</button>
+                </td>
+            </tr>
+        </table>
         
         <script type="text/javascript">
-            var canvas = document.getElementById("scope-canvas");
-            
-            // Fill a buffer with a 3 Hz sine wave to display in the scope.
+        
+            // Static scope: fill a buffer with a 3 Hz sine wave and draw it once.
+            var canvas = document.getElementById("static-scope");
+        
             var buf = new Float32Array(200);
             for (var i = 0; i < buf.length; i++) {
                 buf[i] = Math.sin(i * 2 * Math.PI * 3 / buf.length);
             }
             
-            // Render the scope into the Canvas.
-            flock.gfx.scope(canvas, {
+            var scope = flock.gfx.scopeView(canvas, {
                 values: buf,
                 scaleY: 0.75,
                 strokeColor: "#777777",
                 strokeWidth: 3
             });
             
+            // Dynamic scope: create a synth with a scope ugen at the end of the ugen graph.
+            var synth = flock.synth({
+                ugen: "flock.ugen.scope",
+                source: {
+                    ugen: "flock.ugen.sinOsc",
+                    freq: 440
+                },
+                options: {
+                    canvas: "dynamic-scope",
+                    styles: {
+                        scaleY: 0.75,
+                        strokeColor: "#777777",
+                        strokeWidth: 3
+                    }
+                }
+            });
+            demo.toggleButtonView("synth-toggle", synth);
         </script>
     </body>
 </html>
