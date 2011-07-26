@@ -148,8 +148,8 @@ flock.gfx = flock.gfx || {};
     
     flock.gfx.scope = function (canvas, scope) {        
         var ctx = canvas.getContext("2d"),
-            h = canvas.height,
-            w = canvas.width,
+            h = scope.height,
+            w = scope.width,
             vals = scope.values,
             len = vals.length,
             min = scope.min || -1.0,
@@ -160,23 +160,40 @@ flock.gfx = flock.gfx || {};
             centerY = h / (max - min),
             scaleY = centerY * magY,
             i;
-
-        // TODO: Saving, transforming, and restoring will be costly 
-        //       if the scope gets updated within the sample generation cycle.
+        
+        // Clear the canvas before drawing on it.
+        canvas.width = w; 
+        
         // Transform the canvas to shift 0 to the centre point of the canvas and flip the coordinate system.
-        ctx.save();
         ctx.translate(0, h + min * centerY);
         ctx.scale(1, -1);
-        
-        // Draw the waveform.
         flock.gfx.strokeAndFill(ctx, scope);
-        ctx.beginPath();
-        ctx.moveTo(0, vals[0]);
-        for (i = 1; i < len; i++) {
+        for (i = 0; i < len; i++) {
             ctx.lineTo(i * scaleX, vals[i] * scaleY);
         }
         ctx.stroke();
-        ctx.restore();
     };
     
+    flock.gfx.scopeView = function (canvas, model) {
+        var that = {
+            model: model || {
+                values: []
+            },
+            canvas: typeof(canvas) === "string" ? document.getElementById(canvas) : canvas
+        };
+        that.model.min = that.model.min || -1.0;
+        that.model.max = that.model.max || 1.0;
+        that.model.height = that.canvas.height;
+        that.model.width = that.canvas.width;
+        
+        that.refreshView = function () {
+            flock.gfx.scope(that.canvas, that.model);
+        };
+        
+        that.refreshView();        
+        return that;
+    };
+    
+    // Polyfill for requestAnimationFrame.
+    window.requestAnimationFrame = window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame;
 })();

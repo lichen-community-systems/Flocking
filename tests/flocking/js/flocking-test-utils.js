@@ -54,4 +54,40 @@ var flock = flock || {};
             equals(actual[i], expected[i], msg);
         }
     };
+    
+    /*
+    flock.test.assertNotSilent(sine.output, 
+        "1 second of output from the sinOsc ugen should not be completely silent");
+    flock.test.assertUnbroken(sine.output, 
+        "The sinOsc ugne should produce an unbroken audio tone.");
+    flock.test.assertContinuous(sine.output, 
+        "The sinOsc tone should be smoothly incremental");
+    */
+    flock.test.assertNotSilent = function (buffer, msg) {
+        var numNonZero = 0,
+            i;
+        for (i = 0; i < buffer.length; i++) {
+            if (buffer[i] !== 0.0) {
+                numNonZero++;
+            }
+        }
+        ok(numNonZero > (buffer.length / 10), msg);
+    };
+    
+    flock.test.assertUnbroken = function (buffer, msg) {
+        var numZero = 0,
+            isBroken = false,
+            i;
+        for (i = 0; i < buffer.length; i++) {
+            numZero = buffer[i] === 0 ? numZero + 1 : 0;
+                        
+            // If we encounter more than 5 zero samples, we've got a drop.
+            if (numZero > 5) {
+                isBroken = true;
+                break;
+            }
+        }
+        ok(!isBroken, msg);
+    };
+    
 }());

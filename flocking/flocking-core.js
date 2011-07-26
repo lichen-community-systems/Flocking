@@ -33,7 +33,8 @@ var flock = flock || {};
         },        
         tableSize: 8192,
         minLatency: 125,
-        writeInterval: 50
+        writeInterval: 50,
+        fps: 60
     };
 
     
@@ -426,5 +427,5 @@ var flock = flock || {};
                 
         return that;
     };
-
+    
 }());
