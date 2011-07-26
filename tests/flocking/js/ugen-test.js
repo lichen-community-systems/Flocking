@@ -365,7 +365,28 @@ var flock = flock || {};
         "At a frequency of 2 and sampling rate of 4, 16 samples should still consist of the first and third samples.");
     });
     
-    
+    /*********************
+     * SinOsc ugen tests *
+     *********************/
+     
+    var sineDef = {
+        ugen: "flock.ugen.sinOsc",
+        rate: flock.rates.AUDIO,
+        inputs: {
+            freq: 2,
+            mul: 1.0
+        }
+    };
+     
+    test("flock.ugen.sinOsc()", function () {
+        var sine = flock.parse.ugenForDef(sineDef);
+        sine.gen(44100);
+        flock.test.assertNotSilent(sine.output, 
+            "1 second of output from the sinOsc ugen should not be completely silent");
+        flock.test.assertUnbroken(sine.output, 
+            "The sinOsc ugen should produce an unbroken audio tone.");
+    });
+     
     /*******************
      * Line ugen tests *
      *******************/

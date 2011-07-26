@@ -617,7 +617,7 @@ var flock = flock || {};
         };
         
         that.onInputChanged = function () {
-            // Pass "source" input directly back as output from this ugen.
+            // Pass the "source" input directly back as the output from this ugen.
             that.output = that.inputs.source.output;
         };
         
