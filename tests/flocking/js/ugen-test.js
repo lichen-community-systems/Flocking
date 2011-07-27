@@ -380,11 +380,16 @@ var flock = flock || {};
      
     test("flock.ugen.sinOsc()", function () {
         var sine = flock.parse.ugenForDef(sineDef);
+        sine.output = new Float32Array(44100);
         sine.gen(44100);
         flock.test.assertNotSilent(sine.output, 
             "1 second of output from the sinOsc ugen should not be completely silent");
         flock.test.assertUnbroken(sine.output, 
             "The sinOsc ugen should produce an unbroken audio tone.");
+        flock.test.assertContinuous(sine.output, 0.001, 
+            "The sinOsc ugen should produce a continuously changing signal.");
+        flock.test.assertSineish(sine.output, 1.0, 
+                "The sinOsc ugen should continuously rise and fall between 1.0/-1.0.");
     });
      
     /*******************

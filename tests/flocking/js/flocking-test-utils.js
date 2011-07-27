@@ -55,14 +55,6 @@ var flock = flock || {};
         }
     };
     
-    /*
-    flock.test.assertNotSilent(sine.output, 
-        "1 second of output from the sinOsc ugen should not be completely silent");
-    flock.test.assertUnbroken(sine.output, 
-        "The sinOsc ugne should produce an unbroken audio tone.");
-    flock.test.assertContinuous(sine.output, 
-        "The sinOsc tone should be smoothly incremental");
-    */
     flock.test.assertNotSilent = function (buffer, msg) {
         var numNonZero = 0,
             i;
@@ -90,4 +82,50 @@ var flock = flock || {};
         ok(!isBroken, msg);
     };
     
+    flock.test.assertContinuous = function (buffer, threshold, msg) {
+        var previous = buffer[0],
+            current,
+            i;
+        for (i = 1; i < buffer.length; i++) {
+            current = buffer[i];
+            if (Math.abs(previous - current) > threshold) {
+                ok(false, msg + " Jump is at index " + i + ". Previous value: " + previous + " current value: " + current);
+                return;
+            }
+            previous = current;
+        }
+        ok(true, msg);
+    };
+    
+    flock.test.assertSineish = function (buffer, max, msg) {
+        var maxReached = false,
+            isAscending = true,
+            fail = false,
+            i,
+            current,
+            next;
+
+        for (i = 0; i < buffer.length - 1; i++) {
+            current = buffer[i];
+            next = buffer[i + 1];
+            
+            if (current === next) {
+                continue;
+            }
+            
+            if (Math.abs(current) === max) {
+                isAscending = !isAscending;
+                maxReached = true;
+            }
+            
+            fail = isAscending ? (next < current) : (next > current);
+            if (fail) {
+                ok(fail, "Signal changed direction before reaching maximum value at index: " + i + 
+                ". Current value: " + current + ", next value: " + next);
+                break;
+            }
+        }
+        
+        ok(maxReached, msg);
+    };
 }());
