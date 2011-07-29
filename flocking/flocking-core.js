@@ -42,9 +42,47 @@ var flock = flock || {};
      * Utilities *
      *************/
     
+    // TODO: Unit tests
+    flock.generate = function (bufOrSize, generator) {
+        var buf = typeof (bufOrSize) === "number" ? new Float32Array(bufOrSize) : bufOrSize,
+            i;
+
+        for (i = 0; i < buf.length; i++) {
+            buf[i] = generator(i, buf);
+        }
+
+        return buf;
+    };
+     
     flock.minBufferSize = function (latency, audioSettings) {
         var size = (audioSettings.rates.audio * audioSettings.chans) / (1000 / latency);
         return Math.round(size);
+    };
+    
+    // TODO:
+    //   - Unit tests
+    //   - Allow normalization to other values than 1.0.
+    flock.normalize = function (buffer) {
+        var maxVal = 0.0,
+            i,
+            current;
+        
+        // Find the maximum value in the buffer.
+        for (i = 0; i < buffer.length; i++) {
+            current = buffer[i];
+            if (current > maxVal) {
+                maxVal = current;
+            }
+        }
+        
+        // And then normalize the buffer to 1.0.
+        if (maxVal > 0.0) {
+            for (i = 0; i < buffer.length; i++) {
+                buffer[i] /= maxVal;
+            }
+        }
+        
+        return buffer;
     };
     
     flock.pathParseError = function (path, token) {

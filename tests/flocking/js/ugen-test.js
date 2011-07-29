@@ -389,7 +389,7 @@ var flock = flock || {};
         flock.test.assertContinuous(sine.output, 0.001, 
             "The sinOsc ugen should produce a continuously changing signal.");
         flock.test.assertSineish(sine.output, 1.0, 
-                "The sinOsc ugen should continuously rise and fall between 1.0/-1.0.");
+            "The sinOsc ugen should continuously rise and fall between 1.0/-1.0.");
     });
      
     /*******************

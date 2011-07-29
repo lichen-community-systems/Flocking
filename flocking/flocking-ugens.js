@@ -295,22 +295,69 @@ var flock = flock || {};
         }
     };
 
-    flock.ugen.sinOsc = function (inputs, output, options) {
-        inputs.table = flock.ugen.sinOsc.fillTable(flock.defaults.tableSize);
-        return flock.ugen.osc(inputs, output, options);
-    };
-
-    flock.ugen.sinOsc.fillTable = function (size) {
-        var table = new Float32Array(size),
-            scale = flock.TWOPI / size,
-            i;
+    flock.ugen.osc.define = function (name, tableFillFn) {
+        var lastSegIdx = name.lastIndexOf("."),
+            namespace = name.substring(0, lastSegIdx),
+            oscName = name.substring(lastSegIdx + 1),
+            namespaceObj = flock.resolvePath(namespace);
         
-        for (i = 0; i < size; i++) {
-            table[i] = Math.sin(i * scale);
-        }
-    
-        return table;
+        namespaceObj[oscName] = function (inputs, output, options) {
+            var size = options.tableSize || flock.defaults.tableSize,
+                scale = flock.TWOPI / size;
+            inputs.table = tableFillFn(size, scale); // TODO: Make table an option, not an input.
+            return flock.ugen.osc(inputs, output, options);
+        };
     };
+    
+    
+    flock.ugen.osc.define("flock.ugen.sinOsc", function (size, scale) {
+        return flock.generate(size, function (i) {
+            return Math.sin(i * scale);
+        });
+    });
+
+    flock.ugen.osc.fourierTable = function (size, scale, numHarms, phase, amps) {
+        phase *= flock.TWOPI;
+        
+        return flock.generate(size, function (i) {
+            var harm,
+                amp,
+                w,
+                val = 0.0;
+                
+            for (harm = 0; harm < numHarms; harm++) {
+                amp = amps ? amps[harm] : 1.0;
+                w = (harm + 1) * (i * scale);
+                val += amp * Math.cos(w + phase);
+            }
+            
+            return val;
+        });
+    };
+    
+    flock.ugen.osc.normalizedFourierTable = function (size, scale, numHarms, phase, ampGenFn) {
+        var amps = flock.generate(numHarms, ampGenFn),
+            table = flock.ugen.osc.fourierTable(size, scale, numHarms, phase, amps);
+        return flock.normalize(table);
+    };
+    
+    flock.ugen.osc.define("flock.ugen.triOsc", function (size, scale) {
+        return flock.ugen.osc.normalizedFourierTable(size, scale, 100, 1.0, function (harm) {
+            return harm % 2 ? 1.0 / ((harm + 1) * (harm + 1)) : 0.0;
+        });
+    });
+    
+    flock.ugen.osc.define("flock.ugen.sawOsc", function (size, scale) {
+        return flock.ugen.osc.normalizedFourierTable(size, scale, 100, -0.25, function (harm) {
+            return 1.0 / (harm + 1);
+        });
+    });
+    
+    flock.ugen.osc.define("flock.ugen.squareOsc", function (size, scale) {
+        return flock.ugen.osc.normalizedFourierTable(size, scale, 100, -0.25, function (harm) {
+            return harm % 2 ? 1.0 / (harm + 1) : 0.0;
+        });
+    });
 
     flock.ugen.sin = function (inputs, output, options) {
         var that = flock.ugen.mulAdd(inputs, output, options);
@@ -456,7 +503,7 @@ var flock = flock || {};
             
         return that;
     };
-
+    
     flock.ugen.line = function (inputs, output, options) {
         var that = flock.ugen.mulAdd(inputs, output, options);
 
