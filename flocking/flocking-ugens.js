@@ -302,7 +302,7 @@ var flock = flock || {};
             namespaceObj = flock.resolvePath(namespace);
         
         namespaceObj[oscName] = function (inputs, output, options) {
-            var size = options.tableSize || flock.defaults.tableSize,
+            var size = (options && options.tableSize) || flock.defaults.tableSize,
                 scale = flock.TWOPI / size;
             inputs.table = tableFillFn(size, scale); // TODO: Make table an option, not an input.
             return flock.ugen.osc(inputs, output, options);
@@ -341,6 +341,7 @@ var flock = flock || {};
         return flock.normalize(table);
     };
     
+    // TODO: Fix aliasing.
     flock.ugen.osc.define("flock.ugen.triOsc", function (size, scale) {
         return flock.ugen.osc.normalizedFourierTable(size, scale, 100, 1.0, function (harm) {
             return harm % 2 ? 1.0 / ((harm + 1) * (harm + 1)) : 0.0;
@@ -353,6 +354,7 @@ var flock = flock || {};
         });
     });
     
+    // TODO: Fix aliasing.
     flock.ugen.osc.define("flock.ugen.squareOsc", function (size, scale) {
         return flock.ugen.osc.normalizedFourierTable(size, scale, 100, -0.25, function (harm) {
             return harm % 2 ? 1.0 / (harm + 1) : 0.0;
