@@ -336,28 +336,32 @@ var flock = flock || {};
     };
     
     flock.ugen.osc.normalizedFourierTable = function (size, scale, numHarms, phase, ampGenFn) {
-        var amps = flock.generate(numHarms, ampGenFn),
-            table = flock.ugen.osc.fourierTable(size, scale, numHarms, phase, amps);
+        var amps = flock.generate(numHarms, function (harm) {
+            return ampGenFn(harm + 1); // Indexed harmonics from 1 instead of 0.
+        });
+        
+        var table = flock.ugen.osc.fourierTable(size, scale, numHarms, phase, amps);
         return flock.normalize(table);
     };
     
-    // TODO: Fix aliasing.
     flock.ugen.osc.define("flock.ugen.triOsc", function (size, scale) {
-        return flock.ugen.osc.normalizedFourierTable(size, scale, 100, 1.0, function (harm) {
-            return harm % 2 ? 1.0 / ((harm + 1) * (harm + 1)) : 0.0;
+        return flock.ugen.osc.normalizedFourierTable(size, scale, 1000, 1.0, function (harm) {
+            // Only odd harmonics with amplitudes decreasing by the inverse square of the harmonic number
+            return harm % 2 === 0 ? 0.0 : 1.0 / (harm * harm);
         });
     });
     
     flock.ugen.osc.define("flock.ugen.sawOsc", function (size, scale) {
-        return flock.ugen.osc.normalizedFourierTable(size, scale, 100, -0.25, function (harm) {
-            return 1.0 / (harm + 1);
+        return flock.ugen.osc.normalizedFourierTable(size, scale, 10, -0.25, function (harm) {
+            // All harmonics with amplitudes decreasing by the inverse of the harmonic number
+            return 1.0 / harm;
         });
     });
     
-    // TODO: Fix aliasing.
     flock.ugen.osc.define("flock.ugen.squareOsc", function (size, scale) {
-        return flock.ugen.osc.normalizedFourierTable(size, scale, 100, -0.25, function (harm) {
-            return harm % 2 ? 1.0 / (harm + 1) : 0.0;
+        return flock.ugen.osc.normalizedFourierTable(size, scale, 10, -0.25, function (harm) {
+            // Only odd harmonics with amplitudes decreasing by the inverse of the harmonic number
+            return harm % 2 === 0 ? 0.0 : 1.0 / harm;
         });
     });
 
