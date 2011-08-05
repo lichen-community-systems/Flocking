@@ -517,7 +517,7 @@ var flock = flock || {};
         // TODO: Implement a control rate version.
         that.gen = function (numSamps) {
             that.model.phase = that.model.phase || that.inputs.phase.output[0]; // Only read the phase input initially.
-            var freq = that.inputs.freq.output,
+            var freq = that.inputs.freq.output[0], // TODO: hard-coded at control rate. Fix this.
                 out = that.output,
                 scale = that.model.scale,
                 phase = that.model.phase,
@@ -525,7 +525,7 @@ var flock = flock || {};
             
             for (i = 0; i < numSamps; i++) {
                 out[i] = phase;
-                phase += freq[i] * scale;
+                phase += freq * scale;
                 if (phase >= 1.0) { 
                     phase -= 2.0;
                 } else if (phase <= -1.0) {
@@ -558,7 +558,7 @@ var flock = flock || {};
             that.model.phase = that.model.phase ||  that.inputs.phase.output[0];
             that.model.width = that.model.width || that.inputs.width.output[0];
             
-            var freq = that.inputs.freq.output,
+            var freq = that.inputs.freq.output[0], // TODO: hard-coded at control rate. Fix this.
                 out = that.output,
                 scale = that.model.scale,
                 phase = that.model.phase, 
@@ -568,9 +568,9 @@ var flock = flock || {};
             for (i = 0; i < numSamps; i++) {
                 if (phase >= 1.0) {
                     phase -= 1.0;
-                    out[i] = width < 0.5 ? 1.0 : 0.0;
+                    out[i] = width < 0.5 ? 1.0 : -1.0;
                 } else {
-                    out[i] = phase < width ? 1.0 : 0.0;
+                    out[i] = phase < width ? 1.0 : -1.0;
                 }
                 phase += freq * scale;
             }
