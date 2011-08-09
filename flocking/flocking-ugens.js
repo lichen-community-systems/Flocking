@@ -514,8 +514,7 @@ var flock = flock || {};
         var that = flock.ugen.mulAdd(inputs, output, options);
         that.model.scale = 2 * (1 / options.sampleRate);
         
-        // TODO: Implement a control rate version.
-        that.gen = function (numSamps) {
+        that.krFreq = function (numSamps) {
             that.model.phase = that.model.phase || that.inputs.phase.output[0]; // Only read the phase input initially.
             var freq = that.inputs.freq.output[0], // TODO: hard-coded at control rate. Fix this.
                 out = that.output,
@@ -535,8 +534,29 @@ var flock = flock || {};
             that.model.phase = phase;
         };
         
+        that.arFreq = function (numSamps) {
+            that.model.phase = that.model.phase || that.inputs.phase.output[0]; // Only read the phase input initially.
+            var freq = that.inputs.freq.output,
+                out = that.output,
+                scale = that.model.scale,
+                phase = that.model.phase,
+                i;
+            
+            for (i = 0; i < numSamps; i++) {
+                out[i] = phase;
+                phase += freq[i] * scale;
+                if (phase >= 1.0) { 
+                    phase -= 2.0;
+                } else if (phase <= -1.0) {
+                    phase += 2.0;
+                }
+            }
+            that.model.phase = phase;
+        };
+        
         that.onInputChanged = function () {
-            // TODO: factor out this functionality into some kind of a mixin.
+            that.gen = that.inputs.freq.rate === flock.rates.AUDIO ? that.arFreq : that.krFreq;
+            
             if (!that.inputs.phase) {
                 that.inputs.phase = flock.ugen.value({value: 0.0}, new Float32Array(1));
             }
@@ -550,19 +570,15 @@ var flock = flock || {};
         var that = flock.ugen.mulAdd(inputs, output, options);
         that.model.scale = 1 / options.sampleRate;
         
-        // TODO: Implement a control rate version.
-        that.gen = function (numSamps) {
-            // Only read the phase and width inputs initially.
+        that.krFreq = function (numSamps) {
             // TODO: Can this be done more efficiently? Definitely if we knew the synth graph had been primed.
-            // TODO: Read the width input at audio rate.
-            that.model.phase = that.model.phase ||  that.inputs.phase.output[0];
-            that.model.width = that.model.width || that.inputs.width.output[0];
+            that.model.phase = that.model.phase ||  that.inputs.phase.output[0]; // Only read the phase input initially.
             
-            var freq = that.inputs.freq.output[0], // TODO: hard-coded at control rate. Fix this.
+            var freq = that.inputs.freq.output[0],
+                width = that.inputs.width.output[0], // TODO: Are we handling width correctly here?
                 out = that.output,
                 scale = that.model.scale,
                 phase = that.model.phase, 
-                width = that.model.width,
                 i;
             
             for (i = 0; i < numSamps; i++) {
@@ -577,7 +593,31 @@ var flock = flock || {};
             that.model.phase = phase;
         };
         
+        that.arFreq = function (numSamps) {
+            that.model.phase = that.model.phase ||  that.inputs.phase.output[0];
+            
+            var freq = that.inputs.freq.output,
+                width = that.inputs.width.output[0],
+                out = that.output,
+                scale = that.model.scale,
+                phase = that.model.phase, 
+                i;
+            
+            for (i = 0; i < numSamps; i++) {
+                if (phase >= 1.0) {
+                    phase -= 1.0;
+                    out[i] = width < 0.5 ? 1.0 : -1.0;
+                } else {
+                    out[i] = phase < width ? 1.0 : -1.0;
+                }
+                phase += freq[i] * scale;
+            }
+            that.model.phase = phase;
+        };
+        
         that.onInputChanged = function () {
+            that.gen = that.inputs.freq.rate === flock.rates.AUDIO ? that.arFreq : that.krFreq;
+            
             // TODO: factor out this functionality into some kind of configurable setting for all ugens.
             if (!that.inputs.phase) {
                 that.inputs.phase = flock.ugen.value({value: 0.0}, new Float32Array(1));
