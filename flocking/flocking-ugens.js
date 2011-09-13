@@ -801,4 +801,56 @@ var flock = flock || {};
         return that;
     };
     
+    flock.ugen.amplitude = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.gen = function (numSamps) {
+            var source = that.inputs.source.output,
+                out = that.output,
+                prevAtt = that.model.attackTime,
+                nextAtt = that.inputs.attackCoef[0],
+                prevRel = that.model.releaseTime,
+                nextRel = that.inputs.releaseCoef[0],
+                prevVal = that.model.previousValue,
+                attCoef,
+                relCoef,
+                i,
+                val,
+                coef;
+                
+                // Convert 60 dB attack and release times to coefficients if they've changed.
+                if (nextAtt !== prevAtt) {
+                    that.model.attackTime = nextAtt;
+                    attCoef = that.model.attackCoef = Math.exp(flock.LOG1 / (nextAtt * that.sampleRate));
+                }
+                
+                if (nextRel != prevRel) {
+                    that.model.release6Time = nextRel;
+                    relCoef = that.model.releaseCoef = Math.exp(flock.LOG1 / (nextRel * that.sampleRate));
+                }
+            
+            for (i = 0; i < numSamps; i++) {
+                val = Math.abs(source[i]);
+                coef = val < prevVal ? relCoef : attCoef;
+                output[i] = prevVal = val + (prevVal - val) * coef;
+            }
+            
+            that.model.previousValue = prevVal;
+        };
+        
+        that.onInputChanged = function () {
+            // Set default values if necessary for attack and release times.
+            if (!that.inputs.attack) {
+                that.inputs.attack = flock.ugen.value({value: 0.01}, new Float32Array(1));
+            }
+            
+            if (!that.inputs.release) { 
+                that.inputs.release = flock.ugen.value({value: 0.01}, new Float32Array(1));
+            }
+        };
+        
+        that.onInputChanged();
+        return that;
+    };
+    
 }());

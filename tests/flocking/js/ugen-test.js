@@ -364,11 +364,10 @@ var flock = flock || {};
         new Float32Array([1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3]),
         "At a frequency of 2 and sampling rate of 4, 16 samples should still consist of the first and third samples.");
     });
+
+
+    module("flock.ugen.osc() tests: specific wave forms");
     
-    /**********************
-     * Osc waveform tests *
-     **********************/
-     
     var basicDef = {
         rate: flock.rates.AUDIO,
         inputs: {
@@ -416,10 +415,7 @@ var flock = flock || {};
     testBasicWaveformOsc("flock.ugen.sawOsc");
 
     
-     
-    /*******************
-     * Line ugen tests *
-     *******************/
+    module("flock.ugen.line() tests");
      
     var lineDef = {
         ugen: "flock.ugen.line",

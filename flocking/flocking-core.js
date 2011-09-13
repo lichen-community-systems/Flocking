@@ -18,6 +18,7 @@ var flock = flock || {};
     flock.OUT_UGEN_ID = "flocking-out";
     flock.ALL_UGENS_ID = "flocking-all";
     flock.TWOPI = 2.0 * Math.PI;
+    flock.LOG1 = Math.log(0.1);
     
     flock.rates = {
         AUDIO: "audio",
