@@ -59,6 +59,7 @@ var flock = flock || {};
         var numNonZero = 0,
             i;
         for (i = 0; i < buffer.length; i++) {
+            // TODO: Add check for NaN values in the buffer.
             if (buffer[i] !== 0.0) {
                 numNonZero++;
             }

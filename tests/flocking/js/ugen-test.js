@@ -9,6 +9,7 @@
 /*global module, test, expect, ok, equals, deepEqual, Float32Array*/
 
 var flock = flock || {};
+flock.test = flock.test || {};
 
 (function () {
     "use strict";
@@ -27,14 +28,22 @@ var flock = flock || {};
         5, 4, 3, 2, 1
     ];
 
-    var makeMockUGen = function (output) {
-        var that = {
-            output: output,
-            gen: function (numSamps) {
-                that.output = output;
-            }
-        };
+    flock.test.mockUGen = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        if (that.options.buffer) {
+            that.output = that.options.buffer;
+        }
+        that.gen = function (numSamps) {}; // No op function--we just pass the output buffer back as-is.
         return that;
+    };
+    
+    var makeMockUGen = function (output) {
+        return flock.parse.ugenForDef({
+            ugen: "flock.test.mockUGen",
+            options: {
+                buffer: output
+            }
+        });
     };
     
     var bufferValueUGen = flock.ugen.value({value: 0}, new Float32Array(1));
@@ -459,5 +468,29 @@ var flock = flock || {};
         line.gen(32);
         flock.test.assertArrayEquals(line.output.subarray(0, 32), flock.test.constantBuffer(32, 64),
             "After the line's duration is finished, it should constantly output the end value.");
+    });
+    
+    module("flock.ugen.amplitude() tests");
+    
+    var ampDef = {
+        ugen: "flock.ugen.amplitude",
+        rate: flock.rates.AUDIO,
+        inputs: {
+            source: {
+                ugen: "flock.test.mockUGen",
+                options: {
+                    buffer: flock.test.constantBuffer(64, 1.0)
+                }
+            }
+        }
+    };
+    
+    test("flock.ugen.amplitude()", function () {
+        var tracker = flock.parse.ugenForDef(ampDef);
+        tracker.gen(64);
+        flock.test.assertNotSilent(tracker.output, 
+            "The tracker should report an amplitude when tracking a buffer filled with static values.");
+        flock.test.assertArrayEquals(tracker.output, flock.test.constantBuffer(64, 1.0), 
+            "The tracker should report a constant amplitude of 1.0 when tracking a static buffer with 1.0 values in it.");
     });
 })();
