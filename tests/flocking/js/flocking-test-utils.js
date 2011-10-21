@@ -96,6 +96,15 @@ var flock = flock || {};
         ok(!isBroken, msg + " Last silent sample found at: " + foundAt);
     };
     
+    flock.test.assertWithinRange = function (buffer, min, max, msg) {
+        var i,
+            val;
+        for (i = 0; i < buffer.length; i++) {
+            val = buffer[i];
+            ok(val > min && val < max, msg + " Index: " + i);
+        }
+    };
+    
     flock.test.assertContinuous = function (buffer, threshold, msg) {
         var previous = buffer[0],
             current,
@@ -109,6 +118,16 @@ var flock = flock || {};
             previous = current;
         }
         ok(true, msg);
+    };
+    
+    flock.test.assertClimbing = function (buffer, msg) {
+        var previous = buffer[0],
+            current,
+            i;
+        for (i = 1; i < buffer.length; i++) {
+            current = buffer[i];
+            ok(current > previous, msg + " Index " + current);
+        }
     };
     
     flock.test.assertSineish = function (buffer, max, msg) {
