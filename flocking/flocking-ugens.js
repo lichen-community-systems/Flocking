@@ -803,14 +803,15 @@ var flock = flock || {};
     
     flock.ugen.amplitude = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
+        that.model.previousValue = 0.0;
         
         that.gen = function (numSamps) {
             var source = that.inputs.source.output,
                 out = that.output,
                 prevAtt = that.model.attackTime,
-                nextAtt = that.inputs.attack[0],
+                nextAtt = that.inputs.attack.output[0],
                 prevRel = that.model.releaseTime,
-                nextRel = that.inputs.release[0],
+                nextRel = that.inputs.release.output[0],
                 prevVal = that.model.previousValue,
                 attCoef = that.model.attackCoef,
                 relCoef = that.model.releaseCoef,
@@ -821,18 +822,20 @@ var flock = flock || {};
                 // Convert 60 dB attack and release times to coefficients if they've changed.
                 if (nextAtt !== prevAtt) {
                     that.model.attackTime = nextAtt;
-                    attCoef = that.model.attackCoef = Math.exp(flock.LOG1 / (nextAtt * that.sampleRate));
+                    attCoef = that.model.attackCoef = 
+                        nextAtt === 0.0 ? 0.0 : Math.exp(flock.LOG1 / (nextAtt * that.sampleRate));
                 }
                 
                 if (nextRel != prevRel) {
-                    that.model.release6Time = nextRel;
-                    relCoef = that.model.releaseCoef = Math.exp(flock.LOG1 / (nextRel * that.sampleRate));
+                    that.model.releaseTime = nextRel;
+                    relCoef = that.model.releaseCoef = 
+                        (nextRel === 0.0) ? 0.0 : Math.exp(flock.LOG1 / (nextRel * that.sampleRate));
                 }
             
             for (i = 0; i < numSamps; i++) {
                 val = Math.abs(source[i]);
                 coef = val < prevVal ? relCoef : attCoef;
-                output[i] = prevVal = val + (prevVal - val) * coef;
+                out[i] = prevVal = val + (prevVal - val) * coef;
             }
             
             that.model.previousValue = prevVal;

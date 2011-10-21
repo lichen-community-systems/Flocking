@@ -51,25 +51,37 @@ var flock = flock || {};
     
     flock.test.assertArrayEquals = function (actual, expected, msg) {
         for (var i = 0; i < expected.length; i++) {
-            equals(actual[i], expected[i], msg);
+            equals(actual[i], expected[i], msg + " Index: " + i);
+        }
+    };
+    
+    flock.test.assertNotNaN = function (buffer, msg) {
+        var i;
+        for (i = 0; i < buffer.length; i++) {
+            if (isNaN(buffer[i])) {
+                ok(false, "NaN value found at index " + i);
+            }
         }
     };
     
     flock.test.assertNotSilent = function (buffer, msg) {
         var numNonZero = 0,
+            foundAt = -1,
             i;
         for (i = 0; i < buffer.length; i++) {
-            // TODO: Add check for NaN values in the buffer.
             if (buffer[i] !== 0.0) {
+                foundAt = foundAt <= 0 ? i : foundAt; // Record the first index where a zero sample was found.
                 numNonZero++;
             }
         }
-        ok(numNonZero > (buffer.length / 10), msg);
+        
+        ok(numNonZero > (buffer.length / 10), msg + " First silent sample found at: " + foundAt);
     };
     
     flock.test.assertUnbroken = function (buffer, msg) {
         var numZero = 0,
             isBroken = false,
+            foundAt = -1,
             i;
         for (i = 0; i < buffer.length; i++) {
             numZero = buffer[i] === 0 ? numZero + 1 : 0;
@@ -77,10 +89,11 @@ var flock = flock || {};
             // If we encounter more than 5 zero samples, we've got a drop.
             if (numZero > 5) {
                 isBroken = true;
+                foundAt = i;
                 break;
             }
         }
-        ok(!isBroken, msg);
+        ok(!isBroken, msg + " Last silent sample found at: " + foundAt);
     };
     
     flock.test.assertContinuous = function (buffer, threshold, msg) {
