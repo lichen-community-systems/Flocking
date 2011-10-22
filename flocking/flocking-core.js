@@ -419,11 +419,9 @@ var flock = flock || {};
                 ugenPath = ugenInputPath.substring(0, ugenInputPath.lastIndexOf(".")),
                 inputName = path.substring(lastSegIdx + 1),
                 ugen = flock.resolvePath(ugenPath, that.inputUGens),
-                inputUGen = flock.parse.ugenForInputDef(val, that.enviro.audioSettings.rates);
-                
-            ugen.inputs[inputName] = inputUGen;
+                inputUGen = ugen.input(inputName, val);
+                                
             ugen.onInputChanged();
-            
             return inputUGen;
         };
         

@@ -26,6 +26,24 @@ var flock = flock || {};
             options: options,
             model: {}
         };
+        
+        /**
+         * Gets or sets the named unit generator input.
+         *
+         * @param {String} name the input name
+         * @param {UGenDef} val [optional] a UGenDef or scalar value, which will be assigned to the specified input name
+         * @return {Number|UGen} a scalar value in the case of a value ugen, otherwise the ugen itself
+         */
+        that.input = function (name, val) {
+            if (!val) {
+                var input = that.inputs[name];
+                return typeof (input.model.value) !== "undefined" ? input.model.value : input;
+            }
+            
+            var ugen = flock.parse.ugenForInputDef(val, flock.enviro.shared.audioSettings.rates);
+            that.inputs[name] = ugen;
+            return ugen;
+        };
     
         return that;
     };
