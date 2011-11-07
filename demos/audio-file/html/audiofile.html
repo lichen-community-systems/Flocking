@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Audio File Decoding Demo</title>
+        <script src="../../../flocking/flocking-core.js"></script>
+        <script src="../../../flocking/flocking-parser.js"></script>
+        <script src="../../../flocking/flocking-audiofile.js"></script>
+        
+        <script src="../../shared/js/demo-utils.js"></script>
+    </head>
+    
+    <body>
+        <h1>Audio File Decoding Demo</h1>
+        <form>
+            <input id="fileBrowser" type="file" />
+        </form>
+        <script type="text/javascript">
+            document.getElementById("fileBrowser").addEventListener("change", function () {
+                var file = this.files[0];
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    var data = e.target.result;
+                    var name = file.name;
+                    var type = name.substring(name.lastIndexOf(".") + 1);
+                    var decoded = flock.audio.decode(type, data);
+                    var sound = decoded.channels[0].subarray(0, 44100 * 5);  // Just play the first five seconds of the first channel.
+                    var a = new Audio();
+                    a.mozSetup(1, 44100);
+                    a.mozWriteAudio(sound);
+                };
+                reader.readAsBinaryString(file);
+            }, false);
+        </script>
+    </body>
+</html>
