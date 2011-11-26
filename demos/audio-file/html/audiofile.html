@@ -39,6 +39,9 @@
                 values: flock.generate(2000, 0)
             });
             
+            // Bind a change listener on the file browser. Whenever a file is selected,
+            // read it the contents of it into a new typed array and display it in the scope view.
+            // TODO: Create a declarative buffer API for loading files.
             document.getElementById("fileBrowser").addEventListener("change", function () {
                 var file = this.files[0];
                 document.getElementById("filePath").innerHTML = file.name;
@@ -58,11 +61,14 @@
                 reader.readAsBinaryString(file);
             }, false);
             
+            // Bind a click event to the browse button, which delegates to the hidden (ugly) file input element.
             document.getElementById("browse").addEventListener("click", function (e) {
                 document.getElementById("fileBrowser").click();
                 e.preventDefault();
             }, false);
             
+            // Play the audio buffer to the speakers.
+            // TODO: Refactor this into a real ugen.
             document.getElementById("playButton").addEventListener("click", function (e) {
                 var a = new Audio();
                 a.mozSetup(1, 44100);
