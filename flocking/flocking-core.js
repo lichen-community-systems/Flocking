@@ -48,6 +48,13 @@ var flock = flock || {};
         var buf = typeof (bufOrSize) === "number" ? new Float32Array(bufOrSize) : bufOrSize,
             i;
 
+        if (typeof (generator) === "number") {
+            var value = generator;
+            generator = function () { 
+                return value; 
+            };
+        }
+        
         for (i = 0; i < buf.length; i++) {
             buf[i] = generator(i, buf);
         }
