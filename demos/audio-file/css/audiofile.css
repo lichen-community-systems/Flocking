@@ -1,6 +1,7 @@
+@import url(http://fonts.googleapis.com/css?family=Nunito:700);
 body {
     margin-left: 2%;
-    font-family: Arial, sans-serif;
+    font-family: "Nunito", sans-serif;
     background: #eee;
 }
 
