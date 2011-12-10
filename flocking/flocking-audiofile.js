@@ -21,6 +21,60 @@ var flock = flock || {};
 (function () {
     "use strict";
     
+    /*****************
+     * File Utilties *
+     *****************/
+     
+    flock.file = {};
+    
+    flock.file.parseFileExtension = function (fileName) {
+        // TODO: Trim off any potential trailing slashes, etc.
+        return fileName.substring(fileName.lastIndexOf(".") + 1);
+    };
+    
+    flock.file.readUrl = function (url, onSuccess) {
+        flock.net.load({
+            url: url, 
+            success: function (data) {
+                onSuccess(url, data);
+            }
+        });
+    };
+    
+    flock.file.readFile = function (file, onSuccess) {
+        var reader  = new FileReader();
+        reader.onload = function (e) {
+            onSuccess(file.name, e.target.result);
+        };
+        reader.readAsBinaryString(file);
+    };
+    
+    
+    /*********************
+     * Network utilities *
+     *********************/
+    flock.net = {};
+    
+    flock.net.load = function (options) {
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                    options.success(xhr.responseText);
+                } else {
+                    options.error(xhr.statusText);
+                }
+            }
+        };
+        xhr.open(options.method, options.url, true); 
+        xhr.send(options.data);
+    };
+    
+    
+    /*****************
+     * Audio Formats *
+     *****************/
+    
     flock.audio = {};
     
     flock.audio.readString = function (data, offset, length) {

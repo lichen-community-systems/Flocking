@@ -28,7 +28,7 @@ var flock = flock || {};
                 ugen: "flock.ugen.out",
                 inputs: {
                     source: ugenDef,
-                    buffer: 0,
+                    bus: 0,
                     expand: options.chans
                 }
             };
@@ -69,7 +69,8 @@ var flock = flock || {};
 
 
     flock.parse.reservedWords = ["id", "ugen", "rate", "inputs", "options"];
-
+    flock.parse.specialInputs = ["value", "buffer"];
+    
     flock.parse.expandUGenDef = function (ugenDef) {
         var inputs = {},
             prop;
@@ -136,9 +137,11 @@ var flock = flock || {};
             inputDef;
         
         for (inputDef in inputDefs) {
-            // Create ugens for all inputs except value inputs.
-            inputs[inputDef] = inputDef === "value" ? ugenDef.inputs[inputDef] :
-                flock.parse.ugenForInputDef(ugenDef.inputs[inputDef], rates, ugens);
+            // Create ugens for all inputs except special inputs.
+            // TODO: Need unit test coverage.
+            inputs[inputDef] = flock.parse.specialInputs.indexOf(inputDef) > -1 ? 
+                ugenDef.inputs[inputDef] :                                           // Don't instantiate a ugen, just pass the def on as-is.
+                flock.parse.ugenForInputDef(ugenDef.inputs[inputDef], rates, ugens); // parse the ugendef and create a ugen instance.
         }
     
         if (!ugenDef.ugen) {
@@ -183,4 +186,16 @@ var flock = flock || {};
         return flock.parse.ugenForDef(inputDef, rates, ugens);
     };
     
+    flock.parse.bufferForDef = function (bufDef, onLoad, enviro) {
+        enviro = enviro || flock.enviro.shared;
+        
+        if (!bufDef.url && !bufDef.selector) {
+            throw new Error("No URL or input element selector was found in the specified bufferDef: " + bufDef);
+        }
+        
+        var id = bufDef.id || flock.id(),
+            src = bufDef.url || document.querySelector(bufDef.selector).files[0];
+        
+        enviro.loadBuffer(id, src, onLoad);
+    };
 }());

@@ -451,6 +451,77 @@ var flock = flock || {};
         return that;
     };
 
+    flock.ugen.playBuffer = function (inputs, output, options) {
+        var that = flock.ugen.mulAdd(inputs, output, options);
+        that.rate = flock.rates.AUDIO;
+        that.model = {
+            idx: 0,
+            channel: undefined
+        };
+        
+        // Start with a zeroed buffer, since the buffer input may be loaded asynchronously.
+        that.buffer = new Float32Array(that.output.length); 
+        
+        that.gen = function (numSamps) {
+            var out = that.output,
+                chan = that.inputs.channel.output[0],
+                source = that.buffer,
+                bufIdx = that.model.idx,
+                bufLen = source.length,
+                endIdx = bufIdx + numSamps,
+                loop = that.inputs.loop.output[0],
+                i;
+            
+            // If the channel has changed, update the buffer we're reading from.
+            if (that.model.channel != chan) {
+                that.model.channel = chan;
+                that.buffer = source = flock.enviro.shared.buffers[that.model.name][chan]; 
+            }
+            
+            for (i = 0; i < numSamps; i++) {
+                if (bufIdx >= bufLen) {
+                    if (loop > 0) {
+                        bufIdx = 0;
+                    }
+                    out[i] = 0.0;
+                    continue;
+                }
+                out[i] = source[bufIdx];
+                bufIdx++;
+            }
+            
+            that.model.idx = bufIdx;
+        };
+        
+        that.onInputChanged = function () {            
+            if (!that.inputs.loop) {
+                that.inputs.loop = flock.ugen.value({value: 0.0}, new Float32Array(1));
+            }
+            
+            if (!that.inputs.channel) {
+                that.inputs.channel = flock.ugen.value({value: 0.0}, new Float32Array(1));
+                that.model.channel = that.inputs.channel.output[0];
+            }
+            
+            var bufDef = that.inputs.buffer,
+                chan = that.inputs.channel.output[0];
+                
+            if (typeof (bufDef) === "string") {
+                that.buffer = flock.enviro.shared.buffers[bufDef][chan];
+            } else {
+                // TODO: Should this be done earlier (during ugen parsing)?
+                flock.parse.bufferForDef(bufDef, function (buffer, name) {
+                    that.buffer = buffer[that.inputs.channel.output[0]];
+                    that.model.name = name;
+                    that.idx = 0;
+                });
+            }
+        };
+        
+        that.onInputChanged();
+        return that;
+    };
+    
     flock.ugen.dust = function (inputs, output, options) {
         var that = flock.ugen.mulAdd(inputs, output, options);
         that.model = {
@@ -534,7 +605,7 @@ var flock = flock || {};
         
         that.krFreq = function (numSamps) {
             that.model.phase = that.model.phase || that.inputs.phase.output[0]; // Only read the phase input initially.
-            var freq = that.inputs.freq.output[0], // TODO: hard-coded at control rate. Fix this.
+            var freq = that.inputs.freq.output[0],
                 out = that.output,
                 scale = that.model.scale,
                 phase = that.model.phase,
@@ -748,24 +819,24 @@ var flock = flock || {};
     
         that.krBufferMultiChan = function () {
             var source = that.inputs.source,
-                buffers = flock.enviro.shared.buffers,
-                bufStart = that.inputs.buffer.output[0],
+                buses = flock.enviro.shared.buses,
+                bufStart = that.inputs.bus.output[0],
                 i;
             
             for (i = 0; i < source.length; i++) {
-                buffers[bufStart + i] = source[i].output;
+                buses[bufStart + i] = source[i].output;
             }
         };
     
         that.krBufferExpandSingle = function () {
             var source = that.inputs.source,
-                buffers = flock.enviro.shared.buffers,
-                bufStart = that.inputs.buffer.output[0],
+                buses = flock.enviro.shared.buses,
+                bufStart = that.inputs.bus.output[0],
                 chans = that.model.chans,
                 i;
             
             for (i = 0; i < chans; i++) {
-                buffers[bufStart + i] = source.output;
+                buses[bufStart + i] = source.output;
             }
         };
     

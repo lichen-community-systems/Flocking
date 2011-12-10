@@ -38,6 +38,10 @@ var flock = flock || {};
         fps: 60
     };
 
+    flock.idIdx = 0;
+    flock.id = function () {
+        return "flock-id-" + flock.idIdx++;
+    };
     
     /*************
      * Utilities *
@@ -120,7 +124,7 @@ var flock = flock || {};
         }
         return fn.apply(null, args);
     };
-        
+    
     
     /***********************
      * Synths and Playback *
@@ -132,7 +136,8 @@ var flock = flock || {};
      * the output buffer's size will be rounded up to the nearest control period.
      *
      * @param {Number} needed the number of samples to generate
-     * @param {UGen} outUGen the output unit generator from which to draw samples
+     * @param {Function} evalFn a function to invoke when writing each buffer
+     * @param {Array} an array of buffers to write
      * @param {Object} audioSettings the current audio system settings
      * @return a channel-interleaved output buffer containing roughly the number of needed samples
      */
@@ -190,7 +195,11 @@ var flock = flock || {};
             },
             nodes: []
         };
-        that.buffers = flock.enviro.createAudioBuffers(16, that.audioSettings.rates.control);
+        
+        // TODO: Buffers are named but buses are numbered. Should we have a consistent strategy?
+        // The advantage to numbers is that they're easily modulatable with a ugen. Names are easier to deal with.
+        that.buses = flock.enviro.createAudioBuffers(16, that.audioSettings.rates.control);
+        that.buffers = {};
         
         /**
          * Starts generating samples from all synths.
@@ -243,6 +252,20 @@ var flock = flock || {};
             var idx = that.nodes.indexOf(node);
             that.nodes.splice(idx, 1);
         };
+                
+        that.loadBuffer = function (name, src, onLoadFn) {
+            var reader = typeof (src) === "string" ? flock.file.readUrl : flock.file.readFile;
+            
+            reader(src, function (fileName, data) {
+                var type = flock.file.parseFileExtension(fileName),
+                    decoded = flock.audio.decode(type, data);
+                    
+                that.buffers[name] = decoded.channels;
+                if (onLoadFn) {
+                    onLoadFn(decoded.channels, name); 
+                }
+            });
+        };
 
         setupEnviro(that);
         return that;
@@ -292,7 +315,7 @@ var flock = flock || {};
                     return;
                 }
                 
-                var outBuf = flock.interleavedDemandWriter(needed, that.gen, that.buffers, that.audioSettings);
+                var outBuf = flock.interleavedDemandWriter(needed, that.gen, that.buses, that.audioSettings);
                 playState.written += that.audioEl.mozWriteAudio(outBuf);
                 if (playState.written >= playState.total) {
                     that.stop();
@@ -314,7 +337,7 @@ var flock = flock || {};
                 chans = that.audioSettings.chans,
                 bufSize = that.audioSettings.bufferSize,
                 numKRBufs = bufSize / kr,
-                sourceBufs = that.buffers,
+                sourceBufs = that.buses,
                 outBufs = e.outputBuffer,
                 i,
                 chan,

@@ -64,14 +64,14 @@ flock.test = flock.test || {};
         var evalFn = function () {
             outUGen.gen(numSamps);
         };
-        var actual = flock.interleavedDemandWriter(numSamps, evalFn, flock.enviro.shared.buffers, audioSettings);
+        var actual = flock.interleavedDemandWriter(numSamps, evalFn, flock.enviro.shared.buses, audioSettings);
         deepEqual(actual, expectedBuffer, msg);
     };
 
     test("flock.interleavedDemandWriter() mono input, mono output", function () {
         // Test with a single input buffer being multiplexed by ugen.out.
         var mockLeftUGen = makeMockUGen(mockLeft);
-        var out = flock.ugen.out({source: mockLeftUGen, buffer: bufferValueUGen}, []);
+        var out = flock.ugen.out({source: mockLeftUGen, bus: bufferValueUGen}, []);
 
         // Pull the whole buffer.
         var expected = new Float32Array([
@@ -90,7 +90,7 @@ flock.test = flock.test || {};
     test("flock.interleavedDemandWriter() mono input, stereo output", function () {
         // Test with a single mono input buffer.
         var mockLeftUGen = makeMockUGen(mockLeft);
-        var out = flock.ugen.out({source: mockLeftUGen, buffer: bufferValueUGen, expand: stereoExpandValueUGen}, []);
+        var out = flock.ugen.out({source: mockLeftUGen, bus: bufferValueUGen, expand: stereoExpandValueUGen}, []);
 
         // Pull the whole buffer.
         var expected = new Float32Array([
@@ -110,7 +110,7 @@ flock.test = flock.test || {};
                 makeMockUGen(mockLeft), 
                 makeMockUGen(mockRight)
             ],
-            buffer: bufferValueUGen
+            bus: bufferValueUGen
         }, []);
 
         // Pull the whole buffer. Expect a stereo interleaved buffer as the result, 

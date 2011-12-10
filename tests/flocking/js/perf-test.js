@@ -56,7 +56,7 @@ var flock = flock || {};
                         value: 12
                     }
                 },
-                buffer: 0,
+                bus: 0,
                 expand: 2
             }
         });
