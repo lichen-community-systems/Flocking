@@ -42,6 +42,10 @@ var flock = flock || {};
     };
     
     flock.file.readFile = function (file, onSuccess) {
+        if (!file) {
+            return null;
+        }
+        
         var reader  = new FileReader();
         reader.onload = function (e) {
             onSuccess(file.name, e.target.result);

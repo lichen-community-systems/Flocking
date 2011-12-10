@@ -513,7 +513,7 @@ var flock = flock || {};
                 flock.parse.bufferForDef(bufDef, function (buffer, name) {
                     that.buffer = buffer[that.inputs.channel.output[0]];
                     that.model.name = name;
-                    that.idx = 0;
+                    that.model.idx = 0;
                 });
             }
         };

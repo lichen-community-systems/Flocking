@@ -33,39 +33,37 @@
         
         <script type="text/javascript">
 
-            var playView = demo.toggleButtonView("playButton");
-			
-            // Options for the scope view.
-            var scopeOpts = {
-                canvas: "waveform",
-                styles: {
-                    scaleY: 2,
-                    strokeColor: "#888",
-                    strokeWidth: 3
-                }
-            };
-						
-            document.getElementById("fileBrowser").addEventListener("change", function () {
-                // Each time a new file is selected, reload the synth. This could be done more efficiently
-                // With a call to flock.enviro.shared.loadBuffer().
-                playView.synth = flock.synth({
-                    id: "scope",
-                    ugen: "flock.ugen.scope",
+            var synth = flock.synth({
+                id: "scope",
+                ugen: "flock.ugen.scope",
 
-                    // Set up a playBuffer ugen,
-                    // pointing it to the File object selected by the #fileBrowser input elemented.
-                    // This File will automatically be loaded into a buffer named "selectedSound"
-                    source: {
-                        ugen: "flock.ugen.playBuffer",
-                        buffer: {
-                            id: "selectedSound",
-                            selector: "#fileBrowser"
-                        },
-                        speed: 1.0
+                // Set up a playBuffer ugen,
+                // pointing it to the File object selected by the #fileBrowser input elemented.
+                // This File will automatically be loaded into a buffer named "selectedSound"
+                source: {
+                    id: "player",
+                    ugen: "flock.ugen.playBuffer",
+                    buffer: {
+                        id: "selectedSound",
+                        selector: "#fileBrowser"
                     },
+                    speed: 1.0
+                },
 
-                    options: scopeOpts
-                });
+                options: {
+                    canvas: "waveform",
+                    styles: {
+                        scaleY: 2,
+                        strokeColor: "#888",
+                        strokeWidth: 3
+                    }
+                }
+            });
+            
+            var playView = demo.toggleButtonView("playButton", synth);
+
+            document.getElementById("fileBrowser").addEventListener("change", function () {
+                synth.input("player").onInputChanged();
             });
 			
             // Bind a click event to the browse button, which delegates to the hidden (ugly) file input element.
