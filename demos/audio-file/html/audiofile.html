@@ -21,11 +21,11 @@
             <form class="fileSelector">
                 <label for="fileBrowser">Choose a sound file</label>
                 <input id="fileBrowser" type="file" />
-                <div id="filePath"></div>
                 <button id="browse">Choose a sound file...</button>
+                <span id="filePath"></span>
             </form>
         
-            <button id="playButton">Play</button>
+            <button id="playButton" class="paused">Play</button>
         </div>
         <div class="view">
             <canvas id="waveform" height="200" width="960"></canvas>
@@ -34,18 +34,16 @@
         <script type="text/javascript">
 
             var synth = flock.synth({
-                id: "scope",
                 ugen: "flock.ugen.scope",
 
-                // Set up a playBuffer ugen,
-                // pointing it to the File object selected by the #fileBrowser input elemented.
-                // This File will automatically be loaded into a buffer named "selectedSound"
+                // The playBuffer ugen plays back audio buffers loaded from a url or file.
+                // Currently, Flocking has support for .wav and .aiff files.
                 source: {
                     id: "player",
                     ugen: "flock.ugen.playBuffer",
                     buffer: {
-                        id: "selectedSound",
-                        selector: "#fileBrowser"
+                        id: "selectedSound",            // The sound file will be loaded into an environment buffer named "selectedSound."
+                        selector: "#fileBrowser"        // The File object selected by the #fileBrowser input element will be read.
                     },
                     speed: 1.0
                 },
@@ -58,21 +56,18 @@
                         strokeWidth: 3
                     }
                 }
-            });
+            }),
             
-            var playView = demo.toggleButtonView("playButton", synth);
-
-            document.getElementById("fileBrowser").addEventListener("change", function () {
-                synth.input("player").onInputChanged();
-            });
-			
-            // Bind a click event to the browse button, which delegates to the hidden (ugly) file input element.
-            // TODO: Chrome prevents this. :(
-            document.getElementById("browse").addEventListener("click", function (e) {
-                document.getElementById("fileBrowser").click();
-                e.preventDefault();
-            }, false);
-
+            fileSelectorView = demo.fileSelectorView(synth, {
+                playerId: "player",
+                selectors: {
+                    input: "#fileBrowser",
+                    button: "#browse",
+                    fileName: "#filePath"
+                }
+            }),
+            
+            playButtonView = demo.toggleButtonView(synth, "#playButton");
         </script>
     </body>
 </html>

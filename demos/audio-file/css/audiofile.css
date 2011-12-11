@@ -11,6 +11,7 @@ label {
 
 input {
     display: none;
+    padding: 10px;
 }
 
 .controls {
@@ -35,9 +36,10 @@ input {
 
 #filePath {
     font-family: courier, monospace;
+    font-size: 80%;
     padding-top: 2.5%;
     padding-right: 3%;
-    float: left;
+    padding-left: 3%;
 }
 
 #browse {
@@ -50,11 +52,18 @@ input {
 }
 
 #playButton {
-    background: transparent url("../../../images/play.png") no-repeat 0px 0px;
     border: none;
     height: 77px;
     width: 77px;
     float: left;
     margin: 1.25% 0% 0% 2%;
-    color: #fff;
+    color: transparent;
+}
+
+.playing {
+    background: transparent url("../../../images/pause.png") no-repeat 0px 0px;
+}
+
+.paused {
+    background: transparent url("../../../images/play.png") no-repeat 0px 0px;
 }

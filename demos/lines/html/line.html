@@ -42,7 +42,7 @@
                 },
                 mul: 0.5
             });            
-            demo.toggleButtonView("line-freq", lineFreqSynth);
+            demo.toggleButtonView(lineFreqSynth, "#line-freq");
             
             var complexLineFreqSynth = flock.synth({
                 ugen: "flock.ugen.sinOsc",
@@ -60,7 +60,7 @@
                 },
                 mul: 0.25
             });
-            demo.toggleButtonView("complex-line-freq", complexLineFreqSynth);
+            demo.toggleButtonView(complexLineFreqSynth, "#complex-line-freq");
                         
             // Line modulating the phase of a sine oscillator.
             var linePhaseSynth = flock.synth({
@@ -79,7 +79,7 @@
                 },
                 mul: 0.25
             });
-            demo.toggleButtonView("line-phase", linePhaseSynth);
+            demo.toggleButtonView(linePhaseSynth, "#line-phase");
         </script>
     </body>
 </html>

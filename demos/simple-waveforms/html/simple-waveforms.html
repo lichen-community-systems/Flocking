@@ -42,7 +42,7 @@
             });
             
             // Bind it to a play/pause toggle button.
-            demo.toggleButtonView("sine-toggle", synth);
+            demo.toggleButtonView(synth, "#sine-toggle");
             
             // And a triangle oscillator.
             var synth = flock.synth({
@@ -50,7 +50,7 @@
                 freq: 440
             });
             
-            demo.toggleButtonView("triangle-toggle", synth);
+            demo.toggleButtonView(synth, "#triangle-toggle");
             
             // And a square wave oscillator.
             var synth = flock.synth({
@@ -58,7 +58,7 @@
                 freq: 440
             });
             
-            demo.toggleButtonView("square-toggle", synth);
+            demo.toggleButtonView(synth, "#square-toggle");
             
             // And a saw.
             var synth = flock.synth({
@@ -66,7 +66,7 @@
                 freq: 440
             });
             
-            demo.toggleButtonView("saw-toggle", synth);
+            demo.toggleButtonView(synth, "#saw-toggle");
         </script>
     </body>
 </html>

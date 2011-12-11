@@ -36,7 +36,7 @@
                 density: 200,
                 mul: 0.5
             });            
-            demo.toggleButtonView("dust-toggle", dustSynth);
+            demo.toggleButtonView(dustSynth, "#dust-toggle");
             
             // LFNoise generating random audio noise.
             var lfNoiseSynth = flock.synth({
@@ -44,7 +44,7 @@
                 freq: 1000,
                 mul: 0.25
             });
-            demo.toggleButtonView("lfNoise-toggle", lfNoiseSynth);
+            demo.toggleButtonView(lfNoiseSynth, "#lfNoise-toggle");
             
             // LFNoise randomly changing the pitch of a sine oscillator every quarter second.
             var lfNoiseSineSynth = flock.synth({
@@ -57,7 +57,7 @@
                     add: 450
                 }
             });
-            demo.toggleButtonView("lfNoiseSine-toggle", lfNoiseSineSynth);
+            demo.toggleButtonView(lfNoiseSineSynth, "#lfNoiseSine-toggle");
         </script>
     </body>
 </html>
