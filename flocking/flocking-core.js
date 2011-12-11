@@ -254,8 +254,13 @@ var flock = flock || {};
         };
                 
         that.loadBuffer = function (name, src, onLoadFn) {
-            var reader = typeof (src) === "string" ? flock.file.readUrl : flock.file.readFile;
+            if (!src) {
+                // Assume the buffer has already been loaded by other means.
+                onLoadFn(that.buffers[name], name);
+                return;
+            }
             
+            var reader = typeof (src) === "string" ? flock.file.readUrl : flock.file.readFile;
             reader(src, function (fileName, data) {
                 var type = flock.file.parseFileExtension(fileName),
                     decoded = flock.audio.decode(type, data);

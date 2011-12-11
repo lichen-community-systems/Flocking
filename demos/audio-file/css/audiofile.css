@@ -5,11 +5,11 @@ body {
     background: #eee;
 }
 
-label {
+.fileSelector label {
     display: none;
 }
 
-input {
+#fileBrowser {
     display: none;
     padding: 10px;
 }
@@ -66,4 +66,12 @@ input {
 
 .paused {
     background: transparent url("../../../images/play.png") no-repeat 0px 0px;
+}
+
+.speedSelector {
+    padding-top: 1%;
+}
+
+.speedSelector label {
+    padding-right: 1%;
 }

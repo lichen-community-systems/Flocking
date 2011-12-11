@@ -42,6 +42,7 @@ var flock = flock || {};
             
             var ugen = flock.parse.ugenForInputDef(val, flock.enviro.shared.audioSettings.rates);
             that.inputs[name] = ugen;
+            that.onInputChanged(name);
             return ugen;
         };
     
@@ -462,7 +463,8 @@ var flock = flock || {};
         // Start with a zeroed buffer, since the buffer input may be loaded asynchronously.
         that.buffer = new Float32Array(that.output.length); 
         
-        that.gen = function (numSamps) {
+        // Optimized gen function for regular-speed playback.
+        that.crSpeedGen = function (numSamps) {
             var out = that.output,
                 chan = that.inputs.channel.output[0],
                 source = that.buffer,
@@ -493,9 +495,46 @@ var flock = flock || {};
             that.model.idx = bufIdx;
         };
         
-        that.onInputChanged = function () {            
+        that.krSpeedGen = function (numSamps) {
+            var out = that.output,
+                chan = that.inputs.channel.output[0],
+                speedInc = 1.0 * that.inputs.speed.output[0],
+                source = that.buffer,
+                bufIdx = that.model.idx,
+                bufLen = source.length,
+                endIdx = bufIdx + numSamps,
+                loop = that.inputs.loop.output[0],
+                i;
+            
+            // If the channel has changed, update the buffer we're reading from.
+            if (that.model.channel != chan) {
+                that.model.channel = chan;
+                that.buffer = source = flock.enviro.shared.buffers[that.model.name][chan]; 
+            }
+            
+            for (i = 0; i < numSamps; i++) {
+                if (bufIdx >= bufLen) {
+                    if (loop > 0) {
+                        bufIdx = 0;
+                    }
+                    out[i] = 0.0;
+                    continue;
+                }
+                
+                out[i] = source[Math.round(bufIdx)];
+                bufIdx += speedInc;
+            }
+            
+            that.model.idx = bufIdx;
+        };
+        
+        that.onInputChanged = function (inputName) {            
             if (!that.inputs.loop) {
                 that.inputs.loop = flock.ugen.value({value: 0.0}, new Float32Array(1));
+            }
+            
+            if (!that.inputs.speed) {
+                that.inputs.speed = flock.ugen.value({value: 1.0}, new Float32Array(1));
             }
             
             if (!that.inputs.channel) {
@@ -503,19 +542,24 @@ var flock = flock || {};
                 that.model.channel = that.inputs.channel.output[0];
             }
             
-            var bufDef = that.inputs.buffer,
-                chan = that.inputs.channel.output[0];
-                
-            if (typeof (bufDef) === "string") {
-                that.buffer = flock.enviro.shared.buffers[bufDef][chan];
-            } else {
-                // TODO: Should this be done earlier (during ugen parsing)?
-                flock.parse.bufferForDef(bufDef, function (buffer, name) {
-                    that.buffer = buffer[that.inputs.channel.output[0]];
-                    that.model.name = name;
-                    that.model.idx = 0;
-                });
+            if (that.model.bufDef !== that.inputs.buffer || inputName === "buffer") {
+                var bufDef = that.model.bufDef = that.inputs.buffer,
+                    chan = that.inputs.channel.output[0];
+
+                if (typeof (bufDef) === "string") {
+                    that.buffer = flock.enviro.shared.buffers[bufDef][chan];
+                } else {
+                    // TODO: Should this be done earlier (during ugen parsing)?
+                    flock.parse.bufferForDef(bufDef, function (buffer, name) {
+                        that.buffer = buffer? buffer[that.inputs.channel.output[0]] : that.buffer;
+                        that.model.name = name;
+                        that.model.idx = 0;
+                    });
+                }
             }
+            
+            that.gen = (that.inputs.speed.rate === flock.rates.CONSTANT && that.inputs.speed.output[0] === 1.0) ?
+                that.crSpeedGen : that.krSpeedGen;
         };
         
         that.onInputChanged();

@@ -30,6 +30,10 @@
         <div class="view">
             <canvas id="waveform" height="200" width="960"></canvas>
         </div>
+        <div class="speedSelector">
+            <label for="playbackSpeed">Playback speed:</label>
+            <input type="range" name="playbackSpeed" id="playbackSpeed" min="0.5" max="2.0" step="0.1" value="1.0" />
+        </div>
         
         <script type="text/javascript">
 
@@ -45,7 +49,8 @@
                         id: "selectedSound",            // The sound file will be loaded into an environment buffer named "selectedSound."
                         selector: "#fileBrowser"        // The File object selected by the #fileBrowser input element will be read.
                     },
-                    speed: 1.0
+                    speed: 1.0,
+                    loop: 1.0
                 },
 
                 options: {
@@ -68,6 +73,13 @@
             }),
             
             playButtonView = demo.toggleButtonView(synth, "#playButton");
+            
+            // Dynamically change the playback speed of the playBuffer ugen based on changes to the slider.
+            document.querySelector("#playbackSpeed").addEventListener("change", function (e) {
+                synth.input("player.speed", Number(e.target.value));
+                e.preventDefault();
+                e.stopPropagation();
+            }, false)
         </script>
     </body>
 </html>

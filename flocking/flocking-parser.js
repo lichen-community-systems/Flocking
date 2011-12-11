@@ -188,13 +188,15 @@ var flock = flock || {};
     
     flock.parse.bufferForDef = function (bufDef, onLoad, enviro) {
         enviro = enviro || flock.enviro.shared;
-        
-        if (!bufDef.url && !bufDef.selector) {
-            throw new Error("No URL or input element selector was found in the specified bufferDef: " + bufDef);
-        }
-        
+
         var id = bufDef.id || flock.id(),
-            src = bufDef.url || document.querySelector(bufDef.selector).files[0];
+            src;
+            
+        if (bufDef.url) {
+            src = bufDef.url;
+        } else if (bufDef.selector) {
+            src = document.querySelector(bufDef.selector).files[0];
+        }
         
         enviro.loadBuffer(id, src, onLoad);
     };

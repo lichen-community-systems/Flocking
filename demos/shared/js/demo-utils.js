@@ -51,7 +51,7 @@ var demo = demo || {};
             if (that.fileName) {
                 that.fileName.innerHTML = that.input.files[0].name;
             }
-            synth.input(options.playerId).onInputChanged();
+            synth.input(options.playerId).onInputChanged("buffer");
         });
 		
         // On Firefox, bind a click event to the browse button, which delegates to the hidden (ugly) file input element.
