@@ -88,6 +88,16 @@
                 "release"
             ], audioAndControl);
             
+            flock.test.timeIsolatedUGens([
+                "flock.ugen.out",
+            ], [
+                "source",
+                {
+                    name: "buffer",
+                    scale: 10
+                }
+            ], audioAndControl);
+            
         </script>
     </body>
 </html>
