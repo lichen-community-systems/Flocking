@@ -45,6 +45,7 @@ var flock = flock || {};
             return ugen;
         };
     
+        that.onInputChanged = function () {}; // No-op base implementation.
         return that;
     };
     

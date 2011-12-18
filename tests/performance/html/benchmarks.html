@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <title>Benchmarks (Flocking)</title>
+    
+    	<link rel="stylesheet" type="text/css" href="../css/benchmarks.css" />
+	
+        <script type="text/javascript" src="../../../flocking/flocking-core.js"></script>
+        <script type="text/javascript" src="../../../flocking/flocking-ugens.js"></script>
+        <script type="text/javascript" src="../../../flocking/flocking-parser.js"></script>
+        
+        <script type="text/javascript" src="../js/benchmarks.js"></script>
+    </head>
+
+    <body id="body">
+
+        <script type="text/javascript">
+            var freqSpec = {
+                name: "freq",
+                scale: 1200
+            },
+            
+            phaseSpec = {
+                name: "phase",
+                scale: flock.TWOPI
+            },
+                 
+            audioAndControl = [
+                flock.rates.AUDIO,
+                flock.rates.CONTROL
+            ];
+					
+            flock.test.timeIsolatedUGens([
+                "flock.ugen.sin", 
+                "flock.ugen.sinOsc", 
+                "flock.ugen.triOsc", 
+                "flock.ugen.sawOsc",
+                "flock.ugen.lfSaw",
+                "flock.ugen.squareOsc"
+            ], [
+                freqSpec,
+                phaseSpec,
+                "mul",
+                "add"
+            ], audioAndControl);
+			
+            flock.test.timeIsolatedUGens([
+				"flock.ugen.lfNoise",
+			], [
+				freqSpec,
+				"mul",
+				"add"
+			], audioAndControl);
+            
+            flock.test.timeIsolatedUGens([
+                "flock.ugen.dust"
+            ], [
+                "density",
+                "mul",
+                "add"
+            ], audioAndControl);
+			
+            flock.test.timeIsolatedUGens([
+                "flock.ugen.lfPulse"
+            ], [
+                freqSpec,
+                phaseSpec,
+                "width",
+                "mul",
+                "add"
+            ], audioAndControl);
+			
+            flock.test.timeIsolatedUGens([
+                "flock.ugen.line",
+                "flock.ugen.xLine"
+            ], [
+                "start",
+                "end",
+                "duration"
+            ], audioAndControl);
+			
+            flock.test.timeIsolatedUGens([
+                "flock.ugen.amplitude",
+            ], [
+                "source",
+                "attack",
+                "release"
+            ], audioAndControl);
+            
+        </script>
+    </body>
+</html>
