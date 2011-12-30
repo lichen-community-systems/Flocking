@@ -7,6 +7,8 @@
 */
 
 /*global module, test, expect, ok, equals, deepEqual, Float32Array*/
+/*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
+    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
 var flock = flock || {};
 
@@ -17,10 +19,12 @@ var flock = flock || {};
 
     var checkSampleBoundary = function (buffer, min, max) {
         var aboveMin = true,
-            belowMax = true;
+            belowMax = true,
+            i,
+            samp;
             
-        for (var i = 0; i < buffer.length; i++) {
-            var samp = buffer[i];
+        for (i = 0; i < buffer.length; i++) {
+            samp = buffer[i];
             aboveMin = (samp >= min);
             belowMax = (samp <= max);
         }
@@ -30,9 +34,11 @@ var flock = flock || {};
     };
     
     var countNonZeroSamples = function (buffer) {
-        var numNonZero = 0;
-        for (var i = 0; i < buffer.length; i++) {
-            var samp = buffer[i];
+        var numNonZero = 0,
+            i,
+            samp;
+        for (i = 0; i < buffer.length; i++) {
+            samp = buffer[i];
             numNonZero = (samp > 0.0) ? numNonZero + 1 : numNonZero;
         }
         return numNonZero;
@@ -42,13 +48,15 @@ var flock = flock || {};
         // Run the algorithm 100x and average the results.
         var nonZeroSum = 0,
             numRuns = 1500,
-            buffer = dust.output;
+            buffer = dust.output,
+            i,
+            avgNumNonZeroSamples;
     
-        for (var i = 0; i < numRuns; i++) {
+        for (i = 0; i < numRuns; i++) {
             dust.gen(44100);
             nonZeroSum += countNonZeroSamples(buffer);
         }
-        var avgNumNonZeroSamples = nonZeroSum / numRuns;
+        avgNumNonZeroSamples = nonZeroSum / numRuns;
         equals(Math.round(avgNumNonZeroSamples), density, 
             "There should be roughly " + density + " non-zero samples in a one-second buffer.");
     };

@@ -7,6 +7,8 @@
 */
 
 /*global module, test, expect, ok, equals, deepEqual, Float32Array*/
+/*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
+    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
 var flock = flock || {};
 
@@ -50,7 +52,8 @@ var flock = flock || {};
     };
     
     flock.test.assertArrayEquals = function (actual, expected, msg) {
-        for (var i = 0; i < expected.length; i++) {
+        var i;
+        for (i = 0; i < expected.length; i++) {
             equals(actual[i], expected[i], msg + " Index: " + i);
         }
     };
@@ -59,7 +62,7 @@ var flock = flock || {};
         var i;
         for (i = 0; i < buffer.length; i++) {
             if (isNaN(buffer[i])) {
-                ok(false, "NaN value found at index " + i);
+                ok(false, msg + " NaN value found at index " + i);
             }
         }
     };
@@ -177,7 +180,7 @@ var flock = flock || {};
 
         return function () {
             return Math.random() * scale;	
-        }
+        };
     };
     
 }());

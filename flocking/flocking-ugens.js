@@ -6,9 +6,9 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global Float32Array*/
-/*jslint white: true, funcinvoke: true, undef: true, newcap: true, regexp: true, browser: true, 
-    forin: true, continue: true, forvar: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
+/*global Float32Array, window*/
+/*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
+    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
 var flock = flock || {};
 
@@ -806,7 +806,7 @@ var flock = flock || {};
         };
         
         that.drawScope = function () {
-            requestAnimationFrame(that.drawScope);
+            window.requestAnimationFrame(that.drawScope);
             that.scopeView.refreshView();
         };
         
@@ -845,7 +845,7 @@ var flock = flock || {};
                         nextAtt === 0.0 ? 0.0 : Math.exp(flock.LOG1 / (nextAtt * that.sampleRate));
                 }
                 
-                if (nextRel != prevRel) {
+                if (nextRel !== prevRel) {
                     that.model.releaseTime = nextRel;
                     relCoef = that.model.releaseCoef = 
                         (nextRel === 0.0) ? 0.0 : Math.exp(flock.LOG1 / (nextRel * that.sampleRate));

@@ -7,8 +7,8 @@
 */
 
 /*global Float32Array*/
-/*jslint white: true, funcinvoke: true, undef: true, newcap: true, regexp: true, browser: true, 
-    forin: true, continue: true, forvar: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
+/*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
+    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
 var flock = flock || {};
 

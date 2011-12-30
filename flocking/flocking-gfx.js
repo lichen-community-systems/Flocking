@@ -6,6 +6,9 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
+/*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
+    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
+
 var flock = flock || {};
 flock.gfx = flock.gfx || {};
 
@@ -196,4 +199,4 @@ flock.gfx = flock.gfx || {};
     
     // Polyfill for requestAnimationFrame.
     window.requestAnimationFrame = window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame;
-})();
+}());
