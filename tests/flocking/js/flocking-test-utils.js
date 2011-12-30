@@ -161,4 +161,23 @@ var flock = flock || {};
         
         ok(maxReached, msg);
     };
+    
+    flock.test.makeMockUGen = function (outputBufferGenerator, rate) {
+        rate = rate || flock.rates.AUDIO;
+        return {
+            rate: rate,
+            output: flock.generate(64, outputBufferGenerator),
+            onInputChanged: function () {}
+        };
+    };
+    
+    flock.test.makeRandomInputGenerator = function (inputSpec, defaultScale) {
+        defaultScale = defaultScale || 500;
+        var scale = typeof (inputSpec) === "string" ? defaultScale : inputSpec.scale;
+
+        return function () {
+            return Math.random() * scale;	
+        }
+    };
+    
 }());
