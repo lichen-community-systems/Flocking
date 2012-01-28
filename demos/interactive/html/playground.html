@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Flocking Playground</title>
+        <link rel="stylesheet" type="text/css" href="../css/playground.css" />
+	
+        <script src="../lib/jquery.min.js" type="text/javascript"></script>
+	
+        <script src="../lib/ace_0.2.0/ace.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../lib/ace_0.2.0/theme-twilight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../lib/ace_0.2.0/mode-javascript.js" type="text/javascript" charset="utf-8"></script>
+
+        <script src="../../../flocking/flocking-core.js"></script>
+        <script src="../../../flocking/flocking-parser.js"></script>
+        <script src="../../../flocking/flocking-ugens.js"></script>
+        <script src="../../../flocking/flocking-gfx.js"></script>
+        
+        <script src="../js/playground.js"></script>
+        
+
+    </head>
+    
+    <body>
+        <h1>Flocking Playground</h1>
+
+        <!-- Controls for selecting a demo and playing/pausing the active synth. -->
+        <div id="navi">
+        	<button id="play-button">Play</button>
+        	<select id="sample_code_sel" size="1">
+            	<option value="amp_mod" selected="selected">Amplitude modulation</option>
+            	<option value="freq_stairs">Frequency stairs</option>
+            	<option value="freq_mod">Frequency modulation</option>
+        		<option value="phase_mod">Phase modulation</option>
+        		<option value="scope">Scope</option>
+        		<option value="stereo">Stereo</option>
+        		<optgroup label="Lines">
+        			<option value="line_freq">SinOsc Freq</option>
+        			<option value="line_mod">Mod SinOsc Freq</option>
+        			<option value="line_phase">SinOsc Phase</option>
+        		</optgroup>
+        		<optgroup label="Noise">
+        			<option value="noise_dust">Dust</option>
+        			<option value="noise_lf">LFNoise</option>
+        			<option value="noise_sin">LFNoise &amp; SinOsc</option>
+        		</optgroup>
+        		<optgroup label="Simple Waveforms">
+        			<option value="simple_sin">Sine</option>
+        			<option value="simple_triangle">Triangle</option>
+        			<option value="simple_square">Square</option>
+        			<option value="simple_saw">Saw</option>
+        		</optgroup>
+        	</select>
+        	<button id="load-button">Load</button>
+        </div>
+
+        <!-- Placeholder for the Ace interactive editor -->
+        <pre id="editor">
+        // Create a new synth consisting of a sine wave, 
+        // modulating its amplitude slowly with another sine wave.
+        synth = flock.synth({
+            id: "carrier",
+            ugen: "flock.ugen.sinOsc",
+            freq: 440,
+            mul: {
+                id: "mod",
+                ugen: "flock.ugen.sinOsc",
+                rate: "control",
+                freq: 1.0
+            }
+        });
+        </pre>
+    
+        <script>
+            var editorView = demo.liveEditorView("editor");
+            
+            // Shared globals for demos
+            // TODO: Remove these when flock.synth and flock.enviro have been refactored slightly to allow enviro-level playing/pausing.
+            var synth, timerId;
+        </script>
+        
+        <!-- Scope View area for visualizing the demos -->
+        <div id="scopeArea">
+            <span id="gfx-title">#gfx</span>
+            <canvas id="gfx"></canvas>
+        </div>
+
+        <!-- start of sample codes -->
+        <script type="application/flocking" id="amp_mod">// Create a new synth consisting of a sine wave, 
+        // modulating its amplitude slowly with another sine wave.
+        synth = flock.synth({
+            id: "carrier",
+            ugen: "flock.ugen.sinOsc",
+            freq: 440,
+            mul: {
+                id: "mod",
+                ugen: "flock.ugen.sinOsc",
+                rate: "control",
+                freq: 1.0
+            }
+        });
+        </script>
+        <script type="application/flocking" id="freq_stairs">//Frequency Stair Stepping Demo
+        var startingFreq = 110;
+
+        // Create a new sine tone synth.
+        synth = flock.synth({
+            id: "carrier",
+            ugen: "flock.ugen.sinOsc",
+            freq: startingFreq
+        });
+
+        // Every second, increase the frequency of the synth
+        // by a perfect fourth.
+        var freq = synth.input("carrier.freq");
+        
+        timerId = window.setInterval(function () {
+            if (freq <= 3520) {
+                freq *= 4/3;
+                synth.input("carrier.freq", freq);
+            }
+        }, 1000);
+        </script>
+
+        <script type="application/flocking" id="freq_mod">//Frequency Modulation (FM) Synthesis Demo
+        synth = flock.synth({
+            id: "carrier",
+            ugen: "flock.ugen.sinOsc",
+            freq: 440,
+            add: {
+                id: "mod",
+                ugen: "flock.ugen.sinOsc",
+                freq: 220
+            }
+        });
+        </script>
+
+        <script type="application/flocking" id="line_freq">// An ascending sinOsc glissando using a line ugen.
+        synth = flock.synth({
+            ugen: "flock.ugen.sinOsc",
+            freq: {
+                ugen: "flock.ugen.xLine",
+                rate: "control",
+                duration: 1.0,
+                start: 2000,
+                end: 200
+            },
+            mul: 0.5
+        });
+        </script>
+
+        <script type="application/flocking" id="line_mod">//Line w/ Modulated SinOsc Freq
+        synth = flock.synth({
+            ugen: "flock.ugen.sinOsc",
+            freq: {
+                ugen: "flock.ugen.sinOsc",
+                freq: {
+                    ugen: "flock.ugen.xLine",
+                    rate: "control",
+                    start: 1,
+                    end: 1000,
+                    duration: 9
+                },
+                mul: 200,
+                add: 800
+            },
+            mul: 0.25
+        });
+        </script>
+
+        <script type="application/flocking" id="line_phase">// Line modulating the phase of a sine oscillator.
+        synth = flock.synth({
+            ugen: "flock.ugen.sinOsc",
+            freq: 800,
+            phase: {
+                ugen: "flock.ugen.sinOsc",
+                freq: {
+                    ugen: "flock.ugen.xLine",
+                    rate: "control",
+                    start: 1,
+                    end: 1000,
+                    duration: 9
+                },
+                mul: flock.TWOPI
+            },
+            mul: 0.25
+        });
+        </script>
+
+        <script type="application/flocking" id="noise_dust">// Simple example of Dust generating random audio noise.
+        synth = flock.synth({
+            ugen: "flock.ugen.dust",
+            density: 200,
+            mul: 0.5
+        });            
+        </script>
+        <script type="application/flocking" id="noise_lf">// LFNoise generating random audio noise.
+        synth = flock.synth({
+            ugen: "flock.ugen.lfNoise",
+            freq: 1000,
+            mul: 0.25
+        });
+        </script>
+        <script type="application/flocking" id="noise_sin">// LFNoise randomly changing the pitch of a sine 
+        // oscillator every quarter second.
+        synth = flock.synth({
+            ugen: "flock.ugen.sinOsc",
+            mul: 0.2,
+            freq: {
+                ugen: "flock.ugen.lfNoise",
+                freq: 4,
+                mul: 400,
+                add: 450
+            }
+        });         
+        </script>
+        <script type="application/flocking" id="phase_mod">// Create a new synth consisting of a sine wave, 
+        // modulating its phase with another sine wave.
+        synth = flock.synth({
+            id: "carrier",
+            ugen: "flock.ugen.sinOsc",
+            freq: 440,
+            phase: {
+                id: "mod",
+                ugen: "flock.ugen.sinOsc",
+                freq: 20.0,
+                mul: flock.TWOPI
+            },
+            mul: 0.25
+        });
+        </script>
+        <script type="application/flocking" id="scope">// Dynamic scope: create a synth with a scope ugen 
+        //at the end of the ugen graph.
+        synth = flock.synth({
+            ugen: "flock.ugen.scope",
+            source: {
+                ugen: "flock.ugen.sinOsc",
+                freq: 440
+            },
+            options: {
+                canvas: "gfx",
+                styles: {
+                    scaleY: 0.75,
+                    strokeColor: "#777777",
+                    strokeWidth: 3
+                }
+            }
+        });
+        </script>
+        <script type="application/flocking" id="simple_sin">//Simple sine wave oscillator
+        synth = flock.synth({
+            ugen: "flock.ugen.sinOsc",
+            freq: 440
+        });
+        </script>
+        <script type="application/flocking" id="simple_triangle">// And a triangle oscillator.
+        synth = flock.synth({
+            ugen: "flock.ugen.triOsc",
+            freq: 440
+        });
+        </script>
+        <script type="application/flocking" id="simple_square">// And a square wave oscillator.
+        synth = flock.synth({
+            ugen: "flock.ugen.lfPulse",
+            freq: 440
+        });
+        </script>
+        <script type="application/flocking" id="simple_saw">// And a saw.
+        synth = flock.synth({
+            ugen: "flock.ugen.lfSaw",
+            freq: 440
+        });
+        </script>
+        <script type="application/flocking" id="stereo">// Create a synth with two different channels. 
+        // The left and the right channels are both sine waves, 
+        //but slightly apart in frequency. 
+        //This creates a stereo beating effect.
+        synth = flock.synth([
+            {
+                id: "leftSine",
+                ugen: "flock.ugen.sinOsc",
+                freq: 440
+            },
+            {
+                id: "rightSine",
+                ugen: "flock.ugen.sinOsc",
+                freq: 444
+            }
+        ]);
+        </script>
+    </body>
+</html>
