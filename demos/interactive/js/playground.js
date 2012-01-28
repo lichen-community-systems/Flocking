@@ -34,16 +34,16 @@ var demo = demo || {};
     var setupPlayButton = function (that) {
         // TODO: might be able to avoid eval()'ing if we laod JavaScript source via Ajax and inject it as a script block.
         that.playButton.click(function (e) {
-            eval(that.editor.getSession().getValue());
-
     		if (!that.isPlaying) {
+    		    eval(that.editor.getSession().getValue());
+                
     			that.playButton.html("Stop");
     			// TODO: Refactor flock.synth.play() and pause() so that we don't need a global reference to the synth in order to control playback.
     			synth.play();
     			that.isPlaying = true;
     		} else {
     			that.playButton.html("Play");
-    			synth.stop();
+    			synth.pause();
     			that.isPlaying = false;
     			if (timerId){ // TODO: Consider a non-global solution to starting/stopping timers for some demos.
     				window.clearInterval(timerId);

@@ -19,7 +19,7 @@ var demo = demo || {};
                 that.model.isPlaying = true;
             } else {
                 that.button.innerHTML = "Play";
-                that.synth.stop();
+                that.synth.pause();
                 that.model.isPlaying = false;
             }
         }, false);

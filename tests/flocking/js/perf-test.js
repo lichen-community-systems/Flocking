@@ -63,9 +63,9 @@ var flock = flock || {};
             }
         });
         
-        var avg = runTimingTest(synth.ugens, 25);
-        assertCeiling(avg, 2.5, 
-            "Generating and outputting 1 second of stereo signal from flock.ugen.value should take less than 2.5 ms.");
+        var avg = runTimingTest(synth.ugens, 50);
+        assertCeiling(avg, 5, 
+            "Generating and outputting 1 second of stereo signal from flock.ugen.value should take less than 5 ms.");
     });
     
     module("flock.ugen.sinOsc tests");
@@ -83,7 +83,7 @@ var flock = flock || {};
                 ugens.push(input);
             }
         }
-        avg = runTimingTest(ugens, 25);
+        avg = runTimingTest(ugens, 50);
         assertCeiling(avg, expectedCeil, msg);
     };
     
@@ -99,40 +99,40 @@ var flock = flock || {};
             inputs: {
                 freq: crFreq
             },
-            maxDur: 45
+            maxDur: 25
         },
         {
             inputs: {
                 freq: crFreq,
                 phase: crPhase
             },
-            maxDur: 45
+            maxDur: 50
         },
         {
             inputs: {
                 freq: krSinFreq
             },
-            maxDur: 45
+            maxDur: 40
         },
         {
             inputs: {
                 freq: krSinFreq,
                 phase: krSinPhase
             },
-            maxDur: 45
+            maxDur: 80
         },
         {
             inputs: {
                 freq: arSinFreq
             },
-            maxDur: 90
+            maxDur: 75
         },
         {
             inputs: {
                 freq: arSinFreq,
                 phase: arSinPhase
             },
-            maxDur: 135
+            maxDur: 150
         }
         
     ];
