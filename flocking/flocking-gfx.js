@@ -182,7 +182,7 @@ flock.gfx = flock.gfx || {};
             model: model || {
                 values: []
             },
-            canvas: typeof(canvas) === "string" ? document.getElementById(canvas) : canvas
+            canvas: typeof(canvas) === "string" ? document.querySelector(canvas) : canvas
         };
         that.model.min = that.model.min || -1.0;
         that.model.max = that.model.max || 1.0;

@@ -783,7 +783,6 @@ var flock = flock || {};
     flock.ugen.scope = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
-        // TODO: Move more of this code to the scopeView widget.
         that.model.spf = that.sampleRate / flock.defaults.fps;
         that.model.bufIdx = 0;
         
@@ -800,14 +799,14 @@ var flock = flock || {};
             
             for (i = 0; i < numSamps; i++) {
                 buf[bufIdx] = that.inputs.source.output[i];
-                bufIdx = bufIdx < spf ? bufIdx + 1 : 0;
+                if (bufIdx < spf) {
+                    bufIdx += 1;
+                } else {
+                    bufIdx = 0;
+                    that.scopeView.refreshView();
+                }
             }
             that.model.bufIdx = bufIdx;
-        };
-        
-        that.drawScope = function () {
-            window.requestAnimationFrame(that.drawScope);
-            that.scopeView.refreshView();
         };
         
         that.onInputChanged = function () {
@@ -816,7 +815,7 @@ var flock = flock || {};
         };
         
         that.onInputChanged();
-        that.drawScope();
+        that.scopeView.refreshView();
         return that;
     };
     
