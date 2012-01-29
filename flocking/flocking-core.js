@@ -223,6 +223,15 @@ var flock = flock || {};
             that.isPlaying = false;
         };
         
+        that.reset = function () {
+            that.stop();
+            
+            // Clear the environment's node list.
+            while (that.nodes.length > 0) {
+                that.nodes.pop();
+            }
+        };
+        
         that.gen = function () {
             flock.enviro.evalGraph(that.nodes, that.audioSettings.rates.control);
         };

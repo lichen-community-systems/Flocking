@@ -58,7 +58,7 @@
         <pre id="editor">
         // Create a new synth consisting of a sine wave, 
         // modulating its amplitude slowly with another sine wave.
-        synth = flock.synth({
+        var synth = flock.synth({
             id: "carrier",
             ugen: "flock.ugen.sinOsc",
             freq: 440,
@@ -74,9 +74,8 @@
         <script>
             var editorView = demo.liveEditorView("editor");
             
-            // Shared globals for demos
-            // TODO: Remove these when flock.synth and flock.enviro have been refactored slightly to allow enviro-level playing/pausing.
-            var synth, timerId;
+            // TODO: Create an environment-level scheduler so that we don't need to worry about cleaning up things like this timer.
+            var timerId;
         </script>
         
         <!-- Scope View area for visualizing the demos -->
@@ -88,7 +87,7 @@
         <!-- start of sample codes -->
         <script type="application/flocking" id="amp_mod">// Create a new synth consisting of a sine wave, 
         // modulating its amplitude slowly with another sine wave.
-        synth = flock.synth({
+        var synth = flock.synth({
             id: "carrier",
             ugen: "flock.ugen.sinOsc",
             freq: 440,
@@ -104,7 +103,7 @@
         var startingFreq = 110;
 
         // Create a new sine tone synth.
-        synth = flock.synth({
+        var synth = flock.synth({
             id: "carrier",
             ugen: "flock.ugen.sinOsc",
             freq: startingFreq
@@ -123,7 +122,7 @@
         </script>
 
         <script type="application/flocking" id="freq_mod">//Frequency Modulation (FM) Synthesis Demo
-        synth = flock.synth({
+        var synth = flock.synth({
             id: "carrier",
             ugen: "flock.ugen.sinOsc",
             freq: 440,
@@ -136,7 +135,7 @@
         </script>
 
         <script type="application/flocking" id="line_freq">// An ascending sinOsc glissando using a line ugen.
-        synth = flock.synth({
+        var synth = flock.synth({
             ugen: "flock.ugen.sinOsc",
             freq: {
                 ugen: "flock.ugen.xLine",
@@ -150,7 +149,7 @@
         </script>
 
         <script type="application/flocking" id="line_mod">//Line w/ Modulated SinOsc Freq
-        synth = flock.synth({
+        var synth = flock.synth({
             ugen: "flock.ugen.sinOsc",
             freq: {
                 ugen: "flock.ugen.sinOsc",
@@ -169,7 +168,7 @@
         </script>
 
         <script type="application/flocking" id="line_phase">// Line modulating the phase of a sine oscillator.
-        synth = flock.synth({
+        var synth = flock.synth({
             ugen: "flock.ugen.sinOsc",
             freq: 800,
             phase: {
@@ -188,14 +187,14 @@
         </script>
 
         <script type="application/flocking" id="noise_dust">// Simple example of Dust generating random audio noise.
-        synth = flock.synth({
+        var synth = flock.synth({
             ugen: "flock.ugen.dust",
             density: 200,
             mul: 0.5
         });            
         </script>
         <script type="application/flocking" id="noise_lf">// LFNoise generating random audio noise.
-        synth = flock.synth({
+        var synth = flock.synth({
             ugen: "flock.ugen.lfNoise",
             freq: 1000,
             mul: 0.25
@@ -203,7 +202,7 @@
         </script>
         <script type="application/flocking" id="noise_sin">// LFNoise randomly changing the pitch of a sine 
         // oscillator every quarter second.
-        synth = flock.synth({
+        var synth = flock.synth({
             ugen: "flock.ugen.sinOsc",
             mul: 0.2,
             freq: {
@@ -216,7 +215,7 @@
         </script>
         <script type="application/flocking" id="phase_mod">// Create a new synth consisting of a sine wave, 
         // modulating its phase with another sine wave.
-        synth = flock.synth({
+        var synth = flock.synth({
             id: "carrier",
             ugen: "flock.ugen.sinOsc",
             freq: 440,
@@ -231,7 +230,7 @@
         </script>
         <script type="application/flocking" id="scope">// Dynamic scope: create a synth with a scope ugen 
         //at the end of the ugen graph.
-        synth = flock.synth({
+        var synth = flock.synth({
             ugen: "flock.ugen.scope",
             source: {
                 ugen: "flock.ugen.sinOsc",
@@ -248,25 +247,25 @@
         });
         </script>
         <script type="application/flocking" id="simple_sin">//Simple sine wave oscillator
-        synth = flock.synth({
+        var synth = flock.synth({
             ugen: "flock.ugen.sinOsc",
             freq: 440
         });
         </script>
         <script type="application/flocking" id="simple_triangle">// And a triangle oscillator.
-        synth = flock.synth({
+        var synth = flock.synth({
             ugen: "flock.ugen.triOsc",
             freq: 440
         });
         </script>
         <script type="application/flocking" id="simple_square">// And a square wave oscillator.
-        synth = flock.synth({
+        var synth = flock.synth({
             ugen: "flock.ugen.lfPulse",
             freq: 440
         });
         </script>
         <script type="application/flocking" id="simple_saw">// And a saw.
-        synth = flock.synth({
+        var synth = flock.synth({
             ugen: "flock.ugen.lfSaw",
             freq: 440
         });
@@ -275,7 +274,7 @@
         // The left and the right channels are both sine waves, 
         //but slightly apart in frequency. 
         //This creates a stereo beating effect.
-        synth = flock.synth([
+        var synth = flock.synth([
             {
                 id: "leftSine",
                 ugen: "flock.ugen.sinOsc",
