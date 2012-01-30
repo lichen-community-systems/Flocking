@@ -254,17 +254,18 @@ var flock = flock || {};
         };
                 
         that.loadBuffer = function (name, src, onLoadFn) {
-            if (!src) {
+            if (!src && onLoadFn) {
                 // Assume the buffer has already been loaded by other means.
                 onLoadFn(that.buffers[name], name);
                 return;
             }
             
-            var reader = typeof (src) === "string" ? flock.file.readUrl : flock.file.readFile;
-            reader(src, function (fileName, data) {
-                var type = flock.file.parseFileExtension(fileName),
-                    decoded = flock.audio.decode(type, data);
-                    
+            var reader = typeof (src) === "string" ? 
+                (src.indexOf("data:") === 0 ? flock.file.readDataUrl : flock.file.readUrl) : 
+                flock.file.readFile;
+                
+            reader(src, function (type, data) {
+                var decoded = flock.audio.decode(type, data);  
                 that.buffers[name] = decoded.channels;
                 if (onLoadFn) {
                     onLoadFn(decoded.channels, name); 

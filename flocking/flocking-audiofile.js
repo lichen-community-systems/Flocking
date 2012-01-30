@@ -12,7 +12,7 @@
 *  - No more commonly-used names like "Decoder" exposed in the global namespace (to avoid conflicts with other code)
 */
 
-/*global Float32Array*/
+/*global window, Float32Array*/
 /*jslint white: true, funcinvoke: true, undef: true, newcap: true, regexp: true, browser: true, 
     forin: true, continue: true, forvar: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
@@ -27,18 +27,47 @@ var flock = flock || {};
      
     flock.file = {};
     
+    flock.file.mimeTypes = {
+        "audio/wav": "wav",
+        "audio/x-wav": "wav",
+        "audio/wave": "wav",
+        "audio/x-aiff": "aiff",
+        "audio/aiff": "aiff",
+        "sound/aiff": "aiff"
+    };
+    
     flock.file.parseFileExtension = function (fileName) {
-        // TODO: Trim off any potential trailing slashes, etc.
         return fileName.substring(fileName.lastIndexOf(".") + 1);
+    };
+    
+    flock.file.parseMIMEType = function (mimeType) {
+        return flock.file.mimeTypes[mimeType];
     };
     
     flock.file.readUrl = function (url, onSuccess) {
         flock.net.load({
             url: url, 
             success: function (data) {
-                onSuccess(url, data);
+                onSuccess(flock.file.parseFileExtension(url), data);
             }
         });
+    };
+    
+    flock.file.readDataUrl = function (url, onSuccess) {
+        var delim = url.indexOf(","),
+            header = url.substring(0, delim),
+            data = url.substring(delim + 1),
+            base64Idx = header.indexOf(";base64"),
+            isBase64 =  base64Idx > -1,
+            mimeTypeStartIdx = url.indexOf("data:") + 5,
+            mimeTypeEndIdx = isBase64 ? base64Idx : delim;
+            mimeType = url.substring(mimeTypeStartIdx, mimeTypeEndIdx);
+            
+        if (isBase64) {
+            data = window.atob(data);
+        }
+                
+        onSuccess(flock.file.parseMIMEType(mimeType), data);
     };
     
     flock.file.readFile = function (file, onSuccess) {
@@ -48,9 +77,11 @@ var flock = flock || {};
         
         var reader  = new FileReader();
         reader.onload = function (e) {
-            onSuccess(file.name, e.target.result);
+            onSuccess(flock.file.parseFileExtension(file.name), e.target.result);
         };
         reader.readAsBinaryString(file);
+        
+        return reader;
     };
     
     
@@ -202,6 +233,13 @@ var flock = flock || {};
         return channels;
     };
 
+    /**
+     * Decodes audio sample data in the specified format.
+     *
+     * @param format the format of the audio data; this decoder currently supports WAVE and AIFF
+     * @param data the raw data as a binary string
+     * @return an array of Float32Arrays, each representing a single channel's worth of sample data
+     */
     flock.audio.decode = function (format, data) {
 	    var formatSpec = flock.audio.formats[format];
 	    
