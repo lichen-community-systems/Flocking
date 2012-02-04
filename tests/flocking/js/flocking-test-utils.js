@@ -130,7 +130,7 @@ var flock = flock || {};
         }
     };
     
-    flock.test.assertSineish = function (buffer, max, msg) {
+    flock.test.assertSineish = function (buffer, max, threshold, msg) {
         var maxReached = false,
             isAscending = true,
             fail = false,
@@ -145,7 +145,8 @@ var flock = flock || {};
             if (current === next) {
                 continue;
             }
-            
+
+            // TODO: Add support for a threshold.
             if (Math.abs(current) === max) {
                 isAscending = !isAscending;
                 maxReached = true;
@@ -153,7 +154,7 @@ var flock = flock || {};
             
             fail = isAscending ? (next < current) : (next > current);
             if (fail) {
-                ok(fail, "Signal changed direction before reaching maximum value at index: " + i + 
+                ok(false, "Signal changed direction before reaching maximum value at index: " + i + 
                 ". Current value: " + current + ", next value: " + next);
                 break;
             }

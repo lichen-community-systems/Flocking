@@ -37,7 +37,7 @@ var flock = flock || {};
         that.input = function (name, val) {
             if (!val) {
                 var input = that.inputs[name];
-                return typeof (input.model.value) !== "undefined" ? input.model.value : input;
+                return (input.model && typeof (input.model.value) !== "undefined") ? input.model.value : input;
             }
             
             var ugen = flock.parse.ugenForInputDef(val, flock.enviro.shared.audioSettings.rates);

@@ -588,5 +588,5 @@ flock.test = flock.test || {};
             flock.test.assertClimbing(tracker.output, "The amplitude tracker should follow the contour of its source.");
         }
     });
-    
+
 })();

@@ -48,7 +48,7 @@ var flock = flock || {};
         flock.net.load({
             url: url, 
             success: function (data) {
-                onSuccess(flock.file.parseFileExtension(url), data);
+                onSuccess(data, flock.file.parseFileExtension(url));
             }
         });
     };
@@ -60,14 +60,14 @@ var flock = flock || {};
             base64Idx = header.indexOf(";base64"),
             isBase64 =  base64Idx > -1,
             mimeTypeStartIdx = url.indexOf("data:") + 5,
-            mimeTypeEndIdx = isBase64 ? base64Idx : delim;
+            mimeTypeEndIdx = isBase64 ? base64Idx : delim,
             mimeType = url.substring(mimeTypeStartIdx, mimeTypeEndIdx);
             
         if (isBase64) {
             data = window.atob(data);
         }
                 
-        onSuccess(flock.file.parseMIMEType(mimeType), data);
+        onSuccess(data, flock.file.parseMIMEType(mimeType));
     };
     
     flock.file.readFile = function (file, onSuccess) {
@@ -77,13 +77,13 @@ var flock = flock || {};
         
         var reader  = new FileReader();
         reader.onload = function (e) {
-            onSuccess(flock.file.parseFileExtension(file.name), e.target.result);
+            onSuccess(e.target.result, flock.file.parseFileExtension(file.name));
         };
         reader.readAsBinaryString(file);
         
         return reader;
     };
-    
+        
     
     /*********************
      * Network utilities *
@@ -105,10 +105,6 @@ var flock = flock || {};
         xhr.send(options.data);
     };
     
-    
-    /*****************
-     * Audio Formats *
-     *****************/
     
     flock.audio = {};
     
@@ -232,15 +228,9 @@ var flock = flock || {};
         
         return channels;
     };
+        
 
-    /**
-     * Decodes audio sample data in the specified format.
-     *
-     * @param format the format of the audio data; this decoder currently supports WAVE and AIFF
-     * @param data the raw data as a binary string
-     * @return an array of Float32Arrays, each representing a single channel's worth of sample data
-     */
-    flock.audio.decode = function (format, data) {
+    flock.audio.decodeBinaryString = function (data, format) {
 	    var formatSpec = flock.audio.formats[format];
 	    
         if (!formatSpec) {
@@ -280,7 +270,34 @@ var flock = flock || {};
         return decoded;
     };
     
+    /**
+     * Decodes audio sample data in the specified format. This decoder currently supports WAVE and AIFF file formats.
+     *
+     * @param {Object} src either a File, URL, data URL, or the raw audio file data as a binary string
+     * @param {Function} onSuccess a callback to invoke when decoding is finished
+     * @param {String} format (optional) the format of the audio data; include this ONLY if src is a binary string
+     *
+     * @return {Array} an array of Float32Arrays, each representing a single channel's worth of sample data
+     */
+    flock.audio.decode = function (src, onSuccess, format) {
+        var isString = typeof (src) === "string",
+            reader;
+        
+        if (format && isString) {
+            onSuccess(decodeBinaryString(src, format));            
+        } else {
+            reader = isString ? (src.indexOf("data:") === 0 ? flock.file.readDataUrl : flock.file.readUrl) : flock.file.readFile;
+            reader(src, function (data, type) {
+                onSuccess(flock.audio.decodeBinaryString(data, type));
+            });
+        }
+    };
     
+    
+    /************************************
+     * Audio Format Decoding Strategies *
+     ************************************/
+     
     flock.audio.formats = {};
     
     /*******
@@ -304,7 +321,8 @@ var flock = flock || {};
 
             if (encoding != 0x0001) {
                 // Only support PCM
-                console.error('Cannot decode non-PCM encoded WAV file');
+                // TODO: This should throw an Error.
+                console.error("Cannot decode non-PCM encoded WAV file");
                 return null;
             }
 

@@ -47,6 +47,11 @@ var flock = flock || {};
      * Utilities *
      *************/
     
+    flock.isArray = function (o) {
+        var l = o.length;
+        return o && l !== undefined && typeof (l) === "number";
+    };
+    
     // TODO: Unit tests
     flock.generate = function (bufOrSize, generator) {
         var buf = typeof (bufOrSize) === "number" ? new Float32Array(bufOrSize) : bufOrSize,
@@ -260,12 +265,7 @@ var flock = flock || {};
                 return;
             }
             
-            var reader = typeof (src) === "string" ? 
-                (src.indexOf("data:") === 0 ? flock.file.readDataUrl : flock.file.readUrl) : 
-                flock.file.readFile;
-                
-            reader(src, function (type, data) {
-                var decoded = flock.audio.decode(type, data);  
+            flock.audio.decode(src, function (decoded) {
                 that.buffers[name] = decoded.channels;
                 if (onLoadFn) {
                     onLoadFn(decoded.channels, name); 
