@@ -14,18 +14,22 @@ flock.test = flock.test || {};
 (function () {
     "use strict";
     
-    var b64WAVData = "UklGRqIAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YX4AAAABAF8GrwzdEtsYnh4KJCcpzi0MMsE19DiUO5o9Cj/QP/w/gD9lPqw8VTpvN/Qz/i+IK6QmYCHDG+YVyg+KCTADz/x49jTwHeo65KLeWtl71ADQDMyRyKvFVcObwX7ABsAuwPjAZsJqxA/HO8r4zS7S3dbz22ThJOcj7VHzofk=";
-    var onePeriod700HzWAV = "data:audio/wav;base64," + b64WAVData;
-    var onePeriod700HzAIFF = "data:audio/aiff;base64,Rk9STQAAAKxBSUZGQ09NTQAAABIAAQAAAD8AEEAOrEQAAAAAAABTU05EAAAAhgAAAAAAAAAAAAEGXgyxEtsY3R6dJAkpKS3MMg01wjjyO5Y9mD8LP88//j9+PmY8rDpUN3Ez8TABK4UmqCFcG8YV4w/NCYgDMfzP9nfwNuob5Dveo9lX1H/P/MwPyI/FrcNTwZzAfcAHwC3A+sJkxGvHD8o6zfnSLtbc2/XhYucl7SPzUPmj";
+    var expectedData =  [
+    	0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 
+    	0.0, -0.1, -0.2, -0.3, -0.4, -0.5, -0.6, -0.7, -0.8, -0.9, -1.0, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0.0
+    ];
+    var b64Int16WAVData = "UklGRnYAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YVIAAAAAAM0MmRlmJjMzAEDMTJlZZmYyc/9/MnNmZplZzEwAQDMzZiaZGc0MAAAz82fmmtnNzADANLNnppqZzowBgM6MmplnpjSzAMDNzJrZZ+Yz8wAA";
+    var triangleInt16WAV = "data:audio/wav;base64," + b64Int16WAVData;
+    var triangleInt16AIFF = "data:audio/aiff;base64,Rk9STQAAAIBBSUZGQ09NTQAAABIAAQAAACkAEEAOrEQAAAAAAABTU05EAAAAWgAAAAAAAAAAAAAMzRmZJmYzM0AATMxZmWZmczJ//3MyZmZZmUzMQAAzMyZmGZkMzQAA8zPmZ9mazM3AALM0pmeZmozOgAGMzpmapmezNMAAzM3ZmuZn8zMAAA==";
     
     module("flock.file.readDataUrl() tests");
     
     test("Read base 64-encoding in data URL", function () {
-        var expectedData = window.atob(b64WAVData),
+        var expectedData = window.atob(b64Int16WAVData),
             dataFormatCombinations = [
                 {
                     name: "base64-encoded with a MIME type",
-                    url: onePeriod700HzWAV
+                    url: triangleInt16WAV
                 },
                 {
                     name: "not base64 encoded with a MIME type",
@@ -33,7 +37,7 @@ flock.test = flock.test || {};
                 },
                 {
                     name: "base64-encoded with no MIME type",
-                    url: "data:;base64," + b64WAVData
+                    url: "data:;base64," + b64Int16WAVData
                 },
                 {
                     name: "not base64 encoded data URL with no MIME type",
@@ -84,29 +88,44 @@ flock.test = flock.test || {};
     
     module("flock.audio.decode() tests");
     
-    var testOnePeriod700HzHalfAmplitudeBuffer = function (decoded) {
+    var testTriangleBuffer = function (decoded) {
         var buffer = decoded.channels[0];
         
         equal(decoded.numberOfChannels, 1, "The decoded audio file's metadata should indicate that there is only one channel.");
         equal(decoded.channels.length, 1, "The decoded audio should have only one channel buffer.");
         equal(decoded.bitDepth, 16, "The decoded audio file's metadata should indicate a bith depth of 16.");
         equal(decoded.sampleRate, 44100, "The decoded audio file's metadata should indicate a sample rate of 44100 samples per second.");
-        equal(decoded.length, 63, "The decoded audio file's metadata should indicate that there is a total of 63 samples of data in the file.");
-        
         flock.test.assertNotNaN(buffer, "The buffer should not output an NaN values");
         flock.test.assertNotSilent(buffer, "The buffer should not be silent.");
         flock.test.assertUnbroken(buffer, "The buffer should not have any significant gaps in it.");
-        flock.test.assertWithinRange(buffer, -0.5, 0.5, "The buffer's amplitude should be no louder than 0.5");
-        flock.test.assertContinuous(buffer, 0.1, "The buffer should be continuous");
-        flock.test.assertSineish(buffer, 0.5, 0.01, "The buffer should resemble a sine wave.");
+        flock.test.assertWithinRange(buffer, -1.0, 1.0, "The buffer's amplitude should be no louder than 1.0.");
+        flock.test.assertContinuous(buffer, 0.1, "The buffer should be continuous.");
+        
+        equal(decoded.length, 41, "The decoded audio file's metadata should indicate that there is a total of 41 samples of data in the file.");
+        flock.test.assertArrayEquals(buffer, expectedData, "The decoded buffer should be a single period triangle wave incrementing by 0.1");
     };
     
-    test("Decode .wav file", function () {
-        flock.audio.decode(onePeriod700HzWAV, testOnePeriod700HzHalfAmplitudeBuffer);
-    });
-    
-    test("Decode .aiff file", function () {
-        flock.audio.decode(onePeriod700HzAIFF, testOnePeriod700HzHalfAmplitudeBuffer);
-    });
+    var fileConfigurations = [
+        {
+            name: "int 16 WAV file",
+            url: triangleInt16WAV
+        },
+        {
+            name: "int 16 AIFF file",
+            url: triangleInt16AIFF
+        }
+    ];
+
+    var makeTester = function (config) {
+        return function () {
+            flock.audio.decode(config.url, testTriangleBuffer);   
+        };
+    }
+    var i, config, tester;
+    for (i = 0; i < fileConfigurations.length; i++) {
+        config = fileConfigurations[i];
+        tester = makeTester(config);
+        test("Decode " + config.name, tester);
+    }
 
 })();

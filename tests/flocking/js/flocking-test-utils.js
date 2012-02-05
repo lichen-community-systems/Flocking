@@ -130,7 +130,7 @@ var flock = flock || {};
         }
     };
     
-    flock.test.assertSineish = function (buffer, max, threshold, msg) {
+    flock.test.assertSineish = function (buffer, max, msg) {
         var maxReached = false,
             isAscending = true,
             fail = false,
