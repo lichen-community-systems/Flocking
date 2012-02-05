@@ -1,0 +1,38 @@
+body {
+    overflow: hidden;
+}
+
+h1 {
+    text-align: center;
+}
+
+#editor { 
+    position: 	absolute;
+    top: 		100px;
+    left: 		100px;
+	width: 		500px;
+	height: 	400px;
+	resize:		both;
+}
+
+#navi {
+	position: 	absolute;
+    top: 		80px;
+    left: 		100px;
+}
+
+#gfx {
+	position: 	absolute;
+    top:		110px;
+	left: 		600px;
+	width: 		400px;
+	height: 	150px;
+	border:		1px solid black;
+}
+#gfx-title {
+	position: 		absolute;
+    top:			80px;
+	left: 			600px;
+	font-family:	sans-serif;
+	font-weight: 	bold;
+}

@@ -6,9 +6,9 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global Float32Array*/
-/*jslint white: true, funcinvoke: true, undef: true, newcap: true, regexp: true, browser: true, 
-    forin: true, continue: true, forvar: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
+/*global Float32Array, window*/
+/*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
+    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
 var flock = flock || {};
 
@@ -46,6 +46,7 @@ var flock = flock || {};
             return ugen;
         };
     
+        that.onInputChanged = function () {}; // No-op base implementation.
         return that;
     };
     
@@ -897,7 +898,6 @@ var flock = flock || {};
     flock.ugen.scope = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
-        // TODO: Move more of this code to the scopeView widget.
         that.model.spf = that.sampleRate / flock.defaults.fps;
         that.model.bufIdx = 0;
         
@@ -914,14 +914,14 @@ var flock = flock || {};
             
             for (i = 0; i < numSamps; i++) {
                 buf[bufIdx] = that.inputs.source.output[i];
-                bufIdx = bufIdx < spf ? bufIdx + 1 : 0;
+                if (bufIdx < spf) {
+                    bufIdx += 1;
+                } else {
+                    bufIdx = 0;
+                    that.scopeView.refreshView();
+                }
             }
             that.model.bufIdx = bufIdx;
-        };
-        
-        that.drawScope = function () {
-            requestAnimationFrame(that.drawScope);
-            that.scopeView.refreshView();
         };
         
         that.onInputChanged = function () {
@@ -930,7 +930,7 @@ var flock = flock || {};
         };
         
         that.onInputChanged();
-        that.drawScope();
+        that.scopeView.refreshView();
         return that;
     };
     
@@ -959,7 +959,7 @@ var flock = flock || {};
                         nextAtt === 0.0 ? 0.0 : Math.exp(flock.LOG1 / (nextAtt * that.sampleRate));
                 }
                 
-                if (nextRel != prevRel) {
+                if (nextRel !== prevRel) {
                     that.model.releaseTime = nextRel;
                     relCoef = that.model.releaseCoef = 
                         (nextRel === 0.0) ? 0.0 : Math.exp(flock.LOG1 / (nextRel * that.sampleRate));

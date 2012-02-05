@@ -32,7 +32,8 @@ var demo = demo || {};
                 
                 that.button.innerHTML = "Play";
                 that.button.className = "paused";
-                that.synth.stop();
+                that.synth.pause();
+
                 that.model.isPlaying = false;
             }
         }, false);

@@ -7,6 +7,8 @@
 */
 
 /*global module, test, expect, ok, equals, deepEqual, Float32Array*/
+/*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
+    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
 var flock = flock || {};
 flock.test = flock.test || {};
@@ -33,7 +35,7 @@ flock.test = flock.test || {};
         if (that.options.buffer) {
             that.output = that.options.buffer;
         }
-        that.gen = function (numSamps) {}; // No op function--we just pass the output buffer back as-is.
+        that.gen = function () {}; // No op function--we just pass the output buffer back as-is.
         return that;
     };
     
@@ -128,12 +130,14 @@ flock.test = flock.test || {};
     module("LFNoise tests");
     
     var checkNoise = function (buffer, numSamps, expected) {
-        var minFound = Infinity;
-        var maxFound = 0.0;
-        var uniqueValues = {};
+        var minFound = Infinity,
+            maxFound = 0.0,
+            uniqueValues = {},
+            i,
+            samp;
         
-        for (var i = 0; i < numSamps; i++) {
-            var samp = buffer[i];
+        for (i = 0; i < numSamps; i++) {
+            samp = buffer[i];
             if (samp < minFound) {
                 minFound = samp;
             } else if (samp > maxFound) {
@@ -180,9 +184,6 @@ flock.test = flock.test || {};
     module("mul & add tests");
     
     var testSignal = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
-    var genFn = function (numSamps) {
-        return testSignal;
-    };
     
     var krInput = {
         rate: flock.rates.CONTROL,
@@ -588,5 +589,5 @@ flock.test = flock.test || {};
             flock.test.assertClimbing(tracker.output, "The amplitude tracker should follow the contour of its source.");
         }
     });
-
-})();
+    
+}());

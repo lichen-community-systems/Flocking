@@ -7,6 +7,8 @@
 */
 
 /*global module, test, expect, ok, equals, deepEqual, Float32Array*/
+/*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
+    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
 var flock = flock || {};
 
@@ -24,7 +26,7 @@ var flock = flock || {};
         }
     };
     
-    var runTimingTest = function (ugens, duration, numRuns) {
+    var runTimingTest = function (ugens, numRuns) {
         var avgDuration = 0,
             currentStartTime,
             currentEndTime,
@@ -61,24 +63,27 @@ var flock = flock || {};
             }
         });
         
-        var avg = runTimingTest(synth.ugens, 1, 25);
-        assertCeiling(avg, 2.5, 
-            "Generating and outputting 1 second of stereo signal from flock.ugen.value should take less than 2.5 ms.");
+        var avg = runTimingTest(synth.ugens, 50);
+        assertCeiling(avg, 5, 
+            "Generating and outputting 1 second of stereo signal from flock.ugen.value should take less than 5 ms.");
     });
     
     module("flock.ugen.sinOsc tests");
     
     var checkUGen = function (ugenName, inputs, expectedCeil, msg) {
         var ugen = flock.invokePath(ugenName, [inputs, new Float32Array(64)]),
-            ugens = [ugen];
+            ugens = [ugen],
+            inputName,
+            input,
+            avg;
             
-        for (var inputName in inputs) {
-            var input = inputs[inputName];
+        for (inputName in inputs) {
+            input = inputs[inputName];
             if (input.gen) {
                 ugens.push(input);
             }
         }
-        var avg = runTimingTest(ugens, 1, 25);
+        avg = runTimingTest(ugens, 50);
         assertCeiling(avg, expectedCeil, msg);
     };
     
@@ -94,40 +99,40 @@ var flock = flock || {};
             inputs: {
                 freq: crFreq
             },
-            maxDur: 45
+            maxDur: 25
         },
         {
             inputs: {
                 freq: crFreq,
                 phase: crPhase
             },
-            maxDur: 45
+            maxDur: 50
         },
         {
             inputs: {
                 freq: krSinFreq
             },
-            maxDur: 45
+            maxDur: 40
         },
         {
             inputs: {
                 freq: krSinFreq,
                 phase: krSinPhase
             },
-            maxDur: 45
+            maxDur: 80
         },
         {
             inputs: {
                 freq: arSinFreq
             },
-            maxDur: 90
+            maxDur: 75
         },
         {
             inputs: {
                 freq: arSinFreq,
                 phase: arSinPhase
             },
-            maxDur: 135
+            maxDur: 150
         }
         
     ];
@@ -136,7 +141,8 @@ var flock = flock || {};
         test(msg, function () {
             checkUGen(ugenName, inputs, maxDur, "Should take no longer than " + maxDur + " seconds.");
         });
-    }
+    };
+    
     var testConfigurations = function (ugenName, configs) {
         var i,
             config,
@@ -159,4 +165,4 @@ var flock = flock || {};
     };
     
     testConfigurations("flock.ugen.sinOsc", testConfigs);
-})();
+}());

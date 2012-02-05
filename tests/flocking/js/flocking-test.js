@@ -7,6 +7,8 @@
 */
 
 /*global module, test, expect, ok, equals, deepEqual, Float32Array*/
+/*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
+    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
 var flock = flock || {};
 
@@ -257,13 +259,13 @@ var flock = flock || {};
         };
     
         var ugens = flock.parse.synthDef(mixedSynthDef, {chans: 2});
-        equals(ugens["carrier"].inputs.freq, ugens["mod"], 
+        equals(ugens.carrier.inputs.freq, ugens.mod, 
             "The modulator should have been set as the frequency input to the carrier.");
-        equals(ugens["mod"].inputs.freq.model.value, 440, 
+        equals(ugens.mod.inputs.freq.model.value, 440, 
             "The modulator's frequency should be 440.");
-        equals(ugens["mod"].inputs.phase, ugens["line"],
+        equals(ugens.mod.inputs.phase, ugens.line,
             "The modulator's phase input should be set to the line ugen.");
-        equals(ugens["line"].inputs.end.model.value, 10, 
+        equals(ugens.line.inputs.end.model.value, 10, 
             "The line's inputs should be set correctly.");
     });
     
@@ -297,4 +299,4 @@ var flock = flock || {};
             "A compressed constant rate should be expanded to its full value.");
     });
     
-})();
+}());

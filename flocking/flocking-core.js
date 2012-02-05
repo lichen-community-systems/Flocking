@@ -7,8 +7,8 @@
 */
 
 /*global Float32Array, Audio, window, webkitAudioContext*/
-/*jslint white: true, funcinvoke: true, undef: true, newcap: true, regexp: true, browser: true, 
-    forin: true, continue: true, forvar: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
+/*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
+    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
 var flock = flock || {};
 
@@ -68,6 +68,19 @@ var flock = flock || {};
             buf[i] = generator(i, buf);
         }
 
+        return buf;
+    };
+    
+    flock.generate.silence = function (bufOrSize) {
+        if (typeof (bufOrSize) === "number") {
+            return new Float32Array(bufOrSize);
+        }
+        
+        var buf = bufOrSize,
+            i;
+        for (i = 0; i < buf.length; i++) {
+            buf[i] = 0.0;
+        }
         return buf;
     };
      
@@ -198,7 +211,9 @@ var flock = flock || {};
                     total: null
                 }
             },
-            nodes: []
+            nodes: [],
+            
+            isPlaying: false
         };
         
         // TODO: Buffers are named but buses are numbered. Should we have a consistent strategy?
@@ -217,14 +232,25 @@ var flock = flock || {};
                 
             playState.total = dur === undefined ? Infinity :
                 playState.total === Infinity ? sps : playState.written + sps;
-            that.registerCallback();
+            that.startGeneratingSamples();
+            that.isPlaying = true;
         };
         
         /**
          * Stops generating samples from all synths.
          */
         that.stop = function () {
-            that.unregisterCallback();
+            that.stopGeneratingSamples();
+            that.isPlaying = false;
+        };
+        
+        that.reset = function () {
+            that.stop();
+            
+            // Clear the environment's node list.
+            while (that.nodes.length > 0) {
+                that.nodes.pop();
+            }
         };
         
         that.gen = function () {
@@ -307,8 +333,7 @@ var flock = flock || {};
         that.audioEl.mozSetup(that.audioSettings.chans, that.audioSettings.rates.audio);
         that.playbackTimerId = null;
         
-        that.registerCallback = function () {
-            // Don't play if we're already playing.
+        that.startGeneratingSamples = function () {
             if (that.playbackTimerId) {
                 return;
             }
@@ -317,7 +342,7 @@ var flock = flock || {};
                 var playState = that.model.playState;
                 var needed = that.audioEl.mozCurrentSampleOffset() + 
                     that.audioSettings.bufferSize - playState.written;
-                if (needed < 0) {
+                if (needed <= 0 || that.nodes.length < 1) {
                     return;
                 }
                 
@@ -329,13 +354,13 @@ var flock = flock || {};
             }, that.model.writeInterval);
         };
         
-        that.unregisterCallback = function () {
+        that.stopGeneratingSamples = function () {
             window.clearInterval(that.playbackTimerId);
             that.playbackTimerId = null;
         };        
     };
-
-
+    
+    
     var setupWebKitEnviro = function (that) {
         that.jsNode.onaudioprocess = function (e) {
             var kr = flock.defaults.rates.control,
@@ -348,6 +373,15 @@ var flock = flock || {};
                 i,
                 chan,
                 samp;
+                
+            // If there are no nodes providing samples, write out silence.
+            // TODO: Why can't the Web Audio API just handle this?
+            if (that.nodes.length < 1) {
+                for (chan = 0; chan < chans; chan++) {
+                    flock.generate.silence(outBufs.getChannelData(chan));
+                }
+                return;
+            }
 
             for (i = 0; i < numKRBufs; i++) {
                 that.gen();
@@ -385,11 +419,11 @@ var flock = flock || {};
         that.source = that.context.createBufferSource();
         that.jsNode = that.context.createJavaScriptNode(that.audioSettings.bufferSize);
         
-        that.registerCallback = function () {
+        that.startGeneratingSamples = function () {
             that.jsNode.connect(that.context.destination);
         };
         
-        that.unregisterCallback = function () {
+        that.stopGeneratingSamples = function () {
             that.jsNode.disconnect(0);
         };
         
@@ -404,12 +438,13 @@ var flock = flock || {};
      * Synths represent a collection of signal-generating units, wired together to form an instrument.
      * They are created with a synthDef object, a declarative structure describing the synth's unit generator graph.
      */
-    flock.synth = function (def) {
+    flock.synth = function (def, options) {
         var that = {
             rate: flock.rates.AUDIO,
             model: {
                 synthDef: def
-            }
+            },
+            options: options || {}
         };
         that.enviro = flock.enviro.shared;
         that.inputUGens = flock.parse.synthDef(that.model.synthDef, that.enviro.audioSettings);
@@ -484,20 +519,29 @@ var flock = flock || {};
          * @param {Number} dur optional duration to play this synth in seconds
          */
         that.play = function () {
-            that.enviro.tail(that);
-            that.enviro.play();
+            var e = that.enviro;
+            
+            if (e.nodes.indexOf(that) === -1) {
+                e.head(that);
+            }
+            
+            if (!e.isPlaying) {
+                e.play();
+            }
         };
         
         /**
          * Stops the synth if it is currently playing.
-         * This is a convenience method that will remove the synth from the environment's node graph
-         * and then stop the environment.
+         * This is a convenience method that will remove the synth from the environment's node graph.
          */
-        that.stop = function () {
-            that.enviro.stop();
+        that.pause = function () {
             that.enviro.remove(that);
         };
-                
+
+        if (that.options.addToEnvironment !== false) {
+            that.enviro.head(that);
+        }
+        
         return that;
     };
     

@@ -23,8 +23,14 @@ While this may change in the future, a primary goal of Flocking is to remain too
 systems or other funny stuff to buy into. Just plain old objects and functions, written in a largely Good Parts-compatible 
 style of JavaScript. You're free to pick the frameworks and tools you love the best.
 
-By the way, if you're looking for a good framework for building jQuery applications with Flocking, I recommend you check 
-out [Fluid Infusion](http://fluidproject.org/products/infusion).
+
+Community
+---------
+
+There are two Flocking community mailing lists:
+
+ * [The user list](http://lists.flockingjs.org/listinfo.cgi/users-flockingjs.org) is for asking questions, sharing code, and requesting new features
+ * [The dev list](http://lists.flockingjs.org/listinfo.cgi/dev-flockingjs.org) is for discussing development plans, design proposals, and code reviews
 
 
 Status
@@ -35,6 +41,12 @@ Flocking is an early prototype. It has bugs, it's growing fast, and help is welc
  * "Hackable" demos with an inline code editor, Canvas based-scope, and keyboard
  * More unit generators!
  
+   * Envelopes (ASDR, etc.)
+   * Filters
+   
+ * The ability to record sessions and export an audio file from your browser
+ * A compositional library featuring scheduling, pattern, tuning, and note-based abstractions
+ * Hotter demos 
  
 Using Flocking
 --------------
@@ -98,5 +110,7 @@ Flocking was written by Colin Clark. It is named after a piece by [James Tenney]
 a composer, thinker, and early pioneer of computer music who my composition teacher and a huge influence. 
 I hope you find this library useful enough to create projects as beautiful and inspiring as Jim's _Flocking_.
 
-Thanks to Dave Humphrey and his team for their awesome work on the Firefox 4 Audio Data API. Thanks to Alex Geddie 
-for teaching me a ton about synthesis and computer music.
+### Thanks to:###
+ * Dave Humphrey and his team for their awesome work on the Firefox 4 Audio Data API
+ * Alex Geddie for teaching me a ton about synthesis and computer music
+ * Vitus (https://github.com/derDoc) for his awesome interactive Flocking Playground contributions
