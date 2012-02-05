@@ -14,24 +14,36 @@ body {
     padding: 10px;
 }
 
-.controls {
-    width: 50%;
-}
 
 .view {
     clear: both;
 }
 
-.fileSelector,#waveform {
+.selectors,#waveform {
     border: solid #888 5px;
     border-radius: 25px;
 }
 
-.fileSelector {
-    padding: 3%;
-    width: 80%;
+.selectors {
     margin-bottom: 1.5%;
     float: left;
+    padding: 2%;
+    width: 40%;
+}
+
+.dataUrlSelector {
+    margin-top: 5%;
+}
+
+.dataUrlSelector label {
+    float: left;
+    margin-right: 2%;
+    margin-top: 7%;
+}
+
+#dataUrlField {
+    width:50%;
+    height: 100px;
 }
 
 #filePath {
@@ -56,7 +68,7 @@ body {
     height: 77px;
     width: 77px;
     float: left;
-    margin: 1.25% 0% 0% 2%;
+    margin: 5% 0% 0% 2%;
     color: transparent;
 }
 

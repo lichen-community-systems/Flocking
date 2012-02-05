@@ -70,4 +70,20 @@ var demo = demo || {};
         }
     };
     
+    demo.dataUrlSelectorView = function (synth, options) {
+        var that = {
+            field: document.querySelector(options.selectors.field)
+        };
+        
+        that.field.addEventListener("change", function () {
+            that.dataUrl = that.field.value;
+            
+            var player = synth.input(options.playerId),
+                bufDef = player.input("buffer");
+            
+            bufDef.url = that.dataUrl;
+            player.onInputChanged("buffer");
+        });
+    };
+    
 })();

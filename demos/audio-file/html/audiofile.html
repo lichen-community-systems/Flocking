@@ -18,13 +18,19 @@
         <h1>Audio File Decoding Demo</h1>
         
         <div class="controls">
-            <form class="fileSelector">
-                <label for="fileBrowser">Choose a sound file</label>
-                <input id="fileBrowser" type="file" />
-                <button id="browse">Choose a sound file...</button>
-                <span id="filePath"></span>
-            </form>
-        
+            <div class="selectors">
+                <form class="fileSelector">
+                    <label for="fileBrowser">Choose a sound file</label>
+                    <input id="fileBrowser" type="file" />
+                    <button id="browse">Choose a sound file...</button>
+                    <span id="filePath"></span>
+                </form>
+            
+                <form class="dataUrlSelector">
+                    <label for="dataUrlField">...or paste in a data URL:</label>
+                    <textarea id="dataUrlField"></textarea>                
+                </form>
+            </div>
             <button id="playButton" class="paused">Play</button>
         </div>
         <div class="view">
@@ -69,6 +75,13 @@
                     input: "#fileBrowser",
                     button: "#browse",
                     fileName: "#filePath"
+                }
+            }),
+            
+            dataUrlSelectorView = demo.dataUrlSelectorView(synth, {
+                playerId: "player",
+                selectors: {
+                    field: "#dataUrlField"
                 }
             }),
             
