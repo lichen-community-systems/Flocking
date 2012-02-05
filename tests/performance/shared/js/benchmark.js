@@ -58,7 +58,8 @@ var flock = flock || {};
     };
     
     flock.test.runTests = function (testSpecs) {
-        var allTimes = [],
+        var testSpecs = typeof (testSpecs.length) === "number" ? testSpecs : [testSpecs],
+            allTimes = [],
             spec,
             time,
             i;

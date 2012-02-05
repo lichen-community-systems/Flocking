@@ -18,30 +18,27 @@ flock.test = flock.test || {};
     	0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 
     	0.0, -0.1, -0.2, -0.3, -0.4, -0.5, -0.6, -0.7, -0.8, -0.9, -1.0, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0.0
     ];
-    var b64Int16WAVData = "UklGRnYAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YVIAAAAAAM0MmRlmJjMzAEDMTJlZZmYyc/9/MnNmZplZzEwAQDMzZiaZGc0MAAAz82fmmtnNzADANLNnppqZzowBgM6MmplnpjSzAMDNzJrZZ+Yz8wAA";
-    var triangleInt16WAV = "data:audio/wav;base64," + b64Int16WAVData;
-    var triangleInt16AIFF = "data:audio/aiff;base64,Rk9STQAAAIBBSUZGQ09NTQAAABIAAQAAACkAEEAOrEQAAAAAAABTU05EAAAAWgAAAAAAAAAAAAAMzRmZJmYzM0AATMxZmWZmczJ//3MyZmZZmUzMQAAzMyZmGZkMzQAA8zPmZ9mazM3AALM0pmeZmozOgAGMzpmapmezNMAAzM3ZmuZn8zMAAA==";
     
     module("flock.file.readDataUrl() tests");
     
-    test("Read base 64-encoding in data URL", function () {
-        var expectedData = window.atob(b64Int16WAVData),
+    test("Read base 64 encoding in data URL", function () {
+        var expectedUnencoded = window.atob(flock.test.audio.b64Int16WAVData),
             dataFormatCombinations = [
                 {
                     name: "base64-encoded with a MIME type",
-                    url: triangleInt16WAV
+                    url: flock.test.audio.triangleInt16WAV
                 },
                 {
                     name: "not base64 encoded with a MIME type",
-                    url: "data:audio/wav," + expectedData
+                    url: "data:audio/wav," + expectedUnencoded
                 },
                 {
                     name: "base64-encoded with no MIME type",
-                    url: "data:;base64," + b64Int16WAVData
+                    url: "data:;base64," + flock.test.audio.b64Int16WAVData
                 },
                 {
                     name: "not base64 encoded data URL with no MIME type",
-                    url: "data:," + expectedData
+                    url: "data:," + expectedUnencoded
                 }
             ],
             i, formatSpec;
@@ -49,7 +46,7 @@ flock.test = flock.test || {};
         for (i = 0; i < dataFormatCombinations.length; i++) {
             formatSpec = dataFormatCombinations[i];
             flock.file.readDataUrl(formatSpec.url, function (data, type) {
-                equal(data, expectedData, "readDataUrl() should correctly parse and decode a data URL that is " + formatSpec.name);
+                equal(data, expectedUnencoded, "readDataUrl() should correctly parse and decode a data URL that is " + formatSpec.name);
             });    
         } 
     });
@@ -108,11 +105,11 @@ flock.test = flock.test || {};
     var fileConfigurations = [
         {
             name: "int 16 WAV file",
-            url: triangleInt16WAV
+            url: flock.test.audio.triangleInt16WAV
         },
         {
             name: "int 16 AIFF file",
-            url: triangleInt16AIFF
+            url: flock.test.audio.triangleInt16AIFF
         }
     ];
 
@@ -120,7 +117,8 @@ flock.test = flock.test || {};
         return function () {
             flock.audio.decode(config.url, testTriangleBuffer);   
         };
-    }
+    };
+    
     var i, config, tester;
     for (i = 0; i < fileConfigurations.length; i++) {
         config = fileConfigurations[i];
