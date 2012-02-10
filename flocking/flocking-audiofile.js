@@ -1,15 +1,9 @@
-/*
+/*!
 * Flocking Audio File Library
 * http://github.com/colinbdclark/flocking
 *
-* This file is based on Joe Turner's audiofile.js library (https://github.com/oampo/audiofile.js/blob/master/audiofile.js),
-* distributed under the terms of the WTF License: https://github.com/oampo/audiofile.js/blob/master/LICENSE
-*
-* Modifications are Copyright 2011, Colin Clark, dual licensed under the MIT and GPL Version 2 licenses.
-* Summary of changes:
-*  - Factored out the duplicate code between the WAV and AIFF algorithms
-*  - Decoder algorithms are now parameterized so that, at least in theory, new ones can be added without changing this file
-*  - No more commonly-used names like "Decoder" exposed in the global namespace (to avoid conflicts with other code)
+* Copyright 2012, Colin Clark
+* Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
 /*global window, Float32Array*/
@@ -20,6 +14,30 @@ var flock = flock || {};
 
 (function () {
     "use strict";
+    
+    
+    /*********************
+     * Network utilities *
+     *********************/
+    flock.net = {};
+    
+    flock.net.load = function (options) {
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                    options.success(xhr.response);
+                } else {
+                    options.error(xhr.statusText);
+                }
+            }
+        };
+        // Default to array buffer response, since this code is most likely to be used for audio files.
+        xhr.responseType = options.responseType || "arraybuffer"; 
+        xhr.open(options.method, options.url, true); 
+        xhr.send(options.data);
+    };
+    
     
     /*****************
      * File Utilties *
@@ -44,6 +62,30 @@ var flock = flock || {};
         return flock.file.mimeTypes[mimeType];
     };
     
+    /**
+     * Converts a binary string to an ArrayBuffer, suitable for use with a DataView.
+     *
+     * @param {String} s the raw string to convert to an ArrayBuffer
+     *
+     * @return {Uint8Array} the converted buffer
+     */
+    flock.file.stringToBuffer = function (s) {
+        var l = s.length,
+            b = new ArrayBuffer(l),
+            v = new Uint8Array(b),
+            i;
+        for (i = 0; i < l; i++) {
+            v[i] = s.charCodeAt(i);
+        }
+        return v.buffer;
+    };
+    
+    /**
+     * Loads the contents of a URL via an AJAX GET request into an ArrayBuffer.
+     *
+     * @param {String} url the URL to load
+     * @param {Function} onSucess a callback to invoke when the file is successfully loaded
+     */
     flock.file.readUrl = function (url, onSuccess) {
         flock.net.load({
             url: url, 
@@ -53,6 +95,12 @@ var flock = flock || {};
         });
     };
     
+    /**
+     * Parses the specified data URL into an ArrayBuffer.
+     *
+     * @param {String} url the DataURL to parse, in the format "data:[mimeType][;base64],<data>"
+     * @param {Function} onSuccess a callback to invoke when the dataURL has been successfully parsed
+     */
     flock.file.readDataUrl = function (url, onSuccess) {
         var delim = url.indexOf(","),
             header = url.substring(0, delim),
@@ -67,9 +115,15 @@ var flock = flock || {};
             data = window.atob(data);
         }
                 
-        onSuccess(data, flock.file.parseMIMEType(mimeType));
+        onSuccess(flock.file.stringToBuffer(data), flock.file.parseMIMEType(mimeType));
     };
     
+    /**
+     * Reads the specified File into an ArrayBuffer.
+     *
+     * @param {File} file the file to read
+     * @param {Function} onSuccess a callback to invoke when the File has been successfully read
+     */
     flock.file.readFile = function (file, onSuccess) {
         if (!file) {
             return null;
@@ -79,196 +133,13 @@ var flock = flock || {};
         reader.onload = function (e) {
             onSuccess(e.target.result, flock.file.parseFileExtension(file.name));
         };
-        reader.readAsBinaryString(file);
+        reader.readAsArrayBuffer(file);
         
         return reader;
-    };
-        
-    
-    /*********************
-     * Network utilities *
-     *********************/
-    flock.net = {};
-    
-    flock.net.load = function (options) {
-        var xhr = new XMLHttpRequest();
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState === 4) {
-                if (xhr.status === 200) {
-                    options.success(xhr.responseText);
-                } else {
-                    options.error(xhr.statusText);
-                }
-            }
-        };
-        xhr.open(options.method, options.url, true); 
-        xhr.send(options.data);
     };
     
     
     flock.audio = {};
-    
-    flock.audio.readString = function (data, offset, length) {
-        return data.slice(offset, offset + length);
-    };
-    
-    flock.audio.readIntL = function (data, offset, length) {
-        var value = 0;
-        for (var i = 0; i < length; i++) {
-            value = value + ((data.charCodeAt(offset + i) & 0xFF) *
-                             Math.pow(2, 8 * i));
-        }
-        return value;
-    };
-    
-    flock.audio.readIntB = function (data, offset, length) {
-        var value = 0;
-        for (var i = 0; i < length; i++) {
-            value = value + ((data.charCodeAt(offset + i) & 0xFF) *
-                             Math.pow(2, 8 * (length - i - 1)));
-        }
-        return value;
-    };
-    
-    flock.audio.readFloatB = function (data, offset) {
-        var expon = flock.audio.readIntB(data, offset, 2);
-        var range = 1 << 16 - 1;
-        if (expon >= range) {
-            expon |= ~(range - 1);
-        }
-
-        var sign = 1;
-        if (expon < 0) {
-            sign = -1;
-            expon += range;
-        }
-
-        var himant = flock.audio.readIntB(data, offset + 2, 4);
-        var lomant = flock.audio.readIntB(data, offset + 6, 4);
-        var value;
-        if (expon == himant == lomant == 0) {
-            value = 0;
-        }
-        else if (expon == 0x7FFF) {
-            value = Number.MAX_VALUE;
-        }
-        else {
-            expon -= 16383;
-            value = (himant * 0x100000000 + lomant) * Math.pow(2, expon - 63);
-        }
-        return sign * value;
-    };
-    
-    flock.audio.readChunkHeader = function (data, offset, reader) {
-        var chunk = {};
-        chunk.name = flock.audio.readString(data, offset, 4);
-        chunk.length = reader(data, offset + 4, 4);
-        return chunk;
-    };
-    
-    flock.audio.checkHeader = function (expectedType, data, reader, readState) {
-        var chunk = flock.audio.readChunkHeader(data, readState.offset, reader);
-        readState.offset += 8;
-        if (chunk.name !== expectedType.chunkID) {
-            return null;
-        }
-
-        readState.fileLength = chunk.length;
-        readState.fileLength += 8;
-
-        var type = flock.audio.readString(data, readState.offset, 4);
-        readState.offset += 4;
-        if (type !== expectedType.formatName) {
-            return null;
-        }
-        
-        return readState;
-    };
-
-    flock.audio.readNumChannels = function (data, reader, readState) {
-        // Number of channels
-        readState.format.numberOfChannels = reader(data, readState.offset, 2);
-        readState.offset += 2;
-        return readState;
-    };
-    
-    flock.audio.readBitDepth = function (data, reader, readState) {
-        readState.format.bitDepth = reader(data, readState.offset, 2);
-        readState.format.bytesPerSample = readState.format.bitDepth / 8;
-        readState.offset += 2;
-        return readState;
-    };
-    
-    flock.audio.readChannelData = function (data, reader, readState) {
-        var channels = [],
-            fmt = readState.format,
-            bytesPerSample = fmt.bytesPerSample,
-            i;
-        for (i = 0; i < fmt.numberOfChannels; i++) {
-            channels.push(new Float32Array(fmt.length));
-        }
-        
-        for (i = 0; i < fmt.numberOfChannels; i++) {
-            var channel = channels[i];
-            for (var j = 0; j < fmt.length; j++) {
-                var index = readState.offset;
-                index += (j * fmt.numberOfChannels + i) * bytesPerSample;
-                // Sample
-                var value = reader(data, index, bytesPerSample);
-                // Scale range from 0 to 2**bitDepth -> -2**(bitDepth-1) to
-                // 2**(bitDepth-1)
-                var range = 1 << fmt.bitDepth - 1;
-                if (value >= range) {
-                    value |= ~(range - 1);
-                }
-                // Scale range to -1 to 1
-                channel[j] = value / range;
-            }
-        }
-        
-        return channels;
-    };
-        
-
-    flock.audio.decodeBinaryString = function (data, format) {
-	    var formatSpec = flock.audio.formats[format];
-	    
-        if (!formatSpec) {
-            console.error("There is no decoder available for " + format + " files.");
-            return null;
-        }
-	    
-	    var headerInfo = formatSpec.headerInfo,
-	        reader = formatSpec.reader,
-	        decoded;
-
-        var readState = flock.audio.checkHeader(headerInfo, data, reader, {
-            offset: 0,
-            fileLength: undefined
-        });
-        
-        if (readState === null) {
-            console.error("File is not in the " + headerInfo.formatName + " format.");
-            return null;
-        }
-        
-        while (readState.offset < readState.fileLength) {
-            var chunk = flock.audio.readChunkHeader(data, readState.offset, reader);
-            readState.offset += 8;
-
-            if (chunk.name === headerInfo.formatChunkName) {
-                decoded = formatSpec.readFormat(data, reader, readState);
-            }
-            else if (chunk.name === headerInfo.dataChunkName) {
-		        decoded.channels = formatSpec.readDataChunk(data, chunk, reader, readState);
-            }
-            else {
-                readState.offset += chunk.length;
-            }
-        }
-        
-        return decoded;
-    };
     
     /**
      * Decodes audio sample data in the specified format. This decoder currently supports WAVE and AIFF file formats.
@@ -284,15 +155,116 @@ var flock = flock || {};
             reader;
         
         if (format && isString) {
-            onSuccess(decodeBinaryString(src, format));            
+            onSuccess(flock.audio.decodeArrayBuffer(flock.file.stringToBuffer(src), format));            
         } else {
             reader = isString ? (src.indexOf("data:") === 0 ? flock.file.readDataUrl : flock.file.readUrl) : flock.file.readFile;
             reader(src, function (data, type) {
-                onSuccess(flock.audio.decodeBinaryString(data, type));
+                onSuccess(flock.audio.decodeArrayBuffer(data, type));
             });
         }
     };
     
+    flock.audio.decodeArrayBuffer = function (data, type) {
+        var formatSpec = flock.audio.formats[type];
+        if (!formatSpec) {
+            throw new Error("There is no decoder available for " + format + " files.");
+        }
+        
+        return formatSpec.reader(data, formatSpec);
+    };
+    
+    flock.audio.get = function (dv, typeSpec, offset, isLittle) {
+        var getter;
+        
+        if (typeof (typeSpec) === "string") {
+            getter = dv["get" + typeSpec];
+            return getter.call(dv, offset, isLittle);
+        } else {
+            getter = dv["get" + typeSpec.type];
+            return getter.call(dv, typeSpec.length, offset, isLittle);            
+        }        
+    };
+    
+    flock.audio.decode.chunk = function (dv, chunkName, formatSpec) {
+        var chunkID = formatSpec.chunkIDs[chunkName],
+            layout = formatSpec.chunkLayouts[chunkID],
+            isLittle = formatSpec.littleEndian,
+            decoded = {},
+            i,
+            name,
+            spec;
+        
+        for (i = 0; i < layout.order.length; i++) {
+            name = layout.order[i];
+            spec = layout.fields[name];
+            decoded[name] = flock.audio.get(dv, spec, undefined, isLittle);
+        }
+        
+        return decoded;
+    };
+    
+    flock.audio.decode.data = function (dv, decoded, dataType, length, offset) {
+        offset = offset || dv._offset;
+        
+        var numChans = decoded.header.numChannels,
+            numFrames = decoded.header.numSampleFrames,
+            bits = decoded.header.bitRate,
+            rng = 1 << (bits - 1),
+            arrayType = window[dataType + "Array"],
+            chans = [],
+            view,
+            i, frame, chan, samp;
+        
+        // Initialize each channel.            
+        for (i = 0; i < numChans; i++) {
+            chans[i] = new Float32Array(numFrames);
+        }
+        
+        // View the whole range of sample data as the correct type.
+        view = new arrayType(dv.buffer);
+        view = view.subarray(offset / (bits / 8), (offset / (bits / 8)) + length); // TODO: Lame!
+        
+        // Whip through each sample frame and read out sample data for each channel.
+        for (frame = 0; frame < numFrames; frame++) {
+            for (chan = 0; chan < numChans; chan++) {
+                samp = view[frame + chan];
+                // Scale it to a value between -1.0 and 1.0
+                if (samp >= rng) {
+                    samp |= ~(rng -1);
+                }
+                chans[chan][frame] = samp / rng;
+            }
+        }
+
+        return chans;
+    };
+    
+    flock.audio.decode.dataChunk = function (dv, formatSpec, decoded, offset) {
+        var h = decoded.header,
+            d = decoded.data = flock.audio.decode.chunk(dv, "data", formatSpec);
+        
+        // Now that we've got the actual data size, correctly set the number of sample frames if it wasn't already present.
+        h.numSampleFrames = h.numSampleFrames || (d.size / (h.bitRate / 8)) / h.numChannels;
+
+        // Read the channel data.
+        // TODO: Support float types, which will involve some format-specific processing.
+        decoded.data.channels = flock.audio.decode.data(dv, decoded, "Int" + h.bitRate, d.size, dv.polyOffset);
+        return decoded;
+    };
+    
+    flock.audio.decode.chunked = function (data, formatSpec) {
+        var dv = new DataView(data, 0, data.byteLength),
+            decoded = {};
+            
+        decoded.container = flock.audio.decode.chunk(dv, "container", formatSpec);
+        
+        // TODO: Can't safely assume chunk order. We need to iterate through each of the container's chunks and handle them in appropriate order.
+        decoded.header = flock.audio.decode.chunk(dv, "header", formatSpec);
+        flock.audio.decode.dataChunk(dv, formatSpec, decoded);
+        
+        return decoded;
+    };
+
     
     /************************************
      * Audio Format Decoding Strategies *
@@ -300,115 +272,121 @@ var flock = flock || {};
      
     flock.audio.formats = {};
     
-    /*******
-     * WAV *
-     *******/
-     
     flock.audio.formats.wav = {
-        headerInfo: {
-            chunkID: "RIFF",
-            formatChunkName: "fmt ",
-            dataChunkName: "data",
-            formatName: "WAVE"
+        reader: flock.audio.decode.chunked,
+        littleEndian: true,
+        
+        chunkIDs: {
+            container: "RIFF",
+            header: "fmt ",
+            data: "data"
         },
         
-        reader: flock.audio.readIntL,
-        
-        readFormat: function (data, reader, readState) {
-            // File encoding
-            var encoding = reader(data, readState.offset, 2);
-            readState.offset += 2;
+        validFormatTypes: ["WAVE"],
+        validAudioFormatTypes: [1, 3], // TODO: this field is specific to WAVE files. Need a better way to express validation declaratively.
 
-            if (encoding != 0x0001) {
-                // Only support PCM
-                // TODO: This should throw an Error.
-                console.error("Cannot decode non-PCM encoded WAV file");
-                return null;
+        chunkLayouts: {
+            "RIFF": {
+                fields: {
+                    id: {
+                        type: "String",
+                        length: 4
+                    },
+                    size: "Uint32",
+                    formatType: {
+                        type: "String",
+                        length: 4
+                    }
+                },
+                order: ["id", "size", "formatType"]
+            },
+            "fmt ": {
+                fields: {
+                    id: {
+                        type: "String",
+                        length: 4
+                    },
+                    size: "Uint32",
+                    audioFormatType: "Uint16",
+                    numChannels: "Uint16",
+                    sampleRate: "Uint32",
+                    avgBytesPerSecond: "Uint32",
+                    blockAlign: "Uint16",
+                    bitRate: "Uint16"
+                },
+                order: ["id", "size", "audioFormatType", "numChannels", "sampleRate", "avgBytesPerSecond", "blockAlign", "bitRate"]
+            },
+            "data": {
+                fields: {
+                    id: {
+                        type: "String",
+                        length: 4
+                    },
+                    size: "Uint32"
+                },
+                order: ["id", "size"]
             }
-
-            readState.format = {};
-
-            // Number of channels
-            flock.audio.readNumChannels(data, reader, readState);
-
-            // Sample rate
-            readState.format.sampleRate = reader(data, readState.offset, 4);
-            readState.offset += 4;
-
-            // Ignore bytes/sec - 4 bytes
-            readState.offset += 4;
-
-            // Ignore block align - 2 bytes
-            readState.offset += 2;
-
-            // Bit depth
-            flock.audio.readBitDepth(data, reader, readState);
-
-            return readState.format;
-        },
-        
-        readDataChunk: function (data, chunk, reader, readState) {
-            var fmt = readState.format;
-            fmt.length = chunk.length / (fmt.bytesPerSample * fmt.numberOfChannels);
-            var channels = flock.audio.readChannelData(data, reader, readState);
-            readState.offset += chunk.length;
-            
-            return channels;
         }
     };
     
-    
-    /********
-     * AIFF *
-     ********/
-     
+
     flock.audio.formats.aiff = {
-        headerInfo: {
-            chunkID: "FORM",
-            formatName: "AIFF",
-            formatChunkName: "COMM",
-            dataChunkName: "SSND"
+        reader: flock.audio.decode.chunked,
+        littleEndian: false,
+        
+        chunkIDs: {
+            container: "FORM",
+            header: "COMM",
+            data: "SSND"
         },
         
-        reader: flock.audio.readIntB,
-
-        readFormat: function (data, reader, readState) {
-            readState.format = {};
-
-            // Number of channels
-            flock.audio.readNumChannels(data, reader, readState);
-
-            // Number of samples
-            readState.format.length = reader(data, readState.offset, 4);
-            readState.offset += 4;
-
-            // Bit depth
-            flock.audio.readBitDepth(data, reader, readState);
-
-            // Sample rate
-            readState.format.sampleRate = reader(data, readState.offset);
-            readState.offset += 10;
-            
-            return readState.format;
-        },
+        validFormatTypes: ["AIFF", "AIFC"],
         
-        readDataChunk: function (data, chunk, reader, readState) {
-            // Data offset
-            var dataOffset = reader(data, readState.offset, 4);
-            readState.offset += 4;
-
-            // Ignore block size
-            readState.offset += 4;
-
-            // Skip over data offset
-            readState.offset += dataOffset;
-
-            // Channel data
-            var channels = flock.audio.readChannelData(data, reader, readState);
-            readState.offset += chunk.length - dataOffset - 8;
+        chunkLayouts: {
+            "FORM": {
+                fields: {
+                    id: {
+                        type: "String",
+                        length: 4
+                    },
+                    size: "Int32",
+                    formatType: {
+                        type: "String",
+                        length: 4
+                    }
+                },
+                order: ["id", "size", "formatType"]
+            },
             
-            return channels;
+            "COMM": {
+                fields: {
+                    id: {
+                        type: "String",
+                        length: 4
+                    },
+                    size: "Int32",
+                    numChannels: "Int16",
+                    numSampleFrames: "Uint32",
+                    bitRate: "Int16",
+                    sampleRate: "Float80"
+                    
+                },
+                order: ["id", "size", "numChannels", "numSampleFrames", "bitRate", "sampleRate"]
+            },
+            "SSND": {
+                fields: {
+                    id: {
+                        type: "String",
+                        length: 4
+                    },
+                    size: "Int32",
+                    offset: "Uint32",
+                    blockSize: "Uint32"
+                },
+                order: ["id", "size", "offset", "blockSize"]
+            }
         }
     };
+
     
 }());

@@ -47,11 +47,12 @@ var flock = flock || {};
      * Utilities *
      *************/
     
-    flock.isArray = function (o) {
-        var l = o.length;
-        return o && l !== undefined && typeof (l) === "number";
-    };
-    
+     // TODO: Move this to an as-yet non-existent base file.
+     flock.isArray = function (o) {
+         var l = o.length;
+         return o && l !== undefined && typeof (l) === "number";
+     };
+
     // TODO: Unit tests
     flock.generate = function (bufOrSize, generator) {
         var buf = typeof (bufOrSize) === "number" ? new Float32Array(bufOrSize) : bufOrSize,

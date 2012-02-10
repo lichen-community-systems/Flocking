@@ -104,7 +104,7 @@ var flock = flock || {};
             val;
         for (i = 0; i < buffer.length; i++) {
             val = buffer[i];
-            ok(val > min && val < max, msg + " Index: " + i);
+            ok(val >= min && val <= max, msg + " Index: " + i + ", value: " + val);
         }
     };
     
