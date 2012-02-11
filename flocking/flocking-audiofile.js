@@ -173,6 +173,7 @@ var flock = flock || {};
         return formatSpec.reader(data, formatSpec);
     };
     
+    // TODO: Optimize the typeSpec data structure so we can get rid of this.
     flock.audio.get = function (dv, typeSpec, offset, isLittle) {
         var getter;
         
@@ -245,7 +246,7 @@ var flock = flock || {};
     };
     
     flock.audio.decode.chunked = function (data, formatSpec) {
-        var dv = new DataView(data, 0, data.byteLength),
+        var dv = new polyDataView(data, 0, data.byteLength),
             decoded = {};
             
         decoded.container = flock.audio.decode.chunk(dv, "container", formatSpec);

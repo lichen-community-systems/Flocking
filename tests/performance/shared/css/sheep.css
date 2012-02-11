@@ -1,0 +1,28 @@
+table, tr, th, td {
+	border: 2px solid #666;
+}
+
+table {
+	width: 50%;
+	margin: 2%;
+	border-collapse: collapse;
+}
+
+th { 
+	background: #666;
+	color: #fff;
+	border: none;
+}
+
+th, td {
+	text-align: left;
+	padding: 2%;
+}
+
+tr:nth-child(odd) {
+	background: #eee;
+}
+
+td:nth-child(1) {
+	width: 50%;
+}

@@ -77,7 +77,7 @@ var flock = flock || {};
             }
         }
         
-        flock.test.runTests(testSpecs);
+        sheep.tests(testSpecs, true);
     };
 
 }());

@@ -6,7 +6,7 @@
     
     var addNonStandardMethods = function (that) {
         that.getString = function (l, o, isLittle) {
-            o = typeof (o) === "number" ? o : that.polyOffset;
+            o = typeof (o) === "number" ? o : that.offset;
             
             var s = "",
                 i,
@@ -17,13 +17,13 @@
 				s += String.fromCharCode(c > 127 ? 65533 : c);
 			}
 			
-			that.polyOffset = o + l;
+			that.offset = o + l;
 			
 			return s;
         };
-        
+
         that.getFloat80 = function (o, isLittle) {
-            o = typeof (o) === "number" ? o : that.polyOffset;
+            o = typeof (o) === "number" ? o : that.offset;
             
             // From Joe
             var expon = that.getUint(2, o, isLittle), 
@@ -51,7 +51,7 @@
                 value = (hi * 0x100000000 + lo) * Math.pow(2, expon - 63);
             }
             
-            that.polyOffset = o + 10;
+            that.offset = o + 10;
             
             return sign * value;
             //
@@ -61,12 +61,12 @@
     var polyDataView = function (buffer, offset, length) {
         var that = {
             buffer: buffer,
-            polyOffset: typeof(offset) === "number" ? offset : 0,
-            polyU8Buf: new Uint8Array(buffer)
+            offset: typeof(offset) === "number" ? offset : 0,
+            u8Buf: new Uint8Array(buffer)
         };
         
         that.getUint = function (l, o, isLittle) {
-            o = typeof (o) === "number" ? o : that.polyOffset;
+            o = typeof (o) === "number" ? o : that.offset;
             
             var last = l - 1,
                 n = 0,
@@ -97,10 +97,10 @@
         };
          
         that.getUint8 = function (o, isLittle) {
-            o = typeof (o) === "number" ? o : that.polyOffset;
+            o = typeof (o) === "number" ? o : that.offset;
             
-            var n = that.polyU8Buf[o];
-            that.polyOffset = o + 1;
+            var n = that.u8Buf[o];
+            that.offset = o + 1;
             
             return n;
         };
@@ -126,16 +126,16 @@
         };
         
         that.getFloat32 = function (o, isLittle) {
-            o = typeof (o) === "number" ? o : that.polyOffset;
+            o = typeof (o) === "number" ? o : that.offset;
             
-            that.polyOffset = o + 4;
+            that.offset = o + 4;
             return 0; // TODO: Implement me!
         };
         
         that.getFloat64 = function (o, isLittle) {
-            o = typeof (o) === "number" ? o : that.polyOffset;
+            o = typeof (o) === "number" ? o : that.offset;
             
-            that.polyOffset = o + 4;
+            that.offset = o + 4;
             return 0; // TODO: Implement me!
         };
         
@@ -149,100 +149,100 @@
             dv: new nativeDataView(buffer, offset, length)
         };
         
-        that.polyOffset = typeof(offset) === "number" ? offset : 0;
+        that.offset = typeof(offset) === "number" ? offset : 0;
         
         that.getUint = function (l, o, isLittle) {
-            o = typeof (o) === "number" ? o : that.polyOffset;
+            o = typeof (o) === "number" ? o : that.offset;
             
             var bits = l * 8,
                 n;
             
             n = that.dv["getUint" + bits](o, isLittle);
-            that.polyOffset = o + l;
+            that.offset = o + l;
             
             return n;
         };
         
         that.getInt = function (l, o, isLittle) {
-            o = typeof (o) === "number" ? o : that.polyOffset;
+            o = typeof (o) === "number" ? o : that.offset;
             
             var bits = l * 8,
                 n;
             
             n = that.dv["getInt" + bits](o, isLittle);
-            that.polyOffset = o + l;
+            that.offset = o + l;
             
             return n;  
         };
         
         that.getUint8 = function (o, isLittle) {
-            o = typeof (o) === "number" ? o : that.polyOffset;
+            o = typeof (o) === "number" ? o : that.offset;
             
             var n = that.dv.getUint8(o, isLittle);
-            that.polyOffset = o + 1;
+            that.offset = o + 1;
             
             return n;
         };
         
         that.getInt8 = function (o, isLittle) {
-            o = typeof (o) === "number" ? o : that.polyOffset;
+            o = typeof (o) === "number" ? o : that.offset;
             
             var n = that.dv.getInt8(o, isLittle);
-            that.polyOffset = o + 1;
+            that.offset = o + 1;
             
             return n;
         };
         
         that.getUint16 = function (o, isLittle) {
-            o = typeof (o) === "number" ? o : that.polyOffset;
+            o = typeof (o) === "number" ? o : that.offset;
             
             var n = that.dv.getUint16(o, isLittle);
-            that.polyOffset = o + 2;
+            that.offset = o + 2;
             
             return n;            
         };
         
         that.getInt16 = function (o, isLittle) {
-            o = typeof (o) === "number" ? o : that.polyOffset;
+            o = typeof (o) === "number" ? o : that.offset;
             
             var n = that.dv.getInt16(o, isLittle);
-            that.polyOffset = o + 2;
+            that.offset = o + 2;
             
             return n;
         };
         
         that.getUint32 = function (o, isLittle) {
-            o = typeof (o) === "number" ? o : that.polyOffset;
+            o = typeof (o) === "number" ? o : that.offset;
             
             var n = that.dv.getUint32(o, isLittle);
-            that.polyOffset = o + 4;
+            that.offset = o + 4;
             
             return n;
         };
         
         that.getInt32 = function (o, isLittle) {
-            o = typeof (o) === "number" ? o : that.polyOffset;
+            o = typeof (o) === "number" ? o : that.offset;
             
             var n = that.dv.getInt32(o, isLittle);
-            that.polyOffset = o + 4;
+            that.offset = o + 4;
             
             return n;            
         };
         
         that.getFloat32 = function (o, isLittle) {
-            o = typeof (o) === "number" ? o : that.polyOffset;
+            o = typeof (o) === "number" ? o : that.offset;
             
             var n = that.dv.getFloat32(o, isLittle);
-            that.polyOffset = o + 4;
+            that.offset = o + 4;
             
             return n;
         };
         
         that.getFloat64 = function (o, isLittle) {
-            o = typeof (o) === "number" ? o : that.polyOffset;
+            o = typeof (o) === "number" ? o : that.offset;
             
             var n = that.dv.getFloat64(o, isLittle);
-            that.polyOffset = o + 8;
+            that.offset = o + 8;
             
             return n;
         };
@@ -251,5 +251,5 @@
         return that;
     };
     
-    window.DataView = nativeDataView ? wrappedDataView : polyDataView;
+    window.polyDataView = nativeDataView ? wrappedDataView : polyDataView;
 }());
