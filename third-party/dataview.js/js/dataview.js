@@ -28,7 +28,7 @@
             // From Joe
             var expon = that.getUint(2, o, isLittle), 
                 hi = that.getUint(4, o + 2),
-                lo = this.getUint(4, o + 6),
+                lo = that.getUint(4, o + 6),
                 rng = 1 << (16 - 1), 
                 sign = 1,
                 value;
@@ -82,7 +82,7 @@
             } else {
                 for (i = 0; i < l; i++){
                     v = that.getUint8();
-                    n += (255 - v) * pow(256, last - i);
+                    n += v * pow(256, last - i);
                 }
             }
             
@@ -90,16 +90,10 @@
         };
         
         that.getInt = function (l, o, isLittle) {
-            // From Jussi
-            var bitMask = Math.pow(2, l),
-                semiMask = bitMask / 2,
-                intMask = semiMask - 1,
-                invSemiMask = 1 / semiMask,
-                invIntMask = 1 / intMask,
+            var mask = Math.pow(256, l),
                 n = that.getUint(l, o, isLittle);
-            
-            return n > intMask ? (n - bitMask) * invSemiMask : n * invIntMask;
-            //
+                
+            return n > (mask / 2) - 1 ? n - mask : n;
         };
          
         that.getUint8 = function (o, isLittle) {
@@ -229,7 +223,7 @@
         that.getInt32 = function (o, isLittle) {
             o = typeof (o) === "number" ? o : that.polyOffset;
             
-            var n = that.dv.getInt16(o, isLittle);
+            var n = that.dv.getInt32(o, isLittle);
             that.polyOffset = o + 4;
             
             return n;            

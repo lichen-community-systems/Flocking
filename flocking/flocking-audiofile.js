@@ -178,10 +178,10 @@ var flock = flock || {};
         
         if (typeof (typeSpec) === "string") {
             getter = dv["get" + typeSpec];
-            return getter.call(dv, offset, isLittle);
+            return getter(offset, isLittle);
         } else {
             getter = dv["get" + typeSpec.type];
-            return getter.call(dv, typeSpec.length, offset, isLittle);            
+            return getter(typeSpec.length, offset, isLittle);
         }        
     };
     
@@ -203,14 +203,14 @@ var flock = flock || {};
         return decoded;
     };
     
-    flock.audio.decode.data = function (dv, decoded, dataType, length, offset) {
+    flock.audio.decode.data = function (dv, decoded, dataType, length, offset, isLittle) {
         offset = offset || dv._offset;
         
         var numChans = decoded.header.numChannels,
             numFrames = decoded.header.numSampleFrames,
             bits = decoded.header.bitRate,
-            rng = 1 << (bits - 1),
-            arrayType = window[dataType + "Array"],
+            max = (1 << (bits - 1)) - 1,
+            getter = dv["get" + dataType],
             chans = [],
             view,
             i, frame, chan, samp;
@@ -219,20 +219,12 @@ var flock = flock || {};
         for (i = 0; i < numChans; i++) {
             chans[i] = new Float32Array(numFrames);
         }
-        
-        // View the whole range of sample data as the correct type.
-        view = new arrayType(dv.buffer);
-        view = view.subarray(offset / (bits / 8), (offset / (bits / 8)) + length); // TODO: Lame!
-        
+                
         // Whip through each sample frame and read out sample data for each channel.
         for (frame = 0; frame < numFrames; frame++) {
             for (chan = 0; chan < numChans; chan++) {
-                samp = view[frame + chan];
-                // Scale it to a value between -1.0 and 1.0
-                if (samp >= rng) {
-                    samp |= ~(rng -1);
-                }
-                chans[chan][frame] = samp / rng;
+                samp = getter(undefined, isLittle);
+                chans[chan][frame] = samp / max;
             }
         }
 
@@ -248,7 +240,7 @@ var flock = flock || {};
 
         // Read the channel data.
         // TODO: Support float types, which will involve some format-specific processing.
-        decoded.data.channels = flock.audio.decode.data(dv, decoded, "Int" + h.bitRate, d.size, dv.polyOffset);
+        decoded.data.channels = flock.audio.decode.data(dv, decoded, "Int" + h.bitRate, d.size, dv.polyOffset, formatSpec.littleEndian);
         return decoded;
     };
     
@@ -349,7 +341,7 @@ var flock = flock || {};
                         type: "String",
                         length: 4
                     },
-                    size: "Int32",
+                    size: "Uint32",
                     formatType: {
                         type: "String",
                         length: 4
@@ -364,10 +356,10 @@ var flock = flock || {};
                         type: "String",
                         length: 4
                     },
-                    size: "Int32",
+                    size: "Uint32",
                     numChannels: "Int16",
                     numSampleFrames: "Uint32",
-                    bitRate: "Int16",
+                    bitRate: "Uint16",
                     sampleRate: "Float80"
                     
                 },
@@ -379,7 +371,7 @@ var flock = flock || {};
                         type: "String",
                         length: 4
                     },
-                    size: "Int32",
+                    size: "Uint32",
                     offset: "Uint32",
                     blockSize: "Uint32"
                 },

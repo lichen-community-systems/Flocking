@@ -94,7 +94,7 @@ flock.test = flock.test || {};
                 decoded: {
                     container: {
                         id: "RIFF",
-                        size: 118,
+                        size: 120,
                         formatType: "WAVE"
                     },
                     header: {
@@ -102,7 +102,7 @@ flock.test = flock.test || {};
                         size: 16,
                         audioFormatType: 1,
                         numChannels: 1,
-                        numSampleFrames: 41,
+                        numSampleFrames: 42,
                         sampleRate: 44100,
                         avgBytesPerSecond: 88200,
                         blockAlign: 2,
@@ -110,7 +110,7 @@ flock.test = flock.test || {};
                     },
                     data: {
                         id: "data",
-                        size: 82
+                        size: 84
                     }
                 }
             },
@@ -121,22 +121,22 @@ flock.test = flock.test || {};
                 decoded: {
                     container: {
                         id: "FORM",
-                        size: 128,
+                        size: 130,
                         formatType: "AIFF"
                     },
                     header: {
                         id: "COMM",
                         size: 18,
                         numChannels: 1,
-                        numSampleFrames: 41,
+                        numSampleFrames: 42,
                         bitRate: 16,
                         sampleRate: 44100.0
                     },
                     data: {
                         id: "SSND",
-                        size: 82,
-                        offset: 1313079296,
-                        blockSize: 5898240
+                        size: 92,
+                        offset: 0,
+                        blockSize: 0
                     }
                 }
             }
@@ -167,10 +167,22 @@ flock.test = flock.test || {};
     module("flock.audio.decode() tests");
     (function () {
         
+        var roundBuffer = function (buf, digits) {
+            var roundedBuf = [],
+                i;
+            
+            for (i = 0; i < buf.length; i++) {
+                roundedBuf[i] = parseFloat(buf[i].toFixed(1));
+            }
+            
+            return roundedBuf;
+        };
+        
         var testTriangleBuffer = function (decoded, expectedBitDepth, expectedDataSize) {
             var data = decoded.data,
                 header = decoded.header,
-                buffer = data.channels[0];
+                buffer = data.channels[0],
+                roundedBuffer = roundBuffer(buffer, 1);
 
             equal(header.numChannels, 1, "The decoded audio file's metadata should indicate that there is only one channel.");
             equal(data.channels.length, 1, "The decoded audio should have only one channel buffer.");
@@ -180,58 +192,60 @@ flock.test = flock.test || {};
             flock.test.assertNotSilent(buffer, "The buffer should not be silent.");
             flock.test.assertUnbroken(buffer, "The buffer should not have any significant gaps in it.");
             flock.test.assertWithinRange(buffer, -1.0, 1.0, "The buffer's amplitude should be no louder than 1.0.");
-            flock.test.assertContinuous(buffer, 0.1, "The buffer should be continuous.");
             
             equal(decoded.data.size, expectedDataSize, 
                 "The decoded audio file's metadata should indicate that there is a total of " + expectedDataSize + " samples of data in the file.");
-            flock.test.assertArrayEquals(buffer, expectedData, "The decoded buffer should be a single period triangle wave incrementing by 0.1");
+            equal(buffer.length, decoded.header.numSampleFrames,
+                "The decoded audio buffer should have the same number of frames as the metadata reports.");
+            flock.test.assertArrayEquals(roundedBuffer, expectedData, "The decoded buffer should be a single period triangle wave incrementing by 0.1");
         };
 
-        var eightBitDataSize = 41;
+        var eightBitSampleSize = 42;
         var fileConfigurations = [
             {
                 name: "int 16 WAV file",
                 bitDepth: 16,
-                dataSize: eightBitDataSize * 2,
+                dataSize: eightBitSampleSize * 2,
                 url: flock.test.audio.triangleInt16WAV
             },
             {
                 name: "int 16 AIFF file",
                 bitDepth: 16,
-                dataSize: eightBitDataSize * 2,
+                dataSize: (eightBitSampleSize * 2) + 4 + 4, // 42 samples in 16 bit representation plus 4 bytes for offset and 4 for blockSize
                 url: flock.test.audio.triangleInt16AIFF
             },
             {
                 name: "int8 AIFF file",
                 bitDepth: 8,
-                dataSize: eightBitDataSize,
+                dataSize: eightBitSampleSize + 4 + 4,
                 url: flock.test.audio.triangleInt8AIFF
-            },
+            }/*,
+            // No 32-bit support yet.
             {
                 name: "int32 WAV file",
                 bitDepth: 32,
-                dataSize: eightBitDataSize * 4,
+                dataSize: eightBitSampleSize * 4,
                 url: flock.test.audio.triangleInt32WAV
             },
             {
                 name: "int32 AIFF file",
                 bitDepth: 32,
-                dataSize: eightBitDataSize * 4,
+                dataSize: (eightBitSampleSize * 4) + 4 + 4,
                 url: flock.test.audio.triangleInt32AIFF
             },
             {
                 name: "float WAV file",
                 bitDepth: 32,
-                dataSize: eightBitDataSize * 4,
+                dataSize: eightBitSampleSize * 4,
                 url: flock.test.audio.triangleFloatWAV
             },
             {
                 name: "float AIFF file",
                 bitDepth: 32,
-                dataSize: eightBitDataSize * 4,
+                dataSize: (eightBitSampleSize * 4) + 4 + 4,
                 url: flock.test.audio.triangleFloatAIFF
             }
-
+            */
         ];
 
         var makeTester = function (config) {
