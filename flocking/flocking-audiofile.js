@@ -204,16 +204,15 @@ var flock = flock || {};
         return decoded;
     };
     
-    flock.audio.decode.data = function (dv, decoded, dataType, length, offset, isLittle) {
+    flock.audio.decode.data = function (dv, decoded, length, offset, isLittle) {
         offset = offset || dv._offset;
         
         var numChans = decoded.header.numChannels,
             numFrames = decoded.header.numSampleFrames,
             bits = decoded.header.bitRate,
             max = (1 << (bits - 1)) - 1,
-            getter = dv["get" + dataType],
             chans = [],
-            view,
+            interleaved,
             i, frame, chan, samp;
         
         // Initialize each channel.            
@@ -222,10 +221,10 @@ var flock = flock || {};
         }
                 
         // Whip through each sample frame and read out sample data for each channel.
+        interleaved = dv.getInts(numFrames * numChans, bits / 8, offset, isLittle);
         for (frame = 0; frame < numFrames; frame++) {
             for (chan = 0; chan < numChans; chan++) {
-                samp = getter(undefined, isLittle);
-                chans[chan][frame] = samp / max;
+                chans[chan][frame] = interleaved[frame + chan] / max;
             }
         }
 
@@ -241,7 +240,7 @@ var flock = flock || {};
 
         // Read the channel data.
         // TODO: Support float types, which will involve some format-specific processing.
-        decoded.data.channels = flock.audio.decode.data(dv, decoded, "Int" + h.bitRate, d.size, dv.polyOffset, formatSpec.littleEndian);
+        decoded.data.channels = flock.audio.decode.data(dv, decoded, d.size, dv.polyOffset, formatSpec.littleEndian);
         return decoded;
     };
     
