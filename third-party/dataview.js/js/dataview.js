@@ -4,7 +4,7 @@
 
     var nativeDataView = typeof (window.DataView) !== "undefined" ? window.DataView : undefined;
     
-    var addNonStandardMethods = function (that) {
+    var addSharedMethods = function (that) {
         that.getString = function (l, o, isLittle) {
             o = typeof (o) === "number" ? o : that.offset;
             
@@ -184,18 +184,17 @@
             return 0; // TODO: Implement me!
         };
         
-        addNonStandardMethods(that);
+        addSharedMethods(that);
         return that;
     };
     
     var wrappedDataView = function (buffer, offset, length) {
         var that = {
             buffer: buffer,
+            offset: typeof(offset) === "number" ? offset : 0,
             dv: new nativeDataView(buffer, offset, length)
         };
-        
-        that.offset = typeof(offset) === "number" ? offset : 0;
-        
+                
         that.getUint = function (w, o, isLittle) {
             o = typeof (o) === "number" ? o : that.offset;
             
@@ -317,7 +316,7 @@
             return n;
         };
         
-        addNonStandardMethods(that);
+        addSharedMethods(that);
         return that;
     };
     

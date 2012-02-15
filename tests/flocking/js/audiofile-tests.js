@@ -97,7 +97,7 @@ flock.test = flock.test || {};
                         size: 120,
                         formatType: "WAVE"
                     },
-                    header: {
+                    format: {
                         id: "fmt ",
                         size: 16,
                         audioFormatType: 1,
@@ -124,7 +124,7 @@ flock.test = flock.test || {};
                         size: 130,
                         formatType: "AIFF"
                     },
-                    header: {
+                    format: {
                         id: "COMM",
                         size: 18,
                         numChannels: 1,
@@ -151,7 +151,7 @@ flock.test = flock.test || {};
                         // Remove the sample data, since it's tested below.
                         delete actual.data.channels;
                         
-                    deepEqual(actual, expected, "The decoded audio file info should contain valid container, header, and data structures.");
+                    deepEqual(actual, expected, "The decoded audio file info should contain valid container, format, and data structures.");
                 });
             });
         };
@@ -180,14 +180,14 @@ flock.test = flock.test || {};
         
         var testTriangleBuffer = function (decoded, expectedBitDepth, expectedDataSize) {
             var data = decoded.data,
-                header = decoded.header,
+                format = decoded.format,
                 buffer = data.channels[0],
                 roundedBuffer = roundBuffer(buffer, 1);
 
-            equal(header.numChannels, 1, "The decoded audio file's metadata should indicate that there is only one channel.");
+            equal(format.numChannels, 1, "The decoded audio file's metadata should indicate that there is only one channel.");
             equal(data.channels.length, 1, "The decoded audio should have only one channel buffer.");
-            equal(header.bitRate, expectedBitDepth, "The decoded audio file's metadata should indicate a bith depth of " + expectedBitDepth + ".");
-            equal(header.sampleRate, 44100, "The decoded audio file's metadata should indicate a sample rate of 44100 samples per second.");
+            equal(format.bitRate, expectedBitDepth, "The decoded audio file's metadata should indicate a bith depth of " + expectedBitDepth + ".");
+            equal(format.sampleRate, 44100, "The decoded audio file's metadata should indicate a sample rate of 44100 samples per second.");
             flock.test.assertNotNaN(buffer, "The buffer should not output an NaN values");
             flock.test.assertNotSilent(buffer, "The buffer should not be silent.");
             flock.test.assertUnbroken(buffer, "The buffer should not have any significant gaps in it.");
@@ -195,7 +195,7 @@ flock.test = flock.test || {};
             
             equal(decoded.data.size, expectedDataSize, 
                 "The decoded audio file's metadata should indicate that there is a total of " + expectedDataSize + " samples of data in the file.");
-            equal(buffer.length, decoded.header.numSampleFrames,
+            equal(buffer.length, decoded.format.numSampleFrames,
                 "The decoded audio buffer should have the same number of frames as the metadata reports.");
             flock.test.assertArrayEquals(roundedBuffer, expectedData, "The decoded buffer should be a single period triangle wave incrementing by 0.1");
         };

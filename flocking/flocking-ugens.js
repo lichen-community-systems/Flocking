@@ -552,7 +552,7 @@ var flock = flock || {};
                 } else {
                     // TODO: Should this be done earlier (during ugen parsing)?
                     flock.parse.bufferForDef(bufDef, function (buffer, name) {
-                        that.buffer = buffer? buffer[that.inputs.channel.output[0]] : that.buffer;
+                        that.buffer = buffer ? buffer[that.inputs.channel.output[0]] : that.buffer;
                         that.model.name = name;
                         that.model.idx = 0;
                     });

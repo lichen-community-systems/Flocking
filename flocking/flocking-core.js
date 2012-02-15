@@ -293,9 +293,10 @@ var flock = flock || {};
             }
             
             flock.audio.decode(src, function (decoded) {
-                that.buffers[name] = decoded.channels;
+                var chans = decoded.data.channels;
+                that.buffers[name] = chans;
                 if (onLoadFn) {
-                    onLoadFn(decoded.channels, name); 
+                    onLoadFn(chans, name); 
                 }
             });
         };
