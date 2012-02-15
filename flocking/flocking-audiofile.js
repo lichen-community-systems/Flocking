@@ -178,7 +178,7 @@ var flock = flock || {};
             numFrames = format.numSampleFrames,
             l = numFrames * numChans,
             bits = format.bitRate,
-            max = (1 << (bits - 1)) - 1,
+            max = Math.pow(2, bits - 1) - 1,
             chans = [],
             samp = 0,
             interleaved,

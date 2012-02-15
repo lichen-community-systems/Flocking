@@ -219,7 +219,7 @@ flock.test = flock.test || {};
                 bitDepth: 8,
                 dataSize: eightBitSampleSize + 4 + 4,
                 url: flock.test.audio.triangleInt8AIFF
-            }/*,
+            },
             // No 32-bit support yet.
             {
                 name: "int32 WAV file",
@@ -245,7 +245,6 @@ flock.test = flock.test || {};
                 dataSize: (eightBitSampleSize * 4) + 4 + 4,
                 url: flock.test.audio.triangleFloatAIFF
             }
-            */
         ];
 
         var makeTester = function (config) {
