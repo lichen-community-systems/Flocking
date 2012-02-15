@@ -173,11 +173,11 @@ var flock = flock || {};
         return formatSpec.reader(data, formatSpec);
     };
     
-    flock.audio.decode.data = function (dv, decoded, length, isLittle) {
-        var numChans = decoded.format.numChannels,
-            numFrames = decoded.format.numSampleFrames,
+    flock.audio.decode.data = function (dv, format, isLittle) {
+        var numChans = format.numChannels,
+            numFrames = format.numSampleFrames,
             l = numFrames * numChans,
-            bits = decoded.format.bitRate,
+            bits = format.bitRate,
             max = (1 << (bits - 1)) - 1,
             chans = [],
             samp = 0,
@@ -201,19 +201,18 @@ var flock = flock || {};
 
         return chans;
     };
-    
-    flock.audio.decode.dataChunk = function (dv, chunk, isLittle) {
-        var f = chunk.format, // TODO: This needs to be satisfied by another chunk!
-            d = chunk;
+        
+    flock.audio.decode.dataChunk = function (dv, format, data, dataMetadata, isLittle) {
+        var l = data.size;
         
         // Now that we've got the actual data size, correctly set the number of sample frames if it wasn't already present.
-        f.numSampleFrames = f.numSampleFrames || (d.size / (f.bitRate / 8)) / f.numChannels;
+        format.numSampleFrames = format.numSampleFrames || (l / (format.bitRate / 8)) / format.numChannels;
 
         // Read the channel data.
         // TODO: Support float types, which will involve some format-specific processing.
-        d.channels = flock.audio.decode.data(dv, chunk, d.size, isLittle);
+        data.channels = flock.audio.decode.data(dv, format, isLittle);
         
-        return chunk;
+        return data;
     };
     
     flock.audio.decode.chunk = function (dv, formatSpec, metadata) {
@@ -232,7 +231,7 @@ var flock = flock || {};
         }
         
         if (type === "data") {
-            flock.audio.decode.dataChunk(dv, chunk, isLittle);
+            metadata.offsets.channelData = dv.offset;
         }
         
         return chunk;
@@ -329,6 +328,9 @@ var flock = flock || {};
         chunks = flock.audio.decode.chunks(dv, formatSpec, chunksMetadata);
         chunks.container = container;
         
+        // Once all the chunks have been read, decode the channel data.
+        flock.audio.decode.dataChunk(dv, chunks.format, chunks.data, chunksMetadata[chunks.data.id], isLittle);
+        
         return chunks;
     };
 
@@ -401,7 +403,7 @@ var flock = flock || {};
         
         chunkIDs: {
             "FORM": "container",
-            "COMM": "header",
+            "COMM": "format",
             "SSND": "data" 
         },
                 
