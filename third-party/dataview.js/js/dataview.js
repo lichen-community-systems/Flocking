@@ -133,6 +133,20 @@
             return array;
         };
         
+        that.getFloats = function (l, w, o, isLittle, array) {
+            var bits = w * 8,
+                getterName = "getFloat" + bits,
+                i;
+            
+            array = array || new window["Float" + bits + "Array"](l);
+            
+            for (i = 0; i < l; i++) {
+                array[i] = that[getterName](o, isLittle);
+            }
+            
+            return array;
+        };
+        
         that.getUint = function (w, o, isLittle) {
             return that.getUints(1, w, o, isLittle, that.quickArray)[0];
         };
