@@ -5,21 +5,22 @@
     var nativeDataView = typeof (window.DataView) !== "undefined" ? window.DataView : undefined;
     
     var addSharedMethods = function (that) {
-        that.getString = function (l, o, isLittle) {
-            o = typeof (o) === "number" ? o : that.offset;
-            
+        that.getString = function (l, w, o, isLittle) {
             var s = "",
                 i,
                 c;
                 
-			for (i = 0; i < l; ++i) {
-				c = that.getUint8(o + i, isLittle);
-				s += String.fromCharCode(c > 127 ? 65533 : c);
-			}
-			
-			that.offset = o + l;
-			
-			return s;
+            for (i = 0; i < l; ++i) {
+                c = that.getUint(w, o, isLittle);
+                if (c > 0xFFFF) {
+                    c -= 0x10000;
+                    s += String.fromCharCode(0xD800 + (c >> 10), 0xDC00 + (c & 0x3FF));
+                }  else {
+                    s += String.fromCharCode(c);
+                }
+            }
+            
+            return s;
         };
 
         that.getFloat80 = function (o, isLittle) {
@@ -71,28 +72,34 @@
             array = array || new window["Uint" + (w * 8) + "Array"](l);
             var last = w - 1,
                 n = 0,
-                pow = Math.pow,
                 v,
                 i, 
-                j;
+                j,
+                dump;
 
-            for (i = 0; i < l; i++) {
-                n = 0;
-                if (isLittle){
-                    for (j = 0; j < w; j++){
+            if (isLittle) {
+                for (i = 0; i < l; i++) {
+                    n = 0;
+                    for (j = 0, dump = 1; j < w; j++, dump *= 256) {
                         v = that.u8Buf[o];
-                        n += v * pow(256, j);
+                        n += v * dump;
                         o++;
                     }
-                } else {
-                    for (j = 0; j < w; j++){
-                        v = that.u8Buf[o];
-                        n += v * pow(256, last - j);
-                        o++;
-                    }
+
+                    array[i] = n;
                 }
-                array[i] = n;
+            } else {
+                for (i = 0; i < l; i++) {
+                    n = 0;
+                    for (j = 0, dump = Math.pow(256, last); j < w; j++, dump /= 256){
+                        v = that.u8Buf[o];
+                        n += v * dump;
+                        o++;
+                    }
+                    array[i] = n;
+                }
             }
+
             that.offset = o;
 
             return array;
@@ -109,25 +116,32 @@
                 halfMask = (mask / 2) - 1,
                 v,
                 i, 
-                j;
+                j,
+                dump;
 
-            for (i = 0; i < l; i++) {
-                n = 0;
-                if (isLittle){
-                    for (j = 0; j < w; j++){
+            if (isLittle) {
+                for (i = 0; i < l; i++) {
+                    n = 0;
+                    for (j = 0, dump = 1; j < w; j++, dump *= 256) {
                         v = that.u8Buf[o];
-                        n += v * pow(256, j);
+                        n += v * dump;
                         o++;
                     }
-                } else {
-                    for (j = 0; j < w; j++){
-                        v = that.u8Buf[o];
-                        n += v * pow(256, last - j);
-                        o++;
-                    }
+                
+                    array[i] = n > halfMask ? n - mask : n;
                 }
-                array[i] = n > halfMask ? n - mask : n;
+            } else {
+                for (i = 0; i < l; i++) {
+                    n = 0;
+                    for (j = 0, dump = Math.pow(256, last); j < w; j++, dump /= 256){
+                        v = that.u8Buf[o];
+                        n += v * dump;
+                        o++;
+                    }
+                    array[i] = n > halfMask ? n - mask : n;
+                }
             }
+            
             that.offset = o;
 
             return array;
@@ -229,11 +243,12 @@
         
         var getBytes = function (type, l, w, o, isLittle, array) {
             var bits = (w * 8),
+                typeSize = type + bits,
                 dv = that.dv,
-                getterName = "get" + type + bits,
+                getterName = "get" + typeSize,
                 i;
                 
-            array = array || new window[type + bits + "Array"](l);
+            array = array || new window[typeSize + "Array"](l);
             o = typeof (o) === "number" ? o : that.offset;
             
             for (i = 0; i < l; i++) {

@@ -286,23 +286,22 @@ var flock = flock || {};
     flock.audio.decode.chunkLayout = function (dv, layout, isLittle, offset) {
         var decoded = {};
         
-        var i,
+        var order = layout.order,
+            fields = layout.fields,
+            i,
             name,
             spec,
-            getter;
+            len,
+            w;
         
         dv.offset = typeof (offset) === "number" ? offset : dv.offset;
         
-        for (i = 0; i < layout.order.length; i++) {
-            name = layout.order[i];
-            spec = layout.fields[name];
-            if (typeof (spec) === "string") {
-                getter = dv["get" + spec];
-                decoded[name] = getter(undefined, isLittle);
-            } else {
-                getter = dv["get" + spec.type];
-                decoded[name] = getter(spec.length, undefined, isLittle);
-            }
+        for (i = 0; i < order.length; i++) {
+            name = order[i];
+            spec = fields[name];
+            
+            decoded[name] = typeof spec === "string" ? dv[spec](undefined, isLittle) :
+                dv[spec.getter](spec.length, spec.width, undefined, isLittle);
         }
         
         return decoded;
@@ -387,10 +386,11 @@ var flock = flock || {};
         headerLayout: {
             fields: {
                 id: {
-                    type: "String",
-                    length: 4
+                    getter: "getString",
+                    length: 4,
+                    width: 1
                 },
-                size: "Uint32"
+                size: "getUint32"
             },
             order: ["id", "size"]
         },
@@ -399,20 +399,21 @@ var flock = flock || {};
             "RIFF": {
                 fields: {
                     formatType: {
-                        type: "String",
-                        length: 4
+                        getter: "getString",
+                        length: 4,
+                        width: 1
                     }
                 },
                 order: ["formatType"]
             },
             "fmt ": {
                 fields: {
-                    audioFormatType: "Uint16",
-                    numChannels: "Uint16",
-                    sampleRate: "Uint32",
-                    avgBytesPerSecond: "Uint32",
-                    blockAlign: "Uint16",
-                    bitRate: "Uint16"
+                    audioFormatType: "getUint16",
+                    numChannels: "getUint16",
+                    sampleRate: "getUint32",
+                    avgBytesPerSecond: "getUint32",
+                    blockAlign: "getUint16",
+                    bitRate: "getUint16"
                 },
                 order: ["audioFormatType", "numChannels", "sampleRate", "avgBytesPerSecond", "blockAlign", "bitRate"]
             },
@@ -441,10 +442,11 @@ var flock = flock || {};
         headerLayout: {
             fields: {
                 id: {
-                    type: "String",
-                    length: 4
+                    getter: "getString",
+                    length: 4,
+                    width: 1
                 },
-                size: "Uint32"
+                size: "getUint32"
             },
             order: ["id", "size"]
         },
@@ -453,8 +455,9 @@ var flock = flock || {};
             "FORM": {
                 fields: {
                     formatType: {
-                        type: "String",
-                        length: 4
+                        getter: "getString",
+                        length: 4,
+                        width: 1
                     }
                 },
                 order: ["formatType"]
@@ -462,18 +465,18 @@ var flock = flock || {};
             
             "COMM": {
                 fields: {
-                    numChannels: "Int16",
-                    numSampleFrames: "Uint32",
-                    bitRate: "Uint16",
-                    sampleRate: "Float80"
+                    numChannels: "getInt16",
+                    numSampleFrames: "getUint32",
+                    bitRate: "getUint16",
+                    sampleRate: "getFloat80"
                     
                 },
                 order: ["numChannels", "numSampleFrames", "bitRate", "sampleRate"]
             },
             "SSND": {
                 fields: {
-                    offset: "Uint32",
-                    blockSize: "Uint32"
+                    offset: "getUint32",
+                    blockSize: "getUint32"
                 },
                 order: ["offset", "blockSize"]
             }
