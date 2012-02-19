@@ -66,6 +66,7 @@
             u8Buf: new Uint8Array(buffer),
             quickArray: []
         };
+        that.length = that.u8Buf.length;
         
         that.getUints = function (l, w, o, isLittle, array) {
             o = typeof (o) === "number" ? o : that.offset;
@@ -220,7 +221,8 @@
         var that = {
             buffer: buffer,
             offset: typeof(offset) === "number" ? offset : 0,
-            dv: new nativeDataView(buffer, offset, length)
+            dv: new nativeDataView(buffer, offset, length),
+            length: new Uint8Array(buffer).length
         };
                 
         that.getUint = function (w, o, isLittle) {

@@ -28,6 +28,7 @@ var flock = flock || {};
         return u32View[0] === 0x04030201;
     }());
     
+    
     /*********************
      * Network utilities *
      *********************/
@@ -251,26 +252,38 @@ var flock = flock || {};
         return data;
     };
         
-    flock.audio.decode.chunk = function (dv, id, type, layout, metadata, isLittle) {
-        var chunk,
-            prop;
+    flock.audio.decode.chunk = function (dv, id, type, headerLayout, layout, chunkIDs, metadata, isLittle, chunks) {
+        var chunkMetadata = metadata[id],
+            offsets = chunkMetadata.offsets,
+            header = chunkMetadata.header,
+            chunk,
+            prop,
+            subchunksLength;
             
-        chunk = flock.audio.decode.chunkLayout(dv, layout, isLittle, metadata.offsets.data);
+        chunk = flock.audio.decode.chunkFields(dv, layout, isLittle, offsets.fields);
         
-        for (prop in metadata.header) {
-            chunk[prop] = metadata.header[prop];
+        for (prop in header) {
+            chunk[prop] = header[prop];
         }
         
-        if (type === "data") {
-            metadata.offsets.channelData = dv.offset;
+        if (offsets.fields + header.size > dv.offset) {
+            offsets.data = dv.offset;
+        }
+        
+        // Read subchunks if there are any.
+        if (layout.chunkLayouts) {
+            subchunksLength = dv.length - offsets.data;
+            flock.audio.decode.scanChunks(dv, subchunksLength, headerLayout, isLittle, metadata);
+            flock.audio.decode.chunks(dv, headerLayout, layout.chunkLayouts, chunkIDs, metadata, isLittle, chunks);
         }
         
         return chunk;
     };
     
-    flock.audio.decode.scanChunks = function (dv, l, headerLayout, isLittle) {
-        var allMetadata = {},
-            metadata;
+    flock.audio.decode.scanChunks = function (dv, l, headerLayout, isLittle, allMetadata) {
+        allMetadata = allMetadata || {};
+        
+        var metadata;
                         
         while (dv.offset < l) {
             metadata = flock.audio.decode.chunkHeader(dv, headerLayout, isLittle);
@@ -281,27 +294,26 @@ var flock = flock || {};
         return allMetadata;
     };
     
-    flock.audio.decode.chunks = function (dv, formatSpec, chunksMetadata, isLittle) {
-        var chunks = {},
-            order = formatSpec.chunkOrder,
+    flock.audio.decode.chunks = function (dv, headerLayout, layouts, chunkIDs, metadata, isLittle, chunks) {
+        chunks = chunks || {};
+        
+        var order = layouts.order,
             i,
             id,
             type,
-            layout,
-            metadata;
-        
+            layout;
+                    
         for (i = 0; i < order.length; i++) {
             id = order[i];
-            type = formatSpec.chunkIDs[id];
-            layout = formatSpec.chunkLayouts[id];
-            metadata = chunksMetadata[id];
-            chunks[type] = flock.audio.decode.chunk(dv, id, type, layout, metadata, isLittle);
+            type = chunkIDs[id];
+            layout = layouts[id];
+            chunks[type] = flock.audio.decode.chunk(dv, id, type, headerLayout, layout, chunkIDs, metadata, isLittle, chunks);
         }
         
         return chunks;
     };
     
-    flock.audio.decode.chunkLayout = function (dv, layout, isLittle, offset) {
+    flock.audio.decode.chunkFields = function (dv, layout, isLittle, offset) {
         var decoded = {};
         
         var order = layout.order,
@@ -331,8 +343,8 @@ var flock = flock || {};
         };
         
         metadata.offsets.start = dv.offset;
-        metadata.header = flock.audio.decode.chunkLayout(dv, headerLayout, isLittle);
-        metadata.offsets.data = dv.offset;
+        metadata.header = flock.audio.decode.chunkFields(dv, headerLayout, isLittle);
+        metadata.offsets.fields = dv.offset;
         
         return metadata;
     };
@@ -345,38 +357,21 @@ var flock = flock || {};
     flock.audio.decode.aiffSampleDataType = function (chunks) {
         var t = chunks.container.formatType;
         return t === "AIFF" ? "Int" : (t === "AIFC" ? "Float" : null);
-    };
+    }; 
     
     flock.audio.decode.chunked = function (data, formatSpec) {
         var dv = new polyDataView(data, 0, data.byteLength),
-            order = formatSpec.chunkOrder,
             isLittle = formatSpec.littleEndian,
             headerLayout = formatSpec.headerLayout,
-            containerMetadata,
-            containerID,
-            container,
-            chunksMetadata,
+            metadata,
             chunks,
             dataType;
-        
-        // Read the container chunk to get preliminary information
-        // TODO: Refactor chunk reader so it's recursive with "subchunks"--then container won't need to be handled differently.
-        containerMetadata = flock.audio.decode.chunkHeader(dv, headerLayout, isLittle);
-        containerID = containerMetadata.header.id;
-        container = flock.audio.decode.chunk(dv, containerID, "container", formatSpec.chunkLayouts[containerID], containerMetadata, isLittle);
-        
-        // Scan each subchunk header in sequence to find out where they all are.
-        chunksMetadata = flock.audio.decode.scanChunks(dv, containerMetadata.header.size, headerLayout, isLittle);
-        
-        // Add the container's metadata to our collection of information about all chunks in the file.
-        chunksMetadata[containerMetadata.header.id] = containerMetadata;
-        
-        // Decode each chunk.
-        chunks = flock.audio.decode.chunks(dv, formatSpec, chunksMetadata, isLittle);
-        chunks.container = container;
+
+        metadata = flock.audio.decode.scanChunks(dv, dv.length, headerLayout, isLittle);
+        chunks = flock.audio.decode.chunks(dv, headerLayout, formatSpec.chunkLayouts, formatSpec.chunkIDs, metadata, isLittle);
         
         // Calculate the data type for the sample data.
-        dataType = formatSpec.findSampleDataType(chunks, chunksMetadata, dv);
+        dataType = formatSpec.findSampleDataType(chunks, metadata, dv);
 
         // Once all the chunks have been read, decode the channel data.
         flock.audio.decode.dataChunk(dv, chunks.format, dataType, chunks.data, isLittle);
@@ -422,26 +417,32 @@ var flock = flock || {};
                         width: 1
                     }
                 },
-                order: ["formatType"]
+                
+                order: ["formatType"],
+                
+                chunkLayouts: {
+                    "fmt ": {
+                        fields: {
+                            audioFormatType: "getUint16",
+                            numChannels: "getUint16",
+                            sampleRate: "getUint32",
+                            avgBytesPerSecond: "getUint32",
+                            blockAlign: "getUint16",
+                            bitRate: "getUint16"
+                        },
+                        order: ["audioFormatType", "numChannels", "sampleRate", "avgBytesPerSecond", "blockAlign", "bitRate"]
+                    },
+                    "data": {
+                        fields: {},
+                        order: []
+                    },
+                    
+                    order: ["fmt ", "data"]
+                }
             },
-            "fmt ": {
-                fields: {
-                    audioFormatType: "getUint16",
-                    numChannels: "getUint16",
-                    sampleRate: "getUint32",
-                    avgBytesPerSecond: "getUint32",
-                    blockAlign: "getUint16",
-                    bitRate: "getUint16"
-                },
-                order: ["audioFormatType", "numChannels", "sampleRate", "avgBytesPerSecond", "blockAlign", "bitRate"]
-            },
-            "data": {
-                fields: {},
-                order: []
-            }
+            
+            order: ["RIFF"]
         },
-        
-        chunkOrder: ["fmt ", "data"],
         
         findSampleDataType: flock.audio.decode.wavSampleDataType
     };
@@ -478,32 +479,37 @@ var flock = flock || {};
                         width: 1
                     }
                 },
-                order: ["formatType"]
+                
+                order: ["formatType"],
+                
+                chunkLayouts: {    
+                    "COMM": {
+                        fields: {
+                            numChannels: "getInt16",
+                            numSampleFrames: "getUint32",
+                            bitRate: "getUint16",
+                            sampleRate: "getFloat80"
+
+                        },
+                        order: ["numChannels", "numSampleFrames", "bitRate", "sampleRate"]
+                    },
+                    
+                    "SSND": {
+                        fields: {
+                            offset: "getUint32",
+                            blockSize: "getUint32"
+                        },
+                        order: ["offset", "blockSize"]
+                    },
+                    
+                    order: ["COMM", "SSND"]
+                }
             },
             
-            "COMM": {
-                fields: {
-                    numChannels: "getInt16",
-                    numSampleFrames: "getUint32",
-                    bitRate: "getUint16",
-                    sampleRate: "getFloat80"
-                    
-                },
-                order: ["numChannels", "numSampleFrames", "bitRate", "sampleRate"]
-            },
-            "SSND": {
-                fields: {
-                    offset: "getUint32",
-                    blockSize: "getUint32"
-                },
-                order: ["offset", "blockSize"]
-            }
+            order: ["FORM"]
         },
-        
-        chunkOrder: ["COMM", "SSND"],
         
         findSampleDataType: flock.audio.decode.aiffSampleDataType
     };
-
     
 }());
