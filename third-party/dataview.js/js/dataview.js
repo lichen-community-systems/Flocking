@@ -69,81 +69,76 @@
         that.length = that.u8Buf.length;
         
         that.getUints = function (l, w, o, isLittle, array) {
+            // TODO: Complete cut and paste job from getInts()!
             o = typeof (o) === "number" ? o : that.offset;
             array = array || new window["Uint" + (w * 8) + "Array"](l);
-            var last = w - 1,
-                n = 0,
-                v,
-                i, 
+            var byteStart, 
+                idxInc,
+                i,
+                idx,
+                n,
                 j,
-                dump;
+                scale,
+                v;
 
             if (isLittle) {
-                for (i = 0; i < l; i++) {
-                    n = 0;
-                    for (j = 0, dump = 1; j < w; j++, dump *= 256) {
-                        v = that.u8Buf[o];
-                        n += v * dump;
-                        o++;
-                    }
-
-                    array[i] = n;
-                }
+                byteStart = 0;
+                idxInc = 1;
             } else {
-                for (i = 0; i < l; i++) {
-                    n = 0;
-                    for (j = 0, dump = Math.pow(256, last); j < w; j++, dump /= 256){
-                        v = that.u8Buf[o];
-                        n += v * dump;
-                        o++;
-                    }
-                    array[i] = n;
+                byteStart = w - 1;
+                idxInc = -1;
+            }
+            
+            for (i = 0; i < l; i++) {
+                idx = o + (i * w) + byteStart;
+                n = 0;
+                for (j = 0, scale = 1; j < w; j++, scale *= 256) {
+                    v = that.u8Buf[idx];
+                    n += v * scale;
+                    idx += idxInc;
                 }
+                array[i] = n;
             }
 
-            that.offset = o;
+            that.offset = o + (l * w);
 
             return array;
         };
 
         that.getInts = function (l, w, o, isLittle, array) {
-            // TODO: Complete cut and paste job from getUints()!
             o = typeof (o) === "number" ? o : that.offset;
             array = array || new window["Int" + (w * 8) + "Array"](l);
-            var last = w - 1,
-                n = 0,
-                pow = Math.pow,
-                mask = pow(256, w),
+            var mask = Math.pow(256, w),
                 halfMask = (mask / 2) - 1,
-                v,
-                i, 
+                byteStart, 
+                idxInc,
+                i,
+                idx,
+                n,
                 j,
-                dump;
+                scale,
+                v;
 
             if (isLittle) {
-                for (i = 0; i < l; i++) {
-                    n = 0;
-                    for (j = 0, dump = 1; j < w; j++, dump *= 256) {
-                        v = that.u8Buf[o];
-                        n += v * dump;
-                        o++;
-                    }
-                
-                    array[i] = n > halfMask ? n - mask : n;
-                }
+                byteStart = 0;
+                idxInc = 1;
             } else {
-                for (i = 0; i < l; i++) {
-                    n = 0;
-                    for (j = 0, dump = Math.pow(256, last); j < w; j++, dump /= 256){
-                        v = that.u8Buf[o];
-                        n += v * dump;
-                        o++;
-                    }
-                    array[i] = n > halfMask ? n - mask : n;
-                }
+                byteStart = w - 1;
+                idxInc = -1;
             }
             
-            that.offset = o;
+            for (i = 0; i < l; i++) {
+                idx = o + (i * w) + byteStart;
+                n = 0;
+                for (j = 0, scale = 1; j < w; j++, scale *= 256) {
+                    v = that.u8Buf[idx];
+                    n += v * scale;
+                    idx += idxInc;
+                }
+                array[i] = n > halfMask ? n - mask : n;
+            }
+
+            that.offset = o + (l * w);
 
             return array;
         };
@@ -163,7 +158,7 @@
         };
         
         that.getUint = function (w, o, isLittle) {
-            return that.getUints(1, w, o, isLittle, that.quickArray)[0];
+            return w === 1 ? that.getUint8(o, isLittle) : that.getUints(1, w, o, isLittle, that.quickArray)[0];
         };
         
         that.getInt = function (w, o, isLittle) {
@@ -200,17 +195,42 @@
         };
         
         that.getFloat32 = function (o, isLittle) {
-            o = typeof (o) === "number" ? o : that.offset;
+            var bytes = that.getUints(4, 1, o, isLittle),
+                b0 = bytes[0],
+                b1 = bytes[1],
+                sign = 1 - (2 * (b0 >> 7)),
+                exp = (((b0 << 1) & 255) | (b1 >> 7)) - 127,
+                mant = (b1 & 127) + bytes[2] + bytes[3];
             
-            that.offset = o + 4;
-            return 0; // TODO: Implement me!
+            if (exp === 128) {
+                return mant !== 0 ? NaN : sign * Infinity;
+            }
+            
+            if (exp === -127) {
+                return sign * mant * 1.401298464324817e-45;
+            }
+            
+            return sign * (1 + mant * 1.1920928955078125e-7) * Math.pow(2, exp);
         };
         
         that.getFloat64 = function (o, isLittle) {
-            o = typeof (o) === "number" ? o : that.offset;
-            
-            that.offset = o + 4;
-            return 0; // TODO: Implement me!
+            var bytes = that.getUints(8, 1, o, isLittle),
+                b0 = bytes[0],
+                b1 = bytes[1],
+                sign = 1 - (2 * (b0 >> 7)),
+                exp = ((((b0 << 1) & 255) << 3) | (b1 >> 4)) - 1023,
+                mant = ((b1 & 15) * 281474976710656) + (bytes[2] * 1099511627776) + (bytes[3] * 4294967296) + 
+                    (bytes[4] * 16777216) + (bytes[5] * 65536) + (bytes[6] * 256) + bytes[7];
+                                
+            if (exp === 1024) {
+                return mant !== 0 ? NaN : sign * Infinity;
+            }
+
+            if (exp === -1023) {
+                return sign * mant * 5e-324;
+            }
+
+            return sign * (1 + mant * 2.220446049250313e-16) * Math.pow(2, exp);
         };
         
         addSharedMethods(that);
@@ -275,19 +295,19 @@
             return getBytes("Float", l, w, o, isLittle, array);
         };
         
-        that.getUint8 = function (o, isLittle) {
+        that.getUint8 = function (o) {
             o = typeof (o) === "number" ? o : that.offset;
             
-            var n = that.dv.getUint8(o, isLittle);
+            var n = that.dv.getUint8(o);
             that.offset = o + 1;
             
             return n;
         };
         
-        that.getInt8 = function (o, isLittle) {
+        that.getInt8 = function (o) {
             o = typeof (o) === "number" ? o : that.offset;
             
-            var n = that.dv.getInt8(o, isLittle);
+            var n = that.dv.getInt8(o);
             that.offset = o + 1;
             
             return n;
