@@ -196,11 +196,26 @@
         
         that.getFloat32 = function (o, isLittle) {
             var bytes = that.getUints(4, 1, o, isLittle),
-                b0 = bytes[0],
-                b1 = bytes[1],
-                sign = 1 - (2 * (b0 >> 7)),
-                exp = (((b0 << 1) & 255) | (b1 >> 7)) - 127,
-                mant = (b1 & 127) + bytes[2] + bytes[3];
+                b0, b1, b2, b3,
+                sign,
+                exp,
+                mant;
+            
+            if (isLittle) {
+                b0 = bytes[3];
+                b1 = bytes[2];
+                b2 = bytes[1];
+                b3 = bytes[0];
+            } else {
+                b0 = bytes[0];
+                b1 = bytes[1];
+                b2 = bytes[2];
+                b3 = bytes[3];
+            }
+                
+            sign = 1 - (2 * (b0 >> 7));
+            exp = (((b0 << 1) & 255) | (b1 >> 7)) - 127;
+            mant = ((b1 & 127) * 65536) | (b2 * 256) | b3;
             
             if (exp === 128) {
                 return mant !== 0 ? NaN : sign * Infinity;
@@ -215,12 +230,35 @@
         
         that.getFloat64 = function (o, isLittle) {
             var bytes = that.getUints(8, 1, o, isLittle),
-                b0 = bytes[0],
-                b1 = bytes[1],
-                sign = 1 - (2 * (b0 >> 7)),
-                exp = ((((b0 << 1) & 255) << 3) | (b1 >> 4)) - 1023,
-                mant = ((b1 & 15) * 281474976710656) + (bytes[2] * 1099511627776) + (bytes[3] * 4294967296) + 
-                    (bytes[4] * 16777216) + (bytes[5] * 65536) + (bytes[6] * 256) + bytes[7];
+                b0, b1, b2, b3, b4, b5, b6, b7,
+                sign,
+                exp,
+                mant;
+            
+            if (isLittle) {
+                b0 = bytes[7];
+                b1 = bytes[6];
+                b2 = bytes[5];
+                b3 = bytes[4];
+                b4 = bytes[3];
+                b5 = bytes[2];
+                b6 = bytes[1];
+                b7 = bytes[0];
+            } else {
+                b0 = bytes[0];
+                b1 = bytes[1];
+                b2 = bytes[2];
+                b3 = bytes[3];
+                b4 = bytes[4];
+                b5 = bytes[5];
+                b6 = bytes[6];
+                b7 = bytes[7];
+            }
+            
+            sign = 1 - (2 * (b0 >> 7));
+            exp = ((((b0 << 1) & 255) << 3) | (b1 >> 4)) - 1023;
+            mant = ((b1 & 15) * 281474976710656) + (b2 * 1099511627776) + (b3 * 4294967296) + 
+                (b4 * 16777216) + (b5 * 65536) + (b6 * 256) + b7;
                                 
             if (exp === 1024) {
                 return mant !== 0 ? NaN : sign * Infinity;
