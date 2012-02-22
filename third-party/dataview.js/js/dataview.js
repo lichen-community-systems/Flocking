@@ -1,16 +1,41 @@
+/*!
+* polyDataView, a better polyfill for DataView.
+* http://github.com/colinbdclark/polyDataView
+*
+* Copyright 2012, Colin Clark
+* Dual licensed under the MIT and GPL Version 2 licenses.
+*/
+
+/*global window, ArrayBuffer, Uint8Array, Uint32Array*/
+/*jslint bitwise: true, vars: true, white: true, plusplus: true, maxerr: 50, indent: 4 */
 
 (function () {
     "use strict";
 
-    var nativeDataView = typeof (window.DataView) !== "undefined" ? window.DataView : undefined;
+    var nativeDataView = typeof (window.DataView) !== "undefined" ? window.DataView : undefined; 
+    
+    var isHostLittleEndian = (function () {
+        var endianTest = new ArrayBuffer(4),
+            u8View = new Uint8Array(endianTest),
+            u32View = new Uint32Array(endianTest);
+            
+        u8View[0] = 0x01;
+        u8View[1] = 0x02;
+        u8View[2] = 0x03;
+        u8View[3] = 0x04;
+
+        return u32View[0] === 0x04030201;
+    }());
+    
     
     var addSharedMethods = function (that) {
-        that.getString = function (l, w, o, isLittle) {
+        
+        that.getString = function (len, w, o, isLittle) {
             var s = "",
                 i,
                 c;
                 
-            for (i = 0; i < l; ++i) {
+            for (i = 0; i < len; i++) {
                 c = that.getUint(w, o, isLittle);
                 if (c > 0xFFFF) {
                     c -= 0x10000;
@@ -26,7 +51,8 @@
         that.getFloat80 = function (o, isLittle) {
             o = typeof (o) === "number" ? o : that.offset;
             
-            // From Joe
+            // This method is a modified version of Joe Turner's implementation of an "extended" float decoder,
+            // originally licensed under the WTF license. https://github.com/oampo/audiofile.js/blob/master/audiofile.js
             var expon = that.getUint(2, o, isLittle), 
                 hi = that.getUint(4, o + 2),
                 lo = that.getUint(4, o + 6),
@@ -43,9 +69,9 @@
                 expon += rng;
             }
 
-            if (expon == hi == lo == 0) {
+            if (expon === hi === lo === 0) {
                 value = 0;
-            } else if (expon == 0x7FFF) {
+            } else if (expon === 0x7FFF) {
                 value = Number.MAX_VALUE;
             } else {
                 expon -= 16383;
@@ -55,7 +81,6 @@
             that.offset = o + 10;
             
             return sign * value;
-            //
         }; 
     };
     
@@ -63,15 +88,22 @@
         var that = {
             buffer: buffer,
             offset: typeof(offset) === "number" ? offset : 0,
-            u8Buf: new Uint8Array(buffer),
+            u8Buf: new Uint8Array(buffer, offset, length),
             quickArray: []
         };
         that.length = that.u8Buf.length;
         
-        that.getUints = function (l, w, o, isLittle, array) {
+        that.getUints = function (len, w, o, isLittle, array) {
             // TODO: Complete cut and paste job from getInts()!
             o = typeof (o) === "number" ? o : that.offset;
-            array = array || new window["Uint" + (w * 8) + "Array"](l);
+            that.offset = o + (len * w);
+            var arrayType = window["Uint" + (w * 8) + "Array"];
+            
+            if (len > 1 && isHostLittleEndian === isLittle) {
+                return new arrayType(that.buffer, o, len);
+            }
+            
+            array = array || new arrayType(len);
             var byteStart, 
                 idxInc,
                 i,
@@ -89,7 +121,7 @@
                 idxInc = -1;
             }
             
-            for (i = 0; i < l; i++) {
+            for (i = 0; i < len; i++) {
                 idx = o + (i * w) + byteStart;
                 n = 0;
                 for (j = 0, scale = 1; j < w; j++, scale *= 256) {
@@ -99,15 +131,21 @@
                 }
                 array[i] = n;
             }
-
-            that.offset = o + (l * w);
-
+            
             return array;
         };
-
-        that.getInts = function (l, w, o, isLittle, array) {
+        
+        that.getInts = function (len, w, o, isLittle, array) {
             o = typeof (o) === "number" ? o : that.offset;
-            array = array || new window["Int" + (w * 8) + "Array"](l);
+            that.offset = o + (len * w);
+            var arrayType = window["Int" + (w * 8) + "Array"];
+                        
+            // If the host's endianness matches the file's, just use a typed array view directly.
+            if (len > 1 && isHostLittleEndian === isLittle) {
+                return new arrayType(that.buffer, o, len);
+            }
+            
+            array = array || new arrayType(len);
             var mask = Math.pow(256, w),
                 halfMask = (mask / 2) - 1,
                 byteStart, 
@@ -127,7 +165,7 @@
                 idxInc = -1;
             }
             
-            for (i = 0; i < l; i++) {
+            for (i = 0; i < len; i++) {
                 idx = o + (i * w) + byteStart;
                 n = 0;
                 for (j = 0, scale = 1; j < w; j++, scale *= 256) {
@@ -137,20 +175,26 @@
                 }
                 array[i] = n > halfMask ? n - mask : n;
             }
-
-            that.offset = o + (l * w);
-
+            
             return array;
         };
         
-        that.getFloats = function (l, w, o, isLittle, array) {
+        that.getFloats = function (len, w, o, isLittle, array) {
             var bits = w * 8,
                 getterName = "getFloat" + bits,
+                arrayType = window["Float" + bits + "Array"],
                 i;
             
-            array = array || new window["Float" + bits + "Array"](l);
+            // If the host's endianness matches the file's, just use a typed array view directly.
+            if (len > 1 && isHostLittleEndian === isLittle) {
+                o = typeof (o) === "number" ? o : that.offset;
+                that.offset = o + (len * w);
+                return new arrayType(that.buffer, o, len);
+            }
             
-            for (i = 0; i < l; i++) {
+            array = array || new arrayType(len);
+            
+            for (i = 0; i < len; i++) {
                 array[i] = that[getterName](o, isLittle);
             }
             
@@ -165,7 +209,7 @@
             return that.getInts(1, w, o, isLittle, that.quickArray)[0];
         };
          
-        that.getUint8 = function (o, isLittle) {
+        that.getUint8 = function (o) {
             o = typeof (o) === "number" ? o : that.offset;
             
             var n = that.u8Buf[o];
@@ -195,6 +239,8 @@
         };
         
         that.getFloat32 = function (o, isLittle) {
+            // This method is a modified version of Christopher Chedeau's float decoding implementation from jDataView,
+            // originally distributed under the WTF license. https://github.com/vjeux/jDataView
             var bytes = that.getUints(4, 1, o, isLittle),
                 b0, b1, b2, b3,
                 sign,
@@ -229,6 +275,8 @@
         };
         
         that.getFloat64 = function (o, isLittle) {
+            // This method is a modified version of Christopher Chedeau's float decoding implementation from jDataView,
+            // originally distributed under the WTF license. https://github.com/vjeux/jDataView
             var bytes = that.getUints(8, 1, o, isLittle),
                 b0, b1, b2, b3, b4, b5, b6, b7,
                 sign,
@@ -301,17 +349,17 @@
             return n;  
         };
         
-        var getBytes = function (type, l, w, o, isLittle, array) {
+        var getBytes = function (type, len, w, o, isLittle, array) {
             var bits = (w * 8),
                 typeSize = type + bits,
                 dv = that.dv,
                 getterName = "get" + typeSize,
                 i;
                 
-            array = array || new window[typeSize + "Array"](l);
+            array = array || new window[typeSize + "Array"](len);
             o = typeof (o) === "number" ? o : that.offset;
             
-            for (i = 0; i < l; i++) {
+            for (i = 0; i < len; i++) {
                 array[i] = dv[getterName](o, isLittle);
                 o += w;
             }
@@ -321,16 +369,16 @@
             return array;
         };
         
-        that.getUints = function (l, w, o, isLittle, array) {
-            return getBytes("Uint", l, w, o, isLittle, array);
+        that.getUints = function (len, w, o, isLittle, array) {
+            return getBytes("Uint", len, w, o, isLittle, array);
         };
         
-        that.getInts = function (l, w, o, isLittle, array) {
-            return getBytes("Int", l, w, o, isLittle, array);
+        that.getInts = function (len, w, o, isLittle, array) {
+            return getBytes("Int", len, w, o, isLittle, array);
         };
         
-        that.getFloats = function (l, w, o, isLittle, array) {
-            return getBytes("Float", l, w, o, isLittle, array);
+        that.getFloats = function (len, w, o, isLittle, array) {
+            return getBytes("Float", len, w, o, isLittle, array);
         };
         
         that.getUint8 = function (o) {

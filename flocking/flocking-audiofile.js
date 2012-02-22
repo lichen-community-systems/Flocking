@@ -15,19 +15,6 @@ var flock = flock || {};
 (function () {
     "use strict";
     
-    var isHostLittleEndian = (function () {
-        var endianTest = new ArrayBuffer(4),
-            u8View = new Uint8Array(endianTest),
-            u32View = new Uint32Array(endianTest);
-            
-        u8View[0] = 0x01;
-        u8View[1] = 0x02;
-        u8View[2] = 0x03;
-        u8View[3] = 0x04;
-
-        return u32View[0] === 0x04030201;
-    }());
-    
     
     /*********************
      * Network utilities *
@@ -226,16 +213,7 @@ var flock = flock || {};
             numFrames = format.numSampleFrames,
             l = numFrames * numChans,
             bits = format.bitRate,
-            rawTyped,
-            interleaved;
-
-        if (isHostLittleEndian === isLittle) {
-            // If the computer's endianness matches the file's endianness, just read directly from a typed array view.
-            interleaved = new window[dataType + bits + "Array"](dv.buffer, dv.offset);
-        } else {
-            // Otherwise, use DataView and do it the slower way.
             interleaved = dv["get" + dataType + "s"](l, bits / 8, undefined, isLittle);
-        }
         
         return flock.audio.decode.deinterleaveSampleData(dataType, bits, numChans, interleaved);
     };
