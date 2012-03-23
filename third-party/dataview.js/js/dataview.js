@@ -88,10 +88,10 @@
         var that = {
             buffer: buffer,
             offset: typeof(offset) === "number" ? offset : 0,
-            u8Buf: new Uint8Array(buffer, offset, length),
             quickArray: []
         };
-        that.length = that.u8Buf.length;
+        that.length = typeof (length) === "number" ? length : buffer.byteLength - that.offset;
+        that.u8Buf = new Uint8Array(buffer, that.offset, that.length);
         
         that.getUints = function (len, w, o, isLittle, array) {
             // TODO: Complete cut and paste job from getInts()!
@@ -104,7 +104,7 @@
             }
             
             array = array || new arrayType(len);
-            var byteStart, 
+            var startByte, 
                 idxInc,
                 i,
                 idx,
@@ -114,15 +114,15 @@
                 v;
 
             if (isLittle) {
-                byteStart = 0;
+                startByte = 0;
                 idxInc = 1;
             } else {
-                byteStart = w - 1;
+                startByte = w - 1;
                 idxInc = -1;
             }
             
             for (i = 0; i < len; i++) {
-                idx = o + (i * w) + byteStart;
+                idx = o + (i * w) + startByte;
                 n = 0;
                 for (j = 0, scale = 1; j < w; j++, scale *= 256) {
                     v = that.u8Buf[idx];
@@ -148,7 +148,7 @@
             array = array || new arrayType(len);
             var mask = Math.pow(256, w),
                 halfMask = (mask / 2) - 1,
-                byteStart, 
+                startByte, 
                 idxInc,
                 i,
                 idx,
@@ -158,15 +158,15 @@
                 v;
 
             if (isLittle) {
-                byteStart = 0;
+                startByte = 0;
                 idxInc = 1;
             } else {
-                byteStart = w - 1;
+                startByte = w - 1;
                 idxInc = -1;
             }
             
             for (i = 0; i < len; i++) {
-                idx = o + (i * w) + byteStart;
+                idx = o + (i * w) + startByte;
                 n = 0;
                 for (j = 0, scale = 1; j < w; j++, scale *= 256) {
                     v = that.u8Buf[idx];
@@ -326,10 +326,10 @@
     var wrappedDataView = function (buffer, offset, length) {
         var that = {
             buffer: buffer,
-            offset: typeof(offset) === "number" ? offset : 0,
-            dv: new nativeDataView(buffer, offset, length),
-            length: new Uint8Array(buffer).length
+            offset: typeof(offset) === "number" ? offset : 0
         };
+        that.length = typeof (length) === "number" ? length : buffer.byteLength - that.offset;
+        that.dv = new nativeDataView(buffer, that.offset, that.length);
                 
         that.getUint = function (w, o, isLittle) {
             o = typeof (o) === "number" ? o : that.offset;
@@ -350,7 +350,7 @@
         };
         
         var getBytes = function (type, len, w, o, isLittle, array) {
-            var bits = (w * 8),
+            var bits = w * 8,
                 typeSize = type + bits,
                 dv = that.dv,
                 getterName = "get" + typeSize,
