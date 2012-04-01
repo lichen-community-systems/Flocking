@@ -9,23 +9,23 @@
     test("New DataView with offset and length not specified.", function () {
         var dv = new polyDataView(buffer);
 
-        equals(dv.offset, 0, "When no offset is specified, it should default to 0.");
-        equals(dv.length, arrayView.byteLength, "When no length is specified, it should be the same as the array's byte length.");
+        equals(dv.byteOffset, 0, "When no offset is specified, it should default to 0.");
+        equals(dv.byteLength, arrayView.byteLength, "When no length is specified, it should be the same as the array's byte length.");
     });
 
     test("New DataView with only offset specified.", function () {
         var dv = new polyDataView(buffer, 4);
         
-        equals(dv.offset, 4, "When an offset is specified, it should be reflected correctly.");
-        equals(dv.length, 12,
+        equals(dv.byteOffset, 4, "When an offset is specified, it should be reflected correctly.");
+        equals(dv.byteLength, 12,
             "With an offset but no length specified, the DataView's length should be the array's byte length less the offset.");
     });
     
     test("New DataView with both offset and length specified.", function () {
         var dv = new polyDataView(buffer, 4, 4);
         
-        equals(dv.offset, 4, "When an offset is specified, it should be reflected correctly.");
-        equals(dv.length, 4, "When a length is specified, it should be correct.");
+        equals(dv.byteOffset, 4, "When an offset is specified, it should be reflected correctly.");
+        equals(dv.byteLength, 4, "When a length is specified, it should be correct.");
     });
 
 
@@ -252,4 +252,15 @@
     };
 
     testTypedGetters(getterTestSpecs);
+    
+    /*
+     Not yet tested:
+        getUints
+        getInts
+        getFloats
+        getUint
+        getInt
+        getString (including UTF-8 strings)
+        getFloat80
+    */
 })();

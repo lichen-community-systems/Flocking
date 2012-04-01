@@ -30,6 +30,9 @@
     
     var addSharedMethods = function (that) {
         
+        /**
+         * Non-standard
+         */
         that.getString = function (len, w, o, isLittle) {
             var s = "",
                 i,
@@ -48,8 +51,11 @@
             return s;
         };
 
+        /**
+         * Non-standard
+         */
         that.getFloat80 = function (o, isLittle) {
-            o = typeof (o) === "number" ? o : that.offset;
+            o = typeof (o) === "number" ? o : that.offsetState;
             
             // This method is a modified version of Joe Turner's implementation of an "extended" float decoder,
             // originally licensed under the WTF license. https://github.com/oampo/audiofile.js/blob/master/audiofile.js
@@ -78,25 +84,39 @@
                 value = (hi * 0x100000000 + lo) * Math.pow(2, expon - 63);
             }
             
-            that.offset = o + 10;
+            that.offsetState = o + 10;
             
             return sign * value;
         }; 
     };
     
-    var polyDataView = function (buffer, offset, length) {
+    var polyDataView = function (buffer, byteOffset, byteLength) {
+        var cachedArray = [];
+        
         var that = {
             buffer: buffer,
-            offset: typeof(offset) === "number" ? offset : 0,
-            quickArray: []
+            byteOffset: typeof(byteOffset) === "number" ? byteOffset : 0,
         };
-        that.length = typeof (length) === "number" ? length : buffer.byteLength - that.offset;
-        that.u8Buf = new Uint8Array(buffer, that.offset, that.length);
+        that.byteLength = typeof (byteLength) === "number" ? byteLength : buffer.byteLength - that.byteOffset;
+
+        /**
+         * Non-standard
+         */
+        that.u8Buf = new Uint8Array(buffer, that.byteOffset, that.byteLength);
         
+        /**
+         * Non-standard
+         */
+        that.offsetState = that.byteOffset;
+        
+        
+        /**
+         * Non-standard
+         */
         that.getUints = function (len, w, o, isLittle, array) {
             // TODO: Complete cut and paste job from getInts()!
-            o = typeof (o) === "number" ? o : that.offset;
-            that.offset = o + (len * w);
+            o = typeof (o) === "number" ? o : that.offsetState;
+            that.offsetState = o + (len * w);
             var arrayType = window["Uint" + (w * 8) + "Array"];
             
             if (len > 1 && isHostLittleEndian === isLittle) {
@@ -135,9 +155,12 @@
             return array;
         };
         
+        /**
+         * Non-standard
+         */
         that.getInts = function (len, w, o, isLittle, array) {
-            o = typeof (o) === "number" ? o : that.offset;
-            that.offset = o + (len * w);
+            o = typeof (o) === "number" ? o : that.offsetState;
+            that.offsetState = o + (len * w);
             var arrayType = window["Int" + (w * 8) + "Array"];
                         
             // If the host's endianness matches the file's, just use a typed array view directly.
@@ -179,6 +202,9 @@
             return array;
         };
         
+        /**
+         * Non-standard
+         */
         that.getFloats = function (len, w, o, isLittle, array) {
             var bits = w * 8,
                 getterName = "getFloat" + bits,
@@ -187,8 +213,8 @@
             
             // If the host's endianness matches the file's, just use a typed array view directly.
             if (len > 1 && isHostLittleEndian === isLittle) {
-                o = typeof (o) === "number" ? o : that.offset;
-                that.offset = o + (len * w);
+                o = typeof (o) === "number" ? o : that.offsetState;
+                that.offsetState = o + (len * w);
                 return new arrayType(that.buffer, o, len);
             }
             
@@ -201,41 +227,47 @@
             return array;
         };
         
+        /**
+         * Non-standard
+         */
         that.getUint = function (w, o, isLittle) {
-            return w === 1 ? that.getUint8(o, isLittle) : that.getUints(1, w, o, isLittle, that.quickArray)[0];
+            return w === 1 ? that.getUint8(o, isLittle) : that.getUints(1, w, o, isLittle, cachedArray)[0];
         };
         
+        /**
+         * Non-standard
+         */
         that.getInt = function (w, o, isLittle) {
-            return that.getInts(1, w, o, isLittle, that.quickArray)[0];
+            return that.getInts(1, w, o, isLittle, cachedArray)[0];
         };
          
         that.getUint8 = function (o) {
-            o = typeof (o) === "number" ? o : that.offset;
+            o = typeof (o) === "number" ? o : that.offsetState;
             
             var n = that.u8Buf[o];
-            that.offset = o + 1;
+            that.offsetState = o + 1;
             
             return n;
         };
         
         that.getInt8 = function (o, isLittle) {
-            return that.getInts(1, 1, o, isLittle, that.quickArray)[0];            
+            return that.getInts(1, 1, o, isLittle, cachedArray)[0];
         };
         
         that.getUint16 = function (o, isLittle) {
-            return that.getUints(1, 2, o, isLittle, that.quickArray)[0];            
+            return that.getUints(1, 2, o, isLittle, cachedArray)[0];
         };
         
         that.getInt16 = function (o, isLittle) {
-            return that.getInts(1, 2, o, isLittle, that.quickArray)[0];            
+            return that.getInts(1, 2, o, isLittle, cachedArray)[0];
         };
         
         that.getUint32 = function (o, isLittle) {
-            return that.getUints(1, 4, o, isLittle, that.quickArray)[0];
+            return that.getUints(1, 4, o, isLittle, cachedArray)[0];
         };
         
         that.getInt32 = function (o, isLittle) {
-            return that.getInts(1, 4, o, isLittle, that.quickArray)[0];            
+            return that.getInts(1, 4, o, isLittle, cachedArray)[0];
         };
         
         that.getFloat32 = function (o, isLittle) {
@@ -323,32 +355,51 @@
         return that;
     };
     
-    var wrappedDataView = function (buffer, offset, length) {
+    var wrappedDataView = function (buffer, byteOffset, byteLength) {
         var that = {
             buffer: buffer,
-            offset: typeof(offset) === "number" ? offset : 0
+            byteOffset: typeof(byteOffset) === "number" ? byteOffset : 0
         };
-        that.length = typeof (length) === "number" ? length : buffer.byteLength - that.offset;
-        that.dv = new nativeDataView(buffer, that.offset, that.length);
-                
+        that.byteLength = typeof (byteLength) === "number" ? byteLength : buffer.byteLength - that.byteOffset;
+        
+        /**
+         * Non-standard
+         */
+        that.dv = new nativeDataView(buffer, that.byteOffset, that.byteLength);
+        
+        /**
+         * Non-standard
+         */
+        that.offsetState = that.byteOffset;
+        
+        
+        /**
+         * Non-standard
+         */
         that.getUint = function (w, o, isLittle) {
-            o = typeof (o) === "number" ? o : that.offset;
+            o = typeof (o) === "number" ? o : that.offsetState;
             
             var n = that.dv["getUint" + (w * 8)](o, isLittle);
-            that.offset = o + w;
+            that.offsetState = o + w;
             
             return n;
         };
         
+        /**
+         * Non-standard
+         */
         that.getInt = function (w, o, isLittle) {
-            o = typeof (o) === "number" ? o : that.offset;
+            o = typeof (o) === "number" ? o : that.offsetState;
 
             var n = that.dv["getInt" + (w * 8)](o, isLittle);
-            that.offset = o + w;
+            that.offsetState = o + w;
             
             return n;  
         };
         
+        /**
+         * Non-standard
+         */
         var getBytes = function (type, len, w, o, isLittle, array) {
             var bits = w * 8,
                 typeSize = type + bits,
@@ -357,98 +408,107 @@
                 i;
                 
             array = array || new window[typeSize + "Array"](len);
-            o = typeof (o) === "number" ? o : that.offset;
+            o = typeof (o) === "number" ? o : that.offsetState;
             
             for (i = 0; i < len; i++) {
                 array[i] = dv[getterName](o, isLittle);
                 o += w;
             }
             
-            that.offset = o;
+            that.offsetState = o;
 
             return array;
         };
         
+        /**
+         * Non-standard
+         */
         that.getUints = function (len, w, o, isLittle, array) {
             return getBytes("Uint", len, w, o, isLittle, array);
         };
         
+        /**
+         * Non-standard
+         */
         that.getInts = function (len, w, o, isLittle, array) {
             return getBytes("Int", len, w, o, isLittle, array);
         };
         
+        /**
+         * Non-standard
+         */
         that.getFloats = function (len, w, o, isLittle, array) {
             return getBytes("Float", len, w, o, isLittle, array);
         };
         
         that.getUint8 = function (o) {
-            o = typeof (o) === "number" ? o : that.offset;
+            o = typeof (o) === "number" ? o : that.offsetState;
             
             var n = that.dv.getUint8(o);
-            that.offset = o + 1;
+            that.offsetState = o + 1;
             
             return n;
         };
         
         that.getInt8 = function (o) {
-            o = typeof (o) === "number" ? o : that.offset;
+            o = typeof (o) === "number" ? o : that.offsetState;
             
             var n = that.dv.getInt8(o);
-            that.offset = o + 1;
+            that.offsetState = o + 1;
             
             return n;
         };
         
         that.getUint16 = function (o, isLittle) {
-            o = typeof (o) === "number" ? o : that.offset;
+            o = typeof (o) === "number" ? o : that.offsetState;
             
             var n = that.dv.getUint16(o, isLittle);
-            that.offset = o + 2;
+            that.offsetState = o + 2;
             
             return n;            
         };
         
         that.getInt16 = function (o, isLittle) {
-            o = typeof (o) === "number" ? o : that.offset;
+            o = typeof (o) === "number" ? o : that.offsetState;
             
             var n = that.dv.getInt16(o, isLittle);
-            that.offset = o + 2;
+            that.offsetState = o + 2;
             
             return n;
         };
         
         that.getUint32 = function (o, isLittle) {
-            o = typeof (o) === "number" ? o : that.offset;
+            o = typeof (o) === "number" ? o : that.offsetState;
             
             var n = that.dv.getUint32(o, isLittle);
-            that.offset = o + 4;
+            that.offsetState = o + 4;
             
             return n;
         };
         
         that.getInt32 = function (o, isLittle) {
-            o = typeof (o) === "number" ? o : that.offset;
+            o = typeof (o) === "number" ? o : that.offsetState;
             
             var n = that.dv.getInt32(o, isLittle);
-            that.offset = o + 4;
+            that.offsetState = o + 4;
             
             return n;            
         };
         
         that.getFloat32 = function (o, isLittle) {
-            o = typeof (o) === "number" ? o : that.offset;
+            o = typeof (o) === "number" ? o : that.offsetState;
             
             var n = that.dv.getFloat32(o, isLittle);
-            that.offset = o + 4;
+            that.offsetState = o + 4;
             
             return n;
         };
         
         that.getFloat64 = function (o, isLittle) {
-            o = typeof (o) === "number" ? o : that.offset;
+            o = typeof (o) === "number" ? o : that.offsetState;
             
             var n = that.dv.getFloat64(o, isLittle);
-            that.offset = o + 8;
+            that.offsetState = o + 8;
             
             return n;
         };
