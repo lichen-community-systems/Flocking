@@ -32,28 +32,34 @@
     module("Typed Getters");
     
     var getterTest = function (name, spec) {
-        var tester = function (typedBuffer, isLittle) {
+        var tester = function (typedBuffer, offset, isLittle) {
             var dv = new polyDataView(typedBuffer.buffer),
                 i,
                 expected, actual;
             
             for (i = 0; i < spec.expected.length; i++) {
                 expected = spec.expected[i];
-                actual = dv[name](undefined, isLittle);
+                actual = dv[name](offset, isLittle);
                 if (isNaN(expected)) {
                     ok(isNaN(actual));
                 } else {
                     equal(actual, expected);
                 }
+                
+                offset = typeof (offset) === "number" ? offset + spec.byteSize : undefined;
             }
         };
         
         for (var endian in spec.byteOrders) {
             var byteOrder = spec.byteOrders[endian];
             var isLittle = endian === "little";
+            var testDescription = name + " " + endian + " endian, ";
+            test(testDescription + "unspecified offset.", function () {
+               tester(byteOrder, undefined, isLittle);
+            });
             
-            test(name + " " + endian + " endian", function () {
-               tester(byteOrder, isLittle);
+            test(testDescription + "offset specified.", function () {
+                tester(byteOrder, 0, isLittle);
             });
         }
     };
@@ -253,6 +259,56 @@
 
     testTypedGetters(getterTestSpecs);
     
+    module("String Getter");
+    
+    test("8-bit Strings", function () {
+        var expected = "Stringy",
+            raw = [],
+            actual,
+            i,
+            buffer;
+            
+        for (i = 0; i < expected.length; i++) {
+            raw.push(expected.charCodeAt(i));
+        }
+        buffer = new Uint8Array(raw).buffer;
+        
+        // Track offset ourselves.
+        var dv = new polyDataView(buffer);
+        actual = dv.getString(7, 1, 0, true);
+        equal(actual, expected);
+        
+        // Don't track offset.
+        dv = new polyDataView(buffer);
+        actual = dv.getString(7, 1, undefined, true);
+        equal(actual, expected);
+    });
+    
+    test("Multibyte Strings", function () {
+        var expected = String.fromCharCode(0xf900) + String.fromCharCode(0xf901) + String.fromCharCode(0xf902),
+            actual;
+        
+        var rawLittle = new Uint8Array([
+            0x00, 0xf9, // 豈
+            0x01, 0xf9, // 更
+            0x02, 0xf9  // 車
+        ]);
+        
+        var rawBig = new Uint8Array([
+            0xf9, 0x00, // 豈
+            0xf9, 0x01, // 更
+            0xf9, 0x02  // 車
+        ]);
+        
+        var dv = new polyDataView(rawLittle.buffer);
+        actual = dv.getString(3, 2, undefined, true);
+        equal(actual, expected);
+        
+        dv = new polyDataView(rawBig.buffer);
+        actual = dv.getString(3, 2, undefined, false);
+        equal(actual, expected);
+    });
+    
     /*
      Not yet tested:
         getUints
@@ -260,7 +316,6 @@
         getFloats
         getUint
         getInt
-        getString (including UTF-8 strings)
         getFloat80
     */
 })();

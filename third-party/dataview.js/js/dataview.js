@@ -4,11 +4,21 @@
 *
 * Copyright 2012, Colin Clark
 * Dual licensed under the MIT and GPL Version 2 licenses.
+*
+* Contributions:
+*   - getFloat32 and getFloat64, Copyright 2011 Christopher Chedeau
+*   - getFloat80, Copyright 2011 Joe Turner
 */
 
 /*global window, ArrayBuffer, Uint8Array, Uint32Array*/
 /*jslint bitwise: true, vars: true, white: true, plusplus: true, maxerr: 50, indent: 4 */
 
+/*
+ * To Do:
+ *  - Write benchmarks against an unmodified jDataView instance to show how much faster we are.
+ *  - Finish unit tests, especially for getString() and getFloat80()
+ */
+ 
 (function () {
     "use strict";
 
@@ -34,10 +44,12 @@
          * Non-standard
          */
         that.getString = function (len, w, o, isLittle) {
+            o = typeof (o) === "number" ? o : that.offsetState;
+            
             var s = "",
                 i,
                 c;
-                
+            
             for (i = 0; i < len; i++) {
                 c = that.getUint(w, o, isLittle);
                 if (c > 0xFFFF) {
@@ -46,6 +58,7 @@
                 }  else {
                     s += String.fromCharCode(c);
                 }
+                o = o + w;
             }
             
             return s;
@@ -95,10 +108,15 @@
         
         var that = {
             buffer: buffer,
-            byteOffset: typeof(byteOffset) === "number" ? byteOffset : 0,
+            byteOffset: typeof(byteOffset) === "number" ? byteOffset : 0
         };
         that.byteLength = typeof (byteLength) === "number" ? byteLength : buffer.byteLength - that.byteOffset;
-
+        
+        // Bail if we're trying to read off the end of the buffer.
+        if (that.byteOffset > buffer.byteLength || that.byteOffset + that.byteLength > buffer.byteLength) {
+            throw new Error("INDEX_SIZE_ERR: DOM Exception 1");
+        }
+        
         /**
          * Non-standard
          */
@@ -109,13 +127,16 @@
          */
         that.offsetState = that.byteOffset;
         
-        
         /**
          * Non-standard
          */
         that.getUints = function (len, w, o, isLittle, array) {
             // TODO: Complete cut and paste job from getInts()!
             o = typeof (o) === "number" ? o : that.offsetState;
+            if (o + (len * w) > that.u8Buf.length) {
+                throw new Error("INDEX_SIZE_ERR: DOM Exception 1");
+            }
+            
             that.offsetState = o + (len * w);
             var arrayType = window["Uint" + (w * 8) + "Array"];
             
@@ -160,6 +181,10 @@
          */
         that.getInts = function (len, w, o, isLittle, array) {
             o = typeof (o) === "number" ? o : that.offsetState;
+            if (o + (len * w) > that.u8Buf.length) {
+                throw new Error("INDEX_SIZE_ERR: DOM Exception 1");
+            }
+            
             that.offsetState = o + (len * w);
             var arrayType = window["Int" + (w * 8) + "Array"];
                         
@@ -214,6 +239,9 @@
             // If the host's endianness matches the file's, just use a typed array view directly.
             if (len > 1 && isHostLittleEndian === isLittle) {
                 o = typeof (o) === "number" ? o : that.offsetState;
+                if (o + (len * w) > that.u8Buf.length) {
+                    throw new Error("INDEX_SIZE_ERR: DOM Exception 1");
+                }
                 that.offsetState = o + (len * w);
                 return new arrayType(that.buffer, o, len);
             }
