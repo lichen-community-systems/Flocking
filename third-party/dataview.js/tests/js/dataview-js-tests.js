@@ -285,28 +285,36 @@
     });
     
     test("Multibyte Strings", function () {
-        var expected = String.fromCharCode(0xf900) + String.fromCharCode(0xf901) + String.fromCharCode(0xf902),
+        var spec = {
+            expected: String.fromCharCode(0xf900) + String.fromCharCode(0xf901) + String.fromCharCode(0xf902),
+            byteOrders: {
+                little: new Uint8Array([
+                    0x00, 0xf9, // 豈
+                    0x01, 0xf9, // 更
+                    0x02, 0xf9  // 車
+                ]),
+                
+                big: new Uint8Array([
+                    0xf9, 0x00, // 豈
+                    0xf9, 0x01, // 更
+                    0xf9, 0x02  // 車
+                ])
+            }
+        };
+        
+        var endian,
+            isLittle,
+            byteOrder,
+            dv,
             actual;
-        
-        var rawLittle = new Uint8Array([
-            0x00, 0xf9, // 豈
-            0x01, 0xf9, // 更
-            0x02, 0xf9  // 車
-        ]);
-        
-        var rawBig = new Uint8Array([
-            0xf9, 0x00, // 豈
-            0xf9, 0x01, // 更
-            0xf9, 0x02  // 車
-        ]);
-        
-        var dv = new polyDataView(rawLittle.buffer);
-        actual = dv.getString(3, 2, undefined, true);
-        equal(actual, expected);
-        
-        dv = new polyDataView(rawBig.buffer);
-        actual = dv.getString(3, 2, undefined, false);
-        equal(actual, expected);
+            
+        for (endian in spec.byteOrders) {
+            isLittle = endian === "little";
+            byteOrder = spec.byteOrders[endian];
+            dv = new polyDataView(byteOrder.buffer);
+            actual = dv.getString(spec.expected.length, 2, undefined, isLittle);
+            equal(actual, spec.expected);
+        }
     });
     
     /*
