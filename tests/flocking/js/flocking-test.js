@@ -32,7 +32,7 @@ var flock = flock || {};
                     }
                 }
             },
-            buffer: 0
+            bus: 0
         }
     };
     
@@ -192,7 +192,7 @@ var flock = flock || {};
         ugen: "flock.ugen.out",
         inputs: {
             source: condensedTestSynthDef,
-            buffer: 0
+            bus: 0
         }
     };
     

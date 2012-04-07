@@ -38,16 +38,33 @@ var flock = flock || {};
         fps: 60
     };
 
+    flock.idIdx = 0;
+    flock.id = function () {
+        return "flock-id-" + flock.idIdx++;
+    };
     
     /*************
      * Utilities *
      *************/
     
+     // TODO: Move this to an as-yet non-existent base file.
+     flock.isArray = function (o) {
+         var l = o.length;
+         return o && l !== undefined && typeof (l) === "number";
+     };
+
     // TODO: Unit tests
     flock.generate = function (bufOrSize, generator) {
         var buf = typeof (bufOrSize) === "number" ? new Float32Array(bufOrSize) : bufOrSize,
             i;
 
+        if (typeof (generator) === "number") {
+            var value = generator;
+            generator = function () { 
+                return value; 
+            };
+        }
+        
         for (i = 0; i < buf.length; i++) {
             buf[i] = generator(i, buf);
         }
@@ -126,7 +143,7 @@ var flock = flock || {};
         }
         return fn.apply(null, args);
     };
-        
+    
     
     /***********************
      * Synths and Playback *
@@ -138,7 +155,8 @@ var flock = flock || {};
      * the output buffer's size will be rounded up to the nearest control period.
      *
      * @param {Number} needed the number of samples to generate
-     * @param {UGen} outUGen the output unit generator from which to draw samples
+     * @param {Function} evalFn a function to invoke when writing each buffer
+     * @param {Array} an array of buffers to write
      * @param {Object} audioSettings the current audio system settings
      * @return a channel-interleaved output buffer containing roughly the number of needed samples
      */
@@ -198,7 +216,11 @@ var flock = flock || {};
             
             isPlaying: false
         };
-        that.buffers = flock.enviro.createAudioBuffers(16, that.audioSettings.rates.control);
+        
+        // TODO: Buffers are named but buses are numbered. Should we have a consistent strategy?
+        // The advantage to numbers is that they're easily modulatable with a ugen. Names are easier to deal with.
+        that.buses = flock.enviro.createAudioBuffers(16, that.audioSettings.rates.control);
+        that.buffers = {};
         
         /**
          * Starts generating samples from all synths.
@@ -262,6 +284,22 @@ var flock = flock || {};
             var idx = that.nodes.indexOf(node);
             that.nodes.splice(idx, 1);
         };
+                
+        that.loadBuffer = function (name, src, onLoadFn) {
+            if (!src && onLoadFn) {
+                // Assume the buffer has already been loaded by other means.
+                onLoadFn(that.buffers[name], name);
+                return;
+            }
+            
+            flock.audio.decode(src, function (decoded) {
+                var chans = decoded.data.channels;
+                that.buffers[name] = chans;
+                if (onLoadFn) {
+                    onLoadFn(chans, name); 
+                }
+            });
+        };
 
         setupEnviro(that);
         return that;
@@ -310,7 +348,7 @@ var flock = flock || {};
                     return;
                 }
                 
-                var outBuf = flock.interleavedDemandWriter(needed, that.gen, that.buffers, that.audioSettings);
+                var outBuf = flock.interleavedDemandWriter(needed, that.gen, that.buses, that.audioSettings);
                 playState.written += that.audioEl.mozWriteAudio(outBuf);
                 if (playState.written >= playState.total) {
                     that.stop();
@@ -332,7 +370,7 @@ var flock = flock || {};
                 chans = that.audioSettings.chans,
                 bufSize = that.audioSettings.bufferSize,
                 numKRBufs = bufSize / kr,
-                sourceBufs = that.buffers,
+                sourceBufs = that.buses,
                 outBufs = e.outputBuffer,
                 i,
                 chan,

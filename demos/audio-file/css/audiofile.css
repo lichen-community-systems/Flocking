@@ -1,0 +1,89 @@
+@import url(http://fonts.googleapis.com/css?family=Nunito:700);
+body {
+    margin-left: 2%;
+    font-family: "Nunito", sans-serif;
+    background: #eee;
+}
+
+.fileSelector label {
+    display: none;
+}
+
+#fileBrowser {
+    display: none;
+    padding: 10px;
+}
+
+
+.view {
+    clear: both;
+}
+
+.selectors,#waveform {
+    border: solid #888 5px;
+    border-radius: 25px;
+}
+
+.selectors {
+    margin-bottom: 1.5%;
+    float: left;
+    padding: 2%;
+    width: 40%;
+}
+
+.dataUrlSelector {
+    margin-top: 5%;
+}
+
+.dataUrlSelector label {
+    float: left;
+    margin-right: 2%;
+    margin-top: 7%;
+}
+
+#dataUrlField {
+    width:50%;
+    height: 100px;
+}
+
+#filePath {
+    font-family: courier, monospace;
+    font-size: 80%;
+    padding-top: 2.5%;
+    padding-right: 3%;
+    padding-left: 3%;
+}
+
+#browse {
+    border: 2px solid #888;
+    border-radius: 10px;
+    font-size: 100%;
+    font-style: italic;
+    background: #fff;
+    padding: 1.5%;
+}
+
+#playButton {
+    border: none;
+    height: 77px;
+    width: 77px;
+    float: left;
+    margin: 5% 0% 0% 2%;
+    color: transparent;
+}
+
+.playing {
+    background: transparent url("../../../images/pause.png") no-repeat 0px 0px;
+}
+
+.paused {
+    background: transparent url("../../../images/play.png") no-repeat 0px 0px;
+}
+
+.speedSelector {
+    padding-top: 1%;
+}
+
+.speedSelector label {
+    padding-right: 1%;
+}

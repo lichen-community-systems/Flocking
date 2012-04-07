@@ -104,7 +104,7 @@ var flock = flock || {};
             val;
         for (i = 0; i < buffer.length; i++) {
             val = buffer[i];
-            ok(val > min && val < max, msg + " Index: " + i);
+            ok(val >= min && val <= max, msg + " Index: " + i + ", value: " + val);
         }
     };
     
@@ -148,7 +148,8 @@ var flock = flock || {};
             if (current === next) {
                 continue;
             }
-            
+
+            // TODO: Add support for a threshold.
             if (Math.abs(current) === max) {
                 isAscending = !isAscending;
                 maxReached = true;
@@ -156,7 +157,7 @@ var flock = flock || {};
             
             fail = isAscending ? (next < current) : (next > current);
             if (fail) {
-                ok(fail, "Signal changed direction before reaching maximum value at index: " + i + 
+                ok(false, "Signal changed direction before reaching maximum value at index: " + i + 
                 ". Current value: " + current + ", next value: " + next);
                 break;
             }

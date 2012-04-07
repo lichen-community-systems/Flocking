@@ -66,14 +66,14 @@ flock.test = flock.test || {};
         var evalFn = function () {
             outUGen.gen(numSamps);
         };
-        var actual = flock.interleavedDemandWriter(numSamps, evalFn, flock.enviro.shared.buffers, audioSettings);
+        var actual = flock.interleavedDemandWriter(numSamps, evalFn, flock.enviro.shared.buses, audioSettings);
         deepEqual(actual, expectedBuffer, msg);
     };
 
     test("flock.interleavedDemandWriter() mono input, mono output", function () {
         // Test with a single input buffer being multiplexed by ugen.out.
         var mockLeftUGen = makeMockUGen(mockLeft);
-        var out = flock.ugen.out({source: mockLeftUGen, buffer: bufferValueUGen}, []);
+        var out = flock.ugen.out({source: mockLeftUGen, bus: bufferValueUGen}, []);
 
         // Pull the whole buffer.
         var expected = new Float32Array([
@@ -92,7 +92,7 @@ flock.test = flock.test || {};
     test("flock.interleavedDemandWriter() mono input, stereo output", function () {
         // Test with a single mono input buffer.
         var mockLeftUGen = makeMockUGen(mockLeft);
-        var out = flock.ugen.out({source: mockLeftUGen, buffer: bufferValueUGen, expand: stereoExpandValueUGen}, []);
+        var out = flock.ugen.out({source: mockLeftUGen, bus: bufferValueUGen, expand: stereoExpandValueUGen}, []);
 
         // Pull the whole buffer.
         var expected = new Float32Array([
@@ -112,7 +112,7 @@ flock.test = flock.test || {};
                 makeMockUGen(mockLeft), 
                 makeMockUGen(mockRight)
             ],
-            buffer: bufferValueUGen
+            bus: bufferValueUGen
         }, []);
 
         // Pull the whole buffer. Expect a stereo interleaved buffer as the result, 
@@ -422,6 +422,66 @@ flock.test = flock.test || {};
 
     testBasicWaveformOsc("flock.ugen.sawOsc");
 
+
+    module("flock.ugen.playBuffer() tests");
+    
+    var playbackDef = {
+        ugen: "flock.ugen.playBuffer",
+        inputs: {
+            buffer: {
+                id: "playBuffer-unit-tests"
+            },
+            
+            speed: 1.0
+        }
+    };
+
+    // Register the buffer ourselves. Buffers are multichannel, so need to be wrapped in an array.
+    flock.enviro.shared.buffers[playbackDef.inputs.buffer.id] = [flock.test.fillBuffer(1, 64)];
+
+    test("flock.ugen.playBuffer, speed: 1.0", function () {
+        var player = flock.parse.ugenForDef(playbackDef);
+        
+        player.gen(64);
+        var expected = flock.enviro.shared.buffers[playbackDef.inputs.buffer.id][0];
+        deepEqual(player.output, expected, "With a playback speed of 1.0, the output buffer should be identical to the source buffer.");
+        
+        player.gen(64);
+        expected = flock.test.constantBuffer(64, 0.0);
+        deepEqual(player.output, expected, "With looping turned off, the output buffer should be silent once we hit the end of the source buffer.");
+        
+        player.input("loop", 1.0);
+        player.gen(64);
+        expected = flock.enviro.shared.buffers[playbackDef.inputs.buffer.id][0];
+        deepEqual(player.output, expected, "With looping turned on, the output buffer should repeat the source buffer from the beginning.");
+    });
+    
+    test("flock.ugen.playBuffer, speed: 2.0", function () {
+        var player = flock.parse.ugenForDef(playbackDef),
+            expected = new Float32Array(64),
+            expectedFirst = new Float32Array([1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63]),
+            expectedSecond = flock.test.constantBuffer(32, 0);
+            
+        player.input("speed", 2.0);
+        
+        player.gen(64);
+        expected.set(expectedFirst);
+        expected.set(expectedSecond, 32);
+        deepEqual(player.output, expected, 
+            "At double speed, the output buffer contain odd values from the source buffer, padded with zeros.");
+        
+        player.gen(64);
+        expected = flock.test.constantBuffer(64, 0.0);
+        deepEqual(player.output, expected, "With looping turned off, the output buffer should be silent once we hit the end of the source buffer.");
+        
+        player.input("loop", 1.0);
+        player.gen(64);
+        expected.set(expectedFirst);
+        expected.set(expectedFirst, 32);
+        deepEqual(player.output, expected,
+            "At double speed with looping on, the output buffer should contain two repetitions of the odd values from the source buffer.");
+    });
+    
     
     module("flock.ugen.line() tests");
      

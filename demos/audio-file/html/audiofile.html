@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Audio File Decoding Demo</title>
+        
+        <link rel="stylesheet" type="text/css" href="../css/audiofile.css" />
+        
+        <script src="../../../third-party/dataview.js/js/dataview.js"></script>
+        
+        <script src="../../../flocking/flocking-audiofile.js"></script>
+        <script src="../../../flocking/flocking-core.js"></script>
+        <script src="../../../flocking/flocking-parser.js"></script>
+        <script src="../../../flocking/flocking-ugens.js"></script>
+        <script src="../../../flocking/flocking-gfx.js"></script>
+        
+        <script src="../../shared/js/demo-utils.js"></script>
+    </head>
+    
+    <body>
+        <h1>Audio File Decoding Demo</h1>
+        
+        <div class="controls">
+            <div class="selectors">
+                <form class="fileSelector">
+                    <label for="fileBrowser">Choose a sound file</label>
+                    <input id="fileBrowser" type="file" />
+                    <button id="browse">Choose a sound file...</button>
+                    <span id="filePath"></span>
+                </form>
+            
+                <form class="dataUrlSelector">
+                    <label for="dataUrlField">...or paste in a data URL:</label>
+                    <textarea id="dataUrlField"></textarea>                
+                </form>
+            </div>
+            <button id="playButton" class="paused">Play</button>
+        </div>
+        <div class="view">
+            <canvas id="waveform" height="200" width="960"></canvas>
+        </div>
+        <div class="speedSelector">
+            <label for="playbackSpeed">Playback speed:</label>
+            <input type="range" name="playbackSpeed" id="playbackSpeed" min="0.5" max="2.0" step="0.1" value="1.0" />
+        </div>
+        
+        <script type="text/javascript">
+
+            var synth = flock.synth({
+                ugen: "flock.ugen.scope",
+
+                // The playBuffer ugen plays back audio buffers loaded from a url or file.
+                // Currently, Flocking has support for .wav and .aiff files.
+                source: {
+                    id: "player",
+                    ugen: "flock.ugen.playBuffer",
+                    buffer: {
+                        id: "selectedSound",            // The sound file will be loaded into an environment buffer named "selectedSound."
+                        selector: "#fileBrowser"        // The File object selected by the #fileBrowser input element will be read.
+                    },
+                    speed: 1.0,
+                    loop: 1.0
+                },
+
+                options: {
+                    canvas: "#waveform",
+                    styles: {
+                        scaleY: 2,
+                        strokeColor: "#888",
+                        strokeWidth: 3
+                    }
+                }
+            }),
+            
+            fileSelectorView = demo.fileSelectorView(synth, {
+                playerId: "player",
+                selectors: {
+                    input: "#fileBrowser",
+                    button: "#browse",
+                    fileName: "#filePath"
+                }
+            }),
+            
+            dataUrlSelectorView = demo.dataUrlSelectorView(synth, {
+                playerId: "player",
+                selectors: {
+                    field: "#dataUrlField"
+                }
+            }),
+            
+            playButtonView = demo.toggleButtonView(synth, "#playButton");
+            
+            // Dynamically change the playback speed of the playBuffer ugen based on changes to the slider.
+            document.querySelector("#playbackSpeed").addEventListener("change", function (e) {
+                synth.input("player.speed", Number(e.target.value));
+                e.preventDefault();
+                e.stopPropagation();
+            }, false)
+        </script>
+    </body>
+</html>

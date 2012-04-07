@@ -1,5 +1,5 @@
 /*
-* Flocking Unit Generators
+* Flocking Unit Generator Benchmark Tests
 * http://github.com/colinbdclark/flocking
 *
 * Copyright 2011, Colin Clark
@@ -77,7 +77,7 @@ var flock = flock || {};
             }
         }
         
-        flock.test.runTests(testSpecs);
+        sheep.tests(testSpecs, true);
     };
 
 }());
