@@ -465,7 +465,7 @@ var flock = flock || {};
         that.buffer = new Float32Array(that.output.length); 
         
         // Optimized gen function for regular-speed playback.
-        that.crSpeedGen = function (numSamps) {
+        that.crRegularSpeedGen = function (numSamps) {
             var out = that.output,
                 chan = that.inputs.channel.output[0],
                 source = that.buffer,
@@ -485,9 +485,10 @@ var flock = flock || {};
                 if (bufIdx >= bufLen) {
                     if (loop > 0) {
                         bufIdx = 0;
+                    } else {
+                        out[i] = 0.0;
+                        continue;
                     }
-                    out[i] = 0.0;
-                    continue;
                 }
                 out[i] = source[bufIdx];
                 bufIdx++;
@@ -517,9 +518,10 @@ var flock = flock || {};
                 if (bufIdx >= bufLen) {
                     if (loop > 0) {
                         bufIdx = 0;
+                    } else {
+                        out[i] = 0.0;
+                        continue;
                     }
-                    out[i] = 0.0;
-                    continue;
                 }
                 
                 out[i] = source[Math.round(bufIdx)];
@@ -559,8 +561,9 @@ var flock = flock || {};
                 }
             }
             
+            // TODO: Optimize for non-regular speed constant rate input.
             that.gen = (that.inputs.speed.rate === flock.rates.CONSTANT && that.inputs.speed.output[0] === 1.0) ?
-                that.crSpeedGen : that.krSpeedGen;
+                that.crRegularSpeedGen : that.krSpeedGen;
         };
         
         that.onInputChanged();
