@@ -529,6 +529,52 @@ flock.test = flock.test || {};
             "After the line's duration is finished, it should constantly output the end value.");
     });
     
+    
+    module("flock.ugen.env.simpleASR tests");
+    
+    var simpleASRDef = {
+        ugen: "flock.ugen.env.simpleASR",
+        rate: flock.rates.AUDIO,
+        inputs: {
+            start: 0.0,
+            attack: 1 / (44100 / 63), // 64 Samples, in seconds
+            sustain: 1.0,
+            release: 1 / (44100 / 63), // 128 Samples
+            gate: 1.0
+        }
+    };
+    
+    test("simpleASR constant values for all inputs", function () {
+        var asr = flock.parse.ugenForDef(simpleASRDef);
+        
+        asr.gen(64);
+        equal(asr.output[0], 0.0, "During the attack stage, the starting level should be 0.0.");
+        equal(asr.output[63], 1.0, "At the end of the attack stage, the sustain level should have been reached.");
+        flock.test.assertUnbroken(asr.output, "The output should not contain any dropouts.");
+        flock.test.assertWithinRange(asr.output, 0.0, 1.0, "The output should always remain within the range between 0.0 and 1.0.");
+        flock.test.assertContinuous(asr.output, 0.02, "The buffer should move continuously within its range.");
+        flock.test.assertRamping(asr.output, true, "The buffer should climb steadily from 0.0 to 1.0.");
+        
+        asr.gen(64);
+        flock.test.assertArrayEquals(asr.output, flock.test.constantBuffer(64, 1.0), 
+            "While the gate is open, the envelope should hold at the sustain level.");
+        
+        asr.input("gate", 0.0);
+        asr.gen(64);
+        equal(asr.output[0], 1.0, "During the release stage, the starting level should be 1.0.");
+        equal(asr.output[63], 0.0, "By the end of the release stage, the starting level should have been reached.");
+        flock.test.assertUnbroken(asr.output, "The output should not contain any dropouts.");
+        flock.test.assertWithinRange(asr.output, 0.0, 1.0, "The output should always remain within the range between 1.0 and 0.0.");
+        flock.test.assertContinuous(asr.output, 0.02, "The buffer should move continuously within its range.");
+        flock.test.assertRamping(asr.output, false, "The buffer should climb steadily from 0.0 to 1.0.");
+        
+        
+        asr.gen(64);
+        flock.test.assertArrayEquals(asr.output, flock.test.constantBuffer(64, 0.0),
+         "When the gate is closed and the release stage has completed, the envelope's output should be 0.0.");
+    });
+    
+    
     module("flock.ugen.amplitude() tests");
     
     var ampConstSignalDef = {
@@ -586,7 +632,7 @@ flock.test = flock.test || {};
         for (i = 0; i < controlPeriods; i++) {
             tracker.inputs.source.gen(64);
             generateAndTestContinuousSamples(tracker, 64);
-            flock.test.assertClimbing(tracker.output, "The amplitude tracker should follow the contour of its source.");
+            flock.test.assertRamping(tracker.output, true, "The amplitude tracker should follow the contour of its source.");
         }
     });
     

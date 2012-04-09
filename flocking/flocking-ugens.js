@@ -35,7 +35,7 @@ var flock = flock || {};
          * @return {Number|UGen} a scalar value in the case of a value ugen, otherwise the ugen itself
          */
         that.input = function (name, val) {
-            if (!val) {
+            if (val === undefined) {
                 var input = that.inputs[name];
                 return (input.model && typeof (input.model.value) !== "undefined") ? input.model.value : input;
             }
@@ -157,6 +157,11 @@ var flock = flock || {};
         return that;
     };
 
+    
+    /***************
+     * Oscillators *
+     ***************/
+     
     flock.ugen.osc = function (inputs, output, options) {
         var that = flock.ugen.mulAdd(inputs, output, options);
         that.model.phase = 0.0;
@@ -453,199 +458,6 @@ var flock = flock || {};
         return that;
     };
 
-    flock.ugen.playBuffer = function (inputs, output, options) {
-        var that = flock.ugen.mulAdd(inputs, output, options);
-        that.rate = flock.rates.AUDIO;
-        that.model = {
-            idx: 0,
-            channel: undefined
-        };
-        
-        // Start with a zeroed buffer, since the buffer input may be loaded asynchronously.
-        that.buffer = new Float32Array(that.output.length); 
-        
-        // Optimized gen function for regular-speed playback.
-        that.crRegularSpeedGen = function (numSamps) {
-            var out = that.output,
-                chan = that.inputs.channel.output[0],
-                source = that.buffer,
-                bufIdx = that.model.idx,
-                bufLen = source.length,
-                endIdx = bufIdx + numSamps,
-                loop = that.inputs.loop.output[0],
-                i;
-            
-            // If the channel has changed, update the buffer we're reading from.
-            if (that.model.channel != chan) {
-                that.model.channel = chan;
-                that.buffer = source = flock.enviro.shared.buffers[that.model.name][chan]; 
-            }
-            
-            for (i = 0; i < numSamps; i++) {
-                if (bufIdx >= bufLen) {
-                    if (loop > 0) {
-                        bufIdx = 0;
-                    } else {
-                        out[i] = 0.0;
-                        continue;
-                    }
-                }
-                out[i] = source[bufIdx];
-                bufIdx++;
-            }
-            
-            that.model.idx = bufIdx;
-        };
-        
-        that.krSpeedGen = function (numSamps) {
-            var out = that.output,
-                chan = that.inputs.channel.output[0],
-                speedInc = 1.0 * that.inputs.speed.output[0],
-                source = that.buffer,
-                bufIdx = that.model.idx,
-                bufLen = source.length,
-                endIdx = bufIdx + numSamps,
-                loop = that.inputs.loop.output[0],
-                i;
-            
-            // If the channel has changed, update the buffer we're reading from.
-            if (that.model.channel != chan) {
-                that.model.channel = chan;
-                that.buffer = source = flock.enviro.shared.buffers[that.model.name][chan]; 
-            }
-            
-            for (i = 0; i < numSamps; i++) {
-                if (bufIdx >= bufLen) {
-                    if (loop > 0) {
-                        bufIdx = 0;
-                    } else {
-                        out[i] = 0.0;
-                        continue;
-                    }
-                }
-                
-                out[i] = source[Math.round(bufIdx)];
-                bufIdx += speedInc;
-            }
-            
-            that.model.idx = bufIdx;
-        };
-        
-        that.onInputChanged = function (inputName) {            
-            if (!that.inputs.loop) {
-                that.inputs.loop = flock.ugen.value({value: 0.0}, new Float32Array(1));
-            }
-            
-            if (!that.inputs.speed) {
-                that.inputs.speed = flock.ugen.value({value: 1.0}, new Float32Array(1));
-            }
-            
-            if (!that.inputs.channel) {
-                that.inputs.channel = flock.ugen.value({value: 0.0}, new Float32Array(1));
-                that.model.channel = that.inputs.channel.output[0];
-            }
-            
-            if (that.model.bufDef !== that.inputs.buffer || inputName === "buffer") {
-                var bufDef = that.model.bufDef = that.inputs.buffer,
-                    chan = that.inputs.channel.output[0];
-
-                if (typeof (bufDef) === "string") {
-                    that.buffer = flock.enviro.shared.buffers[bufDef][chan];
-                } else {
-                    // TODO: Should this be done earlier (during ugen parsing)?
-                    flock.parse.bufferForDef(bufDef, function (buffer, name) {
-                        that.buffer = buffer ? buffer[that.inputs.channel.output[0]] : that.buffer;
-                        that.model.name = name;
-                        that.model.idx = 0;
-                    });
-                }
-            }
-            
-            // TODO: Optimize for non-regular speed constant rate input.
-            that.gen = (that.inputs.speed.rate === flock.rates.CONSTANT && that.inputs.speed.output[0] === 1.0) ?
-                that.crRegularSpeedGen : that.krSpeedGen;
-        };
-        
-        that.onInputChanged();
-        return that;
-    };
-    
-    flock.ugen.dust = function (inputs, output, options) {
-        var that = flock.ugen.mulAdd(inputs, output, options);
-        that.model = {
-            density: 0.0,
-            scale: 0.0,
-            threshold: 0.0,
-            sampleDur: 1.0 / that.sampleRate
-        };
-    
-        that.gen = function (numSamps) {
-            var density = inputs.density.output[0], // Density is kr.
-                threshold, 
-                scale,
-                val,
-                i;
-            
-            if (density !== that.model.density) {
-                that.model.density = density;
-                threshold = that.model.threshold = density * that.model.sampleDur;
-                scale = that.model.scale = threshold > 0.0 ? 1.0 / threshold : 0.0;
-            } else {
-                threshold = that.model.threshold;
-                scale = that.model.scale;
-            }
-        
-            for (i = 0; i < numSamps; i++) {
-                val = Math.random();
-                output[i] = (val < threshold) ? val * scale : 0.0;
-            }
-        
-            that.mulAdd(numSamps);
-        };
-            
-        return that;
-    };
-
-    flock.ugen.lfNoise = function (inputs, output, options) {
-        var that = flock.ugen.mulAdd(inputs, output, options);
-        that.rate = flock.rates.AUDIO; // TODO: Implement control rate version of this algorithm.
-        that.model.counter = 0;
-        that.model.level = 0;
-    
-        that.gen = function (numSamps) {
-            var freq = inputs.freq.output[0], // Freq is kr.
-                remain = numSamps,
-                out = that.output,
-                counter = that.model.counter,
-                level = that.model.level,
-                currSamp = 0,
-                sampsForLevel,
-                i;
-            
-            freq = freq > 0.001 ? freq : 0.001;
-            do {
-                if (counter <= 0) {
-                    counter = that.sampleRate / freq;
-                    counter = counter > 1 ? counter : 1;
-                    level = Math.random();
-                }
-                sampsForLevel = remain < counter ? remain : counter;
-                remain -= sampsForLevel;
-                counter -= sampsForLevel;
-                for (i = 0; i < sampsForLevel; i++) {
-                    out[currSamp] = level;
-                    currSamp++;
-                }
-
-            } while (remain);
-            that.model.counter = counter;
-            that.model.level = level;
-        
-            that.mulAdd(numSamps);
-        };
-            
-        return that;
-    };
     
     flock.ugen.lfSaw = function (inputs, output, options) {
         var that = flock.ugen.mulAdd(inputs, output, options);
@@ -768,7 +580,211 @@ var flock = flock || {};
         that.onInputChanged();
         return that;
     };
+    
+    flock.ugen.playBuffer = function (inputs, output, options) {
+        var that = flock.ugen.mulAdd(inputs, output, options);
+        that.rate = flock.rates.AUDIO;
+        that.model = {
+            idx: 0,
+            channel: undefined
+        };
+        
+        // Start with a zeroed buffer, since the buffer input may be loaded asynchronously.
+        that.buffer = new Float32Array(that.output.length); 
+        
+        // Optimized gen function for regular-speed playback.
+        that.crRegularSpeedGen = function (numSamps) {
+            var out = that.output,
+                chan = that.inputs.channel.output[0],
+                source = that.buffer,
+                bufIdx = that.model.idx,
+                bufLen = source.length,
+                endIdx = bufIdx + numSamps,
+                loop = that.inputs.loop.output[0],
+                i;
+            
+            // If the channel has changed, update the buffer we're reading from.
+            if (that.model.channel != chan) {
+                that.model.channel = chan;
+                that.buffer = source = flock.enviro.shared.buffers[that.model.name][chan]; 
+            }
+            
+            for (i = 0; i < numSamps; i++) {
+                if (bufIdx >= bufLen) {
+                    if (loop > 0) {
+                        bufIdx = 0;
+                    } else {
+                        out[i] = 0.0;
+                        continue;
+                    }
+                }
+                out[i] = source[bufIdx];
+                bufIdx++;
+            }
+            
+            that.model.idx = bufIdx;
+        };
+        
+        that.krSpeedGen = function (numSamps) {
+            var out = that.output,
+                chan = that.inputs.channel.output[0],
+                speedInc = 1.0 * that.inputs.speed.output[0],
+                source = that.buffer,
+                bufIdx = that.model.idx,
+                bufLen = source.length,
+                endIdx = bufIdx + numSamps,
+                loop = that.inputs.loop.output[0],
+                i;
+            
+            // If the channel has changed, update the buffer we're reading from.
+            if (that.model.channel != chan) {
+                that.model.channel = chan;
+                that.buffer = source = flock.enviro.shared.buffers[that.model.name][chan]; 
+            }
+            
+            for (i = 0; i < numSamps; i++) {
+                if (bufIdx >= bufLen) {
+                    if (loop > 0) {
+                        bufIdx = 0;
+                    } else {
+                        out[i] = 0.0;
+                        continue;
+                    }
+                }
+                
+                out[i] = source[Math.round(bufIdx)];
+                bufIdx += speedInc;
+            }
+            
+            that.model.idx = bufIdx;
+        };
+        
+        that.onInputChanged = function (inputName) {            
+            if (!that.inputs.loop) {
+                that.inputs.loop = flock.ugen.value({value: 0.0}, new Float32Array(1));
+            }
+            
+            if (!that.inputs.speed) {
+                that.inputs.speed = flock.ugen.value({value: 1.0}, new Float32Array(1));
+            }
+            
+            if (!that.inputs.channel) {
+                that.inputs.channel = flock.ugen.value({value: 0.0}, new Float32Array(1));
+                that.model.channel = that.inputs.channel.output[0];
+            }
+            
+            if (that.model.bufDef !== that.inputs.buffer || inputName === "buffer") {
+                var bufDef = that.model.bufDef = that.inputs.buffer,
+                    chan = that.inputs.channel.output[0];
 
+                if (typeof (bufDef) === "string") {
+                    that.buffer = flock.enviro.shared.buffers[bufDef][chan];
+                } else {
+                    // TODO: Should this be done earlier (during ugen parsing)?
+                    flock.parse.bufferForDef(bufDef, function (buffer, name) {
+                        that.buffer = buffer ? buffer[that.inputs.channel.output[0]] : that.buffer;
+                        that.model.name = name;
+                        that.model.idx = 0;
+                    });
+                }
+            }
+            
+            // TODO: Optimize for non-regular speed constant rate input.
+            that.gen = (that.inputs.speed.rate === flock.rates.CONSTANT && that.inputs.speed.output[0] === 1.0) ?
+                that.crRegularSpeedGen : that.krSpeedGen;
+        };
+        
+        that.onInputChanged();
+        return that;
+    };
+    
+    
+    /*********
+     * Noise *
+     *********/
+     
+    flock.ugen.dust = function (inputs, output, options) {
+        var that = flock.ugen.mulAdd(inputs, output, options);
+        that.model = {
+            density: 0.0,
+            scale: 0.0,
+            threshold: 0.0,
+            sampleDur: 1.0 / that.sampleRate
+        };
+    
+        that.gen = function (numSamps) {
+            var density = inputs.density.output[0], // Density is kr.
+                threshold, 
+                scale,
+                val,
+                i;
+            
+            if (density !== that.model.density) {
+                that.model.density = density;
+                threshold = that.model.threshold = density * that.model.sampleDur;
+                scale = that.model.scale = threshold > 0.0 ? 1.0 / threshold : 0.0;
+            } else {
+                threshold = that.model.threshold;
+                scale = that.model.scale;
+            }
+        
+            for (i = 0; i < numSamps; i++) {
+                val = Math.random();
+                output[i] = (val < threshold) ? val * scale : 0.0;
+            }
+        
+            that.mulAdd(numSamps);
+        };
+            
+        return that;
+    };
+
+    flock.ugen.lfNoise = function (inputs, output, options) {
+        var that = flock.ugen.mulAdd(inputs, output, options);
+        that.rate = flock.rates.AUDIO; // TODO: Implement control rate version of this algorithm.
+        that.model.counter = 0;
+        that.model.level = 0;
+    
+        that.gen = function (numSamps) {
+            var freq = inputs.freq.output[0], // Freq is kr.
+                remain = numSamps,
+                out = that.output,
+                counter = that.model.counter,
+                level = that.model.level,
+                currSamp = 0,
+                sampsForLevel,
+                i;
+            
+            freq = freq > 0.001 ? freq : 0.001;
+            do {
+                if (counter <= 0) {
+                    counter = that.sampleRate / freq;
+                    counter = counter > 1 ? counter : 1;
+                    level = Math.random();
+                }
+                sampsForLevel = remain < counter ? remain : counter;
+                remain -= sampsForLevel;
+                counter -= sampsForLevel;
+                for (i = 0; i < sampsForLevel; i++) {
+                    out[currSamp] = level;
+                    currSamp++;
+                }
+
+            } while (remain);
+            that.model.counter = counter;
+            that.model.level = level;
+        
+            that.mulAdd(numSamps);
+        };
+            
+        return that;
+    };
+
+
+    /**************************************
+     * Envelopes and Amplitude Processors *
+     **************************************/
+     
     flock.ugen.line = function (inputs, output, options) {
         var that = flock.ugen.mulAdd(inputs, output, options);
 
@@ -862,6 +878,134 @@ var flock = flock || {};
         return that;
     };
 
+
+    flock.ugen.env = {};
+    
+    // TODO: Better names for these inputs; harmonize them with flock.ugen.line
+    flock.ugen.env.simpleASR = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        // TODO: This assumes "gate" is running at the control rate. Implement an audio version, too.
+        // TODO: What happens if this envelope is triggered again? And when it's midway through a transition?
+        that.gen = function (numSamps) {
+            var out = that.output,
+                gate = that.inputs.gate.output[0],
+                level = that.model.level,
+                stage = gate > 0.0 ? that.model.attack : that.model.release,
+                stepIdx = stage.stepIdx,
+                numSteps = stage.numSteps,
+                inc = stage.inc,
+                i;
+            
+            for (i = 0; i < numSamps; i++) {
+                out[i] = level;
+                level += stepIdx >= numSteps ? 0 : inc; // Hold the last value if the stage is complete, otherwise increment.
+                stepIdx++;
+            }
+            
+            that.model.level = level;
+            stage.stepIdx = stepIdx;
+        };
+        
+        that.onInputChanged = function () {
+            if (!that.inputs.start) {
+                that.inputs.start = flock.ugen.value({value: 0.0}, new Float32Array(1));
+            }
+            
+            if (!that.inputs.attack) {
+                that.inputs.attack = flock.ugen.value({value: 0.01}, new Float32Array(1));
+            }
+            
+            if (!that.inputs.sustain) {
+                that.inputs.sustain = flock.ugen.value({value: 1.0}, new Float32Array(1));
+            }
+            
+            if (!that.inputs.release) {
+                that.inputs.release = flock.ugen.value({value: 1.0}, new Float32Array(1));
+            }
+                        
+            var stageCalculator = function (startLevel, endLevel, duration) {
+                var stage = {
+                    stepIdx: 0,
+                    numSteps: Math.round(duration * that.sampleRate)
+                };
+                stage.inc = (endLevel - startLevel) / stage.numSteps;
+                
+                return stage;
+            };
+            
+            var startLevel = that.inputs.start.output[0],
+                sustainLevel = that.inputs.sustain.output[0];
+            
+            that.model.attack = stageCalculator(startLevel, sustainLevel, that.inputs.attack.output[0]);
+            that.model.release = stageCalculator(sustainLevel, startLevel, that.inputs.release.output[0]);            
+        };
+        
+        that.onInputChanged();
+        that.model.level = that.inputs.start.output[0];
+        return that;
+    };
+    
+    flock.ugen.amplitude = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        that.model.previousValue = 0.0;
+        
+        that.gen = function (numSamps) {
+            var source = that.inputs.source.output,
+                out = that.output,
+                prevAtt = that.model.attackTime,
+                nextAtt = that.inputs.attack.output[0],
+                prevRel = that.model.releaseTime,
+                nextRel = that.inputs.release.output[0],
+                prevVal = that.model.previousValue,
+                attCoef = that.model.attackCoef,
+                relCoef = that.model.releaseCoef,
+                i,
+                val,
+                coef;
+                
+                // Convert 60 dB attack and release times to coefficients if they've changed.
+                if (nextAtt !== prevAtt) {
+                    that.model.attackTime = nextAtt;
+                    attCoef = that.model.attackCoef = 
+                        nextAtt === 0.0 ? 0.0 : Math.exp(flock.LOG1 / (nextAtt * that.sampleRate));
+                }
+                
+                if (nextRel !== prevRel) {
+                    that.model.releaseTime = nextRel;
+                    relCoef = that.model.releaseCoef = 
+                        (nextRel === 0.0) ? 0.0 : Math.exp(flock.LOG1 / (nextRel * that.sampleRate));
+                }
+            
+            for (i = 0; i < numSamps; i++) {
+                val = Math.abs(source[i]);
+                coef = val < prevVal ? relCoef : attCoef;
+                out[i] = prevVal = val + (prevVal - val) * coef;
+            }
+            
+            that.model.previousValue = prevVal;
+        };
+        
+        that.onInputChanged = function () {
+            // Set default values if necessary for attack and release times.
+            if (!that.inputs.attack) {
+                that.inputs.attack = flock.ugen.value({value: 0.01}, new Float32Array(1));
+            }
+            
+            if (!that.inputs.release) { 
+                that.inputs.release = flock.ugen.value({value: 0.01}, new Float32Array(1));
+            }
+        };
+        
+        that.onInputChanged();
+        return that;
+    };
+    
+    
+    /*******************
+     * Bus-Level UGens *
+     *******************/
+     
     flock.ugen.out = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
     
@@ -934,61 +1078,6 @@ var flock = flock || {};
         
         that.onInputChanged();
         that.scopeView.refreshView();
-        return that;
-    };
-    
-    flock.ugen.amplitude = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
-        that.model.previousValue = 0.0;
-        
-        that.gen = function (numSamps) {
-            var source = that.inputs.source.output,
-                out = that.output,
-                prevAtt = that.model.attackTime,
-                nextAtt = that.inputs.attack.output[0],
-                prevRel = that.model.releaseTime,
-                nextRel = that.inputs.release.output[0],
-                prevVal = that.model.previousValue,
-                attCoef = that.model.attackCoef,
-                relCoef = that.model.releaseCoef,
-                i,
-                val,
-                coef;
-                
-                // Convert 60 dB attack and release times to coefficients if they've changed.
-                if (nextAtt !== prevAtt) {
-                    that.model.attackTime = nextAtt;
-                    attCoef = that.model.attackCoef = 
-                        nextAtt === 0.0 ? 0.0 : Math.exp(flock.LOG1 / (nextAtt * that.sampleRate));
-                }
-                
-                if (nextRel !== prevRel) {
-                    that.model.releaseTime = nextRel;
-                    relCoef = that.model.releaseCoef = 
-                        (nextRel === 0.0) ? 0.0 : Math.exp(flock.LOG1 / (nextRel * that.sampleRate));
-                }
-            
-            for (i = 0; i < numSamps; i++) {
-                val = Math.abs(source[i]);
-                coef = val < prevVal ? relCoef : attCoef;
-                out[i] = prevVal = val + (prevVal - val) * coef;
-            }
-            
-            that.model.previousValue = prevVal;
-        };
-        
-        that.onInputChanged = function () {
-            // Set default values if necessary for attack and release times.
-            if (!that.inputs.attack) {
-                that.inputs.attack = flock.ugen.value({value: 0.01}, new Float32Array(1));
-            }
-            
-            if (!that.inputs.release) { 
-                that.inputs.release = flock.ugen.value({value: 0.01}, new Float32Array(1));
-            }
-        };
-        
-        that.onInputChanged();
         return that;
     };
     
