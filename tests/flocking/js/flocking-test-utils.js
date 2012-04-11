@@ -123,13 +123,15 @@ var flock = flock || {};
         ok(true, msg);
     };
     
-    flock.test.assertClimbing = function (buffer, msg) {
+    flock.test.assertRamping = function (buffer, isAscending, msg) {
         var previous = buffer[0],
             current,
+            isExpectedDirection = false,
             i;
         for (i = 1; i < buffer.length; i++) {
             current = buffer[i];
-            ok(current > previous, msg + " Index " + current);
+            isExpectedDirection = isAscending ? current > previous : current < previous;
+            ok(isExpectedDirection, msg + " Index " + current);
         }
     };
     

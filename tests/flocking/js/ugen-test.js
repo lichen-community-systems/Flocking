@@ -529,6 +529,118 @@ flock.test = flock.test || {};
             "After the line's duration is finished, it should constantly output the end value.");
     });
     
+    
+    module("flock.ugen.env.simpleASR tests");
+    
+    var simpleASRDef = {
+        ugen: "flock.ugen.env.simpleASR",
+        rate: flock.rates.AUDIO,
+        inputs: {
+            start: 0.0,
+            attack: 1 / (44100 / 63), // 64 Samples, in seconds
+            sustain: 1.0,
+            release: 1 / (44100 / 63) // 128 Samples
+        }
+    };
+    
+    var testEnvelopeStage = function (buffer, numSamps, expectedStart, expectedEnd, stageName) {
+        equal(buffer[0], expectedStart, 
+            "During the " + stageName + " stage, the starting level should be " + expectedStart + ".");
+        equal(buffer[numSamps - 1], expectedEnd, 
+            "At the end of the " + stageName + " stage, the expected end level should have been reached.");
+        flock.test.assertUnbroken(buffer, "The output should not contain any dropouts.");
+        flock.test.assertWithinRange(buffer, 0.0, 1.0, 
+            "The output should always remain within the range between " + expectedStart + " and " + expectedEnd + ".");
+        flock.test.assertContinuous(buffer, 0.02, "The buffer should move continuously within its range.");
+        
+        var isClimbing = expectedStart < expectedEnd;
+        var directionText = isClimbing ? "climb" : "fall";
+        flock.test.assertRamping(buffer, isClimbing, 
+            "The buffer should " + directionText + " steadily from " + expectedStart + " to " + expectedEnd + ".");
+    };
+    
+    test("simpleASR constant values for all inputs", function () {
+        var asr = flock.parse.ugenForDef(simpleASRDef);
+        
+        // Until the gate is closed, the ugen should just output silence.
+        asr.gen(64);
+        flock.test.assertArrayEquals(asr.output, flock.test.constantBuffer(64, 0.0),
+            "When the gate is open at the beginning, the envelope's output should be 0.0.");
+        
+        // Trigger the attack stage.
+        asr.input("gate", 1.0);
+        asr.gen(64);
+        testEnvelopeStage(asr.output, 64, 0.0, 1.0, "attack");
+        
+        // Output a full control period of the sustain value.
+        asr.gen(64);
+        flock.test.assertArrayEquals(asr.output, flock.test.constantBuffer(64, 1.0), 
+            "While the gate is open, the envelope should hold at the sustain level.");
+        
+        // Release the gate and test the release stage.
+        asr.input("gate", 0.0);
+        asr.gen(64);
+        testEnvelopeStage(asr.output, 64, 1.0, 0.0, "release");
+        
+        // Test a full control period of the end value.
+        asr.gen(64);
+        flock.test.assertArrayEquals(asr.output, flock.test.constantBuffer(64, 0.0),
+            "When the gate is closed and the release stage has completed, the envelope's output should be 0.0.");
+         
+         // Trigger the attack stage again.
+         asr.input("gate", 1.0);
+         asr.gen(64);
+         testEnvelopeStage(asr.output, 64, 0.0, 1.0, "second attack");
+         
+         // And the release stage again.
+         asr.input("gate", 0.0);
+         asr.gen(64);
+         testEnvelopeStage(asr.output, 64, 1.0, 0.0, "second release");
+    });
+    
+    test("simpleASR release midway through attack", function () {
+        var asr = flock.parse.ugenForDef(simpleASRDef);
+        asr.input("gate", 1.0);
+        asr.gen(32);
+        testEnvelopeStage(asr.output.subarray(0, 32), 32, 0.0, 0.4920634925365448, "halfway through the attack");
+        
+        // If the gate closes during the attack stage, the remaining portion of the attack stage should be output before the release stage starts.
+        asr.input("gate", 0.0);
+        asr.gen(32);
+        testEnvelopeStage(asr.output.subarray(0, 32), 32, 0.5079365372657776, 1.0, "rest of the attack");
+        
+        // After the attack stage has hit 1.0, it should immediately start the release phase.
+        asr.gen(64);
+        testEnvelopeStage(asr.output, 64, 1.0, 0.0, "release");
+    });
+    
+    test("simpleASR attack midway through release", function () {
+        var asr = flock.parse.ugenForDef(simpleASRDef);
+        
+        // Trigger the attack stage, then the release stage immediately.
+        asr.input("gate", 1.0);
+        asr.gen(64);
+        testEnvelopeStage(asr.output, 64, 0.0, 1.0, "attack");
+        asr.input("gate", 0.0);
+        asr.gen(32);
+        testEnvelopeStage(asr.output.subarray(0, 32), 32, 1.0, 0.5079365372657776, "halfway release");
+        
+        // Then trigger a new attack halfway through the release stage.
+        // The envelope should immediately pick up the attack phase from the current level
+        // TODO: Note that there will be a one-increment lag before turning direction to the attack phase in this case. Is this a noteworthy bug?
+        asr.input("gate", 1.0);
+        asr.gen(32);
+        testEnvelopeStage(asr.output.subarray(0, 32), 32, 0.4920634925365448, 0.7420005202293396, "attack after halfway release");
+        
+        // Generate another control period of samples, which should be at the sustain level.
+        asr.gen(64);
+        testEnvelopeStage(asr.output.subarray(0, 32), 32, 0.7500630021095276, 1.0, "second half of the attack after halfway release second half.");
+        flock.test.assertArrayEquals(asr.output.subarray(32), flock.test.constantBuffer(32, 1.0), 
+            "While the gate remains open after a mid-release attack, the envelope should hold at the sustain level.");
+        
+    });
+    
+    
     module("flock.ugen.amplitude() tests");
     
     var ampConstSignalDef = {
@@ -586,7 +698,7 @@ flock.test = flock.test || {};
         for (i = 0; i < controlPeriods; i++) {
             tracker.inputs.source.gen(64);
             generateAndTestContinuousSamples(tracker, 64);
-            flock.test.assertClimbing(tracker.output, "The amplitude tracker should follow the contour of its source.");
+            flock.test.assertRamping(tracker.output, true, "The amplitude tracker should follow the contour of its source.");
         }
     });
     
