@@ -599,12 +599,11 @@ var flock = flock || {};
                 source = that.buffer,
                 bufIdx = that.model.idx,
                 bufLen = source.length,
-                endIdx = bufIdx + numSamps,
                 loop = that.inputs.loop.output[0],
                 i;
             
             // If the channel has changed, update the buffer we're reading from.
-            if (that.model.channel != chan) {
+            if (that.model.channel !== chan) {
                 that.model.channel = chan;
                 that.buffer = source = flock.enviro.shared.buffers[that.model.name][chan]; 
             }
@@ -632,12 +631,11 @@ var flock = flock || {};
                 source = that.buffer,
                 bufIdx = that.model.idx,
                 bufLen = source.length,
-                endIdx = bufIdx + numSamps,
                 loop = that.inputs.loop.output[0],
                 i;
             
             // If the channel has changed, update the buffer we're reading from.
-            if (that.model.channel != chan) {
+            if (that.model.channel !== chan) {
                 that.model.channel = chan;
                 that.buffer = source = flock.enviro.shared.buffers[that.model.name][chan]; 
             }
@@ -885,26 +883,59 @@ var flock = flock || {};
     flock.ugen.env.simpleASR = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
-        // TODO: This assumes "gate" is running at the control rate. Implement an audio version, too.
-        // TODO: What happens if this envelope is triggered again? And when it's midway through a transition?
+        // TODO: This implementation currently outputs at audio rate, which is perhaps unnecessary.
+        //       "gate" is also assumed to be control rate.
         that.gen = function (numSamps) {
             var out = that.output,
+                prevGate = that.model.previousGate,
                 gate = that.inputs.gate.output[0],
                 level = that.model.level,
-                stage = gate > 0.0 ? that.model.attack : that.model.release,
-                stepIdx = stage.stepIdx,
+                stage = that.model.stage,
+                currentStep = stage.currentStep,
+                stepInc = stage.stepInc,
                 numSteps = stage.numSteps,
-                inc = stage.inc,
+                targetLevel = that.model.targetLevel,
+                stepsNeedRecalc = false,
+                stageTime,
                 i;
-            
-            for (i = 0; i < numSamps; i++) {
-                out[i] = level;
-                level += stepIdx >= numSteps ? 0 : inc; // Hold the last value if the stage is complete, otherwise increment.
-                stepIdx++;
+                
+            // Recalculate the step state if necessary.
+            if (prevGate <= 0 && gate > 0) {
+                // Starting a new attack stage.
+                targetLevel = that.inputs.sustain.output[0];
+                stageTime = that.inputs.attack.output[0];
+                stepsNeedRecalc = true;
+            } else if (gate <= 0 && currentStep >= numSteps) {
+                // Starting a new release stage.
+                targetLevel = that.inputs.start.output[0];
+                stageTime = that.inputs.release.output[0];
+                stepsNeedRecalc = true;
             }
             
+            // TODO: Can we get rid of this extra branch without introducing code duplication?
+            if (stepsNeedRecalc) {
+                numSteps = Math.round(stageTime * that.sampleRate);
+                stepInc = (targetLevel - level) / numSteps;
+                currentStep = 0;
+            }
+            
+            // Output the the envelope's sample data.
+            for (i = 0; i < numSamps; i++) {
+                out[i] = level;
+                currentStep++;
+                // Hold the last value if the stage is complete, otherwise increment.
+                level = currentStep < numSteps ? 
+                    level + stepInc : currentStep === numSteps ? 
+                        targetLevel : level;
+            }
+            
+            // Store instance state.
             that.model.level = level;
-            stage.stepIdx = stepIdx;
+            that.model.targetLevel = targetLevel;
+            that.model.previousGate = gate;
+            stage.currentStep = currentStep;
+            stage.stepInc = stepInc;
+            stage.numSteps = numSteps;
         };
         
         that.onInputChanged = function () {
@@ -923,26 +954,27 @@ var flock = flock || {};
             if (!that.inputs.release) {
                 that.inputs.release = flock.ugen.value({value: 1.0}, new Float32Array(1));
             }
-                        
-            var stageCalculator = function (startLevel, endLevel, duration) {
-                var stage = {
-                    stepIdx: 0,
-                    numSteps: Math.round(duration * that.sampleRate)
-                };
-                stage.inc = (endLevel - startLevel) / stage.numSteps;
-                
-                return stage;
-            };
             
-            var startLevel = that.inputs.start.output[0],
-                sustainLevel = that.inputs.sustain.output[0];
-            
-            that.model.attack = stageCalculator(startLevel, sustainLevel, that.inputs.attack.output[0]);
-            that.model.release = stageCalculator(sustainLevel, startLevel, that.inputs.release.output[0]);            
+            if (!that.inputs.gate) {
+                that.inputs.gate = flock.ugen.value({value: 0.0}, new Float32Array(1));
+            }
         };
         
-        that.onInputChanged();
-        that.model.level = that.inputs.start.output[0];
+        that.init = function () {
+            that.onInputChanged();
+            
+            // Set default model state.
+            that.model.stage = {
+                currentStep: 0,
+                stepInc: 0,
+                numSteps: 0
+            };
+            that.model.previousGate = 0.0;
+            that.model.level = that.inputs.start.output[0];
+            that.model.targetLevel = that.inputs.sustain.output[0];
+        };
+
+        that.init();
         return that;
     };
     
