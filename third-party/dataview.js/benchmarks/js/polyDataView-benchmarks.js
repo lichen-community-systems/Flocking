@@ -84,7 +84,7 @@ var flock = flock || {};
 
         if (window["DataView"]) {
             testSpecs.push({
-                name: "Native DataView: get all 1024 Int16 big endian values as an array.",
+                name: "Native DataView: get all 1024 Int16 big endian values, one at a time.",
                 setup: makeSetupFn("DataView"),
                 test: getInt16Test
             });
