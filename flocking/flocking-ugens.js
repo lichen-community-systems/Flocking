@@ -1074,6 +1074,11 @@ var flock = flock || {};
         return that;
     };
     
+    
+    /***********************
+     * DOM-dependent UGens *
+     ***********************/
+     
     flock.ugen.scope = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
@@ -1110,6 +1115,74 @@ var flock = flock || {};
         
         that.onInputChanged();
         that.scopeView.refreshView();
+        return that;
+    };
+    
+    /**
+     * Tracks the mouse's position along the specified axis within the boundaries the whole screen.
+     * This unit generator will generate a signal between 0.0 and 1.0 based on the position of the mouse;
+     * use the mul and add inputs to scale this value to an appropriate control signal.
+     */
+    // TODO: add the ability to track individual elements rather than the whole screen.
+    flock.ugen.mouse = function (inputs, output, options) {
+        var that = flock.ugen.mulAdd(inputs, output, options);
+        that.rate = flock.rates.CONTROL;
+        that.options.axis = that.options && that.options.axis ? that.options.axis : "x"; // By default, track the mouse along the x axis.
+        
+        /**
+         * Generates a control rate signal between 0.0 and 1.0 by tracking the mouse's position along the specified axis.
+         *
+         * @param numSamps the number of samples to generate
+         */
+         // TODO: Implement lag and curve.
+        that.gen = function (numSamps) {
+            var size = that.model.size,
+                model = that.model,
+                out = that.output,
+                i;
+            
+            for (i = 0; i < numSamps; i++) {
+                out[i] = model.mousePosition / size;
+            }
+
+            that.mulAdd(numSamps);
+        };
+                
+        that.moveListener = function (e) {
+            that.model.mousePosition = e[that.model.eventProp];
+        };
+        
+        that.downAndMoveListener = function (e) {
+            that.model.mousePosition = that.model.isMouseDown ? e[that.model.eventProp] : 0.0;
+        };
+        
+        that.init = function () {
+            if (that.options.axis === "x" || that.options.axis === "width" || that.options.axis === "horizontal") {
+                that.model.eventProp = "screenX";
+                that.model.size = window.screen.width;
+            } else {
+                that.model.eventProp = "screenY";
+                that.model.size = window.screen.height;
+            }
+            that.model.mousePosition = 0;
+            
+            var listener = that.moveListener;
+            if (that.options.onlyOnMouseDown) {
+                document.addEventListener("mousedown", function (e) {
+                    that.model.isMouseDown = true;
+                }, false);
+
+                document.addEventListener("mouseup", function (e) {
+                    that.model.isMouseDown = false;
+                    that.model.mousePosition = 0;
+                }, false);
+                
+                listener = that.downAndMoveListener;
+            }
+            document.addEventListener("mousemove", listener, false);
+        };
+        
+        that.init();
         return that;
     };
     

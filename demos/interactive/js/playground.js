@@ -50,12 +50,15 @@ var demo = demo || {};
         });
     };
     
-    var setupLoadButton = function (that) {
-        $(that.selectors.loadButton).click(function (e) {
+    var setupLoadControls = function (that) {
+        var loadDemo = function (e) {
             var id = $(that.selectors.demosMenu).val();
-    		var code = $("#" + id).html();
-    		that.editor.getSession().setValue(code);
-    	});
+            var code = $("#" + id).html();
+            that.editor.getSession().setValue(code);
+        };
+        
+        $(that.selectors.loadButton).click(loadDemo);
+        $(that.selectors.demosMenu).change(loadDemo); // Automatically load the demo whenever the demo menu changes.
     };
 
     demo.liveEditorView = function (editorId, selectors) {
@@ -74,7 +77,7 @@ var demo = demo || {};
         
         setupEditor(that, editorId);
         setupPlayButton(that);
-        setupLoadButton(that);
+        setupLoadControls(that);
         
         return that;
     };
