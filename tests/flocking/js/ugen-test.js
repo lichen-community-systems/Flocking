@@ -416,13 +416,20 @@ flock.test = flock.test || {};
             "The sinOsc ugen should continuously rise and fall between 1.0/-1.0.");
     });
     
+    testBasicWaveformOsc("flock.ugen.sin", function (sine) {
+        flock.test.assertSineish(sine.output, 1.0, 
+            "The sinOsc ugen should continuously rise and fall between 1.0/-1.0.");
+    });
+    
     testBasicWaveformOsc("flock.ugen.triOsc");
 
     testBasicWaveformOsc("flock.ugen.squareOsc");
+    testBasicWaveformOsc("flock.ugen.lfPulse");
 
     testBasicWaveformOsc("flock.ugen.sawOsc");
-
-
+    testBasicWaveformOsc("flock.ugen.lfSaw");
+    
+    
     module("flock.ugen.playBuffer() tests");
     
     var playbackDef = {
