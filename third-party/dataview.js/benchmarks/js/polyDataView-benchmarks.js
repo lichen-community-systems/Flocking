@@ -28,6 +28,13 @@ var flock = flock || {};
 	        }
 	        return buffer;
 	    };
+	
+        var makeSetupFn = function (constructorName) {
+            return function () {
+                var buffer = new Uint8Array(makeRandomBuffer(1024, 2));
+                return new window[constructorName](buffer.buffer);
+            };
+        };
 	    
 	    var setupDataViewTest = function (len, w, dvCreatorFn) {
             var buffer = new Uint8Array(makeRandomBuffer(len, w));
@@ -54,47 +61,37 @@ var flock = flock || {};
 	    var testSpecs = [
     	    {
 	            name: "polyDataView: get 1024 Int16 big endian values, one at a time",
-	            setup: function () {
-                    var buffer = new Uint8Array(makeRandomBuffer(1024, 2));
-	                return new polyDataView(buffer.buffer);
-	            },
+	            setup: makeSetupFn("polyDataView"),
 	            
 	            test: getInt16Test
     	    },
     	    {
     	        name: "jDataView: get 1024 Int16 big endian values, one at a time",
-    	        setup: function () {
-    	            var buffer = new Uint8Array(makeRandomBuffer(1024, 2));
-	                return new jDataView(buffer.buffer);
-    	        },
+    	        setup: makeSetupFn("jDataView"),
     	        test: getInt16Test
     	    },
     	    {
 	            name: "polyDataView: get all 1024 Int16 big endian values as an array.",
-	            setup: function () {
-                    var buffer = new Uint8Array(makeRandomBuffer(1024, 2));
-	                return new polyDataView(buffer.buffer);
-	            },
-	            
+	            setup: makeSetupFn("polyDataView"),
 	            test: getPolyInt16ArrayTest
     	    },
     	    {
     	        name: "jDataView: get all 1024 Int16 big endian values as an array.",
-    	        setup: function () {
-    	            var buffer = new Uint8Array(makeRandomBuffer(1024, 2));
-	                return new jDataView(buffer.buffer);
-    	        },
+    	        setup: makeSetupFn("jDataView"),
     	        test: getSpecInt16ArrayTest
     	    }
 	    ];
 
         if (window["DataView"]) {
             testSpecs.push({
+                name: "Native DataView: get all 1024 Int16 big endian values as an array.",
+                setup: makeSetupFn("DataView"),
+                test: getInt16Test
+            });
+            
+            testSpecs.push({
     	        name: "Native DataView: get all 1024 Int16 big endian values as an array.",
-    	        setup: function () {
-    	            var buffer = new Uint8Array(makeRandomBuffer(1024, 2));
-	                return new DataView(buffer.buffer);
-    	        },
+    	        setup: makeSetupFn("DataView"),
     	        test: getSpecInt16ArrayTest
     	    });
         }
