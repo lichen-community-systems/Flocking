@@ -1118,13 +1118,15 @@ var flock = flock || {};
         return that;
     };
     
+    flock.ugen.mouse = {};
+    
     /**
      * Tracks the mouse's position along the specified axis within the boundaries the whole screen.
      * This unit generator will generate a signal between 0.0 and 1.0 based on the position of the mouse;
      * use the mul and add inputs to scale this value to an appropriate control signal.
      */
     // TODO: add the ability to track individual elements rather than the whole screen.
-    flock.ugen.mouse = function (inputs, output, options) {
+    flock.ugen.mouse.cursor = function (inputs, output, options) {
         var that = flock.ugen.mulAdd(inputs, output, options);
         that.rate = flock.rates.CONTROL;
         that.options.axis = that.options && that.options.axis ? that.options.axis : "x"; // By default, track the mouse along the x axis.
@@ -1183,6 +1185,36 @@ var flock = flock || {};
         };
         
         that.init();
+        return that;
+    };
+    
+    flock.ugen.mouse.click = function (inputs, output, options) {
+        var that = flock.ugen.mulAdd(inputs, output, options);
+        that.model.target = document.querySelector(that.options.target) || window;
+        that.model.value = 0.0;
+        
+        that.gen = function (numSamps) {
+            var out = that.output,
+                model = that.model,
+                i;
+                
+            for (i = 0; i < numSamps; i++) {
+                out[i] = model.value;
+                that.mulAdd(numSamps);
+            }
+        };
+        
+        that.mouseDownListener = function (e) {
+            that.model.value = 1.0;
+        };
+        
+        that.mouseUpListener = function (e) {
+            that.model.value = 0.0;
+        };
+        
+        that.model.target.addEventListener("mousedown", that.mouseDownListener, false);
+        that.model.target.addEventListener("mouseup", that.mouseUpListener, false);
+        
         return that;
     };
     

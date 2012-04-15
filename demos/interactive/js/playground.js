@@ -51,14 +51,10 @@ var demo = demo || {};
     };
     
     var setupLoadControls = function (that) {
-        var loadDemo = function (e) {
-            var id = $(that.selectors.demosMenu).val();
-            var code = $("#" + id).html();
-            that.editor.getSession().setValue(code);
-        };
+        $(that.selectors.loadButton).click(that.loadSelectedDemo);
         
-        $(that.selectors.loadButton).click(loadDemo);
-        $(that.selectors.demosMenu).change(loadDemo); // Automatically load the demo whenever the demo menu changes.
+        // Automatically load the demo whenever the demo menu changes.
+        $(that.selectors.demosMenu).change(that.loadSelectedDemo);
     };
 
     demo.liveEditorView = function (editorId, selectors) {
@@ -75,9 +71,20 @@ var demo = demo || {};
             selectors: selectors
         };
         
+        that.loadSelectedDemo = function () {
+            var id = $(that.selectors.demosMenu).val();
+            var code = $("#" + id).html();
+            that.editor.getSession().setValue(code);
+            
+            if (flock.enviro.shared.isPlaying) {
+                that.playButton.click(); // Stop the previous demo if it is playing.
+            }
+        };
+        
         setupEditor(that, editorId);
         setupPlayButton(that);
         setupLoadControls(that);
+        $(document).ready(that.loadSelectedDemo);
         
         return that;
     };

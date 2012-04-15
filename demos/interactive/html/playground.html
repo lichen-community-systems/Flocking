@@ -56,6 +56,7 @@
                     <option value="mouse_x">Mouse X</option>
                     <option value="mouse_y">Mouse Y</option>
                     <option value="mouse_xy">Mouse X &amp; Y</option>
+                    <option value="mouse_click">Mouse click</option>
                 </optgroup>
                 <option value="freq_stairs">Frequency stairs</option>
                 <option value="scope">Scope</option>
@@ -321,7 +322,7 @@
         var synth = flock.synth({
             ugen: "flock.ugen.sinOsc",
             freq: {
-                ugen: "flock.ugen.mouse",
+                ugen: "flock.ugen.mouse.cursor",
                 mul: 880,
                 add: 110
             }
@@ -332,7 +333,7 @@
         var synth = flock.synth({
             ugen: "flock.ugen.sinOsc",
             freq: {
-                ugen: "flock.ugen.mouse",
+                ugen: "flock.ugen.mouse.cursor",
                 mul: 880,
                 add: 110,
                 options: {
@@ -347,7 +348,7 @@
         var synth = flock.synth({
             ugen: "flock.ugen.sinOsc",
             freq: {
-                ugen: "flock.ugen.mouse",
+                ugen: "flock.ugen.mouse.cursor",
                 mul: 880,
                 add: 110,
                 options: {
@@ -355,9 +356,25 @@
                 }
             },
             mul: {
-                ugen: "flock.ugen.mouse",
+                ugen: "flock.ugen.mouse.cursor",
                 options: {
                     axis: "height"
+                }
+            }
+        });
+        </script>
+        <script type="application/flocking" id="mouse_click">
+        // Triggers a note whenever the mouse is clicked.
+        var synth = flock.synth({
+            ugen: "flock.ugen.sinOsc",
+            freq: 440,
+            mul: {
+                ugen: "flock.ugen.env.simpleASR",
+                attack: 0.25,
+                sustain: 0.6,
+                release: 0.5,
+                gate: {
+                    ugen: "flock.ugen.mouse.click"
                 }
             }
         });
