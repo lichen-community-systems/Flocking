@@ -1191,7 +1191,9 @@ var flock = flock || {};
         };
         
         that.outListener = function (e) {
-            that.model.isWithinTarget = false;
+            var model = that.model;
+            model.isWithinTarget = false;
+            model.mousePosition = 0.0;
         };
         
         that.downAndMoveListener = function (e) {
@@ -1203,7 +1205,7 @@ var flock = flock || {};
         that.bindEvents = function () {
             var model = that.model,
                 target = model.target,
-                listener = that.moveListener;
+                moveListener = that.moveListener;
                 
             if (that.options.onlyOnMouseDown) {
                 target.addEventListener("mousedown", function (e) {
@@ -1215,12 +1217,12 @@ var flock = flock || {};
                     model.mousePosition = 0;
                 }, false);
                 
-                listener = that.downAndMoveListener;
+                moveListener = that.downAndMoveListener;
             }
             
             target.addEventListener("mouseover", that.overListener, false);
             target.addEventListener("mouseout", that.outListener, false);
-            window.addEventListener("mousemove", listener, false);
+            target.addEventListener("mousemove", moveListener, false);
         };
         
         that.init = function () {
