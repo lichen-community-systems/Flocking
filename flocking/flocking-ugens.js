@@ -1149,39 +1149,103 @@ var flock = flock || {};
 
             that.mulAdd(numSamps);
         };
+        
+        that.normalizeOffset = function (e) {
+            if (e.offsetX !== undefined) {
+                // We're in an offset-supporting browser, bail now.
+                return e;
+            }
+
+            // This code is derived from jQuery's offset() method, licensed under the MIT and GPL.
+            // The original source is available at: https://github.com/jquery/jquery/blob/master/src/offset.js
+            var body = document.body,
+                clientTop = document.clientTop || body.clientTop || 0,
+                clientLeft = document.clientLeft || body.clientLeft || 0,
+                scrollTop = window.pageYOffset || body.scrollTop,
+                scrollLeft = window.pageXOffset || body.scrollLeft,
+                rect;
+            
+            try {
+                rect = e.target.getBoundingClientRect();
+            } catch (e) {
+                rect = {
+                    top: 0,
+                    left: 0
+                };
+            }
                 
+    		e.offsetX = e.clientX - rect.left + scrollLeft - clientLeft;
+    		e.offsetY = e.clientY - rect.top + scrollTop - clientTop;
+    		
+    		return e;
+        };
+        
         that.moveListener = function (e) {
-            that.model.mousePosition = e[that.model.eventProp];
+            var model = that.model;
+            that.normalizeOffset(e);
+            model.mousePosition = model.isWithinTarget ? e[model.eventProp] : 0.0;
+        };
+        
+        that.overListener = function (e) {
+            that.model.isWithinTarget = true;
+        };
+        
+        that.outListener = function (e) {
+            that.model.isWithinTarget = false;
         };
         
         that.downAndMoveListener = function (e) {
-            that.model.mousePosition = that.model.isMouseDown ? e[that.model.eventProp] : 0.0;
+            if (that.model.isMouseDown) {
+                that.moveListener(e);
+            }
         };
         
-        that.init = function () {
-            if (that.options.axis === "x" || that.options.axis === "width" || that.options.axis === "horizontal") {
-                that.model.eventProp = "screenX";
-                that.model.size = window.screen.width;
-            } else {
-                that.model.eventProp = "screenY";
-                that.model.size = window.screen.height;
-            }
-            that.model.mousePosition = 0;
-            
-            var listener = that.moveListener;
+        that.bindEvents = function () {
+            var model = that.model,
+                target = model.target,
+                listener = that.moveListener;
+                
             if (that.options.onlyOnMouseDown) {
-                document.addEventListener("mousedown", function (e) {
-                    that.model.isMouseDown = true;
+                target.addEventListener("mousedown", function (e) {
+                    model.isMouseDown = true;
                 }, false);
 
-                document.addEventListener("mouseup", function (e) {
-                    that.model.isMouseDown = false;
-                    that.model.mousePosition = 0;
+                target.addEventListener("mouseup", function (e) {
+                    model.isMouseDown = false;
+                    model.mousePosition = 0;
                 }, false);
                 
                 listener = that.downAndMoveListener;
             }
-            document.addEventListener("mousemove", listener, false);
+            
+            target.addEventListener("mouseover", that.overListener, false);
+            target.addEventListener("mouseout", that.outListener, false);
+            window.addEventListener("mousemove", listener, false);
+        };
+        
+        that.init = function () {
+            var model = that.model,
+                options = that.options,
+                inTarget = options.target,
+                axis = options.axis,
+                target,
+                size;
+                
+            model.target = target = typeof (inTarget) === "string" ? 
+                document.querySelector(inTarget) : inTarget || window;
+
+            if (axis === "x" || axis === "width" || axis === "horizontal") {
+                model.eventProp = "offsetX";
+                size = target.width;
+                model.size = size !== undefined ? size : target.innerWidth;
+            } else {
+                model.eventProp = "offsetY";
+                size = target.height;
+                model.size = size !== undefined ? size : target.innerHeight;
+            }
+            model.mousePosition = 0;
+            
+            that.bindEvents();
         };
         
         that.init();
@@ -1190,8 +1254,7 @@ var flock = flock || {};
     
     flock.ugen.mouse.click = function (inputs, output, options) {
         var that = flock.ugen.mulAdd(inputs, output, options);
-        that.model.target = document.querySelector(that.options.target) || window;
-        that.model.value = 0.0;
+        that.rate = flock.rates.CONTROL;
         
         that.gen = function (numSamps) {
             var out = that.output,
@@ -1212,9 +1275,15 @@ var flock = flock || {};
             that.model.value = 0.0;
         };
         
-        that.model.target.addEventListener("mousedown", that.mouseDownListener, false);
-        that.model.target.addEventListener("mouseup", that.mouseUpListener, false);
+        that.init = function () {
+            that.model.target = typeof (that.options.target) === "string" ? 
+                document.querySelector(that.options.target) : that.options.target || window;
+            that.model.value = 0.0;
+            that.model.target.addEventListener("mousedown", that.mouseDownListener, false);
+            that.model.target.addEventListener("mouseup", that.mouseUpListener, false);
+        };
         
+        that.init();
         return that;
     };
     
