@@ -1,38 +1,50 @@
-body {
-    overflow: hidden;
-}
-
 h1 {
     text-align: center;
 }
 
 #editor { 
-    position: 	absolute;
-    top: 		100px;
-    left: 		100px;
-	width: 		500px;
-	height: 	400px;
-	resize:		both;
+    position: absolute;
+    margin: 0;
+    top: 215px;
+    bottom: 0;
+    left: 0.5%;
+    right: 0;
 }
 
-#navi {
-	position: 	absolute;
-    top: 		80px;
-    left: 		100px;
+#scopeArea {
+	width: 98.6%;
+	height: 75px;
+	background-color: #ccc;
+	margin: 0.5% 0 0 0;
+	padding: 0.5%;
+}
+
+.playButton {
+    height: 50px;
+    width:  50px;
+    float:  left;
+    margin: 13px 5% 0% 1%;
 }
 
 #gfx {
-	position: 	absolute;
-    top:		110px;
-	left: 		600px;
-	width: 		400px;
-	height: 	150px;
-	border:		1px solid black;
+    margin: 3px;
+    border: 3px solid #aaa;
+    border-radius: 10px;
 }
-#gfx-title {
-	position: 		absolute;
-    top:			80px;
-	left: 			600px;
-	font-family:	sans-serif;
-	font-weight: 	bold;
+
+#gfxContainer {
+    float: right;
+    margin-right: 0.4%;
 }
+
+#gfxContainer div {
+    font-size: 0.75em;
+    margin-left: 5px;
+}
+
+#navi {
+    padding: 0.5%;
+    background-color: #ddd;
+    width: 98.6%;
+}
+

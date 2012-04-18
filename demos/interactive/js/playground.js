@@ -38,9 +38,13 @@ var demo = demo || {};
     		    eval(that.editor.getSession().getValue());
                 
     			that.playButton.html("Stop");
+    			that.playButton.removeClass("paused");
+    			that.playButton.addClass("playing");
     			flock.enviro.shared.play();
     		} else {
     			that.playButton.html("Play");
+    			that.playButton.removeClass("playing");
+    			that.playButton.addClass("paused");
     			flock.enviro.shared.reset();
     			if (timerId){ // TODO: Consider a non-global solution to starting/stopping timers for some demos.
     				window.clearInterval(timerId);
@@ -59,7 +63,7 @@ var demo = demo || {};
 
     demo.liveEditorView = function (editorId, selectors) {
         selectors = selectors || {
-            playButton: "#play-button",
+            playButton: ".playButton",
             loadButton: "#load-button",
             demosMenu: "#sample_code_sel"
         };

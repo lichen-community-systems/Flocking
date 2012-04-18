@@ -1,8 +1,6 @@
 @import url(http://fonts.googleapis.com/css?family=Nunito:700);
 body {
     margin-left: 2%;
-    font-family: "Nunito", sans-serif;
-    background: #eee;
 }
 
 .fileSelector label {
@@ -61,23 +59,6 @@ body {
     font-style: italic;
     background: #fff;
     padding: 1.5%;
-}
-
-#playButton {
-    border: none;
-    height: 77px;
-    width: 77px;
-    float: left;
-    margin: 5% 0% 0% 2%;
-    color: transparent;
-}
-
-.playing {
-    background: transparent url("../../../images/pause.png") no-repeat 0px 0px;
-}
-
-.paused {
-    background: transparent url("../../../images/play.png") no-repeat 0px 0px;
 }
 
 .speedSelector {
