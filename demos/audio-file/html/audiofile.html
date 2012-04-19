@@ -34,7 +34,7 @@
                     <textarea id="dataUrlField"></textarea>                
                 </form>
             </div>
-            <button class="playButton paused">Play</button>
+            <button class="playButton">Play</button>
         </div>
         <div class="view">
             <canvas id="waveform" height="200" width="960"></canvas>
@@ -88,7 +88,7 @@
                 }
             }),
             
-            playButtonView = demo.toggleButtonView(synth, "#playButton");
+            playButtonView = demo.toggleButtonView(synth, ".playButton");
             
             // Dynamically change the playback speed of the playBuffer ugen based on changes to the slider.
             document.querySelector("#playbackSpeed").addEventListener("change", function (e) {

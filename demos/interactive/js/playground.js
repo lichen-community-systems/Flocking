@@ -24,6 +24,7 @@ var demo = demo || {};
         
         var editor = ace.edit(editorId);
         editor.setTheme(theme);
+        editor.setShowPrintMargin(false);
 
         var JavaScriptMode = require(mode).Mode;
         editor.getSession().setMode(new JavaScriptMode());
