@@ -866,6 +866,10 @@ var flock = flock || {};
         that.onInputChanged = function () {
             // Any change in input value will restart the line.
             that.model.start = that.inputs.start.output[0];
+            if (that.model.start === 0.0) {
+                that.model.start = Number.MIN_VALUE; // Guard against divide by zero by using the smallest possible number.
+            }
+            
             that.model.end = that.inputs.end.output[0];
             that.model.numSteps = Math.round(that.inputs.duration.output[0] * that.sampleRate);
             that.model.multiplier = Math.pow(that.model.end / that.model.start, 1.0 / that.model.numSteps);
@@ -1136,17 +1140,40 @@ var flock = flock || {};
          *
          * @param numSamps the number of samples to generate
          */
-         // TODO: Implement lag and curve.
-        that.gen = function (numSamps) {
-            var size = that.model.size,
-                model = that.model,
+         // TODO: Implement exponential curve.
+        that.linearGen = function (numSamps) {
+            var model = that.model,
+                y0 = model.mousePosition / model.size,
+                y1 = model.y1,
+                lag = that.inputs.lag.output[0],
+                b1 = model.b1,
                 out = that.output,
                 i;
             
-            for (i = 0; i < numSamps; i++) {
-                out[i] = model.mousePosition / size;
+            if (lag !== b1) {
+                b1 = Math.exp(flock.LOG001 / (lag * that.sampleRate));
+                model.b1 = b1;
             }
-
+            
+            for (i = 0; i < numSamps; i++) {
+                y1 = y0 + b1 * (y1 - y0); // 1-pole filter averages mouse values.
+                out[i] = y1;
+            }
+            
+            model.y1 = y1;
+            that.mulAdd(numSamps);
+        };
+        
+        that.noInterpolationGen = function (numSamps) {
+            var model = that.model,
+                y0 = model.mousePosition / model.size,
+                out = that.output,
+                i;
+                
+            for (i = 0; i < numSamps; i++) {
+                out[i] = y0;
+            }
+            
             that.mulAdd(numSamps);
         };
         
@@ -1173,11 +1200,9 @@ var flock = flock || {};
                     left: 0
                 };
             }
-                
-    		e.offsetX = e.clientX - rect.left + scrollLeft - clientLeft;
-    		e.offsetY = e.clientY - rect.top + scrollTop - clientTop;
-    		
-    		return e;
+            e.offsetX = e.clientX - rect.left + scrollLeft - clientLeft;
+            e.offsetY = e.clientY - rect.top + scrollTop - clientTop;
+            return e;
         };
         
         that.moveListener = function (e) {
@@ -1196,7 +1221,16 @@ var flock = flock || {};
             model.mousePosition = 0.0;
         };
         
-        that.downAndMoveListener = function (e) {
+        that.downListener = function (e) {
+            model.isMouseDown = true;
+        };
+        
+        that.upListener = function (e) {
+            model.isMouseDown = false;
+            model.mousePosition = 0;
+        };
+        
+        that.moveWhileDownListener = function (e) {
             if (that.model.isMouseDown) {
                 that.moveListener(e);
             }
@@ -1208,21 +1242,22 @@ var flock = flock || {};
                 moveListener = that.moveListener;
                 
             if (that.options.onlyOnMouseDown) {
-                target.addEventListener("mousedown", function (e) {
-                    model.isMouseDown = true;
-                }, false);
-
-                target.addEventListener("mouseup", function (e) {
-                    model.isMouseDown = false;
-                    model.mousePosition = 0;
-                }, false);
-                
-                moveListener = that.downAndMoveListener;
+                target.addEventListener("mousedown", that.downListener, false);
+                target.addEventListener("mouseup", that.upListener, false);
+                moveListener = that.moveWhileDownListener;
             }
             
             target.addEventListener("mouseover", that.overListener, false);
             target.addEventListener("mouseout", that.outListener, false);
             target.addEventListener("mousemove", moveListener, false);
+        };
+        
+        that.onInputChanged = function () {
+            if (!that.inputs.lag) {
+                that.inputs.lag = flock.ugen.value({value: 0.5}, new Float32Array(1));
+            }
+            
+            that.gen = that.options.interpolation === "none" ? that.noInterpolationGen : that.linearGen;
         };
         
         that.init = function () {
@@ -1246,8 +1281,10 @@ var flock = flock || {};
                 model.size = size !== undefined ? size : target.innerHeight;
             }
             model.mousePosition = 0;
+            model.y1 = 0;
             
             that.bindEvents();
+            that.onInputChanged();
         };
         
         that.init();
