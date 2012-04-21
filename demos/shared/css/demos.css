@@ -1,11 +1,38 @@
+@import url(http://fonts.googleapis.com/css?family=Nunito:700);
+body {
+    font-family: "Nunito", sans-serif;
+    background: #eee;
+}
+
 th, td {
     background-color: #DDDDDD;
     padding: 10px;
 }
+
 th {
     text-align: left;
     width: 130px;
 }
+
 td {
     width: 50px;
+}
+
+.playButton {
+    border: none;
+    height: 77px;
+    width: 77px;
+    float: left;
+    margin: 5% 0% 0% 2%;
+    color: transparent;
+}
+
+.playButton.playing {
+    background: transparent url("../../../images/pause.png") no-repeat center center;
+    background-size: cover;
+}
+
+.playButton.paused {
+    background: transparent url("../../../images/play.png") no-repeat center center;
+    background-size: cover;
 }
