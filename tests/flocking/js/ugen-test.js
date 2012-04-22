@@ -380,7 +380,7 @@ flock.test = flock.test || {};
         rate: flock.rates.AUDIO,
         inputs: {
             freq: 2,
-            mul: 1.0
+            mul: 0.75
         }
     };
      
@@ -393,15 +393,17 @@ flock.test = flock.test || {};
     };
     
     var checkUGenShape = function (ug) {
+        flock.test.assertNotNaN(ug.output, 
+            "The ugen should never output NaN.");
         flock.test.assertNotSilent(ug.output, 
             "1 second of output from the ugen should not be completely silent");
         flock.test.assertUnbroken(ug.output, 
             "The ugen should produce an unbroken audio tone.");
-        flock.test.assertContinuous(ug.output, 0.01, 
-            "The ugen should produce a continuously changing signal.");
+        flock.test.assertWithinRange(ug.output, -0.75, 0.75, 
+            "The ugen should produce output values ranging between -0.75 and 075.");
     };
     
-    var testBasicWaveformOsc = function (ugenType, otherTests) {
+    var testOsc = function (ugenType, otherTests) {
         test(ugenType, function () {
             var ug = makeAndPrimeOsc(ugenType, 44100);
             checkUGenShape(ug);
@@ -411,18 +413,37 @@ flock.test = flock.test || {};
         });
     };
     
-    testBasicWaveformOsc("flock.ugen.sinOsc", function (sine) {
-        flock.test.assertSineish(sine.output, 1.0, 
-            "The sinOsc ugen should continuously rise and fall between 1.0/-1.0.");
-    });
+    var testContinuousWaveformOsc = function (ugenType, otherTests) {
+        testOsc(ugenType, function (ug) {
+            flock.test.assertContinuous(ug.output, 0.01, 
+                "The ugen should produce a continuously changing signal.");
+            if (otherTests) {
+                otherTests(ug);
+            }
+        });
+    };
     
-    testBasicWaveformOsc("flock.ugen.triOsc");
-
-    testBasicWaveformOsc("flock.ugen.squareOsc");
-
-    testBasicWaveformOsc("flock.ugen.sawOsc");
-
-
+    var testSineishWaveformOsc = function (ugenType) {
+        testContinuousWaveformOsc(ugenType, function (sine) {
+            flock.test.assertSineish(sine.output, 0.75, 
+                "The " + ugenType + " ugen should continuously rise and fall between 0.75/-0.75.");
+        });
+    };
+    
+    var testDroppingWaveformOsc = function (ugenType) {
+        testOsc(ugenType);
+    };
+    
+    testSineishWaveformOsc("flock.ugen.sinOsc");
+    testContinuousWaveformOsc("flock.ugen.triOsc");
+    testContinuousWaveformOsc("flock.ugen.squareOsc");
+    testContinuousWaveformOsc("flock.ugen.sawOsc");
+    
+    testSineishWaveformOsc("flock.ugen.sin");
+    testDroppingWaveformOsc("flock.ugen.lfPulse");
+    testDroppingWaveformOsc("flock.ugen.lfSaw");
+    
+    
     module("flock.ugen.playBuffer() tests");
     
     var playbackDef = {
