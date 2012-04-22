@@ -13,31 +13,41 @@ var demo = demo || {};
             onPlay: options.onPlay,
             onPause: options.onPause
         };
+        that.buttonBaseClass = that.button.className; // TODO: ummm... library, anyone?
+        
+        that.play = function () {
+            if (that.onPlay) {
+                that.onPlay(that.button);
+            }
+            
+            that.button.innerHTML = "Pause";
+            that.button.className = that.buttonBaseClass + " " + "playing";
+            that.synth.play();
+            that.model.isPlaying = true;
+        };
+        
+        that.pause = function () {
+            if (that.onPause) {
+                that.onPause(that.button);
+            }
+            
+            that.button.innerHTML = "Play";
+            that.button.className = that.buttonBaseClass + " " + "paused";
+            that.synth.pause();
+
+            that.model.isPlaying = false;
+        };
         
         // Wire it up to a button on the page.
         that.button.addEventListener("click", function (e) {
             if (!that.model.isPlaying) {
-                if (that.onPlay) {
-                    that.onPlay(that.button);
-                }
-                
-                that.button.innerHTML = "Pause";
-                that.button.className = "playing";
-                that.synth.play();
-                that.model.isPlaying = true;
+                that.play();
             } else {
-                if (that.onPause) {
-                    that.onPause(that.button);
-                }
-                
-                that.button.innerHTML = "Play";
-                that.button.className = "paused";
-                that.synth.pause();
-
-                that.model.isPlaying = false;
+                that.pause();
             }
         }, false);
         
+        that.pause();
         return that;
     };
     

@@ -24,6 +24,7 @@ var demo = demo || {};
         
         var editor = ace.edit(editorId);
         editor.setTheme(theme);
+        editor.setShowPrintMargin(false);
 
         var JavaScriptMode = require(mode).Mode;
         editor.getSession().setMode(new JavaScriptMode());
@@ -38,9 +39,13 @@ var demo = demo || {};
     		    eval(that.editor.getSession().getValue());
                 
     			that.playButton.html("Stop");
+    			that.playButton.removeClass("paused");
+    			that.playButton.addClass("playing");
     			flock.enviro.shared.play();
     		} else {
     			that.playButton.html("Play");
+    			that.playButton.removeClass("playing");
+    			that.playButton.addClass("paused");
     			flock.enviro.shared.reset();
     			if (timerId){ // TODO: Consider a non-global solution to starting/stopping timers for some demos.
     				window.clearInterval(timerId);
@@ -50,17 +55,16 @@ var demo = demo || {};
         });
     };
     
-    var setupLoadButton = function (that) {
-        $(that.selectors.loadButton).click(function (e) {
-            var id = $(that.selectors.demosMenu).val();
-    		var code = $("#" + id).html();
-    		that.editor.getSession().setValue(code);
-    	});
+    var setupLoadControls = function (that) {
+        $(that.selectors.loadButton).click(that.loadSelectedDemo);
+        
+        // Automatically load the demo whenever the demo menu changes.
+        $(that.selectors.demosMenu).change(that.loadSelectedDemo);
     };
 
     demo.liveEditorView = function (editorId, selectors) {
         selectors = selectors || {
-            playButton: "#play-button",
+            playButton: ".playButton",
             loadButton: "#load-button",
             demosMenu: "#sample_code_sel"
         };
@@ -72,9 +76,20 @@ var demo = demo || {};
             selectors: selectors
         };
         
+        that.loadSelectedDemo = function () {
+            var id = $(that.selectors.demosMenu).val();
+            var code = $("#" + id).html();
+            that.editor.getSession().setValue(code);
+            
+            if (flock.enviro.shared.isPlaying) {
+                that.playButton.click(); // Stop the previous demo if it is playing.
+            }
+        };
+        
         setupEditor(that, editorId);
         setupPlayButton(that);
-        setupLoadButton(that);
+        setupLoadControls(that);
+        $(document).ready(that.loadSelectedDemo);
         
         return that;
     };
