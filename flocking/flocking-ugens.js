@@ -196,7 +196,7 @@ var flock = flock || {};
             }
         
             that.model.phase = phaseAccum;
-            return that.mulAdd(numSamps);
+            that.mulAdd(numSamps);
         };
     
         that.krFreqArPhase = function (numSamps) {
@@ -227,7 +227,7 @@ var flock = flock || {};
                 }
             }
             that.model.phase = phaseAccum;
-            return that.mulAdd(numSamps);
+            that.mulAdd(numSamps);
         };
 
         that.arFreqKrPhase = function (numSamps) {
@@ -258,7 +258,7 @@ var flock = flock || {};
                 }
             }
             that.model.phase = phaseAccum;
-            return that.mulAdd(numSamps);
+            that.mulAdd(numSamps);
         };
             
         that.arFreqArPhase = function (numSamps) {
@@ -290,7 +290,7 @@ var flock = flock || {};
             }
 
             that.model.phase = phaseAccum;
-            return that.mulAdd(numSamps);
+            that.mulAdd(numSamps);
         };
     
         that.onInputChanged = function () {
@@ -399,9 +399,10 @@ var flock = flock || {};
                 freqInc = freq / that.sampleRate * flock.TWOPI,
                 phase = that.inputs.phase.output[0],
                 phaseAccum = that.model.phase,
+                out = that.output,
                 i;
             for (i = 0; i < numSamps; i++) {
-                output[i] = Math.sin(phaseAccum + phase);
+                out[i] = Math.sin(phaseAccum + phase);
                 phaseAccum += freqInc;
             }
             that.model.phase = phaseAccum;
@@ -413,9 +414,10 @@ var flock = flock || {};
                 freqInc = freq / that.sampleRate * flock.TWOPI,
                 phase = that.inputs.phase.output,
                 phaseAccum = that.model.phase,
+                out = that.output,
                 i;
             for (i = 0; i < numSamps; i++) {
-                output[i] = Math.sin(phaseAccum + phase[i]);
+                out[i] = Math.sin(phaseAccum + phase[i]);
                 phaseAccum += freqInc;
             }
             that.model.phase = phaseAccum;
@@ -425,11 +427,12 @@ var flock = flock || {};
         that.arFreqKrPhase = function (numSamps) {
             var freq = that.inputs.freq.output,
                 phase = that.inputs.phase.output[0],
+                out = that.output,
                 phaseAccum = that.model.phase,
                 sampleRate = that.sampleRate,
                 i;
             for (i = 0; i < numSamps; i++) {
-                output[i] = Math.sin(phaseAccum + phase);
+                out[i] = Math.sin(phaseAccum + phase);
                 phaseAccum += freq[i]  / sampleRate * flock.TWOPI;
             }
             that.model.phase = phaseAccum;
@@ -439,11 +442,12 @@ var flock = flock || {};
         that.arFreqArPhase = function (numSamps) {
             var freq = that.inputs.freq.output,
                 phase = that.inputs.phase.output,
+                out = that.output,
                 phaseAccum = that.model.phase,
                 sampleRate = that.sampleRate,
                 i;
             for (i = 0; i < numSamps; i++) {
-                output[i] = Math.sin(phaseAccum + phase[i]);
+                out[i] = Math.sin(phaseAccum + phase[i]);
                 phaseAccum += freq[i] / sampleRate * flock.TWOPI;
             }
             that.model.phase = phaseAccum;
@@ -481,6 +485,7 @@ var flock = flock || {};
                 }
             }
             that.model.phase = phase;
+            that.mulAdd(numSamps);
         };
         
         that.arFreq = function (numSamps) {
@@ -501,6 +506,7 @@ var flock = flock || {};
                 }
             }
             that.model.phase = phase;
+            that.mulAdd(numSamps);
         };
         
         that.onInputChanged = function () {
@@ -520,14 +526,13 @@ var flock = flock || {};
         that.model.scale = 1 / options.sampleRate;
         
         that.krFreq = function (numSamps) {
-            // TODO: Can this be done more efficiently? Definitely if we knew the synth graph had been primed.
-            that.model.phase = that.model.phase ||  that.inputs.phase.output[0]; // Only read the phase input initially.
-            
-            var freq = that.inputs.freq.output[0],
-                width = that.inputs.width.output[0], // TODO: Are we handling width correctly here?
+            var inputs = that.inputs,
+                model = that.model,
+                freq = inputs.freq.output[0],
+                width = inputs.width.output[0], // TODO: Are we handling width correctly here?
                 out = that.output,
-                scale = that.model.scale,
-                phase = that.model.phase, 
+                scale = model.scale,
+                phase = model.phase !== undefined ? model.phase : inputs.phase.output[0], // TODO: Unnecessary if we knew the synth graph had been primed.
                 i;
             
             for (i = 0; i < numSamps; i++) {
@@ -539,17 +544,18 @@ var flock = flock || {};
                 }
                 phase += freq * scale;
             }
-            that.model.phase = phase;
+            model.phase = phase;
+            that.mulAdd(numSamps);
         };
         
         that.arFreq = function (numSamps) {
-            that.model.phase = that.model.phase ||  that.inputs.phase.output[0];
-            
-            var freq = that.inputs.freq.output,
-                width = that.inputs.width.output[0],
+            var inputs = that.inputs,
+                model = that.model,
+                freq = inputs.freq.output,
+                width = inputs.width.output[0],
                 out = that.output,
-                scale = that.model.scale,
-                phase = that.model.phase, 
+                scale = model.scale,
+                phase = model.phase !== undefined ? model.phase : inputs.phase.output[0], 
                 i;
             
             for (i = 0; i < numSamps; i++) {
@@ -561,7 +567,8 @@ var flock = flock || {};
                 }
                 phase += freq[i] * scale;
             }
-            that.model.phase = phase;
+            model.phase = phase;
+            that.mulAdd(numSamps);
         };
         
         that.onInputChanged = function () {
