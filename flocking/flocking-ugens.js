@@ -157,6 +157,37 @@ var flock = flock || {};
         return that;
     };
 
+    flock.ugen.sum = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.sumGen = function (numSamps) {
+            var sources = that.inputs.source,
+                out = that.output,
+                i,
+                sourceIdx,
+                sum;
+                
+            for (i = 0; i < numSamps; i++) {
+                sum = 0;
+                for (sourceIdx = 0; sourceIdx < sources.length; sourceIdx++) {
+                    sum += sources[sourceIdx].output[i];
+                }
+                out[i] = sum;
+            }
+        };
+        
+        that.passThroughGen = function (numSamps) {
+            that.output = that.inputs.source.output;
+        };
+        
+        that.onInputChanged = function () {
+            that.gen = typeof (that.inputs.source.length) === "number" ? that.sumGen : that.passThroughGen;
+        };
+        
+        that.onInputChanged();
+        return that;
+    };
+    
     
     /***************
      * Oscillators *

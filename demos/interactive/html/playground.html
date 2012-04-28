@@ -72,6 +72,8 @@
                 <option value="freq_stairs">Frequency stairs</option>
                 <option value="scope">Scope</option>
                 <option value="stereo">Stereo</option>
+                <option value="sum">Additive Synthesis</option>
+                
             </select>
             <button id="load-button">Load</button>
         </div>
@@ -379,5 +381,40 @@
             }
         });
         </script>
+        
+        <script type="application/flocking" id="sum">
+        // A bank of sine oscillators added together.
+        var synth = flock.synth({
+            ugen: "flock.ugen.sum",
+            source: [
+                {
+                    ugen: "flock.ugen.sinOsc",
+                    freq: 440,
+                    mul: 0.5
+                },
+                {
+                    ugen: "flock.ugen.sinOsc",
+                    freq: 440 * 2,
+                    mul: 0.5 / 2
+                },
+                {
+                    ugen: "flock.ugen.sinOsc",
+                    freq: 440 * 3,
+                    mul: 0.5 / 3
+                },
+                {
+                    ugen: "flock.ugen.sinOsc",
+                    freq: 440 * 5,
+                    mul: 0.5 / 5
+                },
+                {
+                    ugen: "flock.ugen.sinOsc",
+                    freq: 440 * 7,
+                    mul: 0.5 / 7
+                }
+            ]
+        });
+        </script>
+        
     </body>
 </html>
