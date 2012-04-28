@@ -1138,7 +1138,7 @@ var flock = flock || {};
      */
     // TODO: add the ability to track individual elements rather than the whole screen.
     flock.ugen.mouse.cursor = function (inputs, output, options) {
-        var that = flock.ugen.mulAdd(inputs, output, options);
+        var that = flock.ugen(inputs, output, options);
         that.rate = flock.rates.CONTROL;
         that.options.axis = that.options && that.options.axis ? that.options.axis : "x"; // By default, track the mouse along the x axis.
         
@@ -1148,27 +1148,57 @@ var flock = flock || {};
          * @param numSamps the number of samples to generate
          */
          // TODO: Implement exponential curve.
-        that.linearGen = function (numSamps) {
+        that.exponentialGen = function (numSamps) {
             var model = that.model,
                 y0 = model.mousePosition / model.size,
                 y1 = model.y1,
                 lag = that.inputs.lag.output[0],
+                add = that.inputs.add.output[0],
+                mul = that.inputs.mul.output[0],
                 b1 = model.b1,
                 out = that.output,
-                i;
+                pow = Math.pow,
+                i,
+                max;
             
             if (lag !== b1) {
-                b1 = Math.exp(flock.LOG001 / (lag * that.sampleRate));
+                b1 = lag === 0 ? 0.0 : Math.exp(flock.LOG001 / (lag * that.sampleRate));
                 model.b1 = b1;
             }
             
             for (i = 0; i < numSamps; i++) {
+                max = 1.0 * mul + add;
+                y0 = pow(max  / add, y0) * add;
                 y1 = y0 + b1 * (y1 - y0); // 1-pole filter averages mouse values.
                 out[i] = y1;
             }
             
             model.y1 = y1;
-            that.mulAdd(numSamps);
+        };
+        
+        that.linearGen = function (numSamps) {
+            var model = that.model,
+                y0 = model.mousePosition / model.size,
+                y1 = model.y1,
+                lag = that.inputs.lag.output[0],
+                add = that.inputs.add.output[0],
+                mul = that.inputs.mul.output[0],
+                b1 = model.b1,
+                out = that.output,
+                pow = Math.pow,
+                i;
+            
+            if (lag !== b1) {
+                b1 = lag === 0 ? 0.0 : Math.exp(flock.LOG001 / (lag * that.sampleRate));
+                model.b1 = b1;
+            }
+            
+            for (i = 0; i < numSamps; i++) {
+                y1 = y0 + b1 * (y1 - y0);
+                out[i] = y1 * mul + add;
+            }
+            
+            model.y1 = y1;
         };
         
         that.noInterpolationGen = function (numSamps) {
@@ -1178,10 +1208,9 @@ var flock = flock || {};
                 i;
                 
             for (i = 0; i < numSamps; i++) {
-                out[i] = y0;
+                out[i] = y0 * mul + add;
             }
             
-            that.mulAdd(numSamps);
         };
         
         that.normalizeOffset = function (e) {
@@ -1264,7 +1293,17 @@ var flock = flock || {};
                 that.inputs.lag = flock.ugen.value({value: 0.5}, new Float32Array(1));
             }
             
-            that.gen = that.options.interpolation === "none" ? that.noInterpolationGen : that.linearGen;
+            if (!that.inputs.add) {
+                that.inputs.add = flock.ugen.value({value: 0.0}, new Float32Array(1));
+            }
+            
+            if (!that.inputs.mul) {
+                that.inputs.mul = flock.ugen.value({value: 1.0}, new Float32Array(1));
+            }
+            
+            var interp = that.options.interpolation;
+            that.gen = interp === "none" ? that.noInterpolationGen : interp === "exponential" ? that.exponentialGen : that.linearGen;
+            that.model.exponential = interp === "exponential";
         };
         
         that.init = function () {

@@ -318,9 +318,11 @@
             ugen: "flock.ugen.sinOsc",
             freq: {
                 ugen: "flock.ugen.mouse.cursor",
+                rate: "control",
                 mul: 880,
                 add: 110
-            }
+            },
+            mul: 0.5
         });
         </script>
         <script type="application/flocking" id="mouse_y">
@@ -329,12 +331,14 @@
             ugen: "flock.ugen.sinOsc",
             freq: {
                 ugen: "flock.ugen.mouse.cursor",
+                rate: "control",
                 mul: 880,
                 add: 110,
                 options: {
                     axis: "y"
                 }
-            }
+            },
+            mul: 0.5
         });
         </script>
         <script type="application/flocking" id="mouse_xy">
@@ -344,6 +348,7 @@
             ugen: "flock.ugen.sinOsc",
             freq: {
                 ugen: "flock.ugen.mouse.cursor",
+                rate: "control",
                 mul: 880,
                 add: 110,
                 options: {
