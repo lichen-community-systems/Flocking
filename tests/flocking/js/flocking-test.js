@@ -18,7 +18,7 @@ var flock = flock || {};
     var simpleSynthDef = {
         ugen: "flock.ugen.out",
         inputs: {
-            source: {
+            sources: {
                 id: "sine",
                 ugen: "flock.ugen.sinOsc",
                 inputs: {
@@ -191,7 +191,7 @@ var flock = flock || {};
         id: flock.OUT_UGEN_ID,
         ugen: "flock.ugen.out",
         inputs: {
-            source: condensedTestSynthDef,
+            sources: condensedTestSynthDef,
             bus: 0
         }
     };
@@ -233,7 +233,7 @@ var flock = flock || {};
         checkRegisteredUGens(parsedUGens, 3);
         ok(parsedUGens.leftSine, "The left sine ugen should have been parsed correctly.");
         ok(parsedUGens.rightSine, "The right sine ugen should have been parsed correctly.");
-        deepEqual(parsedUGens[flock.OUT_UGEN_ID].inputs.source, 
+        deepEqual(parsedUGens[flock.OUT_UGEN_ID].inputs.sources, 
             [parsedUGens.leftSine, parsedUGens.rightSine],
             "The output ugen should have an array of sources, containing the left and right sine ugens.");
     });
