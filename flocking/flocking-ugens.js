@@ -157,6 +157,37 @@ var flock = flock || {};
         return that;
     };
 
+    flock.ugen.sum = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.sumGen = function (numSamps) {
+            var sources = that.inputs.sources,
+                out = that.output,
+                i,
+                sourceIdx,
+                sum;
+                
+            for (i = 0; i < numSamps; i++) {
+                sum = 0;
+                for (sourceIdx = 0; sourceIdx < sources.length; sourceIdx++) {
+                    sum += sources[sourceIdx].output[i];
+                }
+                out[i] = sum;
+            }
+        };
+        
+        that.passThroughGen = function (numSamps) {
+            that.output = that.inputs.sources.output;
+        };
+        
+        that.onInputChanged = function () {
+            that.gen = typeof (that.inputs.sources.length) === "number" ? that.sumGen : that.passThroughGen;
+        };
+        
+        that.onInputChanged();
+        return that;
+    };
+    
     
     /***************
      * Oscillators *
@@ -1053,18 +1084,18 @@ var flock = flock || {};
         var that = flock.ugen(inputs, output, options);
     
         that.krBufferMultiChan = function () {
-            var source = that.inputs.source,
+            var sources = that.inputs.sources,
                 buses = flock.enviro.shared.buses,
                 bufStart = that.inputs.bus.output[0],
                 i;
             
-            for (i = 0; i < source.length; i++) {
-                buses[bufStart + i] = source[i].output;
+            for (i = 0; i < sources.length; i++) {
+                buses[bufStart + i] = sources[i].output;
             }
         };
     
         that.krBufferExpandSingle = function () {
-            var source = that.inputs.source,
+            var source = that.inputs.sources,
                 buses = flock.enviro.shared.buses,
                 bufStart = that.inputs.bus.output[0],
                 chans = that.model.chans,
@@ -1076,7 +1107,7 @@ var flock = flock || {};
         };
     
         that.onInputChanged = function () {
-            var isMulti = typeof (that.inputs.source.length) === "number";
+            var isMulti = typeof (that.inputs.sources.length) === "number";
             that.gen = isMulti ? that.krBufferMultiChan : that.krBufferExpandSingle;            
             that.model.chans = that.inputs.expand ? that.inputs.expand.output[0] : 1; // Assume constant rate.
         };

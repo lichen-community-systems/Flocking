@@ -27,7 +27,7 @@ var flock = flock || {};
                 id: flock.OUT_UGEN_ID,
                 ugen: "flock.ugen.out",
                 inputs: {
-                    source: ugenDef,
+                    sources: ugenDef,
                     bus: 0,
                     expand: options.chans
                 }
