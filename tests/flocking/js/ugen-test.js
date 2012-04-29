@@ -73,7 +73,7 @@ flock.test = flock.test || {};
     test("flock.interleavedDemandWriter() mono input, mono output", function () {
         // Test with a single input buffer being multiplexed by ugen.out.
         var mockLeftUGen = makeMockUGen(mockLeft);
-        var out = flock.ugen.out({source: mockLeftUGen, bus: bufferValueUGen}, []);
+        var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen}, []);
 
         // Pull the whole buffer.
         var expected = new Float32Array([
@@ -92,7 +92,7 @@ flock.test = flock.test || {};
     test("flock.interleavedDemandWriter() mono input, stereo output", function () {
         // Test with a single mono input buffer.
         var mockLeftUGen = makeMockUGen(mockLeft);
-        var out = flock.ugen.out({source: mockLeftUGen, bus: bufferValueUGen, expand: stereoExpandValueUGen}, []);
+        var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen, expand: stereoExpandValueUGen}, []);
 
         // Pull the whole buffer.
         var expected = new Float32Array([
@@ -108,7 +108,7 @@ flock.test = flock.test || {};
     test("flock.interleavedDemandWriter() stereo input", function () {
         // Test with two input buffers.
         var out = flock.ugen.out({
-            source: [
+            sources: [
                 makeMockUGen(mockLeft), 
                 makeMockUGen(mockRight)
             ],
@@ -304,6 +304,30 @@ flock.test = flock.test || {};
             "flock.ugen.mulAdd() with audio rate mul and add inputs should use all values of both signals.");
     });
     
+    
+    module("flock.ugen.sum() tests");
+     
+    test("flock.ugen.sum()", function () {
+        var addBuffer = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31],
+            one = makeMockUGen(addBuffer),
+            two = makeMockUGen(addBuffer),
+            three = makeMockUGen(addBuffer);
+
+        var inputs = {
+            sources: [one]
+        };
+        var summer = flock.ugen.sum(inputs, new Float32Array(addBuffer.length));
+        summer.gen(32);
+        deepEqual(summer.output, new Float32Array(addBuffer), "With a single source, the output should be identical to the source input.");
+        
+        inputs.sources = [one, two, three];
+        var expected = [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 57, 60, 63, 66, 69, 72, 75, 78, 81, 84, 87, 90, 93];
+        summer.inputs = inputs;
+        summer.gen(32);
+        deepEqual(summer.output, new Float32Array(expected), "With three sources, the output consist of the inputs added together.");
+    });
+    
+    
     module("flock.ugen.osc() tests");
     
     var makeOsc = function (freq, table, bufferSize, sampleRate) {
@@ -380,7 +404,7 @@ flock.test = flock.test || {};
         rate: flock.rates.AUDIO,
         inputs: {
             freq: 2,
-            mul: 1.0
+            mul: 0.75
         }
     };
      
@@ -393,15 +417,17 @@ flock.test = flock.test || {};
     };
     
     var checkUGenShape = function (ug) {
+        flock.test.assertNotNaN(ug.output, 
+            "The ugen should never output NaN.");
         flock.test.assertNotSilent(ug.output, 
             "1 second of output from the ugen should not be completely silent");
         flock.test.assertUnbroken(ug.output, 
             "The ugen should produce an unbroken audio tone.");
-        flock.test.assertContinuous(ug.output, 0.01, 
-            "The ugen should produce a continuously changing signal.");
+        flock.test.assertWithinRange(ug.output, -0.75, 0.75, 
+            "The ugen should produce output values ranging between -0.75 and 075.");
     };
     
-    var testBasicWaveformOsc = function (ugenType, otherTests) {
+    var testOsc = function (ugenType, otherTests) {
         test(ugenType, function () {
             var ug = makeAndPrimeOsc(ugenType, 44100);
             checkUGenShape(ug);
@@ -411,18 +437,37 @@ flock.test = flock.test || {};
         });
     };
     
-    testBasicWaveformOsc("flock.ugen.sinOsc", function (sine) {
-        flock.test.assertSineish(sine.output, 1.0, 
-            "The sinOsc ugen should continuously rise and fall between 1.0/-1.0.");
-    });
+    var testContinuousWaveformOsc = function (ugenType, otherTests) {
+        testOsc(ugenType, function (ug) {
+            flock.test.assertContinuous(ug.output, 0.01, 
+                "The ugen should produce a continuously changing signal.");
+            if (otherTests) {
+                otherTests(ug);
+            }
+        });
+    };
     
-    testBasicWaveformOsc("flock.ugen.triOsc");
-
-    testBasicWaveformOsc("flock.ugen.squareOsc");
-
-    testBasicWaveformOsc("flock.ugen.sawOsc");
-
-
+    var testSineishWaveformOsc = function (ugenType) {
+        testContinuousWaveformOsc(ugenType, function (sine) {
+            flock.test.assertSineish(sine.output, 0.75, 
+                "The " + ugenType + " ugen should continuously rise and fall between 0.75/-0.75.");
+        });
+    };
+    
+    var testDroppingWaveformOsc = function (ugenType) {
+        testOsc(ugenType);
+    };
+    
+    testSineishWaveformOsc("flock.ugen.sinOsc");
+    testContinuousWaveformOsc("flock.ugen.triOsc");
+    testContinuousWaveformOsc("flock.ugen.squareOsc");
+    testContinuousWaveformOsc("flock.ugen.sawOsc");
+    
+    testSineishWaveformOsc("flock.ugen.sin");
+    testDroppingWaveformOsc("flock.ugen.lfPulse");
+    testDroppingWaveformOsc("flock.ugen.lfSaw");
+    
+    
     module("flock.ugen.playBuffer() tests");
     
     var playbackDef = {

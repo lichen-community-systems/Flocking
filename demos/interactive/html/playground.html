@@ -3,8 +3,9 @@
     <head>
         <meta charset="UTF-8">
         <title>Flocking Playground</title>
+        <link rel="stylesheet" type="text/css" href="../../shared/css/demos.css" />
         <link rel="stylesheet" type="text/css" href="../css/playground.css" />
-	
+    
         <script src="../lib/jquery.min.js" type="text/javascript"></script>
 	
         <script src="../lib/ace_0.2.0/ace.js" type="text/javascript" charset="utf-8"></script>
@@ -24,16 +25,36 @@
     <body>
         <h1>Flocking Playground</h1>
 
+        
+        <!-- Scope View area for visualizing the demos -->
+        <div id="scopeArea">
+            <button class="playButton paused">Play</button>
+            <div id="gfxContainer">
+                <div>Waveform</div>
+                <canvas id="gfx" height="50" width="640"></canvas>
+            </div>
+        </div>
+        
         <!-- Controls for selecting a demo and playing/pausing the active synth. -->
         <div id="navi">
-            <button id="play-button">Play</button>
+            <label for="sample_code_sel">Choose a demo:</label>
             <select id="sample_code_sel" size="1">
-                <option value="amp_mod" selected="selected">Amplitude modulation</option>
-                <option value="freq_stairs">Frequency stairs</option>
-                <option value="freq_mod">Frequency modulation</option>
-                <option value="phase_mod">Phase modulation</option>
-                <option value="scope">Scope</option>
-                <option value="stereo">Stereo</option>
+                <optgroup label="Simple Waveforms">
+                    <option value="simple_sin">Sine</option>
+                    <option value="simple_triangle">Triangle</option>
+                    <option value="simple_square">Square</option>
+                    <option value="simple_saw">Saw</option>
+                </optgroup>
+                <optgroup label="Noise">
+                    <option value="noise_dust">Dust</option>
+                    <option value="noise_lf">LFNoise</option>
+                    <option value="noise_sin">LFNoise &amp; SinOsc</option>
+                </optgroup>
+                <optgroup label="Modulation">
+                    <option value="amp_mod" selected="selected">Amplitude modulation</option>
+                    <option value="freq_mod">Frequency modulation</option>
+                    <option value="phase_mod">Phase modulation</option>
+                </optgroup>
                 <optgroup label="Envelopes">
                     <option value="simpleASR">Simple Attack/Sustain/Release</option>
                 </optgroup>
@@ -42,38 +63,28 @@
                     <option value="line_mod">Mod SinOsc Freq</option>
                     <option value="line_phase">SinOsc Phase</option>
                 </optgroup>
-                <optgroup label="Noise">
-                    <option value="noise_dust">Dust</option>
-                    <option value="noise_lf">LFNoise</option>
-                    <option value="noise_sin">LFNoise &amp; SinOsc</option>
+                <optgroup label="Mouse">
+                    <option value="mouse_x">Mouse X</option>
+                    <option value="mouse_y">Mouse Y</option>
+                    <option value="mouse_xy">Mouse X &amp; Y</option>
+                    <option value="mouse_click">Mouse click</option>
                 </optgroup>
-                <optgroup label="Simple Waveforms">
-                    <option value="simple_sin">Sine</option>
-                    <option value="simple_triangle">Triangle</option>
-                    <option value="simple_square">Square</option>
-                    <option value="simple_saw">Saw</option>
-                </optgroup>
+                <option value="freq_stairs">Frequency stairs</option>
+                <option value="scope">Scope</option>
+                <option value="stereo">Stereo</option>
+                <option value="sum">Additive Synthesis</option>
+                
             </select>
             <button id="load-button">Load</button>
         </div>
 
         <!-- Placeholder for the Ace interactive editor -->
-        <pre id="editor">
-        // Create a new synth consisting of a sine wave, 
-        // modulating its amplitude slowly with another sine wave.
-        var synth = flock.synth({
-            id: "carrier",
-            ugen: "flock.ugen.sinOsc",
-            freq: 440,
-            mul: {
-                id: "mod",
-                ugen: "flock.ugen.sinOsc",
-                rate: "control",
-                freq: 1.0
-            }
-        });
-        </pre>
-    
+        <div class="editorPanel">
+            <pre id="editor">
+
+            </pre>
+        </div>
+
         <script>
             var editorView = demo.liveEditorView("editor");
             
@@ -81,12 +92,6 @@
             var timerId;
         </script>
         
-        <!-- Scope View area for visualizing the demos -->
-        <div id="scopeArea">
-            <span id="gfx-title">#gfx</span>
-            <canvas id="gfx"></canvas>
-        </div>
-
         <!-- start of sample codes -->
         <script type="application/flocking" id="amp_mod">// Create a new synth consisting of a sine wave, 
         // modulating its amplitude slowly with another sine wave.
@@ -309,5 +314,107 @@
             }
         ]);
         </script>
+        <script type="application/flocking" id="mouse_x">
+        // Tracks the mouse's horizonal movement across the entire screen.
+        var synth = flock.synth({
+            ugen: "flock.ugen.sinOsc",
+            freq: {
+                ugen: "flock.ugen.mouse.cursor",
+                rate: "control",
+                mul: 880,
+                add: 110
+            },
+            mul: 0.5
+        });
+        </script>
+        <script type="application/flocking" id="mouse_y">
+        // Tracks the mouse's vertical movement across the entire screen.
+        var synth = flock.synth({
+            ugen: "flock.ugen.sinOsc",
+            freq: {
+                ugen: "flock.ugen.mouse.cursor",
+                rate: "control",
+                mul: 880,
+                add: 110,
+                options: {
+                    axis: "y"
+                }
+            },
+            mul: 0.5
+        });
+        </script>
+        <script type="application/flocking" id="mouse_xy">
+        // Maps the mouse's vertical position to amplitude
+        // and its horizontal position to pitch.
+        var synth = flock.synth({
+            ugen: "flock.ugen.sinOsc",
+            freq: {
+                ugen: "flock.ugen.mouse.cursor",
+                rate: "control",
+                mul: 880,
+                add: 110,
+                options: {
+                    axis: "width"
+                }
+            },
+            mul: {
+                ugen: "flock.ugen.mouse.cursor",
+                options: {
+                    axis: "height"
+                }
+            }
+        });
+        </script>
+        <script type="application/flocking" id="mouse_click">
+        // Triggers a note whenever the mouse is clicked.
+        var synth = flock.synth({
+            ugen: "flock.ugen.sinOsc",
+            freq: 440,
+            mul: {
+                ugen: "flock.ugen.env.simpleASR",
+                attack: 0.25,
+                sustain: 0.6,
+                release: 0.5,
+                gate: {
+                    ugen: "flock.ugen.mouse.click"
+                }
+            }
+        });
+        </script>
+        
+        <script type="application/flocking" id="sum">
+        // A bank of sine oscillators added together.
+        var synth = flock.synth({
+            ugen: "flock.ugen.sum",
+            sources: [
+                {
+                    ugen: "flock.ugen.sinOsc",
+                    freq: 440,
+                    mul: 0.5
+                },
+                {
+                    ugen: "flock.ugen.sinOsc",
+                    freq: 440 * 2,
+                    mul: 0.5 / 2
+                },
+                {
+                    ugen: "flock.ugen.sinOsc",
+                    freq: 440 * 3,
+                    mul: 0.5 / 3
+                },
+                {
+                    ugen: "flock.ugen.sinOsc",
+                    freq: 440 * 5,
+                    mul: 0.5 / 5
+                },
+                {
+                    ugen: "flock.ugen.sinOsc",
+                    freq: 440 * 7,
+                    mul: 0.5 / 7
+                }
+            ]
+        });
+        </script>
+        
     </body>
 </html>

@@ -157,6 +157,37 @@ var flock = flock || {};
         return that;
     };
 
+    flock.ugen.sum = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.sumGen = function (numSamps) {
+            var sources = that.inputs.sources,
+                out = that.output,
+                i,
+                sourceIdx,
+                sum;
+                
+            for (i = 0; i < numSamps; i++) {
+                sum = 0;
+                for (sourceIdx = 0; sourceIdx < sources.length; sourceIdx++) {
+                    sum += sources[sourceIdx].output[i];
+                }
+                out[i] = sum;
+            }
+        };
+        
+        that.passThroughGen = function (numSamps) {
+            that.output = that.inputs.sources.output;
+        };
+        
+        that.onInputChanged = function () {
+            that.gen = typeof (that.inputs.sources.length) === "number" ? that.sumGen : that.passThroughGen;
+        };
+        
+        that.onInputChanged();
+        return that;
+    };
+    
     
     /***************
      * Oscillators *
@@ -196,7 +227,7 @@ var flock = flock || {};
             }
         
             that.model.phase = phaseAccum;
-            return that.mulAdd(numSamps);
+            that.mulAdd(numSamps);
         };
     
         that.krFreqArPhase = function (numSamps) {
@@ -227,7 +258,7 @@ var flock = flock || {};
                 }
             }
             that.model.phase = phaseAccum;
-            return that.mulAdd(numSamps);
+            that.mulAdd(numSamps);
         };
 
         that.arFreqKrPhase = function (numSamps) {
@@ -258,7 +289,7 @@ var flock = flock || {};
                 }
             }
             that.model.phase = phaseAccum;
-            return that.mulAdd(numSamps);
+            that.mulAdd(numSamps);
         };
             
         that.arFreqArPhase = function (numSamps) {
@@ -290,7 +321,7 @@ var flock = flock || {};
             }
 
             that.model.phase = phaseAccum;
-            return that.mulAdd(numSamps);
+            that.mulAdd(numSamps);
         };
     
         that.onInputChanged = function () {
@@ -399,9 +430,10 @@ var flock = flock || {};
                 freqInc = freq / that.sampleRate * flock.TWOPI,
                 phase = that.inputs.phase.output[0],
                 phaseAccum = that.model.phase,
+                out = that.output,
                 i;
             for (i = 0; i < numSamps; i++) {
-                output[i] = Math.sin(phaseAccum + phase);
+                out[i] = Math.sin(phaseAccum + phase);
                 phaseAccum += freqInc;
             }
             that.model.phase = phaseAccum;
@@ -413,9 +445,10 @@ var flock = flock || {};
                 freqInc = freq / that.sampleRate * flock.TWOPI,
                 phase = that.inputs.phase.output,
                 phaseAccum = that.model.phase,
+                out = that.output,
                 i;
             for (i = 0; i < numSamps; i++) {
-                output[i] = Math.sin(phaseAccum + phase[i]);
+                out[i] = Math.sin(phaseAccum + phase[i]);
                 phaseAccum += freqInc;
             }
             that.model.phase = phaseAccum;
@@ -425,11 +458,12 @@ var flock = flock || {};
         that.arFreqKrPhase = function (numSamps) {
             var freq = that.inputs.freq.output,
                 phase = that.inputs.phase.output[0],
+                out = that.output,
                 phaseAccum = that.model.phase,
                 sampleRate = that.sampleRate,
                 i;
             for (i = 0; i < numSamps; i++) {
-                output[i] = Math.sin(phaseAccum + phase);
+                out[i] = Math.sin(phaseAccum + phase);
                 phaseAccum += freq[i]  / sampleRate * flock.TWOPI;
             }
             that.model.phase = phaseAccum;
@@ -439,11 +473,12 @@ var flock = flock || {};
         that.arFreqArPhase = function (numSamps) {
             var freq = that.inputs.freq.output,
                 phase = that.inputs.phase.output,
+                out = that.output,
                 phaseAccum = that.model.phase,
                 sampleRate = that.sampleRate,
                 i;
             for (i = 0; i < numSamps; i++) {
-                output[i] = Math.sin(phaseAccum + phase[i]);
+                out[i] = Math.sin(phaseAccum + phase[i]);
                 phaseAccum += freq[i] / sampleRate * flock.TWOPI;
             }
             that.model.phase = phaseAccum;
@@ -481,6 +516,7 @@ var flock = flock || {};
                 }
             }
             that.model.phase = phase;
+            that.mulAdd(numSamps);
         };
         
         that.arFreq = function (numSamps) {
@@ -501,6 +537,7 @@ var flock = flock || {};
                 }
             }
             that.model.phase = phase;
+            that.mulAdd(numSamps);
         };
         
         that.onInputChanged = function () {
@@ -520,14 +557,13 @@ var flock = flock || {};
         that.model.scale = 1 / options.sampleRate;
         
         that.krFreq = function (numSamps) {
-            // TODO: Can this be done more efficiently? Definitely if we knew the synth graph had been primed.
-            that.model.phase = that.model.phase ||  that.inputs.phase.output[0]; // Only read the phase input initially.
-            
-            var freq = that.inputs.freq.output[0],
-                width = that.inputs.width.output[0], // TODO: Are we handling width correctly here?
+            var inputs = that.inputs,
+                model = that.model,
+                freq = inputs.freq.output[0],
+                width = inputs.width.output[0], // TODO: Are we handling width correctly here?
                 out = that.output,
-                scale = that.model.scale,
-                phase = that.model.phase, 
+                scale = model.scale,
+                phase = model.phase !== undefined ? model.phase : inputs.phase.output[0], // TODO: Unnecessary if we knew the synth graph had been primed.
                 i;
             
             for (i = 0; i < numSamps; i++) {
@@ -539,17 +575,18 @@ var flock = flock || {};
                 }
                 phase += freq * scale;
             }
-            that.model.phase = phase;
+            model.phase = phase;
+            that.mulAdd(numSamps);
         };
         
         that.arFreq = function (numSamps) {
-            that.model.phase = that.model.phase ||  that.inputs.phase.output[0];
-            
-            var freq = that.inputs.freq.output,
-                width = that.inputs.width.output[0],
+            var inputs = that.inputs,
+                model = that.model,
+                freq = inputs.freq.output,
+                width = inputs.width.output[0],
                 out = that.output,
-                scale = that.model.scale,
-                phase = that.model.phase, 
+                scale = model.scale,
+                phase = model.phase !== undefined ? model.phase : inputs.phase.output[0], 
                 i;
             
             for (i = 0; i < numSamps; i++) {
@@ -561,7 +598,8 @@ var flock = flock || {};
                 }
                 phase += freq[i] * scale;
             }
-            that.model.phase = phase;
+            model.phase = phase;
+            that.mulAdd(numSamps);
         };
         
         that.onInputChanged = function () {
@@ -866,6 +904,10 @@ var flock = flock || {};
         that.onInputChanged = function () {
             // Any change in input value will restart the line.
             that.model.start = that.inputs.start.output[0];
+            if (that.model.start === 0.0) {
+                that.model.start = Number.MIN_VALUE; // Guard against divide by zero by using the smallest possible number.
+            }
+            
             that.model.end = that.inputs.end.output[0];
             that.model.numSteps = Math.round(that.inputs.duration.output[0] * that.sampleRate);
             that.model.multiplier = Math.pow(that.model.end / that.model.start, 1.0 / that.model.numSteps);
@@ -1042,18 +1084,18 @@ var flock = flock || {};
         var that = flock.ugen(inputs, output, options);
     
         that.krBufferMultiChan = function () {
-            var source = that.inputs.source,
+            var sources = that.inputs.sources,
                 buses = flock.enviro.shared.buses,
                 bufStart = that.inputs.bus.output[0],
                 i;
             
-            for (i = 0; i < source.length; i++) {
-                buses[bufStart + i] = source[i].output;
+            for (i = 0; i < sources.length; i++) {
+                buses[bufStart + i] = sources[i].output;
             }
         };
     
         that.krBufferExpandSingle = function () {
-            var source = that.inputs.source,
+            var source = that.inputs.sources,
                 buses = flock.enviro.shared.buses,
                 bufStart = that.inputs.bus.output[0],
                 chans = that.model.chans,
@@ -1065,7 +1107,7 @@ var flock = flock || {};
         };
     
         that.onInputChanged = function () {
-            var isMulti = typeof (that.inputs.source.length) === "number";
+            var isMulti = typeof (that.inputs.sources.length) === "number";
             that.gen = isMulti ? that.krBufferMultiChan : that.krBufferExpandSingle;            
             that.model.chans = that.inputs.expand ? that.inputs.expand.output[0] : 1; // Assume constant rate.
         };
@@ -1074,6 +1116,11 @@ var flock = flock || {};
         return that;
     };
     
+    
+    /***********************
+     * DOM-dependent UGens *
+     ***********************/
+     
     flock.ugen.scope = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
@@ -1110,6 +1157,249 @@ var flock = flock || {};
         
         that.onInputChanged();
         that.scopeView.refreshView();
+        return that;
+    };
+    
+    flock.ugen.mouse = {};
+    
+    /**
+     * Tracks the mouse's position along the specified axis within the boundaries the whole screen.
+     * This unit generator will generate a signal between 0.0 and 1.0 based on the position of the mouse;
+     * use the mul and add inputs to scale this value to an appropriate control signal.
+     */
+    // TODO: add the ability to track individual elements rather than the whole screen.
+    flock.ugen.mouse.cursor = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        that.rate = flock.rates.CONTROL;
+        that.options.axis = that.options && that.options.axis ? that.options.axis : "x"; // By default, track the mouse along the x axis.
+        
+        /**
+         * Generates a control rate signal between 0.0 and 1.0 by tracking the mouse's position along the specified axis.
+         *
+         * @param numSamps the number of samples to generate
+         */
+         // TODO: Implement exponential curve.
+        that.exponentialGen = function (numSamps) {
+            var model = that.model,
+                y0 = model.mousePosition / model.size,
+                y1 = model.y1,
+                lag = that.inputs.lag.output[0],
+                add = that.inputs.add.output[0],
+                mul = that.inputs.mul.output[0],
+                b1 = model.b1,
+                out = that.output,
+                pow = Math.pow,
+                i,
+                max;
+            
+            if (lag !== b1) {
+                b1 = lag === 0 ? 0.0 : Math.exp(flock.LOG001 / (lag * that.sampleRate));
+                model.b1 = b1;
+            }
+            
+            for (i = 0; i < numSamps; i++) {
+                max = 1.0 * mul + add;
+                y0 = pow(max  / add, y0) * add;
+                y1 = y0 + b1 * (y1 - y0); // 1-pole filter averages mouse values.
+                out[i] = y1;
+            }
+            
+            model.y1 = y1;
+        };
+        
+        that.linearGen = function (numSamps) {
+            var model = that.model,
+                y0 = model.mousePosition / model.size,
+                y1 = model.y1,
+                lag = that.inputs.lag.output[0],
+                add = that.inputs.add.output[0],
+                mul = that.inputs.mul.output[0],
+                b1 = model.b1,
+                out = that.output,
+                pow = Math.pow,
+                i;
+            
+            if (lag !== b1) {
+                b1 = lag === 0 ? 0.0 : Math.exp(flock.LOG001 / (lag * that.sampleRate));
+                model.b1 = b1;
+            }
+            
+            for (i = 0; i < numSamps; i++) {
+                y1 = y0 + b1 * (y1 - y0);
+                out[i] = y1 * mul + add;
+            }
+            
+            model.y1 = y1;
+        };
+        
+        that.noInterpolationGen = function (numSamps) {
+            var model = that.model,
+                y0 = model.mousePosition / model.size,
+                out = that.output,
+                i;
+                
+            for (i = 0; i < numSamps; i++) {
+                out[i] = y0 * mul + add;
+            }
+            
+        };
+        
+        that.normalizeOffset = function (e) {
+            if (e.offsetX !== undefined) {
+                // We're in an offset-supporting browser, bail now.
+                return e;
+            }
+
+            // This code is derived from jQuery's offset() method, licensed under the MIT and GPL.
+            // The original source is available at: https://github.com/jquery/jquery/blob/master/src/offset.js
+            var body = document.body,
+                clientTop = document.clientTop || body.clientTop || 0,
+                clientLeft = document.clientLeft || body.clientLeft || 0,
+                scrollTop = window.pageYOffset || body.scrollTop,
+                scrollLeft = window.pageXOffset || body.scrollLeft,
+                rect;
+            
+            try {
+                rect = e.target.getBoundingClientRect();
+            } catch (e) {
+                rect = {
+                    top: 0,
+                    left: 0
+                };
+            }
+            e.offsetX = e.clientX - rect.left + scrollLeft - clientLeft;
+            e.offsetY = e.clientY - rect.top + scrollTop - clientTop;
+            return e;
+        };
+        
+        that.moveListener = function (e) {
+            var model = that.model;
+            that.normalizeOffset(e);
+            model.mousePosition = model.isWithinTarget ? e[model.eventProp] : 0.0;
+        };
+        
+        that.overListener = function (e) {
+            that.model.isWithinTarget = true;
+        };
+        
+        that.outListener = function (e) {
+            var model = that.model;
+            model.isWithinTarget = false;
+            model.mousePosition = 0.0;
+        };
+        
+        that.downListener = function (e) {
+            model.isMouseDown = true;
+        };
+        
+        that.upListener = function (e) {
+            model.isMouseDown = false;
+            model.mousePosition = 0;
+        };
+        
+        that.moveWhileDownListener = function (e) {
+            if (that.model.isMouseDown) {
+                that.moveListener(e);
+            }
+        };
+        
+        that.bindEvents = function () {
+            var model = that.model,
+                target = model.target,
+                moveListener = that.moveListener;
+                
+            if (that.options.onlyOnMouseDown) {
+                target.addEventListener("mousedown", that.downListener, false);
+                target.addEventListener("mouseup", that.upListener, false);
+                moveListener = that.moveWhileDownListener;
+            }
+            
+            target.addEventListener("mouseover", that.overListener, false);
+            target.addEventListener("mouseout", that.outListener, false);
+            target.addEventListener("mousemove", moveListener, false);
+        };
+        
+        that.onInputChanged = function () {
+            if (!that.inputs.lag) {
+                that.inputs.lag = flock.ugen.value({value: 0.5}, new Float32Array(1));
+            }
+            
+            if (!that.inputs.add) {
+                that.inputs.add = flock.ugen.value({value: 0.0}, new Float32Array(1));
+            }
+            
+            if (!that.inputs.mul) {
+                that.inputs.mul = flock.ugen.value({value: 1.0}, new Float32Array(1));
+            }
+            
+            var interp = that.options.interpolation;
+            that.gen = interp === "none" ? that.noInterpolationGen : interp === "exponential" ? that.exponentialGen : that.linearGen;
+            that.model.exponential = interp === "exponential";
+        };
+        
+        that.init = function () {
+            var model = that.model,
+                options = that.options,
+                inTarget = options.target,
+                axis = options.axis,
+                target,
+                size;
+                
+            model.target = target = typeof (inTarget) === "string" ? 
+                document.querySelector(inTarget) : inTarget || window;
+
+            if (axis === "x" || axis === "width" || axis === "horizontal") {
+                model.eventProp = "offsetX";
+                size = target.width;
+                model.size = size !== undefined ? size : target.innerWidth;
+            } else {
+                model.eventProp = "offsetY";
+                size = target.height;
+                model.size = size !== undefined ? size : target.innerHeight;
+            }
+            model.mousePosition = 0;
+            model.y1 = 0;
+            
+            that.bindEvents();
+            that.onInputChanged();
+        };
+        
+        that.init();
+        return that;
+    };
+    
+    flock.ugen.mouse.click = function (inputs, output, options) {
+        var that = flock.ugen.mulAdd(inputs, output, options);
+        that.rate = flock.rates.CONTROL;
+        
+        that.gen = function (numSamps) {
+            var out = that.output,
+                model = that.model,
+                i;
+                
+            for (i = 0; i < numSamps; i++) {
+                out[i] = model.value;
+                that.mulAdd(numSamps);
+            }
+        };
+        
+        that.mouseDownListener = function (e) {
+            that.model.value = 1.0;
+        };
+        
+        that.mouseUpListener = function (e) {
+            that.model.value = 0.0;
+        };
+        
+        that.init = function () {
+            that.model.target = typeof (that.options.target) === "string" ? 
+                document.querySelector(that.options.target) : that.options.target || window;
+            that.model.value = 0.0;
+            that.model.target.addEventListener("mousedown", that.mouseDownListener, false);
+            that.model.target.addEventListener("mouseup", that.mouseUpListener, false);
+        };
+        
+        that.init();
         return that;
     };
     

@@ -52,7 +52,7 @@ var flock = flock || {};
             id: flock.OUT_UGEN_ID,
             ugen: "flock.ugen.out",
             inputs: {
-                source: {
+                sources: {
                     ugen: "flock.ugen.value",
                     inputs: {
                         value: 12
