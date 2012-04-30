@@ -499,12 +499,17 @@ var flock = flock || {};
         that.model.scale = 2 * (1 / options.sampleRate);
         
         that.krFreq = function (numSamps) {
-            that.model.phase = that.model.phase || that.inputs.phase.output[0]; // Only read the phase input initially.
             var freq = that.inputs.freq.output[0],
                 out = that.output,
                 scale = that.model.scale,
                 phase = that.model.phase,
                 i;
+            
+            // TODO: Unnecessary if we knew the synth graph had been primed.
+            // TODO: Make phase modulatable.
+            if (phase === undefined) {
+                phase = inputs.phase.output[0];
+            }
             
             for (i = 0; i < numSamps; i++) {
                 out[i] = phase;
@@ -520,12 +525,17 @@ var flock = flock || {};
         };
         
         that.arFreq = function (numSamps) {
-            that.model.phase = that.model.phase || that.inputs.phase.output[0]; // Only read the phase input initially.
             var freq = that.inputs.freq.output,
                 out = that.output,
                 scale = that.model.scale,
                 phase = that.model.phase,
                 i;
+            
+            // TODO: Unnecessary if we knew the synth graph had been primed.
+            // TODO: Make phase modulatable.
+            if (phase === undefined) {
+                phase = that.inputs.phase.output[0];
+            }
             
             for (i = 0; i < numSamps; i++) {
                 out[i] = phase;
@@ -564,8 +574,14 @@ var flock = flock || {};
                 width = inputs.width.output[0], // TODO: Are we handling width correctly here?
                 out = that.output,
                 scale = model.scale,
-                phase = model.phase !== undefined ? model.phase : inputs.phase.output[0], // TODO: Unnecessary if we knew the synth graph had been primed.
+                phase = model.phase,
                 i;
+            
+            // TODO: Unnecessary if we knew the synth graph had been primed.
+            // TODO: Make phase modulatable.
+            if (phase === undefined) {
+                phase = inputs.phase.output[0];
+            }
             
             for (i = 0; i < numSamps; i++) {
                 if (phase >= 1.0) {
@@ -587,9 +603,15 @@ var flock = flock || {};
                 width = inputs.width.output[0],
                 out = that.output,
                 scale = model.scale,
-                phase = model.phase !== undefined ? model.phase : inputs.phase.output[0], 
+                phase = model.phase, 
                 i;
             
+            // TODO: Unnecessary if we knew the synth graph had been primed.
+            // TODO: Make phase modulatable.
+            if (phase === undefined) {
+                phase = inputs.phase.output[0];
+            }
+                
             for (i = 0; i < numSamps; i++) {
                 if (phase >= 1.0) {
                     phase -= 1.0;
