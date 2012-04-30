@@ -49,6 +49,7 @@
                     <option value="noise_dust">Dust</option>
                     <option value="noise_lf">LFNoise</option>
                     <option value="noise_sin">LFNoise &amp; SinOsc</option>
+                    <option value="noise_impulse">Impulse</option>
                 </optgroup>
                 <optgroup label="Modulation">
                     <option value="amp_mod" selected="selected">Amplitude modulation</option>
@@ -227,6 +228,21 @@
             mul: 0.25
         });
         </script>
+        
+        <script type="application/flocking" id="noise_impulse">
+        // The Impulse ugen's frequency controlled by a descending xLine.
+        var synth = flock.synth({
+            ugen: "flock.ugen.impulse",
+            freq: {
+                ugen: "flock.ugen.xLine",
+                start: 880,
+                end: 2,
+                duration: 3.0
+            },
+            mul: 0.25
+        });
+        </script>
+        
         <script type="application/flocking" id="noise_sin">// LFNoise randomly changing the pitch of a sine 
         // oscillator every quarter second.
         var synth = flock.synth({

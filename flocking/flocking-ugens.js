@@ -552,6 +552,7 @@ var flock = flock || {};
         return that;
     };
     
+    
     flock.ugen.lfPulse = function (inputs, output, options) {
         var that = flock.ugen.mulAdd(inputs, output, options);
         that.model.scale = 1 / options.sampleRate;
@@ -618,6 +619,58 @@ var flock = flock || {};
         that.onInputChanged();
         return that;
     };
+    
+    
+    flock.ugen.impulse = function (inputs, output, options) {
+        var that = flock.ugen.mulAdd(inputs, output, options);
+        that.strides = {};
+        
+        that.gen = function (numSamps) {
+            var out = that.output,
+                freq = that.inputs.freq.output,
+                freqStride = that.strides.freq,
+                phase = that.inputs.phase.output[0], // TODO: Make phase modulatable.
+                phaseAccum = that.model.phaseAccum,
+                i,
+                j,
+                val;
+            
+            if (phaseAccum === undefined) {
+                phaseAccum = phase;
+            }
+            
+            for (i = 0, j = 0; i < numSamps; i++, j += freqStride) {
+                if (phaseAccum >= 1.0) {
+                    phaseAccum -= 1.0;
+                    val = 1.0;
+                } else {
+                    val = 0.0;
+                }
+                out[i] = val;
+                phaseAccum += freq[j] * that.model.scale;
+            }
+            
+            that.model.phaseAccum = phaseAccum;
+        };
+        
+        that.onInputChanged = function () {
+            if (!that.inputs.freq) {
+                that.inputs.freq = flock.ugen.value({value: 440}, new Float32Array(1));
+            }
+            
+            if (!that.inputs.phase) {
+                that.inputs.phase = flock.ugen.value({value: 0.0}, new Float32Array(1));
+            }
+            
+            that.strides.freq = that.inputs.freq.rate === "audio" ? 1 : 0;
+        };
+        
+        that.model.scale = 1.0 / that.sampleRate;
+        that.onInputChanged();
+        
+        return that;
+    };
+    
     
     flock.ugen.playBuffer = function (inputs, output, options) {
         var that = flock.ugen.mulAdd(inputs, output, options);

@@ -468,6 +468,60 @@ flock.test = flock.test || {};
     testDroppingWaveformOsc("flock.ugen.lfSaw");
     
     
+    module("flock.ugen.impulse() tests");
+    
+    var genOneSecondImpulse = function (freq, phase) {
+        var impulseDef = {
+            ugen: "flock.ugen.impulse",
+            freq: freq,
+            phase: phase
+        };
+        var imp = flock.parse.ugenForDef(impulseDef);
+        
+        imp.output = new Float32Array(44100);
+        imp.gen(44100);
+        
+        return imp.output;
+    };
+    
+    var testImpulses = function (buffer, impulseLocations, msg) {
+        var i;
+        
+        flock.test.assertValueCount(buffer, 1.0, impulseLocations.length, msg + " should contain the expected number of impulses.");
+        flock.test.assertOnlyValues(buffer, [0.0, 1.0], msg + " should only contain zeros and ones.");
+        
+        for (i = 0; i < buffer.length; i++) {
+            if (impulseLocations.indexOf(i) !== -1) {
+                equal(buffer[i], 1.0, msg + ", the sample at index " + i + " should contain an impulse.");
+            } else {
+                if (buffer[i] !== 0.0) {
+                    equal(buffer[i], 0.0, msg + ", the sample at index " + i + " should be silent.");
+                }
+            }
+        }
+    };
+    
+    test("flock.ugen.impulse()", function () {
+        var actual = genOneSecondImpulse(1.0, 0.0);
+        testImpulses(actual, [44099], "With a frequency of 1 Hz and phase of 0.0");
+        
+        actual = genOneSecondImpulse(1.0, 1.0);
+        testImpulses(actual, [0], "With a frequency of 1 Hz and phase of 1.0");
+        
+        actual = genOneSecondImpulse(1.0, 0.5);
+        testImpulses(actual, [44100 / 2], "With a frequency of 1 Hz and phase of 0.5");
+        
+        actual = genOneSecondImpulse(2.0, 0.0);
+        testImpulses(actual, [44100 / 2, 44099], "With a frequency of 2 Hz and phase of 0");
+
+        actual = genOneSecondImpulse(2.0, 0.5);
+        testImpulses(actual, [11025, 33075], "With a frequency of 2 Hz and phase of 0.5");
+
+        actual = genOneSecondImpulse(2.0, 1.0);
+        testImpulses(actual, [0, 44100 / 2], "With a frequency of 2 Hz and phase of 1");
+    });
+    
+    
     module("flock.ugen.playBuffer() tests");
     
     var playbackDef = {
