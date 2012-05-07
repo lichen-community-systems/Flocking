@@ -510,6 +510,9 @@ flock.test = flock.test || {};
         
         actual = genOneSecondImpulse(1.0, 0.5);
         testImpulses(actual, [44100 / 2], "With a frequency of 1 Hz and phase of 0.5");
+
+        actual = genOneSecondImpulse(1.0, 0.01);
+        testImpulses(actual, [44100 - (44100 / 100) + 1], "With a frequency of 1 Hz and phase of 0.01");
         
         actual = genOneSecondImpulse(2.0, 0.0);
         testImpulses(actual, [44100 / 2, 44099], "With a frequency of 2 Hz and phase of 0");
