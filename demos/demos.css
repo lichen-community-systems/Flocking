@@ -1,5 +1,5 @@
 body {
-    width: 32%;
+    width: 50%;
     margin-left: 2%;
 }
 
@@ -13,6 +13,7 @@ h2 {
 }
 
 ul {
+    width: 65%;
     margin-left: -40px;
 }
 
