@@ -117,6 +117,10 @@ var flock = flock || {};
         return buffer;
     };
     
+    flock.identity = function (arg) {
+        return arg;
+    };
+    
     flock.pathParseError = function (path, token) {
         throw new Error("Error parsing path: " + path + ". Segment '" + token + 
             "' could not be resolved.");

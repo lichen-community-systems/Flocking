@@ -45,6 +45,36 @@ var flock = flock || {};
     
     module("Utility tests");
     
+    test("flock.generate()", function () {
+        // Buffer size and static number for the generator.
+        var expected = new Float32Array([1.0, 1.0, 1.0]);
+        var actual = flock.generate(3, 1.0);
+        deepEqual(actual, expected, "Buffer size as a number and generator as a scalar.");
+        
+        // Pre-existing buffer and a static number for the generator.
+        expected = new Float32Array(5);
+        actual = flock.generate(expected, 42.0);
+        equal(actual, expected, "When a buffer is supplied as the first argument, it should operated on in place.");
+        
+        // Pre-existing buffer and a generator function.
+        expected = new Float32Array([99.9, 199.8]);
+        var inputBuffer = new Float32Array(2);
+        actual = flock.generate(inputBuffer, function (i) {
+            return 99.9 * (i + 1);
+        });
+        equal(actual, inputBuffer,
+            "When a buffer is supplied as the first argument and a generator as the second, the buffer should operated on in place.");
+        deepEqual(actual, expected,
+            "The generator should be invoked with the increment value as its first argument, and its output should be placed in the buffer.");
+        
+        // Buffer size and generator function
+        expected = new Float32Array([0, 42, 0, 42, 0]);
+        actual = flock.generate(5, function (i) {
+            return i % 2 > 0 ? 42 : 0;
+        });
+        deepEqual(actual, expected, "Buffer size as a number and generator function.")
+    });
+    
     test("flock.minBufferSize()", function () {
         var audioSettings = {
             rates: {

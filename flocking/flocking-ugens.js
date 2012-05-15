@@ -46,7 +46,7 @@ var flock = flock || {};
             return ugen;
         };
     
-        that.onInputChanged = function () {}; // No-op base implementation.
+        that.onInputChanged = flock.identity; // No-op base implementation.
         return that;
     };
     
@@ -176,12 +176,14 @@ var flock = flock || {};
             }
         };
         
-        that.passThroughGen = function (numSamps) {
-            that.output = that.inputs.sources.output;
-        };
-        
         that.onInputChanged = function () {
-            that.gen = typeof (that.inputs.sources.length) === "number" ? that.sumGen : that.passThroughGen;
+            if (typeof (that.inputs.sources.length) === "number") {
+                // We have an array of sources that need to be summed.
+                that.gen = that.sumGen;
+            } else {
+                that.output = that.inputs.sources.output;
+                that.gen = flock.identity;
+            }
         };
         
         that.onInputChanged();
