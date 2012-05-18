@@ -1,5 +1,6 @@
 body {
-    width: 32%;
+    width: 50%;
+    margin-left: 2%;
 }
 
 h1, h2 {
@@ -11,8 +12,9 @@ h2 {
     margin-bottom: 5%;
 }
 
-.demos {
-    margin-left: 7%;
+ul {
+    width: 65%;
+    margin-left: -40px;
 }
 
 li {
