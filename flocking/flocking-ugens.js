@@ -1116,6 +1116,83 @@ var flock = flock || {};
         return that;
     };
     
+    flock.ugen.audioIn = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.gen = function (numSamps) {
+            var out = that.output,
+                m = that.model,
+                idx = m.idx,
+                inputBuffer = m.inputBuffer,
+                i;
+            
+            for (i = 0; i < numSamps; i++) {
+                if (idx >= inputBuffer.length) {
+                    inputBuffer = m.inputBuffers.shift() || [];
+                    idx = 0;
+                }
+                
+                out[i] = idx < inputBuffer.length ? inputBuffer[idx++] : 0.0;
+            }
+            
+            m.idx = idx;
+            m.inputBuffer = inputBuffer;
+        };
+        
+        that.onAudioData = function (data) {
+            that.model.inputBuffers.push(data);
+         };
+        
+        that.setDevice = function (deviceIdx) {
+            deviceIdx = deviceIdx !== undefined ? deviceIdx : that.inputs.device.output[0];
+            that.mike.setMicrophone(deviceIdx);
+        };
+        
+        that.init = function () {
+            var m = that.model,
+                mikeOpts = that.options.mike || {};
+
+            // TOOD: Options merging! This is absurd!
+            mikeOpts.settings = mikeOpts.settings || {};
+            mikeOpts.settings.sampleRate = new String(mikeOpts.settings.sampleRate || flock.enviro.shared.audioSettings.rates.audio);
+            
+            // Setup and listen to Mike.js.
+            that.mike = new Mike(mikeOpts);
+            
+            that.mike.on("ready", function () {
+                that.setDevice();
+            });
+            
+            that.mike.on("microphonechange", function () {
+                this.start();
+            });
+            
+            that.mike.on("data", that.onAudioData);
+            
+            // Initialize the model before audio has started flowing from the device.
+            m.inputBuffers = [];
+            m.inputBuffer = [];
+            m.idx = 0;
+        };
+        
+        that.onInputChanged = function (inputName) {
+            if (inputName === "device") {
+                that.setDevice();
+                return;
+            }
+            
+            if (!that.inputs.device) {
+                that.inputs.device = flock.ugen.value({value: 0.0}, new Float32Array(1));
+            }
+
+        };
+        
+        that.onInputChanged();
+        that.init();
+        
+        return that;
+    };
+    
     
     /***********************
      * DOM-dependent UGens *

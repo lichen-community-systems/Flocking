@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Audio Input Demo</title>
+        
+        <link rel="stylesheet" type="text/css" href="../../shared/css/demos.css" />
+                
+        <script src="../../../third-party/dataview.js/js/dataview.js"></script>
+        <script src="../../../third-party/mike.js/js/mike.js"></script>
+        
+        <script src="../../../flocking/flocking-audiofile.js"></script>
+        <script src="../../../flocking/flocking-core.js"></script>
+        <script src="../../../flocking/flocking-parser.js"></script>
+        <script src="../../../flocking/flocking-ugens.js"></script>        
+    </head>
+    
+    <body>
+        <h1>Audio Input Demo</h1>
+        
+        <script type="text/javascript">
+            var synth = flock.synth({
+                ugen: "flock.ugen.audioIn",
+                options: {
+                    mike: {
+                        swfPath: "../../../third-party/mike.js/swf/mike.swf"
+                    }
+                }
+            });
+            // TODO: Use a standard Flocking play button control here.
+            synth.play();
+        </script>
+    </body>
+</html>
