@@ -200,14 +200,15 @@ var flock = flock || {};
         that.model.phase = 0.0;
 
         that.krFreqKrPhase = function (numSamps) {
-            var freq = that.inputs.freq.output[0],
+            var m = that.model,
+                freq = that.inputs.freq.output[0],
                 phase = that.inputs.phase.output[0],
                 table = that.inputs.table,
-                tableLen = that.model.tableLen,
-                freqInc = freq * that.model.tableIncHz,
-                phaseInc = phase * that.model.tableIncRad,
+                tableLen = m.tableLen,
+                freqInc = freq * m.tableIncHz,
+                phaseInc = phase * m.tableIncRad,
                 output = that.output,
-                phaseAccum = that.model.phase,
+                phaseAccum = m.phase,
                 i,
                 idx;
 
@@ -228,19 +229,20 @@ var flock = flock || {};
                 }
             }
         
-            that.model.phase = phaseAccum;
+            m.phase = phaseAccum;
             that.mulAdd(numSamps);
         };
     
         that.krFreqArPhase = function (numSamps) {
-            var freq = that.inputs.freq.output[0],
+            var m = that.model,
+                freq = that.inputs.freq.output[0],
                 phase = that.inputs.phase.output,
                 table = that.inputs.table,
-                tableLen = that.model.tableLen,
-                freqInc = freq * that.model.tableIncHz,
-                tableIncRad = that.model.tableIncRad,
+                tableLen = m.tableLen,
+                freqInc = freq * m.tableIncHz,
+                tableIncRad = m.tableIncRad,
                 output = that.output,
-                phaseAccum = that.model.phase,
+                phaseAccum = m.phase,
                 i,
                 idx;
 
@@ -259,19 +261,20 @@ var flock = flock || {};
                     phaseAccum += tableLen;
                 }
             }
-            that.model.phase = phaseAccum;
+            m.phase = phaseAccum;
             that.mulAdd(numSamps);
         };
 
         that.arFreqKrPhase = function (numSamps) {
-            var freq = that.inputs.freq.output,
+            var m = that.model,
+                freq = that.inputs.freq.output,
                 phase = that.inputs.phase.output[0],
                 table = that.inputs.table,
-                tableLen = that.model.tableLen,
-                tableIncHz = that.model.tableIncHz,
-                phaseInc = phase * that.model.tableIncRad,
+                tableLen = m.tableLen,
+                tableIncHz = m.tableIncHz,
+                phaseInc = phase * m.tableIncRad,
                 output = that.output,
-                phaseAccum = that.model.phase,
+                phaseAccum = m.phase,
                 i,
                 idx;
 
@@ -290,19 +293,20 @@ var flock = flock || {};
                     phaseAccum += tableLen;
                 }
             }
-            that.model.phase = phaseAccum;
+            m.phase = phaseAccum;
             that.mulAdd(numSamps);
         };
             
         that.arFreqArPhase = function (numSamps) {
-            var freq = that.inputs.freq.output,
+            var m = that.model,
+                freq = that.inputs.freq.output,
                 phase = that.inputs.phase.output,
                 table = that.inputs.table,
-                tableLen = that.model.tableLen,
-                tableIncHz = that.model.tableIncHz,
-                tableIncRad = that.model.tableIncRad,
+                tableLen = m.tableLen,
+                tableIncHz = m.tableIncHz,
+                tableIncRad = m.tableIncRad,
                 output = that.output,
-                phaseAccum = that.model.phase,
+                phaseAccum = m.phase,
                 i,
                 idx;
 
@@ -322,7 +326,7 @@ var flock = flock || {};
                 }
             }
 
-            that.model.phase = phaseAccum;
+            m.phase = phaseAccum;
             that.mulAdd(numSamps);
         };
     
@@ -331,9 +335,10 @@ var flock = flock || {};
         
             // Precalculate table-related values.
             // TODO: The table input here isn't a standard ugen input. Does this matter?
-            that.model.tableLen = that.inputs.table.length;
-            that.model.tableIncHz = that.model.tableLen / that.sampleRate;
-            that.model.tableIncRad =  that.model.tableLen / flock.TWOPI;
+            var m = that.model;
+            m.tableLen = that.inputs.table.length;
+            m.tableIncHz = m.tableLen / that.sampleRate;
+            m.tableIncRad =  m.tableLen / flock.TWOPI;
         };
     
         that.onInputChanged();
@@ -428,62 +433,66 @@ var flock = flock || {};
         that.model.phase = 0.0;
     
         that.krFreqKrPhase = function (numSamps) {
-            var freq = that.inputs.freq.output[0],
+            var m = that.model,
+                freq = that.inputs.freq.output[0],
                 freqInc = freq / that.sampleRate * flock.TWOPI,
                 phase = that.inputs.phase.output[0],
-                phaseAccum = that.model.phase,
+                phaseAccum = m.phase,
                 out = that.output,
                 i;
             for (i = 0; i < numSamps; i++) {
                 out[i] = Math.sin(phaseAccum + phase);
                 phaseAccum += freqInc;
             }
-            that.model.phase = phaseAccum;
+            m.phase = phaseAccum;
             that.mulAdd(numSamps);
         };
     
         that.krFreqArPhase = function (numSamps) {
-            var freq = that.inputs.freq.output[0],
+            var m = that.model,
+                freq = that.inputs.freq.output[0],
                 freqInc = freq / that.sampleRate * flock.TWOPI,
                 phase = that.inputs.phase.output,
-                phaseAccum = that.model.phase,
+                phaseAccum = m.phase,
                 out = that.output,
                 i;
             for (i = 0; i < numSamps; i++) {
                 out[i] = Math.sin(phaseAccum + phase[i]);
                 phaseAccum += freqInc;
             }
-            that.model.phase = phaseAccum;
+            m.phase = phaseAccum;
             that.mulAdd(numSamps);
         };
     
         that.arFreqKrPhase = function (numSamps) {
-            var freq = that.inputs.freq.output,
+            var m = that.model,
+                freq = that.inputs.freq.output,
                 phase = that.inputs.phase.output[0],
                 out = that.output,
-                phaseAccum = that.model.phase,
+                phaseAccum = m.phase,
                 sampleRate = that.sampleRate,
                 i;
             for (i = 0; i < numSamps; i++) {
                 out[i] = Math.sin(phaseAccum + phase);
                 phaseAccum += freq[i]  / sampleRate * flock.TWOPI;
             }
-            that.model.phase = phaseAccum;
+            m.phase = phaseAccum;
             that.mulAdd(numSamps);
         };
     
         that.arFreqArPhase = function (numSamps) {
-            var freq = that.inputs.freq.output,
+            var m = that.model,
+                freq = that.inputs.freq.output,
                 phase = that.inputs.phase.output,
                 out = that.output,
-                phaseAccum = that.model.phase,
+                phaseAccum = m.phase,
                 sampleRate = that.sampleRate,
                 i;
             for (i = 0; i < numSamps; i++) {
                 out[i] = Math.sin(phaseAccum + phase[i]);
                 phaseAccum += freq[i] / sampleRate * flock.TWOPI;
             }
-            that.model.phase = phaseAccum;
+            m.phase = phaseAccum;
             that.mulAdd(numSamps);
         };
     
@@ -501,11 +510,11 @@ var flock = flock || {};
         that.model.scale = 2 * (1 / options.sampleRate);
         
         that.krFreq = function (numSamps) {
-            that.model.phase = that.model.phase || that.inputs.phase.output[0]; // Only read the phase input initially.
-            var freq = that.inputs.freq.output[0],
+            var m = that.model,
+                freq = that.inputs.freq.output[0],
                 out = that.output,
-                scale = that.model.scale,
-                phase = that.model.phase,
+                scale = m.scale,
+                phase = m.phase === undefined ? that.inputs.phase.output[0] : m.phase, // TODO: Make phase modulatable.
                 i;
             
             for (i = 0; i < numSamps; i++) {
@@ -517,16 +526,16 @@ var flock = flock || {};
                     phase += 2.0;
                 }
             }
-            that.model.phase = phase;
+            m.phase = phase;
             that.mulAdd(numSamps);
         };
         
         that.arFreq = function (numSamps) {
-            that.model.phase = that.model.phase || that.inputs.phase.output[0]; // Only read the phase input initially.
-            var freq = that.inputs.freq.output,
+            var m = that.model,
+                freq = that.inputs.freq.output,
                 out = that.output,
-                scale = that.model.scale,
-                phase = that.model.phase,
+                scale = m.scale,
+                phase = m.phase === undefined ? that.inputs.phase.output[0] : m.phase, // TODO: Make phase modulatable.
                 i;
             
             for (i = 0; i < numSamps; i++) {
@@ -538,7 +547,7 @@ var flock = flock || {};
                     phase += 2.0;
                 }
             }
-            that.model.phase = phase;
+            m.phase = phase;
             that.mulAdd(numSamps);
         };
         
@@ -560,12 +569,12 @@ var flock = flock || {};
         
         that.krFreq = function (numSamps) {
             var inputs = that.inputs,
-                model = that.model,
+                m = that.model,
                 freq = inputs.freq.output[0],
                 width = inputs.width.output[0], // TODO: Are we handling width correctly here?
                 out = that.output,
-                scale = model.scale,
-                phase = model.phase !== undefined ? model.phase : inputs.phase.output[0], // TODO: Unnecessary if we knew the synth graph had been primed.
+                scale = m.scale,
+                phase = m.phase !== undefined ? m.phase : inputs.phase.output[0], // TODO: Unnecessary if we knew the synth graph had been primed.
                 i;
             
             for (i = 0; i < numSamps; i++) {
@@ -577,18 +586,18 @@ var flock = flock || {};
                 }
                 phase += freq * scale;
             }
-            model.phase = phase;
+            m.phase = phase;
             that.mulAdd(numSamps);
         };
         
         that.arFreq = function (numSamps) {
             var inputs = that.inputs,
-                model = that.model,
+                m = that.model,
                 freq = inputs.freq.output,
                 width = inputs.width.output[0],
                 out = that.output,
-                scale = model.scale,
-                phase = model.phase !== undefined ? model.phase : inputs.phase.output[0], 
+                scale = m.scale,
+                phase = m.phase !== undefined ? m.phase : inputs.phase.output[0],
                 i;
             
             for (i = 0; i < numSamps; i++) {
@@ -600,7 +609,7 @@ var flock = flock || {};
                 }
                 phase += freq[i] * scale;
             }
-            model.phase = phase;
+            m.phase = phase;
             that.mulAdd(numSamps);
         };
         
@@ -634,18 +643,19 @@ var flock = flock || {};
         
         // Optimized gen function for regular-speed playback.
         that.crRegularSpeedGen = function (numSamps) {
-            var out = that.output,
+            var m = that.model,
+                out = that.output,
                 chan = that.inputs.channel.output[0],
                 source = that.buffer,
-                bufIdx = that.model.idx,
+                bufIdx = m.idx,
                 bufLen = source.length,
                 loop = that.inputs.loop.output[0],
                 i;
             
             // If the channel has changed, update the buffer we're reading from.
-            if (that.model.channel !== chan) {
-                that.model.channel = chan;
-                that.buffer = source = flock.enviro.shared.buffers[that.model.name][chan]; 
+            if (m.channel !== chan) {
+                m.channel = chan;
+                that.buffer = source = flock.enviro.shared.buffers[m.name][chan];
             }
             
             for (i = 0; i < numSamps; i++) {
@@ -661,23 +671,24 @@ var flock = flock || {};
                 bufIdx++;
             }
             
-            that.model.idx = bufIdx;
+            m.idx = bufIdx;
         };
         
         that.krSpeedGen = function (numSamps) {
-            var out = that.output,
+            var m = that.model,
+                out = that.output,
                 chan = that.inputs.channel.output[0],
                 speedInc = 1.0 * that.inputs.speed.output[0],
                 source = that.buffer,
-                bufIdx = that.model.idx,
+                bufIdx = m.idx,
                 bufLen = source.length,
                 loop = that.inputs.loop.output[0],
                 i;
             
             // If the channel has changed, update the buffer we're reading from.
-            if (that.model.channel !== chan) {
-                that.model.channel = chan;
-                that.buffer = source = flock.enviro.shared.buffers[that.model.name][chan]; 
+            if (m.channel !== chan) {
+                m.channel = chan;
+                that.buffer = source = flock.enviro.shared.buffers[m.name][chan];
             }
             
             for (i = 0; i < numSamps; i++) {
@@ -694,10 +705,12 @@ var flock = flock || {};
                 bufIdx += speedInc;
             }
             
-            that.model.idx = bufIdx;
+            m.idx = bufIdx;
         };
         
-        that.onInputChanged = function (inputName) {            
+        that.onInputChanged = function (inputName) {
+            var m = that.model;
+            
             if (!that.inputs.loop) {
                 that.inputs.loop = flock.ugen.value({value: 0.0}, new Float32Array(1));
             }
@@ -708,11 +721,11 @@ var flock = flock || {};
             
             if (!that.inputs.channel) {
                 that.inputs.channel = flock.ugen.value({value: 0.0}, new Float32Array(1));
-                that.model.channel = that.inputs.channel.output[0];
+                m.channel = that.inputs.channel.output[0];
             }
             
-            if (that.model.bufDef !== that.inputs.buffer || inputName === "buffer") {
-                var bufDef = that.model.bufDef = that.inputs.buffer,
+            if (m.bufDef !== that.inputs.buffer || inputName === "buffer") {
+                var bufDef = m.bufDef = that.inputs.buffer,
                     chan = that.inputs.channel.output[0];
 
                 if (typeof (bufDef) === "string") {
@@ -721,8 +734,8 @@ var flock = flock || {};
                     // TODO: Should this be done earlier (during ugen parsing)?
                     flock.parse.bufferForDef(bufDef, function (buffer, name) {
                         that.buffer = buffer ? buffer[that.inputs.channel.output[0]] : that.buffer;
-                        that.model.name = name;
-                        that.model.idx = 0;
+                        m.name = name;
+                        m.idx = 0;
                     });
                 }
             }
@@ -751,19 +764,20 @@ var flock = flock || {};
         };
     
         that.gen = function (numSamps) {
-            var density = inputs.density.output[0], // Density is kr.
+            var m = that.model,
+                density = inputs.density.output[0], // Density is kr.
                 threshold, 
                 scale,
                 val,
                 i;
             
-            if (density !== that.model.density) {
-                that.model.density = density;
-                threshold = that.model.threshold = density * that.model.sampleDur;
-                scale = that.model.scale = threshold > 0.0 ? 1.0 / threshold : 0.0;
+            if (density !== m.density) {
+                m.density = density;
+                threshold = m.threshold = density * m.sampleDur;
+                scale = m.scale = threshold > 0.0 ? 1.0 / threshold : 0.0;
             } else {
-                threshold = that.model.threshold;
-                scale = that.model.scale;
+                threshold = m.threshold;
+                scale = m.scale;
             }
         
             for (i = 0; i < numSamps; i++) {
@@ -784,11 +798,12 @@ var flock = flock || {};
         that.model.level = 0;
     
         that.gen = function (numSamps) {
-            var freq = inputs.freq.output[0], // Freq is kr.
+            var m = that.model,
+                freq = inputs.freq.output[0], // Freq is kr.
                 remain = numSamps,
                 out = that.output,
-                counter = that.model.counter,
-                level = that.model.level,
+                counter = m.counter,
+                level = m.level,
                 currSamp = 0,
                 sampsForLevel,
                 i;
@@ -809,8 +824,8 @@ var flock = flock || {};
                 }
 
             } while (remain);
-            that.model.counter = counter;
-            that.model.level = level;
+            m.counter = counter;
+            m.level = level;
         
             that.mulAdd(numSamps);
         };
@@ -827,11 +842,12 @@ var flock = flock || {};
         var that = flock.ugen.mulAdd(inputs, output, options);
 
         that.gen = function (numSamps) {
-            var stepSize = that.model.stepSize,
-                numSteps = that.model.numSteps,
+            var m = that.model,
+                stepSize = m.stepSize,
+                numSteps = m.numSteps,
                 numLevelVals = numSteps >= numSamps ? numSamps : numSteps,
                 numEndVals = numSamps - numLevelVals,
-                level = that.model.level,
+                level = m.level,
                 out = that.output,
                 i;
         
@@ -848,23 +864,25 @@ var flock = flock || {};
                 }
             }
         
-            that.model.level = level;
-            that.model.numSteps = numSteps;
+            m.level = level;
+            m.numSteps = numSteps;
         
             that.mulAdd(numSamps);
         };
     
         that.onInputChanged = function () {
+            var m = that.model;
+            
             // Any change in input value will restart the line.
-            that.model.start = that.inputs.start.output[0];
-            that.model.end = that.inputs.end.output[0];
-            that.model.numSteps = Math.round(that.inputs.duration.output[0] * that.sampleRate); // Duration is seconds.
-            if (that.model.numSteps === 0) {
-                that.model.stepSize = 0.0;
-                that.model.level = that.model.end;
+            m.start = that.inputs.start.output[0];
+            m.end = that.inputs.end.output[0];
+            m.numSteps = Math.round(that.inputs.duration.output[0] * that.sampleRate); // Duration is seconds.
+            if (m.numSteps === 0) {
+                m.stepSize = 0.0;
+                m.level = m.end;
             } else {
-                that.model.stepSize = (that.model.end - that.model.start) / that.model.numSteps;
-                that.model.level = that.model.start;
+                m.stepSize = (m.end - m.start) / m.numSteps;
+                m.level = m.start;
             }
         };
     
@@ -876,11 +894,12 @@ var flock = flock || {};
         var that = flock.ugen.mulAdd(inputs, output, options);
 
         that.gen = function (numSamps) {
-            var multiplier = that.model.multiplier,
-                numSteps = that.model.numSteps,
+            var m = that.model,
+                multiplier = m.multiplier,
+                numSteps = m.numSteps,
                 numLevelVals = numSteps >= numSamps ? numSamps : numSteps,
                 numEndVals = numSamps - numLevelVals,
-                level = that.model.level,
+                level = m.level,
                 out = that.output,
                 i;
         
@@ -897,23 +916,25 @@ var flock = flock || {};
                 }
             }
         
-            that.model.level = level;
-            that.model.numSteps = numSteps;
+            m.level = level;
+            m.numSteps = numSteps;
         
             that.mulAdd(numSamps);
         };
     
         that.onInputChanged = function () {
+            var m = that.model;
+            
             // Any change in input value will restart the line.
-            that.model.start = that.inputs.start.output[0];
-            if (that.model.start === 0.0) {
-                that.model.start = Number.MIN_VALUE; // Guard against divide by zero by using the smallest possible number.
+            m.start = that.inputs.start.output[0];
+            if (m.start === 0.0) {
+                m.start = Number.MIN_VALUE; // Guard against divide by zero by using the smallest possible number.
             }
             
-            that.model.end = that.inputs.end.output[0];
-            that.model.numSteps = Math.round(that.inputs.duration.output[0] * that.sampleRate);
-            that.model.multiplier = Math.pow(that.model.end / that.model.start, 1.0 / that.model.numSteps);
-            that.model.level = that.model.start;
+            m.end = that.inputs.end.output[0];
+            m.numSteps = Math.round(that.inputs.duration.output[0] * that.sampleRate);
+            m.multiplier = Math.pow(m.end / m.start, 1.0 / m.numSteps);
+            m.level = m.start;
         };
     
         that.onInputChanged();
@@ -930,15 +951,16 @@ var flock = flock || {};
         // TODO: This implementation currently outputs at audio rate, which is perhaps unnecessary.
         //       "gate" is also assumed to be control rate.
         that.gen = function (numSamps) {
-            var out = that.output,
-                prevGate = that.model.previousGate,
+            var m = that.model,
+                out = that.output,
+                prevGate = m.previousGate,
                 gate = that.inputs.gate.output[0],
-                level = that.model.level,
-                stage = that.model.stage,
+                level = m.level,
+                stage = m.stage,
                 currentStep = stage.currentStep,
                 stepInc = stage.stepInc,
                 numSteps = stage.numSteps,
-                targetLevel = that.model.targetLevel,
+                targetLevel = m.targetLevel,
                 stepsNeedRecalc = false,
                 stageTime,
                 i;
@@ -974,9 +996,9 @@ var flock = flock || {};
             }
             
             // Store instance state.
-            that.model.level = level;
-            that.model.targetLevel = targetLevel;
-            that.model.previousGate = gate;
+            m.level = level;
+            m.targetLevel = targetLevel;
+            m.previousGate = gate;
             stage.currentStep = currentStep;
             stage.stepInc = stepInc;
             stage.numSteps = numSteps;
@@ -1005,17 +1027,19 @@ var flock = flock || {};
         };
         
         that.init = function () {
+            var m = that.model;
+            
             that.onInputChanged();
             
             // Set default model state.
-            that.model.stage = {
+            m.stage = {
                 currentStep: 0,
                 stepInc: 0,
                 numSteps: 0
             };
-            that.model.previousGate = 0.0;
-            that.model.level = that.inputs.start.output[0];
-            that.model.targetLevel = that.inputs.sustain.output[0];
+            m.previousGate = 0.0;
+            m.level = that.inputs.start.output[0];
+            m.targetLevel = that.inputs.sustain.output[0];
         };
 
         that.init();
@@ -1027,29 +1051,30 @@ var flock = flock || {};
         that.model.previousValue = 0.0;
         
         that.gen = function (numSamps) {
-            var source = that.inputs.source.output,
+            var m = that.model,
+                source = that.inputs.source.output,
                 out = that.output,
-                prevAtt = that.model.attackTime,
+                prevAtt = m.attackTime,
                 nextAtt = that.inputs.attack.output[0],
-                prevRel = that.model.releaseTime,
+                prevRel = m.releaseTime,
                 nextRel = that.inputs.release.output[0],
-                prevVal = that.model.previousValue,
-                attCoef = that.model.attackCoef,
-                relCoef = that.model.releaseCoef,
+                prevVal = m.previousValue,
+                attCoef = m.attackCoef,
+                relCoef = m.releaseCoef,
                 i,
                 val,
                 coef;
                 
                 // Convert 60 dB attack and release times to coefficients if they've changed.
                 if (nextAtt !== prevAtt) {
-                    that.model.attackTime = nextAtt;
-                    attCoef = that.model.attackCoef = 
+                    m.attackTime = nextAtt;
+                    attCoef = m.attackCoef = 
                         nextAtt === 0.0 ? 0.0 : Math.exp(flock.LOG1 / (nextAtt * that.sampleRate));
                 }
                 
                 if (nextRel !== prevRel) {
-                    that.model.releaseTime = nextRel;
-                    relCoef = that.model.releaseCoef = 
+                    m.releaseTime = nextRel;
+                    relCoef = m.releaseCoef = 
                         (nextRel === 0.0) ? 0.0 : Math.exp(flock.LOG1 / (nextRel * that.sampleRate));
                 }
             
@@ -1059,7 +1084,7 @@ var flock = flock || {};
                 out[i] = prevVal = val + (prevVal - val) * coef;
             }
             
-            that.model.previousValue = prevVal;
+            m.previousValue = prevVal;
         };
         
         that.onInputChanged = function () {
@@ -1135,9 +1160,10 @@ var flock = flock || {};
         that.scopeView = flock.gfx.scopeView(that.options.canvas, that.model.scope);
         
         that.gen = function (numSamps) {
-            var spf = that.model.spf,
-                bufIdx = that.model.bufIdx,
-                buf = that.model.scope.values,
+            var m = that.model,
+                spf = m.spf,
+                bufIdx = m.bufIdx,
+                buf = m.scope.values,
                 i;
             
             for (i = 0; i < numSamps; i++) {
@@ -1149,7 +1175,7 @@ var flock = flock || {};
                     that.scopeView.refreshView();
                 }
             }
-            that.model.bufIdx = bufIdx;
+            m.bufIdx = bufIdx;
         };
         
         that.onInputChanged = function () {
@@ -1180,68 +1206,67 @@ var flock = flock || {};
          *
          * @param numSamps the number of samples to generate
          */
-         // TODO: Implement exponential curve.
         that.exponentialGen = function (numSamps) {
-            var model = that.model,
-                y0 = model.mousePosition / model.size,
-                y1 = model.y1,
+            var m = that.model,
+                scaledMouse = m.mousePosition / m.size,
+                movingAvg = m.movingAvg,
                 lag = that.inputs.lag.output[0],
                 add = that.inputs.add.output[0],
                 mul = that.inputs.mul.output[0],
-                b1 = model.b1,
+                lagCoef = m.lagCoef,
                 out = that.output,
                 pow = Math.pow,
                 i,
                 max;
             
-            if (lag !== b1) {
-                b1 = lag === 0 ? 0.0 : Math.exp(flock.LOG001 / (lag * that.sampleRate));
-                model.b1 = b1;
+            if (lag !== lagCoef) {
+                lagCoef = lag === 0 ? 0.0 : Math.exp(flock.LOG001 / (lag * that.sampleRate));
+                m.lagCoef = lagCoef;
             }
             
             for (i = 0; i < numSamps; i++) {
                 max = 1.0 * mul + add;
-                y0 = pow(max  / add, y0) * add;
-                y1 = y0 + b1 * (y1 - y0); // 1-pole filter averages mouse values.
-                out[i] = y1;
+                scaledMouse = pow(max  / add, scaledMouse) * add;
+                movingAvg = scaledMouse + lagCoef * (movingAvg - scaledMouse); // 1-pole filter averages mouse values.
+                out[i] = movingAvg;
             }
             
-            model.y1 = y1;
+            m.movingAvg = movingAvg;
         };
         
         that.linearGen = function (numSamps) {
-            var model = that.model,
-                y0 = model.mousePosition / model.size,
-                y1 = model.y1,
+            var m = that.model,
+                scaledMouse = m.mousePosition / m.size,
+                movingAvg = m.movingAvg,
                 lag = that.inputs.lag.output[0],
                 add = that.inputs.add.output[0],
                 mul = that.inputs.mul.output[0],
-                b1 = model.b1,
+                lagCoef = m.lagCoef,
                 out = that.output,
                 pow = Math.pow,
                 i;
             
-            if (lag !== b1) {
-                b1 = lag === 0 ? 0.0 : Math.exp(flock.LOG001 / (lag * that.sampleRate));
-                model.b1 = b1;
+            if (lag !== lagCoef) {
+                lagCoef = lag === 0 ? 0.0 : Math.exp(flock.LOG001 / (lag * that.sampleRate));
+                m.lagCoef = lagCoef;
             }
             
             for (i = 0; i < numSamps; i++) {
-                y1 = y0 + b1 * (y1 - y0);
-                out[i] = y1 * mul + add;
+                movingAvg = scaledMouse + lagCoef * (movingAvg - scaledMouse);
+                out[i] = movingAvg * mul + add;
             }
             
-            model.y1 = y1;
+            m.movingAvg = movingAvg;
         };
         
         that.noInterpolationGen = function (numSamps) {
-            var model = that.model,
-                y0 = model.mousePosition / model.size,
+            var m = that.model,
+                scaledMouse = m.mousePosition / m.size,
                 out = that.output,
                 i;
                 
             for (i = 0; i < numSamps; i++) {
-                out[i] = y0 * mul + add;
+                out[i] = scaledMouse * mul + add;
             }
             
         };
@@ -1275,9 +1300,9 @@ var flock = flock || {};
         };
         
         that.moveListener = function (e) {
-            var model = that.model;
+            var m = that.model;
             that.normalizeOffset(e);
-            model.mousePosition = model.isWithinTarget ? e[model.eventProp] : 0.0;
+            m.mousePosition = m.isWithinTarget ? e[m.eventProp] : 0.0;
         };
         
         that.overListener = function (e) {
@@ -1285,18 +1310,19 @@ var flock = flock || {};
         };
         
         that.outListener = function (e) {
-            var model = that.model;
-            model.isWithinTarget = false;
-            model.mousePosition = 0.0;
+            var m = that.model;
+            m.isWithinTarget = false;
+            m.mousePosition = 0.0;
         };
         
         that.downListener = function (e) {
-            model.isMouseDown = true;
+            that.model.isMouseDown = true;
         };
         
         that.upListener = function (e) {
-            model.isMouseDown = false;
-            model.mousePosition = 0;
+            var m = that.model;
+            m.isMouseDown = false;
+            m.mousePosition = 0;
         };
         
         that.moveWhileDownListener = function (e) {
@@ -1306,8 +1332,8 @@ var flock = flock || {};
         };
         
         that.bindEvents = function () {
-            var model = that.model,
-                target = model.target,
+            var m = that.model,
+                target = m.target,
                 moveListener = that.moveListener;
                 
             if (that.options.onlyOnMouseDown) {
@@ -1340,27 +1366,26 @@ var flock = flock || {};
         };
         
         that.init = function () {
-            var model = that.model,
+            var m = that.model,
                 options = that.options,
                 inTarget = options.target,
                 axis = options.axis,
-                target,
                 size;
                 
-            model.target = target = typeof (inTarget) === "string" ? 
+            m.target = target = typeof (inTarget) === "string" ? 
                 document.querySelector(inTarget) : inTarget || window;
 
             if (axis === "x" || axis === "width" || axis === "horizontal") {
-                model.eventProp = "offsetX";
+                m.eventProp = "offsetX";
                 size = target.width;
-                model.size = size !== undefined ? size : target.innerWidth;
+                m.size = size !== undefined ? size : target.innerWidth;
             } else {
-                model.eventProp = "offsetY";
+                m.eventProp = "offsetY";
                 size = target.height;
-                model.size = size !== undefined ? size : target.innerHeight;
+                m.size = size !== undefined ? size : target.innerHeight;
             }
-            model.mousePosition = 0;
-            model.y1 = 0;
+            m.mousePosition = 0;
+            m.movingAvg = 0;
             
             that.bindEvents();
             that.onInputChanged();
@@ -1376,11 +1401,11 @@ var flock = flock || {};
         
         that.gen = function (numSamps) {
             var out = that.output,
-                model = that.model,
+                m = that.model,
                 i;
                 
             for (i = 0; i < numSamps; i++) {
-                out[i] = model.value;
+                out[i] = m.value;
                 that.mulAdd(numSamps);
             }
         };
@@ -1394,11 +1419,12 @@ var flock = flock || {};
         };
         
         that.init = function () {
-            that.model.target = typeof (that.options.target) === "string" ? 
+            var m = that.model;
+            m.target = typeof (that.options.target) === "string" ? 
                 document.querySelector(that.options.target) : that.options.target || window;
-            that.model.value = 0.0;
-            that.model.target.addEventListener("mousedown", that.mouseDownListener, false);
-            that.model.target.addEventListener("mouseup", that.mouseUpListener, false);
+            m.value = 0.0;
+            m.target.addEventListener("mousedown", that.mouseDownListener, false);
+            m.target.addEventListener("mouseup", that.mouseUpListener, false);
         };
         
         that.init();
