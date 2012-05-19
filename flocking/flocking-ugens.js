@@ -1368,24 +1368,36 @@ var flock = flock || {};
         that.init = function () {
             var m = that.model,
                 options = that.options,
-                inTarget = options.target,
+                oTarget = options.target,
                 axis = options.axis,
+                target = typeof (oTarget) === "string" ? document.querySelector(oTarget) : oTarget || window,
+                dimensionProps,
+                i,
+                prop,
                 size;
-                
-            m.target = target = typeof (inTarget) === "string" ? 
-                document.querySelector(inTarget) : inTarget || window;
 
             if (axis === "x" || axis === "width" || axis === "horizontal") {
                 m.eventProp = "offsetX";
-                size = target.width;
-                m.size = size !== undefined ? size : target.innerWidth;
+                dimensionProps = ["width", "innerWidth", "clientWidth"];
             } else {
                 m.eventProp = "offsetY";
-                size = target.height;
-                m.size = size !== undefined ? size : target.innerHeight;
+                dimensionProps = ["height", "innerHeight", "clientHeight"];
             }
+            
+            // Determine the element's size by looking through several relevant DOM properties.
+            m.size = 0;
+            for (i = 0; i < dimensionProps.length; i++) {
+                prop = dimensionProps[i];
+                size = target[prop];
+                if (size !== undefined && size > 0) {
+                    m.size = size;
+                    break;
+                }
+            }
+            
             m.mousePosition = 0;
             m.movingAvg = 0;
+            m.target = target;
             
             that.bindEvents();
             that.onInputChanged();

@@ -315,7 +315,7 @@
         ]);
         </script>
         <script type="application/flocking" id="mouse_x">
-        // Tracks the mouse's horizonal movement across the entire screen.
+        // Tracks the mouse's horizonal movement across the window.
         var synth = flock.synth({
             ugen: "flock.ugen.sinOsc",
             freq: {
@@ -328,7 +328,7 @@
         });
         </script>
         <script type="application/flocking" id="mouse_y">
-        // Tracks the mouse's vertical movement across the entire screen.
+        // Tracks the mouse's vertical movement across the window.
         var synth = flock.synth({
             ugen: "flock.ugen.sinOsc",
             freq: {
@@ -344,8 +344,8 @@
         });
         </script>
         <script type="application/flocking" id="mouse_xy">
-        // Maps the mouse's vertical position to amplitude
-        // and its horizontal position to pitch.
+        // Tracks the mouse's vertical and horizontal movement within the editor area only.
+        // Maps y position to amplitude and its x position to pitch.
         var synth = flock.synth({
             ugen: "flock.ugen.sinOsc",
             freq: {
@@ -354,13 +354,17 @@
                 mul: 880,
                 add: 110,
                 options: {
-                    axis: "width"
+                    axis: "width",
+                    interpolation: "exponential",
+                    target: "#editor"
                 }
             },
             mul: {
                 ugen: "flock.ugen.mouse.cursor",
+                rate: "control",
                 options: {
-                    axis: "height"
+                    axis: "height",
+                    target: "#editor"
                 }
             }
         });
