@@ -1047,7 +1047,7 @@ var flock = flock || {};
     };
     
     flock.ugen.amplitude = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
+        var that = flock.ugen.mulAdd(inputs, output, options);
         that.model.previousValue = 0.0;
         
         that.gen = function (numSamps) {
@@ -1085,6 +1085,8 @@ var flock = flock || {};
             }
             
             m.previousValue = prevVal;
+            
+            that.mulAdd(numSamps);
         };
         
         that.onInputChanged = function () {
@@ -1144,7 +1146,7 @@ var flock = flock || {};
     };
     
     flock.ugen.audioIn = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
+        var that = flock.ugen.mulAdd(inputs, output, options);
         
         that.gen = function (numSamps) {
             var out = that.output,
@@ -1164,6 +1166,8 @@ var flock = flock || {};
             
             m.idx = idx;
             m.inputBuffer = inputBuffer;
+            
+            that.mulAdd(numSamps);
         };
         
         that.onAudioData = function (data) {
