@@ -34,8 +34,9 @@ var flock = flock || {};
             constant: 1
         },        
         tableSize: 8192,
-        minLatency: 125,
-        writeInterval: 50,
+        minLatency: 50,
+        writeInterval: 25,
+        bufferSize: 512, // TODO: Replace minLatency and writeInterval with bufferSize on all platforms.
         fps: 60
     };
 
@@ -422,7 +423,7 @@ var flock = flock || {};
      */
     flock.enviro.webkit = function (that) {
         that.context = new webkitAudioContext();
-        that.audioSettings.bufferSize = 4096; // TODO: how does this relate to minimum latency?
+        that.audioSettings.bufferSize = flock.defaults.bufferSize;
         that.source = that.context.createBufferSource();
         that.jsNode = that.context.createJavaScriptNode(that.audioSettings.bufferSize);
         
