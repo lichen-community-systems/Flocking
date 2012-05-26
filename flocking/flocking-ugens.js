@@ -50,7 +50,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.krMul = function (mulInput, output, numSamps) {
+    flock.krMul = function (numSamps, output, mulInput, addInput) {
         var mul = mulInput.output[0],
             i;
         for (i = 0; i < numSamps; i++) {
@@ -58,7 +58,7 @@ var flock = flock || {};
         }
     };
     
-    flock.mul = function (mulInput, output, numSamps) {
+    flock.mul = function (numSamps, output, mulInput, addInput) {
         var mul = mulInput.output,
             i;
         for (i = 0; i < numSamps; i++) {
@@ -66,7 +66,7 @@ var flock = flock || {};
         }
     };
     
-    flock.krAdd = function (addInput, output, numSamps) {
+    flock.krAdd = function (numSamps, output, mulInput, addInput) {
         var add = addInput.output[0],
             i;
         for (i = 0; i < numSamps; i++) {
@@ -74,7 +74,7 @@ var flock = flock || {};
         }
     };
     
-    flock.add = function (addInput, output, numSamps) {
+    flock.add = function (numSamps, output, mulInput, addInput) {
         var add = addInput.output,
             i;
         for (i = 0; i < numSamps; i++) {
@@ -82,7 +82,7 @@ var flock = flock || {};
         }
     };
     
-    flock.krMulAdd = function (mulInput, addInput, output, numSamps) {
+    flock.krMulAdd = function (numSamps, output, mulInput, addInput) {
         var mul = mulInput.output[0],
             add = addInput.output,
             i;
@@ -91,7 +91,7 @@ var flock = flock || {};
         }
     };
     
-    flock.mulKrAdd = function (mulInput, addInput, output, numSamps) {
+    flock.mulKrAdd = function (numSamps, output, mulInput, addInput) {
         var mul = mulInput.output,
             add = addInput.output[0],
             i;
@@ -100,7 +100,7 @@ var flock = flock || {};
         }
     };
     
-    flock.krMulKrAdd = function (mulInput, addInput, output, numSamps) {
+    flock.krMulKrAdd = function (numSamps, output, mulInput, addInput) {
         var mul = mulInput.output[0],
             add = addInput.output[0],
             i;
@@ -109,7 +109,7 @@ var flock = flock || {};
         }
     };
     
-    flock.mulAdd = function (mulInput, addInput, output, numSamps) {
+    flock.mulAdd = function (numSamps, output, mulInput, addInput) {
         var mul = mulInput.output,
             add = addInput.output,
             i;
@@ -118,36 +118,30 @@ var flock = flock || {};
         }
     };
     
-    flock.ugen.mulAdd = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
-    
-        // Reads directly from the output buffer, overwriting it in place with modified values.
-        // TODO: Cache these calculations and use onInputChanged to save a function call.
-        that.mulAdd = function (numSamps) {  
-            var mul = that.inputs.mul,
-                add = that.inputs.add,
-                fn;
-            
-            // If we have no mul or add inputs, bail immediately.
-            if (!mul && !add) {
-                return;
-            }
+    flock.onMulAddInputChanged = function (that) {
+        var mul = that.inputs.mul,
+            add = that.inputs.add,
+            fn;
         
-            if (!mul) { // Only add.
-                fn = add.rate !== flock.rates.AUDIO ? flock.krAdd : flock.add;
-                fn(add, that.output, numSamps);
-            } else if (!add) { // Only mul.
-                fn = mul.rate !== flock.rates.AUDIO ? flock.krMul : flock.mul;
-                fn(mul, that.output, numSamps);
-            } else { // Both mul and add.
-                fn = mul.rate !== flock.rates.AUDIO ? 
-                    (add.rate !== flock.rates.AUDIO ? flock.krMulKrAdd : flock.krMulAdd) :
-                    (add.rate !== flock.rates.AUDIO ? flock.mulKrAdd : flock.mulAdd);
-                fn(mul, add, that.output, numSamps);
-            }
-        };
+        // If we have no mul or add inputs, bail immediately.
+        if (!mul && !add) {
+            that.mulAdd = flock.identity;
+            return;
+        }
     
-        return that;
+        if (!mul) { // Only add.
+            fn = add.rate !== flock.rates.AUDIO ? flock.krAdd : flock.add;
+        } else if (!add) { // Only mul.
+            fn = mul.rate !== flock.rates.AUDIO ? flock.krMul : flock.mul;
+        } else { // Both mul and add.
+            fn = mul.rate !== flock.rates.AUDIO ? 
+                (add.rate !== flock.rates.AUDIO ? flock.krMulKrAdd : flock.krMulAdd) :
+                (add.rate !== flock.rates.AUDIO ? flock.mulKrAdd : flock.mulAdd);
+        }
+        
+        that.mulAdd = function (numSamps) {
+            fn(numSamps, that.output, mul, add);
+        };
     };
 
     flock.ugen.value = function (inputs, output, options) {
@@ -196,7 +190,7 @@ var flock = flock || {};
      ***************/
      
     flock.ugen.osc = function (inputs, output, options) {
-        var that = flock.ugen.mulAdd(inputs, output, options);
+        var that = flock.ugen(inputs, output, options);
         that.model.phase = 0.0;
 
         that.krFreqKrPhase = function (numSamps) {
@@ -332,7 +326,7 @@ var flock = flock || {};
     
         that.onInputChanged = function () {
             flock.ugen.osc.onInputChanged(that);
-        
+            
             // Precalculate table-related values.
             // TODO: The table input here isn't a standard ugen input. Does this matter?
             var m = that.model;
@@ -356,6 +350,8 @@ var flock = flock || {};
         } else {
             that.gen = phaseRate === flock.rates.AUDIO ? that.krFreqArPhase : that.krFreqKrPhase;
         }
+        
+        flock.onMulAddInputChanged(that);
     };
 
     flock.ugen.osc.define = function (name, tableFillFn) {
@@ -429,7 +425,7 @@ var flock = flock || {};
     });
 
     flock.ugen.sin = function (inputs, output, options) {
-        var that = flock.ugen.mulAdd(inputs, output, options);
+        var that = flock.ugen(inputs, output, options);
         that.model.phase = 0.0;
     
         that.krFreqKrPhase = function (numSamps) {
@@ -506,7 +502,7 @@ var flock = flock || {};
 
     
     flock.ugen.lfSaw = function (inputs, output, options) {
-        var that = flock.ugen.mulAdd(inputs, output, options);
+        var that = flock.ugen(inputs, output, options);
         that.model.scale = 2 * (1 / options.sampleRate);
         
         that.krFreq = function (numSamps) {
@@ -557,6 +553,8 @@ var flock = flock || {};
             if (!that.inputs.phase) {
                 that.inputs.phase = flock.ugen.value({value: 0.0}, new Float32Array(1));
             }
+            
+            flock.onMulAddInputChanged(that);
         };
         
         that.onInputChanged();
@@ -564,7 +562,7 @@ var flock = flock || {};
     };
     
     flock.ugen.lfPulse = function (inputs, output, options) {
-        var that = flock.ugen.mulAdd(inputs, output, options);
+        var that = flock.ugen(inputs, output, options);
         that.model.scale = 1 / options.sampleRate;
         
         that.krFreq = function (numSamps) {
@@ -624,6 +622,8 @@ var flock = flock || {};
             if (!that.inputs.width) { 
                 that.inputs.width = flock.ugen.value({value: 0.5}, new Float32Array(1));
             }
+            
+            flock.onMulAddInputChanged(that);
         };
         
         that.onInputChanged();
@@ -631,7 +631,7 @@ var flock = flock || {};
     };
     
     flock.ugen.playBuffer = function (inputs, output, options) {
-        var that = flock.ugen.mulAdd(inputs, output, options);
+        var that = flock.ugen(inputs, output, options);
         that.rate = flock.rates.AUDIO;
         that.model = {
             idx: 0,
@@ -743,6 +743,8 @@ var flock = flock || {};
             // TODO: Optimize for non-regular speed constant rate input.
             that.gen = (that.inputs.speed.rate === flock.rates.CONSTANT && that.inputs.speed.output[0] === 1.0) ?
                 that.crRegularSpeedGen : that.krSpeedGen;
+            
+            flock.onMulAddInputChanged(that);
         };
         
         that.onInputChanged();
@@ -755,7 +757,7 @@ var flock = flock || {};
      *********/
      
     flock.ugen.dust = function (inputs, output, options) {
-        var that = flock.ugen.mulAdd(inputs, output, options);
+        var that = flock.ugen(inputs, output, options);
         that.model = {
             density: 0.0,
             scale: 0.0,
@@ -787,12 +789,17 @@ var flock = flock || {};
         
             that.mulAdd(numSamps);
         };
-            
+        
+        that.onInputChanged = function () {
+            flock.onMulAddInputChanged(that);
+        };
+        
+        that.onInputChanged();
         return that;
     };
 
     flock.ugen.lfNoise = function (inputs, output, options) {
-        var that = flock.ugen.mulAdd(inputs, output, options);
+        var that = flock.ugen(inputs, output, options);
         that.rate = flock.rates.AUDIO; // TODO: Implement control rate version of this algorithm.
         that.model.counter = 0;
         that.model.level = 0;
@@ -829,7 +836,12 @@ var flock = flock || {};
         
             that.mulAdd(numSamps);
         };
-            
+        
+        that.onInputChanged = function () {
+            flock.onMulAddInputChanged(that);
+        };
+        
+        that.onInputChanged();
         return that;
     };
 
@@ -839,7 +851,7 @@ var flock = flock || {};
      **************************************/
      
     flock.ugen.line = function (inputs, output, options) {
-        var that = flock.ugen.mulAdd(inputs, output, options);
+        var that = flock.ugen(inputs, output, options);
 
         that.gen = function (numSamps) {
             var m = that.model,
@@ -884,6 +896,8 @@ var flock = flock || {};
                 m.stepSize = (m.end - m.start) / m.numSteps;
                 m.level = m.start;
             }
+            
+            flock.onMulAddInputChanged(that);
         };
     
         that.onInputChanged();
@@ -891,7 +905,7 @@ var flock = flock || {};
     };
 
     flock.ugen.xLine = function (inputs, output, options) {
-        var that = flock.ugen.mulAdd(inputs, output, options);
+        var that = flock.ugen(inputs, output, options);
 
         that.gen = function (numSamps) {
             var m = that.model,
@@ -924,6 +938,8 @@ var flock = flock || {};
     
         that.onInputChanged = function () {
             var m = that.model;
+            
+            flock.onMulAddInputChanged(that);
             
             // Any change in input value will restart the line.
             m.start = that.inputs.start.output[0];
@@ -1047,7 +1063,7 @@ var flock = flock || {};
     };
     
     flock.ugen.amplitude = function (inputs, output, options) {
-        var that = flock.ugen.mulAdd(inputs, output, options);
+        var that = flock.ugen(inputs, output, options);
         that.model.previousValue = 0.0;
         
         that.gen = function (numSamps) {
@@ -1098,6 +1114,8 @@ var flock = flock || {};
             if (!that.inputs.release) { 
                 that.inputs.release = flock.ugen.value({value: 0.01}, new Float32Array(1));
             }
+            
+            flock.onMulAddInputChanged(that);
         };
         
         that.onInputChanged();
@@ -1146,7 +1164,7 @@ var flock = flock || {};
     };
     
     flock.ugen.audioIn = function (inputs, output, options) {
-        var that = flock.ugen.mulAdd(inputs, output, options);
+        var that = flock.ugen(inputs, output, options);
         
         that.gen = function (numSamps) {
             var out = that.output,
@@ -1216,6 +1234,7 @@ var flock = flock || {};
                 that.inputs.device = flock.ugen.value({value: 0.0}, new Float32Array(1));
             }
 
+            flock.onMulAddInputChanged(that);
         };
         
         that.onInputChanged();
@@ -1441,6 +1460,8 @@ var flock = flock || {};
                 that.inputs.mul = flock.ugen.value({value: 1.0}, new Float32Array(1));
             }
             
+            flock.onMulAddInputChanged(that);
+            
             var interp = that.options.interpolation;
             that.gen = interp === "none" ? that.noInterpolationGen : interp === "exponential" ? that.exponentialGen : that.linearGen;
             that.model.exponential = interp === "exponential";
@@ -1489,7 +1510,7 @@ var flock = flock || {};
     };
     
     flock.ugen.mouse.click = function (inputs, output, options) {
-        var that = flock.ugen.mulAdd(inputs, output, options);
+        var that = flock.ugen(inputs, output, options);
         that.rate = flock.rates.CONTROL;
         
         that.gen = function (numSamps) {
@@ -1520,7 +1541,12 @@ var flock = flock || {};
             m.target.addEventListener("mouseup", that.mouseUpListener, false);
         };
         
+        that.onInputChanged = function () {
+            flock.onMulAddInputChanged(that);
+        };
+        
         that.init();
+        that.onInputChanged();
         return that;
     };
     
