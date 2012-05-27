@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <title>Synth UGen Benchmarks (Flocking)</title>
+    
+        <link rel="stylesheet" type="text/css" href="../shared/css/sheep.css" />
+	
+        <script type="text/javascript" src="../../../flocking/flocking-core.js"></script>
+        <script type="text/javascript" src="../../../flocking/flocking-ugens.js"></script>
+        <script type="text/javascript" src="../../../flocking/flocking-parser.js"></script>
+
+        <script type="text/javascript" src="../../flocking/js/flocking-test-utils.js"></script>        
+        <script type="text/javascript" src="../shared/js/sheep.js"></script>
+        <script type="text/javascript" src="../js/synth-benchmarks.js"></script>
+    </head>
+
+    <body id="body">
+
+        <script type="text/javascript">
+            var oneSecondBlocks = 690,
+                audioAndControl = [
+                    flock.rates.AUDIO,
+                    flock.rates.CONTROL
+                ];
+            
+            // flock.ugen.osc() modulating every input at audio rate.
+            flock.test.timeSynthDefs("flock.ugen.osc() modulating every input at", {
+                ugen: "flock.ugen.triOsc",
+                id: "audio-only",
+                freq: {
+                    ugen: "flock.ugen.squareOsc",
+                    freq: 110,
+                    add: 440,
+                    mul: 330
+                },
+                phase: {
+                    ugen: "flock.ugen.sinOsc",
+                    freq: 2,
+                    add: 4,
+                    mul: 2
+                },
+                mul: {
+                    ugen: "flock.ugen.sawOsc",
+                    freq: 44
+                },
+                add: {
+                    ugen: "flock.ugen.lfNoise",
+                    freq: 99,
+                    mul: 0.1
+                }
+            }, audioAndControl, oneSecondBlocks);
+        </script>
+    </body>
+</html>
