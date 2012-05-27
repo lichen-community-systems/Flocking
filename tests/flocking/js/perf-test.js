@@ -139,7 +139,7 @@ var flock = flock || {};
     
     var runTest = function (ugenName, inputs, maxDur, msg) {
         test(msg, function () {
-            checkUGen(ugenName, inputs, maxDur, "Should take no longer than " + maxDur + " seconds.");
+            checkUGen(ugenName, inputs, maxDur, "Should take no longer than " + maxDur + " ms.");
         });
     };
     
