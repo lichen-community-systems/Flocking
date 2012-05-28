@@ -55,11 +55,11 @@ var flock = flock || {};
             rate,
             j;
         
-        if (!flock.isArray(synthDefs)) {
+        if (!flock.isIterable(synthDefs)) {
             synthDefs = [synthDefs];
         }
         
-        if (!flock.isArray(rates)) {
+        if (!flock.isIterable(rates)) {
             rates = [rates];
         }
     

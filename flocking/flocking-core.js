@@ -49,13 +49,12 @@ var flock = flock || {};
      * Utilities *
      *************/
     
-     // TODO: Move this to an as-yet non-existent base file.
-     flock.isArray = function (o) {
+    // TODO: Move this to an as-yet non-existent base file.
+    flock.isIterable = function (o) {
          var l = o.length;
          return o && l !== undefined && typeof (l) === "number";
-     };
+    };
 
-    // TODO: Unit tests
     flock.generate = function (bufOrSize, generator) {
         var buf = typeof (bufOrSize) === "number" ? new Float32Array(bufOrSize) : bufOrSize,
             i;
@@ -116,10 +115,6 @@ var flock = flock || {};
         }
         
         return buffer;
-    };
-    
-    flock.identity = function (arg) {
-        return arg;
     };
     
     flock.pathParseError = function (path, token) {

@@ -6,7 +6,7 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global Float32Array, window*/
+/*global Float32Array, window, _*/
 /*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
@@ -46,7 +46,7 @@ var flock = flock || {};
             return ugen;
         };
     
-        that.onInputChanged = flock.identity; // No-op base implementation.
+        that.onInputChanged = _.identity; // No-op base implementation.
         return that;
     };
     
@@ -125,7 +125,7 @@ var flock = flock || {};
         
         // If we have no mul or add inputs, bail immediately.
         if (!mul && !add) {
-            that.mulAdd = flock.identity;
+            that.mulAdd = _.identity;
             return;
         }
     
@@ -176,7 +176,7 @@ var flock = flock || {};
                 that.gen = that.sumGen;
             } else {
                 that.output = that.inputs.sources.output;
-                that.gen = flock.identity;
+                that.gen = _.identity;
             }
         };
         
