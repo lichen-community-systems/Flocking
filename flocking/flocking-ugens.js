@@ -1159,7 +1159,6 @@ var flock = flock || {};
      * This unit generator will generate a signal between 0.0 and 1.0 based on the position of the mouse;
      * use the mul and add inputs to scale this value to an appropriate control signal.
      */
-    // TODO: add the ability to track individual elements rather than the whole screen.
     flock.ugen.mouse.cursor = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         that.options.axis = that.options && that.options.axis ? that.options.axis : "x"; // By default, track the mouse along the x axis.
@@ -1231,41 +1230,20 @@ var flock = flock || {};
             for (i = 0; i < numSamps; i++) {
                 out[i] = scaledMouse * mul + add;
             }
-            
-        };
-        
-        that.normalizeOffset = function (e) {
-            if (e.offsetX !== undefined) {
-                // We're in an offset-supporting browser, bail now.
-                return e;
-            }
-
-            // This code is derived from jQuery's offset() method, licensed under the MIT and GPL.
-            // The original source is available at: https://github.com/jquery/jquery/blob/master/src/offset.js
-            var body = document.body,
-                clientTop = document.clientTop || body.clientTop || 0,
-                clientLeft = document.clientLeft || body.clientLeft || 0,
-                scrollTop = window.pageYOffset || body.scrollTop,
-                scrollLeft = window.pageXOffset || body.scrollLeft,
-                rect;
-            
-            try {
-                rect = e.target.getBoundingClientRect();
-            } catch (e) {
-                rect = {
-                    top: 0,
-                    left: 0
-                };
-            }
-            e.offsetX = e.clientX - rect.left + scrollLeft - clientLeft;
-            e.offsetY = e.clientY - rect.top + scrollTop - clientTop;
-            return e;
         };
         
         that.moveListener = function (e) {
-            var m = that.model;
-            that.normalizeOffset(e);
-            m.mousePosition = m.isWithinTarget ? e[m.eventProp] : 0.0;
+            var m = that.model,
+                pos = e[m.eventProp],
+                off;
+            
+            if (pos === undefined) {
+                off = $(e.target).offset();
+                e.offsetX = e.clientX - off.left;
+                e.offsetY = e.clientY - off.top;
+                pos = e[m.eventProp];
+            }
+            m.mousePosition = m.isWithinTarget ? pos : 0.0;
         };
         
         that.overListener = function (e) {
@@ -1300,14 +1278,14 @@ var flock = flock || {};
                 moveListener = that.moveListener;
                 
             if (that.options.onlyOnMouseDown) {
-                target.addEventListener("mousedown", that.downListener, false);
-                target.addEventListener("mouseup", that.upListener, false);
+                target.mousedown(that.downListener);
+                target.mouseup(that.upListener);
                 moveListener = that.moveWhileDownListener;
             }
             
-            target.addEventListener("mouseover", that.overListener, false);
-            target.addEventListener("mouseout", that.outListener, false);
-            target.addEventListener("mousemove", moveListener, false);
+            target.mouseover(that.overListener);
+            target.mouseout(that.outListener);
+            target.mousemove(moveListener);
         };
         
         that.onInputChanged = function () {
@@ -1321,31 +1299,15 @@ var flock = flock || {};
         that.init = function () {
             var m = that.model,
                 options = that.options,
-                oTarget = options.target,
                 axis = options.axis,
-                target = typeof (oTarget) === "string" ? document.querySelector(oTarget) : oTarget || window,
-                dimensionProps,
-                i,
-                prop,
-                size;
+                target = $(options.target || window);
 
             if (axis === "x" || axis === "width" || axis === "horizontal") {
                 m.eventProp = "offsetX";
-                dimensionProps = ["width", "innerWidth", "clientWidth"];
+                m.size = target.width();
             } else {
                 m.eventProp = "offsetY";
-                dimensionProps = ["height", "innerHeight", "clientHeight"];
-            }
-            
-            // Determine the element's size by looking through several relevant DOM properties.
-            m.size = 0;
-            for (i = 0; i < dimensionProps.length; i++) {
-                prop = dimensionProps[i];
-                size = target[prop];
-                if (size !== undefined && size > 0) {
-                    m.size = size;
-                    break;
-                }
+                m.size = target.height();
             }
             
             m.mousePosition = 0;
