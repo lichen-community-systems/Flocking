@@ -1,8 +1,10 @@
-/*!
+/*! Flocking 0.1, Copyright 2012 Colin Clark | flockingjs.org */
+
+/*
 * Flocking - Creative audio synthesis for the Web!
 * http://github.com/colinbdclark/flocking
 *
-* Copyright 2011, Colin Clark
+* Copyright 2012, Colin Clark
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
@@ -27,7 +29,17 @@ var flock = flock || {};
         CONSTANT: "constant"
     };
     
-    flock.defaults = {
+    flock.defaults = function (name, defaults) {
+        if (defaults) {
+            flock.defaults.store[name] = defaults;
+            return defaults;
+        }
+        
+        return flock.defaults.store[name];
+    };
+    flock.defaults.store = {};
+    
+    flock.defaults("flock.audioSettings", {
         rates: {
             audio: 44100,
             control: 64,
@@ -37,12 +49,16 @@ var flock = flock || {};
         minLatency: 50,
         writeInterval: 25,
         bufferSize: 512, // TODO: Replace minLatency and writeInterval with bufferSize on all platforms.
-        fps: 60
-    };
-
+        fps: 60 // TODO: Move this somewhere more appropriate.
+    });
+    
     flock.idIdx = 0;
     flock.id = function () {
         return "flock-id-" + flock.idIdx++;
+    };
+    
+    flock.identity = function (val) {
+        return val;
     };
     
     /*************
@@ -198,25 +214,27 @@ var flock = flock || {};
     
     flock.enviro = function (options) {
         options = options || {};        
-        var that = {
-            audioSettings: {
-                rates: {
-                    audio: options.sampleRate || flock.defaults.rates.audio,
-                    control: options.controlRate || flock.defaults.rates.control,
-                    constant: options.constantRate || flock.defaults.rates.constant
+        var defaultSettings = flock.defaults("flock.audioSettings"),
+            // TODO: Replace with options merging.
+            that = {
+                audioSettings: {
+                    rates: {
+                        audio: options.sampleRate || defaultSettings.rates.audio,
+                        control: options.controlRate || defaultSettings.rates.control,
+                        constant: options.constantRate || defaultSettings.rates.constant
+                    },
+                    chans: options.chans || 2
                 },
-                chans: options.chans || 2
-            },
-            model: {
-                playState: {
-                    written: 0,
-                    total: null
-                }
-            },
-            nodes: [],
+                model: {
+                    playState: {
+                        written: 0,
+                        total: null
+                    }
+                },
+                nodes: [],
             
-            isPlaying: false
-        };
+                isPlaying: false
+            };
         
         // TODO: Buffers are named but buses are numbered. Should we have a consistent strategy?
         // The advantage to numbers is that they're easily modulatable with a ugen. Names are easier to deal with.
@@ -330,9 +348,11 @@ var flock = flock || {};
      * @param that the environment to mix into
      */
     flock.enviro.moz = function (that) {
+        var defaultSettings = flock.defaults("flock.audioSettings");
+        
         that.audioEl = new Audio();
-        that.model.writeInterval = that.model.writeInterval || flock.defaults.writeInterval;
-        that.audioSettings.bufferSize = flock.minBufferSize(flock.defaults.minLatency, that.audioSettings);
+        that.model.writeInterval = that.model.writeInterval || defaultSettings.writeInterval;
+        that.audioSettings.bufferSize = flock.minBufferSize(defaultSettings.minLatency, that.audioSettings);
         that.audioEl.mozSetup(that.audioSettings.chans, that.audioSettings.rates.audio);
         that.playbackTimerId = null;
         
@@ -366,7 +386,9 @@ var flock = flock || {};
     
     var setupWebKitEnviro = function (that) {
         that.jsNode.onaudioprocess = function (e) {
-            var kr = flock.defaults.rates.control,
+            // TODO: Do all these settings need to be read every time onaudioprocess gets called?
+            var defaultSettings = flock.defaults("flock.audioSettings"),
+                kr = defaultSettings.rates.control,
                 playState = that.model,
                 chans = that.audioSettings.chans,
                 bufSize = that.audioSettings.bufferSize,
@@ -417,8 +439,10 @@ var flock = flock || {};
      * @param that the environment to mix into
      */
     flock.enviro.webkit = function (that) {
+        var defaultSettings = flock.defaults("flock.audioSettings");
+        
         that.context = new webkitAudioContext();
-        that.audioSettings.bufferSize = flock.defaults.bufferSize;
+        that.audioSettings.bufferSize = defaultSettings.bufferSize;
         that.source = that.context.createBufferSource();
         that.jsNode = that.context.createJavaScriptNode(that.audioSettings.bufferSize);
         

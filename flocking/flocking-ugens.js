@@ -19,13 +19,13 @@ var flock = flock || {};
         options = options || {};
     
         var that = {
+            rate: options.rate || flock.rates.AUDIO,
             inputs: inputs,
             output: output,
-            sampleRate: options.sampleRate || flock.defaults.rates.audio,
-            rate: options.rate || flock.rates.AUDIO,
             options: options,
             model: {}
         };
+        that.sampleRate = options.sampleRate || flock.enviro.shared.audioSettings.rates[that.rate];
         
         /**
          * Gets or sets the named unit generator input.
@@ -46,7 +46,7 @@ var flock = flock || {};
             return ugen;
         };
     
-        that.onInputChanged = _.identity; // No-op base implementation.
+        that.onInputChanged = flock.identity; // No-op base implementation.
         return that;
     };
     
@@ -125,7 +125,7 @@ var flock = flock || {};
         
         // If we have no mul or add inputs, bail immediately.
         if (!mul && !add) {
-            that.mulAdd = _.identity;
+            that.mulAdd = flock.identity;
             return;
         }
     
@@ -146,10 +146,13 @@ var flock = flock || {};
 
     flock.ugen.value = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.rate = flock.rates.CONSTANT;
         that.output[0] = that.model.value = inputs.value;
         return that;
     };
+    
+    flock.defaults("flock.ugen.value", {
+        rate: "constant"
+    });
 
     flock.ugen.sum = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
@@ -176,13 +179,17 @@ var flock = flock || {};
                 that.gen = that.sumGen;
             } else {
                 that.output = that.inputs.sources.output;
-                that.gen = _.identity;
+                that.gen = flock.identity;
             }
         };
         
         that.onInputChanged();
         return that;
     };
+    
+    flock.defaults("flock.ugen.sum", {
+        rate: "audio"
+    });
     
     
     /***************
@@ -247,20 +254,20 @@ var flock = flock || {};
     flock.ugen.osc.onInputChanged = function (that) {
         var m = that.model,
             inputs = that.inputs;
-
-        if (!inputs.freq) {
-            inputs.freq = flock.ugen.value({value: 440.0}, new Float32Array(1));
-        }
-        
-        if (!inputs.phase) {
-            inputs.phase = flock.ugen.value({value: 0.0}, new Float32Array(1));
-        }
         
         m.freqInc = inputs.freq.rate === flock.rates.AUDIO ? 1 : 0;
         m.phaseInc = inputs.phase.rate === flock.rates.AUDIO ? 1 : 0;
         
         flock.onMulAddInputChanged(that);
     };
+    
+    flock.defaults("flock.ugen.osc", {
+        rate: "audio",
+        inputs: {
+            freq: 440.0,
+            phase: 0.0
+        }
+    });
 
     flock.ugen.osc.define = function (name, tableFillFn) {
         var lastSegIdx = name.lastIndexOf("."),
@@ -269,11 +276,14 @@ var flock = flock || {};
             namespaceObj = flock.resolvePath(namespace);
         
         namespaceObj[oscName] = function (inputs, output, options) {
-            var size = (options && options.tableSize) || flock.defaults.tableSize,
+            var defaultSettings = flock.defaults("flock.audioSettings"),
+                size = (options && options.tableSize) || defaultSettings.tableSize,
                 scale = flock.TWOPI / size;
-            inputs.table = tableFillFn(size, scale); // TODO: Make table an option, not an input.
+            inputs.table = tableFillFn(size, scale);
             return flock.ugen.osc(inputs, output, options);
         };
+        
+        flock.defaults(name, flock.defaults("flock.ugen.osc"));
     };
     
     
@@ -363,6 +373,8 @@ var flock = flock || {};
         that.onInputChanged();
         return that;
     };
+    
+    flock.defaults("flock.ugen.sin", flock.defaults("flock.ugen.osc"));
 
     
     flock.ugen.lfSaw = function (inputs, output, options) {
@@ -394,17 +406,20 @@ var flock = flock || {};
         
         that.onInputChanged = function () {
             that.model.freqInc = that.inputs.freq.rate === flock.rates.AUDIO ? 1 : 0;
-            
-            if (!that.inputs.phase) {
-                that.inputs.phase = flock.ugen.value({value: 0.0}, new Float32Array(1));
-            }
-            
             flock.onMulAddInputChanged(that);
         };
         
         that.onInputChanged();
         return that;
     };
+    
+    flock.defaults("flock.ugen.lfSaw", {
+        rate: "audio",
+        inputs: {
+            phase: 0.0
+        }
+    });
+    
     
     flock.ugen.lfPulse = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
@@ -436,18 +451,7 @@ var flock = flock || {};
         };
         
         that.onInputChanged = function () {
-            var inputs = that.inputs;
-            that.model.freqInc = inputs.freq.rate === flock.rates.AUDIO ? 1 : 0;
-            
-            // TODO: factor out this functionality into some kind of configurable setting for all ugens.
-            if (!inputs.phase) {
-                inputs.phase = flock.ugen.value({value: 0.0}, new Float32Array(1));
-            }
-            
-            if (!inputs.width) {
-                inputs.width = flock.ugen.value({value: 0.5}, new Float32Array(1));
-            }
-            
+            that.model.freqInc = that.inputs.freq.rate === flock.rates.AUDIO ? 1 : 0;
             flock.onMulAddInputChanged(that);
         };
         
@@ -455,9 +459,17 @@ var flock = flock || {};
         return that;
     };
     
+    flock.defaults("flock.ugen.lfPulse", {
+        rate: "audio",
+        inputs: {
+            phase: 0.0,
+            width: 0.5
+        }
+    });
+    
+    
     flock.ugen.playBuffer = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.rate = flock.rates.AUDIO;
         that.model = {
             idx: 0,
             channel: undefined
@@ -536,15 +548,9 @@ var flock = flock || {};
         that.onInputChanged = function (inputName) {
             var m = that.model,
                 inputs = that.inputs;
+                
             
-            if (!inputs.loop) {
-                inputs.loop = flock.ugen.value({value: 0.0}, new Float32Array(1));
-            }
-            
-            if (!inputs.speed) {
-                inputs.speed = flock.ugen.value({value: 1.0}, new Float32Array(1));
-            }
-            
+            // TODO: Move this to defaults.
             if (!inputs.channel) {
                 inputs.channel = flock.ugen.value({value: 0.0}, new Float32Array(1));
                 m.channel = that.inputs.channel.output[0];
@@ -576,6 +582,14 @@ var flock = flock || {};
         that.onInputChanged();
         return that;
     };
+    
+    flock.defaults("flock.ugen.playBuffer", {
+        rate: "audio",
+        inputs: {
+            loop: 0.0,
+            speed: 1.0
+        }
+    });
     
     
     /*********
@@ -623,10 +637,17 @@ var flock = flock || {};
         that.onInputChanged();
         return that;
     };
+    
+    flock.defaults("flock.ugen.dust", {
+        rate: "audio",
+        inputs: {
+            density: 1.0
+        }
+    });
+    
 
     flock.ugen.lfNoise = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.rate = flock.rates.AUDIO; // TODO: Implement control rate version of this algorithm.
         that.model.counter = 0;
         that.model.level = 0;
     
@@ -670,6 +691,13 @@ var flock = flock || {};
         that.onInputChanged();
         return that;
     };
+    
+    flock.defaults("flock.ugen.lfNoise", {
+        rate: "audio",
+        inputs: {
+            freq: 440
+        }
+    });
 
 
     /**************************************
@@ -729,6 +757,11 @@ var flock = flock || {};
         that.onInputChanged();
         return that;
     };
+    
+    flock.defaults("flock.ugen.line", {
+        rate: "control"
+    });
+    
 
     flock.ugen.xLine = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
@@ -782,6 +815,10 @@ var flock = flock || {};
         that.onInputChanged();
         return that;
     };
+    
+    flock.defaults("flock.ugen.xLine", {
+        rate: "control"
+    });
 
 
     flock.ugen.env = {};
@@ -846,28 +883,6 @@ var flock = flock || {};
             stage.numSteps = numSteps;
         };
         
-        that.onInputChanged = function () {
-            if (!that.inputs.start) {
-                that.inputs.start = flock.ugen.value({value: 0.0}, new Float32Array(1));
-            }
-            
-            if (!that.inputs.attack) {
-                that.inputs.attack = flock.ugen.value({value: 0.01}, new Float32Array(1));
-            }
-            
-            if (!that.inputs.sustain) {
-                that.inputs.sustain = flock.ugen.value({value: 1.0}, new Float32Array(1));
-            }
-            
-            if (!that.inputs.release) {
-                that.inputs.release = flock.ugen.value({value: 1.0}, new Float32Array(1));
-            }
-            
-            if (!that.inputs.gate) {
-                that.inputs.gate = flock.ugen.value({value: 0.0}, new Float32Array(1));
-            }
-        };
-        
         that.init = function () {
             var m = that.model;
             
@@ -887,6 +902,17 @@ var flock = flock || {};
         that.init();
         return that;
     };
+    
+    flock.defaults("flock.ugen.env.simpleASR", {
+        rate: "control",
+        inputs: {
+            start: 0.0,
+            attack: 0.01,
+            sustain: 1.0,
+            release: 1.0,
+            gate: 0.0
+        }
+    });
     
     flock.ugen.amplitude = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
@@ -932,21 +958,20 @@ var flock = flock || {};
         };
         
         that.onInputChanged = function () {
-            // Set default values if necessary for attack and release times.
-            if (!that.inputs.attack) {
-                that.inputs.attack = flock.ugen.value({value: 0.01}, new Float32Array(1));
-            }
-            
-            if (!that.inputs.release) { 
-                that.inputs.release = flock.ugen.value({value: 0.01}, new Float32Array(1));
-            }
-            
             flock.onMulAddInputChanged(that);
         };
         
         that.onInputChanged();
         return that;
     };
+    
+    flock.defaults("flock.ugen.amplitude", {
+        rate: "audio",
+        inputs: {
+            attack: 0.01,
+            release: 0.01
+        }
+    });
     
     
     /*******************
@@ -988,6 +1013,11 @@ var flock = flock || {};
         that.onInputChanged();
         return that;
     };
+    
+    flock.defaults("flock.ugen.out", {
+        rate: "audio"
+    });
+    
     
     flock.ugen.audioIn = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
@@ -1055,11 +1085,6 @@ var flock = flock || {};
                 that.setDevice();
                 return;
             }
-            
-            if (!that.inputs.device) {
-                that.inputs.device = flock.ugen.value({value: 0.0}, new Float32Array(1));
-            }
-
             flock.onMulAddInputChanged(that);
         };
         
@@ -1069,15 +1094,23 @@ var flock = flock || {};
         return that;
     };
     
+    flock.defaults("flock.ugen.audioIn", {
+        rate: "audio",
+        inputs: {
+            device: 0
+        }
+    });
+    
     
     /***********************
      * DOM-dependent UGens *
      ***********************/
      
     flock.ugen.scope = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
+        var that = flock.ugen(inputs, output, options),
+            defaultSettings = flock.defaults("flock.audioSettings");
         
-        that.model.spf = that.sampleRate / flock.defaults.fps;
+        that.model.spf = that.sampleRate / defaultSettings.fps;
         that.model.bufIdx = 0;
         
         // Setup the scopeView widget. 
@@ -1114,6 +1147,11 @@ var flock = flock || {};
         return that;
     };
     
+    flock.defaults("flock.ugen.scope", {
+        rate: "audio"
+    });
+    
+    
     flock.ugen.mouse = {};
     
     /**
@@ -1124,7 +1162,6 @@ var flock = flock || {};
     // TODO: add the ability to track individual elements rather than the whole screen.
     flock.ugen.mouse.cursor = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.rate = flock.rates.CONTROL;
         that.options.axis = that.options && that.options.axis ? that.options.axis : "x"; // By default, track the mouse along the x axis.
         
         /**
@@ -1274,18 +1311,6 @@ var flock = flock || {};
         };
         
         that.onInputChanged = function () {
-            if (!that.inputs.lag) {
-                that.inputs.lag = flock.ugen.value({value: 0.5}, new Float32Array(1));
-            }
-            
-            if (!that.inputs.add) {
-                that.inputs.add = flock.ugen.value({value: 0.0}, new Float32Array(1));
-            }
-            
-            if (!that.inputs.mul) {
-                that.inputs.mul = flock.ugen.value({value: 1.0}, new Float32Array(1));
-            }
-            
             flock.onMulAddInputChanged(that);
             
             var interp = that.options.interpolation;
@@ -1335,9 +1360,18 @@ var flock = flock || {};
         return that;
     };
     
+    flock.defaults("flock.ugen.mouse.cursor", {
+        rate: "control",
+        inputs: {
+            lag: 0.5,
+            add: 0.0,
+            mul: 1.0
+        }
+    });
+    
+    
     flock.ugen.mouse.click = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.rate = flock.rates.CONTROL;
         
         that.gen = function (numSamps) {
             var out = that.output,
@@ -1365,6 +1399,8 @@ var flock = flock || {};
             m.value = 0.0;
             m.target.addEventListener("mousedown", that.mouseDownListener, false);
             m.target.addEventListener("mouseup", that.mouseUpListener, false);
+            
+            that.onInputChanged();
         };
         
         that.onInputChanged = function () {
@@ -1372,8 +1408,11 @@ var flock = flock || {};
         };
         
         that.init();
-        that.onInputChanged();
         return that;
     };
+    
+    flock.defaults("flock.ugen.mouse.click", {
+        rate: "control"
+    });
     
 }());

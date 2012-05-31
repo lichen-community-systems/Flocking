@@ -340,22 +340,35 @@ flock.test = flock.test || {};
     module("flock.ugen.osc() tests");
     
     var makeOsc = function (freq, table, bufferSize, sampleRate) {
-        var ugenOptions = {
-            sampleRate: sampleRate
-        };
-        
-        var inputs = {
-            freq: flock.ugen.value({value: freq}, new Float32Array(bufferSize), ugenOptions),
-            table: table
-        };
-        var osc = flock.ugen.osc(inputs, new Float32Array(bufferSize), ugenOptions);
-        return osc;
+        return flock.parse.ugenForDef({
+            ugen: "flock.ugen.osc",
+            inputs: {
+                freq: {
+                    ugen: "flock.ugen.value",
+                    value: freq
+                },
+                table: table
+            },
+            options: {
+                sampleRate: sampleRate
+            }
+        });
     };
     
     var checkOsc = function (testSpec, expected, msg) {
         var osc = makeOsc(testSpec.freq, testSpec.table, testSpec.numSamps, testSpec.sampleRate);
+        expected = paddedBuffer(expected, osc.output.length);
         osc.gen(testSpec.numSamps);
         deepEqual(osc.output, expected, msg);
+    };
+    
+    var paddedBuffer = function (values, length) {
+        var buf = new Float32Array(length),
+            i;
+        for (i = 0; i < values.length; i++) {
+            buf[i] = values[i];
+        }
+        return buf;
     };
     
     test("flock.ugen.osc() simple table lookup", function () {

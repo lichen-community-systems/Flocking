@@ -72,7 +72,7 @@ var flock = flock || {};
         actual = flock.generate(5, function (i) {
             return i % 2 > 0 ? 42 : 0;
         });
-        deepEqual(actual, expected, "Buffer size as a number and generator function.")
+        deepEqual(actual, expected, "Buffer size as a number and generator function.");
     });
     
     test("flock.minBufferSize()", function () {
@@ -329,4 +329,18 @@ var flock = flock || {};
             "A compressed constant rate should be expanded to its full value.");
     });
     
+    test("flock.parse.ugenForDef options merging", function () {
+        var sinOscDef = {
+            ugen: "flock.ugen.sinOsc",
+            phase: 1.0
+        };
+        
+        var ugen = flock.parse.ugenForDef(sinOscDef);
+        equals(ugen.rate, flock.rates.AUDIO, 
+            "The rate option should be supplied by the ugen's defaults.");
+        equals(ugen.inputs.freq.model.value, 440, 
+            "The frequency input should be supplied by the ugen's defaults.");
+        equals(ugen.inputs.phase.model.value, 1.0,
+            "The ugen's default phase input should be overridden by the ugenDef.");
+    });
 }());

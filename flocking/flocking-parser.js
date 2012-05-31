@@ -48,7 +48,9 @@ var flock = flock || {};
             sampleRate;
     
         // Set the ugen's sample rate value according to the rate the user specified.
-        if (ugenDef.rate === flock.rates.AUDIO) {
+        if (ugenDef.options && ugenDef.options.sampleRate !== undefined) {
+            sampleRate = ugenDef.options.sampleRate;
+        } else if (ugenDef.rate === flock.rates.AUDIO) {
             sampleRate = rates.audio;
         } else if (ugenDef.rate === flock.rates.CONTROL) {
             sampleRate = rates.audio / rates.control;
@@ -69,7 +71,7 @@ var flock = flock || {};
 
 
     flock.parse.reservedWords = ["id", "ugen", "rate", "inputs", "options"];
-    flock.parse.specialInputs = ["value", "buffer"];
+    flock.parse.specialInputs = ["value", "buffer", "table"];
     
     flock.parse.expandUGenDef = function (ugenDef) {
         var inputs = {},
@@ -119,7 +121,8 @@ var flock = flock || {};
      *      - inputs keyed by name at the top level of the ugenDef
      */
     flock.parse.ugenForDef = function (ugenDef, rates, ugens) {
-        rates = rates || flock.defaults.rates;
+        var defaultSettings = flock.defaults("flock.audioSettings");
+        rates = rates || defaultSettings.rates;
     
         // We received an array of ugen defs.
         if (typeof (ugenDef.length) === "number") {
@@ -132,6 +135,10 @@ var flock = flock || {};
     
         flock.parse.expandRate(ugenDef);
     
+        // Merge the ugenDef with default values defined by the ugen itself.
+        var defaults = flock.defaults(ugenDef.ugen) || {};
+        ugenDef = $.extend(true, {}, defaults, ugenDef);
+        
         var inputDefs = ugenDef.inputs,
             inputs = {},
             inputDef;
