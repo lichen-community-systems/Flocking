@@ -6,7 +6,7 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global Float32Array, window, _*/
+/*global Float32Array, window, $*/
 /*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
@@ -240,7 +240,6 @@ var flock = flock || {};
             flock.ugen.osc.onInputChanged(that);
             
             // Precalculate table-related values.
-            // TODO: The table input here isn't a standard ugen input. Does this matter?
             var m = that.model;
             m.tableLen = that.inputs.table.length;
             m.tableIncHz = m.tableLen / that.sampleRate;

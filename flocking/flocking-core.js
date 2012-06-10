@@ -46,7 +46,7 @@ var flock = flock || {};
             constant: 1
         },        
         tableSize: 8192,
-        minLatency: 50,
+        minLatency: 100,
         writeInterval: 25,
         bufferSize: 512, // TODO: Replace minLatency and writeInterval with bufferSize on all platforms.
         fps: 60 // TODO: Move this somewhere more appropriate.
@@ -162,6 +162,97 @@ var flock = flock || {};
     };
     
     
+    /***********************
+     * Time and Scheduling *
+     ***********************/
+
+     flock.BlobBuilder = window.BlobBuilder || window.MozBlobBuilder || 
+        window.WebKitBlobBuilder || window.MSBlobBuilder || window.OBlobBuilder;
+     
+     /**
+      * Creates a Web Worker from a String or Function.
+      *
+      * Note that if a Function is used, it will be converted into a string
+      * and then evaluated again in the Worker's "alternate universe."
+      * As a result functions passed to workers will not capture their lexical scope, etc.
+      *
+      * @param {String|Function} code the code to pass to the Web Worker to be evaluated
+      * @return a standard W3C Worker instance
+      */
+     flock.worker = function (code) {
+         var type = typeof (code),
+             builder = new flock.BlobBuilder(),
+             url;
+        
+         if (type === "function") {
+             code = "(" + code.toString() + ")();";
+         } else if (type !== "string") {
+             throw Error("A flock.worker must be initialized with a String or a Function.");
+         }
+         
+         builder.append(code);
+         url = window.URL.createObjectURL(builder.getBlob());
+         return new Worker(url);
+     };
+     
+     flock.worker.code = {
+         interval: function () {
+             self.intervals = {};
+
+             self.onInterval = function (interval) {
+                 self.postMessage({
+                     msg: "tick",
+                     value: interval
+                 });
+             };
+
+             self.schedule = function (interval) {
+                 var id = setInterval(function () {
+                     self.onInterval(interval);
+                 }, interval);
+                 self.intervals[interval] = id;
+             };
+
+             self.clear = function (interval) {
+                 var id = self.intervals[interval];
+                 clearInterval(id);
+             };
+
+             self.addEventListener("message", function (e) {
+                 self[e.data.msg](e.data.value);
+             }, false);
+         }
+     };
+     
+     flock.conductor = function () {
+         var that = {
+             intervalWorker: flock.worker(flock.worker.code.interval)
+         };
+         
+         that.schedulePeriodic = function (interval, fn) {
+             that.intervalWorker.addEventListener("message", function (e) {
+                 if (e.data.value === interval) {
+                     fn();
+                 }
+             }, false);
+             
+             that.intervalWorker.postMessage({
+                 msg: "schedule",
+                 value: interval
+             });
+         };
+         
+         that.cancelPeriodic = function (interval) {
+             that.intervalWorker.postMessage({
+                 msg: "clear",
+                 value: interval
+             });
+         };
+         
+         return that;
+     };
+     
+     
     /***********************
      * Synths and Playback *
      ***********************/
@@ -355,13 +446,14 @@ var flock = flock || {};
         that.audioSettings.bufferSize = flock.minBufferSize(defaultSettings.minLatency, that.audioSettings);
         that.audioEl.mozSetup(that.audioSettings.chans, that.audioSettings.rates.audio);
         that.playbackTimerId = null;
+        that.conductor = flock.conductor();
         
         that.startGeneratingSamples = function () {
-            if (that.playbackTimerId) {
+            if (that.scheduled) {
                 return;
             }
             
-            that.playbackTimerId = window.setInterval(function () {
+            that.conductor.schedulePeriodic(that.model.writeInterval, function () {
                 var playState = that.model.playState;
                 var needed = that.audioEl.mozCurrentSampleOffset() + 
                     that.audioSettings.bufferSize - playState.written;
@@ -374,12 +466,13 @@ var flock = flock || {};
                 if (playState.written >= playState.total) {
                     that.stop();
                 }
-            }, that.model.writeInterval);
+            });
+            that.scheduled = true;
         };
         
         that.stopGeneratingSamples = function () {
-            window.clearInterval(that.playbackTimerId);
-            that.playbackTimerId = null;
+            that.conductor.cancelPeriodic(that.model.writeInterval);
+            that.scheduled = false;
         };        
     };
     
