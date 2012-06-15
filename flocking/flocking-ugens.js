@@ -1107,13 +1107,18 @@ var flock = flock || {};
      
     flock.ugen.scope = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options),
-            defaultSettings = flock.defaults("flock.audioSettings");
+            fps = options.fps || 60; // TODO: Real options merging!
         
-        that.model.spf = that.sampleRate / defaultSettings.fps;
+        that.model.spf = Math.round(that.sampleRate / fps);
         that.model.bufIdx = 0;
         
         // Setup the scopeView widget. 
-        that.model.scope = that.options.styles;
+        that.model.scope = that.options.styles || {
+            scaleY: 0.75,
+            strokeColor: "#777777",
+            strokeWidth: 3
+        }; // TODO: Options merging!
+        
         that.model.scope.values = new Float32Array(that.model.spf);
         that.scopeView = flock.gfx.scopeView(that.options.canvas, that.model.scope);
         

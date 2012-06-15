@@ -60,13 +60,14 @@ flock.test = flock.test || {};
             rates: {
                 control: 20
             },
-            chans: chans
+            chans: chans,
+            bufferSize: 40
         };
         
         var evalFn = function () {
             outUGen.gen(numSamps);
         };
-        var actual = flock.interleavedDemandWriter(numSamps, evalFn, flock.enviro.shared.buses, audioSettings);
+        var actual = flock.interleavedDemandWriter(new Float32Array(numSamps * chans), evalFn, flock.enviro.shared.buses, audioSettings);
         deepEqual(actual, expectedBuffer, msg);
     };
 

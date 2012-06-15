@@ -386,37 +386,40 @@
         </script>
         
         <script type="application/flocking" id="sum">
-        // A bank of sine oscillators added together.
-        var synth = flock.synth({
-            ugen: "flock.ugen.sum",
-            sources: [
-                {
-                    ugen: "flock.ugen.sinOsc",
-                    freq: 440,
-                    mul: 0.5
-                },
-                {
-                    ugen: "flock.ugen.sinOsc",
-                    freq: 440 * 2,
-                    mul: 0.5 / 2
-                },
-                {
-                    ugen: "flock.ugen.sinOsc",
-                    freq: 440 * 3,
-                    mul: 0.5 / 3
-                },
-                {
-                    ugen: "flock.ugen.sinOsc",
-                    freq: 440 * 5,
-                    mul: 0.5 / 5
-                },
-                {
-                    ugen: "flock.ugen.sinOsc",
-                    freq: 440 * 7,
-                    mul: 0.5 / 7
-                }
-            ]
-        });
+// A bank of sine oscillators added together.
+var sources = [];
+var freqs = [];
+var harmonics = [1, 3, 5, 7, 11, 13];
+var octaves = [1, 2, 3, 4, 5, 6];
+
+var makeHarmonic = function (ugenName, fundamentalFreq, harmonic, octave, maxAmp) {
+    return {
+        ugen: ugenName,
+        freq: fundamentalFreq * (harmonic * octave),
+        mul: maxAmp / (harmonic * octave)
+    };
+};
+
+$.each(harmonics, function (i, harm) {
+    $.each(octaves, function (i, oct) {
+        var ugenDef = makeHarmonic("flock.ugen.sinOsc", 440, harm, oct, 0.5);
+        if (freqs.indexOf(ugenDef.freq) === -1) {
+            freqs.push(ugenDef.freq);
+            sources.push(ugenDef);
+        }
+    });
+});
+
+var synth = flock.synth({
+    ugen: "flock.ugen.scope",
+    source: {
+        ugen: "flock.ugen.sum",
+        sources: sources
+    },
+    options: {
+        canvas: "#gfx"
+    }
+});
         </script>
         
     </body>

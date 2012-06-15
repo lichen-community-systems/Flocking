@@ -46,10 +46,7 @@ var flock = flock || {};
             constant: 1
         },        
         tableSize: 8192,
-        minLatency: 100,
-        writeInterval: 25,
-        bufferSize: 512, // TODO: Replace minLatency and writeInterval with bufferSize on all platforms.
-        fps: 60 // TODO: Move this somewhere more appropriate.
+        bufferSize: 1024
     });
     
     flock.idIdx = 0;
@@ -65,7 +62,6 @@ var flock = flock || {};
      * Utilities *
      *************/
     
-    // TODO: Move this to an as-yet non-existent base file.
     flock.isIterable = function (o) {
          var l = o.length;
          return o && l !== undefined && typeof (l) === "number";
@@ -256,46 +252,6 @@ var flock = flock || {};
     /***********************
      * Synths and Playback *
      ***********************/
-
-    /**
-     * Generates an interleaved audio buffer from the output unit generator for the specified
-     * 'needed' number of samples. If number of needed samples isn't divisble by the control rate,
-     * the output buffer's size will be rounded up to the nearest control period.
-     *
-     * @param {Number} needed the number of samples to generate
-     * @param {Function} evalFn a function to invoke when writing each buffer
-     * @param {Array} an array of buffers to write
-     * @param {Object} audioSettings the current audio system settings
-     * @return a channel-interleaved output buffer containing roughly the number of needed samples
-     */
-    flock.interleavedDemandWriter = function (needed, evalFn, sourceBufs, audioSettings) {
-        var kr = audioSettings.rates.control,
-            chans = audioSettings.chans,
-            // Figure out how many control periods worth of samples to generate.
-            // This means that we'll probably be writing slightly more or less than needed.
-            numKRBufs = Math.round(needed / kr),
-            outBufSize = numKRBufs * kr * chans,
-            outBuf = new Float32Array(outBufSize), // TODO: Don't generate a new buffer each time through.
-            i,
-            chan,
-            samp;
-            
-        for (i = 0; i < numKRBufs; i++) {
-            evalFn();
-            var offset = i * kr * chans;
-            
-            // Interleave each output channel.
-            for (chan = 0; chan < chans; chan++) {
-                var sourceBuf = sourceBufs[chan];
-                for (samp = 0; samp < kr; samp++) {
-                    var frameIdx = samp * chans + offset;
-                    outBuf[frameIdx + chan] = sourceBuf[samp];
-                }
-            }
-        }
-        
-        return outBuf;
-    };
     
     var setupEnviro = function (that) {
         var setupFn = typeof (window.webkitAudioContext) !== "undefined" ?
@@ -314,7 +270,8 @@ var flock = flock || {};
                         control: options.controlRate || defaultSettings.rates.control,
                         constant: options.constantRate || defaultSettings.rates.constant
                     },
-                    chans: options.chans || 2
+                    chans: options.chans || 2,
+                    bufferSize: options.bufferSize || defaultSettings.bufferSize
                 },
                 model: {
                     playState: {
@@ -434,6 +391,44 @@ var flock = flock || {};
     };
     
     /**
+     * Generates an interleaved audio buffer from the output unit generator for the specified
+     * 'needed' number of samples. If number of needed samples isn't divisble by the control rate,
+     * the output buffer's size will be rounded up to the nearest control period.
+     *
+     * @param {Number} needed the number of samples to generate
+     * @param {Function} evalFn a function to invoke when writing each buffer
+     * @param {Array} an array of buffers to write
+     * @param {Object} audioSettings the current audio system settings
+     * @return a channel-interleaved output buffer containing roughly the number of needed samples
+     */
+    flock.interleavedDemandWriter = function (outBuf, evalFn, sourceBufs, audioSettings) {
+        var kr = audioSettings.rates.control,
+            chans = audioSettings.chans,
+            // Figure out how many control periods worth of samples to generate.
+            // This means that we could conceivably write slightly more or less than needed.
+            numKRBufs = audioSettings.bufferSize / kr,
+            i,
+            chan,
+            samp;
+            
+        for (i = 0; i < numKRBufs; i++) {
+            evalFn();
+            var offset = i * kr * chans;
+            
+            // Interleave each output channel.
+            for (chan = 0; chan < chans; chan++) {
+                var sourceBuf = sourceBufs[chan];
+                for (samp = 0; samp < kr; samp++) {
+                    var frameIdx = samp * chans + offset;
+                    outBuf[frameIdx + chan] = sourceBuf[samp];
+                }
+            }
+        }
+        
+        return outBuf;
+    };
+    
+    /**
      * Mixes in Firefox-specific Audio Data API implementations for outputting audio
      *
      * @param that the environment to mix into
@@ -442,32 +437,36 @@ var flock = flock || {};
         var defaultSettings = flock.defaults("flock.audioSettings");
         
         that.audioEl = new Audio();
-        that.model.writeInterval = that.model.writeInterval || defaultSettings.writeInterval;
-        that.audioSettings.bufferSize = flock.minBufferSize(defaultSettings.minLatency, that.audioSettings);
+        that.model.writeInterval = 1;
+        that.model.sampleOverflow = 0 - (that.audioSettings.bufferSize * 4);
         that.audioEl.mozSetup(that.audioSettings.chans, that.audioSettings.rates.audio);
-        that.playbackTimerId = null;
         that.conductor = flock.conductor();
         
         that.startGeneratingSamples = function () {
             if (that.scheduled) {
                 return;
             }
-            
-            that.conductor.schedulePeriodic(that.model.writeInterval, function () {
-                var playState = that.model.playState;
-                var needed = that.audioEl.mozCurrentSampleOffset() + 
-                    that.audioSettings.bufferSize - playState.written;
-                if (needed <= 0 || that.nodes.length < 1) {
-                    return;
-                }
-                
-                var outBuf = flock.interleavedDemandWriter(needed, that.gen, that.buses, that.audioSettings);
-                playState.written += that.audioEl.mozWriteAudio(outBuf);
-                if (playState.written >= playState.total) {
-                    that.stop();
-                }
-            });
+            that.conductor.schedulePeriodic(that.model.writeInterval, that.writeSamples);
             that.scheduled = true;
+        };
+        
+        that.writeSamples = function () {
+            var playState = that.model.playState,
+                currentOffset = that.audioEl.mozCurrentSampleOffset(),
+                needed = currentOffset - playState.written,
+                outBuf;
+            
+            if (needed < that.model.sampleOverflow || that.nodes.length < 1) {
+                return;
+            }
+            
+            outBuf = new Float32Array(that.audioSettings.bufferSize * that.audioSettings.chans);
+            flock.interleavedDemandWriter(outBuf, that.gen, that.buses, that.audioSettings);
+            playState.written += that.audioEl.mozWriteAudio(outBuf);
+            
+            if (playState.written >= playState.total) {
+                that.stop();
+            }
         };
         
         that.stopGeneratingSamples = function () {
@@ -493,7 +492,6 @@ var flock = flock || {};
                 samp;
                 
             // If there are no nodes providing samples, write out silence.
-            // TODO: Why can't the Web Audio API just handle this?
             if (that.nodes.length < 1) {
                 for (chan = 0; chan < chans; chan++) {
                     flock.generate.silence(outBufs.getChannelData(chan));
@@ -535,7 +533,6 @@ var flock = flock || {};
         var defaultSettings = flock.defaults("flock.audioSettings");
         
         that.context = new webkitAudioContext();
-        that.audioSettings.bufferSize = defaultSettings.bufferSize;
         that.source = that.context.createBufferSource();
         that.jsNode = that.context.createJavaScriptNode(that.audioSettings.bufferSize);
         
