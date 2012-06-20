@@ -103,6 +103,44 @@ var flock = flock || {};
         return Math.round(size);
     };
     
+    /**
+     * Randomly selects an index from the specified array.
+     */
+    flock.randomIndex = function (arr) {
+        var max = arr.length - 1;
+        return Math.round(Math.random() * max);
+    };
+
+    /**
+     * Randomly selects an item from an array-like object.
+     *
+     * @param {Array-like object} arr the array to choose from
+     * @param {Function} a selection strategy; defaults to flock.randomIndex
+     * @return a randomly selected list item
+     */
+    flock.arrayChoose = function (arr, strategy) {
+        strategy = strategy || flock.randomIndex;
+        arr = $.makeArray(arr);
+        var idx = strategy(arr);
+        return arr[idx];
+    };
+
+    /**
+     * Randomly selects an item from an array or object.
+     *
+     * @param {Array-like object|Object} collection the object to choose from
+     * @return a randomly selected item from collection
+     */
+    flock.choose = function (collection, strategy) {
+        if (flock.isIterable(collection)) {
+            var val = flock.arrayChoose(collection, strategy);
+            return val;
+        }
+
+        var key = arrayChoose(collection.keys, strategy);
+        return collection[key];
+    };
+    
     // TODO:
     //   - Unit tests
     //   - Allow normalization to other values than 1.0.
