@@ -162,7 +162,8 @@ var flock = flock || {};
                 ugens[flock.ALL_UGENS_ID].push(ugen);
             }
             if (ugenDef.id) {
-                ugens[ugenDef.id] = ugen;
+                ugen.id = ugenDef.id;
+                ugens[ugen.id] = ugen;
             }
         }
 

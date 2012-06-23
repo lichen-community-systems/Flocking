@@ -34,16 +34,35 @@ var flock = flock || {};
          * @param {UGenDef} val [optional] a UGenDef or scalar value, which will be assigned to the specified input name
          * @return {Number|UGen} a scalar value in the case of a value ugen, otherwise the ugen itself
          */
-        that.input = function (name, val) {
+        that.input = function (name, val, ugens) {
             if (val === undefined) {
                 var input = that.inputs[name];
                 return (input.model && typeof (input.model.value) !== "undefined") ? input.model.value : input;
             }
             
-            var ugen = flock.parse.ugenForInputDef(val, flock.enviro.shared.audioSettings.rates);
-            that.inputs[name] = ugen;
+            var parseFn = flock.isIterable(val) ? flock.parse.ugensForDefs : flock.parse.ugenForInputDef; // TODO: tests + why are we using ugenForInputDef? array semantics?
+            var parsed = parseFn(val, flock.enviro.shared.audioSettings.rates, ugens);
+            
+            // TODO: Factor out.
+            var prevInputs = that.inputs[name];
+            if (prevInputs) {
+                prevInputs = $.makeArray(prevInputs);
+                for (var i = 0; i < prevInputs.length; i++) {
+                    var prev = prevInputs[i];
+                    var all = ugens[flock.ALL_UGENS_ID];
+                    var idx = all.indexOf(prev);
+                    if (idx > -1) {
+                        all.splice(idx, 1);
+                    }
+                    if (prev.id) {
+                        delete ugens[prev.id];
+                    }
+                }
+            }
+            
+            that.inputs[name] = parsed;
             that.onInputChanged(name);
-            return ugen;
+            return parsed;
         };
     
         that.onInputChanged = flock.identity; // No-op base implementation.

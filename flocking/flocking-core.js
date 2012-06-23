@@ -203,6 +203,8 @@ var flock = flock || {};
      flock.BlobBuilder = window.BlobBuilder || window.MozBlobBuilder || 
         window.WebKitBlobBuilder || window.MSBlobBuilder || window.OBlobBuilder;
      
+     flock.URL = window.URL || window.webkitURL;
+     
      /**
       * Creates a Web Worker from a String or Function.
       *
@@ -225,7 +227,7 @@ var flock = flock || {};
          }
          
          builder.append(code);
-         url = window.URL.createObjectURL(builder.getBlob());
+         url = flock.URL.createObjectURL(builder.getBlob());
          return new Worker(url);
      };
      
@@ -250,6 +252,12 @@ var flock = flock || {};
              self.clear = function (interval) {
                  var id = self.intervals[interval];
                  clearInterval(id);
+             };
+             
+             self.clearAll = function () {
+                 for (var interval in self.intervals) {
+                     self.clear(interval);
+                 }
              };
 
              self.addEventListener("message", function (e) {
@@ -276,10 +284,16 @@ var flock = flock || {};
              });
          };
          
-         that.cancelPeriodic = function (interval) {
+         that.clearPeriodic = function (interval) {
              that.intervalWorker.postMessage({
                  msg: "clear",
                  value: interval
+             });
+         };
+         
+         that.clearAll = function () {
+             that.intervalWorker.postMessage({
+                 msg: "clearAll"
              });
          };
          
@@ -326,6 +340,7 @@ var flock = flock || {};
         // The advantage to numbers is that they're easily modulatable with a ugen. Names are easier to deal with.
         that.buses = flock.enviro.createAudioBuffers(16, that.audioSettings.rates.control);
         that.buffers = {};
+        that.conductor = flock.conductor();
         
         /**
          * Starts generating samples from all synths.
@@ -352,7 +367,7 @@ var flock = flock || {};
         
         that.reset = function () {
             that.stop();
-            
+            that.conductor.clearAll();
             // Clear the environment's node list.
             while (that.nodes.length > 0) {
                 that.nodes.pop();
@@ -478,7 +493,6 @@ var flock = flock || {};
         that.model.writeInterval = 1;
         that.model.sampleOverflow = 0 - (that.audioSettings.bufferSize * 4);
         that.audioEl.mozSetup(that.audioSettings.chans, that.audioSettings.rates.audio);
-        that.conductor = flock.conductor();
         
         that.startGeneratingSamples = function () {
             if (that.scheduled) {
@@ -508,7 +522,7 @@ var flock = flock || {};
         };
         
         that.stopGeneratingSamples = function () {
-            that.conductor.cancelPeriodic(that.model.writeInterval);
+            that.conductor.clearPeriodic(that.model.writeInterval);
             that.scheduled = false;
         };        
     };
@@ -645,7 +659,7 @@ var flock = flock || {};
                 ugenPath = ugenInputPath.substring(0, ugenInputPath.lastIndexOf(".")),
                 inputName = path.substring(lastSegIdx + 1),
                 ugen = flock.resolvePath(ugenPath, that.inputUGens),
-                inputUGen = ugen.input(inputName, val);
+                inputUGen = ugen.input(inputName, val, that.inputUGens);
                                 
             ugen.onInputChanged();
             return inputUGen;
