@@ -18,7 +18,6 @@ var flock = flock || {};
     "use strict";
     
     flock.OUT_UGEN_ID = "flocking-out";
-    flock.ALL_UGENS_ID = "flocking-all";
     flock.TWOPI = 2.0 * Math.PI;
     flock.LOG1 = Math.log(0.1);
     flock.LOG001 = Math.log(0.001);
@@ -610,15 +609,13 @@ var flock = flock || {};
     flock.synth = function (def, options) {
         var that = {
             rate: flock.rates.AUDIO,
+            enviro: flock.enviro.shared,
+            ugens: flock.synth.ugenCache(),
             model: {
                 synthDef: def
             },
             options: options || {}
         };
-        that.enviro = flock.enviro.shared;
-        that.inputUGens = flock.parse.synthDef(that.model.synthDef, that.enviro.audioSettings);
-        that.ugens = that.inputUGens[flock.ALL_UGENS_ID];
-        that.out = that.inputUGens[flock.OUT_UGEN_ID];
         
         /**
          * Generates an audio rate signal by evaluating this synth's unit generator graph.
@@ -628,7 +625,7 @@ var flock = flock || {};
          */
         that.gen = function () {
             // Synths always evaluate their ugen graph at the audio rate.
-            flock.enviro.evalGraph(that.ugens, that.enviro.audioSettings.rates.control);
+            flock.enviro.evalGraph(that.ugens.active, that.enviro.audioSettings.rates.control);
         };
         
         /**
@@ -638,7 +635,7 @@ var flock = flock || {};
          * @return {Number|UGen} a scalar value in the case of a value ugen, otherwise the ugen itself
          */
         that.getUGenPath = function (path) {
-            var input = flock.resolvePath(path, that.inputUGens);
+            var input = flock.resolvePath(path, that.ugens.named);
             return typeof (input.model.value) !== "undefined" ? input.model.value : input;
         };
         
@@ -658,10 +655,12 @@ var flock = flock || {};
                 ugenInputPath = path.substring(0, lastSegIdx),
                 ugenPath = ugenInputPath.substring(0, ugenInputPath.lastIndexOf(".")),
                 inputName = path.substring(lastSegIdx + 1),
-                ugen = flock.resolvePath(ugenPath, that.inputUGens),
-                inputUGen = ugen.input(inputName, val, that.inputUGens);
-                                
-            ugen.onInputChanged();
+                ugen = flock.resolvePath(ugenPath, that.ugens.named),
+                prevInputUGen = ugen.input(inputName),
+                inputUGen = ugen.input(inputName, val);
+            
+            that.ugens.replace(inputUGen, prevInputUGen);
+            ugen.onInputChanged(inputName);
             return inputUGen;
         };
         
@@ -669,7 +668,7 @@ var flock = flock || {};
          * Gets or sets the value of a ugen at the specified path
          *
          * @param {String} path the ugen's path within the synth graph
-         * @param {Number || UGenDef} val an optional value to to set--either a a scalar or a UGenDef object
+         * @param {Number || UGenDef || Array} val an optional value to to set--a scalar value, a UGenDef object, or an array of UGenDefs
          * @return {UGen} optionally, the newly created UGen that was set at the specified path
          */
         // TODO: Naming?
@@ -707,9 +706,75 @@ var flock = flock || {};
             that.enviro.remove(that);
         };
 
-        if (that.options.addToEnvironment !== false) {
-            that.enviro.head(that);
-        }
+        that.init = function () {
+            // Set up the ugenCache as a visitor for the parsing stage, 
+            // so that we don't have to traverse the graph again later.
+            var parseOptions = $.extend({}, that.enviro.audioSettings, {
+                visitors: that.ugens.add
+            });
+            
+            // Parse the synthDef into a graph of unit generators.
+            that.out = flock.parse.synthDef(that.model.synthDef, parseOptions);
+            
+            // Add this synth to the head of the synthesis environment if appropriate.
+            if (that.options.addToEnvironment !== false) {
+                that.enviro.head(that);
+            }
+        };
+        
+        that.init();
+        return that;
+    };
+    
+    // TODO: Unit tests!
+    flock.synth.ugenCache = function () {
+        var that = {
+            named: {},
+            active: []
+        };
+        
+        that.add = function (ugens) {
+            var i,
+                ugen;
+            
+            ugens = $.makeArray(ugens);
+            for (i = 0; i < ugens.length; i++) {
+                ugen = ugens[i];
+                if (ugen.gen) {
+                    that.active.push(ugen);
+                }
+                if (ugen.id) {
+                    that.named[ugen.id] = ugen;
+                }
+            }
+
+        };
+        
+        that.remove = function (ugens) {
+            // TODO: Need to recurse over all the inputs and remove them as well.
+            var i,
+                ugen,
+                all,
+                idx;
+            
+            ugens = $.makeArray(ugens);
+            for (i = 0; i < ugens.length; i++) {
+                ugen = ugens[i];
+                all = that.active;
+                idx = all.indexOf(ugen);
+                if (idx > -1) {
+                    all.splice(idx, 1);
+                }
+                if (ugen.id) {
+                    delete that.named[ugen.id];
+                }
+            }
+        };
+        
+        that.replace = function (ugens, previousUGens) {
+            that.remove(previousUGens);
+            that.add(ugens);
+        };
         
         return that;
     };

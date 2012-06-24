@@ -120,8 +120,8 @@ var flock = flock || {};
     
     test("Set input values", function () {
         var synth = createSynth(simpleSynthDef),
-            sineUGen = synth.inputUGens.sine,
-            modUGen = synth.inputUGens.mod;
+            sineUGen = synth.ugens.named.sine,
+            modUGen = synth.ugens.named.mod;
         
         // Setting simple values.
         synth.input("sine.freq", 220);
@@ -143,8 +143,8 @@ var flock = flock || {};
             }
         };
         var dust = synth.input("sine.mul", testUGenDef);
-        equals(synth.inputUGens.sine.inputs.mul, dust, "The 'mul' ugen should be set to our test Dust ugen.");
-        equals(synth.inputUGens.sine.inputs.mul.inputs.density.model. value, 200, 
+        equals(synth.ugens.named.sine.inputs.mul, dust, "The 'mul' ugen should be set to our test Dust ugen.");
+        equals(synth.ugens.named.sine.inputs.mul.inputs.density.model. value, 200, 
             "The ugen should be set up correctly.");
     });
 
@@ -180,30 +180,24 @@ var flock = flock || {};
 
     module("Parsing tests");
     
-    var checkRegisteredUGens = function (ugens, expectedNumEvals) {
-        equals(flock.test.countKeys(ugens), 4, "There should be four registered ugens.");            
-        ok(ugens[flock.OUT_UGEN_ID], 
-            "The output ugen should be at the reserved key flock.OUT_UGEN_ID.");
-        equals(ugens[flock.ALL_UGENS_ID].length, expectedNumEvals, 
-            "There should be " + expectedNumEvals + " real ugens in the 'all' list, including the output.");
+    var checkRegisteredUGens = function (synth, expectedNumEvals) {
+        equals(flock.test.countKeys(synth.ugens.named), 3, "There should be three registered ugens.");
+        ok(synth.out, 
+            "The output ugen should have been stored at synth.out");
+        equals(synth.ugens.active.length, expectedNumEvals, 
+            "There should be " + expectedNumEvals + " real ugens in the 'active' list, including the output.");
     };
     
     var checkParsedTestSynthDef = function (synthDef, expectedNumEvalUGens) {
-        var parsedUGens = flock.parse.synthDef(synthDef, {
-            rates: {
-                audio: 1,
-                control: 1,
-                constant: 1
-            },
-            chans: 2
-        });
+        var synth = flock.synth(synthDef),
+            namedUGens = synth.ugens.named;
         
-        checkRegisteredUGens(parsedUGens, expectedNumEvalUGens);
-        ok(parsedUGens.sine, "The sine ugen should be keyed by its id....");
-        equals(0, parsedUGens.sine.model.phase, "...and it should be a real osc ugen.");
+        checkRegisteredUGens(synth, expectedNumEvalUGens);
+        ok(namedUGens.sine, "The sine ugen should be keyed by its id....");
+        equals(0, namedUGens.sine.model.phase, "...and it should be a real osc ugen.");
         
-        ok(parsedUGens.mul, "The mul ugen should be keyed by its id...");
-        ok(parsedUGens.mul.model.value, "...and it should be a real value ugen.");
+        ok(namedUGens.mul, "The mul ugen should be keyed by its id...");
+        ok(namedUGens.mul.model.value, "...and it should be a real value ugen.");
     };
     
     var condensedTestSynthDef = {
@@ -226,15 +220,15 @@ var flock = flock || {};
         }
     };
     
-    test("flock.parse.synthDef(), no output specified", function () {
+    test("flock.synth(), no output specified", function () {
         checkParsedTestSynthDef(condensedTestSynthDef, 2);
     });
 
-    test("flock.parse.synthDef(), output specified", function () {
+    test("flock.synth(), output specified", function () {
         checkParsedTestSynthDef(expandedTestSynthDef, 2);
     });
     
-    test("flock.parse.synthDef() with multiple channels", function () {
+    test("flock.synth() with multiple channels", function () {
         var multiChanTestSynthDef = [
             {
                 id: "leftSine",
@@ -252,23 +246,17 @@ var flock = flock || {};
             }
         ];
         
-        var parsedUGens = flock.parse.synthDef(multiChanTestSynthDef, {
-            rates: {
-                audio: 1,
-                control: 1,
-                constant: 1
-            },
-            chans: 2
-        });
-        checkRegisteredUGens(parsedUGens, 3);
-        ok(parsedUGens.leftSine, "The left sine ugen should have been parsed correctly.");
-        ok(parsedUGens.rightSine, "The right sine ugen should have been parsed correctly.");
-        deepEqual(parsedUGens[flock.OUT_UGEN_ID].inputs.sources, 
-            [parsedUGens.leftSine, parsedUGens.rightSine],
+        var synth = flock.synth(multiChanTestSynthDef),
+            namedUGens = synth.ugens.named;
+        checkRegisteredUGens(synth, 3);
+        ok(namedUGens.leftSine, "The left sine ugen should have been parsed correctly.");
+        ok(namedUGens.rightSine, "The right sine ugen should have been parsed correctly.");
+        deepEqual(synth.out.inputs.sources, 
+            [namedUGens.leftSine, namedUGens.rightSine],
             "The output ugen should have an array of sources, containing the left and right sine ugens.");
     });
     
-    test("flock.parse.synthDef() with mix of compressed and expanded ugenDefs", function () {
+    test("flock.synth() with mix of compressed and expanded ugenDefs", function () {
         var mixedSynthDef = {
             id: "carrier",
             ugen: "flock.ugen.sinOsc",
@@ -288,14 +276,15 @@ var flock = flock || {};
             }
         };
     
-        var ugens = flock.parse.synthDef(mixedSynthDef, {chans: 2});
-        equals(ugens.carrier.inputs.freq, ugens.mod, 
+        var synth = flock.synth(mixedSynthDef),
+            namedUGens = synth.ugens.named;
+        equals(namedUGens.carrier.inputs.freq, namedUGens.mod, 
             "The modulator should have been set as the frequency input to the carrier.");
-        equals(ugens.mod.inputs.freq.model.value, 440, 
+        equals(namedUGens.mod.inputs.freq.model.value, 440, 
             "The modulator's frequency should be 440.");
-        equals(ugens.mod.inputs.phase, ugens.line,
+        equals(namedUGens.mod.inputs.phase, namedUGens.line,
             "The modulator's phase input should be set to the line ugen.");
-        equals(ugens.line.inputs.end.model.value, 10, 
+        equals(namedUGens.line.inputs.end.model.value, 10, 
             "The line's inputs should be set correctly.");
     });
     

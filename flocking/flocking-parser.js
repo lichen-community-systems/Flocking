@@ -18,9 +18,6 @@ var flock = flock || {};
     flock.parse = flock.parse || {};
 
     flock.parse.synthDef = function (ugenDef, options) {
-        var ugens = {};
-        ugens[flock.ALL_UGENS_ID] = [];
-    
         // We didn't get an out ugen specified, so we need to make one.
         if (typeof (ugenDef.length) === "number" || ugenDef.id !== flock.OUT_UGEN_ID) {
             ugenDef = {
@@ -33,9 +30,8 @@ var flock = flock || {};
                 }
             };
         }
-    
-        flock.parse.ugenForDef(ugenDef, options.rates, ugens);
-        return ugens;
+        
+        return flock.parse.ugenForDef(ugenDef, options.rates, options.visitors);
     };
 
     flock.parse.makeUGen = function (ugenDef, parsedInputs, rates) {
@@ -100,11 +96,11 @@ var flock = flock || {};
         return ugenDef;
     };
 
-    flock.parse.ugensForDefs = function (ugenDefs, rates, ugens) {
+    flock.parse.ugensForDefs = function (ugenDefs, rates, visitors) {
         var parsed = [],
             i;
         for (i = 0; i < ugenDefs.length; i++) {
-            parsed[i] = flock.parse.ugenForDef(ugenDefs[i], rates, ugens);
+            parsed[i] = flock.parse.ugenForDef(ugenDefs[i], rates, visitors);
         }
         return parsed;
     };
@@ -119,14 +115,19 @@ var flock = flock || {};
      *      - inputs: a JSON object containing named key/value pairs for inputs to the unit generator
      *           OR
      *      - inputs keyed by name at the top level of the ugenDef
+     * 
+     * @param {UGenDef} ugenDef the unit generator definition to parse
+     * @param {Object} rates an object containing the current audio, control, and constant rates
+     * @param {Array of Functions} visitors an optional list of visitor functions to invoke when the ugen has been created
+     * @return the parsed unit generator object
      */
-    flock.parse.ugenForDef = function (ugenDef, rates, ugens) {
+    flock.parse.ugenForDef = function (ugenDef, rates, visitors) {
         var defaultSettings = flock.defaults("flock.audioSettings");
         rates = rates || defaultSettings.rates;
     
         // We received an array of ugen defs.
-        if (typeof (ugenDef.length) === "number") {
-            return flock.parse.ugensForDefs(ugenDef, rates, ugens);
+        if (flock.isIterable(ugenDef)) {
+            return flock.parse.ugensForDefs(ugenDef, rates, visitors);
         }
     
         if (!ugenDef.inputs) {
@@ -147,8 +148,8 @@ var flock = flock || {};
             // Create ugens for all inputs except special inputs.
             // TODO: Need unit test coverage.
             inputs[inputDef] = flock.parse.specialInputs.indexOf(inputDef) > -1 ? 
-                ugenDef.inputs[inputDef] :                                           // Don't instantiate a ugen, just pass the def on as-is.
-                flock.parse.ugenForInputDef(ugenDef.inputs[inputDef], rates, ugens); // parse the ugendef and create a ugen instance.
+                ugenDef.inputs[inputDef] :                                              // Don't instantiate a ugen, just pass the def on as-is.
+                flock.parse.ugenForInputDef(ugenDef.inputs[inputDef], rates, visitors); // parse the ugendef and create a ugen instance.
         }
     
         if (!ugenDef.ugen) {
@@ -156,15 +157,13 @@ var flock = flock || {};
         }
     
         var ugen = flock.parse.makeUGen(ugenDef, inputs, rates);
-        // TODO: Refactor this into a separate strategy.
-        if (ugens) {
-            if (ugen.gen) {
-                ugens[flock.ALL_UGENS_ID].push(ugen);
-            }
-            if (ugenDef.id) {
-                ugen.id = ugenDef.id;
-                ugens[ugen.id] = ugen;
-            }
+        ugen.id = ugenDef.id;
+        
+        if (visitors) {
+            visitors = $.makeArray(visitors);
+            $.each(visitors, function (idx, visitor) {
+                visitor(ugen, ugenDef, rates);
+            });
         }
 
         return ugen;
@@ -189,9 +188,9 @@ var flock = flock || {};
         throw new Error("Invalid value type found in ugen definition.");
     };
 
-    flock.parse.ugenForInputDef = function (inputDef, rates, ugens) {
+    flock.parse.ugenForInputDef = function (inputDef, rates, visitors) {
         inputDef = flock.parse.expandInputDef(inputDef);
-        return flock.parse.ugenForDef(inputDef, rates, ugens);
+        return flock.parse.ugenForDef(inputDef, rates, visitors);
     };
     
     flock.parse.bufferForDef = function (bufDef, onLoad, enviro) {
@@ -208,4 +207,5 @@ var flock = flock || {};
         
         enviro.loadBuffer(id, src, onLoad);
     };
+
 }());
