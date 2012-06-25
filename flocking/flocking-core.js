@@ -199,11 +199,6 @@ var flock = flock || {};
      * Time and Scheduling *
      ***********************/
 
-     flock.BlobBuilder = window.BlobBuilder || window.MozBlobBuilder || 
-        window.WebKitBlobBuilder || window.MSBlobBuilder || window.OBlobBuilder;
-     
-     flock.URL = window.URL || window.webkitURL;
-     
      /**
       * Creates a Web Worker from a String or Function.
       *
@@ -216,8 +211,7 @@ var flock = flock || {};
       */
      flock.worker = function (code) {
          var type = typeof (code),
-             builder = new flock.BlobBuilder(),
-             url;
+             url = "data:text/javascript;base64,";
         
          if (type === "function") {
              code = "(" + code.toString() + ")();";
@@ -225,8 +219,7 @@ var flock = flock || {};
              throw Error("A flock.worker must be initialized with a String or a Function.");
          }
          
-         builder.append(code);
-         url = flock.URL.createObjectURL(builder.getBlob());
+         url += window.btoa(code);
          return new Worker(url);
      };
      
