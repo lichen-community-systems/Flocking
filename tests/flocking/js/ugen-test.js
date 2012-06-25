@@ -51,6 +51,74 @@ flock.test = flock.test || {};
     var bufferValueUGen = flock.ugen.value({value: 0}, new Float32Array(1));
     var stereoExpandValueUGen = flock.ugen.value({value: 2}, new Float32Array(1));
     
+    module("ugen.input() tests");
+    
+    var setAndCheckInput = function (ugen, inputName, val) {
+        var returnVal = ugen.input(inputName, val);
+        ok(returnVal, "Setting a new input should return the input unit generator.");
+        ok(ugen.inputs[inputName], "Setting a new input should create a new unit generator with the appropriate name.");
+        equals(ugen.inputs[inputName], returnVal, "The return value when setting an input should be the input unit generator.");
+        
+        var valType = typeof (val);
+        if (valType !== "number" && valType !== "string") {
+            equals(ugen.inputs[inputName], ugen.input(inputName), "The value returned from input() should be the same as the actual input value.");
+        }
+    };
+    
+    var setAndCheckArrayInput = function (ugen, inputName, vals, comparisonFn) {
+        setAndCheckInput(ugen, inputName, vals);
+        ok(flock.isIterable(ugen.input(inputName)), "The input should be set to an array of unit generators.");
+        equals(ugen.input(inputName).length, vals.length, "There should be " + vals.length + " unit generators in the array.");
+        $.each(vals, comparisonFn);
+    };
+    
+    test("input() data type tests", function () {
+        var mockUGen = makeMockUGen(new Float32Array(64));
+        
+        // Non-existent input.
+        var val = mockUGen.input("cat");
+        equals(val, undefined, "Getting a non-existent input should return undefined.");
+        ok(!mockUGen.inputs.cat, "When getting a non-existent input, it should not be created.");
+        
+        // Setting a previously non-existent input.
+        setAndCheckInput(mockUGen, "cat", {
+            ugen: "flock.test.mockUGen"
+        });
+        
+        // Replacing an existing input with an ugenDef.
+        setAndCheckInput(mockUGen, "cat", {
+            id: "new-cat",
+            ugen: "flock.test.mockUGen"
+        });
+        equals(mockUGen.input("cat").id, "new-cat", "The new input should have the appropriate ID.");
+        
+        // And with an array of ugenDefs.
+        var defs = [
+            {
+                id: "first-cat",
+                ugen: "flock.test.mockUGen"
+            },
+            {
+                id: "second-cat",
+                ugen: "flock.test.mockUGen"
+            }
+        ];
+        setAndCheckArrayInput(mockUGen, "cat", defs, function (i, def) {
+            equals(mockUGen.input("cat")[i].id, def.id);
+        });
+
+        // And with a scalar.
+        setAndCheckInput(mockUGen, "cat", 500);
+        equals(mockUGen.inputs.cat.model.value, 500, "The input ugen should be a value ugen with the correct model value.");
+        
+        // And an array of scalars.
+        var vals = [100, 200, 300];
+        setAndCheckArrayInput(mockUGen, "fish", vals, function (i, val) {
+            equals(mockUGen.input("fish")[i].model.value, val);
+        });
+    });
+    
+    
     // TODO: Create these graphs declaratively!
     
     module("Output tests");

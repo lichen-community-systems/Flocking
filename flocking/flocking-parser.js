@@ -84,6 +84,25 @@ var flock = flock || {};
     
         return ugenDef;
     };
+    
+    flock.parse.expandValueDef = function (ugenDef) {
+        var type = typeof (ugenDef);
+        if (type === "number") {
+            return {
+                ugen: "flock.ugen.value",
+                rate: flock.rates.CONSTANT,
+                inputs: {
+                    value: ugenDef
+                }
+            };
+        }
+        
+        if (type === "object") {
+            return ugenDef;
+        }
+    
+        throw new Error("Invalid value type found in ugen definition.");
+    };
 
     flock.parse.rateMap = {
         "ar": flock.rates.AUDIO,
@@ -125,6 +144,9 @@ var flock = flock || {};
         var defaultSettings = flock.defaults("flock.audioSettings");
         rates = rates || defaultSettings.rates;
     
+        // If we receive a plain scalar value, expand it into a value ugenDef.
+        ugenDef = flock.parse.expandValueDef(ugenDef);
+        
         // We received an array of ugen defs.
         if (flock.isIterable(ugenDef)) {
             return flock.parse.ugensForDefs(ugenDef, rates, visitors);
@@ -148,8 +170,8 @@ var flock = flock || {};
             // Create ugens for all inputs except special inputs.
             // TODO: Need unit test coverage.
             inputs[inputDef] = flock.parse.specialInputs.indexOf(inputDef) > -1 ? 
-                ugenDef.inputs[inputDef] :                                              // Don't instantiate a ugen, just pass the def on as-is.
-                flock.parse.ugenForInputDef(ugenDef.inputs[inputDef], rates, visitors); // parse the ugendef and create a ugen instance.
+                ugenDef.inputs[inputDef] :                                         // Don't instantiate a ugen, just pass the def on as-is.
+                flock.parse.ugenForDef(ugenDef.inputs[inputDef], rates, visitors); // parse the ugendef and create a ugen instance.
         }
     
         if (!ugenDef.ugen) {
@@ -167,30 +189,6 @@ var flock = flock || {};
         }
 
         return ugen;
-    };
-
-    flock.parse.expandInputDef = function (inputDef) {
-        var type = typeof (inputDef);
-        if (type === "number") {
-            return {
-                ugen: "flock.ugen.value",
-                rate: flock.rates.CONSTANT,
-                inputs: {
-                    value: inputDef
-                }
-            };
-        } 
-    
-        if (type === "object") {
-            return inputDef;
-        }
-    
-        throw new Error("Invalid value type found in ugen definition.");
-    };
-
-    flock.parse.ugenForInputDef = function (inputDef, rates, visitors) {
-        inputDef = flock.parse.expandInputDef(inputDef);
-        return flock.parse.ugenForDef(inputDef, rates, visitors);
     };
     
     flock.parse.bufferForDef = function (bufDef, onLoad, enviro) {

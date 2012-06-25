@@ -37,11 +37,10 @@ var flock = flock || {};
         that.input = function (name, val) {
             if (val === undefined) {
                 var input = that.inputs[name];
-                return (input.model && typeof (input.model.value) !== "undefined") ? input.model.value : input;
+                return !input ? input : (input.model && typeof (input.model.value) !== "undefined") ? input.model.value : input;
             }
             
-            // TODO: Unit tests to cover scalar vs. ugenDef vs. array
-            var parseFn = flock.isIterable(val) ? flock.parse.ugensForDefs : flock.parse.ugenForInputDef;
+            var parseFn = flock.isIterable(val) ? flock.parse.ugensForDefs : flock.parse.ugenForDef;
             var parsed = parseFn(val, flock.enviro.shared.audioSettings.rates);
             that.inputs[name] = parsed;
             that.onInputChanged(name);
