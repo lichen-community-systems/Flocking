@@ -19,7 +19,7 @@ var flock = flock || {};
 
     flock.parse.synthDef = function (ugenDef, options) {
         // We didn't get an out ugen specified, so we need to make one.
-        if (typeof (ugenDef.length) === "number" || ugenDef.id !== flock.OUT_UGEN_ID) {
+        if (typeof (ugenDef.length) === "number" || (ugenDef.id !== flock.OUT_UGEN_ID && ugenDef.ugen !== "flock.ugen.out")) {
             ugenDef = {
                 id: flock.OUT_UGEN_ID,
                 ugen: "flock.ugen.out",
@@ -58,7 +58,7 @@ var flock = flock || {};
         ugenDef.options.sampleRate = sampleRate;
         ugenDef.options.rate = ugenDef.rate;
         
-        return flock.invokePath(ugenDef.ugen, [
+        return flock.invoke(ugenDef.ugen, [
             parsedInputs, 
             buffer, 
             ugenDef.options

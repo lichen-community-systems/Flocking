@@ -332,4 +332,96 @@ var flock = flock || {};
         equals(ugen.inputs.phase.model.value, 1.0,
             "The ugen's default phase input should be overridden by the ugenDef.");
     });
+    
+    var testRemoval = function (synthDef, testSpecs) {
+        var synth = flock.synth(synthDef);
+        $.each(testSpecs, function (i, spec) {
+            var toRemove = spec.ugenToRemove;
+            if (toRemove) {
+                toRemove = typeof (toRemove) === "string" ? flock.get(toRemove, synth) : toRemove;
+                synth.ugens.remove(toRemove, true);
+            }
+            equals(synth.ugens.active.length, spec.expected.active, 
+                spec.msg + ", there should be " + spec.expected.active + " active ugens.");
+            equals(flock.test.countKeys(synth.ugens.named), spec.expected.named, 
+                spec.msg + ", there should be " + spec.expected.named + " named ugens.");
+        });
+    };
+    
+    test("flock.synth.ugenCache: removing ugens", function () {
+        var testSynthDef = {
+            ugen: "flock.ugen.out",
+            inputs: {
+                sources: {
+                    ugen: "flock.test.mockUGen",
+                    inputs: {
+                        gerbil: {
+                            id: "gerbil",
+                            ugen: "flock.test.mockUGen",
+                            inputs: {
+                                ear: {
+                                    id: "ear",
+                                    ugen: "flock.ugen.value",
+                                    value: 500
+                                }
+                            }
+                        },
+                        cat: {
+                            id: "cat",
+                            ugen: "flock.test.mockUGen"
+                        },
+                        dog: {
+                            ugen: "flock.test.mockUGen"
+                        }
+                    }
+                }
+            }
+        };
+        
+        var removalTestSpecs = [
+            {
+                ugenToRemove: null,
+                expected: {
+                    active: 5,
+                    named: 3
+                },
+                msg: "To start"
+            },
+            {
+                ugenToRemove: "ugens.named.ear",
+                expected: {
+                    active: 5,
+                    named: 2
+                },
+                msg: "After removing a passive, named ugen"
+            },
+            {
+                ugenToRemove: "ugens.named.cat",
+                expected: {
+                    active: 4,
+                    named: 1
+                },
+                msg: "After removing an active, named ugen"
+            },
+            {
+                ugenToRemove: "out.inputs.sources.inputs.dog",
+                expected: {
+                    active: 3,
+                    named: 1
+                },
+                msg: "After removing an active, unnamed ugen"
+            },
+            {
+                ugenToRemove: "out",
+                expected: {
+                    active: 0,
+                    named: 0
+                },
+                msg: "After removing a ugen with other inputs, its inputs should be recursively removed"
+            }
+        ];
+        
+        testRemoval(testSynthDef, removalTestSpecs);
+    });
+    
 }());

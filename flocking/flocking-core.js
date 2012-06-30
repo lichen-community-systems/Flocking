@@ -171,7 +171,7 @@ var flock = flock || {};
             "' could not be resolved.");
     };
     
-    flock.resolvePath = function (path, root) {
+    flock.get = function (path, root) {
         root = root || window;
         var tokenized = path === "" ? [] : String(path).split("."),
             valForSeg = root[tokenized[0]],
@@ -186,8 +186,8 @@ var flock = flock || {};
         return valForSeg;
     };
     
-    flock.invokePath = function (path, args, root) {
-        var fn = flock.resolvePath(path, root);
+    flock.invoke = function (path, args, root) {
+        var fn = flock.get(path, root);
         if (typeof (fn) !== "function") {
             throw new Error("Path '" + path + "' does not resolve to a function.");
         }
@@ -628,7 +628,7 @@ var flock = flock || {};
          * @return {Number|UGen} a scalar value in the case of a value ugen, otherwise the ugen itself
          */
         that.getUGenPath = function (path) {
-            var input = flock.resolvePath(path, that.ugens.named);
+            var input = flock.get(path, that.ugens.named);
             return typeof (input.model.value) !== "undefined" ? input.model.value : input;
         };
         
@@ -648,7 +648,7 @@ var flock = flock || {};
                 ugenInputPath = path.substring(0, lastSegIdx),
                 ugenPath = ugenInputPath.substring(0, ugenInputPath.lastIndexOf(".")),
                 inputName = path.substring(lastSegIdx + 1),
-                ugen = flock.resolvePath(ugenPath, that.ugens.named),
+                ugen = flock.get(ugenPath, that.ugens.named),
                 prevInputUGen = ugen.input(inputName),
                 inputUGen = ugen.input(inputName, val);
             
@@ -664,7 +664,6 @@ var flock = flock || {};
          * @param {Number || UGenDef || Array} val an optional value to to set--a scalar value, a UGenDef object, or an array of UGenDefs
          * @return {UGen} optionally, the newly created UGen that was set at the specified path
          */
-        // TODO: Naming?
         that.input = function (path, val) {
             if (!path) {
                 return;
@@ -743,12 +742,13 @@ var flock = flock || {};
 
         };
         
-        that.remove = function (ugens) {
-            // TODO: Need to recurse over all the inputs and remove them as well.
+        that.remove = function (ugens, recursively) {
             var i,
                 ugen,
                 all,
-                idx;
+                idx,
+                inputs,
+                input;
             
             ugens = $.makeArray(ugens);
             for (i = 0; i < ugens.length; i++) {
@@ -761,10 +761,33 @@ var flock = flock || {};
                 if (ugen.id) {
                     delete that.named[ugen.id];
                 }
+                if (recursively) {
+                    inputs = [];
+                    for (input in ugen.inputs) {
+                        inputs.push(ugen.inputs[input]);
+                    }
+                    that.remove(inputs, true);
+                }
             }
         };
         
-        that.replace = function (ugens, previousUGens) {
+        that.replace = function (ugens, previousUGens, reattachInputs) {
+            // TODO: Unit tests!
+            if (reattachInputs) {
+                // Note: This algorithm assumes that ugens and previousUGens are the same length.
+                previousUGens = $.makeArray(previousUGens);
+                ugens = $.makeArray(ugens);
+                
+                for (var i = 0; i < previousUGens.length; i++) {
+                    var prev = previousUGens[i],
+                        current = ugens[i];
+                    for (var input in prev.inputs) {
+                        if (current.inputs[input] === undefined) {
+                            current.inputs[inputs] = prev.inputs[inputs];
+                        }
+                    }
+                }
+            }
             that.remove(previousUGens);
             that.add(ugens);
         };

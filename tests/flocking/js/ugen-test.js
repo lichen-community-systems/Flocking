@@ -29,24 +29,6 @@ flock.test = flock.test || {};
         10, 9, 8, 7, 6, 
         5, 4, 3, 2, 1
     ];
-
-    flock.test.mockUGen = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
-        if (that.options.buffer) {
-            that.output = that.options.buffer;
-        }
-        that.gen = function () {}; // No op function--we just pass the output buffer back as-is.
-        return that;
-    };
-    
-    var makeMockUGen = function (output) {
-        return flock.parse.ugenForDef({
-            ugen: "flock.test.mockUGen",
-            options: {
-                buffer: output
-            }
-        });
-    };
     
     var bufferValueUGen = flock.ugen.value({value: 0}, new Float32Array(1));
     var stereoExpandValueUGen = flock.ugen.value({value: 2}, new Float32Array(1));
@@ -73,7 +55,7 @@ flock.test = flock.test || {};
     };
     
     test("input() data type tests", function () {
-        var mockUGen = makeMockUGen(new Float32Array(64));
+        var mockUGen = flock.test.makeMockUGen(new Float32Array(64));
         
         // Non-existent input.
         var val = mockUGen.input("cat");
@@ -141,7 +123,7 @@ flock.test = flock.test || {};
 
     test("flock.interleavedDemandWriter() mono input, mono output", function () {
         // Test with a single input buffer being multiplexed by ugen.out.
-        var mockLeftUGen = makeMockUGen(mockLeft);
+        var mockLeftUGen = flock.test.makeMockUGen(mockLeft);
         var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen}, []);
 
         // Pull the whole buffer.
@@ -160,7 +142,7 @@ flock.test = flock.test || {};
     
     test("flock.interleavedDemandWriter() mono input, stereo output", function () {
         // Test with a single mono input buffer.
-        var mockLeftUGen = makeMockUGen(mockLeft);
+        var mockLeftUGen = flock.test.makeMockUGen(mockLeft);
         var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen, expand: stereoExpandValueUGen}, []);
 
         // Pull the whole buffer.
@@ -178,8 +160,8 @@ flock.test = flock.test || {};
         // Test with two input buffers.
         var out = flock.ugen.out({
             sources: [
-                makeMockUGen(mockLeft), 
-                makeMockUGen(mockRight)
+                flock.test.makeMockUGen(mockLeft), 
+                flock.test.makeMockUGen(mockRight)
             ],
             bus: bufferValueUGen
         }, []);
@@ -387,9 +369,9 @@ flock.test = flock.test || {};
      
     test("flock.ugen.sum()", function () {
         var addBuffer = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31],
-            one = makeMockUGen(addBuffer),
-            two = makeMockUGen(addBuffer),
-            three = makeMockUGen(addBuffer);
+            one = flock.test.makeMockUGen(addBuffer),
+            two = flock.test.makeMockUGen(addBuffer),
+            three = flock.test.makeMockUGen(addBuffer);
 
         var inputs = {
             sources: [one]

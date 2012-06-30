@@ -273,7 +273,7 @@ var flock = flock || {};
         var lastSegIdx = name.lastIndexOf("."),
             namespace = name.substring(0, lastSegIdx),
             oscName = name.substring(lastSegIdx + 1),
-            namespaceObj = flock.resolvePath(namespace);
+            namespaceObj = flock.get(namespace);
         
         namespaceObj[oscName] = function (inputs, output, options) {
             var defaultSettings = flock.defaults("flock.audioSettings"),
