@@ -771,19 +771,34 @@ var flock = flock || {};
             }
         };
         
+        /**
+         * Replaces a list of unit generators with another.
+         *
+         * If "reattachInputs" is an array, it should contain a list of inputNames to replace.
+         *
+         * @param {UGen||Array of UGens} ugens the new unit generators to add
+         * @param {UGen||Array of UGens} previousUGens the unit generators to replace with the new ones
+         * @param {boolean||Object} reattachInputs specifies if the old unit generator's inputs should be attached to the new ones
+         */
         that.replace = function (ugens, previousUGens, reattachInputs) {
             // TODO: Unit tests!
             if (reattachInputs) {
-                // Note: This algorithm assumes that ugens and previousUGens are the same length.
+                // Note: This algorithm assumes that number of previous and current ugens is the same length.
                 previousUGens = $.makeArray(previousUGens);
                 ugens = $.makeArray(ugens);
                 
                 for (var i = 0; i < previousUGens.length; i++) {
                     var prev = previousUGens[i],
                         current = ugens[i];
-                    for (var input in prev.inputs) {
-                        if (current.inputs[input] === undefined) {
-                            current.inputs[inputs] = prev.inputs[inputs];
+                    
+                    if (typeof (reattachInputs) === "boolean") {
+                        // Replace all the current ugen's inputs with the previous'.
+                        current.inputs = prev.inputs;
+                    } else {
+                        // Replace only those specified.
+                        for (var j = 0; j < reattachInputs.length; j++) {
+                            var inputName = reattachInputs[j];
+                            current.inputs[inputName]  = prev.inputs[inputName];
                         }
                     }
                 }
