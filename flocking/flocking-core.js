@@ -639,7 +639,7 @@ var flock = flock || {};
          * @param {Number || UGenDef} val a scalar value (for Value ugens) or a UGenDef object
          * @return {UGen} the newly created UGen that was set at the specified path
          */
-        that.setUGenPath = function (path, val) {
+        that.setUGenPath = function (path, val, swap) {
             if (path.indexOf(".") === -1) {
                 throw new Error("Setting a ugen directly is not currently supported.");
             }
@@ -652,7 +652,7 @@ var flock = flock || {};
                 prevInputUGen = ugen.input(inputName),
                 inputUGen = ugen.input(inputName, val);
             
-            that.ugens.replace(inputUGen, prevInputUGen);
+            that.ugens.replace(inputUGen, prevInputUGen, swap);
             ugen.onInputChanged(inputName);
             return inputUGen;
         };
@@ -664,12 +664,12 @@ var flock = flock || {};
          * @param {Number || UGenDef || Array} val an optional value to to set--a scalar value, a UGenDef object, or an array of UGenDefs
          * @return {UGen} optionally, the newly created UGen that was set at the specified path
          */
-        that.input = function (path, val) {
+        that.input = function (path, val, swap) {
             if (!path) {
                 return;
             }
-            var expanded = path.replace(".", ".inputs.");
-            return arguments.length < 2 ? that.getUGenPath(expanded) : that.setUGenPath(expanded, val);
+            var expanded = flock.synth.expandInputPath(path);
+            return arguments.length < 2 ? that.getUGenPath(expanded) : that.setUGenPath(expanded, val, swap);
         };
                 
         /**
@@ -718,7 +718,23 @@ var flock = flock || {};
         return that;
     };
     
-    // TODO: Unit tests!
+    flock.synth.inputPathExpander = function (path) {
+        return path.replace(".", ".inputs.");
+    };
+    
+    flock.synth.expandInputPaths = function (paths) {
+        var expanded = {};
+        $.each(paths, function (path, value) {
+            var expandedPath = inputPathExpander(path);
+            expanded[expandedPath] = value;
+        });
+        return expanded;
+    };
+    
+    flock.synth.expandInputPath = function (path) {
+        return (typeof (path) === "string") ? flock.synth.inputPathExpander(path): flock.synth.expandInputPaths(path);
+    };
+    
     flock.synth.ugenCache = function () {
         var that = {
             named: {},
@@ -743,9 +759,10 @@ var flock = flock || {};
         };
         
         that.remove = function (ugens, recursively) {
-            var i,
+            var active = that.active,
+                named = that.named,
+                i,
                 ugen,
-                all,
                 idx,
                 inputs,
                 input;
@@ -753,13 +770,12 @@ var flock = flock || {};
             ugens = $.makeArray(ugens);
             for (i = 0; i < ugens.length; i++) {
                 ugen = ugens[i];
-                all = that.active;
-                idx = all.indexOf(ugen);
+                idx = active.indexOf(ugen);
                 if (idx > -1) {
-                    all.splice(idx, 1);
+                    active.splice(idx, 1);
                 }
                 if (ugen.id) {
-                    delete that.named[ugen.id];
+                    delete named[ugen.id];
                 }
                 if (recursively) {
                     inputs = [];
@@ -771,6 +787,72 @@ var flock = flock || {};
             }
         };
         
+        that.reattachInputs = function (currentUGen, previousUGen, inputsToReattach) {
+            var i,
+                inputName;
+                
+            if (inputsToReattach) {
+                // Replace only the specified inputs.
+                for (i = 0; i < reattachInputs.length; i++) {
+                    inputName = reattachInputs[j];
+                    currentUGen.inputs[inputName]  = previousUGen.inputs[inputName];
+                }
+            } else {
+                // Replace all the current ugen's inputs with the previous'.
+                currentUGen.inputs = previousUGen.inputs;
+            }
+        };
+        
+        that.replaceActiveOutput = function (currentUGen, previousUGen) {
+            // TODO: This only traverses active ugens, which is probably adequate for most real-world cases 
+            // but still not comprehensive. This should be replaced with a graph walker.
+            var i,
+                ugen,
+                inputName,
+                input;
+                
+            for (i = 0; i < that.active.length; i++) {
+                ugen = that.active[i];
+                for (inputName in ugen.inputs) {
+                    input = ugen.inputs[inputName];
+                    if (input === previousUGen) {
+                        ugen.inputs[inputName] = currentUGen;
+                        break;
+                    }
+                }
+            }
+            
+            return currentUGen;
+        };
+        
+        /**
+         * Swaps a list of unit generators with a new set, reattaching the specified inputs and replacing outputs.
+         *
+         * @param {UGen || Array of UGens} ugens the new unit generators to swap in
+         * @param {UGen || Array of UGens} previousUGens the unit generators to replace
+         * @param {Object || boolean} inputsToReattach a list of inputs to reattach to the new unit generator, or a boolean for all
+         * @return the newly-connected unit generators
+         */
+        that.swap = function (ugens, previousUGens, inputsToReattach) {
+            var i,
+                prev,
+                current,
+                k;
+                
+            // Note: This algorithm assumes that number of previous and current ugens is the same length.
+            previousUGens = $.makeArray(previousUGens);
+            ugens = $.makeArray(ugens);
+            
+            for (i = 0; i < previousUGens.length; i++) {
+                prev = previousUGens[i];
+                current = ugens[i];
+                that.reattachInputs(current, prev, inputsToReattach);
+                that.replaceActiveOutput(current, prev);
+            }
+            
+            return ugens;
+        };
+        
         /**
          * Replaces a list of unit generators with another.
          *
@@ -779,32 +861,17 @@ var flock = flock || {};
          * @param {UGen||Array of UGens} ugens the new unit generators to add
          * @param {UGen||Array of UGens} previousUGens the unit generators to replace with the new ones
          * @param {boolean||Object} reattachInputs specifies if the old unit generator's inputs should be attached to the new ones
+         * @return the new unit generators
          */
         that.replace = function (ugens, previousUGens, reattachInputs) {
-            // TODO: Unit tests!
             if (reattachInputs) {
-                // Note: This algorithm assumes that number of previous and current ugens is the same length.
-                previousUGens = $.makeArray(previousUGens);
-                ugens = $.makeArray(ugens);
-                
-                for (var i = 0; i < previousUGens.length; i++) {
-                    var prev = previousUGens[i],
-                        current = ugens[i];
-                    
-                    if (typeof (reattachInputs) === "boolean") {
-                        // Replace all the current ugen's inputs with the previous'.
-                        current.inputs = prev.inputs;
-                    } else {
-                        // Replace only those specified.
-                        for (var j = 0; j < reattachInputs.length; j++) {
-                            var inputName = reattachInputs[j];
-                            current.inputs[inputName]  = prev.inputs[inputName];
-                        }
-                    }
-                }
+                reattachInputs = typeof (reattachInputs) === "object" ? reattachInputs : undefined;
+                that.swap(ugens, previousUGens, reattachInputs);
             }
             that.remove(previousUGens);
             that.add(ugens);
+            
+            return ugens;
         };
         
         return that;

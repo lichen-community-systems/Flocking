@@ -348,36 +348,36 @@ var flock = flock || {};
         });
     };
     
-    test("flock.synth.ugenCache: removing ugens", function () {
-        var testSynthDef = {
-            ugen: "flock.ugen.out",
-            inputs: {
-                sources: {
-                    ugen: "flock.test.mockUGen",
-                    inputs: {
-                        gerbil: {
-                            id: "gerbil",
-                            ugen: "flock.test.mockUGen",
-                            inputs: {
-                                ear: {
-                                    id: "ear",
-                                    ugen: "flock.ugen.value",
-                                    value: 500
-                                }
+    var nestedSynthDef = {
+        ugen: "flock.ugen.out",
+        inputs: {
+            sources: {
+                ugen: "flock.test.mockUGen",
+                inputs: {
+                    gerbil: {
+                        id: "gerbil",
+                        ugen: "flock.test.mockUGen",
+                        inputs: {
+                            ear: {
+                                id: "ear",
+                                ugen: "flock.ugen.value",
+                                value: 500
                             }
-                        },
-                        cat: {
-                            id: "cat",
-                            ugen: "flock.test.mockUGen"
-                        },
-                        dog: {
-                            ugen: "flock.test.mockUGen"
                         }
+                    },
+                    cat: {
+                        id: "cat",
+                        ugen: "flock.test.mockUGen"
+                    },
+                    dog: {
+                        ugen: "flock.test.mockUGen"
                     }
                 }
             }
-        };
-        
+        }
+    };
+    
+    test("flock.synth.ugenCache: removing ugens", function () {
         var removalTestSpecs = [
             {
                 ugenToRemove: null,
@@ -421,7 +421,24 @@ var flock = flock || {};
             }
         ];
         
-        testRemoval(testSynthDef, removalTestSpecs);
+        testRemoval(nestedSynthDef, removalTestSpecs);
     });
     
+    test("flock.synth.ugenCache.replace(): reattach inputs", function () {
+        var synth = flock.synth(nestedSynthDef);
+        
+        var toReplace = synth.ugens.named.gerbil,
+            expectedInput = synth.ugens.named.ear,
+            newUGen = flock.parse.ugenForDef({
+                id: "gerbil",
+                ugen: "flock.test.mockUGen"
+            });
+        synth.ugens.replace(newUGen, toReplace, true);
+        
+        equals(synth.ugens.named.gerbil, newUGen, 
+            "The old ugen should have been replaced by the new one.");
+        equals(synth.ugens.named.gerbil.inputs.ear, expectedInput, 
+            "The old ugen's input should have been copied over to the new one.");
+        equals(synth.out.inputs.sources.inputs.gerbil, newUGen, "The new ugen's output should be wired back up.");
+    })
 }());
