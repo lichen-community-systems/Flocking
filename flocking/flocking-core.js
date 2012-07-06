@@ -199,6 +199,12 @@ var flock = flock || {};
      * Time and Scheduling *
      ***********************/
 
+    flock.shim = {
+        BlobBuilder: window.BlobBuilder || window.MozBlobBuilder || 
+            window.WebKitBlobBuilder || window.MSBlobBuilder || window.OBlobBuilder,
+        URL: window.URL || window.webkitURL || window.msURL || window.oURL
+    };
+    
      /**
       * Creates a Web Worker from a String or Function.
       *
@@ -211,7 +217,8 @@ var flock = flock || {};
       */
      flock.worker = function (code) {
          var type = typeof (code),
-             url = "data:text/javascript;base64,";
+             url,
+             builder;
         
          if (type === "function") {
              code = "(" + code.toString() + ")();";
@@ -219,7 +226,13 @@ var flock = flock || {};
              throw Error("A flock.worker must be initialized with a String or a Function.");
          }
          
-         url += window.btoa(code);
+         if (flock.shim.BlobBuilder) {
+             builder = new flock.shim.BlobBuilder();
+             builder.append(code);
+             url = flock.shim.URL.createObjectURL(builder.getBlob());
+         } else {
+             url = "data:text/javascript;base64," + window.btoa(code);
+         }
          return new Worker(url);
      };
      
@@ -629,7 +642,7 @@ var flock = flock || {};
          */
         that.getUGenPath = function (path) {
             var input = flock.get(path, that.ugens.named);
-            return typeof (input.model.value) !== "undefined" ? input.model.value : input;
+            return (input && input.model && typeof (input.model.value) !== "undefined") ? input.model.value : input;
         };
         
         /**
