@@ -981,33 +981,38 @@ var flock = flock || {};
     flock.ugen.out = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
     
-        that.krBufferMultiChan = function () {
+        that.gen = function (numSamps) {
             var sources = that.inputs.sources,
                 buses = flock.enviro.shared.buses,
                 bufStart = that.inputs.bus.output[0],
-                i;
+                expand = that.inputs.expand.output[0],
+                i,
+                j,
+                source,
+                rate,
+                bus,
+                inc,
+                outIdx,
+                k;
             
-            for (i = 0; i < sources.length; i++) {
-                buses[bufStart + i] = sources[i].output;
+            if (typeof (sources.length) !== "number") {
+                sources = [sources];
             }
-        };
-    
-        that.krBufferExpandSingle = function () {
-            var source = that.inputs.sources,
-                buses = flock.enviro.shared.buses,
-                bufStart = that.inputs.bus.output[0],
-                chans = that.model.chans,
-                i;
             
-            for (i = 0; i < chans; i++) {
-                buses[bufStart + i] = source.output;
+            for (i = 0; i < expand; i++) {
+                for (j = 0; j < sources.length; j++) {
+                    source = sources[j];
+                    rate = source.rate;
+                    bus = buses[bufStart + i + j];
+                    inc = rate === flock.rates.AUDIO ? 1 : 0;
+                    outIdx = 0;
+                    
+                    for (k = 0; k < numSamps; k++, outIdx += inc) {
+                        // TODO: Support control rate interpolation.
+                        bus[k] = bus[k] + source.output[outIdx];
+                    }
+                }
             }
-        };
-    
-        that.onInputChanged = function () {
-            var isMulti = typeof (that.inputs.sources.length) === "number";
-            that.gen = isMulti ? that.krBufferMultiChan : that.krBufferExpandSingle;            
-            that.model.chans = that.inputs.expand ? that.inputs.expand.output[0] : 1; // Assume constant rate.
         };
     
         that.onInputChanged();
@@ -1015,7 +1020,11 @@ var flock = flock || {};
     };
     
     flock.defaults("flock.ugen.out", {
-        rate: "audio"
+        rate: "audio",
+        inputs: {
+            bus: 0,
+            expand: 1
+        }
     });
     
     

@@ -328,7 +328,8 @@ var flock = flock || {};
                         constant: options.constantRate || defaultSettings.rates.constant
                     },
                     chans: options.chans || 2,
-                    bufferSize: options.bufferSize || defaultSettings.bufferSize
+                    bufferSize: options.bufferSize || defaultSettings.bufferSize,
+                    numBuses: options.numBuses || 16
                 },
                 model: {
                     playState: {
@@ -343,7 +344,8 @@ var flock = flock || {};
         
         // TODO: Buffers are named but buses are numbered. Should we have a consistent strategy?
         // The advantage to numbers is that they're easily modulatable with a ugen. Names are easier to deal with.
-        that.buses = flock.enviro.createAudioBuffers(16, that.audioSettings.rates.control);
+        that.buses = flock.enviro.createAudioBuffers(that.audioSettings.numBuses, 
+                that.audioSettings.rates.control);
         that.buffers = {};
         that.conductor = flock.conductor();
         
@@ -380,6 +382,7 @@ var flock = flock || {};
         };
         
         that.gen = function () {
+            that.clearBuses();
             flock.enviro.evalGraph(that.nodes, that.audioSettings.rates.control);
         };
         
@@ -424,6 +427,21 @@ var flock = flock || {};
                     onLoadFn(chans, name); 
                 }
             });
+        };
+        
+        that.clearBuses = function () {
+            var numBuses = that.audioSettings.numBuses,
+                buses = that.buses,
+                i,
+                bus,
+                j;
+                
+            for (i = 0; i < numBuses; i++) {
+                bus = buses[i];
+                for (j = 0; j < bus.length; j++) {
+                    bus[j] = 0;
+                }
+            }
         };
 
         setupEnviro(that);

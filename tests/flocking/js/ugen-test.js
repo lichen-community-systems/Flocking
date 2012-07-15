@@ -115,9 +115,11 @@ flock.test = flock.test || {};
         };
         
         var evalFn = function () {
+            flock.enviro.shared.clearBuses();
             outUGen.gen(numSamps);
         };
-        var actual = flock.interleavedDemandWriter(new Float32Array(numSamps * chans), evalFn, flock.enviro.shared.buses, audioSettings);
+        var actual = flock.interleavedDemandWriter(new Float32Array(numSamps * chans), 
+            evalFn, flock.enviro.shared.buses, audioSettings);
         deepEqual(actual, expectedBuffer, msg);
     };
 
@@ -125,7 +127,8 @@ flock.test = flock.test || {};
         // Test with a single input buffer being multiplexed by ugen.out.
         var mockLeftUGen = flock.test.makeMockUGen(mockLeft);
         var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen}, []);
-
+        out.input("expand", 1);
+        
         // Pull the whole buffer.
         var expected = new Float32Array([
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
@@ -144,7 +147,7 @@ flock.test = flock.test || {};
         // Test with a single mono input buffer.
         var mockLeftUGen = flock.test.makeMockUGen(mockLeft);
         var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen, expand: stereoExpandValueUGen}, []);
-
+        
         // Pull the whole buffer.
         var expected = new Float32Array([
             1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 
@@ -165,7 +168,8 @@ flock.test = flock.test || {};
             ],
             bus: bufferValueUGen
         }, []);
-
+        out.input("expand", 1);
+        
         // Pull the whole buffer. Expect a stereo interleaved buffer as the result, 
         // containing two copies of the original input buffer.
         var expected = new Float32Array([
@@ -175,6 +179,48 @@ flock.test = flock.test || {};
             17, 4, 18, 3, 19, 2, 20, 1
         ]);
         checkOutput(20, 2, out, expected, "We should receive a stereo buffer, with each buffer interleaved.");
+    });
+    
+    var simpleOutDef = {
+        ugen: "flock.ugen.out",
+        bus: 0,
+        sources: {
+            ugen: "flock.ugen.value",
+            value: 1
+        }
+    };
+    
+    var testOutputs = function (numRuns, defs, bus, expectedOutput, msg) {
+        var synths = [],
+            i;
+        defs = $.makeArray(defs);
+        
+        $.each(defs, function (i, def) {
+            var synth = flock.synth(def);
+            synths.push(synth);
+        });
+        
+        for (i = 0; i < numRuns; i++) {
+            flock.enviro.shared.gen();
+            flock.test.assertArrayEquals(flock.enviro.shared.buses[bus], expectedOutput, i + ": " + msg);
+        }
+        
+        $.each(synths, function (i, synth) {
+            flock.enviro.shared.remove(synth);
+        });
+                
+        return synths;
+    };
+    
+    test("flock.ugen.out()", function () {
+        testOutputs(2, simpleOutDef, 0, flock.generate(64, 1),
+            "The output should be written to the appropriate environment bus.");
+    });
+    
+    test("flock.ugen.out(): multiple out ugens writing to the same bus", function () {
+        var outDefs = [simpleOutDef, simpleOutDef];
+        testOutputs(2, outDefs, 0, flock.generate(64, 2),
+            "Multiple outputs to the same buffer should be summed.");
     });
     
     
