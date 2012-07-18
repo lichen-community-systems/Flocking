@@ -899,7 +899,7 @@ var flock = flock || {};
                 reattachInputs = typeof (reattachInputs) === "object" ? reattachInputs : undefined;
                 that.swap(ugens, previousUGens, reattachInputs);
             }
-            that.remove(previousUGens);
+            that.remove(previousUGens, true);
             that.add(ugens);
             
             return ugens;
