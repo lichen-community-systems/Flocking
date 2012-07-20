@@ -25,7 +25,10 @@ var flock = flock || {};
             options: options,
             model: {}
         };
-        that.sampleRate = options.sampleRate || flock.enviro.shared.audioSettings.rates[that.rate];
+        
+        // TODO: Hard-coded references to the shared environment.
+        that.options.audioSettings = that.options.audioSettings || flock.enviro.shared.audioSettings;
+        that.sampleRate = options.sampleRate || that.options.audioSettings.rates[that.rate];
         
         /**
          * Gets or sets the named unit generator input.
@@ -40,8 +43,7 @@ var flock = flock || {};
                 return !input ? input : (input.model && typeof (input.model.value) !== "undefined") ? input.model.value : input;
             }
             
-            var parseFn = flock.isIterable(val) ? flock.parse.ugensForDefs : flock.parse.ugenForDef;
-            var parsed = parseFn(val, flock.enviro.shared.audioSettings.rates);
+            var parsed = flock.parse.ugenDef(val, that.options.audioSettings.rates);
             that.inputs[name] = parsed;
             that.onInputChanged(name);
             return parsed;

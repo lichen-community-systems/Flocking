@@ -662,6 +662,24 @@ var flock = flock || {};
             var input = flock.get(path, that.ugens.named);
             return (input && input.model && typeof (input.model.value) !== "undefined") ? input.model.value : input;
         };
+
+        /**
+         * Directly replaced a named unit generator with a new one.
+         * This method typically should not be called directly.
+         *
+         * @param {String} name the name of the unit generator to replace
+         * @param {Number || UGenDef} val the value to set
+         * @param {Boolean || Object} swap whether or not to swap the existing inputs onto the new ugen.
+         */
+        that.setNamedUGen = function (name, val, swap) {
+            var prev = that.ugens.named[name],
+                parsed = flock.parse.ugenDef(val, that.enviro.audioSettings.rates);
+            
+            that.ugens.replace(parsed, prev, swap);
+            that.ugens.named[name] = parsed;
+            
+            return parsed;
+        };
         
         /**
          * Sets the value of the ugen at the specified path.
@@ -672,20 +690,40 @@ var flock = flock || {};
          */
         that.setUGenPath = function (path, val, swap) {
             if (path.indexOf(".") === -1) {
-                throw new Error("Setting a ugen directly is not currently supported.");
+                return that.setNamedUGen(path, val, swap);
             }
             
-            var lastSegIdx = path.lastIndexOf("."),
-                ugenInputPath = path.substring(0, lastSegIdx),
-                ugenPath = ugenInputPath.substring(0, ugenInputPath.lastIndexOf(".")),
-                inputName = path.substring(lastSegIdx + 1),
-                ugen = flock.get(ugenPath, that.ugens.named),
-                prevInputUGen = ugen.input(inputName),
-                inputUGen = ugen.input(inputName, val);
+            // TODO: Implment using substring() instead of split() and join().
+            var tokens = String(path).split("."),
+                numTokens = tokens.length,
+                inputName = tokens[numTokens - 1],
+                penultimate = tokens[numTokens - 2],
+                targetPathIdx = penultimate === "inputs" ? numTokens - 2 : numTokens - 1,
+                targetPath = tokens.slice(0, targetPathIdx).join("."),
+                target = flock.get(targetPath, that.ugens.named),
+                prevInput,
+                newInput,
+                parentPath,
+                parent;
             
-            that.ugens.replace(inputUGen, prevInputUGen, swap);
-            ugen.onInputChanged(inputName);
-            return inputUGen;
+            if (typeof(target.input) === "function") {
+                // Set a unit generator's input.
+                prevInput = target.input(inputName);
+                newInput = target.input(inputName, val);
+                target.onInputChanged(inputName);
+            } else {
+                // Directly set a key on the target object (generally for array-valued inputs).
+                prevInput = target[inputName];
+                newInput = flock.parse.ugenDef(val, that.enviro.audioSettings.rates);
+                target[inputName] = newInput;
+                // Fire onInputChanged on the parent of the target.
+                parentPath = tokens.slice(0, targetPathIdx - 2).join(".");
+                parent = flock.get(parentPath, that.ugens.named);
+                parent.onInputChanged(penultimate);
+            }
+            
+            that.ugens.replace(newInput, prevInput, swap);
+            return newInput;
         };
         
         /**
@@ -750,15 +788,21 @@ var flock = flock || {};
     };
     
     flock.synth.inputPathExpander = function (path) {
-        return path.replace(".", ".inputs.");
+        return path.replace(/\.(?![0-9])/g, ".inputs.");
     };
     
     flock.synth.expandInputPaths = function (paths) {
-        var expanded = {};
-        $.each(paths, function (path, value) {
-            var expandedPath = inputPathExpander(path);
+        var expanded = {},
+            path,
+            expandedPath,
+            value;
+        
+        for (path in paths) {
+            expandedPath = flock.synth.inputPathExpander(path);
+            value = paths[path];
             expanded[expandedPath] = value;
-        });
+        }
+
         return expanded;
     };
     

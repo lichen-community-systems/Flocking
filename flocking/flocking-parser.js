@@ -57,6 +57,9 @@ var flock = flock || {};
         ugenDef.options = ugenDef.options || {};
         ugenDef.options.sampleRate = sampleRate;
         ugenDef.options.rate = ugenDef.rate;
+        ugenDef.options.audioSettings = {
+            rates: rates
+        };
         
         return flock.invoke(ugenDef.ugen, [
             parsedInputs, 
@@ -115,6 +118,12 @@ var flock = flock || {};
         return ugenDef;
     };
 
+    flock.parse.ugenDef = function (ugenDefs, rates, visitors) {
+        var parseFn = flock.isIterable(ugenDefs) ? flock.parse.ugensForDefs : flock.parse.ugenForDef;
+        var parsed = parseFn(ugenDefs, rates, visitors);
+        return parsed;
+    };
+    
     flock.parse.ugensForDefs = function (ugenDefs, rates, visitors) {
         var parsed = [],
             i;

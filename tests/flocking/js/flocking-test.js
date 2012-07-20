@@ -45,6 +45,43 @@ var flock = flock || {};
     
     module("Utility tests");
     
+    var testInputPathExpansion = function (testSpecs) {
+        $.each(testSpecs, function (i, spec) {
+            var actual = flock.synth.inputPathExpander(spec.path);
+            equal(actual, spec.expected, spec.msg);
+        });
+    };
+    
+    test("flock.synth.inputPathExpander()", function () {
+        testInputPathExpansion([
+            {
+                path: "cat.dog",
+                expected: "cat.inputs.dog",
+                msg: "With a single dot, the path should have been expanded as an input path."
+            },
+            {
+                path: "cat.dog.hamster",
+                expected: "cat.inputs.dog.inputs.hamster",
+                msg: "With multiple dots, the path should have been expanded as an input path."
+            },
+            {
+                path: "cat.dog.1.hamster",
+                expected: "cat.inputs.dog.1.inputs.hamster",
+                msg: "With a single-digit number, all segments except immediately preceding the number path should have been expanded."
+            },
+            {
+                path: "cat.dog.27.hamster",
+                expected: "cat.inputs.dog.27.inputs.hamster",
+                msg: "With a multi-digit number, all segments except immediately preceding the number path should have been expanded."
+            },
+            {
+                path: "cat27.dog.0.fish42",
+                expected: "cat27.inputs.dog.0.inputs.fish42",
+                msg: "Path segments with numbers should be handled correctly."
+            }
+        ]);
+    });
+    
     test("flock.generate()", function () {
         // Buffer size and static number for the generator.
         var expected = new Float32Array([1.0, 1.0, 1.0]);
@@ -108,9 +145,12 @@ var flock = flock || {};
         expect(5);
         
         // Getting simple values.
-        equals(synth.input("sine.freq"), 440, "Getting 'sine.freq' should return the value set in the synthDef.");
-        equals(synth.input("sine.freq"), 440, "Getting 'sine.freq' a second time should return the same value.");
-        equals(synth.input("mod.freq"), 1.0, "Getting 'carrier.freq' should also return the initial value.");
+        equals(synth.input("sine.freq"), 440,
+            "Getting 'sine.freq' should return the value set in the synthDef.");
+        equals(synth.input("sine.freq"), 440,
+            "Getting 'sine.freq' a second time should return the same value.");
+        equals(synth.input("mod.freq"), 1.0,
+            "Getting 'carrier.freq' should also return the initial value.");
         
         // Get a ugen.
         var ugen = synth.input("mod");
@@ -125,15 +165,22 @@ var flock = flock || {};
         
         // Setting simple values.
         synth.input("sine.freq", 220);
-        equals(synth.input("sine.freq"), 220, "Setting 'sine.freq' should update the input value accordingly.");
-        equals(sineUGen.inputs.freq.model.value, 220, "And the underlying value ugen should also be updated.");
+        equals(synth.input("sine.freq"), 220,
+            "Setting 'sine.freq' should update the input value accordingly.");
+        equals(sineUGen.inputs.freq.model.value, 220,
+            "And the underlying value ugen should also be updated.");
         synth.input("sine.freq", 110);
-        equals(synth.input("sine.freq"), 110, "Setting 'sine.freq' a second time should also work.");
-        equals(sineUGen.inputs.freq.model.value, 110, "And the underlying value ugen should also be updated.");
+        equals(synth.input("sine.freq"), 110,
+            "Setting 'sine.freq' a second time should also work.");
+        equals(sineUGen.inputs.freq.model.value, 110,
+            "And the underlying value ugen should also be updated.");
         synth.input("mod.freq", 2.0);
-        equals(synth.input("mod.freq"), 2.0, "Setting 'mod.freq' should update the input value.");
-        equals(modUGen.inputs.freq.model.value, 2.0, "And the underlying value ugen should also be updated.");
-        equals(modUGen.inputs.freq.output[0], 2.0, "Even the ugen's output buffer should contain the new value.");
+        equals(synth.input("mod.freq"), 2.0,
+        "Setting 'mod.freq' should update the input value.");
+        equals(modUGen.inputs.freq.model.value, 2.0,
+            "And the underlying value ugen should also be updated.");
+        equals(modUGen.inputs.freq.output[0], 2.0,
+            "Even the ugen's output buffer should contain the new value.");
         
         // Set a ugen def.
         var testUGenDef = {
@@ -143,9 +190,20 @@ var flock = flock || {};
             }
         };
         var dust = synth.input("sine.mul", testUGenDef);
-        equals(synth.ugens.named.sine.inputs.mul, dust, "The 'mul' ugen should be set to our test Dust ugen.");
-        equals(synth.ugens.named.sine.inputs.mul.inputs.density.model. value, 200, 
+        equals(synth.ugens.named.sine.inputs.mul, dust,
+            "The 'mul' ugen should be set to our test Dust ugen.");
+        equals(synth.ugens.named.sine.inputs.mul.inputs.density.model.value, 200,
             "The ugen should be set up correctly.");
+        
+        // Set a named ugen directly.
+        synth = createSynth(simpleSynthDef);
+        synth.input("sine", {
+            ugen: "flock.ugen.lfNoise",
+            freq: 123
+        });
+        equals(synth.ugens.named.sine.inputs.freq.model.value, 123,
+            "Directly setting a named unit generator should cause the previous ugen to be replaced.");
+        ok(sineUGen !== synth.ugens.named.sine);
     });
 
     test("Set input values, onInputChanged event", function () {
@@ -177,7 +235,51 @@ var flock = flock || {};
         ok(didOnInputChangedFire, "The onInputChanged event should fire when an input is changed.");
     });
 
-
+    test("Get and set array input values", function () {
+        var def = {
+            ugen: "flock.ugen.sinOsc",
+            id: "carrier",
+            freq: {
+                ugen: "flock.ugen.sum",
+                id: "adder",
+                sources: [
+                    {
+                        ugen: "flock.ugen.sin",
+                        freq: 440
+                    },
+                    {
+                        ugen: "flock.ugen.sin",
+                        freq: 880
+                    }
+                ]
+            }
+        };
+        
+        var synth = flock.synth(def);
+        var actual = synth.input("carrier.freq.sources.1"),
+            expected = synth.ugens.named.adder.inputs.sources[1];
+        equal(actual, expected, "Getting a ugen input within an array should return the correct ugen.");
+        
+        actual = synth.input("adder.sources.1.freq");
+        expected = 880;
+        equal(actual, expected,
+            "Getting a value from a ugen within an array should return the correct value.");
+            
+        synth.input("adder.sources.1.freq", 889);
+        expected = 889;
+        actual = synth.ugens.named.adder.inputs.sources[1].inputs.freq.model.value;
+        equal(actual, expected,
+            "Setting a value on a ugen within an array should succeed.");
+        
+        synth.input("adder.sources.0", {
+            ugen: "flock.ugen.lfNoise",
+            freq: 456
+        });
+        equal(synth.ugens.named.adder.inputs.sources[0].inputs.freq.model.value, 456,
+            "Setting a ugen within an array should succeed.");
+    });
+    
+    
     module("Parsing tests");
     
     var checkRegisteredUGens = function (synth, expectedNumEvals) {
@@ -440,5 +542,5 @@ var flock = flock || {};
         equals(synth.ugens.named.gerbil.inputs.ear, expectedInput, 
             "The old ugen's input should have been copied over to the new one.");
         equals(synth.out.inputs.sources.inputs.gerbil, newUGen, "The new ugen's output should be wired back up.");
-    })
+    });
 }());
