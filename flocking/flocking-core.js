@@ -658,7 +658,7 @@ var flock = flock || {};
          * @param {String} path the ugen's path within the synth graph
          * @return {Number|UGen} a scalar value in the case of a value ugen, otherwise the ugen itself
          */
-        that.getUGenPath = function (path) {
+        that.get = function (path) {
             var input = flock.get(path, that.ugens.named);
             return (input && input.model && typeof (input.model.value) !== "undefined") ? input.model.value : input;
         };
@@ -688,12 +688,12 @@ var flock = flock || {};
          * @param {Number || UGenDef} val a scalar value (for Value ugens) or a UGenDef object
          * @return {UGen} the newly created UGen that was set at the specified path
          */
-        that.setUGenPath = function (path, val, swap) {
+        that.set = function (path, val, swap) {
             if (path.indexOf(".") === -1) {
                 return that.setNamedUGen(path, val, swap);
             }
             
-            // TODO: Implment using substring() instead of split() and join().
+            // TODO: Implement using substring() instead of split() and join().
             var tokens = String(path).split("."),
                 numTokens = tokens.length,
                 inputName = tokens[numTokens - 1],
@@ -731,14 +731,15 @@ var flock = flock || {};
          *
          * @param {String} path the ugen's path within the synth graph
          * @param {Number || UGenDef || Array} val an optional value to to set--a scalar value, a UGenDef object, or an array of UGenDefs
-         * @return {UGen} optionally, the newly created UGen that was set at the specified path
+         * @param {Boolean || Object} swap specifies if the existing inputs should be swapped onto the new value
+         * @return {Number || UGenDef || Array} the value that was set or retrieved
          */
         that.input = function (path, val, swap) {
             if (!path) {
                 return;
             }
             var expanded = flock.synth.expandInputPath(path);
-            return arguments.length < 2 ? that.getUGenPath(expanded) : that.setUGenPath(expanded, val, swap);
+            return arguments.length < 2 ? that.get(expanded) : that.set(expanded, val, swap);
         };
                 
         /**
