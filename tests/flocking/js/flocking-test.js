@@ -472,6 +472,32 @@ var flock = flock || {};
             "The line's inputs should be set correctly.");
     });
     
+    test("flock.parse.ugenForDef special input handling", function () {
+        var def = {
+            ugen: "flock.ugen.osc",
+            inputs: {
+                table: [0.0, 0.5, 1.0, 0.5, 0.0, -0.5, -1.0, -0.5, 0.0],
+                freq: {
+                    ugen: "flock.ugen.value",
+                    inputs: {
+                        value: 299
+                    }
+                },
+                buffer: {
+                    url: "http://a.url"
+                }
+            }
+        };
+        
+        var actual = flock.parse.ugenForDef(def);
+        equals(actual.inputs.freq.inputs.value, 299,
+            "A value input should not be expanded.");
+        deepEqual(actual.inputs.table, def.inputs.table,
+            "A table input should not be expanded.");
+        deepEqual(actual.inputs.buffer, def.inputs.buffer,
+            "A buffer def input should not be expanded.");
+    });
+    
     test("flock.parse.ugenForDef rate expansion", function () {
         var ugenDef = {
             ugen: "flock.ugen.sinOsc",

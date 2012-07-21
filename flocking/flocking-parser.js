@@ -177,7 +177,6 @@ var flock = flock || {};
         
         for (inputDef in inputDefs) {
             // Create ugens for all inputs except special inputs.
-            // TODO: Need unit test coverage.
             inputs[inputDef] = flock.parse.specialInputs.indexOf(inputDef) > -1 ? 
                 ugenDef.inputs[inputDef] :                                         // Don't instantiate a ugen, just pass the def on as-is.
                 flock.parse.ugenForDef(ugenDef.inputs[inputDef], rates, visitors); // parse the ugendef and create a ugen instance.

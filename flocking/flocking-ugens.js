@@ -26,7 +26,6 @@ var flock = flock || {};
             model: {}
         };
         
-        // TODO: Hard-coded references to the shared environment.
         that.options.audioSettings = that.options.audioSettings || flock.enviro.shared.audioSettings;
         that.sampleRate = options.sampleRate || that.options.audioSettings.rates[that.rate];
         
@@ -829,8 +828,6 @@ var flock = flock || {};
     flock.ugen.env.simpleASR = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
-        // TODO: This implementation currently outputs at audio rate, which is perhaps unnecessary.
-        //       "gate" is also assumed to be control rate.
         that.gen = function (numSamps) {
             var m = that.model,
                 out = that.output,
