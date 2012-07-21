@@ -279,6 +279,76 @@ var flock = flock || {};
             "Setting a ugen within an array should succeed.");
     });
     
+    test("Get multiple input values", function () {
+        var synth = createSynth(simpleSynthDef),
+            expected,
+            actual;
+            
+        expected = {
+            "sine.freq": 440,
+            "sine.mul.freq": 1.0,
+            "sine.add": undefined
+        };
+        
+        // "Fill it in" style of get()
+        actual = synth.get({
+            "sine.freq": null,
+            "sine.mul.freq": null,
+            "sine.add": null
+        });
+        deepEqual(actual, expected,
+            "Synth.get() should fill in the object passed in as its argument.");
+        
+        // Array style of input()
+        actual = synth.input([
+            "sine.freq",
+            "sine.mul.freq",
+            "sine.add"
+        ]);
+        deepEqual(actual, expected,
+            "Synth.input() should return multiple values when given an array of paths.");
+    });
+    
+    var testSetMultiple = function (methodName) {
+        var synth = createSynth(simpleSynthDef),
+            expected,
+            actual,
+            direct;
+            
+        actual = synth[methodName]({
+            "sine.freq": 880,
+            "sine.mul.freq": 1.2,
+            "sine.add": {
+                id: "add",
+                ugen: "flock.ugen.sinOsc",
+                freq: 7.0
+            }
+        });
+        
+        direct = synth.ugens.named.sine;
+        
+        expected = {
+            "sine.freq": direct.inputs.freq,
+            "sine.mul.freq": direct.inputs.mul.inputs.freq,
+            "sine.add": direct.inputs.add
+        };
+        
+        // Check that the data structure returned conforms to the contract.
+        deepEqual(actual, expected,
+            "The return value should contain the actual unit generator instances that were set.");
+        
+        // And then that the actual ugen graph was modified.
+        equal(direct.inputs.freq.model.value, 880);
+        equal(direct.inputs.mul.inputs.freq.model.value, 1.2);
+        equal(direct.inputs.add.inputs.freq.model.value, 7.0);
+        equal(direct.inputs.add.id, "add");
+    };
+    
+    test("Set multiple input values", function () {
+        testSetMultiple("set");
+        testSetMultiple("input");
+    });
+    
     
     module("Parsing tests");
     

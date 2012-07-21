@@ -652,6 +652,36 @@ var flock = flock || {};
             flock.enviro.evalGraph(that.ugens.active, that.enviro.audioSettings.rates.control);
         };
         
+        that.getValueForPath = function (path) {
+            path = flock.synth.expandInputPath(path);
+            var input = flock.get(path, that.ugens.named);
+            return (input && input.model && typeof (input.model.value) !== "undefined") ?
+                input.model.value : input;
+        };
+        
+        that.getValuesForPathArray = function (paths) {
+            var values = {},
+                i,
+                path;
+            
+            for (i = 0; i < paths.length; i++) {
+                path = paths[i];
+                values[path] = that.get(path);
+            }
+            
+            return values;
+        };
+        
+        that.getValuesForPathObject = function (pathObj) {
+            var key;
+            
+            for (key in pathObj) {
+                pathObj[key] = that.get(key);
+            }
+            
+            return pathObj;
+        };
+        
         /**
          * Gets the value of the ugen at the specified path.
          *
@@ -659,8 +689,9 @@ var flock = flock || {};
          * @return {Number|UGen} a scalar value in the case of a value ugen, otherwise the ugen itself
          */
         that.get = function (path) {
-            var input = flock.get(path, that.ugens.named);
-            return (input && input.model && typeof (input.model.value) !== "undefined") ? input.model.value : input;
+            return typeof (path) === "string" ? that.getValueForPath(path) :
+                flock.isIterable(path) ? that.getValuesForPathArray(path) :
+                that.getValuesForPathObject(path);
         };
 
         /**
@@ -681,14 +712,9 @@ var flock = flock || {};
             return parsed;
         };
         
-        /**
-         * Sets the value of the ugen at the specified path.
-         *
-         * @param {String} path the ugen's path within the synth graph
-         * @param {Number || UGenDef} val a scalar value (for Value ugens) or a UGenDef object
-         * @return {UGen} the newly created UGen that was set at the specified path
-         */
-        that.set = function (path, val, swap) {
+        that.setValueForPath = function (path, val, swap) {
+            path = flock.synth.expandInputPath(path);
+            
             if (path.indexOf(".") === -1) {
                 return that.setNamedUGen(path, val, swap);
             }
@@ -726,6 +752,33 @@ var flock = flock || {};
             return newInput;
         };
         
+        that.setValuesForPaths = function (valueMap, swap) {
+            var path,
+                val,
+                result;
+            
+            for (path in valueMap) {
+                val = valueMap[path];
+                result = that.set(path, val, swap);
+                valueMap[path] = result;
+            }
+            
+            return valueMap;
+        };
+        
+        /**
+         * Sets the value of the ugen at the specified path.
+         *
+         * @param {String} path the ugen's path within the synth graph
+         * @param {Number || UGenDef} val a scalar value (for Value ugens) or a UGenDef object
+         * @return {UGen} the newly created UGen that was set at the specified path
+         */
+        that.set = function (path, val, swap) {
+            return typeof (path) === "string" ?
+                that.setValueForPath(path, val, swap) :
+                that.setValuesForPaths(path, val);
+        };
+        
         /**
          * Gets or sets the value of a ugen at the specified path
          *
@@ -735,11 +788,9 @@ var flock = flock || {};
          * @return {Number || UGenDef || Array} the value that was set or retrieved
          */
         that.input = function (path, val, swap) {
-            if (!path) {
-                return;
-            }
-            var expanded = flock.synth.expandInputPath(path);
-            return arguments.length < 2 ? that.get(expanded) : that.set(expanded, val, swap);
+            return !path ? undefined : typeof (path) === "string" ?
+                arguments.length < 2 ? that.get(path) : that.set(path, val, swap) :
+                flock.isIterable(path) ? that.get(path) : that.set(path, val, swap);
         };
                 
         /**
