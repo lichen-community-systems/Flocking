@@ -112,6 +112,18 @@ var flock = flock || {};
         deepEqual(actual, expected, "Buffer size as a number and generator function.");
     });
     
+    var testNormalize = function (normal, unnormalized, expected) {
+        var actual = flock.normalize($.map(unnormalized, flock.identity), normal);
+        deepEqual(actual, expected, "Buffer normalized to " + normal + ".");
+    };
+    
+    test("flock.normalize()", function () {
+        var unnormalized = [0.0, 0.5, 1.0, 1.5, 2.0];
+        testNormalize(1.0, unnormalized, [0.0, 0.25, 0.5, 0.75, 1.0]);
+        testNormalize(0.5, unnormalized, [0.0, 0.125, 0.25, 0.375, 0.5]);
+        testNormalize(3.0, unnormalized, [0.0, 0.75, 1.5, 2.25, 3.0]);
+    });
+    
     test("flock.minBufferSize()", function () {
         var audioSettings = {
             rates: {

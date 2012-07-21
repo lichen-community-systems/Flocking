@@ -140,13 +140,18 @@ var flock = flock || {};
         return collection[key];
     };
     
-    // TODO:
-    //   - Unit tests
-    //   - Allow normalization to other values than 1.0.
-    flock.normalize = function (buffer) {
+    /**
+     * Normalizes the specified buffer in place to the specified value.
+     *
+     * @param {Arrayable} buffer the buffer to normalize; it will not be copied
+     * @param {Number} normal the value to normalize the buffer to
+     * @return the buffer, normalized in place
+     */
+    flock.normalize = function (buffer, normal) {
         var maxVal = 0.0,
             i,
-            current;
+            current,
+            val;
         
         // Find the maximum value in the buffer.
         for (i = 0; i < buffer.length; i++) {
@@ -156,10 +161,11 @@ var flock = flock || {};
             }
         }
         
-        // And then normalize the buffer to 1.0.
+        // And then normalize the buffer.
         if (maxVal > 0.0) {
             for (i = 0; i < buffer.length; i++) {
-                buffer[i] /= maxVal;
+                val = buffer[i];
+                buffer[i] = (val / maxVal) * normal;
             }
         }
         
