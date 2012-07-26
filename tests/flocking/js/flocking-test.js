@@ -45,10 +45,61 @@ var flock = flock || {};
     
     module("Utility tests");
     
+    test("flock.set()", function () {
+        var root = {
+            cat: "meow",
+            dog: {
+                sheltie: "bark"
+            }
+        };
+        
+        var tests = [
+            {
+                path: "cat",
+                value: "rreow",
+                msg: "Single-segment path."
+            },
+            {
+                path: "dog.sheltie",
+                value: "roof",
+                msg: "Multi-segment path."
+            },
+            {
+                path: "dog.sheltie",
+                value: {
+                    fur: {
+                        primary: "sable",
+                        secondary: "white"
+                    }
+                },
+                msg: "Multi-segment path, object value."
+            },
+            {
+                path: "dog.claws.count",
+                value: 25,
+                msg: "Path with non-existent middle segment should cause the container to be created."
+            }
+        ];
+        
+        $.each(tests, function (i, spec) {
+            flock.set(spec.path, spec.value, root);
+            equals(flock.get(spec.path, root), spec.expected || spec.value, spec.msg);
+        });
+        
+        // Error cases
+        try {
+            flock.set("cat.claws.count", 25, root);
+            ok(false);
+        } catch (e) {
+            ok(e.message.indexOf("cat") !== -1);
+        }
+    });
+    
     var testInputPathExpansion = function (testSpecs) {
         $.each(testSpecs, function (i, spec) {
-            var actual = flock.synth.inputPathExpander(spec.path);
-            equal(actual, spec.expected, spec.msg);
+            var actual = flock.input.pathExpander(spec.path);
+            equal(actual, spec.expected, spec.msg,
+                "Setting to a non-container type should cause an error to be thrown.");
         });
     };
     
