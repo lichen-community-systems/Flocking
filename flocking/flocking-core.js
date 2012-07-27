@@ -152,6 +152,7 @@ var flock = flock || {};
             current,
             val;
         
+        normal = normal === undefined ? 1.0 : normal;
         // Find the maximum value in the buffer.
         for (i = 0; i < buffer.length; i++) {
             current = buffer[i];
