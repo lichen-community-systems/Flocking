@@ -82,13 +82,13 @@ var flock = flock || {};
         ];
         
         $.each(tests, function (i, spec) {
-            flock.set(spec.path, spec.value, root);
-            equals(flock.get(spec.path, root), spec.expected || spec.value, spec.msg);
+            flock.set(root, spec.path, spec.value);
+            equals(flock.get(root, spec.path), spec.expected || spec.value, spec.msg);
         });
         
         // Error cases
         try {
-            flock.set("cat.claws.count", 25, root);
+            flock.set(root, "cat.claws.count", 25);
             ok(false);
         } catch (e) {
             ok(e.message.indexOf("cat") !== -1);
@@ -599,7 +599,7 @@ var flock = flock || {};
         $.each(testSpecs, function (i, spec) {
             var toRemove = spec.ugenToRemove;
             if (toRemove) {
-                toRemove = typeof (toRemove) === "string" ? flock.get(toRemove, synth) : toRemove;
+                toRemove = typeof (toRemove) === "string" ? flock.get(synth, toRemove) : toRemove;
                 synth.ugens.remove(toRemove, true);
             }
             equals(synth.ugens.active.length, spec.expected.active, 

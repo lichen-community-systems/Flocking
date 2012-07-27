@@ -61,7 +61,7 @@ var flock = flock || {};
             rates: rates
         };
         
-        return flock.invoke(ugenDef.ugen, [
+        return flock.invoke(undefined, ugenDef.ugen, [
             parsedInputs, 
             buffer, 
             ugenDef.options

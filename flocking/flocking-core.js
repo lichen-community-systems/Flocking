@@ -177,7 +177,7 @@ var flock = flock || {};
             "' could not be resolved.");
     };
     
-    flock.get = function (path, root) {
+    flock.get = function (root, path) {
         root = root || window;
         var tokenized = path === "" ? [] : String(path).split("."),
             valForSeg = root[tokenized[0]],
@@ -192,7 +192,7 @@ var flock = flock || {};
         return valForSeg;
     };
     
-    flock.set = function (path, value, root) {
+    flock.set = function (root, path, value) {
         root = root || window;
         if (!path || path === "") {
             return;
@@ -220,8 +220,8 @@ var flock = flock || {};
         return value;
     };
     
-    flock.invoke = function (path, args, root) {
-        var fn = flock.get(path, root);
+    flock.invoke = function (root, path, args) {
+        var fn = flock.get(root, path);
         if (typeof (fn) !== "function") {
             throw new Error("Path '" + path + "' does not resolve to a function.");
         }
@@ -256,7 +256,7 @@ var flock = flock || {};
     
     flock.input.getValueForPath = function (root, path) {
         path = flock.input.expandPath(path);
-        var input = flock.get(path, root);
+        var input = flock.get(root, path);
         return (input && input.model && typeof (input.model.value) !== "undefined") ?
             input.model.value : input;
     };
@@ -299,14 +299,14 @@ var flock = flock || {};
     flock.input.setValueForPath = function (root, path, val, valueParser) {
         path = flock.input.expandPath(path);
         
-        var previousInput = flock.get(path, root),
+        var previousInput = flock.get(root, path),
             lastDotIdx = path.lastIndexOf("."),
             inputName = path.slice(lastDotIdx + 1),
             targetPath = lastDotIdx === -1 ? path : path.slice(0, path.lastIndexOf(".inputs")),
-            target = flock.get(targetPath, root),
+            target = flock.get(root, targetPath),
             newInput = valueParser(val, path, target, previousInput);
         
-        flock.set(path, newInput, root);
+        flock.set(root, path, newInput);
         target.onInputChanged(inputName);
         
         return newInput;
