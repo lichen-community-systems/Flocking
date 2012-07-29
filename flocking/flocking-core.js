@@ -296,30 +296,31 @@ var flock = flock || {};
             flock.input.getValuesForPathObject(root, path);
     };
     
-    flock.input.setValueForPath = function (root, path, val, valueParser) {
+    flock.input.setValueForPath = function (root, path, val, baseTarget, valueParser) {
         path = flock.input.expandPath(path);
         
         var previousInput = flock.get(root, path),
             lastDotIdx = path.lastIndexOf("."),
             inputName = path.slice(lastDotIdx + 1),
-            targetPath = lastDotIdx === -1 ? path : path.slice(0, path.lastIndexOf(".inputs")),
-            target = flock.get(root, targetPath),
-            newInput = valueParser(val, path, target, previousInput);
+            target = lastDotIdx > -1 ? flock.get(root, path.slice(0, path.lastIndexOf(".inputs"))) : baseTarget,
+            newInput = valueParser ? valueParser(val, path, target, previousInput) : val;
         
         flock.set(root, path, newInput);
-        target.onInputChanged(inputName);
+        if (target && target.onInputChanged) {
+            target.onInputChanged(inputName);
+        }
         
         return newInput;
     };
     
-    flock.input.setValuesForPaths = function (root, valueMap, valueParser) {
+    flock.input.setValuesForPaths = function (root, valueMap, baseTarget, valueParser) {
         var path,
             val,
             result;
         
         for (path in valueMap) {
             val = valueMap[path];
-            result = flock.input.set(root, path, val, valueParser);
+            result = flock.input.set(root, path, val, baseTarget, valueParser);
             valueMap[path] = result;
         }
         
@@ -333,10 +334,10 @@ var flock = flock || {};
      * @param {Number || UGenDef} val a scalar value (for Value ugens) or a UGenDef object
      * @return {UGen} the newly created UGen that was set at the specified path
      */
-    flock.input.set = function (root, path, val, valueParser) {
+    flock.input.set = function (root, path, val, baseTarget, valueParser) {
         return typeof (path) === "string" ?
-            flock.input.setValueForPath(root, path, val, valueParser) :
-            flock.input.setValuesForPaths(root, path, valueParser);
+            flock.input.setValueForPath(root, path, val, baseTarget, valueParser) :
+            flock.input.setValuesForPaths(root, path, baseTarget, valueParser);
     };
     
     
@@ -815,7 +816,7 @@ var flock = flock || {};
          * @return {UGen} the newly created UGen that was set at the specified path
          */
         that.set = function (path, val, swap) {
-            return flock.input.set(that.ugens.named, path, val, function (ugenDef, path, target, previous) {
+            return flock.input.set(that.ugens.named, path, val, undefined, function (ugenDef, path, target, previous) {
                 var ugen = flock.parse.ugenDef(ugenDef, that.enviro.audioSettings.rates);
                 that.ugens.replace(ugen, previous, swap);
                 return ugen;

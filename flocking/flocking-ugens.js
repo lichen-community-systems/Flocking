@@ -29,23 +29,34 @@ var flock = flock || {};
         that.options.audioSettings = that.options.audioSettings || flock.enviro.shared.audioSettings;
         that.sampleRate = options.sampleRate || that.options.audioSettings.rates[that.rate];
         
+        that.get = function (path) {
+            return flock.input.get(that.inputs, path);
+        };
+
+        /**
+         * Sets the value of the input at the specified path.
+         *
+         * @param {String} path the inputs's path relative to this ugen
+         * @param {Number || UGenDef} val a scalar value (for Value ugens) or a UGenDef object
+         * @return {UGen} the newly-created UGen that was set at the specified path
+         */
+        that.set = function (path, val, swap) {
+            return flock.input.set(that.inputs, path, val, that, function (ugenDef) {
+                return flock.parse.ugenDef(ugenDef, that.options.audioSettings.rates);
+            });
+        };
+        
         /**
          * Gets or sets the named unit generator input.
          *
-         * @param {String} name the input name
+         * @param {String} path the input path
          * @param {UGenDef} val [optional] a scalar value, ugenDef, or array of ugenDefs that will be assigned to the specified input name
          * @return {Number|UGen} a scalar value in the case of a value ugen, otherwise the ugen itself
          */
-        that.input = function (name, val) {
-            if (val === undefined) {
-                var input = that.inputs[name];
-                return !input ? input : (input.model && typeof (input.model.value) !== "undefined") ? input.model.value : input;
-            }
-            
-            var parsed = flock.parse.ugenDef(val, that.options.audioSettings.rates);
-            that.inputs[name] = parsed;
-            that.onInputChanged(name);
-            return parsed;
+        that.input = function (path, val) {
+            return !path ? undefined : typeof (path) === "string" ?
+                arguments.length < 2 ? that.get(path) : that.set(path, val) :
+                flock.isIterable(path) ? that.get(path) : that.set(path, val);
         };
     
         that.onInputChanged = flock.identity; // No-op base implementation.
