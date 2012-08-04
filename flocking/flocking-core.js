@@ -28,6 +28,11 @@ var flock = flock || {};
         CONSTANT: "constant"
     };
     
+    flock.platform = {
+        os: window.navigator.platform || "",
+        browser: $.browser
+    };
+    
     flock.defaults = function (name, defaults) {
         if (defaults) {
             flock.defaults.store[name] = defaults;
@@ -45,7 +50,9 @@ var flock = flock || {};
             constant: 1
         },        
         tableSize: 8192,
-        bufferSize: 1024
+        bufferSize: flock.platform.os.indexOf("Linux") > -1 ||
+            (flock.platform.os === "Win32" && flock.platform.browser.mozilla) ?
+            4096 : 2048
     });
     
     flock.idIdx = 0;
