@@ -371,7 +371,7 @@ var flock = flock || {};
      flock.worker = function (code) {
          var type = typeof (code),
              url,
-             builder;
+             blob;
         
          if (type === "function") {
              code = "(" + code.toString() + ")();";
@@ -379,10 +379,9 @@ var flock = flock || {};
              throw Error("A flock.worker must be initialized with a String or a Function.");
          }
          
-         if (flock.shim.BlobBuilder) {
-             builder = new flock.shim.BlobBuilder();
-             builder.append(code);
-             url = flock.shim.URL.createObjectURL(builder.getBlob());
+         if (window.Blob) {
+             blob = new Blob([code]);
+             url = flock.shim.URL.createObjectURL(blob);
          } else {
              url = "data:text/javascript;base64," + window.btoa(code);
          }
