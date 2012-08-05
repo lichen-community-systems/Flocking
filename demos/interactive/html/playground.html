@@ -72,7 +72,7 @@
                 <option value="scope">Scope</option>
                 <option value="stereo">Stereo</option>
                 <option value="sum">Additive Synthesis</option>
-                
+                <option value="multipleSynths">Multiple Synths</option>
             </select>
             <button id="load-button">Load</button>
         </div>
@@ -437,5 +437,37 @@ flock.enviro.shared.conductor.schedulePeriodic(2000, function () {
 });
         </script>
         
+        <script type="application/flocking" id="multipleSynths">
+/*
+ * Multiple synths playing back simultaneously, playing shifting chords.
+ */
+
+// Creates an array of synths, each playing a degree of the chord specified in "intervals."
+function makeIntervallicSynths (fundamental, intervals) {
+    var ampScale = 1.0 / intervals.length;
+    return $.map(intervals, function (interval, idx) {
+        return flock.synth({
+            id: "carrier",
+            ugen: "flock.ugen.sin",
+            freq: fundamental * interval,
+            mul: ampScale
+        });
+    });
+}
+
+var fundamental = 440,
+    baseIntervals = [1/1, 5/4, 3/2],
+    weightedIntervals = baseIntervals.concat([4/3, 6/5, 7/6, 2/1]).concat(baseIntervals),
+    synths = makeIntervallicSynths(fundamental, baseIntervals),
+    synth = synths[0];
+
+// Every second, change one of the intervals by randomly choosing a synth
+// and assigning it a new frequency from the list of intervals.
+flock.enviro.shared.conductor.schedulePeriodic(1000, function () {
+    var intervalSynth = flock.choose(synths),
+        newInterval = flock.choose(weightedIntervals);
+    intervalSynth.input("carrier.freq", fundamental * newInterval);
+});
+        </script>
     </body>
 </html>
