@@ -892,6 +892,8 @@ flock.test = flock.test || {};
     };
     
     test("flock.ugen.in() single bus input", function () {
+        flock.enviro.shared = flock.enviro();
+        
         var outSynth = flock.synth(outSynthDef);
         var inSynth = flock.synth(inSynthDef);
         inSynth.enviro.gen();
@@ -903,6 +905,8 @@ flock.test = flock.test || {};
     });
     
     test("flock.ugen.in() multiple bus input", function () {
+        flock.enviro.shared = flock.enviro();
+        
         var bus3Synth = flock.synth(outSynthDef);
         var bus4Def = $.extend(true, {}, outSynthDef, {
             inputs: {

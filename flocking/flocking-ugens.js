@@ -1054,7 +1054,7 @@ var flock = flock || {};
         
         that.multiBusGen = function (numSamps) {
             var busesInput = that.inputs.bus,
-                enviroBuses = flock.enviro.shared.buses,
+                enviroBuses = flock.enviro.shared.buses, // TODO: Hardcoded reference to shared enviroment.
                 out = that.output,
                 i,
                 j,
