@@ -866,4 +866,61 @@ flock.test = flock.test || {};
         }
     });
     
+    var outSynthDef = {
+        ugen: "flock.ugen.out",
+        rate: "audio",
+        inputs: {
+            bus: 3,
+            sources: {
+                ugen: "flock.test.mockUGen",
+                options: {
+                    buffer: flock.generate(64, function (i) {
+                        return i + 1;
+                    })
+                }
+            }
+        }
+    };
+    
+    var inSynthDef = {
+        id: "in",
+        ugen: "flock.ugen.in",
+        rate: "audio",
+        inputs: {
+            bus: 3
+        }
+    };
+    
+    test("flock.ugen.in() single bus input", function () {
+        var outSynth = flock.synth(outSynthDef);
+        var inSynth = flock.synth(inSynthDef);
+        inSynth.enviro.gen();
+        var actual = inSynth.ugens.named["in"].output;
+        equals(actual, inSynth.enviro.buses[3],
+            "With a single source intput, the output of flock.ugen.in should be the actual bus referenced.");
+        deepEqual(actual, outSynthDef.inputs.sources.options.buffer,
+            "And it should reflect exactly the output of the flock.ugen.out that is writing to the buffer.");
+    });
+    
+    test("flock.ugen.in() multiple bus input", function () {
+        var bus3Synth = flock.synth(outSynthDef);
+        var bus4Def = $.extend(true, {}, outSynthDef, {
+            inputs: {
+                bus: 4
+            }
+        });
+        var bus4Synth = flock.synth(bus4Def);
+        var multiInDef = $.extend(true, {}, inSynthDef);
+        multiInDef.inputs.bus = [3, 4];
+        var inSynth = flock.synth(multiInDef);
+        
+        inSynth.enviro.gen();
+        var actual = inSynth.ugens.named["in"].output;
+        var expected = flock.generate(64, function (i) {
+            return (i + 1) * 2;
+        });
+        deepEqual(actual, expected,
+            "flock.ugen.in should sum the output of each bus when mutiple buses are specified.");
+    });
+    
 }());

@@ -999,7 +999,7 @@ var flock = flock || {};
     
         that.gen = function (numSamps) {
             var sources = that.inputs.sources,
-                buses = flock.enviro.shared.buses,
+                buses = flock.enviro.shared.buses, // TODO: Hardcoded reference to shared enviroment.
                 bufStart = that.inputs.bus.output[0],
                 expand = that.inputs.expand.output[0],
                 i,
@@ -1043,6 +1043,47 @@ var flock = flock || {};
         }
     });
     
+    // TODO: fix naming.
+    flock.ugen["in"] = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.singleBusGen = function () {
+            // TODO: Hardcoded reference to shared enviroment.
+            that.output = flock.enviro.shared.buses[that.inputs.bus.output[0]];
+        };
+        
+        that.multiBusGen = function (numSamps) {
+            var busesInput = that.inputs.bus,
+                enviroBuses = flock.enviro.shared.buses,
+                out = that.output,
+                i,
+                j,
+                busIdx;
+            
+            for (i = 0; i < numSamps; i++) {
+                out[i] = 0; // Clear previous output values before summing a new set.
+                for (j = 0; j < busesInput.length; j++) {
+                    busIdx = busesInput[j].output[0];
+                    out[i] += enviroBuses[busIdx][i];
+                }
+            }
+        };
+        
+        that.onInputChanged = function () {
+            that.gen = flock.isIterable(that.inputs.bus) ? that.multiBusGen : that.singleBusGen;
+            flock.onMulAddInputChanged(that);
+        };
+        
+        that.onInputChanged();
+        return that;
+    };
+    
+    flock.defaults("flock.ugen.in", {
+        rate: "audio",
+        inputs: {
+            bus: 0
+        }
+    });
     
     flock.ugen.audioIn = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
