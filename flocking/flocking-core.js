@@ -875,9 +875,9 @@ var flock = flock || {};
             // Parse the synthDef into a graph of unit generators.
             that.out = flock.parse.synthDef(that.model.synthDef, parseOptions);
             
-            // Add this synth to the head of the synthesis environment if appropriate.
+            // Add this synth to the tail of the synthesis environment if appropriate.
             if (that.options.addToEnvironment !== false) {
-                that.enviro.head(that);
+                that.enviro.tail(that);
             }
         };
         
