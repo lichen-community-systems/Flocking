@@ -6,7 +6,7 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global window, Float32Array*/
+/*global window, Float32Array, Uint8Array, ArrayBuffer, FileReader, PolyDataView*/
 /*jslint white: true, funcinvoke: true, undef: true, newcap: true, regexp: true, browser: true, 
     forin: true, continue: true, forvar: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
@@ -167,7 +167,7 @@ var flock = flock || {};
     flock.audio.decodeArrayBuffer = function (data, type) {
         var formatSpec = flock.audio.formats[type];
         if (!formatSpec) {
-            throw new Error("There is no decoder available for " + format + " files.");
+            throw new Error("There is no decoder available for " + type + " files.");
         }
         
         return formatSpec.reader(data, formatSpec);
@@ -298,9 +298,7 @@ var flock = flock || {};
             fields = layout.fields,
             i,
             name,
-            spec,
-            len,
-            w;
+            spec;
         
         dv.offsetState = typeof (offset) === "number" ? offset : dv.offsetState;
         
@@ -338,7 +336,7 @@ var flock = flock || {};
     }; 
     
     flock.audio.decode.chunked = function (data, formatSpec) {
-        var dv = new polyDataView(data, 0, data.byteLength),
+        var dv = new PolyDataView(data, 0, data.byteLength),
             isLittle = formatSpec.littleEndian,
             headerLayout = formatSpec.headerLayout,
             metadata,
