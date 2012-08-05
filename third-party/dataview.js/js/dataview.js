@@ -1,6 +1,6 @@
 /*!
-* polyDataView, a better polyfill for DataView.
-* http://github.com/colinbdclark/polyDataView
+* PolyDataView, a better polyfill for DataView.
+* http://github.com/colinbdclark/PolyDataView
 *
 * Copyright 2012, Colin Clark
 * Dual licensed under the MIT and GPL Version 2 licenses.
@@ -11,7 +11,8 @@
 */
 
 /*global window, ArrayBuffer, Uint8Array, Uint32Array*/
-/*jslint bitwise: true, vars: true, white: true, plusplus: true, maxerr: 50, indent: 4 */
+/*jslint white: true, funcinvoke: true, undef: true, newcap: false, regexp: true, browser: true,
+    forin: true, continue: true, forvar: true, nomen: true, maxerr: 100, indent: 4 */
 
 /*
  * To Do:
@@ -55,7 +56,7 @@
                 if (c > 0xFFFF) {
                     c -= 0x10000;
                     s += String.fromCharCode(0xD800 + (c >> 10), 0xDC00 + (c & 0x3FF));
-                }  else {
+                } else {
                     s += String.fromCharCode(c);
                 }
                 o = o + w;
@@ -103,12 +104,12 @@
         }; 
     };
     
-    var polyDataView = function (buffer, byteOffset, byteLength) {
+    var PolyDataView = function (buffer, byteOffset, byteLength) {
         var cachedArray = [];
         
         var that = {
             buffer: buffer,
-            byteOffset: typeof(byteOffset) === "number" ? byteOffset : 0
+            byteOffset: typeof (byteOffset) === "number" ? byteOffset : 0
         };
         that.byteLength = typeof (byteLength) === "number" ? byteLength : buffer.byteLength - that.byteOffset;
         
@@ -302,7 +303,10 @@
             // This method is a modified version of Christopher Chedeau's float decoding implementation from jDataView,
             // originally distributed under the WTF license. https://github.com/vjeux/jDataView
             var bytes = that.getUints(4, 1, o, isLittle),
-                b0, b1, b2, b3,
+                b0,
+                b1,
+                b2,
+                b3,
                 sign,
                 exp,
                 mant;
@@ -338,7 +342,14 @@
             // This method is a modified version of Christopher Chedeau's float decoding implementation from jDataView,
             // originally distributed under the WTF license. https://github.com/vjeux/jDataView
             var bytes = that.getUints(8, 1, o, isLittle),
-                b0, b1, b2, b3, b4, b5, b6, b7,
+                b0,
+                b1,
+                b2,
+                b3,
+                b4,
+                b5,
+                b6,
+                b7,
                 sign,
                 exp,
                 mant;
@@ -386,7 +397,7 @@
     var wrappedDataView = function (buffer, byteOffset, byteLength) {
         var that = {
             buffer: buffer,
-            byteOffset: typeof(byteOffset) === "number" ? byteOffset : 0
+            byteOffset: typeof (byteOffset) === "number" ? byteOffset : 0
         };
         that.byteLength = typeof (byteLength) === "number" ? byteLength : buffer.byteLength - that.byteOffset;
         
@@ -545,5 +556,5 @@
         return that;
     };
     
-    window.polyDataView = nativeDataView ? wrappedDataView : polyDataView;
+    window.PolyDataView = nativeDataView ? wrappedDataView : PolyDataView;
 }());

@@ -70,15 +70,15 @@ var flock = flock || {};
     
     module("flock.ugen.sinOsc tests");
     
-    var checkUGen = function (ugenName, inputs, expectedCeil, msg) {
-        var ugen = flock.invokePath(ugenName, [inputs, new Float32Array(64)]),
+    var checkUGen = function (ugenDef, expectedCeil, msg) {
+        var ugen = flock.parse.ugenForDef(ugenDef),
             ugens = [ugen],
             inputName,
             input,
             avg;
             
-        for (inputName in inputs) {
-            input = inputs[inputName];
+        for (inputName in ugen.inputs) {
+            input = ugen.inputs[inputName];
             if (input.gen) {
                 ugens.push(input);
             }
@@ -87,82 +87,122 @@ var flock = flock || {};
         assertCeiling(avg, expectedCeil, msg);
     };
     
-    var crFreq = flock.ugen.value({value: 440}, new Float32Array(1));
-    var crPhase = flock.ugen.value({value: flock.TWOPI}, new Float32Array(1));
-    var krSinFreq = flock.ugen.sinOsc({freq: flock.ugen.value({value: 20}, new Float32Array(1))}, new Float32Array(1), {rate: "control"});
-    var krSinPhase = flock.ugen.sinOsc({freq: crFreq, mul: crPhase}, new Float32Array(1), {rate: "control"});
-    var arSinFreq = flock.ugen.sinOsc({freq: flock.ugen.value({value: 123}, new Float32Array(1))}, new Float32Array(64));
-    var arSinPhase = flock.ugen.sinOsc({freq: crFreq, mul: crPhase}, new Float32Array(64));
-    
     var testConfigs = [
         {
-            inputs: {
-                freq: crFreq
+            ugenDef: {
+                ugen: "flock.ugen.sinOsc",
+                inputs: {
+                    freq: 440
+                }
             },
             maxDur: 25
         },
         {
-            inputs: {
-                freq: crFreq,
-                phase: crPhase
+            ugenDef: {
+                ugen: "flock.ugen.sinOsc",
+                inputs: {
+                    freq: 440,
+                    phase: flock.TWOPI
+                }
             },
             maxDur: 50
         },
         {
-            inputs: {
-                freq: krSinFreq
+            ugenDef: {
+                ugen: "flock.ugen.sinOsc",
+                inputs: {
+                    freq: {
+                        ugen: "flock.ugen.sinOsc",
+                        rate: "control",
+                        freq: 20
+                    }
+                }
             },
             maxDur: 40
         },
         {
-            inputs: {
-                freq: krSinFreq,
-                phase: krSinPhase
+            ugenDef: {
+                ugen: "flock.ugen.sinOsc",
+                inputs: {
+                    freq: {
+                        ugen: "flock.ugen.sinOsc",
+                        rate: "control",
+                        freq: 20
+                    },
+                    phase: {
+                        ugen: "flock.ugen.sinOsc",
+                        rate: "control",
+                        freq: 440,
+                        mul: flock.TWOPI
+                    }
+                }
             },
             maxDur: 80
         },
         {
-            inputs: {
-                freq: arSinFreq
+            ugenDef: {
+                ugen: "flock.ugen.sinOsc",
+                inputs: {
+                    freq: {
+                        ugen: "flock.ugen.sinOsc",
+                        rate: "audio",
+                        freq: 123
+                    }
+                }
             },
             maxDur: 75
         },
         {
-            inputs: {
-                freq: arSinFreq,
-                phase: arSinPhase
+            ugenDef: {
+                ugen: "flock.ugen.sinOsc",
+                inputs: {
+                    freq: {
+                        ugen: "flock.ugen.sinOsc",
+                        rate: "audio",
+                        freq: 123
+                    },
+                    phase: {
+                        ugen: "flock.ugen.sinOsc",
+                        rate: "audio",
+                        freq: 440,
+                        phase: flock.TWOPI
+                    }
+                }
+
             },
             maxDur: 150
         }
         
     ];
     
-    var runTest = function (ugenName, inputs, maxDur, msg) {
+    var runTest = function (ugenDef, maxDur, msg) {
         test(msg, function () {
-            checkUGen(ugenName, inputs, maxDur, "Should take no longer than " + maxDur + " seconds.");
+            checkUGen(ugenDef, maxDur, "Should take no longer than " + maxDur + " ms.");
         });
     };
     
-    var testConfigurations = function (ugenName, configs) {
+    var testConfigurations = function (configs) {
         var i,
             config,
             inputs,
             inputName,
             input,
-            msg;
+            msg,
+            inputMsgs;
             
         for (i = 0; i < configs.length; i++) {
             config = configs[i];
-            inputs = config.inputs;
-            msg = "1 sec. signal from " + ugenName + " with ";
+            inputs = config.ugenDef.inputs;
+            msg = "1 sec. signal from " + config.ugenDef.ugen + " with ";
+            inputMsgs = [];
             
             for (inputName in inputs) {
                 input = inputs[inputName];
-                msg += input.rate + " rate " + inputName + ", ";
+                inputMsgs.push((input.rate ? input.rate : "constant") + " rate " + inputName);
             }
-            runTest(ugenName, inputs, config.maxDur, msg);
+            runTest(config.ugenDef, config.maxDur, msg + inputMsgs.join(", "));
         }
     };
     
-    testConfigurations("flock.ugen.sinOsc", testConfigs);
+    testConfigurations(testConfigs);
 }());
