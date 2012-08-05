@@ -533,7 +533,7 @@ var flock = flock || {};
             var m = that.model,
                 out = that.output,
                 chan = that.inputs.channel.output[0],
-                speedInc = 1.0 * that.inputs.speed.output[0],
+                speedInc = that.inputs.speed.output[0],
                 source = that.buffer,
                 bufIdx = m.idx,
                 bufLen = source.length,
@@ -1084,7 +1084,7 @@ var flock = flock || {};
 
             // TOOD: Options merging! This is absurd!
             mikeOpts.settings = mikeOpts.settings || {};
-            mikeOpts.settings.sampleRate = new String(mikeOpts.settings.sampleRate || flock.enviro.shared.audioSettings.rates.audio);
+            mikeOpts.settings.sampleRate = String(mikeOpts.settings.sampleRate || flock.enviro.shared.audioSettings.rates.audio);
             
             // Setup and listen to Mike.js.
             that.mike = new Mike(mikeOpts);
@@ -1217,7 +1217,7 @@ var flock = flock || {};
             }
             
             for (i = 0; i < numSamps; i++) {
-                max = 1.0 * mul + add;
+                max = mul + add;
                 scaledMouse = pow(max  / add, scaledMouse) * add;
                 movingAvg = scaledMouse + lagCoef * (movingAvg - scaledMouse); // 1-pole filter averages mouse values.
                 out[i] = movingAvg;

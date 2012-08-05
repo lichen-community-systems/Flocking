@@ -142,7 +142,7 @@ var flock = flock || {};
             return val;
         }
 
-        var key = arrayChoose(collection.keys, strategy);
+        var key = flock.arrayChoose(collection.keys, strategy);
         return collection[key];
     };
     
@@ -376,7 +376,7 @@ var flock = flock || {};
         if (type === "function") {
             code = "(" + code.toString() + ")();";
         } else if (type !== "string") {
-            throw Error("A flock.worker must be initialized with a String or a Function.");
+            throw new Error("A flock.worker must be initialized with a String or a Function.");
         }
          
         if (window.Blob) {
@@ -662,11 +662,9 @@ var flock = flock || {};
      * @param that the environment to mix into
      */
     flock.enviro.moz = function (that) {
-        var defaultSettings = flock.defaults("flock.audioSettings");
-        
         that.audioEl = new Audio();
         that.model.writeInterval = 1;
-        that.model.sampleOverflow = 0 - (that.audioSettings.bufferSize * 4);
+        that.model.sampleOverflow = -(that.audioSettings.bufferSize * 4);
         that.audioEl.mozSetup(that.audioSettings.chans, that.audioSettings.rates.audio);
         
         that.startGeneratingSamples = function () {
@@ -757,8 +755,6 @@ var flock = flock || {};
      * @param that the environment to mix into
      */
     flock.enviro.webkit = function (that) {
-        var defaultSettings = flock.defaults("flock.audioSettings");
-        
         that.context = new webkitAudioContext();
         that.source = that.context.createBufferSource();
         that.jsNode = that.context.createJavaScriptNode(that.audioSettings.bufferSize);
@@ -947,8 +943,8 @@ var flock = flock || {};
                 
             if (inputsToReattach) {
                 // Replace only the specified inputs.
-                for (i = 0; i < reattachInputs.length; i++) {
-                    inputName = reattachInputs[j];
+                for (i = 0; i < inputsToReattach.length; i++) {
+                    inputName = inputsToReattach[i];
                     currentUGen.inputs[inputName]  = previousUGen.inputs[inputName];
                 }
             } else {
@@ -990,8 +986,7 @@ var flock = flock || {};
         that.swap = function (ugens, previousUGens, inputsToReattach) {
             var i,
                 prev,
-                current,
-                k;
+                current;
                 
             // Note: This algorithm assumes that number of previous and current ugens is the same length.
             previousUGens = $.makeArray(previousUGens);
