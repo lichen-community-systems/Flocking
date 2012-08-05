@@ -8,13 +8,13 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global Float32Array, Audio, window, webkitAudioContext*/
-/*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
+/*global Float32Array, Audio, window, webkitAudioContext, Blob, Worker, self, jQuery*/
+/*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
 var flock = flock || {};
 
-(function () {
+(function ($) {
     "use strict";
     
     flock.OUT_UGEN_ID = "flocking-out";
@@ -69,7 +69,7 @@ var flock = flock || {};
      *************/
     
     flock.isIterable = function (o) {
-         return o && o.length !== undefined && typeof (o.length) === "number";
+        return o && o.length !== undefined && typeof (o.length) === "number";
     };
 
     flock.generate = function (bufOrSize, generator) {
@@ -258,7 +258,7 @@ var flock = flock || {};
     };
     
     flock.input.expandPath = function (path) {
-        return (typeof (path) === "string") ? flock.input.pathExpander(path): flock.input.expandPaths(path);
+        return (typeof (path) === "string") ? flock.input.pathExpander(path) : flock.input.expandPaths(path);
     };
     
     flock.input.getValueForPath = function (root, path) {
@@ -368,94 +368,94 @@ var flock = flock || {};
       * @param {String|Function} code the code to pass to the Web Worker to be evaluated
       * @return a standard W3C Worker instance
       */
-     flock.worker = function (code) {
-         var type = typeof (code),
-             url,
-             blob;
+    flock.worker = function (code) {
+        var type = typeof (code),
+            url,
+            blob;
         
-         if (type === "function") {
-             code = "(" + code.toString() + ")();";
-         } else if (type !== "string") {
-             throw Error("A flock.worker must be initialized with a String or a Function.");
-         }
+        if (type === "function") {
+            code = "(" + code.toString() + ")();";
+        } else if (type !== "string") {
+            throw Error("A flock.worker must be initialized with a String or a Function.");
+        }
          
-         if (window.Blob) {
-             blob = new Blob([code]);
-             url = flock.shim.URL.createObjectURL(blob);
-         } else {
-             url = "data:text/javascript;base64," + window.btoa(code);
-         }
-         return new Worker(url);
-     };
+        if (window.Blob) {
+            blob = new Blob([code]);
+            url = flock.shim.URL.createObjectURL(blob);
+        } else {
+            url = "data:text/javascript;base64," + window.btoa(code);
+        }
+        return new Worker(url);
+    };
      
-     flock.worker.code = {
-         interval: function () {
-             self.intervals = {};
+    flock.worker.code = {
+        interval: function () {
+            self.intervals = {};
 
-             self.onInterval = function (interval) {
-                 self.postMessage({
-                     msg: "tick",
-                     value: interval
-                 });
-             };
+            self.onInterval = function (interval) {
+                self.postMessage({
+                    msg: "tick",
+                    value: interval
+                });
+            };
 
-             self.schedule = function (interval) {
-                 var id = setInterval(function () {
-                     self.onInterval(interval);
-                 }, interval);
-                 self.intervals[interval] = id;
-             };
+            self.schedule = function (interval) {
+                var id = setInterval(function () {
+                    self.onInterval(interval);
+                }, interval);
+                self.intervals[interval] = id;
+            };
 
-             self.clear = function (interval) {
-                 var id = self.intervals[interval];
-                 clearInterval(id);
-             };
+            self.clear = function (interval) {
+                var id = self.intervals[interval];
+                clearInterval(id);
+            };
              
-             self.clearAll = function () {
-                 for (var interval in self.intervals) {
-                     self.clear(interval);
-                 }
-             };
+            self.clearAll = function () {
+                for (var interval in self.intervals) {
+                    self.clear(interval);
+                }
+            };
 
-             self.addEventListener("message", function (e) {
-                 self[e.data.msg](e.data.value);
-             }, false);
-         }
-     };
+            self.addEventListener("message", function (e) {
+                self[e.data.msg](e.data.value);
+            }, false);
+        }
+    };
      
-     flock.conductor = function () {
-         var that = {
-             intervalWorker: flock.worker(flock.worker.code.interval)
-         };
+    flock.conductor = function () {
+        var that = {
+            intervalWorker: flock.worker(flock.worker.code.interval)
+        };
          
-         that.schedulePeriodic = function (interval, fn) {
-             that.intervalWorker.addEventListener("message", function (e) {
-                 if (e.data.value === interval) {
-                     fn();
-                 }
-             }, false);
+        that.schedulePeriodic = function (interval, fn) {
+            that.intervalWorker.addEventListener("message", function (e) {
+                if (e.data.value === interval) {
+                    fn();
+                }
+            }, false);
              
-             that.intervalWorker.postMessage({
-                 msg: "schedule",
-                 value: interval
-             });
-         };
+            that.intervalWorker.postMessage({
+                msg: "schedule",
+                value: interval
+            });
+        };
          
-         that.clearPeriodic = function (interval) {
-             that.intervalWorker.postMessage({
-                 msg: "clear",
-                 value: interval
-             });
-         };
+        that.clearPeriodic = function (interval) {
+            that.intervalWorker.postMessage({
+                msg: "clear",
+                value: interval
+            });
+        };
          
-         that.clearAll = function () {
-             that.intervalWorker.postMessage({
-                 msg: "clearAll"
-             });
-         };
+        that.clearAll = function () {
+            that.intervalWorker.postMessage({
+                msg: "clearAll"
+            });
+        };
          
-         return that;
-     };
+        return that;
+    };
      
      
     /***********************
@@ -1031,4 +1031,4 @@ var flock = flock || {};
         return that;
     };
     
-}());
+}(jQuery));

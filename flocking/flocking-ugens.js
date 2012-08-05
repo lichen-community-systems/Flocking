@@ -6,13 +6,13 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global Float32Array, window, $*/
-/*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
+/*global Float32Array, window, Mike, jQuery*/
+/*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
 var flock = flock || {};
 
-(function () {
+(function ($) {
     "use strict";
      
     flock.ugen = function (inputs, output, options) {
@@ -226,7 +226,9 @@ var flock = flock || {};
                 phaseAccum = m.phase,
                 phaseInc = m.phaseInc,
                 freqInc = m.freqInc,
-                i, j, k,
+                i,
+                j,
+                k,
                 idx;
 
             for (i = 0, j = 0, k = 0; i < numSamps; i++, j += phaseInc, k += freqInc) {
@@ -367,7 +369,9 @@ var flock = flock || {};
                 out = that.output,
                 phaseAccum = m.phase,
                 sampleRate = that.sampleRate,
-                i, j, k;
+                i,
+                j,
+                k;
 
             for (i = 0, j = 0, k = 0; i < numSamps; i++, j += phaseInc, k += freqInc) {
                 out[i] = Math.sin(phaseAccum + phase[j]);
@@ -400,7 +404,8 @@ var flock = flock || {};
                 out = that.output,
                 scale = m.scale,
                 phase = m.phase === undefined ? that.inputs.phase.output[0] : m.phase, // TODO: Make phase modulatable.
-                i, j;
+                i,
+                j;
 
             for (i = 0, j = 0; i < numSamps; i++, j += freqInc) {
                 out[i] = phase;
@@ -446,7 +451,8 @@ var flock = flock || {};
                 out = that.output,
                 scale = m.scale,
                 phase = m.phase !== undefined ? m.phase : inputs.phase.output[0], // TODO: Unnecessary if we knew the synth graph had been primed.
-                i, j;
+                i,
+                j;
 
             for (i = 0, j = 0; i < numSamps; i++, j += freqInc) {
                 if (phase >= 1.0) {
@@ -881,7 +887,7 @@ var flock = flock || {};
                 // Hold the last value if the stage is complete, otherwise increment.
                 level = currentStep < numSteps ? 
                     level + stepInc : currentStep === numSteps ? 
-                        targetLevel : level;
+                    targetLevel : level;
             }
             
             // Store instance state.
@@ -944,17 +950,17 @@ var flock = flock || {};
                 coef;
                 
                 // Convert 60 dB attack and release times to coefficients if they've changed.
-                if (nextAtt !== prevAtt) {
-                    m.attackTime = nextAtt;
-                    attCoef = m.attackCoef = 
-                        nextAtt === 0.0 ? 0.0 : Math.exp(flock.LOG1 / (nextAtt * that.sampleRate));
-                }
+            if (nextAtt !== prevAtt) {
+                m.attackTime = nextAtt;
+                attCoef = m.attackCoef =
+                    nextAtt === 0.0 ? 0.0 : Math.exp(flock.LOG1 / (nextAtt * that.sampleRate));
+            }
                 
-                if (nextRel !== prevRel) {
-                    m.releaseTime = nextRel;
-                    relCoef = m.releaseCoef = 
-                        (nextRel === 0.0) ? 0.0 : Math.exp(flock.LOG1 / (nextRel * that.sampleRate));
-                }
+            if (nextRel !== prevRel) {
+                m.releaseTime = nextRel;
+                relCoef = m.releaseCoef =
+                    (nextRel === 0.0) ? 0.0 : Math.exp(flock.LOG1 / (nextRel * that.sampleRate));
+            }
             
             for (i = 0; i < numSamps; i++) {
                 val = Math.abs(source[i]);
@@ -1065,7 +1071,7 @@ var flock = flock || {};
         
         that.onAudioData = function (data) {
             that.model.inputBuffers.push(data);
-         };
+        };
         
         that.setDevice = function (deviceIdx) {
             deviceIdx = deviceIdx !== undefined ? deviceIdx : that.inputs.device.output[0];
@@ -1229,7 +1235,6 @@ var flock = flock || {};
                 mul = that.inputs.mul.output[0],
                 lagCoef = m.lagCoef,
                 out = that.output,
-                pow = Math.pow,
                 i;
             
             if (lag !== lagCoef) {
@@ -1248,6 +1253,8 @@ var flock = flock || {};
         that.noInterpolationGen = function (numSamps) {
             var m = that.model,
                 scaledMouse = m.mousePosition / m.size,
+                add = that.inputs.add.output[0],
+                mul = that.inputs.mul.output[0],
                 out = that.output,
                 i;
                 
@@ -1401,4 +1408,4 @@ var flock = flock || {};
         rate: "control"
     });
     
-}());
+}(jQuery));

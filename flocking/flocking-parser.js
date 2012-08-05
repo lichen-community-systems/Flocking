@@ -6,13 +6,13 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global Float32Array*/
-/*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
+/*global Float32Array,jQuery*/
+/*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
 var flock = flock || {};
 
-(function () {
+(function ($) {
     "use strict";
 
     flock.parse = flock.parse || {};
@@ -214,4 +214,4 @@ var flock = flock || {};
         enviro.loadBuffer(id, src, onLoad);
     };
 
-}());
+}(jQuery));
