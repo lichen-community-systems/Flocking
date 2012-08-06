@@ -321,14 +321,15 @@ var flock = flock || {};
     };
     
     flock.input.setValuesForPaths = function (root, valueMap, baseTarget, valueParser) {
-        var path,
+        var resultMap = {},
+            path,
             val,
             result;
         
         for (path in valueMap) {
             val = valueMap[path];
             result = flock.input.set(root, path, val, baseTarget, valueParser);
-            valueMap[path] = result;
+            resultMap[path] = result;
         }
         
         return valueMap;
@@ -1046,6 +1047,31 @@ var flock = flock || {};
         };
         that.activeVoices = {};
         that.freeVoices = [];
+        that.allVoices = [];
+        
+        that.input = function () {
+            that.dispatchToVoices("input", arguments);
+        };
+        
+        that.get = function () {
+            that.dispatchToVoices("get", arguments);
+        };
+        
+        that.set = function () {
+            that.dispatchToVoices("set", arguments);
+        };
+        
+        that.dispatchToVoices = function (msg, args) {
+            var i,
+                voice,
+                val;
+            for (i = 0; i < that.allVoices.length; i++) {
+                voice = that.allVoices[i];
+                val = voice[msg].apply(voice, args);
+            }
+            
+            return val;
+        };
         
         that.noteChange = function (voice, eventName, changeSpec) {
             var noteEventSpec = that.options.noteSpecs[eventName];
@@ -1091,6 +1117,7 @@ var flock = flock || {};
                 }
                 // TODO: Implement dynamic voice normalization.
             }
+            that.allVoices.push(voice);
             
             return voice;
         };
