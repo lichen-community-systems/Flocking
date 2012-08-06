@@ -348,6 +348,14 @@ var flock = flock || {};
     };
     
     
+    flock.component = function (name, options) {
+        var that = {
+            options: $.extend({}, flock.defaults(name), options)
+        };
+        
+        return that;
+    };
+    
     /***********************
      * Time and Scheduling *
      ***********************/
@@ -1025,5 +1033,111 @@ var flock = flock || {};
         
         return that;
     };
+    
+    flock.synth.group = function (defs, options) {
+        
+    };
+    
+    // TODO: synth.polyphonic needs to be an actual synth! (e.g. having an enviroment reference, etc.)
+    flock.synth.polyphonic = function (def, options) {
+        var that = flock.component("flock.synth.polyphonic", options);
+        that.model = {
+            synthDef: def
+        };
+        that.activeVoices = {};
+        that.freeVoices = [];
+        
+        that.noteChange = function (voice, eventName, changeSpec) {
+            var noteEventSpec = that.options.noteSpecs[eventName];
+            changeSpec = $.extend({}, noteEventSpec, changeSpec);
+            voice.input(changeSpec);
+        };
+        
+        that.noteOn = function (noteName, changeSpec) {
+            var voice = that.nextFreeVoice();
+            if (that.activeVoices[noteName]) {
+                that.noteOff(noteName);
+            }
+            that.activeVoices[noteName] = voice;
+            that.noteChange(voice, "on", changeSpec);
+            
+            return voice;
+        };
+        
+        that.noteOff = function (noteName, changeSpec) {
+            var voice = that.activeVoices[noteName];
+            if (!voice) {
+                return null;
+            }
+            that.noteChange(voice, "off", changeSpec);
+            delete that.activeVoices[noteName];
+            that.freeVoices.push(voice);
+            
+            return voice;
+        };
+        
+        that.createVoice = function () {
+            var voice = flock.synth(that.model.synthDef),
+                normalizer = that.options.amplitudeNormalizer,
+                ampKey = that.options.amplitudeKey,
+                normValue;
+                
+            if (normalizer) {
+                if (typeof(normalizer) === "function") {
+                    norm(voice, ampKey);
+                } else if (normalizer === "static") {
+                    normValue = 1.0 / that.options.maxVoices;
+                    voice.input(ampKey, normValue);
+                }
+                // TODO: Implement dynamic voice normalization.
+            }
+            
+            return voice;
+        };
+        
+        that.pooledVoiceAllocator = function () {
+            return that.freeVoices.pop();
+        };
+        
+        that.lazyVoiceAllocator = function () {
+            return that.freeVoices.length > 1 ?
+                that.freeVoices.pop() : Object.keys(that.activeVoices).length > that.options.maxVoices ?
+                null : that.createVoice();
+        };
+        
+        that.init = function () {
+            if (!that.options.initVoicesLazily) {
+                for (var i = 0; i < that.options.maxVoices; i++) {
+                    that.freeVoices[i] = that.createVoice();
+                }
+                that.nextFreeVoice = that.pooledVoiceAllocator;
+            } else {
+                that.nextFreeVoice = that.lazyVoiceAllocator;
+            }
+        };
+        
+        that.init();
+        return that;
+    };
+    
+    flock.defaults("flock.synth.polyphonic", {
+        noteSpecs: {
+            on: {
+                "env.gate": 1
+            },
+            
+            off: {
+                "env.gate": 0
+            }
+        },
+        
+        maxVoices: 16,
+        
+        initVoicesLazily: true,
+        
+        amplitudeKey: "env.sustain",
+        
+        amplitudeNormalizer: "static" // "dynamic", "static", Function, falsey
+    });
     
 }(jQuery));
