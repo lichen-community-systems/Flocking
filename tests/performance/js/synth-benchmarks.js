@@ -73,7 +73,7 @@ var flock = flock || {};
             }
         }
     
-        sheep.tests(testSpecs, true);
+        sheep.test(testSpecs, true);
     };
 
 }());

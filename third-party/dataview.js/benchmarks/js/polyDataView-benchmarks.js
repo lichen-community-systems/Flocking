@@ -1,6 +1,6 @@
 /*
-* polyDataView Benchmarks
-* http://github.com/colinbdclark/polyDataView
+* PolyDataView Benchmarks
+* http://github.com/colinbdclark/PolyDataView
 *
 * Copyright 2012, Colin Clark
 * Dual licensed under the MIT and GPL Version 2 licenses.
@@ -61,7 +61,7 @@ var flock = flock || {};
 	    var getterTestSpecs = [
 	        {
 	            name: "get 1024 Int16 values",
-	            type: "polyDataView",
+	            type: "PolyDataView",
 	            oneAtATimeTest: getInt16Test,
 	            arrayTest: getPolyInt16ArrayTest
 	        },
@@ -125,7 +125,7 @@ var flock = flock || {};
         };
         
         var testSpecs = expandTestSpecs(getterTestSpecs);
-	    sheep.tests(testSpecs, true);
+	    sheep.test(testSpecs, true);
 	};
 
 }());

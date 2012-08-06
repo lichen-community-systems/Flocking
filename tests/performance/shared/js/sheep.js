@@ -6,7 +6,8 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
+/*global Spinner*/
+/*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
 var sheep = sheep || {};
@@ -14,33 +15,61 @@ var sheep = sheep || {};
 (function () {
     "use strict";
     
-    var finishTestSet = function (timing, options) {
-        timing.avg = timing.total / options.numReps;
-        timing.runs = options.numReps;
-        timing.name = options.name;
-        options.onSuccess(timing);
+    var finishTestSequence = function (timing, spec) {
+        timing.avg = timing.total / spec.numReps;
+        timing.runs = spec.numReps;
+        timing.name = spec.name;
+        spec.onSuccess(timing);
     };
+    
+    var runTest = function (obj, timing, testFn, onTestComplete) {
+        var start = Date.now(),
+            end;
         
-    var runTestSet = function (runsRemaining, obj, timing, options) {
-        var start, end;
-        
-        if (runsRemaining > -1) {
-            start = Date.now();
-            options.test(obj);
-            end = Date.now();
-            timing.total += (end - start);
-            
-            runsRemaining--;
-            if (options.async) {
-                setTimeout(function () {
-                    runTestSet(runsRemaining, obj, timing, options);
-            }, 0);
-            } else {
-                runTestSet(runsRemaining, obj, timing, options);
-            }
-        } else {
-            finishTestSet(timing, options);
+        testFn(obj);
+        end = Date.now();
+        timing.total += (end - start);
+        if (onTestComplete) {
+            onTestComplete(timing);
         }
+        
+        return timing;
+    };
+    
+    var runTestBatch = function (numReps, obj, timing, testFn, onBatchComplete) {
+        for (var i = 0; i < numReps; i++) {
+            runTest(obj, timing, testFn);
+        }
+        
+        if (onBatchComplete) {
+            onBatchComplete(timing);
+        }
+        
+        return timing;
+    };
+    
+    var runTestSequenceSync = function (obj, timing, spec) {
+        runTestBatch(spec.numReps, obj, timing, spec.test);
+        finishTestSequence(timing, spec);
+        return timing;
+    };
+    
+    var runTestSequenceAsync = function (obj, timing, spec) {
+        var batchSize = 100,
+            i = 0;
+        
+        var asyncTest = function () {
+            runTestBatch(batchSize, obj, timing, spec.test, function () {
+                i += batchSize;
+                if (i < spec.numReps) {
+                    setTimeout(asyncTest, 0);
+                } else {
+                    finishTestSequence(timing, spec);
+                }
+            });
+        };
+        
+        asyncTest();
     };
     
     var renderTestRow = function (table, timing) {
@@ -56,65 +85,98 @@ var sheep = sheep || {};
         table.innerHTML = "<tr><th>Name</th><th>Runs</th><th>Total ms</th><th>Avg. ms</th></tr>";
         container.appendChild(table);
         
-        return table;
+        return table.querySelector("tbody");
     };
     
-    sheep.test = function (spec, async) {
+    var renderStatusArea = function (table, numTests) {
+        var statusArea = document.createElement("tr");
+        statusArea.className = "sheep-statusArea";
+	    statusArea.innerHTML = "<td colspan='4'><p>Running test" +
+	        " <span class='sheep-currentTest'>0</span> of" +
+	        " <span class='sheep-numTests'>" + numTests + "</span></p></td>";
+	    table.appendChild(statusArea);
+	    
+        var spinner = new Spinner({
+            color: "#000",
+            hwaccel: true,
+            left: 225,
+            top: 0
+        });
+        spinner.spin(statusArea.querySelector("td"));
+        return statusArea;
+    };
+    
+    var updateStatusArea = function (currentTestNum) {
+        document.querySelector(".sheep-currentTest").innerHTML = currentTestNum;
+    };
+    
+    var renderResultsView = function (numTests) {
+        var container = document.createElement("div");
+        var table = renderTable(container);
+        var statusArea = renderStatusArea(table, numTests);
+        document.querySelector("body").appendChild(container);
+	    
+        return {
+            container: container,
+            table: table,
+            statusArea: statusArea
+        };
+    };
+    
+    sheep.runTestSpec = function (spec, async) {
         spec.numReps = spec.numReps || 10000;
         spec.async = async;
         
-        if (typeof (options) === "function") {
-            options = {
-                test: options
+        if (typeof (spec) === "function") {
+            spec = {
+                test: spec
             };
         }
         
-        var runsRemaining = spec.numReps,
-            obj = spec.setup ? spec.setup() : undefined,
+        var obj = spec.setup ? spec.setup() : undefined,
             timing = {
                 total: 0,
                 async: async
             };
-            
-        runTestSet(runsRemaining, obj, timing, spec);
+        
+        var testSequenceFn = async ? runTestSequenceAsync : runTestSequenceSync;
+        return testSequenceFn(obj, timing, spec);
     };
 
-    sheep.tests = function (testSpecs, async, onAllTestsComplete) {
+    sheep.test = function (testSpecs, async, onAllTestsComplete) {
         testSpecs = typeof (testSpecs.length) === "number" ? testSpecs : [testSpecs];
         async = async === undefined || async === null || async  === true ? true : false;
-        
-        var allTimes = [],
-            spec,
-            time;
-    
-        // Render the results table.
-        var container = document.createElement("div");
-	    document.querySelector("body").appendChild(container);
-        var table = renderTable(container);
-        
-        // And asynchronously run all test sets.
-	    var testsRemaining = testSpecs.length - 1;
 	    
-        var runNextTest = function () {
-            var spec = testSpecs[testsRemaining];
+        // And asynchronously run all test sets.
+	    var markup = renderResultsView(testSpecs.length),
+	        allTimes = [],
+	        nextTest = 0,
+	        runNextTest,
+	        testSuccess;
+	    
+        runNextTest = function () {
+            var spec = testSpecs[nextTest];
+            updateStatusArea(nextTest + 1);
 	        spec.onSuccess = testSuccess;
-	        sheep.test(spec, async);
+	        sheep.runTestSpec(spec, async);
         };
         
-		var testSuccess = function (timing) {
-            testsRemaining--;
-    	    allTimes.push(timing);
-    	    table.appendChild(renderTestRow(table, timing));
-    	    if (testsRemaining > -1) {
-    	        runNextTest();
-    	    } else {
-    	        if (onAllTestsComplete) {
-    	            onAllTestsComplete();
-    	        }
-    	    }
-    	};
-    	
-    	runNextTest();
+		testSuccess = function (timing) {
+            nextTest++;
+            allTimes.push(timing);
+            markup.table.appendChild(renderTestRow(markup.table, timing));
+            if (nextTest < testSpecs.length) {
+                runNextTest();
+            } else {
+                markup.table.removeChild(markup.statusArea);
+                if (onAllTestsComplete) {
+                    onAllTestsComplete();
+                }
+            }
+        };
+        
+        // Start the test sequence.
+        runNextTest();
     };
 
 }());

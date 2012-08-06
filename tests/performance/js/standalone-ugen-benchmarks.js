@@ -29,7 +29,7 @@ var flock = flock || {};
                 for (i = 0; i < inputs.length; i++) {
                     input = inputs[i];
                     inputName = typeof (input) === "string" ? input : input.name;
-                    ug.inputs[inputName] = flock.test.makeMockUGen(flock.test.makeRandomInputGenerator(input), rate);
+                    ug.inputs[inputName] = flock.test.makeMockUGen(flock.test.makeRandomInputGenerator(input, input.scale, input.round), rate);
                 }
 				
                 ug.onInputChanged();
@@ -77,7 +77,7 @@ var flock = flock || {};
             }
         }
         
-        sheep.tests(testSpecs, true);
+        sheep.test(testSpecs, true);
     };
 
 }());

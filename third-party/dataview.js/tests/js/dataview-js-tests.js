@@ -7,14 +7,14 @@
         buffer = arrayView.buffer;
         
     test("New DataView with offset and length not specified.", function () {
-        var dv = new polyDataView(buffer);
+        var dv = new PolyDataView(buffer);
 
         equals(dv.byteOffset, 0, "When no offset is specified, it should default to 0.");
         equals(dv.byteLength, arrayView.byteLength, "When no length is specified, it should be the same as the array's byte length.");
     });
 
     test("New DataView with only offset specified.", function () {
-        var dv = new polyDataView(buffer, 4);
+        var dv = new PolyDataView(buffer, 4);
         
         equals(dv.byteOffset, 4, "When an offset is specified, it should be reflected correctly.");
         equals(dv.byteLength, 12,
@@ -22,7 +22,7 @@
     });
     
     test("New DataView with both offset and length specified.", function () {
-        var dv = new polyDataView(buffer, 4, 4);
+        var dv = new PolyDataView(buffer, 4, 4);
         
         equals(dv.byteOffset, 4, "When an offset is specified, it should be reflected correctly.");
         equals(dv.byteLength, 4, "When a length is specified, it should be correct.");
@@ -33,7 +33,7 @@
     
     var getterTest = function (name, spec) {
         var tester = function (typedBuffer, offset, isLittle) {
-            var dv = new polyDataView(typedBuffer.buffer),
+            var dv = new PolyDataView(typedBuffer.buffer),
                 i,
                 expected, actual;
             
@@ -274,12 +274,12 @@
         buffer = new Uint8Array(raw).buffer;
         
         // Track offset ourselves.
-        var dv = new polyDataView(buffer);
+        var dv = new PolyDataView(buffer);
         actual = dv.getString(7, 1, 0, true);
         equal(actual, expected);
         
         // Don't track offset.
-        dv = new polyDataView(buffer);
+        dv = new PolyDataView(buffer);
         actual = dv.getString(7, 1, undefined, true);
         equal(actual, expected);
     });
@@ -311,7 +311,7 @@
         for (endian in spec.byteOrders) {
             isLittle = endian === "little";
             byteOrder = spec.byteOrders[endian];
-            dv = new polyDataView(byteOrder.buffer);
+            dv = new PolyDataView(byteOrder.buffer);
             actual = dv.getString(spec.expected.length, 2, undefined, isLittle);
             equal(actual, spec.expected);
         }

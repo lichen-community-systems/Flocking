@@ -191,12 +191,14 @@ var flock = flock || {};
         });
     };
     
-    flock.test.makeRandomInputGenerator = function (inputSpec, defaultScale) {
+    flock.test.makeRandomInputGenerator = function (inputSpec, defaultScale, round) {
         defaultScale = defaultScale || 500;
-        var scale = typeof (inputSpec) === "string" ? defaultScale : inputSpec.scale;
+        var scale = typeof (inputSpec) === "string" ? defaultScale : inputSpec.scale,
+            val;
 
         return function () {
-            return Math.random() * scale;	
+            val = Math.random() * scale;
+            return round ? Math.round(val) : val;
         };
     };
     
