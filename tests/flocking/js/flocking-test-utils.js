@@ -168,13 +168,27 @@ var flock = flock || {};
         ok(maxReached, msg);
     };
     
-    flock.test.makeMockUGen = function (outputBufferGenerator, rate) {
-        rate = rate || flock.rates.AUDIO;
-        return {
-            rate: rate,
-            output: flock.generate(64, outputBufferGenerator),
-            onInputChanged: function () {}
-        };
+    flock.test.mockUGen = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        if (that.options.buffer) {
+            that.output = that.options.buffer;
+        }
+        that.gen = function () {}; // No op function--we just pass the output buffer back as-is.
+        return that;
+    };
+    
+    flock.test.makeMockUGen = function (output, rate) {
+        if (typeof (output) === "function") {
+            output = flock.generate(64, output);
+        }
+        
+        return flock.parse.ugenForDef({
+            ugen: "flock.test.mockUGen",
+            rate: rate || flock.rates.AUDIO,
+            options: {
+                buffer: output
+            }
+        });
     };
     
     flock.test.makeRandomInputGenerator = function (inputSpec, defaultScale) {
@@ -186,4 +200,12 @@ var flock = flock || {};
         };
     };
     
+    flock.test.ascendingBuffer = function (numSamps, start, step) {
+        start = start === undefined ? 0 : start;
+        step = step === undefined ? 1 : step;
+        
+        return flock.generate(numSamps, function (i) {
+            return start + i + step;
+        });
+    };
 }());

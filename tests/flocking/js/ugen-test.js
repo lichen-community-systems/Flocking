@@ -29,27 +29,77 @@ flock.test = flock.test || {};
         10, 9, 8, 7, 6, 
         5, 4, 3, 2, 1
     ];
-
-    flock.test.mockUGen = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
-        if (that.options.buffer) {
-            that.output = that.options.buffer;
-        }
-        that.gen = function () {}; // No op function--we just pass the output buffer back as-is.
-        return that;
-    };
-    
-    var makeMockUGen = function (output) {
-        return flock.parse.ugenForDef({
-            ugen: "flock.test.mockUGen",
-            options: {
-                buffer: output
-            }
-        });
-    };
     
     var bufferValueUGen = flock.ugen.value({value: 0}, new Float32Array(1));
     var stereoExpandValueUGen = flock.ugen.value({value: 2}, new Float32Array(1));
+    
+    module("ugen.input() tests");
+    
+    var setAndCheckInput = function (ugen, inputName, val) {
+        var returnVal = ugen.input(inputName, val);
+        ok(returnVal, "Setting a new input should return the input unit generator.");
+        ok(ugen.inputs[inputName], "Setting a new input should create a new unit generator with the appropriate name.");
+        equals(ugen.inputs[inputName], returnVal, "The return value when setting an input should be the input unit generator.");
+        
+        var valType = typeof (val);
+        if (valType !== "number" && valType !== "string") {
+            equals(ugen.inputs[inputName], ugen.input(inputName), "The value returned from input() should be the same as the actual input value.");
+        }
+    };
+    
+    var setAndCheckArrayInput = function (ugen, inputName, vals, comparisonFn) {
+        setAndCheckInput(ugen, inputName, vals);
+        ok(flock.isIterable(ugen.input(inputName)), "The input should be set to an array of unit generators.");
+        equals(ugen.input(inputName).length, vals.length, "There should be " + vals.length + " unit generators in the array.");
+        $.each(vals, comparisonFn);
+    };
+    
+    test("input() data type tests", function () {
+        var mockUGen = flock.test.makeMockUGen(new Float32Array(64));
+        
+        // Non-existent input.
+        var val = mockUGen.input("cat");
+        equals(val, undefined, "Getting a non-existent input should return undefined.");
+        ok(!mockUGen.inputs.cat, "When getting a non-existent input, it should not be created.");
+        
+        // Setting a previously non-existent input.
+        setAndCheckInput(mockUGen, "cat", {
+            ugen: "flock.test.mockUGen"
+        });
+        
+        // Replacing an existing input with an ugenDef.
+        setAndCheckInput(mockUGen, "cat", {
+            id: "new-cat",
+            ugen: "flock.test.mockUGen"
+        });
+        equals(mockUGen.input("cat").id, "new-cat", "The new input should have the appropriate ID.");
+        
+        // And with an array of ugenDefs.
+        var defs = [
+            {
+                id: "first-cat",
+                ugen: "flock.test.mockUGen"
+            },
+            {
+                id: "second-cat",
+                ugen: "flock.test.mockUGen"
+            }
+        ];
+        setAndCheckArrayInput(mockUGen, "cat", defs, function (i, def) {
+            equals(mockUGen.input("cat")[i].id, def.id);
+        });
+
+        // And with a scalar.
+        setAndCheckInput(mockUGen, "cat", 500);
+        equals(mockUGen.inputs.cat.model.value, 500, "The input ugen should be a value ugen with the correct model value.");
+        
+        // And an array of scalars.
+        var vals = [100, 200, 300];
+        setAndCheckArrayInput(mockUGen, "fish", vals, function (i, val) {
+            equals(mockUGen.input("fish")[i].model.value, val);
+        });
+    });
+    
     
     // TODO: Create these graphs declaratively!
     
@@ -60,21 +110,25 @@ flock.test = flock.test || {};
             rates: {
                 control: 20
             },
-            chans: chans
+            chans: chans,
+            bufferSize: 40
         };
         
         var evalFn = function () {
+            flock.enviro.shared.clearBuses();
             outUGen.gen(numSamps);
         };
-        var actual = flock.interleavedDemandWriter(numSamps, evalFn, flock.enviro.shared.buses, audioSettings);
+        var actual = flock.interleavedDemandWriter(new Float32Array(numSamps * chans), 
+            evalFn, flock.enviro.shared.buses, audioSettings);
         deepEqual(actual, expectedBuffer, msg);
     };
 
     test("flock.interleavedDemandWriter() mono input, mono output", function () {
         // Test with a single input buffer being multiplexed by ugen.out.
-        var mockLeftUGen = makeMockUGen(mockLeft);
+        var mockLeftUGen = flock.test.makeMockUGen(mockLeft);
         var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen}, []);
-
+        out.input("expand", 1);
+        
         // Pull the whole buffer.
         var expected = new Float32Array([
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
@@ -91,9 +145,9 @@ flock.test = flock.test || {};
     
     test("flock.interleavedDemandWriter() mono input, stereo output", function () {
         // Test with a single mono input buffer.
-        var mockLeftUGen = makeMockUGen(mockLeft);
+        var mockLeftUGen = flock.test.makeMockUGen(mockLeft);
         var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen, expand: stereoExpandValueUGen}, []);
-
+        
         // Pull the whole buffer.
         var expected = new Float32Array([
             1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 
@@ -109,12 +163,13 @@ flock.test = flock.test || {};
         // Test with two input buffers.
         var out = flock.ugen.out({
             sources: [
-                makeMockUGen(mockLeft), 
-                makeMockUGen(mockRight)
+                flock.test.makeMockUGen(mockLeft), 
+                flock.test.makeMockUGen(mockRight)
             ],
             bus: bufferValueUGen
         }, []);
-
+        out.input("expand", 1);
+        
         // Pull the whole buffer. Expect a stereo interleaved buffer as the result, 
         // containing two copies of the original input buffer.
         var expected = new Float32Array([
@@ -124,6 +179,48 @@ flock.test = flock.test || {};
             17, 4, 18, 3, 19, 2, 20, 1
         ]);
         checkOutput(20, 2, out, expected, "We should receive a stereo buffer, with each buffer interleaved.");
+    });
+    
+    var simpleOutDef = {
+        ugen: "flock.ugen.out",
+        bus: 0,
+        sources: {
+            ugen: "flock.ugen.value",
+            value: 1
+        }
+    };
+    
+    var testOutputs = function (numRuns, defs, bus, expectedOutput, msg) {
+        var synths = [],
+            i;
+        defs = $.makeArray(defs);
+        
+        $.each(defs, function (i, def) {
+            var synth = flock.synth(def);
+            synths.push(synth);
+        });
+        
+        for (i = 0; i < numRuns; i++) {
+            flock.enviro.shared.gen();
+            flock.test.assertArrayEquals(flock.enviro.shared.buses[bus], expectedOutput, i + ": " + msg);
+        }
+        
+        $.each(synths, function (i, synth) {
+            flock.enviro.shared.remove(synth);
+        });
+                
+        return synths;
+    };
+    
+    test("flock.ugen.out()", function () {
+        testOutputs(2, simpleOutDef, 0, flock.generate(64, 1),
+            "The output should be written to the appropriate environment bus.");
+    });
+    
+    test("flock.ugen.out(): multiple out ugens writing to the same bus", function () {
+        var outDefs = [simpleOutDef, simpleOutDef];
+        testOutputs(2, outDefs, 0, flock.generate(64, 2),
+            "Multiple outputs to the same buffer should be summed.");
     });
     
     
@@ -189,46 +286,55 @@ flock.test = flock.test || {};
         rate: flock.rates.CONTROL,
         output: testSignal
     };
+    
     var audioInput = {
         rate: flock.rates.AUDIO,
         output: testSignal
+    };
+    
+    flock.test.mulAdderUGen = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.gen = function (numSamps) {
+            that.mulAdd(that.inputs.mul, that.inputs.add, that.output, numSamps);
+        };
+        
+        flock.onMulAddInputChanged(that);
+        return that;
     };
     
     var generateTestOutput = function () {
         return [10, 10, 10, 10, 10, 10, 10, 10, 10, 10];
     };
 
-    var signalTest = function (fn, input, expected, msg) {
-        var output = generateTestOutput();
-        if (typeof (input.length) === "number") {
-            fn(input[0], input[1], output, 10);
-        } else {
-            fn(input, output, 10);
-        }
+    var signalTest = function (fn, inputs, expected, msg) {
+        var output = generateTestOutput(),
+            args = [10, output].concat(inputs);
+        fn.apply(null, args);
         deepEqual(output, expected, msg);
     };
     
     test("flock.krMul()", function () {
         var expected = [20, 20, 20, 20, 20, 20, 20, 20, 20, 20];
-        signalTest(flock.krMul, krInput, expected, 
+        signalTest(flock.krMul, [krInput, undefined], expected, 
             "krMul() should use only the first value of the signal as a multiplier.");
     });
     
     test("flock.mul()", function () {
         var expected = [20, 30, 40, 50, 60, 70, 80, 90, 100, 110];
-        signalTest(flock.mul, audioInput, expected, 
+        signalTest(flock.mul, [audioInput, undefined], expected, 
             "mul() should use each value in the signal as a multiplier.");
     });
     
     test("flock.krAdd()", function () {
         var expected = [12, 12, 12, 12, 12, 12, 12, 12, 12, 12];
-        signalTest(flock.krAdd, krInput, expected, 
+        signalTest(flock.krAdd, [undefined, krInput], expected, 
             "krAdd() should use only the first value of the signal for addition.");
     });
     
     test("flock.add()", function () {
         var expected = [12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
-        signalTest(flock.add, audioInput, expected, 
+        signalTest(flock.add, [undefined, audioInput], expected, 
             "add() should use each value in the signal for addition.");
     });
     
@@ -257,7 +363,7 @@ flock.test = flock.test || {};
     });
     
     var mulAddUGenTest = function (mulInput, addInput, expected, msg) {
-        var ugen = flock.ugen.mulAdd({mul: mulInput, add: addInput}, generateTestOutput());
+        var ugen = flock.test.mulAdderUGen({mul: mulInput, add: addInput}, generateTestOutput());
         ugen.mulAdd(10);
         deepEqual(ugen.output, expected, msg);
     };
@@ -309,9 +415,9 @@ flock.test = flock.test || {};
      
     test("flock.ugen.sum()", function () {
         var addBuffer = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31],
-            one = makeMockUGen(addBuffer),
-            two = makeMockUGen(addBuffer),
-            three = makeMockUGen(addBuffer);
+            one = flock.test.makeMockUGen(addBuffer),
+            two = flock.test.makeMockUGen(addBuffer),
+            three = flock.test.makeMockUGen(addBuffer);
 
         var inputs = {
             sources: [one]
@@ -331,22 +437,35 @@ flock.test = flock.test || {};
     module("flock.ugen.osc() tests");
     
     var makeOsc = function (freq, table, bufferSize, sampleRate) {
-        var ugenOptions = {
-            sampleRate: sampleRate
-        };
-        
-        var inputs = {
-            freq: flock.ugen.value({value: freq}, new Float32Array(bufferSize), ugenOptions),
-            table: table
-        };
-        var osc = flock.ugen.osc(inputs, new Float32Array(bufferSize), ugenOptions);
-        return osc;
+        return flock.parse.ugenForDef({
+            ugen: "flock.ugen.osc",
+            inputs: {
+                freq: {
+                    ugen: "flock.ugen.value",
+                    value: freq
+                },
+                table: table
+            },
+            options: {
+                sampleRate: sampleRate
+            }
+        });
     };
     
     var checkOsc = function (testSpec, expected, msg) {
         var osc = makeOsc(testSpec.freq, testSpec.table, testSpec.numSamps, testSpec.sampleRate);
+        expected = paddedBuffer(expected, osc.output.length);
         osc.gen(testSpec.numSamps);
         deepEqual(osc.output, expected, msg);
+    };
+    
+    var paddedBuffer = function (values, length) {
+        var buf = new Float32Array(length),
+            i;
+        for (i = 0; i < values.length; i++) {
+            buf[i] = values[i];
+        }
+        return buf;
     };
     
     test("flock.ugen.osc() simple table lookup", function () {
@@ -747,4 +866,98 @@ flock.test = flock.test || {};
         }
     });
     
+    var outSynthDef = {
+        ugen: "flock.ugen.out",
+        rate: "audio",
+        inputs: {
+            bus: 3,
+            sources: {
+                ugen: "flock.test.mockUGen",
+                options: {
+                    buffer: flock.test.ascendingBuffer(64)
+                }
+            }
+        }
+    };
+    
+    var inSynthDef = {
+        id: "in",
+        ugen: "flock.ugen.in",
+        rate: "audio",
+        inputs: {
+            bus: 3
+        }
+    };
+    
+    test("flock.ugen.in() single bus input", function () {
+        flock.enviro.shared = flock.enviro();
+        
+        var outSynth = flock.synth(outSynthDef);
+        var inSynth = flock.synth(inSynthDef);
+        inSynth.enviro.gen();
+        var actual = inSynth.ugens.named["in"].output;
+        equals(actual, inSynth.enviro.buses[3],
+            "With a single source intput, the output of flock.ugen.in should be the actual bus referenced.");
+        deepEqual(actual, outSynthDef.inputs.sources.options.buffer,
+            "And it should reflect exactly the output of the flock.ugen.out that is writing to the buffer.");
+    });
+    
+    test("flock.ugen.in() multiple bus input", function () {
+        flock.enviro.shared = flock.enviro();
+        
+        var bus3Synth = flock.synth(outSynthDef);
+        var bus4Def = $.extend(true, {}, outSynthDef, {
+            inputs: {
+                bus: 4
+            }
+        });
+        var bus4Synth = flock.synth(bus4Def);
+        var multiInDef = $.extend(true, {}, inSynthDef);
+        multiInDef.inputs.bus = [3, 4];
+        var inSynth = flock.synth(multiInDef);
+        
+        inSynth.enviro.gen();
+        var actual = inSynth.ugens.named["in"].output;
+        var expected = flock.generate(64, function (i) {
+            return (i + 1) * 2;
+        });
+        deepEqual(actual, expected,
+            "flock.ugen.in should sum the output of each bus when mutiple buses are specified.");
+    });
+    
+    test("flock.ugen.normalize()", function () {
+        var testBuffer = flock.test.ascendingBuffer(64, -32),
+            mock = {
+                ugen: "flock.test.mockUGen",
+                options: {
+                    buffer: testBuffer
+                }
+            };
+            
+        var normalizerSynth = flock.synth({
+            id: "normalizer",
+            ugen: "flock.ugen.normalize",
+            inputs: {
+                source: {
+                    ugen: "flock.ugen.sum",
+                    inputs: {
+                        sources: [mock, mock]
+                    }
+                },
+                max: 1.0
+            }
+        });
+        
+        var normalizer = normalizerSynth.ugens.named.normalizer;
+        normalizerSynth.gen();
+        var expected = flock.normalize(flock.test.ascendingBuffer(64, -32), 1.0);
+        deepEqual(normalizer.output, expected,
+            "The signal should be normalized to 1.0.");
+        
+        normalizer.input("max", 0.5);
+        normalizer.gen(64);
+        expected = flock.normalize(flock.test.ascendingBuffer(64, -32), 0.5);
+        deepEqual(normalizer.output, expected,
+            "When the 'max' input is changed to 0.5, the signal should be normalized to 0.5");
+    });
 }());
