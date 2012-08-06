@@ -989,6 +989,29 @@ var flock = flock || {};
         }
     });
     
+    flock.ugen.normalize = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.gen = function () {
+            var max = that.inputs.max.output[0], // Max is kr.
+                source = that.inputs.source.output,
+                i;
+            
+            // Note, this normalizes the source input ugen's output buffer directly in place.
+            that.output = flock.normalize(source, max);
+        };
+        
+        that.onInputChanged();
+        return that;
+    };
+    
+    flock.defaults("flock.ugen.normalize", {
+        rate: "audio",
+        inputs: {
+            max: 1.0
+        }
+    });
+    
     
     /*******************
      * Bus-Level UGens *

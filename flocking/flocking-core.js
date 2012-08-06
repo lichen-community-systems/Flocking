@@ -162,13 +162,13 @@ var flock = flock || {};
         normal = normal === undefined ? 1.0 : normal;
         // Find the maximum value in the buffer.
         for (i = 0; i < buffer.length; i++) {
-            current = buffer[i];
+            current = Math.abs(buffer[i]);
             if (current > maxVal) {
                 maxVal = current;
             }
         }
         
-        // And then normalize the buffer.
+        // And then normalize the buffer in place.
         if (maxVal > 0.0) {
             for (i = 0; i < buffer.length; i++) {
                 val = buffer[i];
