@@ -16,8 +16,7 @@
 
 /*
  * To Do:
- *  - Write benchmarks against an unmodified jDataView instance to show how much faster we are.
- *  - Finish unit tests, especially for getString() and getFloat80()
+ *  - Finish unit tests for getFloat80() and the various array getters.
  */
  
 (function () {
