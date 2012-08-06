@@ -169,10 +169,18 @@ var flock = flock || {};
     };
     
     test("flock.normalize()", function () {
+        expect(6);
         var unnormalized = [0.0, 0.5, 1.0, 1.5, 2.0];
         testNormalize(1.0, unnormalized, [0.0, 0.25, 0.5, 0.75, 1.0]);
         testNormalize(0.5, unnormalized, [0.0, 0.125, 0.25, 0.375, 0.5]);
         testNormalize(3.0, unnormalized, [0.0, 0.75, 1.5, 2.25, 3.0]);
+        
+        var mixedUnnormalized = [-1.0, -0.5, 0.0, 0.5, 1.0, 0.5, 0.0];
+        testNormalize(1.0, mixedUnnormalized, mixedUnnormalized);
+        testNormalize(0.5, mixedUnnormalized, [-0.5, -0.25, 0.0, 0.25, 0.5, 0.25, 0.0]);
+        
+        var negUnnormalized = [-5.0, -4.0, -3.0, -2.0, -1.0, -0.5, -0.25];
+        testNormalize(1.0, negUnnormalized, [-1.0, -0.8, -0.6, -0.4, -0.2, -0.1, -0.05]);
     });
     
     test("flock.minBufferSize()", function () {

@@ -874,9 +874,7 @@ flock.test = flock.test || {};
             sources: {
                 ugen: "flock.test.mockUGen",
                 options: {
-                    buffer: flock.generate(64, function (i) {
-                        return i + 1;
-                    })
+                    buffer: flock.test.ascendingBuffer(64)
                 }
             }
         }
@@ -927,4 +925,39 @@ flock.test = flock.test || {};
             "flock.ugen.in should sum the output of each bus when mutiple buses are specified.");
     });
     
+    test("flock.ugen.normalize()", function () {
+        var testBuffer = flock.test.ascendingBuffer(64, -32),
+            mock = {
+                ugen: "flock.test.mockUGen",
+                options: {
+                    buffer: testBuffer
+                }
+            };
+            
+        var normalizerSynth = flock.synth({
+            id: "normalizer",
+            ugen: "flock.ugen.normalize",
+            inputs: {
+                source: {
+                    ugen: "flock.ugen.sum",
+                    inputs: {
+                        sources: [mock, mock]
+                    }
+                },
+                max: 1.0
+            }
+        });
+        
+        var normalizer = normalizerSynth.ugens.named.normalizer;
+        normalizerSynth.gen();
+        var expected = flock.normalize(flock.test.ascendingBuffer(64, -32), 1.0);
+        deepEqual(normalizer.output, expected,
+            "The signal should be normalized to 1.0.");
+        
+        normalizer.input("max", 0.5);
+        normalizer.gen(64);
+        expected = flock.normalize(flock.test.ascendingBuffer(64, -32), 0.5);
+        deepEqual(normalizer.output, expected,
+            "When the 'max' input is changed to 0.5, the signal should be normalized to 0.5");
+    });
 }());

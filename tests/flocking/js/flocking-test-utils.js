@@ -200,4 +200,12 @@ var flock = flock || {};
         };
     };
     
+    flock.test.ascendingBuffer = function (numSamps, start, step) {
+        start = start === undefined ? 0 : start;
+        step = step === undefined ? 1 : step;
+        
+        return flock.generate(numSamps, function (i) {
+            return start + i + step;
+        });
+    };
 }());
