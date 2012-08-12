@@ -790,7 +790,7 @@ var flock = flock || {};
     flock.synth = function (def, options) {
         var that = {
             rate: flock.rates.AUDIO,
-            enviro: flock.enviro.shared,
+            enviro: flock.enviro.shared, // TODO: Direct reference to the shared environment.
             ugens: flock.synth.ugenCache(),
             model: {
                 synthDef: def
