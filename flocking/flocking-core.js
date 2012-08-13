@@ -352,9 +352,9 @@ var flock = flock || {};
      * Time and Scheduling *
      ***********************/
 
+    flock.scheduler = {};
+    
     flock.shim = {
-        BlobBuilder: window.BlobBuilder || window.MozBlobBuilder || 
-            window.WebKitBlobBuilder || window.MSBlobBuilder || window.OBlobBuilder,
         URL: window.URL || window.webkitURL || window.msURL || window.oURL
     };
     
@@ -390,7 +390,7 @@ var flock = flock || {};
      
     flock.worker.code = {
         interval: function () {
-            self.intervals = {};
+            self.scheduled = {};
 
             self.onInterval = function (interval) {
                 self.postMessage({
@@ -403,16 +403,16 @@ var flock = flock || {};
                 var id = setInterval(function () {
                     self.onInterval(interval);
                 }, interval);
-                self.intervals[interval] = id;
+                self.scheduled[interval] = id;
             };
 
             self.clear = function (interval) {
-                var id = self.intervals[interval];
+                var id = self.scheduled[interval];
                 clearInterval(id);
             };
              
             self.clearAll = function () {
-                for (var interval in self.intervals) {
+                for (var interval in self.scheduled) {
                     self.clear(interval);
                 }
             };
@@ -420,40 +420,133 @@ var flock = flock || {};
             self.addEventListener("message", function (e) {
                 self[e.data.msg](e.data.value);
             }, false);
+        },
+        
+        specifiedTime: function () {
+            self.scheduled = [];
+            
+            self.schedule = function (timeFromNow) {
+                var id;
+                id = setTimeout(function () {
+                    self.clear(id);
+                    self.postMessage({
+                        msg: "tick",
+                        value: [timeFromNow, Date.now()]
+                    });
+                });
+                self.scheduled.push(id);
+            };
+            
+            // TODO: How do we pass the id back to the client?
+            self.clear = function (id, idx) {
+                idx = idx === undefined ? self.scheduled.indexOf(id) : idx;
+                if (idx > -1) {
+                    self.scheduled.splice(idx, 1);
+                }
+                clearTimeout(id);
+            };
+            
+            self.clearAll = function () {
+                for (var i = 0; i < self.scheduled.length; i++) {
+                    var id = self.scheduled[i];
+                    clearTimeout(id);
+                }
+                self.scheduled.length = 0;
+            };
+
+            // TODO: Cut and pastage.
+            self.addEventListener("message", function (e) {
+                self[e.data.msg](e.data.value);
+            }, false);
         }
     };
-     
-    flock.conductor = function () {
+    
+    flock.scheduler.async = function () {
         var that = {
-            intervalWorker: flock.worker(flock.worker.code.interval)
+            messages: { // Reuse message objects to avoid creating garbage.
+                schedule: {
+                    msg: "schedule"
+                },
+                clear: {
+                    msg: "clear"
+                },
+                clearAll: {
+                    msg: "clearAll"
+                }
+            }
         };
-         
-        that.schedulePeriodic = function (interval, fn) {
-            that.intervalWorker.addEventListener("message", function (e) {
-                if (e.data.value === interval) {
+        
+        // TODO: Put these somewhere more sensible.
+        that.addOneShotListener = function (eventName, target, fn) {
+            var listener = function (e) {
+                fn.apply(null, e.data.value);
+                target.removeEventListener(eventName, listener, false);
+            };
+            target.addEventListener(eventName, listener, false);
+            return listener;
+        };
+        
+        that.addFilteredListener = function (eventName, target, value, fn) {
+            var listener = function (e) {
+                if (e.data.value === value) {
                     fn();
                 }
-            }, false);
-             
-            that.intervalWorker.postMessage({
-                msg: "schedule",
-                value: interval
-            });
+            };
+            target.addEventListener(eventName, listener, false);
+            return listener;
+        };
+        
+        that.repeat = function (interval, fn) {
+            var worker = that.workers.interval;
+            that.addFilteredListener("message", worker, interval, fn);
+            that.scheduleWorker(worker, interval);
+        };
+        
+        that.once = function (time, fn) {
+            var worker = that.workers.specifiedTime;
+            that.addOneShotListener("message", worker, fn);
+            that.scheduleWorker(worker, time);
+        };
+        
+        that.sequence = function (times, fn) {
+            for (var i = 0; i < times.length; i++) {
+                that.once(times[i], fn);
+            }
+        };
+        
+        that.scheduleWorker = function (worker, value) {
+            var msg = that.messages.schedule;
+            msg.value = value;
+            worker.postMessage(msg);
         };
          
-        that.clearPeriodic = function (interval) {
-            that.intervalWorker.postMessage({
-                msg: "clear",
-                value: interval
-            });
+        that.clearRepeat = function (interval) {
+            var msg = that.messages.clear;
+            msg.value = interval;
+            that.workers.interval.postMessage(msg);
         };
          
         that.clearAll = function () {
-            that.intervalWorker.postMessage({
-                msg: "clearAll"
-            });
+            var key,
+                worker;
+            for (key in that.workers) {
+                worker = that.workers[key];
+                worker.postMessage(that.messages.clearAll);
+            }
+        };
+        
+        that.init = function () {
+            that.workers = {};
+            // TODO: This is pretty silly. Refactor flock.worker()?
+            var workerTypes = flock.worker.code,
+                worker;
+            for (var type in workerTypes) {
+                worker = flock.worker(workerTypes[type]);
+                that.workers[type] = worker;
+            }
         };
          
+        that.init();
         return that;
     };
      
@@ -499,7 +592,7 @@ var flock = flock || {};
         that.buses = flock.enviro.createAudioBuffers(that.audioSettings.numBuses, 
                 that.audioSettings.rates.control);
         that.buffers = {};
-        that.conductor = flock.conductor();
+        that.asyncScheduler = flock.scheduler.async();
         
         /**
          * Starts generating samples from all synths.
@@ -526,7 +619,7 @@ var flock = flock || {};
         
         that.reset = function () {
             that.stop();
-            that.conductor.clearAll();
+            that.asyncScheduler.clearAll();
             // Clear the environment's node list.
             while (that.nodes.length > 0) {
                 that.nodes.pop();
@@ -671,7 +764,7 @@ var flock = flock || {};
             if (that.scheduled) {
                 return;
             }
-            that.conductor.schedulePeriodic(that.model.writeInterval, that.writeSamples);
+            that.asyncScheduler.repeat(that.model.writeInterval, that.writeSamples);
             that.scheduled = true;
         };
         
@@ -695,7 +788,7 @@ var flock = flock || {};
         };
         
         that.stopGeneratingSamples = function () {
-            that.conductor.clearPeriodic(that.model.writeInterval);
+            that.asyncScheduler.clearRepeat(that.model.writeInterval);
             that.scheduled = false;
         };        
     };

@@ -710,4 +710,35 @@ var flock = flock || {};
             "The old ugen's input should have been copied over to the new one.");
         equals(synth.out.inputs.sources.inputs.gerbil, newUGen, "The new ugen's output should be wired back up.");
     });
+    
+    
+    module("Asynchronous Scheduler tests");
+    
+    var checkScheduledCallback = function (scheduledTime, sentAt, receivedAt) {
+        equals(scheduledTime, 500,
+            "The callback for once() should return the correct scheduled time.");
+        ok(sentAt >= receivedAt - 2,
+            "The callback should have been called at the scheduled time, within a tolerance of 2 ms.");
+    };
+    
+    asyncTest("flock.scheduler.async.once()", function () {
+        var sked = flock.scheduler.async(),
+            runs = 10,
+            numRuns = 0;
+        
+        expect(21);
+        
+        var scheduledAction = function (scheduledTime, now) {
+            numRuns++;
+            checkScheduledCallback(scheduledTime, now, Date.now());
+            if (numRuns < runs) {
+                sked.once(500, scheduledAction);
+            } else {
+                equals(numRuns, runs,
+                    "The scheduled callback should be invoked only once.");
+                start();
+            }
+        };
+        sked.once(500, scheduledAction);
+    });
 }());
