@@ -473,7 +473,8 @@ var flock = flock || {};
                 clearAll: {
                     msg: "clearAll"
                 }
-            }
+            },
+            listeners: [] // Place to Store listeners
         };
         
         // TODO: Put these somewhere more sensible.
@@ -493,6 +494,19 @@ var flock = flock || {};
                 }
             };
             target.addEventListener(eventName, listener, false);
+            that.listeners[eventName] = that.listeners[eventName] || [];
+            that.listeners[eventName].push({listener: listener, value: value});
+            return listener;
+        };
+        
+        that.removeFilteredListener = function (eventName, target, value, fn) {
+            var listener;
+            $.each(that.listeners[eventName], function(i, events){
+                if(events.value === value){
+                    listener = events.listener;
+                    target.removeEventListener(eventName, listener, false);
+                }
+            });
             return listener;
         };
         
@@ -520,8 +534,10 @@ var flock = flock || {};
             worker.postMessage(msg);
         };
          
-        that.clearRepeat = function (interval) {
-            var msg = that.messages.clear;
+        that.clearRepeat = function (interval, fn) {
+            var msg = that.messages.clear,
+                worker = that.workers.interval;
+            that.removeFilteredListener("message", worker, interval, fn);
             msg.value = interval;
             that.workers.interval.postMessage(msg);
         };
