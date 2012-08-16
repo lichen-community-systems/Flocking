@@ -474,7 +474,7 @@ var flock = flock || {};
                     msg: "clearAll"
                 }
             },
-            listeners: [] // Place to Store listeners
+            intervalListeners: {} // Place to Store listeners
         };
         
         // TODO: Put these somewhere more sensible.
@@ -488,25 +488,34 @@ var flock = flock || {};
         };
         
         that.addFilteredListener = function (eventName, target, value, fn) {
-            var listener = function (e) {
+            if (that.intervalListeners[value] === undefined) {
+                that.intervalListeners[value] = [];
+            }
+            
+            var listenersForValue = that.intervalListeners[value],
+                listener = function (e) {
                 if (e.data.value === value) {
                     fn();
                 }
             };
+            
             target.addEventListener(eventName, listener, false);
-            that.listeners[eventName] = that.listeners[eventName] || [];
-            that.listeners[eventName].push({listener: listener, value: value});
+            listenersForValue.push(listener);
+
             return listener;
         };
         
-        that.removeFilteredListener = function (eventName, target, value, fn) {
-            var listener;
-            $.each(that.listeners[eventName], function(i, events){
-                if(events.value === value){
-                    listener = events.listener;
-                    target.removeEventListener(eventName, listener, false);
-                }
-            });
+        that.removeFilteredListener = function (eventName, target, value) {
+            var listenersForValue = that.intervalListeners[value],
+                i,
+                listener;
+            
+            for (i = 0; i < listenersForValue.length; i++) {
+                listener = listenersForValue[i];
+                target.removeEventListener(eventName, listener, false);
+            }
+            listenersForValue.length = 0;
+            
             return listener;
         };
         
@@ -534,20 +543,27 @@ var flock = flock || {};
             worker.postMessage(msg);
         };
          
-        that.clearRepeat = function (interval, fn) {
+        that.clearRepeat = function (interval) {
             var msg = that.messages.clear,
                 worker = that.workers.interval;
-            that.removeFilteredListener("message", worker, interval, fn);
+            that.removeFilteredListener("message", worker, interval);
             msg.value = interval;
             that.workers.interval.postMessage(msg);
         };
-         
+        
         that.clearAll = function () {
-            var key,
-                worker;
+            var listeners = that.intervalListeners,
+                key,
+                worker,
+                interval;
+                
             for (key in that.workers) {
                 worker = that.workers[key];
                 worker.postMessage(that.messages.clearAll);
+            }
+            
+            for (interval in listeners) {
+                that.clearRepeat(interval);
             }
         };
         
