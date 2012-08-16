@@ -473,7 +473,8 @@ var flock = flock || {};
                 clearAll: {
                     msg: "clearAll"
                 }
-            }
+            },
+            intervalListeners: {} // Place to Store listeners
         };
         
         // TODO: Put these somewhere more sensible.
@@ -487,12 +488,34 @@ var flock = flock || {};
         };
         
         that.addFilteredListener = function (eventName, target, value, fn) {
-            var listener = function (e) {
+            if (that.intervalListeners[value] === undefined) {
+                that.intervalListeners[value] = [];
+            }
+            
+            var listenersForValue = that.intervalListeners[value],
+                listener = function (e) {
                 if (e.data.value === value) {
                     fn();
                 }
             };
+            
             target.addEventListener(eventName, listener, false);
+            listenersForValue.push(listener);
+
+            return listener;
+        };
+        
+        that.removeFilteredListener = function (eventName, target, value) {
+            var listenersForValue = that.intervalListeners[value],
+                i,
+                listener;
+            
+            for (i = 0; i < listenersForValue.length; i++) {
+                listener = listenersForValue[i];
+                target.removeEventListener(eventName, listener, false);
+            }
+            listenersForValue.length = 0;
+            
             return listener;
         };
         
@@ -521,17 +544,26 @@ var flock = flock || {};
         };
          
         that.clearRepeat = function (interval) {
-            var msg = that.messages.clear;
+            var msg = that.messages.clear,
+                worker = that.workers.interval;
+            that.removeFilteredListener("message", worker, interval);
             msg.value = interval;
             that.workers.interval.postMessage(msg);
         };
-         
+        
         that.clearAll = function () {
-            var key,
-                worker;
+            var listeners = that.intervalListeners,
+                key,
+                worker,
+                interval;
+                
             for (key in that.workers) {
                 worker = that.workers[key];
                 worker.postMessage(that.messages.clearAll);
+            }
+            
+            for (interval in listeners) {
+                that.clearRepeat(interval);
             }
         };
         
