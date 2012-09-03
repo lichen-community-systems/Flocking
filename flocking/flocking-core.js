@@ -471,6 +471,7 @@ var flock = flock || {};
     
     flock.scheduler.async = function () {
         var that = {
+            workers: {},
             messages: { // Reuse message objects to avoid creating garbage.
                 schedule: {
                     msg: "schedule"
@@ -482,7 +483,7 @@ var flock = flock || {};
                     msg: "clearAll"
                 }
             },
-            intervalListeners: {} // Place to Store listeners
+            valueListeners: {} // Interval listeners keyed by their interval.
         };
         
         // TODO: Put these somewhere more sensible.
@@ -496,11 +497,11 @@ var flock = flock || {};
         };
         
         that.addFilteredListener = function (eventName, target, value, fn) {
-            if (!that.intervalListeners[value]) {
-                that.intervalListeners[value] = [];
+            if (!that.valueListeners[value]) {
+                that.valueListeners[value] = [];
             }
             
-            var listenersForValue = that.intervalListeners[value],
+            var listeners = that.valueListeners[value],
                 listener = function (e) {
                 if (e.data.value === value) {
                     fn();
@@ -508,39 +509,43 @@ var flock = flock || {};
             };
             listener.wrappedListener = fn;
             target.addEventListener(eventName, listener, false);
-            listenersForValue.push(listener);
+            listeners.push(listener);
 
             return listener;
         };
         
         that.removeFilteredListener = function (eventName, target, value) {
-            var listenersForValue = that.intervalListeners[value],
+            var listeners = that.valueListeners[value],
                 i,
                 listener;
             
-            if (!listenersForValue) {
+            if (!listeners) {
                 return;
             }
             
-            for (i = 0; i < listenersForValue.length; i++) {
-                listener = listenersForValue[i];
+            for (i = 0; i < listeners.length; i++) {
+                listener = listeners[i];
                 target.removeEventListener(eventName, listener, false);
             }
-            listenersForValue.length = 0;
+            listeners.length = 0;
             
             return listener;
         };
         
         that.repeat = function (interval, fn) {
-            var worker = that.workers.interval;
-            that.addFilteredListener("message", worker, interval, fn);
+            var worker = that.workers.interval,
+                listener = that.addFilteredListener("message", worker, interval, fn);
+            
             that.scheduleWorker(worker, interval);
+            return listener;
         };
         
         that.once = function (time, fn) {
-            var worker = that.workers.specifiedTime;
-            that.addOneShotListener("message", worker, fn);
+            var worker = that.workers.specifiedTime,
+                listener = that.addOneShotListener("message", worker, fn);
+            
             that.scheduleWorker(worker, time);
+            return listener;
         };
         
         that.sequence = function (times, fn) {
@@ -554,7 +559,22 @@ var flock = flock || {};
             msg.value = value;
             worker.postMessage(msg);
         };
-         
+        
+        that.clear = function (listener) {
+            if (!listener) {
+                return;
+            }
+            
+            // TODO: Rather inefficient.
+            var workers = that.workers,
+                type,
+                w;
+            for (type in workers) {
+                w = workers[type];
+                w.removeEventListener("message", listener, false);
+            }
+        };
+        
         that.clearRepeat = function (interval) {
             var msg = that.messages.clear,
                 worker = that.workers.interval;
@@ -564,7 +584,7 @@ var flock = flock || {};
         };
         
         that.clearAll = function () {
-            var listeners = that.intervalListeners,
+            var listeners = that.valueListeners,
                 key,
                 worker,
                 interval;
@@ -580,7 +600,6 @@ var flock = flock || {};
         };
         
         that.init = function () {
-            that.workers = {};
             // TODO: This is pretty silly. Refactor flock.worker().
             var workerTypes = flock.worker.code,
                 worker;

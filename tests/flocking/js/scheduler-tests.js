@@ -79,16 +79,61 @@ var flock = flock || {};
         lastFired = Date.now();
     });
     
-    var assertOnlyProperty = function (obj, prop, value) {
-        if (arguments.length === 2) {
-            value = true;
-        }
+    
+    asyncTest("flock.scheduler.async.repeat() multiple listeners", function () {
+        var sked = flock.scheduler.async(),
+            interval = 100,
+            numRuns = 10,
+            runs = 0,
+            fired = {},
+            both = true,
+            makeRecordingListener,
+            testingListenerImpl,
+            listener1,
+            listener2,
+            testingListener;
         
-        equal(obj[prop], value,
-            "The expected property should have the correct value.");
-        equal(1, Object.keys(obj).length,
-            "There should be no other properties in the object.");
-    };
+        makeRecordingListener = function (record, prop) {
+            return function () {
+                record[prop] = true;
+            };
+        };
+        
+        testingListenerImpl = function () {
+            if (runs >= numRuns) {
+                if (both) {
+                    sked.clear(listener1);
+                    both = false;
+                    runs = 0;
+                } else {
+                    sked.clear(listener2);
+                    sked.clear(testingListener);
+                    expect(numRuns * 2);
+                    start();
+                }
+                flock.clear(fired);
+                return;
+            }
+            
+            if (both) {
+                deepEqual(fired, {
+                    listener1: true,
+                    listener2: true
+                }, "Both listeners should fire.");
+            } else {
+                deepEqual(fired, {
+                    listener2: true
+                }, "After the first listener has been removed, only the second should fire.");
+            }
+            flock.clear(fired);
+            runs++;
+        };
+        
+        listener1 = sked.repeat(100, makeRecordingListener(fired, "listener1"));
+        listener2 = sked.repeat(100, makeRecordingListener(fired, "listener2"));
+        testingListener = sked.repeat(100, testingListenerImpl);
+    });
+    
     
     var testClearScheduler = function (name, clearFnName) {
         asyncTest(name, function () {
@@ -121,7 +166,7 @@ var flock = flock || {};
                     record[prop] = true;
                 
                     if (runs >= numRuns) {
-                        assertOnlyProperty(record, prop);
+                        flock.test.assertSoleProperty(record, prop);
                         flock.clear(record);
                         runNextTestStage();
                         return;

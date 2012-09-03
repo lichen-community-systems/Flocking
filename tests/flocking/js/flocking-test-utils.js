@@ -211,4 +211,16 @@ var flock = flock || {};
         });
     };
     
+    flock.test.assertSoleProperty = function (obj, prop, value) {
+        if (arguments.length === 2) {
+            value = true;
+        }
+        
+        equal(obj[prop], value,
+            "The expected property should have the correct value.");
+        equal(1, Object.keys(obj).length,
+            "There should be no other properties in the object.");
+    };
+    
+    
 }());
