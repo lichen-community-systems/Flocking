@@ -202,6 +202,7 @@ var flock = flock || {};
     
     flock.get = function (root, path) {
         root = root || window;
+
         var tokenized = path === "" ? [] : String(path).split("."),
             valForSeg = root[tokenized[0]],
             i;
@@ -217,6 +218,7 @@ var flock = flock || {};
     
     flock.set = function (root, path, value) {
         root = root || window;
+
         if (!path || path === "") {
             return;
         }
@@ -477,21 +479,20 @@ var flock = flock || {};
         }
     };
     
-    flock.scheduler.async = function () {
-        var that = {
-            workers: {},
-            messages: { // Reuse message objects to avoid creating garbage.
-                schedule: {
-                    msg: "schedule"
-                },
-                clear: {
-                    msg: "clear"
-                },
-                clearAll: {
-                    msg: "clearAll"
-                }
+    flock.scheduler.async = function (options) {
+        var that = flock.component("flock.scheduler.async", options);
+        that.workers = {};
+        that.valueListeners = {};
+        that.messages = { // Reuse message objects to avoid creating garbage.
+            schedule: {
+                msg: "schedule"
             },
-            valueListeners: {} // Interval listeners keyed by their interval.
+            clear: {
+                msg: "clear"
+            },
+            clearAll: {
+                msg: "clearAll"
+            }
         };
         
         // TODO: Put these somewhere more sensible.
@@ -564,7 +565,7 @@ var flock = flock || {};
         
         that.scheduleWorker = function (worker, value) {
             var msg = that.messages.schedule;
-            msg.value = value;
+            msg.value = that.timeConverter(value);
             worker.postMessage(msg);
         };
         
@@ -615,12 +616,28 @@ var flock = flock || {};
                 worker = flock.worker(workerTypes[type]);
                 that.workers[type] = worker;
             }
+            that.timeConverter = that.options.timeConverter ?
+                flock.get(undefined, that.options.timeConverter) : flock.identity;
         };
          
         that.init();
         return that;
     };
-     
+    
+    flock.defaults("flock.scheduler.async", {
+        timeConverter: "flock.time.secToMs"
+    });
+    
+    
+    flock.time = {};
+    
+    flock.time.secToMs = function (secs) {
+        return secs * 1000;
+    };
+    
+    flock.time.bpmToMs = function (beats, bpm) {
+        return bpm <= 0 ? 0 : (beats / bpm) * 1000;
+    };
      
     /***********************
      * Synths and Playback *
@@ -663,7 +680,9 @@ var flock = flock || {};
         that.buses = flock.enviro.createAudioBuffers(that.audioSettings.numBuses, 
                 that.audioSettings.rates.control);
         that.buffers = {};
-        that.asyncScheduler = flock.scheduler.async();
+        that.asyncScheduler = flock.scheduler.async({
+            timeConverter: null
+        });
         
         /**
          * Starts generating samples from all synths.

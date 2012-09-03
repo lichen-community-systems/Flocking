@@ -15,6 +15,36 @@ var flock = flock || {};
 (function () {
     "use strict";
 
+    module("Time Converters");
+    
+    var testTimeConversion = function (expected, args, converter, msg) {
+        args = $.makeArray(args);
+        equal(expected, converter.apply(null, args), msg);
+    };
+    
+    test("flock.time.secToMs", function () {
+        testTimeConversion(1500, 1.5, flock.time.secToMs,
+            "1.5 seconds should convert to 1500 ms.");
+        testTimeConversion(0, 0, flock.time.secToMs,
+            "0 seconds should convert to 0 ms.");
+    });
+    
+    test("flock.time.bpmToMs", function () {
+        var bpm = 60,
+            oneBeat = 1 / bpm,
+            oneBeatMs = oneBeat * 1000,
+            expected;
+        
+        expected = 4 * oneBeatMs;
+        testTimeConversion(expected, [4, bpm], flock.time.bpmToMs,
+            "4 beats at 60 bpm seconds should convert to " + expected + " ms.");
+        testTimeConversion(0, [0, bpm], flock.time.bpmToMs,
+            "0 beats at 60 bpm should convert to 0 ms.");
+        testTimeConversion(0, [100, 0], flock.time.bpmToMs,
+            "100 beats at 0 bpm should convert to 0 ms.");
+    });
+    
+    
     module("Asynchronous Scheduler tests");
     
     var checkScheduledCallback = function (scheduledTime, sentAt, receivedAt) {
@@ -25,9 +55,11 @@ var flock = flock || {};
     };
     
     asyncTest("flock.scheduler.async.once()", function () {
-        var sked = flock.scheduler.async(),
-            runs = 10,
-            numRuns = 0;
+        var runs = 10,
+            numRuns = 0,
+            sked = flock.scheduler.async({
+                timeConverter: null
+            });
         
         expect(21);
         
@@ -46,7 +78,9 @@ var flock = flock || {};
     });
     
     asyncTest("flock.scheduler.async.repeat()", function () {
-        var sked = flock.scheduler.async(),
+        var sked = flock.scheduler.async({
+                timeConverter: null
+            }),
             expectedInterval = 100,
             numRuns = 100,
             runs = 0,
@@ -81,7 +115,9 @@ var flock = flock || {};
     
     
     asyncTest("flock.scheduler.async.repeat() multiple listeners", function () {
-        var sked = flock.scheduler.async(),
+        var sked = flock.scheduler.async({
+                timeConverter: null
+            }),
             interval = 100,
             numRuns = 10,
             runs = 0,
@@ -137,7 +173,9 @@ var flock = flock || {};
     
     var testClearScheduler = function (name, clearFnName) {
         asyncTest(name, function () {
-            var sked = flock.scheduler.async(),
+            var sked = flock.scheduler.async({
+                    timeConverter: null
+                }),
                 interval = 100,
                 numRuns = 10,
                 runs = 0,
