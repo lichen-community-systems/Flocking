@@ -17,30 +17,31 @@ var flock = flock || {};
 
     module("Time Converters");
     
-    var testTimeConversion = function (expected, args, converter, msg) {
-        args = $.makeArray(args);
-        equal(expected, converter.apply(null, args), msg);
-    };
-    
-    test("flock.time.secToMs", function () {
-        testTimeConversion(1500, 1.5, flock.time.secToMs,
-            "1.5 seconds should convert to 1500 ms.");
-        testTimeConversion(0, 0, flock.time.secToMs,
-            "0 seconds should convert to 0 ms.");
+    test("flock.convert.seconds", function () {
+        var converter = flock.convert.seconds();
+        
+        equal(converter.value(1.5), 1500, "1.5 seconds should convert to 1500 ms.");
+        equal(converter.value(0), 0, "0 seconds should convert to 0 ms.");
     });
     
-    test("flock.time.bpmToMs", function () {
+    test("flock.convert.beats", function () {
         var bpm = 60,
             oneBeat = 1 / bpm,
             oneBeatMs = oneBeat * 1000,
+            converter = flock.convert.beats({
+                bpm: bpm
+            }),
             expected;
         
         expected = 4 * oneBeatMs;
-        testTimeConversion(expected, [4, bpm], flock.time.bpmToMs,
-            "4 beats at 60 bpm seconds should convert to " + expected + " ms.");
-        testTimeConversion(0, [0, bpm], flock.time.bpmToMs,
-            "0 beats at 60 bpm should convert to 0 ms.");
-        testTimeConversion(0, [100, 0], flock.time.bpmToMs,
+        equal(converter.value(4), expected,
+            "4 beats at 60 bpm seconds should convert to " + expected + " ms.")
+            equal(converter.value(0), 0, "0 beats at 60 bpm should convert to 0 ms.");
+
+        converter = flock.convert.beats({
+            bpm: 0
+        });
+        equal(converter.value(100), 0,
             "100 beats at 0 bpm should convert to 0 ms.");
     });
     
@@ -58,7 +59,7 @@ var flock = flock || {};
         var runs = 10,
             numRuns = 0,
             sked = flock.scheduler.async({
-                timeConverter: null
+                timeConverter: "flock.convert.ms"
             });
         
         expect(21);
@@ -79,7 +80,7 @@ var flock = flock || {};
     
     asyncTest("flock.scheduler.async.repeat()", function () {
         var sked = flock.scheduler.async({
-                timeConverter: null
+                timeConverter: "flock.convert.ms"
             }),
             expectedInterval = 100,
             numRuns = 100,
@@ -116,7 +117,7 @@ var flock = flock || {};
     
     asyncTest("flock.scheduler.async.repeat() multiple listeners", function () {
         var sked = flock.scheduler.async({
-                timeConverter: null
+                timeConverter: "flock.convert.ms"
             }),
             interval = 100,
             numRuns = 10,
@@ -174,7 +175,7 @@ var flock = flock || {};
     var testClearScheduler = function (name, clearFnName) {
         asyncTest(name, function () {
             var sked = flock.scheduler.async({
-                    timeConverter: null
+                    timeConverter: "flock.convert.ms"
                 }),
                 interval = 100,
                 numRuns = 10,
