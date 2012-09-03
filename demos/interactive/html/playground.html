@@ -527,7 +527,7 @@ var score = [
 ];
 
 var idx = 0;
-flock.enviro.shared.conductor.schedulePeriodic(1000, function () {
+flock.enviro.shared.asyncScheduler.repeat(1000, function () {
     if (idx >= score.length) {
         idx = 0;
     }
