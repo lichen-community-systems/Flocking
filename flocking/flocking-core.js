@@ -33,6 +33,11 @@ var flock = flock || {};
         browser: $.browser
     };
     
+    
+    /*************
+     * Utilities *
+     *************/
+     
     flock.defaults = function (name, defaults) {
         if (defaults) {
             flock.defaults.store[name] = defaults;
@@ -64,12 +69,15 @@ var flock = flock || {};
         return val;
     };
     
-    /*************
-     * Utilities *
-     *************/
-    
     flock.isIterable = function (o) {
         return o && o.length !== undefined && typeof (o.length) === "number";
+    };
+    
+    flock.clear = function (o) {
+        var k;
+        for (k in o) {
+            delete o[k];
+        }
     };
 
     flock.generate = function (bufOrSize, generator) {
@@ -488,7 +496,7 @@ var flock = flock || {};
         };
         
         that.addFilteredListener = function (eventName, target, value, fn) {
-            if (that.intervalListeners[value] === undefined) {
+            if (!that.intervalListeners[value]) {
                 that.intervalListeners[value] = [];
             }
             
@@ -498,7 +506,7 @@ var flock = flock || {};
                     fn();
                 }
             };
-            
+            listener.wrappedListener = fn;
             target.addEventListener(eventName, listener, false);
             listenersForValue.push(listener);
 
@@ -509,6 +517,10 @@ var flock = flock || {};
             var listenersForValue = that.intervalListeners[value],
                 i,
                 listener;
+            
+            if (!listenersForValue) {
+                return;
+            }
             
             for (i = 0; i < listenersForValue.length; i++) {
                 listener = listenersForValue[i];
@@ -569,7 +581,7 @@ var flock = flock || {};
         
         that.init = function () {
             that.workers = {};
-            // TODO: This is pretty silly. Refactor flock.worker()?
+            // TODO: This is pretty silly. Refactor flock.worker().
             var workerTypes = flock.worker.code,
                 worker;
             for (var type in workerTypes) {

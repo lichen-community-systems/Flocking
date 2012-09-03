@@ -133,6 +133,32 @@ var flock = flock || {};
         ]);
     });
     
+    test("flock.clear()", function () {
+        var obj = {
+            "cat": "meow",
+            "dog": "bark"
+        };
+        
+        flock.clear(obj);
+        deepEqual(obj, {},
+            "All properties should have been deleted.");
+        
+        obj = {};
+        flock.clear(obj);
+        deepEqual(obj, {},
+            "An empty object should successfully remain empty.");
+        
+        obj = undefined;
+        flock.clear(obj);
+        equal(obj, undefined,
+            "An undefined object should remain undefined after being cleared.");
+        
+        obj = null;
+        flock.clear(obj);
+        equal(obj, null,
+            "An null object should remain null after being cleared.");
+    });
+    
     test("flock.generate()", function () {
         // Buffer size and static number for the generator.
         var expected = new Float32Array([1.0, 1.0, 1.0]);
@@ -711,65 +737,4 @@ var flock = flock || {};
         equals(synth.out.inputs.sources.inputs.gerbil, newUGen, "The new ugen's output should be wired back up.");
     });
     
-    
-    module("Asynchronous Scheduler tests");
-    
-    var checkScheduledCallback = function (scheduledTime, sentAt, receivedAt) {
-        equals(scheduledTime, 500,
-            "The callback for once() should return the correct scheduled time.");
-        ok(sentAt >= receivedAt - 3,
-            "The callback should have been called at the scheduled time, within a tolerance of 3 ms.");
-    };
-    
-    asyncTest("flock.scheduler.async.once()", function () {
-        var sked = flock.scheduler.async(),
-            runs = 10,
-            numRuns = 0;
-        
-        expect(21);
-        
-        var scheduledAction = function (scheduledTime, now) {
-            numRuns++;
-            checkScheduledCallback(scheduledTime, now, Date.now());
-            if (numRuns < runs) {
-                sked.once(500, scheduledAction);
-            } else {
-                equals(numRuns, runs,
-                    "The scheduled callback should be invoked only once.");
-                start();
-            }
-        };
-        sked.once(500, scheduledAction);
-    });
-    
-    asyncTest("flock.scheduler.async.repeat()", function () {
-        var sked = flock.scheduler.async(),
-            interval = 500,
-            numRuns = 10,
-            runs = 0,
-            lastFired = 0,
-            callback;
-            
-        callback = function () {
-            var now = Date.now(),
-                time = now - lastFired;
-            
-            ok(time >= interval,
-                "The scheduled callback should never be fired early.");
-            ok(time <= interval + 3,
-                "The scheduled callback should be fired within a tolerance of 3 ms.");
-                
-            lastFired = Date.now();
-            
-            if (runs === numRuns) {
-                sked.clearRepeat(interval);
-                start();
-            }
-            runs++;
-        };
-        
-        sked.repeat(interval, callback);
-        lastFired = Date.now();
-        
-    });
 }());
