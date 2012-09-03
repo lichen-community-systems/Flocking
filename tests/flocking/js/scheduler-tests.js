@@ -85,7 +85,7 @@ var flock = flock || {};
             numRuns = 100,
             runs = 0,
             lastFired = 0,
-            mistimingTolerance = 5,
+            mistimingTolerance = 25,
             callback;
         
         expect(2 * numRuns);
