@@ -48,6 +48,14 @@ var flock = flock || {};
     };
     flock.defaults.store = {};
     
+    flock.component = function (name, options) {
+        var that = {
+            options: $.extend({}, flock.defaults(name), options)
+        };
+        
+        return that;
+    };
+    
     flock.defaults("flock.audioSettings", {
         rates: {
             audio: 44100,
