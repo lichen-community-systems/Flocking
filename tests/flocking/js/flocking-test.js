@@ -717,8 +717,8 @@ var flock = flock || {};
     var checkScheduledCallback = function (scheduledTime, sentAt, receivedAt) {
         equals(scheduledTime, 500,
             "The callback for once() should return the correct scheduled time.");
-        ok(sentAt >= receivedAt - 2,
-            "The callback should have been called at the scheduled time, within a tolerance of 2 ms.");
+        ok(sentAt >= receivedAt - 3,
+            "The callback should have been called at the scheduled time, within a tolerance of 3 ms.");
     };
     
     asyncTest("flock.scheduler.async.once()", function () {
@@ -740,5 +740,36 @@ var flock = flock || {};
             }
         };
         sked.once(500, scheduledAction);
+    });
+    
+    asyncTest("flock.scheduler.async.repeat()", function () {
+        var sked = flock.scheduler.async(),
+            interval = 500,
+            numRuns = 10,
+            runs = 0,
+            lastFired = 0,
+            callback;
+            
+        callback = function () {
+            var now = Date.now(),
+                time = now - lastFired;
+            
+            ok(time >= interval,
+                "The scheduled callback should never be fired early.");
+            ok(time <= interval + 3,
+                "The scheduled callback should be fired within a tolerance of 3 ms.");
+                
+            lastFired = Date.now();
+            
+            if (runs === numRuns) {
+                sked.clearRepeat(interval);
+                start();
+            }
+            runs++;
+        };
+        
+        sked.repeat(interval, callback);
+        lastFired = Date.now();
+        
     });
 }());
