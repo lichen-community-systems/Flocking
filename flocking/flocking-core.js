@@ -367,14 +367,6 @@ var flock = flock || {};
     };
     
     
-    flock.component = function (name, options) {
-        var that = {
-            options: $.extend({}, flock.defaults(name), options)
-        };
-        
-        return that;
-    };
-    
     /***********************
      * Time and Scheduling *
      ***********************/
