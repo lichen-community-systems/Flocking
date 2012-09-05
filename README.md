@@ -6,22 +6,20 @@ What is Flocking?
 
 Flocking is an audio synthesis toolkit that runs inside your Web browser. It doesn't require Flash or any other 
 proprietary plugins. Written entirely in JavaScript, Flocking is designed for artists and musicians building 
-creative Web-based sound projects. It is built on top of Firefox 4's awesome new Audio Data API and WebKit's 
-WebAudio API.
+creative Web-based sound projects. It works in Firefox, Chrome, and Safari.
 
 Flocking was inspired by the [SuperCollider](http://supercollider.sourceforge.net/) desktop synthesis 
 environment. If you're familiar with SuperCollider, you'll feel at home with Flocking.
-
+    
 Unlike comparable synthesis libraries, Flocking is declarative. Unit generators are wired together using a 
 simple JSON-based syntax, making it easy to save and share your synthesis algorithms in plain text.
 Send your synths via Ajax, save them for later using HTML5 local data storage, or parse them into formats compatible with 
-other synthesis engines. In the future, this JSON-based format will also enable cool authoring tools and 
+other synthesis engines. In the future, this JSON-based format will also enable better authoring tools and 
 synthesis environments to be built on top of Flocking.
 
-Flocking is light on dependencies. As of today, it has none. Just drop _Flocking.js_ into your page and go.
-While this may change in the future, a primary goal of Flocking is to remain toolkit-agnostic. No classical inheritance 
-systems or other funny stuff to buy into. Just plain old objects and functions, written in a largely Good Parts-compatible 
-style of JavaScript. You're free to pick the frameworks and tools you love the best.
+Flocking is light on dependencies--no classical inheritance systems or other funny stuff to buy into. 
+Just plain old objects and functions. jQuery is there to provide a bit of extra help, 
+but you're free to pick the frameworks and tools you love the best.
 
 
 Community
@@ -38,15 +36,14 @@ Status
 Flocking is an early prototype. It has bugs, it's growing fast, and help is welcome and appreciated.
 
 ### Short Term To Dos###
- * "Hackable" demos with an inline code editor, Canvas based-scope, and keyboard
- * More unit generators!
- 
-   * Envelopes (ASDR, etc.)
-   * Filters
-   
+ * Declarative scheduling and composition
+ * More unit generators! 
+   * ADSR envelopes
+   * Dynamics processor (compressor/limiter)
+   * FIR & IIR Filters
+   * Granular synthesis
  * The ability to record sessions and export an audio file from your browser
- * A compositional library featuring scheduling, pattern, tuning, and note-based abstractions
- * Hotter demos 
+ 
  
 Using Flocking
 --------------
@@ -91,16 +88,12 @@ by another sine oscillator ("mod"):
 Compatibility
 -------------
 
-Flocking works with Firefox 4's Audio Data API and WebKit's Web Audio API. Web Kit support is limited to Chrome 10 at 
-the moment. It won't work on other browsers.
-
-Web Audio support in Chrome is still experimental, so you need to manually configure it before it will play audio. 
-To set it up, type "about:flags" into the URL bar and enable the "Web Audio" option at the bottom of the list.
+Flocking is currently tested on the latest versions of Firefox and Chrome, as well as Safari 6+.
 
 Licensing
 ---------
 
-Flocking is distributed under the terms the MIT or GPL2 Licenses. Choose the license that best suits your
+Flocking is distributed under the terms the MIT or GPL 2 Licenses. Choose the license that best suits your
 project. The text of the MIT and GPL licenses are at the root of the Flocking directory. 
 
 Credits
@@ -111,6 +104,8 @@ a composer, thinker, and early pioneer of computer music who my composition teac
 I hope you find this library useful enough to create projects as beautiful and inspiring as Jim's _Flocking_.
 
 ### Thanks to:###
- * Dave Humphrey and his team for their awesome work on the Firefox 4 Audio Data API
+ * [Vitus](https://github.com/derDoc) for his awesome interactive Flocking Playground contributions
+ * [Myles Borins](https://github.com/thealphanerd) for pushing the limits of Flocking very early in its development
  * Alex Geddie for teaching me a ton about synthesis and computer music
- * Vitus (https://github.com/derDoc) for his awesome interactive Flocking Playground contributions
+ * [Antranig Basman](https://github.com/amb26) for code review and advice
+ 

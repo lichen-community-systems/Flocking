@@ -47,10 +47,6 @@ var demo = demo || {};
     			that.playButton.removeClass("playing");
     			that.playButton.addClass("paused");
     			flock.enviro.shared.reset();
-    			if (timerId){ // TODO: Consider a non-global solution to starting/stopping timers for some demos.
-    				window.clearInterval(timerId);
-    				timerId = null;
-    			}
     		}
         });
     };

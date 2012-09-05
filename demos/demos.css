@@ -1,5 +1,6 @@
 body {
-    width: 32%;
+    width: 50%;
+    margin-left: 2%;
 }
 
 h1, h2 {
@@ -11,34 +12,42 @@ h2 {
     margin-bottom: 5%;
 }
 
-.demos {
-    margin-left: 7%;
-}
-
-li {
+.button-list {
+    text-align: left;
     list-style: none;
-    border-radius: 10px 10px 10px 10px;
-    padding: 6%;
-    margin: 2.5% 2.5% 2.5% -0.5%;
-    background-color: #eee;
+    padding: 0;
+    width: 55%;
 }
 
-li:nth-child(2n) {
-    background-color: #ccc;
+.button-list li {
+    display: block;
+    margin-bottom: 3%;
 }
 
-a {
+.button-list li a {
     font-size: 125%;
     font-family: sans-serif;
     text-decoration: none;
     font-weight: bold;
-    color: #333;
+    background-color: #eee;
+    display: block;
+    width: 100%;
+    border-radius: 10px 10px 10px 10px;
+    padding: 7%;
 }
 
-li:hover {
+.button-list li:nth-child(2n) a {
+    background-color: #ccc;
+}
+
+.button-list li a:hover {
     background-color: #999;
     border-color: #aaa;
     color: #fff;
+}
+
+a {
+    color: #333;
 }
 
 a:visited {

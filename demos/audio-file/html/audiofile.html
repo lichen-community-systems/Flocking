@@ -2,11 +2,12 @@
 <html>
     <head>
         <title>Audio File Decoding Demo</title>
-        
+        <meta charset="UTF-8" />
         <link rel="stylesheet" type="text/css" href="../../shared/css/demos.css" />
         <link rel="stylesheet" type="text/css" href="../css/audiofile.css" />
         
-        <script src="../../../third-party/dataview.js/js/dataview.js"></script>
+        <script src="../../../third-party/polydataview/js/polydataview.js"></script>
+        <script src="../../../third-party/jquery/js/jquery.min.js"></script>
         
         <script src="../../../flocking/flocking-audiofile.js"></script>
         <script src="../../../flocking/flocking-core.js"></script>
@@ -44,7 +45,7 @@
             <input type="range" name="playbackSpeed" id="playbackSpeed" min="0.5" max="2.0" step="0.1" value="1.0" />
         </div>
         
-        <script type="text/javascript">
+        <script>
 
             var synth = flock.synth({
                 ugen: "flock.ugen.scope",

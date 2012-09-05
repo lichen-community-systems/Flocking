@@ -201,24 +201,60 @@ var flock = flock || {};
         
         equal(count, expectedNum, msg);
     };
-    
-    
-    flock.test.makeMockUGen = function (outputBufferGenerator, rate) {
-        rate = rate || flock.rates.AUDIO;
-        return {
-            rate: rate,
-            output: flock.generate(64, outputBufferGenerator),
-            onInputChanged: function () {}
-        };
+        
+    flock.test.mockUGen = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        if (that.options.buffer) {
+            that.output = that.options.buffer;
+        }
+        that.gen = function () {}; // No op function--we just pass the output buffer back as-is.
+        return that;
     };
     
-    flock.test.makeRandomInputGenerator = function (inputSpec, defaultScale) {
+    flock.test.makeMockUGen = function (output, rate) {
+        if (typeof (output) === "function") {
+            output = flock.generate(64, output);
+        }
+        
+        return flock.parse.ugenForDef({
+            ugen: "flock.test.mockUGen",
+            rate: rate || flock.rates.AUDIO,
+            options: {
+                buffer: output
+            }
+        });
+    };
+    
+    flock.test.makeRandomInputGenerator = function (inputSpec, defaultScale, round) {
         defaultScale = defaultScale || 500;
-        var scale = typeof (inputSpec) === "string" ? defaultScale : inputSpec.scale;
+        var scale = typeof (inputSpec) === "string" ? defaultScale : inputSpec.scale,
+            val;
 
         return function () {
-            return Math.random() * scale;	
+            val = Math.random() * scale;
+            return round ? Math.round(val) : val;
         };
     };
+    
+    flock.test.ascendingBuffer = function (numSamps, start, step) {
+        start = start === undefined ? 0 : start;
+        step = step === undefined ? 1 : step;
+        
+        return flock.generate(numSamps, function (i) {
+            return start + i + step;
+        });
+    };
+    
+    flock.test.assertSoleProperty = function (obj, prop, value) {
+        if (arguments.length === 2) {
+            value = true;
+        }
+        
+        equal(obj[prop], value,
+            "The expected property should have the correct value.");
+        equal(1, Object.keys(obj).length,
+            "There should be no other properties in the object.");
+    };
+    
     
 }());

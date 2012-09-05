@@ -49,7 +49,7 @@ var flock = flock || {};
 	        testSpecs.push(makeTestSpec(config));
 	    }
 	    
-	    sheep.tests(testSpecs, true);
+	    sheep.test(testSpecs, true);
 	};
 
 }());
