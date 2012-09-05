@@ -26,8 +26,9 @@ var flock = flock || {};
     
     test("flock.convert.beats", function () {
         var bpm = 60,
-            oneBeat = 1 / bpm,
-            oneBeatMs = oneBeat * 1000,
+            oneBeatMin = 1 / bpm,
+            oneBeatSec = oneBeatMin * 60,
+            oneBeatMs = oneBeatSec * 1000,
             converter = flock.convert.beats({
                 bpm: bpm
             }),

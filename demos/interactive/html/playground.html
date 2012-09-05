@@ -408,7 +408,7 @@ var makeHarmonics = function (fundamental) {
             octave = 1;
 
         while (freq <= maxFreq) {
-            var ugenDef = makeHarmonic(ugenTypes, fundamental, harmonic, octave, 0.5);
+            var ugenDef = makeHarmonic(ugenTypes, fundamental, harmonic, octave, 0.25);
             freq = ugenDef.freq;
             if (freq <= maxFreq && freqs.indexOf(freq) === -1) {
                 freqs.push(freq);
@@ -455,11 +455,12 @@ var fundamental = 440,
     baseIntervals = [1/1, 5/4, 3/2],
     weightedIntervals = baseIntervals.concat([4/3, 6/5, 7/6, 2/1]).concat(baseIntervals),
     synths = makeIntervallicSynths(fundamental, baseIntervals),
-    synth = synths[0];
+    synth = synths[0],
+    clock = flock.scheduler.async.beat(60);
 
 // Every second, change one of the intervals by randomly choosing a synth
 // and assigning it a new frequency from the list of intervals.
-synth.enviro.asyncScheduler.repeat(1000, function () {
+clock.repeat(1, function () {
     var intervalSynth = flock.choose(synths),
         newInterval = flock.choose(weightedIntervals);
     intervalSynth.input("carrier.freq", fundamental * newInterval);

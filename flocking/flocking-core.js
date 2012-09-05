@@ -543,29 +543,37 @@ var flock = flock || {};
         
         that.repeat = function (interval, fn) {
             var worker = that.workers.interval,
-                listener = that.addFilteredListener("message", worker, interval, fn);
+                ms = that.timeConverter.value(interval),
+                listener = that.addFilteredListener("message", worker, ms, fn);
             
-            that.scheduleWorker(worker, interval);
+            that.scheduleWorker(worker, ms);
             return listener;
         };
         
         that.once = function (time, fn) {
             var worker = that.workers.specifiedTime,
+                ms = that.timeConverter.value(time),
                 listener = that.addOneShotListener("message", worker, fn);
             
-            that.scheduleWorker(worker, time);
+            that.scheduleWorker(worker, ms);
             return listener;
         };
         
         that.sequence = function (times, fn) {
+            var listeners = [],
+                listener;
+                
             for (var i = 0; i < times.length; i++) {
-                that.once(times[i], fn);
+                listener = that.once(times[i], fn)
+                listeners.push(listener);
             }
+            
+            return listeners;
         };
         
         that.scheduleWorker = function (worker, value) {
             var msg = that.messages.schedule;
-            msg.value = that.timeConverter.value(value);
+            msg.value = value;
             worker.postMessage(msg);
         };
         
@@ -633,6 +641,22 @@ var flock = flock || {};
         timeConverter: "flock.convert.seconds"
     });
     
+    flock.scheduler.async.beat = function (bpm) {
+        var options = flock.defaults("flock.scheduler.async.beat");
+        options.timeConverter.options.bpm = bpm;
+        
+        return flock.scheduler.async(options);
+    };
+    
+    flock.defaults("flock.scheduler.async.beat", {
+        timeConverter: {
+            type: "flock.convert.beats",
+            options: {
+                bpm: 60
+            }
+        }
+    });
+    
     
     flock.convert = {};
     
@@ -654,7 +678,7 @@ var flock = flock || {};
         var that = flock.component("flock.convert.beats", options);
         that.value = function (beats) {
             var bpm = that.options.bpm;
-            return bpm <= 0 ? 0 : (beats / bpm) * 1000;
+            return bpm <= 0 ? 0 : (beats / bpm) * 60000;
         };
         return that;
     };
