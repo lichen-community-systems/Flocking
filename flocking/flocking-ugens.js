@@ -217,13 +217,13 @@ var flock = flock || {};
             var m = that.model,
                 inputs = that.inputs,
                 freq = inputs.freq.output,
-                phase = inputs.phase.output,
+                phaseOffset = inputs.phase.output,
                 table = inputs.table,
                 tableLen = m.tableLen,
                 tableIncHz = m.tableIncHz,
                 tableIncRad = m.tableIncRad,
                 output = that.output,
-                phaseAccum = m.phase,
+                phase = m.phase,
                 phaseInc = m.phaseInc,
                 freqInc = m.freqInc,
                 i,
@@ -232,22 +232,22 @@ var flock = flock || {};
                 idx;
 
             for (i = 0, j = 0, k = 0; i < numSamps; i++, j += phaseInc, k += freqInc) {
-                idx = Math.round(phaseAccum + phase[j] * tableIncRad);
+                idx = Math.round(phase + phaseOffset[j] * tableIncRad);
                 if (idx >= tableLen) {
                     idx -= tableLen;
                 } else if (idx < 0) {
                     idx += tableLen;
                 }
                 output[i] = table[idx];
-                phaseAccum += freq[k] * tableIncHz;
-                if (phaseAccum >= tableLen) {
-                    phaseAccum -= tableLen;
-                } else if (phaseAccum < 0) {
-                    phaseAccum += tableLen;
+                phase += freq[k] * tableIncHz;
+                if (phase >= tableLen) {
+                    phase -= tableLen;
+                } else if (phase < 0) {
+                    phase += tableLen;
                 }
             }
 
-            m.phase = phaseAccum;
+            m.phase = phase;
             that.mulAdd(numSamps);
         };
 
@@ -363,22 +363,22 @@ var flock = flock || {};
         that.gen = function (numSamps) {
             var m = that.model,
                 freq = that.inputs.freq.output,
-                phase = that.inputs.phase.output,
+                phaseOffset = that.inputs.phase.output,
                 freqInc = m.freqInc,
                 phaseInc = m.phaseInc,
                 out = that.output,
-                phaseAccum = m.phase,
+                phase = m.phase,
                 sampleRate = that.sampleRate,
                 i,
                 j,
                 k;
 
             for (i = 0, j = 0, k = 0; i < numSamps; i++, j += phaseInc, k += freqInc) {
-                out[i] = Math.sin(phaseAccum + phase[j]);
-                phaseAccum += freq[k] / sampleRate * flock.TWOPI;
+                out[i] = Math.sin(phase + phaseOffset[j]);
+                phase += freq[k] / sampleRate * flock.TWOPI;
             }
 
-            m.phase = phaseAccum;
+            m.phase = phase;
             that.mulAdd(numSamps);
         };
     
@@ -403,12 +403,13 @@ var flock = flock || {};
                 freqInc = m.freqInc,
                 out = that.output,
                 scale = m.scale,
-                phase = m.phase === undefined ? that.inputs.phase.output[0] : m.phase, // TODO: Make phase modulatable.
+                phaseOffset = that.inputs.phase.output[0], // Phase is control rate
+                phase = m.phase, // TODO: Prime synth graph on instantiation.
                 i,
                 j;
 
             for (i = 0, j = 0; i < numSamps; i++, j += freqInc) {
-                out[i] = phase;
+                out[i] = phase + phaseOffset;
                 phase += freq[j] * scale;
                 if (phase >= 1.0) { 
                     phase -= 2.0;
@@ -422,7 +423,9 @@ var flock = flock || {};
         };
         
         that.onInputChanged = function () {
-            that.model.freqInc = that.inputs.freq.rate === flock.rates.AUDIO ? 1 : 0;
+            var m = that.model;
+            m.freqInc = that.inputs.freq.rate === flock.rates.AUDIO ? 1 : 0;
+            m.phase = 0.0;
             flock.onMulAddInputChanged(that);
         };
         
@@ -487,7 +490,6 @@ var flock = flock || {};
         
     flock.ugen.impulse = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.strides = {};
         
         that.gen = function (numSamps) {
             var inputs = that.inputs,
@@ -495,33 +497,34 @@ var flock = flock || {};
                 out = that.output,
                 freq = inputs.freq.output,
                 freqInc = m.freqInc,
-                phase = inputs.phase.output[0], // TODO: Make phase modulatable.
-                phaseAccum = m.phaseAccum,
+                phaseOffset = inputs.phase.output[0],
+                phase = m.phase,
+                scale = m.scale,
                 i,
                 j,
                 val;
             
-            if (phaseAccum === undefined) {
-                phaseAccum = phase;
-            }
+            phase += phaseOffset;
             
             for (i = 0, j = 0; i < numSamps; i++, j += freqInc) {
-                if (phaseAccum >= 1.0) {
-                    phaseAccum -= 1.0;
+                if (phase >= 1.0) {
+                    phase -= 1.0;
                     val = 1.0;
                 } else {
                     val = 0.0;
                 }
                 out[i] = val;
-                phaseAccum += freq[j] * m.scale;
+                phase += freq[j] * scale;
             }
             
-            m.phaseAccum = phaseAccum;
+            m.phase = phase - phaseOffset;
             that.mulAdd(numSamps);
         };
         
-        that.onInputChanged = function () {            
-            that.model.freqInc = that.inputs.freq.rate === "audio" ? 1 : 0;
+        that.onInputChanged = function () {
+            var m = that.model;
+            m.phase = 0.0;
+            m.freqInc = that.inputs.freq.rate === "audio" ? 1 : 0;
             flock.onMulAddInputChanged(that);
         };
         
