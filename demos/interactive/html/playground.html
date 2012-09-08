@@ -56,6 +56,12 @@
                     <option value="phase_mod">Phase modulation</option>
                     <option value="impulse_phase">Impulse Phase Modulation</option>
                 </optgroup>
+                <optgroup label="Filters">
+                    <option value="lowpass">Low pass filter</option>
+                    <option value="highpass">High pass filter</option>
+                    <option value="bandpass">Band pass filter</option>
+                    <option value="bandreject">Band reject filter</option>
+                </optgroup>
                 <optgroup label="Envelopes">
                     <option value="simpleASR">Simple Attack/Sustain/Release</option>
                 </optgroup>
@@ -504,6 +510,102 @@ clock.repeat(1, function () {
         newInterval = flock.choose(weightedIntervals);
     intervalSynth.input("carrier.freq", fundamental * newInterval);
 });
+        </script>
+        <script type="application/flocking" id="lowpass">
+var synth = flock.synth({
+    ugen: "flock.ugen.filter",
+    options: {
+        type: "lowPass"
+    },
+    freq: {
+        ugen: "flock.ugen.sin",
+        rate: "control",
+        freq: {
+            ugen: "flock.ugen.xLine",
+            rate: "control",
+            start: 0.7,
+            end: 300,
+            duration: 20
+        },
+        phase: 0,
+        mul: 3600,
+        add: 4000
+    },
+    source: {
+        ugen: "flock.ugen.lfSaw",
+        freq: 200,
+        mul: 0.1
+    }
+});
+        </script>
+        <script type="application/flocking" id="highpass">
+var synth = flock.synth({
+    ugen: "flock.ugen.filter",
+    options: {
+        type: "highPass"
+    },
+    freq: {
+        ugen: "flock.ugen.sin",
+        rate: "control",
+        freq: {
+            ugen: "flock.ugen.xLine",
+            rate: "control",
+            start: 0.7,
+            end: 300,
+            duration: 20
+        },
+        phase: 0,
+        mul: 3600,
+        add: 4000
+    },
+    bandwidth: 5,
+    source: {
+        ugen: "flock.ugen.lfSaw",
+        freq: 200,
+        mul: 0.1
+    }
+});
+        </script>
+        <script type="application/flocking" id="bandpass">
+var synth = flock.synth({
+    ugen: "flock.ugen.filter",
+    options: {
+        type: "bandPass"
+    },
+    freq: {
+        ugen: "flock.ugen.mouse.cursor",
+        mul: 10000,
+        add: 100,
+        lag: 1
+    },
+    bandwidth: 300, // TODO: How does this relate to rq in SC3?
+    source: {
+        ugen: "flock.ugen.lfSaw",
+        freq: 200,
+        mul: 0.5
+    }
+});
+        </script>
+        <script type="application/flocking" id="bandreject">
+var synth = flock.synth({
+    ugen: "flock.ugen.filter",
+    options: {
+        type: "bandReject"
+    },
+    freq: {
+        ugen: "flock.ugen.mouse.cursor",
+        mul: 10000,
+        add: 100,
+        lag: 1
+    },
+    bandwidth: 300, // TODO: How does this relate to rq in SC3?
+    source: {
+        ugen: "flock.ugen.lfSaw",
+        freq: 200,
+        mul: 0.5
+    }
+});
+
         </script>
     </body>
 </html>
