@@ -48,11 +48,13 @@
                     <option value="noise_dust">Dust</option>
                     <option value="noise_lf">LFNoise</option>
                     <option value="noise_sin">LFNoise &amp; SinOsc</option>
+                    <option value="noise_impulse">Impulse</option>
                 </optgroup>
                 <optgroup label="Modulation">
                     <option value="amp_mod" selected="selected">Amplitude modulation</option>
                     <option value="freq_mod">Frequency modulation</option>
                     <option value="phase_mod">Phase modulation</option>
+                    <option value="impulse_phase">Impulse Phase Modulation</option>
                 </optgroup>
                 <optgroup label="Envelopes">
                     <option value="simpleASR">Simple Attack/Sustain/Release</option>
@@ -222,6 +224,21 @@
             mul: 0.25
         });
         </script>
+        
+        <script type="application/flocking" id="noise_impulse">
+        // The Impulse ugen's frequency controlled by a descending xLine.
+        var synth = flock.synth({
+            ugen: "flock.ugen.impulse",
+            freq: {
+                ugen: "flock.ugen.xLine",
+                start: 880,
+                end: 2,
+                duration: 3.0
+            },
+            mul: 0.25
+        });
+        </script>
+        
         <script type="application/flocking" id="noise_sin">// LFNoise randomly changing the pitch of a sine 
         // oscillator every quarter second.
         var synth = flock.synth({
@@ -249,6 +266,28 @@
             },
             mul: 0.25
         });
+        </script>
+        <script type="application/flocking" id="impulse_phase">
+// A stereo pair of Impulses, one being phase modulated with the mouse cursor.
+
+var synth = flock.synth(
+    [
+        {
+            ugen: "flock.ugen.impulse",
+            freq: 4,
+            mul: 0.3,
+            phase: 0
+        },
+        {
+            ugen: "flock.ugen.impulse",
+            freq: 4,
+            mul: 0.3,
+            phase: {
+                ugen: "flock.ugen.mouse.cursor"
+            }
+        }
+    ]
+);
         </script>
         <script type="application/flocking" id="scope">// Dynamic scope: create a synth with a scope ugen 
         //at the end of the ugen graph.
