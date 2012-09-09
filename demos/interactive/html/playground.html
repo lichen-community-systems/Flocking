@@ -107,7 +107,8 @@
                 id: "mod",
                 ugen: "flock.ugen.sinOsc",
                 rate: "control",
-                freq: 1.0
+                freq: 1.0,
+                mul: 0.25
             }
         });
         </script>
@@ -118,13 +119,15 @@
         var synth = flock.synth({
             id: "carrier",
             ugen: "flock.ugen.sinOsc",
-            freq: startingFreq
+            freq: startingFreq,
+            mul: 0.25
         });
 
         // Every second, increase the frequency of the synth
         // by a perfect fourth.
-        var freq = synth.input("carrier.freq");
-        synth.enviro.asyncScheduler.repeat(1000, function () {
+        var freq = synth.input("carrier.freq"),
+            clock = flock.scheduler.async();
+        clock.repeat(1.0, function () {
             if (freq <= 3520) {
                 freq *= 4/3;
                 synth.input("carrier.freq", freq);
@@ -141,7 +144,8 @@
                 id: "mod",
                 ugen: "flock.ugen.sinOsc",
                 freq: 220
-            }
+            },
+            mul: 0.25
         });
         </script>
 
@@ -155,7 +159,7 @@
                 start: 2000,
                 end: 200
             },
-            mul: 0.5
+            mul: 0.25
         });
         </script>
 
@@ -205,12 +209,13 @@
                 ugen: "flock.ugen.env.simpleASR",
                 start: 0.0,
                 attack: 0.25,
-                sustain: 0.6,
+                sustain: 0.25,
                 release: 1.0,
                 gate: {
-                    ugen: "flock.ugen.dust",
-                    rate: flock.rates.CONTROL,
-                    density: 1/3
+                    ugen: "flock.ugen.impulse",
+                    rate: "control",
+                    freq: 0.75,
+                    phase: 1.0
                 }
             }
         });
@@ -220,7 +225,7 @@
         var synth = flock.synth({
             ugen: "flock.ugen.dust",
             density: 200,
-            mul: 0.5
+            mul: 0.25
         });            
         </script>
         <script type="application/flocking" id="noise_lf">// LFNoise generating random audio noise.
@@ -249,7 +254,7 @@
         // oscillator every quarter second.
         var synth = flock.synth({
             ugen: "flock.ugen.sinOsc",
-            mul: 0.2,
+            mul: 0.25,
             freq: {
                 ugen: "flock.ugen.lfNoise",
                 freq: 4,
@@ -301,12 +306,13 @@ var synth = flock.synth(
             ugen: "flock.ugen.scope",
             source: {
                 ugen: "flock.ugen.sinOsc",
-                freq: 440
+                freq: 440,
+                mul: 0.25
             },
             options: {
                 canvas: "#gfx",
                 styles: {
-                    scaleY: 0.75,
+                    scaleY: 3.0,
                     strokeColor: "#777777",
                     strokeWidth: 3
                 }
@@ -316,25 +322,29 @@ var synth = flock.synth(
         <script type="application/flocking" id="simple_sin">//Simple sine wave oscillator
         var synth = flock.synth({
             ugen: "flock.ugen.sinOsc",
-            freq: 440
+            freq: 440,
+            mul: 0.25
         });
         </script>
         <script type="application/flocking" id="simple_triangle">// And a triangle oscillator.
         var synth = flock.synth({
             ugen: "flock.ugen.triOsc",
-            freq: 440
+            freq: 440,
+            mul: 0.25
         });
         </script>
         <script type="application/flocking" id="simple_square">// And a square wave oscillator.
         var synth = flock.synth({
             ugen: "flock.ugen.lfPulse",
-            freq: 440
+            freq: 440,
+            mul: 0.1
         });
         </script>
         <script type="application/flocking" id="simple_saw">// And a saw.
         var synth = flock.synth({
             ugen: "flock.ugen.lfSaw",
-            freq: 440
+            freq: 440,
+            mul: 0.1
         });
         </script>
         <script type="application/flocking" id="stereo">// Create a synth with two different channels. 
@@ -345,12 +355,14 @@ var synth = flock.synth(
             {
                 id: "leftSine",
                 ugen: "flock.ugen.sinOsc",
-                freq: 440
+                freq: 440,
+                mul: 0.25
             },
             {
                 id: "rightSine",
                 ugen: "flock.ugen.sinOsc",
-                freq: 444
+                freq: 444,
+                mul: 0.25
             }
         ]);
         </script>
@@ -364,7 +376,7 @@ var synth = flock.synth(
                 mul: 880,
                 add: 110
             },
-            mul: 0.5
+            mul: 0.25
         });
         </script>
         <script type="application/flocking" id="mouse_y">
@@ -380,7 +392,7 @@ var synth = flock.synth(
                     axis: "y"
                 }
             },
-            mul: 0.5
+            mul: 0.25
         });
         </script>
         <script type="application/flocking" id="mouse_xy">
@@ -405,7 +417,8 @@ var synth = flock.synth(
                 options: {
                     axis: "height",
                     target: "#editor"
-                }
+                },
+                mul: 0.5
             }
         });
         </script>
@@ -417,7 +430,7 @@ var synth = flock.synth(
             mul: {
                 ugen: "flock.ugen.env.simpleASR",
                 attack: 0.25,
-                sustain: 0.6,
+                sustain: 0.25,
                 release: 0.5,
                 gate: {
                     ugen: "flock.ugen.mouse.click"
@@ -453,7 +466,7 @@ var makeHarmonics = function (fundamental) {
             octave = 1;
 
         while (freq <= maxFreq) {
-            var ugenDef = makeHarmonic(ugenTypes, fundamental, harmonic, octave, 0.25);
+            var ugenDef = makeHarmonic(ugenTypes, fundamental, harmonic, octave, 0.1);
             freq = ugenDef.freq;
             if (freq <= maxFreq && freqs.indexOf(freq) === -1) {
                 freqs.push(freq);
@@ -485,7 +498,7 @@ synth.enviro.asyncScheduler.repeat(2000, function () {
 
 // Creates an array of synths, each playing a degree of the chord specified in "intervals."
 function makeIntervallicSynths (fundamental, intervals) {
-    var ampScale = 1.0 / intervals.length;
+    var ampScale = 0.4 / intervals.length;
     return $.map(intervals, function (interval, idx) {
         return flock.synth({
             id: "carrier",
