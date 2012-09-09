@@ -81,6 +81,11 @@ var flock = flock || {};
         ok(numNonZero > (buffer.length / 10), msg + " First silent sample found at: " + foundAt);
     };
     
+    flock.test.assertSilent = function (buffer, msg) {
+        var silentBuffer = flock.test.constantBuffer(buffer.length, 0.0);
+        deepEqual(buffer, silentBuffer, "The buffer should be silent by containing all zeros.");
+    };
+    
     flock.test.assertUnbroken = function (buffer, msg) {
         var numZero = 0,
             isBroken = false,
@@ -168,6 +173,35 @@ var flock = flock || {};
         ok(maxReached, msg);
     };
     
+    flock.test.assertOnlyValues = function (buffer, values, msg) {
+        var outlierVals = [],
+            outlierIndices = [],
+            i;
+        
+        for (i = 0; i < buffer.length; i++) {
+            var val = buffer[i];
+            if (values.indexOf(val) === -1) {
+                outliers.push(val);
+                outlierIndices.push(i);
+            }
+        }
+        
+        equal(outlierVals.length, 0, msg);
+    };
+    
+    flock.test.assertValueCount = function (buffer, value, expectedNum, msg) {
+        var count = 0,
+            i;
+        
+        for (i = 0; i < buffer.length; i++) {
+            if (buffer[i] === value) {
+                count++;
+            }
+        }
+        
+        equal(count, expectedNum, msg);
+    };
+        
     flock.test.mockUGen = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         if (that.options.buffer) {

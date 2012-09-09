@@ -50,12 +50,20 @@
                     <option value="noise_dust">Dust</option>
                     <option value="noise_lf">LFNoise</option>
                     <option value="noise_sin">LFNoise &amp; SinOsc</option>
+                    <option value="noise_impulse">Impulse</option>
+                    <option value="impulse_phase">Impulse Phase Modulation</option>
                 </optgroup>
-                <optgroup label="Modulation">
+                <optgroup label="Synthesis Techniques">
                     <option value="amp_mod" selected="selected">Amplitude modulation</option>
                     <option value="freq_mod">Frequency modulation</option>
                     <option value="phase_mod">Phase modulation</option>
                     <option value="sum">Additive Synthesis</option>
+                </optgroup>
+                <optgroup label="Filters">
+                    <option value="lowpass">Low pass filter</option>
+                    <option value="highpass">High pass filter</option>
+                    <option value="bandpass">Band pass filter</option>
+                    <option value="bandreject">Band reject filter</option>
                 </optgroup>
                 <optgroup label="Envelopes">
                     <option value="simpleASR">Simple Attack/Sustain/Release</option>
@@ -72,7 +80,7 @@
                     <option value="mouse_xy">Mouse X &amp; Y</option>
                     <option value="mouse_click">Mouse click</option>
                 </optgroup>
-                <optgroup label="Synths">
+                <optgroup label="Synths and Scheduling">
                     <option value="multipleSynths">Multiple Synths</option>
                     <option value="polyphonicSynth">Polyphonic Synth</option>
                 </optgroup>
@@ -225,6 +233,21 @@
             mul: 0.25
         });
         </script>
+        
+        <script type="application/flocking" id="noise_impulse">
+        // The Impulse ugen's frequency controlled by a descending xLine.
+        var synth = flock.synth({
+            ugen: "flock.ugen.impulse",
+            freq: {
+                ugen: "flock.ugen.xLine",
+                start: 880,
+                end: 2,
+                duration: 3.0
+            },
+            mul: 0.25
+        });
+        </script>
+        
         <script type="application/flocking" id="noise_sin">// LFNoise randomly changing the pitch of a sine 
         // oscillator every quarter second.
         var synth = flock.synth({
@@ -252,6 +275,28 @@
             },
             mul: 0.25
         });
+        </script>
+        <script type="application/flocking" id="impulse_phase">
+// A stereo pair of Impulses, one being phase modulated with the mouse cursor.
+
+var synth = flock.synth(
+    [
+        {
+            ugen: "flock.ugen.impulse",
+            freq: 4,
+            mul: 0.3,
+            phase: 0
+        },
+        {
+            ugen: "flock.ugen.impulse",
+            freq: 4,
+            mul: 0.3,
+            phase: {
+                ugen: "flock.ugen.mouse.cursor"
+            }
+        }
+    ]
+);
         </script>
         <script type="application/flocking" id="scope">// Dynamic scope: create a synth with a scope ugen 
         //at the end of the ugen graph.
@@ -411,7 +456,7 @@ var makeHarmonics = function (fundamental) {
             octave = 1;
 
         while (freq <= maxFreq) {
-            var ugenDef = makeHarmonic(ugenTypes, fundamental, harmonic, octave, 0.5);
+            var ugenDef = makeHarmonic(ugenTypes, fundamental, harmonic, octave, 0.25);
             freq = ugenDef.freq;
             if (freq <= maxFreq && freqs.indexOf(freq) === -1) {
                 freqs.push(freq);
@@ -458,17 +503,17 @@ var fundamental = 440,
     baseIntervals = [1/1, 5/4, 3/2],
     weightedIntervals = baseIntervals.concat([4/3, 6/5, 7/6, 2/1]).concat(baseIntervals),
     synths = makeIntervallicSynths(fundamental, baseIntervals),
-    synth = synths[0];
+    synth = synths[0],
+    clock = flock.scheduler.async.beat(60);
 
 // Every second, change one of the intervals by randomly choosing a synth
 // and assigning it a new frequency from the list of intervals.
-synth.enviro.asyncScheduler.repeat(1000, function () {
+clock.repeat(1, function () {
     var intervalSynth = flock.choose(synths),
         newInterval = flock.choose(weightedIntervals);
     intervalSynth.input("carrier.freq", fundamental * newInterval);
 });
-        </script>
-        
+        </script>        
         <script type="application/flocking" id="polyphonicSynth">
 var fundamental = 440;
 
@@ -526,14 +571,98 @@ var score = [
     }
 ];
 
+var clock = flock.scheduler.async();
+
 var idx = 0;
-flock.enviro.shared.asyncScheduler.repeat(1000, function () {
+clock.repeat(0.5, function () {
     if (idx >= score.length) {
         idx = 0;
     }
     var event = score[idx];
     polySynth[event.action](event.noteName, event.change);
     idx++;
+});
+        </script>
+        <script type="application/flocking" id="lowpass">
+var synth = flock.synth({
+    ugen: "flock.ugen.filter.butter.lp",
+    freq: {
+        ugen: "flock.ugen.sin",
+        rate: "control",
+        freq: {
+            ugen: "flock.ugen.xLine",
+            rate: "control",
+            start: 0.7,
+            end: 300,
+            duration: 20
+        },
+        phase: 0,
+        mul: 3600,
+        add: 4000
+    },
+    source: {
+        ugen: "flock.ugen.lfSaw",
+        freq: 200,
+        mul: 0.25
+    }
+});
+        </script>
+        <script type="application/flocking" id="highpass">
+var synth = flock.synth({
+    ugen: "flock.ugen.filter.butter.hp",
+    freq: {
+        ugen: "flock.ugen.sin",
+        rate: "control",
+        freq: {
+            ugen: "flock.ugen.xLine",
+            rate: "control",
+            start: 0.7,
+            end: 300,
+            duration: 20
+        },
+        phase: 0,
+        mul: 3600,
+        add: 4000
+    },
+    source: {
+        ugen: "flock.ugen.lfSaw",
+        freq: 200,
+        mul: 0.25
+    }
+});
+        </script>
+        <script type="application/flocking" id="bandpass">
+var synth = flock.synth({
+    ugen: "flock.ugen.filter.butter.bp",
+    freq: {
+        ugen: "flock.ugen.mouse.cursor",
+        mul: 10000,
+        add: 100,
+        lag: 1
+    },
+    bandwidth: 1350,
+    source: {
+        ugen: "flock.ugen.lfSaw",
+        freq: 200,
+        mul: 0.25
+    }
+});
+        </script>
+        <script type="application/flocking" id="bandreject">
+var synth = flock.synth({
+    ugen: "flock.ugen.filter.butter.br",
+    freq: {
+        ugen: "flock.ugen.mouse.cursor",
+        mul: 10000,
+        add: 100,
+        lag: 1
+    },
+    bandwidth: 1350,
+    source: {
+        ugen: "flock.ugen.lfSaw",
+        freq: 200,
+        mul: 0.25
+    }
 });
         </script>
     </body>

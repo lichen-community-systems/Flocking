@@ -21,6 +21,7 @@ var flock = flock || {};
     flock.TWOPI = 2.0 * Math.PI;
     flock.LOG1 = Math.log(0.1);
     flock.LOG001 = Math.log(0.001);
+    flock.ROOT2 = Math.sqrt(2);
     
     flock.rates = {
         AUDIO: "audio",
@@ -544,29 +545,37 @@ var flock = flock || {};
         
         that.repeat = function (interval, fn) {
             var worker = that.workers.interval,
-                listener = that.addFilteredListener("message", worker, interval, fn);
+                ms = that.timeConverter.value(interval),
+                listener = that.addFilteredListener("message", worker, ms, fn);
             
-            that.scheduleWorker(worker, interval);
+            that.scheduleWorker(worker, ms);
             return listener;
         };
         
         that.once = function (time, fn) {
             var worker = that.workers.specifiedTime,
+                ms = that.timeConverter.value(time),
                 listener = that.addOneShotListener("message", worker, fn);
             
-            that.scheduleWorker(worker, time);
+            that.scheduleWorker(worker, ms);
             return listener;
         };
         
         that.sequence = function (times, fn) {
+            var listeners = [],
+                listener;
+                
             for (var i = 0; i < times.length; i++) {
-                that.once(times[i], fn);
+                listener = that.once(times[i], fn)
+                listeners.push(listener);
             }
+            
+            return listeners;
         };
         
         that.scheduleWorker = function (worker, value) {
             var msg = that.messages.schedule;
-            msg.value = that.timeConverter(value);
+            msg.value = value;
             worker.postMessage(msg);
         };
         
@@ -612,13 +621,18 @@ var flock = flock || {};
         that.init = function () {
             // TODO: This is pretty silly. Refactor flock.worker().
             var workerTypes = flock.worker.code,
-                worker;
+                worker,
+                converter,
+                converterType;
+            
             for (var type in workerTypes) {
                 worker = flock.worker(workerTypes[type]);
                 that.workers[type] = worker;
             }
-            that.timeConverter = that.options.timeConverter ?
-                flock.get(undefined, that.options.timeConverter) : flock.identity;
+            
+            converter = that.options.timeConverter;
+            converterType = typeof (converter) === "string" ? converter : converter.type;
+            that.timeConverter = flock.invoke(undefined, converterType, converter.options);
         };
          
         that.init();
@@ -626,19 +640,55 @@ var flock = flock || {};
     };
     
     flock.defaults("flock.scheduler.async", {
-        timeConverter: "flock.time.secToMs"
+        timeConverter: "flock.convert.seconds"
+    });
+    
+    flock.scheduler.async.beat = function (bpm) {
+        var options = flock.defaults("flock.scheduler.async.beat");
+        options.timeConverter.options.bpm = bpm;
+        
+        return flock.scheduler.async(options);
+    };
+    
+    flock.defaults("flock.scheduler.async.beat", {
+        timeConverter: {
+            type: "flock.convert.beats",
+            options: {
+                bpm: 60
+            }
+        }
     });
     
     
-    flock.time = {};
+    flock.convert = {};
     
-    flock.time.secToMs = function (secs) {
+    flock.convert.makeStatelessConverter = function (convertFn) {
+        return function (options) {
+            return {
+                value: convertFn
+            };
+        }
+    };
+    
+    flock.convert.ms = flock.convert.makeStatelessConverter(flock.identity);
+    
+    flock.convert.seconds = flock.convert.makeStatelessConverter(function (secs) {
         return secs * 1000;
+    });
+    
+    flock.convert.beats = function (options) {
+        var that = flock.component("flock.convert.beats", options);
+        that.value = function (beats) {
+            var bpm = that.options.bpm;
+            return bpm <= 0 ? 0 : (beats / bpm) * 60000;
+        };
+        return that;
     };
     
-    flock.time.bpmToMs = function (beats, bpm) {
-        return bpm <= 0 ? 0 : (beats / bpm) * 1000;
-    };
+    flock.defaults("flock.convert.beats", {
+        bpm: 60
+    });
+    
      
     /***********************
      * Synths and Playback *
@@ -682,7 +732,7 @@ var flock = flock || {};
                 that.audioSettings.rates.control);
         that.buffers = {};
         that.asyncScheduler = flock.scheduler.async({
-            timeConverter: null
+            timeConverter: "flock.convert.ms"
         });
         
         /**
