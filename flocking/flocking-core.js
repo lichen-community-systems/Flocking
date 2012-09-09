@@ -21,6 +21,7 @@ var flock = flock || {};
     flock.TWOPI = 2.0 * Math.PI;
     flock.LOG1 = Math.log(0.1);
     flock.LOG001 = Math.log(0.001);
+    flock.ROOT2 = Math.sqrt(2);
     
     flock.rates = {
         AUDIO: "audio",

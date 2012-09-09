@@ -513,10 +513,7 @@ clock.repeat(1, function () {
         </script>
         <script type="application/flocking" id="lowpass">
 var synth = flock.synth({
-    ugen: "flock.ugen.filter",
-    options: {
-        type: "lowPass"
-    },
+    ugen: "flock.ugen.filter.butter.lp",
     freq: {
         ugen: "flock.ugen.sin",
         rate: "control",
@@ -534,16 +531,13 @@ var synth = flock.synth({
     source: {
         ugen: "flock.ugen.lfSaw",
         freq: 200,
-        mul: 0.1
+        mul: 0.25
     }
 });
         </script>
         <script type="application/flocking" id="highpass">
 var synth = flock.synth({
-    ugen: "flock.ugen.filter",
-    options: {
-        type: "highPass"
-    },
+    ugen: "flock.ugen.filter.butter.hp",
     freq: {
         ugen: "flock.ugen.sin",
         rate: "control",
@@ -558,51 +552,44 @@ var synth = flock.synth({
         mul: 3600,
         add: 4000
     },
-    bandwidth: 5,
     source: {
         ugen: "flock.ugen.lfSaw",
         freq: 200,
-        mul: 0.1
+        mul: 0.25
     }
 });
         </script>
         <script type="application/flocking" id="bandpass">
 var synth = flock.synth({
-    ugen: "flock.ugen.filter",
-    options: {
-        type: "bandPass"
-    },
+    ugen: "flock.ugen.filter.butter.bp",
     freq: {
         ugen: "flock.ugen.mouse.cursor",
         mul: 10000,
         add: 100,
         lag: 1
     },
-    bandwidth: 300, // TODO: How does this relate to rq in SC3?
+    bandwidth: 1350,
     source: {
         ugen: "flock.ugen.lfSaw",
         freq: 200,
-        mul: 0.5
+        mul: 0.25
     }
 });
         </script>
         <script type="application/flocking" id="bandreject">
 var synth = flock.synth({
-    ugen: "flock.ugen.filter",
-    options: {
-        type: "bandReject"
-    },
+    ugen: "flock.ugen.filter.butter.br",
     freq: {
         ugen: "flock.ugen.mouse.cursor",
         mul: 10000,
         add: 100,
         lag: 1
     },
-    bandwidth: 300, // TODO: How does this relate to rq in SC3?
+    bandwidth: 1350,
     source: {
         ugen: "flock.ugen.lfSaw",
         freq: 200,
-        mul: 0.5
+        mul: 0.25
     }
 });
 

@@ -14,53 +14,28 @@ var flock = flock || {};
 
 (function ($) {
     "use strict";
-     
-    flock.ugen = function (inputs, output, options) {
-        options = options || {};
-    
-        var that = {
-            rate: options.rate || flock.rates.AUDIO,
-            inputs: inputs,
-            output: output,
-            options: options,
-            model: {}
-        };
-        
-        that.options.audioSettings = that.options.audioSettings || flock.enviro.shared.audioSettings;
-        that.model.sampleRate = options.sampleRate || that.options.audioSettings.rates[that.rate];
-        
-        that.get = function (path) {
-            return flock.input.get(that.inputs, path);
-        };
 
-        /**
-         * Sets the value of the input at the specified path.
-         *
-         * @param {String} path the inputs's path relative to this ugen
-         * @param {Number || UGenDef} val a scalar value (for Value ugens) or a UGenDef object
-         * @return {UGen} the newly-created UGen that was set at the specified path
-         */
-        that.set = function (path, val, swap) {
-            return flock.input.set(that.inputs, path, val, that, function (ugenDef) {
-                return flock.parse.ugenDef(ugenDef, that.options.audioSettings.rates);
-            });
-        };
-        
-        /**
-         * Gets or sets the named unit generator input.
-         *
-         * @param {String} path the input path
-         * @param {UGenDef} val [optional] a scalar value, ugenDef, or array of ugenDefs that will be assigned to the specified input name
-         * @return {Number|UGen} a scalar value in the case of a value ugen, otherwise the ugen itself
-         */
-        that.input = function (path, val) {
-            return !path ? undefined : typeof (path) === "string" ?
-                arguments.length < 2 ? that.get(path) : that.set(path, val) :
-                flock.isIterable(path) ? that.get(path) : that.set(path, val);
-        };
+    /*************
+     * Utilities *
+     *************/
     
-        that.onInputChanged = flock.identity; // No-op base implementation.
-        return that;
+    flock.aliasUGen = function (sourcePath, aliasName, inputDefaults, defaultOptions) {
+        var root = flock.get(undefined, sourcePath);
+        flock.set(root, aliasName, function (inputs, output, options) {
+            options = $.extend(true, {}, defaultOptions, options);
+            return root(inputs, output, options);
+        });
+        flock.defaults(sourcePath + "." + aliasName, inputDefaults);
+    };
+    
+    flock.aliasUGens = function (sourcePath, aliasesSpec) {
+        var aliasName,
+            settings;
+            
+        for (aliasName in aliasesSpec) {
+            settings = aliasesSpec[aliasName];
+            flock.aliasUGen(sourcePath, aliasName, {inputs: settings.inputDefaults}, settings.options);
+        }
     };
     
     flock.krMul = function (numSamps, output, mulInput, addInput) {
@@ -156,6 +131,59 @@ var flock = flock || {};
             fn(numSamps, that.output, mul, add);
         };
     };
+    
+    /*******************
+     * Unit Generators *
+     *******************/
+     
+    flock.ugen = function (inputs, output, options) {
+        options = options || {};
+    
+        var that = {
+            rate: options.rate || flock.rates.AUDIO,
+            inputs: inputs,
+            output: output,
+            options: options,
+            model: {}
+        };
+        
+        that.options.audioSettings = that.options.audioSettings || flock.enviro.shared.audioSettings;
+        that.model.sampleRate = options.sampleRate || that.options.audioSettings.rates[that.rate];
+        
+        that.get = function (path) {
+            return flock.input.get(that.inputs, path);
+        };
+
+        /**
+         * Sets the value of the input at the specified path.
+         *
+         * @param {String} path the inputs's path relative to this ugen
+         * @param {Number || UGenDef} val a scalar value (for Value ugens) or a UGenDef object
+         * @return {UGen} the newly-created UGen that was set at the specified path
+         */
+        that.set = function (path, val, swap) {
+            return flock.input.set(that.inputs, path, val, that, function (ugenDef) {
+                return flock.parse.ugenDef(ugenDef, that.options.audioSettings.rates);
+            });
+        };
+        
+        /**
+         * Gets or sets the named unit generator input.
+         *
+         * @param {String} path the input path
+         * @param {UGenDef} val [optional] a scalar value, ugenDef, or array of ugenDefs that will be assigned to the specified input name
+         * @return {Number|UGen} a scalar value in the case of a value ugen, otherwise the ugen itself
+         */
+        that.input = function (path, val) {
+            return !path ? undefined : typeof (path) === "string" ?
+                arguments.length < 2 ? that.get(path) : that.set(path, val) :
+                flock.isIterable(path) ? that.get(path) : that.set(path, val);
+        };
+    
+        that.onInputChanged = flock.identity; // No-op base implementation.
+        return that;
+    };
+    
 
     flock.ugen.value = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
@@ -166,6 +194,7 @@ var flock = flock || {};
     flock.defaults("flock.ugen.value", {
         rate: "constant"
     });
+
 
     flock.ugen.sum = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
@@ -356,6 +385,7 @@ var flock = flock || {};
         });
     });
 
+
     flock.ugen.sin = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         that.model.phase = 0.0;
@@ -439,7 +469,8 @@ var flock = flock || {};
             phase: 0.0
         }
     });
-        
+    
+    
     flock.ugen.lfPulse = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         that.model.scale = 1 / options.sampleRate;
@@ -528,9 +559,12 @@ var flock = flock || {};
             flock.onMulAddInputChanged(that);
         };
         
-        that.model.scale = 1.0 / m.sampleRate;
-        that.onInputChanged();
-        
+        that.init = function () {
+            that.model.scale = 1.0 / that.model.sampleRate;
+            that.onInputChanged();
+        };
+
+        that.init();
         return that;
     };
     
@@ -542,6 +576,11 @@ var flock = flock || {};
         }
     });
     
+    
+    /****************
+     * Buffer UGens *
+     ****************/
+     
     flock.ugen.playBuffer = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         that.model = {
@@ -1162,6 +1201,7 @@ var flock = flock || {};
         }
     });
     
+    
     flock.ugen.audioIn = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
@@ -1531,7 +1571,9 @@ var flock = flock || {};
      * Filters *
      ***********/
     
-    flock.ugen.filter = function (inputs, output, options) {
+    flock.ugen.filter = {};
+     
+    flock.ugen.filter.butter = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
         that.gen = function (numSamps) {
@@ -1546,7 +1588,7 @@ var flock = flock || {};
                 w;
             
             if (m.prevBW !== bw || m.prevFreq !== freq) {
-                flock.ugen.filter.calcButterworth[that.options.type](m, freq, bw);
+                that.calcCoefficients(m, freq, bw);
             }
 
             for (i = 0; i < numSamps; i++) {
@@ -1560,56 +1602,91 @@ var flock = flock || {};
             m.prevFreq = freq;
         };
         
+        
+        that.onInputChanged = function () {
+            that.calcCoefficients = that.options.coefficientCalculator ||
+                flock.ugen.filter.butter.coefficients[that.options.type];
+        };
+        
         that.init = function () {
             that.model.d0 = 0.0;
             that.model.d1 = 0.0;
             that.model.coeffs = {};
+            that.onInputChanged();
         };
         
         that.init();
         return that;
     };
     
-    flock.defaults("flock.ugen.filter", {
+    flock.defaults("flock.ugen.filter.butter", {
         inputs: {
             freq: 440,
             bandwidth: 110
         }
     });
     
-    flock.ugen.filter.calcButterworth = {
+    flock.ugen.filter.butter.types = {
+        "hp": {
+            inputDefaults: {
+                freq: 10000,
+                bandwidth: 0
+            },
+            options: {type: "highPass"}
+        },
+        "lp": {
+            inputDefaults: {
+                freq: 440,
+                bandwidth: 0
+            },
+            options: {type: "lowPass"}
+        },
+        "bp": {
+            inputDefaults: {
+                freq: 440,
+                bandwidth: 110
+            },
+            options: {type: "bandPass"}
+        },
+        "br": {
+            inputDefaults: {
+                freq: 10000,
+                bandwidth: 5000
+            },
+            options: {type: "bandReject"}
+        }
+    };
+    
+    // Provide cover methods for instantiating the different types of butterworth filters.
+    flock.aliasUGens("flock.ugen.filter.butter", flock.ugen.filter.butter.types);
+    
+    flock.ugen.filter.butter.coefficients = {
         lowPass: function (model, freq) {
             var co = model.coeffs,
-                twoLambda,
                 lambdaSquared,
-                twoA0;
-            
+                rootTwoLambda;
             co.lambda = 1 / Math.tan(Math.PI * freq / model.sampleRate);
-            twoLambda = 2 * co.lambda;
             lambdaSquared = co.lambda * co.lambda;
-            co.a0 = 1 / (1 + twoLambda + lambdaSquared);
-            twoA0 = 2 * co.a0;
-            co.a1 = twoA0;
+            rootTwoLambda = flock.ROOT2 * co.lambda;
+            co.a0 = 1 / (1 + rootTwoLambda + lambdaSquared);
+            co.a1 = 2 * co.a0;
             co.a2 = co.a0;
-            co.b1 = twoA0 * (1 - lambdaSquared);
-            co.b2 = co.a0 * (1 - twoLambda + lambdaSquared);
+            co.b1 = 2 * (1 - lambdaSquared) * co.a0;
+            co.b2 = (1 - rootTwoLambda + lambdaSquared) * co.a0;
         },
         
         highPass: function (model, freq) {
             var co = model.coeffs,
-                twoLambda,
                 lambdaSquared,
-                twoA0;
-            
+                rootTwoLambda;
             co.lambda = Math.tan(Math.PI * freq / model.sampleRate);
-            twoLambda = 2 * co.lambda;
             lambdaSquared = co.lambda * co.lambda;
-            co.a0 = 1 / (1 + twoLambda + lambdaSquared);
-            twoA0 = 2 * co.a0;
-            co.a1 = twoA0;
+            rootTwoLambda = flock.ROOT2 * co.lambda;
+            co.a0 = 1 / (1 + rootTwoLambda + lambdaSquared);
+            co.a1 = -2 * co.a0;
             co.a2 = co.a0;
-            co.b1 = twoA0 * (lambdaSquared - 1);
-            co.b2 = co.a0 * (1 - twoLambda + lambdaSquared);
+            co.b1 = 2 * (lambdaSquared - 1) * co.a0;
+            co.b2 = (1 - rootTwoLambda + lambdaSquared) * co.a0;
         },
         
         bandPass: function (model, freq, bw) {
