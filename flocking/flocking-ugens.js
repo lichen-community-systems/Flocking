@@ -196,6 +196,63 @@ var flock = flock || {};
     });
 
 
+    flock.ugen.math = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        that.expandedSource = new Float32Array(that.options.audioSettings.rates.control);
+
+        that.krSourceKrInputGen = function () {
+            var op = that.activeInput,
+                input = that.inputs[op],
+                sourceBuf = flock.generate(that.expandedSource, that.inputs.source.output[0]);
+            DSP[op](that.output, sourceBuf, input.output[0]);
+        };
+        
+        that.krSourceArInputGen = function () {
+            var op = that.activeInput,
+                input = that.inputs[op],
+                sourceBuf = flock.generate(that.expandedSource, that.inputs.source.output[0]);
+            DSP[op](that.output, sourceBuf, input.output);
+        };
+        
+        that.arSourceKrInputGen = function () {
+            var op = that.activeInput,
+                input = that.inputs[op],
+                sourceBuf = that.inputs.source.output;
+            DSP[op](that.output, sourceBuf, input.output[0]);
+        };
+        
+        that.arSourceArInputGen = function () {
+            var op = that.activeInput,
+                input = that.inputs[op];
+            DSP[op](that.output, that.inputs.source.output, input.output);
+        };
+        
+        that.onInputChanged = function () {
+            // Find the first input and use it. Multiple inputters, beware.
+            // TODO: Support multiple operations.
+            var inputs = Object.keys(that.inputs),
+                i,
+                input,
+                isInputAudioRate;
+            
+            for (i = 0; i < inputs.length; i++) {
+                input = inputs[i];
+                if (input !== "source") {
+                    that.activeInput = input;
+                    isInputAudioRate = that.inputs[input].rate === "audio";
+                    that.gen = that.inputs.source.rate === "audio" ?
+                        (isInputAudioRate ? that.arSourceArInputGen : that.arSourceKrInputGen) :
+                        (isInputAudioRate ? that.krSourceArInputGen : that.krSourceKrInputGen);
+                    break;
+                }
+            }
+        };
+        
+        that.onInputChanged();
+        return that;
+    };
+    
+    
     flock.ugen.sum = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         

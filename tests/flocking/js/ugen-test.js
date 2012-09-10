@@ -1019,4 +1019,92 @@ flock.test = flock.test || {};
         deepEqual(normalizer.output, expected,
             "When the 'max' input is changed to 0.5, the signal should be normalized to 0.5");
     });
+    
+    module("flock.ugen.math() tests");
+    
+    var testMath = function (synthDef, expected, msg) {
+        synthDef.id = "math";
+        var synth = flock.synth(synthDef),
+            math = synth.ugens.named.math;
+        math.gen();
+        deepEqual(math.output, expected, msg);
+    };
+    
+    test("flock.ugen.math()", function () {
+        testMath({
+            ugen: "flock.ugen.math",
+            inputs: {
+                source: 2,
+                add: 5
+            }
+        }, flock.test.constantBuffer(64, 7), "Value add");
+        
+        testMath({
+            ugen: "flock.ugen.math",
+            inputs: {
+                source: 3,
+                sub: 2
+            }
+        }, flock.test.constantBuffer(64, 1), "Value subtract");
+        
+        testMath({
+            ugen: "flock.ugen.math",
+            inputs: {
+                source: 3,
+                mul: 2
+            }
+        }, flock.test.constantBuffer(64, 6), "Value multiply");
+        
+        testMath({
+            ugen: "flock.ugen.math",
+            inputs: {
+                source: 3,
+                div: 2
+            }
+        }, flock.test.constantBuffer(64, 1.5), "Value divide");
+        
+        var incBuffer = flock.generate(64, function (i) {
+            return i + 1;
+        });
+        
+        var expected = flock.generate(64, function (i) {
+            return i + 4;
+        });
+        
+        var krArUGenDef = {
+            ugen: "flock.ugen.math",
+            inputs: {
+                source: {
+                    ugen: "flock.test.mockUGen",
+                    rate: "audio",
+                    options: {
+                        buffer: incBuffer
+                    }
+                },
+                add: 3
+            }
+        };
+        
+        testMath(krArUGenDef, expected, "Audio rate source, value add");
+        
+        krArUGenDef.inputs.source.rate = "control";
+        testMath(krArUGenDef, flock.test.constantBuffer(64, 4), "Control rate source, value add");
+        
+        krArUGenDef.inputs.add = {
+            ugen: "flock.test.mockUGen",
+            rate: "control",
+            options: {
+                buffer: incBuffer
+            }
+        };
+        testMath(krArUGenDef, flock.test.constantBuffer(64, 2), "Control rate source, control rate add.");
+        
+        krArUGenDef.inputs.source.rate = "audio";
+        krArUGenDef.inputs.add.rate = "audio";
+        testMath(krArUGenDef, flock.generate(64, function (i) {
+            var j = i + 1;
+            return j + j;
+        }), "Audio rate source, audio rate add.");
+    });
+    
 }());
