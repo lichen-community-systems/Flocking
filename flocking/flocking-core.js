@@ -1038,9 +1038,8 @@ var flock = flock || {};
          * @param numSamps the number of samples to generate
          * @return a buffer containing the generated audio
          */
-        that.gen = function () {
-            // Synths always evaluate their ugen graph at the audio rate.
-            flock.enviro.evalGraph(that.ugens.active, that.enviro.audioSettings.rates.control);
+        that.gen = function (numSamps) {
+            flock.enviro.evalGraph(that.ugens.active, numSamps);
         };
         
         /**
@@ -1272,30 +1271,51 @@ var flock = flock || {};
     
     flock.synth.group = function (options) {
         var that = flock.nodeList(options);
+        that.rate = flock.rates.AUDIO;
+        that.enviro = flock.enviro.shared; // TODO: Direct reference to the shared environment.
+        that.model = {};
+        that.options = options;
         
-        that.dispatchToNodes = function (msg, args) {
-            var i,
-                node,
-                val;
-            for (i = 0; i < that.nodes.length; i++) {
-                node = that.nodes[i];
-                val = node[msg].apply(node, args);
-            }
+        flock.synth.group.makeDispatchedMethods(that, [
+            "input", "get", "set", "gen", "play", "pause"
+        ]);
+        
+        that.init = function () {
+            if (that.options.addToEnvironment !== false) {
+                that.enviro.tail(that);
+            }    
+        };
+        
+        that.init();
+        return that;
+    };
+    
+    flock.synth.group.dispatch = function (nodes, msg, args) {
+        var i,
+            node,
+            val;
+        for (i = 0; i < nodes.length; i++) {
+            node = nodes[i];
+            val = node[msg].apply(node, args);
+        }
             
-            return val;
+        return val;
+    };
+    
+    flock.synth.group.makeDispatcher = function (nodes, msg) {
+        return function () {
+            return flock.synth.group.dispatch(nodes, msg, arguments);
         };
-        
-        that.input = function () {
-            that.dispatchToNodes("input", arguments);
-        };
-        
-        that.get = function () {
-            that.dispatchToNodes("get", arguments);
-        };
-        
-        that.set = function () {
-            that.dispatchToNodes("set", arguments);
-        };
+    };
+    
+    flock.synth.group.makeDispatchedMethods = function (that,methodNames) {
+        var name,
+            i;
+            
+        for (i = 0; i < methodNames.length; i++) {
+            name = methodNames[i];
+            that[name] = flock.synth.group.makeDispatcher(nodes, name, flock.synth.group.dispatch);
+        }
         
         return that;
     };
@@ -1343,7 +1363,9 @@ var flock = flock || {};
         };
         
         that.createVoice = function () {
-            var voice = flock.synth(that.model.synthDef),
+            var voice = flock.synth(that.model.synthDef, {
+                    addToEnvironment: false
+                }),
                 normalizer = that.options.amplitudeNormalizer,
                 ampKey = that.options.amplitudeKey,
                 normValue;
