@@ -1290,31 +1290,27 @@ var flock = flock || {};
         return that;
     };
     
-    flock.synth.group.dispatch = function (nodes, msg, args) {
-        var i,
-            node,
-            val;
-        for (i = 0; i < nodes.length; i++) {
-            node = nodes[i];
-            val = node[msg].apply(node, args);
-        }
-            
-        return val;
-    };
-    
     flock.synth.group.makeDispatcher = function (nodes, msg) {
         return function () {
-            return flock.synth.group.dispatch(nodes, msg, arguments);
+            var i,
+                node,
+                val;
+            for (i = 0; i < nodes.length; i++) {
+                node = nodes[i];
+                val = node[msg].apply(node, arguments);
+            }
+            
+            return val;
         };
     };
     
-    flock.synth.group.makeDispatchedMethods = function (that,methodNames) {
+    flock.synth.group.makeDispatchedMethods = function (that, methodNames) {
         var name,
             i;
             
         for (i = 0; i < methodNames.length; i++) {
             name = methodNames[i];
-            that[name] = flock.synth.group.makeDispatcher(nodes, name, flock.synth.group.dispatch);
+            that[name] = flock.synth.group.makeDispatcher(that.nodes, name, flock.synth.group.dispatch);
         }
         
         return that;
