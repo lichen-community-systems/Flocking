@@ -1317,7 +1317,6 @@ var flock = flock || {};
     };
     
     
-    // TODO: synth.polyphonic needs to be an actual synth! (e.g. having an enviroment reference, etc.)
     flock.synth.polyphonic = function (def, options) {
         // TODO: Infusion and grades.
         options = $.extend({}, flock.defaults("flock.synth.polyphonic"), options)
