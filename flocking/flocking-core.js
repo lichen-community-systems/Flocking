@@ -351,7 +351,7 @@ var flock = flock || {};
             resultMap[path] = result;
         }
         
-        return valueMap;
+        return resultMap;
     };
     
     /**
@@ -1039,6 +1039,7 @@ var flock = flock || {};
          * @return a buffer containing the generated audio
          */
         that.gen = function (numSamps) {
+            numSamps = numSamps || that.enviro.audioSettings.rates.control;
             flock.enviro.evalGraph(that.ugens.active, numSamps);
         };
         
