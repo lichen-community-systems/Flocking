@@ -452,7 +452,7 @@ var flock = flock || {};
                         msg: "tick",
                         value: [timeFromNow, Date.now()]
                     });
-                });
+                }, timeFromNow);
                 self.scheduled.push(id);
             };
             
