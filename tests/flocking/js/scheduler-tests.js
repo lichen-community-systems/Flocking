@@ -49,7 +49,7 @@ var flock = flock || {};
     
     module("Asynchronous Scheduler tests");
     
-    var checkScheduledCallback = function (expectedScheduledTime, scheduledTime, scheduledAt, sentAt, receivedAt) {
+    var checkScheduledCallback = function (expectedScheduledTime, scheduledTime, scheduledAt, receivedAt) {
         var duration = receivedAt - scheduledAt,
             tolerance = 10;
         
@@ -57,8 +57,6 @@ var flock = flock || {};
             "The callback for once() should return the correct scheduled time.");
         ok(duration >= expectedScheduledTime - tolerance && expectedScheduledTime <= 500 + tolerance,
             "The callback should be fired at the scheduled time, within a tolerance of " + tolerance + "ms.");
-        ok(sentAt >= receivedAt - tolerance,
-            "The callback should have been called at the scheduled time, within a tolerance of " + tolerance + " ms.");
     };
     
     asyncTest("flock.scheduler.async.once()", function () {
@@ -69,12 +67,12 @@ var flock = flock || {};
                 timeConverter: "flock.convert.ms"
             });
         
-        expect(31);
+        expect(21);
         
         var scheduledAt;
-        var scheduledAction = function (scheduledTime, now) {
+        var scheduledAction = function (scheduledTime) {
             numRuns++;
-            checkScheduledCallback(scheduledDelay, scheduledTime, scheduledAt, now, Date.now());
+            checkScheduledCallback(scheduledDelay, scheduledTime, scheduledAt, Date.now());
             if (numRuns < runs) {
                 sked.once(scheduledDelay, scheduledAction);
             } else {
@@ -84,6 +82,45 @@ var flock = flock || {};
             }
         };
         sked.once(scheduledDelay, scheduledAction);
+        scheduledAt = Date.now();
+    });
+    
+    asyncTest("flock.scheduler.once() multiple listeners, different intervals", function () {
+        // TODO: Cut and pastage and inconsistencies everywhere!
+        var sked = flock.scheduler.async({
+                timeConverter: "flock.convert.ms"
+            }),
+            scheduledDelays = [100, 200],
+            tolerance = 10,
+            fired = {},
+            makeRecordingListener,
+            testingListenerImpl,
+            listener1,
+            listener2,
+            testingListener,
+            scheduledAt;
+        
+        makeRecordingListener = function (record, prop) {
+            return function (scheduledTime) {
+                record[prop] = Date.now() - scheduledAt;
+            };
+        };
+        
+        testingListenerImpl = function () {
+            ok(fired.listener1 >= scheduledDelays[0] - tolerance && 
+                fired.listener1 <= scheduledDelays[0] + tolerance,
+                "The first callback should be scheduled at the expected time, within a tolerance of " + tolerance + "ms." +
+                " Actual: " + fired.listener1);
+            ok(fired.listener2 >= scheduledDelays[1] - tolerance && 
+                fired.listener2 <= scheduledDelays[1] + tolerance,
+                "The second callback should be scheduled at the expected time, within a tolerance of " + tolerance + "ms." +
+                " Actual: " + fired.listener2);
+                start();
+        };
+        
+        listener1 = sked.once(100, makeRecordingListener(fired, "listener1"));
+        listener2 = sked.once(200, makeRecordingListener(fired, "listener2"));
+        testingListener = sked.once(300, testingListenerImpl);
         scheduledAt = Date.now();
     });
     

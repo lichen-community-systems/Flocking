@@ -450,7 +450,7 @@ var flock = flock || {};
                     self.clear(id);
                     self.postMessage({
                         msg: "tick",
-                        value: [timeFromNow, Date.now()]
+                        value: timeFromNow
                     });
                 }, timeFromNow);
                 self.scheduled.push(id);
@@ -496,17 +496,7 @@ var flock = flock || {};
             }
         };
         
-        // TODO: Put these somewhere more sensible.
-        that.addOneShotListener = function (eventName, target, fn) {
-            var listener = function (e) {
-                fn.apply(null, e.data.value);
-                target.removeEventListener(eventName, listener, false);
-            };
-            target.addEventListener(eventName, listener, false);
-            return listener;
-        };
-        
-        that.addFilteredListener = function (eventName, target, value, fn) {
+        that.addFilteredListener = function (eventName, target, value, fn, isOneShot) {
             if (!that.valueListeners[value]) {
                 that.valueListeners[value] = [];
             }
@@ -514,7 +504,10 @@ var flock = flock || {};
             var listeners = that.valueListeners[value],
                 listener = function (e) {
                 if (e.data.value === value) {
-                    fn();
+                    fn(e.data.value);
+                    if (isOneShot) {
+                        target.removeEventListener(eventName, listener, false);
+                    }
                 }
             };
             listener.wrappedListener = fn;
@@ -543,20 +536,21 @@ var flock = flock || {};
         };
         
         that.repeat = function (interval, fn) {
-            var worker = that.workers.interval,
-                ms = that.timeConverter.value(interval),
-                listener = that.addFilteredListener("message", worker, ms, fn);
-            
-            that.scheduleWorker(worker, ms);
-            return listener;
+            return that.schedule(that.workers.interval, interval, fn, false);
         };
         
         that.once = function (time, fn) {
-            var worker = that.workers.specifiedTime,
-                ms = that.timeConverter.value(time),
-                listener = that.addOneShotListener("message", worker, fn);
-            
-            that.scheduleWorker(worker, ms);
+            return that.schedule(that.workers.specifiedTime, time, fn, true);
+        };
+        
+        that.schedule = function (worker, time, fn, isOneShot) {
+            var ms = that.timeConverter.value(time),
+                listener = that.addFilteredListener("message", worker, ms, fn, isOneShot),
+                msg = that.messages.schedule;
+
+            msg.value = ms;
+            worker.postMessage(msg);
+
             return listener;
         };
         
@@ -570,12 +564,6 @@ var flock = flock || {};
             }
             
             return listeners;
-        };
-        
-        that.scheduleWorker = function (worker, value) {
-            var msg = that.messages.schedule;
-            msg.value = value;
-            worker.postMessage(msg);
         };
         
         that.clear = function (listener) {
