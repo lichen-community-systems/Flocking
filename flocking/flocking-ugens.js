@@ -1810,14 +1810,12 @@ var flock = flock || {};
             },
         
             highPass: function (model, freq) {
-                var co = model.coeffs,
-                    lambdaSquared,
-                    rootTwoLambda,
-                    b0;
-                co.lambda = Math.tan(Math.PI * freq / model.sampleRate);
-                lambdaSquared = co.lambda * co.lambda;
-                rootTwoLambda = flock.ROOT2 * co.lambda;
-                b0 = 1 / (1 + rootTwoLambda + lambdaSquared);
+                var co = model.coeffs;
+                var lambda = Math.tan(Math.PI * freq / model.sampleRate);
+                var lambdaSquared = lambda * lambda;
+                var rootTwoLambda = flock.ROOT2 * lambda;
+                var b0 = 1 / (1 + rootTwoLambda + lambdaSquared);
+                
                 co.b[0] = b0;
                 co.b[1] = -2 * b0;
                 co.b[2] = b0;
@@ -1826,31 +1824,32 @@ var flock = flock || {};
             },
         
             bandPass: function (model, freq, q) {
-                var co = model.coeffs,
-                    bw = freq / q,
-                    b0;
-                co.lambda = 1 / Math.tan(Math.PI * bw / model.sampleRate);
-                co.theta = 2 * Math.cos(flock.TWOPI * freq / model.sampleRate);
-                b0 = 1 / (1 + co.lambda);
+                var co = model.coeffs;
+                var bw = freq / q;
+                var lambda = 1 / Math.tan(Math.PI * bw / model.sampleRate);
+                var theta = 2 * Math.cos(flock.TWOPI * freq / model.sampleRate);
+                var b0 = 1 / (1 + lambda);
+                
                 co.b[0] = b0;
                 co.b[1] = 0;
                 co.b[2] = -b0;
-                co.a[0] = -(co.lambda * co.theta * b0);
-                co.a[1] = b0 * (co.lambda - 1);
+                co.a[0] = -(lambda * theta * b0);
+                co.a[1] = b0 * (lambda - 1);
             },
         
             bandReject: function (model, freq, q) {
-                var co = model.coeffs,
-                    bw = freq / q,
-                    b0;
-                co.lambda = Math.tan(Math.PI * bw / model.sampleRate);
-                co.theta = 2 * Math.cos(flock.TWOPI * freq / model.sampleRate);
-                b0 = 1 / (1 + co.lambda);
+                var co = model.coeffs;
+                var bw = freq / q;
+                var lambda = Math.tan(Math.PI * bw / model.sampleRate);
+                var theta = 2 * Math.cos(flock.TWOPI * freq / model.sampleRate);
+                var b0 = 1 / (1 + lambda);
+                var b1 = -theta * b0;
+                
                 co.b[0] = b0;
-                co.b[1] = -co.theta * b0;
+                co.b[1] = b1;
                 co.b[2] = b0;
-                co.a[0] = co.b[1];
-                co.a[1] = (1 - co.lambda) * b0;
+                co.a[0] = b1;
+                co.a[1] = (1 - lambda) * b0;
             }
         },
         
@@ -1871,10 +1870,11 @@ var flock = flock || {};
                 var alpha = sinw0 / (2 * q);
                 var oneLessCosw0 = 1 - cosw0;
                 var a0 = 1 + alpha;
+                var b0 = (oneLessCosw0 / 2) / a0;
                 
-                co.b[0] = (oneLessCosw0 / 2) / a0;
+                co.b[0] = b0;
                 co.b[1] = oneLessCosw0 / a0;
-                co.b[2] = co.b[0] / a0;
+                co.b[2] = b0;
                 co.a[0] = (-2 * cosw0) / a0;
                 co.a[1] = (1 - alpha) / a0;
             },

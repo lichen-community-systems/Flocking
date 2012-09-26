@@ -527,10 +527,7 @@ clock.repeat(1, function () {
         </script>
         <script type="application/flocking" id="lowpass">
 var synth = flock.synth({
-    ugen: "flock.ugen.filter",
-    options: {
-        filterType: "flock.coefficients.butterworth.lowPass"
-    },
+    ugen: "flock.ugen.filter.biquad.lp",
     freq: {
         ugen: "flock.ugen.sin",
         rate: "control",
