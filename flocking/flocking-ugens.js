@@ -1650,21 +1650,21 @@ var flock = flock || {};
             m.prevFreq = freq;
         };
         
-        that.onInputChanged = function () {
-            var filterType = that.options.filterType,
-                t = typeof (filterType); // TODO: Horrible naming!
+        that.init = function () {
+            var recipeOpt = that.options.recipe
+            var recipe = typeof (recipeOpt) === "string" ? flock.get(window, recipeOpt) : recipeOpt;
             
-            that.updateCoefficients = t === "undefined" ? flock.coefficients[that.options.type]:
-                (filterType) === "function" ? filterType : flock.get(window, filterType);
-
-        };
-        
-        that.init = function () {            
-            that.filterEngine = new Filter(3, 2); // TODO: Hardcoded for biquad filters.
+            if (!recipe) {
+                throw new Error("Can't instantiate a flock.ugen.filter() without specifying a filter coefficient recipe.");
+            }
+            
+            that.filterEngine = new Filter(recipe.sizes.b, recipe.sizes.a);
             that.model.coeffs = {
                 a: that.filterEngine.a,
                 b: that.filterEngine.b
             };
+            
+            that.updateCoefficients = flock.get(recipe, that.options.type);
             that.onInputChanged();
         };
         
@@ -1711,13 +1711,10 @@ var flock = flock || {};
             m.prevFreq = freq;
         };
         
-        // TODO: Cut and pastage from flock.ugen.filter.
         that.onInputChanged = function () {
-            var filterType = that.options.filterType,
-                t = typeof (filterType); // TODO: Horrible naming!
-            
-            that.updateCoefficients = t === "undefined" ? flock.get(flock.coefficients, that.options.type):
-                (filterType) === "function" ? filterType : flock.get(window, filterType);
+            var typeOpt = that.options.type;
+            that.updateCoefficients = typeof (typeOpt) === "string" ?
+                flock.get(window, typeOpt) : typeOpt;
         };
         
         that.init = function () {
@@ -1747,42 +1744,54 @@ var flock = flock || {};
                 freq: 440,
                 q: 1.0
             },
-            options: {type: "butterworth.highPass"}
+            options: {
+                type: "flock.coefficients.butterworth.highPass"
+            }
         },
         "rhp": {
             inputDefaults: {
                 freq: 440,
                 q: 1.0
             },
-            options: {type: "rbj.highPass"}
+            options: {
+                type: "flock.coefficients.rbj.highPass"
+            }
         },
         "lp": {
             inputDefaults: {
                 freq: 440,
                 q: 1.0
             },
-            options: {type: "butterworth.lowPass"}
+            options: {
+                type: "flock.coefficients.butterworth.lowPass"
+            }
         },
         "rlp": {
             inputDefaults: {
                 freq: 440,
                 q: 1.0
             },
-            options: {type: "rbj.lowPass"}
+            options: {
+                type: "flock.coefficients.rbj.lowPass"
+            }
         },
         "bp": {
             inputDefaults: {
                 freq: 440,
                 q: 4.0
             },
-            options: {type: "butterworth.bandPass"}
+            options: {
+                type: "flock.coefficients.butterworth.bandPass"
+            }
         },
         "br": {
             inputDefaults: {
                 freq: 440,
                 q: 1.0
             },
-            options: {type: "butterworth.bandReject"}
+            options: {
+                type: "flock.coefficients.butterworth.bandReject"
+            }
         }
     };
     
