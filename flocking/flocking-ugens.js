@@ -1103,13 +1103,13 @@ var flock = flock || {};
             if (nextAtt !== prevAtt) {
                 m.attackTime = nextAtt;
                 attCoef = m.attackCoef =
-                    nextAtt === 0.0 ? 0.0 : Math.exp(flock.LOG1 / (nextAtt * m.sampleRate));
+                    nextAtt === 0.0 ? 0.0 : Math.exp(flock.LOG01 / (nextAtt * m.sampleRate));
             }
                 
             if (nextRel !== prevRel) {
                 m.releaseTime = nextRel;
                 relCoef = m.releaseCoef =
-                    (nextRel === 0.0) ? 0.0 : Math.exp(flock.LOG1 / (nextRel * m.sampleRate));
+                    (nextRel === 0.0) ? 0.0 : Math.exp(flock.LOG01 / (nextRel * m.sampleRate));
             }
             
             for (i = 0; i < numSamps; i++) {
@@ -1628,8 +1628,54 @@ var flock = flock || {};
      * Filters *
      ***********/
     
-    flock.ugen.filter = {};
-     
+    /**
+     * A generic FIR and IIR filter engine. You specify the coefficients, and this will do the rest.
+     */
+    flock.ugen.filter = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.gen = function (numSamps) {
+            var m = that.model,
+                inputs = that.inputs,
+                q = inputs.q.output[0],
+                freq = inputs.freq.output[0];
+                
+            if (m.prevFreq !== freq || m.prevQ !== q) {
+                that.updateCoefficients(m, freq, q);
+            }
+            
+            that.filterEngine.filter(that.output, that.inputs.source.output);
+            
+            m.prevQ = q;
+            m.prevFreq = freq;
+        };
+        
+        that.onInputChanged = function () {
+            var filterType = that.options.filterType;
+            that.updateCoefficients = typeof (filterType) === "function" ? filterType :
+                flock.get(window, filterType);
+        };
+        
+        that.init = function () {            
+            that.filterEngine = new Filter(3, 2); // TODO: Hardcoded for biquad filters.
+            that.model.coeffs = {
+                a: that.filterEngine.a,
+                b: that.filterEngine.b
+            };
+            that.onInputChanged();
+        };
+        
+        that.init();
+        return that;
+    };
+    
+    flock.defaults("flock.ugen.filter", {
+        inputs: {
+            freq: 440,
+            q: 5.0
+        }
+    });
+
     flock.ugen.filter.butter = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
@@ -1639,36 +1685,42 @@ var flock = flock || {};
                 out = that.output,
                 co = m.coeffs,
                 freq = inputs.freq.output[0],
-                bw = inputs.bandwidth.output[0],
+                q = inputs.q.output[0],
                 source = inputs.source.output,
                 i,
                 w;
             
-            if (m.prevBW !== bw || m.prevFreq !== freq) {
-                that.calcCoefficients(m, freq, bw);
+            if (m.prevFreq !== freq || m.prevQ !== q) {
+                that.updateCoefficients(m, freq, q);
             }
 
             for (i = 0; i < numSamps; i++) {
-              w = source[i] - co.b1 * m.d0 - co.b2 * m.d1;
-              out[i] = co.a0 * w + co.a1 * m.d0 + co.a2 * m.d1;
+              w = source[i] - co.a[0] * m.d0 - co.a[1] * m.d1;
+              out[i] = co.b[0] * w + co.b[1] * m.d0 + co.b[2] * m.d1;
               m.d1 = m.d0;
               m.d0 = w;
             }
             
-            m.prevBW = bw;
+            m.prevQ = q;
             m.prevFreq = freq;
         };
         
         
         that.onInputChanged = function () {
-            that.calcCoefficients = that.options.coefficientCalculator ||
-                flock.ugen.filter.butter.coefficients[that.options.type];
+            var filterType = that.options.filterType,
+                t = typeof (filterType); // TODO: Horrible naming!
+                
+            that.updateCoefficients = t === "undefined" ? flock.coefficients.butterworth[that.options.type]:
+                (filterType) === "function" ? filterType : flock.get(window, filterType);
         };
         
         that.init = function () {
             that.model.d0 = 0.0;
             that.model.d1 = 0.0;
-            that.model.coeffs = {};
+            that.model.coeffs = {
+                a: new Float32Array(2),
+                b: new Float32Array(3)
+            };
             that.onInputChanged();
         };
         
@@ -1679,7 +1731,7 @@ var flock = flock || {};
     flock.defaults("flock.ugen.filter.butter", {
         inputs: {
             freq: 440,
-            bandwidth: 110
+            q: 4.0
         }
     });
     
@@ -1687,28 +1739,28 @@ var flock = flock || {};
         "hp": {
             inputDefaults: {
                 freq: 10000,
-                bandwidth: 0
+                q: 0
             },
             options: {type: "highPass"}
         },
         "lp": {
             inputDefaults: {
                 freq: 440,
-                bandwidth: 0
+                q: 0
             },
             options: {type: "lowPass"}
         },
         "bp": {
             inputDefaults: {
                 freq: 440,
-                bandwidth: 110
+                q: 4.0
             },
             options: {type: "bandPass"}
         },
         "br": {
             inputDefaults: {
                 freq: 10000,
-                bandwidth: 5000
+                q: 2.0
             },
             options: {type: "bandReject"}
         }
@@ -1717,56 +1769,86 @@ var flock = flock || {};
     // Provide cover methods for instantiating the different types of butterworth filters.
     flock.aliasUGens("flock.ugen.filter.butter", flock.ugen.filter.butter.types);
     
-    flock.ugen.filter.butter.coefficients = {
-        lowPass: function (model, freq) {
-            var co = model.coeffs,
-                lambdaSquared,
-                rootTwoLambda;
-            co.lambda = 1 / Math.tan(Math.PI * freq / model.sampleRate);
-            lambdaSquared = co.lambda * co.lambda;
-            rootTwoLambda = flock.ROOT2 * co.lambda;
-            co.a0 = 1 / (1 + rootTwoLambda + lambdaSquared);
-            co.a1 = 2 * co.a0;
-            co.a2 = co.a0;
-            co.b1 = 2 * (1 - lambdaSquared) * co.a0;
-            co.b2 = (1 - rootTwoLambda + lambdaSquared) * co.a0;
+    flock.coefficients = {
+        butterworth: {
+            sizes: {
+                a: 2,
+                b: 3
+            },
+            
+            lowPass: function (model, freq) {
+                var co = model.coeffs,
+                    lambdaSquared,
+                    rootTwoLambda;
+                co.lambda = 1 / Math.tan(Math.PI * freq / model.sampleRate);
+                lambdaSquared = co.lambda * co.lambda;
+                rootTwoLambda = flock.ROOT2 * co.lambda;
+                co.b[0] = 1 / (1 + rootTwoLambda + lambdaSquared);
+                co.b[1] = 2 * co.b[0];
+                co.b[2] = co.b[0];
+                co.a[0] = 2 * (1 - lambdaSquared) * co.b[0];
+                co.a[1] = (1 - rootTwoLambda + lambdaSquared) * co.b[0];
+            },
+        
+            highPass: function (model, freq) {
+                var co = model.coeffs,
+                    lambdaSquared,
+                    rootTwoLambda;
+                co.lambda = Math.tan(Math.PI * freq / model.sampleRate);
+                lambdaSquared = co.lambda * co.lambda;
+                rootTwoLambda = flock.ROOT2 * co.lambda;
+                co.a0 = 1 / (1 + rootTwoLambda + lambdaSquared);
+                co.a1 = -2 * co.a0;
+                co.a2 = co.a0;
+                co.b1 = 2 * (lambdaSquared - 1) * co.a0;
+                co.b2 = (1 - rootTwoLambda + lambdaSquared) * co.a0;
+            },
+        
+            bandPass: function (model, freq, bw) {
+                var co = model.coeffs;
+                co.lambda = 1 / Math.tan(Math.PI * bw / model.sampleRate);
+                co.theta = 2 * Math.cos(flock.TWOPI * freq / model.sampleRate);
+                co.a0 = 1 / (1 + co.lambda);
+                co.a1 = 0;
+                co.a2 = -co.a0;
+                co.b1 = -(co.lambda * co.theta * co.a0);
+                co.b2 = co.a0 * (co.lambda - 1);
+            },
+        
+            bandReject: function (model, freq, bw) {
+                var co = model.coeffs;
+                co.lambda = Math.tan(Math.PI * bw / model.sampleRate);
+                co.theta = 2 * Math.cos(flock.TWOPI * freq / model.sampleRate);
+                co.a0 = 1 / (1 + co.lambda);
+                co.a1 = -co.theta * co.a0;
+                co.a2 = co.a0;
+                co.b1 = co.a1;
+                co.b2 = (1 - co.lambda) * co.a0;
+            }
         },
         
-        highPass: function (model, freq) {
-            var co = model.coeffs,
-                lambdaSquared,
-                rootTwoLambda;
-            co.lambda = Math.tan(Math.PI * freq / model.sampleRate);
-            lambdaSquared = co.lambda * co.lambda;
-            rootTwoLambda = flock.ROOT2 * co.lambda;
-            co.a0 = 1 / (1 + rootTwoLambda + lambdaSquared);
-            co.a1 = -2 * co.a0;
-            co.a2 = co.a0;
-            co.b1 = 2 * (lambdaSquared - 1) * co.a0;
-            co.b2 = (1 - rootTwoLambda + lambdaSquared) * co.a0;
-        },
-        
-        bandPass: function (model, freq, bw) {
-            var co = model.coeffs;
-            co.lambda = 1 / Math.tan(Math.PI * bw / model.sampleRate);
-            co.theta = 2 * Math.cos(flock.TWOPI * freq / model.sampleRate);
-            co.a0 = 1 / (1 + co.lambda);
-            co.a1 = 0;
-            co.a2 = -co.a0;
-            co.b1 = -(co.lambda * co.theta * co.a0);
-            co.b2 = co.a0 * (co.lambda - 1);
-        },
-        
-        bandReject: function (model, freq, bw) {
-            var co = model.coeffs;
-            co.lambda = Math.tan(Math.PI * bw / model.sampleRate);
-            co.theta = 2 * Math.cos(flock.TWOPI * freq / model.sampleRate);
-            co.a0 = 1 / (1 + co.lambda);
-            co.a1 = -co.theta * co.a0;
-            co.a2 = co.a0;
-            co.b1 = co.a1;
-            co.b2 = (1 - co.lambda) * co.a0;
+        biquad: {
+            sizes: {
+                a: 2,
+                b: 3
+            },
+            
+            lowPass: function (model, freq, q) {
+                var co = model.coeffs;
+                var w0 = flock.TWOPI * freq / model.sampleRate;
+                var cosw0 = Math.cos(w0);
+                var sinw0 = Math.sin(w0);
+                var alpha = sinw0 / (2 * q);
+                var oneLessCosw0 = 1 - cosw0;
+                co.b[0] = oneLessCosw0 / 2;
+                co.b[1] = oneLessCosw0;
+                co.b[2] = co.b[0];
+                //co.a[0] = 1 + alpha;
+                co.a[0] = -2 * cosw0;
+                co.a[1] = 1 - alpha;
+            }
         }
     };
+
     
 }(jQuery));
