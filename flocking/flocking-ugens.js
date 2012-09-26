@@ -1651,9 +1651,12 @@ var flock = flock || {};
         };
         
         that.onInputChanged = function () {
-            var filterType = that.options.filterType;
-            that.updateCoefficients = typeof (filterType) === "function" ? filterType :
-                flock.get(window, filterType);
+            var filterType = that.options.filterType,
+                t = typeof (filterType); // TODO: Horrible naming!
+            
+            that.updateCoefficients = t === "undefined" ? flock.coefficients[that.options.type]:
+                (filterType) === "function" ? filterType : flock.get(window, filterType);
+
         };
         
         that.init = function () {            
@@ -1672,11 +1675,14 @@ var flock = flock || {};
     flock.defaults("flock.ugen.filter", {
         inputs: {
             freq: 440,
-            q: 5.0
+            q: 1.0
         }
     });
 
-    flock.ugen.filter.butter = function (inputs, output, options) {
+    /**
+     * An optimized biquad filter unit generator.
+     */
+    flock.ugen.filter.biquad = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
         that.gen = function (numSamps) {
@@ -1705,12 +1711,12 @@ var flock = flock || {};
             m.prevFreq = freq;
         };
         
-        
+        // TODO: Cut and pastage from flock.ugen.filter.
         that.onInputChanged = function () {
             var filterType = that.options.filterType,
                 t = typeof (filterType); // TODO: Horrible naming!
-                
-            that.updateCoefficients = t === "undefined" ? flock.coefficients.butterworth[that.options.type]:
+            
+            that.updateCoefficients = t === "undefined" ? flock.get(flock.coefficients, that.options.type):
                 (filterType) === "function" ? filterType : flock.get(window, filterType);
         };
         
@@ -1728,46 +1734,60 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.filter.butter", {
+    flock.defaults("flock.ugen.filter.biquad", {
         inputs: {
             freq: 440,
-            q: 4.0
+            q: 1.0
         }
     });
     
-    flock.ugen.filter.butter.types = {
+    flock.ugen.filter.biquad.types = {
         "hp": {
             inputDefaults: {
-                freq: 10000,
-                q: 0
+                freq: 440,
+                q: 1.0
             },
-            options: {type: "highPass"}
+            options: {type: "butterworth.highPass"}
+        },
+        "rhp": {
+            inputDefaults: {
+                freq: 440,
+                q: 1.0
+            },
+            options: {type: "rbj.highPass"}
         },
         "lp": {
             inputDefaults: {
                 freq: 440,
-                q: 0
+                q: 1.0
             },
-            options: {type: "lowPass"}
+            options: {type: "butterworth.lowPass"}
+        },
+        "rlp": {
+            inputDefaults: {
+                freq: 440,
+                q: 1.0
+            },
+            options: {type: "rbj.lowPass"}
         },
         "bp": {
             inputDefaults: {
                 freq: 440,
                 q: 4.0
             },
-            options: {type: "bandPass"}
+            options: {type: "butterworth.bandPass"}
         },
         "br": {
             inputDefaults: {
-                freq: 10000,
-                q: 2.0
+                freq: 440,
+                q: 1.0
             },
-            options: {type: "bandReject"}
+            options: {type: "butterworth.bandReject"}
         }
     };
     
-    // Provide cover methods for instantiating the different types of butterworth filters.
-    flock.aliasUGens("flock.ugen.filter.butter", flock.ugen.filter.butter.types);
+    // Convenience methods for instantiating common types of biquad filters.
+    flock.aliasUGens("flock.ugen.filter.biquad", flock.ugen.filter.biquad.types);
     
     flock.coefficients = {
         butterworth: {
@@ -1777,57 +1797,66 @@ var flock = flock || {};
             },
             
             lowPass: function (model, freq) {
-                var co = model.coeffs,
-                    lambdaSquared,
-                    rootTwoLambda;
-                co.lambda = 1 / Math.tan(Math.PI * freq / model.sampleRate);
-                lambdaSquared = co.lambda * co.lambda;
-                rootTwoLambda = flock.ROOT2 * co.lambda;
-                co.b[0] = 1 / (1 + rootTwoLambda + lambdaSquared);
-                co.b[1] = 2 * co.b[0];
-                co.b[2] = co.b[0];
-                co.a[0] = 2 * (1 - lambdaSquared) * co.b[0];
-                co.a[1] = (1 - rootTwoLambda + lambdaSquared) * co.b[0];
+                var co = model.coeffs;
+                var lambda = 1 / Math.tan(Math.PI * freq / model.sampleRate);
+                var lambdaSquared = lambda * lambda;
+                var rootTwoLambda = flock.ROOT2 * lambda;
+                var b0 = 1 / (1 + rootTwoLambda + lambdaSquared)
+                co.b[0] = b0;
+                co.b[1] = 2 * b0;
+                co.b[2] = b0;
+                co.a[0] = 2 * (1 - lambdaSquared) * b0;
+                co.a[1] = (1 - rootTwoLambda + lambdaSquared) * b0;
             },
         
             highPass: function (model, freq) {
                 var co = model.coeffs,
                     lambdaSquared,
-                    rootTwoLambda;
+                    rootTwoLambda,
+                    b0;
                 co.lambda = Math.tan(Math.PI * freq / model.sampleRate);
                 lambdaSquared = co.lambda * co.lambda;
                 rootTwoLambda = flock.ROOT2 * co.lambda;
-                co.a0 = 1 / (1 + rootTwoLambda + lambdaSquared);
-                co.a1 = -2 * co.a0;
-                co.a2 = co.a0;
-                co.b1 = 2 * (lambdaSquared - 1) * co.a0;
-                co.b2 = (1 - rootTwoLambda + lambdaSquared) * co.a0;
+                b0 = 1 / (1 + rootTwoLambda + lambdaSquared);
+                co.b[0] = b0;
+                co.b[1] = -2 * b0;
+                co.b[2] = b0;
+                co.a[0] = 2 * (lambdaSquared - 1) * b0;
+                co.a[1] = (1 - rootTwoLambda + lambdaSquared) * b0;
             },
         
-            bandPass: function (model, freq, bw) {
-                var co = model.coeffs;
+            bandPass: function (model, freq, q) {
+                var co = model.coeffs,
+                    bw = freq / q,
+                    b0;
                 co.lambda = 1 / Math.tan(Math.PI * bw / model.sampleRate);
                 co.theta = 2 * Math.cos(flock.TWOPI * freq / model.sampleRate);
-                co.a0 = 1 / (1 + co.lambda);
-                co.a1 = 0;
-                co.a2 = -co.a0;
-                co.b1 = -(co.lambda * co.theta * co.a0);
-                co.b2 = co.a0 * (co.lambda - 1);
+                b0 = 1 / (1 + co.lambda);
+                co.b[0] = b0;
+                co.b[1] = 0;
+                co.b[2] = -b0;
+                co.a[0] = -(co.lambda * co.theta * b0);
+                co.a[1] = b0 * (co.lambda - 1);
             },
         
-            bandReject: function (model, freq, bw) {
-                var co = model.coeffs;
+            bandReject: function (model, freq, q) {
+                var co = model.coeffs,
+                    bw = freq / q,
+                    b0;
                 co.lambda = Math.tan(Math.PI * bw / model.sampleRate);
                 co.theta = 2 * Math.cos(flock.TWOPI * freq / model.sampleRate);
-                co.a0 = 1 / (1 + co.lambda);
-                co.a1 = -co.theta * co.a0;
-                co.a2 = co.a0;
-                co.b1 = co.a1;
-                co.b2 = (1 - co.lambda) * co.a0;
+                b0 = 1 / (1 + co.lambda);
+                co.b[0] = b0;
+                co.b[1] = -co.theta * b0;
+                co.b[2] = b0;
+                co.a[0] = co.b[1];
+                co.a[1] = (1 - co.lambda) * b0;
             }
         },
         
-        biquad: {
+        // From Robert Brisow-Johnston's Filter Cookbook:
+        // http://dspwiki.com/index.php?title=Cookbook_Formulae_for_audio_EQ_biquad_filter_coefficients
+        rbj: {
             sizes: {
                 a: 2,
                 b: 3
@@ -1838,17 +1867,67 @@ var flock = flock || {};
                 var w0 = flock.TWOPI * freq / model.sampleRate;
                 var cosw0 = Math.cos(w0);
                 var sinw0 = Math.sin(w0);
+                var bw = freq / q;
                 var alpha = sinw0 / (2 * q);
                 var oneLessCosw0 = 1 - cosw0;
-                co.b[0] = oneLessCosw0 / 2;
-                co.b[1] = oneLessCosw0;
-                co.b[2] = co.b[0];
-                //co.a[0] = 1 + alpha;
-                co.a[0] = -2 * cosw0;
-                co.a[1] = 1 - alpha;
+                var a0 = 1 + alpha;
+                
+                co.b[0] = (oneLessCosw0 / 2) / a0;
+                co.b[1] = oneLessCosw0 / a0;
+                co.b[2] = co.b[0] / a0;
+                co.a[0] = (-2 * cosw0) / a0;
+                co.a[1] = (1 - alpha) / a0;
+            },
+            
+            highPass: function (model, freq, q) {
+                var co = model.coeffs;
+                var w0 = flock.TWOPI * freq / model.sampleRate;
+                var cosw0 = Math.cos(w0);
+                var sinw0 = Math.sin(w0);
+                var alpha = sinw0 / (2 * q);
+                var onePlusCosw0 = 1 + cosw0;
+                var a0 = 1 + alpha;
+                var b0 = (onePlusCosw0 / 2) / a0;
+                
+                co.b[0] = b0;
+                co.b[1] = (-onePlusCosw0) / a0;
+                co.b[2] = b0;
+                co.a[0] = (-2 * cosw0) / a0;
+                co.a[1] = (1 - alpha) / a0;
+            },
+            
+            bandPass: function (model, freq, q) {
+                var co = model.coeffs;
+                var w0 = flock.TWOPI * freq / model.sampleRate;
+                var cosw0 = Math.cos(w0);
+                var sinw0 = Math.sin(w0);
+                var alpha = sinw0 / (2 * q);
+                var a0 = 1 + alpha;
+                var qByAlpha = q * alpha;
+                
+                co.b[0] = qByAlpha / a0;
+                co.b[1] = 0;
+                co.b[2] = -qByAlpha / a0;
+                co.a[0] = (-2 * cosw0) / a0;
+                co.a[1] = (1 - alpha) / a0;
+            },
+            
+            bandReject: function (model, freq, q) {
+                var co = model.coeffs;
+                var w0 = flock.TWOPI * freq / model.sampleRate;
+                var cosw0 = Math.cos(w0);
+                var sinw0 = Math.sin(w0);
+                var alpha = sinw0 / (2 * q);
+                var a0 = 1 + alpha;
+                var ra0 = 1 / a0;
+                var b1 = (-2 * cosw0) / a0;
+                co.b[0] = ra0;
+                co.b[1] = b1;
+                co.b[2] = ra0;
+                co.a[0] = b1;
+                co.a[1] = (1 - alpha) / a0;
             }
         }
     };
-
     
 }(jQuery));

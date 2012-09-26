@@ -20,7 +20,6 @@ var flock = flock || {};
     flock.OUT_UGEN_ID = "flocking-out";
     flock.TWOPI = 2.0 * Math.PI;
     flock.LOG01 = Math.log(0.1);
-    flock.LOG2 = Math.log(2);
     flock.LOG001 = Math.log(0.001);
     flock.ROOT2 = Math.sqrt(2);
     
