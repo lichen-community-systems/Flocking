@@ -1107,4 +1107,78 @@ flock.test = flock.test || {};
         }), "Audio rate source, audio rate add.");
     });
     
+    module("flock.ugen.filter tests");
+    
+    var filterInputValues = [
+        {
+            freq: 440,
+            q: 1.0
+        },
+        {
+            freq: 880,
+            q: 0.5
+        },
+        {
+            freq: 22050,
+            q: 0.1
+        },
+        {
+            freq: 440,
+            q: 10
+        },
+        {
+            freq: 880,
+            q: 20
+        },
+        {
+            freq: 22050,
+            q: 100
+        }
+    ];
+    
+    var checkCoefficient = function (coefficient) {
+        ok(!isNaN(coefficient), "The coefficient should never be NaN");
+        ok(coefficient !== Infinity, "The coefficient should never be Infinity");
+        ok(coefficient !== Number.NEGATIVE_INFINITY, "The coefficient should never be negative Infinity");
+        //ok(coefficient >= -1.0 && coefficient <= 1.0, "The coefficient should be in the range of -1.0 to 1.0");
+    };
+    
+    var checkCoefficients = function (model) {
+        $.each(model.coeffs, function (i, coefficientArray) {
+            $.each(coefficientArray, function (i, coefficient) {
+                checkCoefficient(coefficient);
+            });
+        });
+    };
+    
+    var testCoefficientCalculator = function (name, fn) {
+        test(name, function () {
+            $.each(filterInputValues, function (i, inputs) {
+                var model = {
+                    coeffs: {
+                        a: new Float32Array(2),
+                        b: new Float32Array(3)
+                    },
+                    sampleRate: 44100
+                };
+                
+                fn(model, inputs.freq, inputs.q);
+                checkCoefficients(model);
+            })
+        });
+    };
+
+    // Test all coefficient recipes.
+    $.each(flock.coefficients, function (recipeName, recipe) {
+        $.each(recipe, function (filterType, calculator) {
+            // TODO: This suggests that the payload for filter recipes isn't quite right.
+            if (filterType === "sizes") {
+                return;
+            }
+            var name = "flock.coefficients." + recipeName + "." + filterType;
+            testCoefficientCalculator(name, calculator);
+        });
+    });
+    
+    
 }());
