@@ -42,7 +42,15 @@ var flock = flock || {};
         return new Float32Array(buf);
     };
     
-    flock.test.constantBuffer = flock.generate.constant;
+    
+    flock.test.constantBuffer = function (bufOrSize, val) {
+        var buf = typeof (bufOrSize) === "number" ? new Float32Array(bufOrSize) : bufOrSize,
+            i;
+        for (i = 0; i < buf.length; i++) {
+            buf[i] = val;
+        }
+        return buf;
+    };
     
     flock.test.assertArrayEquals = function (actual, expected, msg) {
         var i;

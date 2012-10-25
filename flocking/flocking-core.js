@@ -107,15 +107,6 @@ var flock = flock || {};
         return buf;
     };
     
-    flock.generate.constant = function (bufOrSize, val) {
-        var buf = typeof (bufOrSize) === "number" ? new Float32Array(bufOrSize) : bufOrSize,
-            i;
-        for (i = 0; i < buf.length; i++) {
-            buf[i] = val;
-        }
-        return buf;
-    };
-    
     flock.generate.silence = function (bufOrSize) {
         if (typeof (bufOrSize) === "number") {
             return new Float32Array(bufOrSize);
