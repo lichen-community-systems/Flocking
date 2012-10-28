@@ -118,12 +118,12 @@ flock.test = flock.test || {};
             flock.enviro.shared.clearBuses();
             outUGen.gen(numSamps);
         };
-        var actual = flock.interleavedDemandWriter(new Float32Array(numSamps * chans), 
+        var actual = flock.interleavedWriter(new Float32Array(numSamps * chans), 
             evalFn, flock.enviro.shared.buses, audioSettings);
         deepEqual(actual, expectedBuffer, msg);
     };
 
-    test("flock.interleavedDemandWriter() mono input, mono output", function () {
+    test("flock.interleavedWriter() mono input, mono output", function () {
         // Test with a single input buffer being multiplexed by ugen.out.
         var mockLeftUGen = flock.test.makeMockUGen(mockLeft);
         var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen}, []);
@@ -143,7 +143,7 @@ flock.test = flock.test || {};
             "We should receive a mono buffer containing the input buffer unmodified.");
     });
     
-    test("flock.interleavedDemandWriter() mono input, stereo output", function () {
+    test("flock.interleavedWriter() mono input, stereo output", function () {
         // Test with a single mono input buffer.
         var mockLeftUGen = flock.test.makeMockUGen(mockLeft);
         var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen, expand: stereoExpandValueUGen}, []);
@@ -159,7 +159,7 @@ flock.test = flock.test || {};
             "We should receive a stereo buffer containing two copies of the original input buffer.");
     });
 
-    test("flock.interleavedDemandWriter() stereo input", function () {
+    test("flock.interleavedWriter() stereo input", function () {
         // Test with two input buffers.
         var out = flock.ugen.out({
             sources: [
