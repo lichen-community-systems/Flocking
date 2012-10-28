@@ -841,15 +841,15 @@ var flock = flock || {};
     };
     
     /**
-     * Generates an interleaved audio buffer from the output unit generator for the specified
-     * 'needed' number of samples. If number of needed samples isn't divisble by the control rate,
-     * the output buffer's size will be rounded up to the nearest control period.
+     * Generates an interleaved audio buffer from the source buffers.
+     * If the output buffer size isn't divisble by the control rate,
+     * it will be rounded down to the nearest block size.
      *
-     * @param {Number} needed the number of samples to generate
-     * @param {Function} evalFn a function to invoke when writing each buffer
-     * @param {Array} an array of buffers to write
+     * @param {Array} outBuf the output buffer to write into
+     * @param {Function} evalFn a function to invoke before writing each control block
+     * @param {Array} sourceBufs the array of channel buffers to interleave and write out
      * @param {Object} audioSettings the current audio system settings
-     * @return a channel-interleaved output buffer containing roughly the number of needed samples
+     * @return a channel-interleaved output buffer
      */
     flock.interleavedWriter = function (outBuf, evalFn, sourceBufs, audioSettings) {
         var kr = audioSettings.rates.control,
