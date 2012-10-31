@@ -535,21 +535,10 @@ flock.test = flock.test || {};
         return ug;
     };
     
-    var checkUGenShape = function (ug) {
-        flock.test.assertNotNaN(ug.output, 
-            "The ugen should never output NaN.");
-        flock.test.assertNotSilent(ug.output, 
-            "1 second of output from the ugen should not be completely silent");
-        flock.test.assertUnbroken(ug.output, 
-            "The ugen should produce an unbroken audio tone.");
-        flock.test.assertWithinRange(ug.output, -0.75, 0.75, 
-            "The ugen should produce output values ranging between -0.75 and 075.");
-    };
-    
     var testOsc = function (ugenType, otherTests) {
         test(ugenType, function () {
             var ug = makeAndPrimeOsc(ugenType, 44100);
-            checkUGenShape(ug);
+            flock.test.assertUnbrokenSignal(ug, -0.75, 0.75);
             if (otherTests) {
                 otherTests(ug);
             }
@@ -1151,34 +1140,70 @@ flock.test = flock.test || {};
         });
     };
     
-    var testCoefficientCalculator = function (name, fn) {
-        test(name, function () {
-            $.each(filterInputValues, function (i, inputs) {
-                var model = {
-                    coeffs: {
-                        a: new Float32Array(2),
-                        b: new Float32Array(3)
-                    },
-                    sampleRate: 44100
-                };
-                
-                fn(model, inputs.freq, inputs.q);
-                checkCoefficients(model);
-            })
+    var forEachFilterType = function (fn) {
+        $.each(flock.coefficients, function (recipeName, recipe) {
+            $.each(recipe, function (filterType, calculator) {
+                // TODO: This suggests that the payload for filter recipes isn't quite right.
+                if (filterType === "sizes") {
+                    return;
+                }
+                fn(recipeName, recipe, filterType, calculator);
+            });
         });
     };
-
+    
+    var testEachFilterInputValue = function (name, fn) {
+        test(name, function () {
+            $.each(filterInputValues, function (i, inputs) {
+                fn(inputs);
+            });
+        })
+    };
+    
     // Test all coefficient recipes.
-    $.each(flock.coefficients, function (recipeName, recipe) {
-        $.each(recipe, function (filterType, calculator) {
-            // TODO: This suggests that the payload for filter recipes isn't quite right.
-            if (filterType === "sizes") {
-                return;
-            }
-            var name = "flock.coefficients." + recipeName + "." + filterType;
-            testCoefficientCalculator(name, calculator);
+    forEachFilterType(function (recipeName, receipe, filterType, fn) {
+        var name = "flock.coefficients." + recipeName + "." + filterType;
+        
+        testEachFilterInputValue(name, function (inputs) {
+            var model = {
+                coeffs: {
+                    a: new Float32Array(2),
+                    b: new Float32Array(3)
+                },
+                sampleRate: 44100
+            };
+            
+            fn(model, inputs.freq, inputs.q);
+            checkCoefficients(model);
         });
     });
     
+    // Test the flock.ugen.filter unit generator with all filter types and a set of generic input values.
+    forEachFilterType(function (recipeName, recipe, filterType) {
+        var name = "flock.ugen.filter() " + recipeName + "." + filterType;
+        testEachFilterInputValue(name, function (inputs) {
+            var ugen = {
+                id: "filter",
+                ugen: "flock.ugen.filter",
+                inputs: inputs,
+                options: {
+                    // TODO: API bug. I should just be able to specify a type (as a key path) without a recipe if I want.
+                    recipe: recipe,
+                    type: filterType
+                }
+            };
+            ugen.inputs.source = {
+                ugen: "flock.ugen.lfNoise",
+                inputs: {
+                    freq: 440,
+                    mul: 0.95
+                }
+            };
+            
+            var filterSynth = flock.synth(ugen);
+            filterSynth.gen(64);
+            flock.test.assertUnbrokenSignal(filterSynth.get("filter"), -1.0, 1.0);
+        });
+    });
     
 }());
