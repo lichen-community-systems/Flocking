@@ -1721,21 +1721,13 @@ var flock = flock || {};
         var that = flock.ugen(inputs, output, options);
         
         $.extend(true, that.model, {
-            grainLength: Math.round(that.model.sampleRate * inputs.grainLength.inputs.value),
             numGrains: inputs.numGrains.inputs.value,
             currentGrainPosition: 0,
             delay: {
-                sampleLength: that.model.sampleRate * inputs.delayLineLength.inputs.value,
                 readPos: 0,
                 writePos: 0
             }
         });
-        that.model.env = new Float32Array(that.model.grainLength);
-        that.model.delay.buffer = new Float32Array(that.model.delay.sampleLength);
-        
-        for (i = 0; i < that.model.grainLength; i++) {
-            that.model.env[i] = Math.sin(Math.PI * i / that.model.grainLength);
-        }
         
         that.gen = function (numSamps) {
             var m = that.model,
@@ -1770,6 +1762,24 @@ var flock = flock || {};
             }
         };
 
+        that.onInputChanged = function () {
+            var m = that.model;
+            
+            m.grainLength = Math.round(m.sampleRate * that.inputs.grainLength.inputs.value),
+            m.env = new Float32Array(m.grainLength);
+            for (i = 0; i < m.grainLength; i++) {
+                m.env[i] = Math.sin(Math.PI * i / m.grainLength);
+            }
+            
+            m.delay.sampleLength = m.sampleRate * that.inputs.delayLineLength.inputs.value,
+            m.delay.buffer = new Float32Array(m.delay.sampleLength);
+        };
+        
+        that.init = function () {
+            that.onInputChanged();
+        };
+        
+        that.init();
         return that;
     };
 
