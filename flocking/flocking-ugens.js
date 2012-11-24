@@ -1716,7 +1716,7 @@ var flock = flock || {};
      * Granular Synthesis UGens *
      ****************************/
      
-    // input arguments should be - delayLine Length, numGrains, grainLength (with randomization parameter?)
+    // input arguments should be - delayLineDur, numGrains, grainDur (with randomization parameter?)
     flock.ugen.granulator = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
@@ -1734,11 +1734,22 @@ var flock = flock || {};
                 inputs = that.inputs,
                 out = that.output,
                 source = inputs.source.output,
+                grainDur = inputs.grainDur.output[0], // TODO: Rename this output.
                 i,
                 j,
                 k,
                 delaySample;
         
+            // Update the grain envelope if the grain duration input has changed.
+            if (grainDur !== m.grainDur) {
+                m.grainDur = grainDur;
+                m.grainLength = Math.round(m.sampleRate * m.grainDur),
+                m.env = new Float32Array(m.grainLength);
+                for (i = 0; i < m.grainLength; i++) {
+                    m.env[i] = Math.sin(Math.PI * i / m.grainLength);
+                }
+            }
+            
             for (i = 0; i < numSamps; i++) {
                 // continuously write into delayline
                 m.delay.buffer[m.delay.writePos] = source[i];
@@ -1764,14 +1775,10 @@ var flock = flock || {};
 
         that.onInputChanged = function () {
             var m = that.model;
-            
-            m.grainLength = Math.round(m.sampleRate * that.inputs.grainLength.inputs.value),
-            m.env = new Float32Array(m.grainLength);
-            for (i = 0; i < m.grainLength; i++) {
-                m.env[i] = Math.sin(Math.PI * i / m.grainLength);
-            }
-            
-            m.delay.sampleLength = m.sampleRate * that.inputs.delayLineLength.inputs.value,
+            // TODO: While the delay line length probably shouldn't be modulatable,
+            // this hard-codes the fact that it will always be a value ugen, which is risky.
+            // Need to add ugen graph priming to fix this.
+            m.delay.sampleLength = m.sampleRate * that.inputs.delayLineDur.inputs.value;
             m.delay.buffer = new Float32Array(m.delay.sampleLength);
         };
         
