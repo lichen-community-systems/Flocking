@@ -1715,48 +1715,24 @@ var flock = flock || {};
     /****************************
      * Granular Synthesis UGens *
      ****************************/
-    
-     flock.delayLine = function (initialDelayLength) {
-         var that = {
-             model: {
-                 delayLength: initialDelayLength,
-                 readPos: 0,
-                 writePos: 0,
-                 buffer: null
-             }
-         };
-     
-         that.write = function (sample) {
-             that.model.buffer[that.model.writePos] = sample;
-             that.model.writePos = (that.model.writePos + 1) % that.model.delayLength;
-         };
-
-         that.read = function () {
-             var sample = that.model.buffer[that.model.readPos];
-             that.model.readPos = (that.model.readPos + 1) % that.model.delayLength;
-             return sample;
-         };
-
-         that.init = function () {
-             that.model.buffer = new Float32Array(that.model.delayLength);
-         };
-
-         that.init();
-         return that;
-     };
      
     // input arguments should be - delayLine Length, numGrains, grainLength (with randomization parameter?)
     flock.ugen.granulator = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options),
-            delayLine = flock.delayLine(that.model.sampleRate * inputs.delayLineLength.inputs.value);
+        var that = flock.ugen(inputs, output, options);
 
         that.model.grainLength = that.model.sampleRate * inputs.grainLength.inputs.value;
         that.model.numGrains = inputs.numGrains.inputs.value;
-        that.model.currentGrainPosition= 0;
+        that.model.currentGrainPosition = 0;
         that.model.windowFunction = [];
-
+        
+        // Delay settings
+        that.model.delayLength = that.model.sampleRate * inputs.delayLineLength.inputs.value;
+        that.model.delayLineBuffer = new Float32Array(that.model.delayLength);
+        that.model.readPos = 0;
+        that.model.writePos = 0;
+        
         for (i = 0; i < that.model.grainLength; i++) {
-            that.model.windowFunction[i] = Math.sin(3.1415 * i / that.model.grainLength);
+            that.model.windowFunction[i] = Math.sin(Math.PI * i / that.model.grainLength);
         }
         
         that.gen = function (numSamps) {
@@ -1766,23 +1742,27 @@ var flock = flock || {};
                 source = inputs.source.output,
                 i,
                 j,
-                k;
+                k,
+                delaySample;
         
             for (i = 0; i < numSamps; i++) {
                 // continuously write into delayline
-                delayLine.write(source[i]);
+                m.delayLineBuffer[m.writePos] = source[i];
+                m.writePos = (m.writePos + 1) % m.delayLength;
             }
 
             // now fill with grain
-            for (j = 0; j < that.model.numGrains; j++) {
+            for (j = 0; j < m.numGrains; j++) {
                 for (k = 0; k < numSamps; k++) {
-                    out[k] = delayLine.read() * that.model.windowFunction[that.model.currentGrainPosition];
-                    that.model.currentGrainPosition++;
+                    delaySample = m.delayLineBuffer[m.readPos];
+                    out[k] = delaySample * m.windowFunction[m.currentGrainPosition];
+                    m.currentGrainPosition++;
+                    m.readPos = (m.readPos + 1) % m.delayLength;
                     
-                    if (that.model.currentGrainPosition > that.model.grainLength) {
-                        that.model.currentGrainPosition = 0;
-                        delayLine.model.readPos = Math.floor(Math.random() * delayLine.model.delayLength);
-                        that.model.grainLength = that.model.sampleRate * (0.1 + Math.random() * 0.2);
+                    if (m.currentGrainPosition > m.grainLength) {
+                        m.currentGrainPosition = 0;
+                        m.readPos = Math.floor(Math.random() * m.delayLength);
+                        m.grainLength = m.sampleRate * (0.1 + Math.random() * 0.2);
                     }
                 }
             }
