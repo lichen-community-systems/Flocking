@@ -1712,4 +1712,83 @@ var flock = flock || {};
         }
     };
     
+    /****************************
+     * Granular Synthesis UGens *
+     ****************************/
+    
+     flock.delayLine = function (initialDelayLength) {
+         var that = {
+             model: {
+                 delayLength: initialDelayLength,
+                 readPos: 0,
+                 writePos: 0,
+                 buffer: null
+             }
+         };
+     
+         that.write = function (sample) {
+             that.model.buffer[that.model.writePos] = sample;
+             that.model.writePos = (that.model.writePos + 1) % that.model.delayLength;
+         };
+
+         that.read = function () {
+             var sample = that.model.buffer[that.model.readPos];
+             that.model.readPos = (that.model.readPos + 1) % that.model.delayLength;
+             return sample;
+         };
+
+         that.init = function () {
+             that.model.buffer = new Float32Array(that.model.delayLength);
+         };
+
+         that.init();
+         return that;
+     };
+     
+    // input arguments should be - delayLine Length, numGrains, grainLength (with randomization parameter?)
+    flock.ugen.granulator = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options),
+            delayLine = flock.delayLine(that.model.sampleRate * inputs.delayLineLength.inputs.value);
+
+        that.model.grainLength = that.model.sampleRate * inputs.grainLength.inputs.value;
+        that.model.numGrains = inputs.numGrains.inputs.value;
+        that.model.currentGrainPosition= 0;
+        that.model.windowFunction = [];
+
+        for (i = 0; i < that.model.grainLength; i++) {
+            that.model.windowFunction[i] = Math.sin(3.1415 * i / that.model.grainLength);
+        }
+        
+        that.gen = function (numSamps) {
+            var m = that.model,
+                inputs = that.inputs,
+                out = that.output,
+                source = inputs.source.output,
+                i,
+                j,
+                k;
+        
+            for (i = 0; i < numSamps; i++) {
+                // continuously write into delayline
+                delayLine.write(source[i]);
+            }
+
+            // now fill with grain
+            for (j = 0; j < that.model.numGrains; j++) {
+                for (k = 0; k < numSamps; k++) {
+                    out[k] = delayLine.read() * that.model.windowFunction[that.model.currentGrainPosition];
+                    that.model.currentGrainPosition++;
+                    
+                    if (that.model.currentGrainPosition > that.model.grainLength) {
+                        that.model.currentGrainPosition = 0;
+                        delayLine.model.readPos = Math.floor(Math.random() * delayLine.model.delayLength);
+                        that.model.grainLength = that.model.sampleRate * (0.1 + Math.random() * 0.2);
+                    }
+                }
+            }
+        };
+
+        return that;
+    };
+
 }(jQuery));
