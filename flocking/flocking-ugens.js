@@ -1719,20 +1719,22 @@ var flock = flock || {};
     // input arguments should be - delayLine Length, numGrains, grainLength (with randomization parameter?)
     flock.ugen.granulator = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-
-        that.model.grainLength = that.model.sampleRate * inputs.grainLength.inputs.value;
-        that.model.numGrains = inputs.numGrains.inputs.value;
-        that.model.currentGrainPosition = 0;
-        that.model.windowFunction = [];
         
-        // Delay settings
-        that.model.delayLength = that.model.sampleRate * inputs.delayLineLength.inputs.value;
-        that.model.delayLineBuffer = new Float32Array(that.model.delayLength);
-        that.model.readPos = 0;
-        that.model.writePos = 0;
+        $.extend(true, that.model, {
+            grainLength: Math.round(that.model.sampleRate * inputs.grainLength.inputs.value),
+            numGrains: inputs.numGrains.inputs.value,
+            currentGrainPosition: 0,
+            delay: {
+                sampleLength: that.model.sampleRate * inputs.delayLineLength.inputs.value,
+                readPos: 0,
+                writePos: 0
+            }
+        });
+        that.model.env = new Float32Array(that.model.grainLength);
+        that.model.delay.buffer = new Float32Array(that.model.delay.sampleLength);
         
         for (i = 0; i < that.model.grainLength; i++) {
-            that.model.windowFunction[i] = Math.sin(Math.PI * i / that.model.grainLength);
+            that.model.env[i] = Math.sin(Math.PI * i / that.model.grainLength);
         }
         
         that.gen = function (numSamps) {
@@ -1747,21 +1749,21 @@ var flock = flock || {};
         
             for (i = 0; i < numSamps; i++) {
                 // continuously write into delayline
-                m.delayLineBuffer[m.writePos] = source[i];
-                m.writePos = (m.writePos + 1) % m.delayLength;
+                m.delay.buffer[m.delay.writePos] = source[i];
+                m.delay.writePos = (m.delay.writePos + 1) % m.delay.sampleLength;
             }
 
             // now fill with grain
             for (j = 0; j < m.numGrains; j++) {
                 for (k = 0; k < numSamps; k++) {
-                    delaySample = m.delayLineBuffer[m.readPos];
-                    out[k] = delaySample * m.windowFunction[m.currentGrainPosition];
+                    delaySample = m.delay.buffer[m.delay.readPos];
+                    out[k] = delaySample * m.env[m.currentGrainPosition];
                     m.currentGrainPosition++;
-                    m.readPos = (m.readPos + 1) % m.delayLength;
+                    m.delay.readPos = (m.delay.readPos + 1) % m.delay.sampleLength;
                     
                     if (m.currentGrainPosition > m.grainLength) {
                         m.currentGrainPosition = 0;
-                        m.readPos = Math.floor(Math.random() * m.delayLength);
+                        m.delay.readPos = Math.floor(Math.random() * m.delay.sampleLength);
                         m.grainLength = m.sampleRate * (0.1 + Math.random() * 0.2);
                     }
                 }
