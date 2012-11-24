@@ -1743,8 +1743,7 @@ var flock = flock || {};
             // Update the grain envelope if the grain duration input has changed.
             if (grainDur !== m.grainDur) {
                 m.grainDur = grainDur;
-                m.grainLength = Math.round(m.sampleRate * m.grainDur),
-                m.env = new Float32Array(m.grainLength);
+                m.grainLength = Math.round(m.sampleRate * m.grainDur);
                 for (i = 0; i < m.grainLength; i++) {
                     m.env[i] = Math.sin(Math.PI * i / m.grainLength);
                 }
@@ -1783,6 +1782,11 @@ var flock = flock || {};
         };
         
         that.init = function () {
+            // Allocates a buffer for enveloping each grain, setting it to a hard maximum length.
+            var m = that.model,
+                maxDur = that.options.maxGrainDur || 30;
+            m.env = new Float32Array(m.sampleRate * maxDur);
+            
             that.onInputChanged();
         };
         
