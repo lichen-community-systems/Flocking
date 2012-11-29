@@ -1850,8 +1850,9 @@ var flock = flock || {};
     // input arguments should be - delayLineDur, numGrains, grainDur (with randomization parameter?)
     flock.ugen.granulator = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
         $.extend(true, that.model, {
+            activeGrains: [],
+            freeGrains: [],
             env: null,
             currentGrainPosition: 0,
             delay: {
@@ -1866,50 +1867,61 @@ var flock = flock || {};
                 inputs = that.inputs,
                 out = that.output,
                 source = inputs.source.output,
-                numGrains = inputs.numGrains.output[0],
                 grainDur = inputs.grainDur.output[0],
                 delayDur = inputs.delayDur.output[0],
+                trigger = inputs.trigger.output[0],
                 i,
                 j,
                 k,
+                grain,
                 samp,
                 amp;
         
             // Update the grain envelope if the grain duration input has changed.
             if (grainDur !== m.grainDur) {
-                m.grainDur = grainDur;
+                m.grainDur = grainDur > m.maxGrainDur ? m.maxGrainDur : grainDur;
                 m.numGrainSamps = Math.round(m.sampleRate * m.grainDur);
                 for (i = 0; i < m.numGrainSamps; i++) {
                     m.env[i] = Math.sin(Math.PI * i / m.numGrainSamps);
                 }
             }
             
-            if (delayDur !== m.delayDur) {
-                m.delayDur = delayDur;
-                m.delay.numSamps = Math.round(m.sampleRate * delayDur);
+            if (delayDur !== m.delay.dur) {
+                m.delay.dur = delayDur > m.delay.maxDur ? m.delay.maxDur : delayDur;
+                m.delay.numSamps = Math.round(m.sampleRate * m.delay.dur);
             }
 
-            // Fill with grains
-            for (j = 0; j < numGrains; j++) {
-                for (k = 0; k < numSamps; k++) {
-                    samp = m.delay.buffer[m.delay.readPos];
-                    amp = m.env[m.currentGrainPosition];
-                    out[k] += samp * amp;
-                    
-                    m.delay.readPos = ++m.delay.readPos % m.delay.numSamps;
-                    m.currentGrainPosition++;
-                    if (m.currentGrainPosition > m.numGrainSamps) {
-                        m.currentGrainPosition = 0;
-                        m.delay.readPos = Math.floor(Math.random() * m.delay.numSamps);
-                        m.numGrainSamps = m.sampleRate * (0.1 + Math.random() * 0.2);
-                    }
-                }
-            }
-            
             // Write source samples into the delay line.
             for (i = 0; i < numSamps; i++) {
                 m.delay.buffer[m.delay.writePos] = source[i];
                 m.delay.writePos = ++m.delay.writePos % m.delay.numSamps;
+                out[i] = 0; // Zero the buffer prior to summing all the grains' outputs.
+            }
+            
+            if (trigger > 0.0 && m.prevTrigger <= 0.0) {
+                grain = m.freeGrains.pop() || {};
+                grain.sampIdx = 0;
+                grain.envIdx = 0;
+                grain.readPos = Math.round(Math.random() * m.delay.numSamps);
+                m.activeGrains.push(grain);
+            }
+            m.prevTrigger = trigger;
+            
+            for (j = 0; j < m.activeGrains.length; j++) {
+                grain = m.activeGrains[j];
+                for (k = 0; k < Math.min(m.numGrainSamps - grain.sampIdx, numSamps); k++) {
+                    samp = m.delay.buffer[grain.readPos];
+                    grain.readPos = ++grain.readPos % m.delay.numSamps
+                    grain.sampIdx++;
+                    amp = m.env[grain.envIdx];
+                    grain.envIdx++;
+                    out[k] += samp * amp;
+                }
+                // Too costly! Simplify grain management.
+                /*if (grain.sampIdx >= m.numGrainSamps) {
+                    m.freeGrains.push(grain);
+                    m.activeGrains.splice(k, 1);
+                }*/
             }
             
             that.mulAdd(numSamps);
@@ -1919,18 +1931,36 @@ var flock = flock || {};
             flock.onMulAddInputChanged(that);
         };
         
+        that.preallocateGrains = function () {
+            var m = that.model,
+                i;
+            
+            m.maxNumGrains = that.options.maxNumGrains || 512;
+            for (i = 0; i < m.maxNumGrains; i++) {
+                m.freeGrains.push({
+                    sampIdx: 0,
+                    envIdx: 0,
+                    readPos: 0
+                });
+            }
+        };
+        
         that.init = function () {
             // Allocates a buffer for enveloping each grain and for the delay line,
             // setting them to hard maximum lengths.
             var m = that.model,
-                maxGrainDur = that.options.maxGrainDur || 30,
-                maxGrainLength = Math.round(maxGrainDur * m.sampleRate),
-                maxDelayDur = that.options.maxDelayDur || 30,
-                maxDelayLength = Math.round(maxDelayDur * m.sampleRate);
+                maxGrainLength,
+                maxDelayLength;
+            
+            m.maxGrainDur = that.options.maxGrainDur || 30,
+            maxGrainLength = Math.round(m.maxGrainDur * m.sampleRate),
+            m.delay.maxDur = that.options.maxDelayDur || 30,
+            maxDelayLength = Math.round(m.delay.maxDur * m.sampleRate);
                 
             m.env = new Float32Array(maxGrainLength);
             m.delay.buffer = new Float32Array(maxDelayLength);
             
+            that.preallocateGrains();
             that.onInputChanged();
         };
         
@@ -1941,50 +1971,51 @@ var flock = flock || {};
     
     // input arguments should be - delayLength, numGrains, grainLength (with randomization parameter?)
     flock.ugen.granulatorTest = function (inputs, output, options) {
-         var that = flock.ugen(inputs, output, options);
-         that.delayLine = new Float32Array(that.model.sampleRate * 10); // Max delay line buffer size of 10 seconds.
+        var that = flock.ugen(inputs, output, options);
+        that.delayLine = new Float32Array(that.model.sampleRate * 10); // Max delay line buffer size of 10 seconds.
          
-         $.extend(true, that.model, {
-             writePos: 0,
-             readPos: 0,
-             numWritten: 0
-         });
+        $.extend(true, that.model, {
+            writePos: 0,
+            readPos: 0,
+            numWritten: 0
+        });
          
-         that.gen = function (numSamps) {
-             var m = that.model,
-                 inputs = that.inputs,
-                 out = that.output,
-                 source = inputs.source.output,
-                 delayLineLength = inputs.delayLineLength.output[0],
-                 numGrains = inputs.numGrains.output[0],
-                 i,
-                 j,
-                 k;
+        that.gen = function (numSamps) {
+            var m = that.model,
+                inputs = that.inputs,
+                out = that.output,
+                source = inputs.source.output,
+                delayLineLength = inputs.delayLineLength.output[0],
+                numGrains = inputs.numGrains.output[0],
+                i,
+                j,
+                k;
 
-             if (delayLineLength !== m.delayLineLength) {
-                 m.delayLineLength = delayLineLength;
-                 m.numDelaySamps = delayLineLength * m.sampleRate;
-             }
+            if (delayLineLength !== m.delayLineLength) {
+                m.delayLineLength = delayLineLength;
+                m.numDelaySamps = delayLineLength * m.sampleRate;
+            }
              
-             // Only read from the delay line if it is full.
-             if (m.numWritten >= m.numDelaySamps) {
-                 // Read from the delay line
-                 for (j = 0; j < numGrains; j++) {
-                     for (k = 0; k < numSamps; k++) {
-                         out[k] = that.delayLine[m.readPos];
-                         m.readPos = ++m.readPos % m.numDelaySamps;
-                     }
-                 }
-             }
+            // Only read from the delay line if it is full.
+            if (m.numWritten >= m.numDelaySamps) {
+                // Read from the delay line
+                for (j = 0; j < numGrains; j++) {
+                    for (k = 0; k < numSamps; k++) {
+                        out[k] = that.delayLine[m.readPos];
+                        m.readPos = ++m.readPos % m.numDelaySamps;
+                    }
+                }
+            }
 
-             // Write to the delay line.
-             for (i = 0; i < numSamps; i++) {
-                 that.delayLine[m.writePos] = source[i];
-                 m.writePos = ++m.writePos % m.numDelaySamps
-             }
-             m.numWritten += numSamps;
-         };
-     return that;
-  };
+            // Write to the delay line.
+            for (i = 0; i < numSamps; i++) {
+                that.delayLine[m.writePos] = source[i];
+                m.writePos = ++m.writePos % m.numDelaySamps;
+            }
+            m.numWritten += numSamps;
+        };
+        
+        return that;
+    };
 
 }(jQuery));
