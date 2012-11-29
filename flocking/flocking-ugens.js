@@ -708,7 +708,7 @@ var flock = flock || {};
     /*********
      * Noise *
      *********/
-     
+    
     flock.ugen.dust = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         that.model.density = 0.0;
@@ -754,6 +754,33 @@ var flock = flock || {};
         inputs: {
             density: 1.0
         }
+    });
+    
+    
+    flock.ugen.whiteNoise = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.gen = function (numSamps) {
+            var out = that.output,
+                i;
+        
+            for (i = 0; i < numSamps; i++) {
+                out[i] = Math.random();
+            }
+            
+            that.mulAdd(numSamps);
+        };
+        
+        that.onInputChanged = function () {
+            flock.onMulAddInputChanged(that);
+        };
+        
+        that.onInputChanged();
+        return that;
+    };
+
+    flock.defaults("flock.ugen.whiteNoise", {
+        rate: "audio"
     });
     
 
@@ -1712,4 +1739,107 @@ var flock = flock || {};
         }
     };
     
+    
+    flock.ugen.delay = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        that.model.pos = 0;
+        
+        that.gen = function (numSamps) {
+            var m = that.model,
+                inputs = that.inputs,
+                out = that.output,
+                source = inputs.source.output,
+                time = inputs.time.output[0],
+                delayBuffer = that.delayBuffer,
+                i;
+            
+            if (time !== m.time) {
+                m.time = time;
+                m.delaySamps = time * that.model.sampleRate;
+            }
+            
+            for (i = 0; i < numSamps; i++) {
+                if (m.pos >= m.delaySamps) {
+                    m.pos = 0;
+                }
+                out[i] = delayBuffer[m.pos];
+                delayBuffer[m.pos] = source[i];
+                m.pos++;
+            };
+            
+            that.mulAdd(numSamps);
+        };
+        
+        that.onInputChanged = function (inputName) {
+            flock.onMulAddInputChanged(that);
+            
+            if (!inputName || inputName === "maxTime") {
+                var delayBufferLength = that.model.sampleRate * that.inputs.maxTime.output[0];
+                that.delayBuffer = new Float32Array(delayBufferLength);
+            }
+        };
+        
+        that.onInputChanged();
+        return that;
+    };
+    
+    flock.defaults("flock.ugen.delay", {
+        rate: "audio",
+        inputs: {
+            maxTime: 1.0,
+            time: 1.0
+        }
+    });
+    
+    
+    flock.ugen.decay = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        $.extend(that.model, {
+            time: 0,
+            lastSamp: 0,
+            coeff: 0
+        });
+        
+        that.gen = function (numSamps) {
+            var m = that.model,
+                inputs = that.inputs,
+                out = that.output,
+                source = inputs.source.output,
+                time = inputs.time.output[0],
+                i;
+
+            if (time !== m.time) {
+                m.time = time;
+                m.coeff = time === 0.0 ? 0.0 : Math.exp(flock.LOG001 / (time * that.model.sampleRate));
+            }
+            
+            // TODO: Optimize this conditional.
+            if (m.coeff === 0.0) {
+                for (i = 0; i < numSamps; i++) {
+                    out[i] = source[i];
+                }
+            } else {
+                for (i = 0; i < numSamps; i++) {
+                    m.lastSamp = source[i] + m.coeff * m.lastSamp;
+                    out[i] = m.lastSamp;
+                }
+            }
+            
+            that.mulAdd(numSamps);
+        };
+          
+        that.onInputChanged = function () {
+            flock.onMulAddInputChanged(that);
+        };
+           
+        that.onInputChanged();
+        return that;
+    };
+    
+    flock.defaults("flock.ugen.decay", {
+        rate: "audio",
+        inputs: {
+            time: 1.0
+        }
+    });
 }(jQuery));

@@ -45,6 +45,7 @@
                     <option value="simple_saw">Saw</option>
                 </optgroup>
                 <optgroup label="Noise">
+                    <option value="noise_white">White noise</option>
                     <option value="noise_dust">Dust</option>
                     <option value="noise_lf">LFNoise</option>
                     <option value="noise_sin">LFNoise &amp; SinOsc</option>
@@ -64,6 +65,7 @@
                 </optgroup>
                 <optgroup label="Envelopes">
                     <option value="simpleASR">Simple Attack/Sustain/Release</option>
+                    <option value="decay">Decay</option>
                 </optgroup>
                 <optgroup label="Lines">
                     <option value="line_freq">SinOsc Freq</option>
@@ -77,6 +79,7 @@
                     <option value="mouse_click">Mouse click</option>
                 </optgroup>
                 <option value="freq_stairs">Frequency stairs</option>
+                <option value="delay">Delay</option>
                 <option value="scope">Scope</option>
                 <option value="stereo">Stereo</option>
                 <option value="sum">Additive Synthesis</option>
@@ -219,6 +222,50 @@
                 }
             }
         });
+        </script>
+        
+        <script type="application/flocking" id="decay">
+// Decay as an envelope for white noise.
+var synth = flock.synth({
+    ugen: "flock.ugen.decay",
+    source: {
+        ugen: "flock.ugen.impulse",
+        rate: "audio",
+        freq: {
+            ugen: "flock.ugen.xLine",
+            rate: "control",
+            start: 1,
+            end: 50,
+            duration: 20
+        },
+        phase: 0.25,
+        mul: 0.25
+    },
+    time: 0.2,
+    mul: {
+        ugen: "flock.ugen.whiteNoise"
+    }
+});
+        </script>
+        
+        <script type="application/flocking" id="noise_white">
+// Filtering white noise with the mouse.
+var synth = flock.synth({
+    ugen: "flock.ugen.filter.butter.bp",
+    source: {
+        ugen: "flock.ugen.whiteNoise",
+        mul: 0.5
+    },
+    freq: {
+        ugen: "flock.ugen.mouse.cursor",
+        mul: 1660,
+        add: 40,
+        options: {
+            interoplation: "exponential"
+        }
+    },
+    q: 2.0
+});
         </script>
         
         <script type="application/flocking" id="noise_dust">// Simple example of Dust generating random audio noise.
@@ -437,6 +484,39 @@ var synth = flock.synth(
                 }
             }
         });
+        </script>
+        
+        <script type="application/flocking" id="delay">
+// Use Dust to trigger the Delay unit generator as an envelope for a Decaying WhiteNoise source
+var synth = flock.synth({
+    ugen: "flock.ugen.delay",
+    source: {
+        ugen: "flock.ugen.decay",
+        source: {
+            ugen: "flock.ugen.dust",
+            density: 1.0,
+            mul: 0.5
+        },
+        time: 0.3,
+        mul: {
+            ugen: "flock.ugen.whiteNoise"
+        }
+    },
+    maxTime: 1.0,
+    time: 0.2,
+    add: {
+        ugen: "flock.ugen.decay",
+        source: {
+            ugen: "flock.ugen.dust",
+            density: 1.0,
+            mul: 0.5
+        },
+        time: 0.3,
+        mul: {
+            ugen: "flock.ugen.whiteNoise"
+        }
+    }
+});
         </script>
         
         <script type="application/flocking" id="sum">
