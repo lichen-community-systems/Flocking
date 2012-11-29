@@ -737,4 +737,96 @@ var flock = flock || {};
         equals(synth.out.inputs.sources.inputs.gerbil, newUGen, "The new ugen's output should be wired back up.");
     });
     
+    /*
+    +    
+    +    flock.nodeList = function () {
+    +        var that = {
+    +            nodes: []
+    +        };
+    +        
+    +        that.head = function (node) {
+    +            that.nodes.unshift(node);
+    +        };
+    +        
+    +        that.before = function (refNode, node) {
+    +            var refIdx = that.nodes.indexOf(refNode);
+    +            that.at(refIdx, node);
+    +        };
+    +        
+    +        that.after = function (refNode, node) {
+    +            var refIdx = that.nodes.indexOf(refNode);
+    +            that.at(refIdx + 1, node);
+    +        };
+    +        
+    +        that.at = function (idx, node) {
+    +            that.nodes.splice(idx, 0, node);
+    +        };
+    +        
+    +        that.tail = function (node) {
+    +            that.nodes.push(node);
+    +        };
+    +        
+    +        that.remove = function (node) {
+    +            var idx = that.nodes.indexOf(node);
+    +            that.nodes.splice(idx, 1);
+    +        };
+    +        
+    +        return that;
+    +    };
+    */
+    test("flock.nodeList", function () {
+        var nl = flock.nodeList();
+        equal(nl.nodes.length, 0,
+            "When a NodeList is instantiated, it should contain no nodes.");
+        
+        var testNodes = [{id: "first"}, {id: "second"}, {id: "third"}];
+        nl.head(testNodes[0]);
+        equal(nl.nodes.length, 1,
+            "The node should have been added to the list.");
+        equal(nl.nodes[0], testNodes[0],
+            "The node should have been added at the correct index.");
+        
+        nl.remove(testNodes[0]);
+        equal(nl.nodes.length, 0,
+            "The node should have been removed from the list");
+            
+        nl.remove(testNodes[0]);
+        equal(nl.nodes.length, 0,
+            "Removing a node that is not in the list should not cause errors, and the list should remain the same.");
+        
+        nl.head(testNodes[2]);
+        nl.head(testNodes[0]);
+        deepEqual(nl.nodes, [testNodes[0], testNodes[2]],
+            "Adding a node to the head of the list should put it in the correct position.");
+        
+        nl.tail(testNodes[0]);
+        deepEqual(nl.nodes, [testNodes[0], testNodes[2], testNodes[0]],
+            "Adding a node twice should include it twice, in the correct positions.");
+        
+        nl.remove(testNodes[0]);
+        deepEqual(nl.nodes, [testNodes[2], testNodes[0]],
+            "Removing a duplicate node should remove the first one.");
+        
+
+        nl.at(1, testNodes[1]);
+        deepEqual(nl.nodes, [testNodes[2], testNodes[1], testNodes[0]],
+            "Adding a node at a specific position should work.");
+        nl.remove(testNodes[1]);
+
+        nl.before(testNodes[0], testNodes[1]);
+        deepEqual(nl.nodes, [testNodes[2], testNodes[1], testNodes[0]],
+            "Adding a node before another node should work.");
+            
+        nl.after(testNodes[0], testNodes[1]);
+        deepEqual(nl.nodes, [testNodes[2], testNodes[1], testNodes[0], testNodes[1]],
+            "Adding a duplicate node after another node should work.");
+        
+        nl.remove(testNodes[1]);
+        nl.remove(testNodes[0]);
+        nl.after(testNodes[2], testNodes[0]);
+        deepEqual(nl.nodes, [testNodes[2], testNodes[0], testNodes[1]],
+            "Adding a node after another node should work.");
+            
+    });
+    
 }());
