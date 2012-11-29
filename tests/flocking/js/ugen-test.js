@@ -118,12 +118,12 @@ flock.test = flock.test || {};
             flock.enviro.shared.clearBuses();
             outUGen.gen(numSamps);
         };
-        var actual = flock.interleavedDemandWriter(new Float32Array(numSamps * chans), 
+        var actual = flock.interleavedWriter(new Float32Array(numSamps * chans), 
             evalFn, flock.enviro.shared.buses, audioSettings);
         deepEqual(actual, expectedBuffer, msg);
     };
 
-    test("flock.interleavedDemandWriter() mono input, mono output", function () {
+    test("flock.interleavedWriter() mono input, mono output", function () {
         // Test with a single input buffer being multiplexed by ugen.out.
         var mockLeftUGen = flock.test.makeMockUGen(mockLeft);
         var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen}, []);
@@ -143,7 +143,7 @@ flock.test = flock.test || {};
             "We should receive a mono buffer containing the input buffer unmodified.");
     });
     
-    test("flock.interleavedDemandWriter() mono input, stereo output", function () {
+    test("flock.interleavedWriter() mono input, stereo output", function () {
         // Test with a single mono input buffer.
         var mockLeftUGen = flock.test.makeMockUGen(mockLeft);
         var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen, expand: stereoExpandValueUGen}, []);
@@ -159,7 +159,7 @@ flock.test = flock.test || {};
             "We should receive a stereo buffer containing two copies of the original input buffer.");
     });
 
-    test("flock.interleavedDemandWriter() stereo input", function () {
+    test("flock.interleavedWriter() stereo input", function () {
         // Test with two input buffers.
         var out = flock.ugen.out({
             sources: [
@@ -933,7 +933,7 @@ flock.test = flock.test || {};
             sources: {
                 ugen: "flock.test.mockUGen",
                 options: {
-                    buffer: flock.test.ascendingBuffer(64)
+                    buffer: flock.test.ascendingBuffer(64, 1)
                 }
             }
         }
@@ -985,7 +985,7 @@ flock.test = flock.test || {};
     });
     
     test("flock.ugen.normalize()", function () {
-        var testBuffer = flock.test.ascendingBuffer(64, -32),
+        var testBuffer = flock.test.ascendingBuffer(64, -31),
             mock = {
                 ugen: "flock.test.mockUGen",
                 options: {
@@ -1009,14 +1009,61 @@ flock.test = flock.test || {};
         
         var normalizer = normalizerSynth.ugens.named.normalizer;
         normalizerSynth.gen();
-        var expected = flock.normalize(flock.test.ascendingBuffer(64, -32), 1.0);
+        var expected = flock.normalize(flock.test.ascendingBuffer(64, -31), 1.0);
         deepEqual(normalizer.output, expected,
             "The signal should be normalized to 1.0.");
         
         normalizer.input("max", 0.5);
         normalizer.gen(64);
-        expected = flock.normalize(flock.test.ascendingBuffer(64, -32), 0.5);
+        expected = flock.normalize(flock.test.ascendingBuffer(64, -31), 0.5);
         deepEqual(normalizer.output, expected,
             "When the 'max' input is changed to 0.5, the signal should be normalized to 0.5");
+    });
+    
+    test("flock.ugen.delay", function () {
+        var sourceBuffer = flock.test.ascendingBuffer(64, 1),
+            sampGenCount = 0,
+            incrementingMock = {
+                ugen: "flock.test.mockUGen",
+                options: {
+                    buffer: sourceBuffer,
+                    gen: function (that, numSamps) {
+                        var i;
+                        for (i = 0; i < numSamps; i++) {
+                            that.output[i] = that.output[i] + sampGenCount;
+                        }
+                        sampGenCount += numSamps;
+                    }
+                }
+            },
+            delayLineDef = {
+                id: "delay",
+                ugen: "flock.ugen.delay",
+                inputs: {
+                    source: incrementingMock,
+                    time: 64 / 44100
+                }
+            };
+        
+        var delaySynth = flock.synth(delayLineDef);
+        var delay = delaySynth.ugens.named.delay;
+        delaySynth.gen();
+        
+        // First block should be silent.
+        var expected = new Float32Array(64);
+        deepEqual(delay.output, expected,
+            "With a delay time equal to the length of a block, the first output block should be silent.");
+        
+        // Second should contain the first block's contents.
+        delaySynth.gen();
+        expected = flock.test.ascendingBuffer(64, 1);
+        deepEqual(delay.output, expected,
+            "The delay's second block should contain the source's first block of samples.");
+        
+        // Third block should be similarly delayed.
+        delaySynth.gen();
+        expected = flock.test.ascendingBuffer(64, 65);
+        deepEqual(delay.output, expected,
+            "The delay's third block should contain the source's second block of samples.");
     });
 }());

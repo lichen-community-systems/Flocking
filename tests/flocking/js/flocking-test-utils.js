@@ -207,7 +207,11 @@ var flock = flock || {};
         if (that.options.buffer) {
             that.output = that.options.buffer;
         }
-        that.gen = function () {}; // No op function--we just pass the output buffer back as-is.
+        that.gen = function (numSamps) {
+            if (that.options.gen) {
+                that.options.gen(that, numSamps);
+            }
+        };
         return that;
     };
     
@@ -241,7 +245,7 @@ var flock = flock || {};
         step = step === undefined ? 1 : step;
         
         return flock.generate(numSamps, function (i) {
-            return start + i + step;
+            return start + (i * step);
         });
     };
     
