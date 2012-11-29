@@ -64,9 +64,10 @@ var flock = flock || {};
             constant: 1
         },        
         tableSize: 8192,
-        bufferSize: flock.platform.os.indexOf("Linux") > -1 ||
-            (flock.platform.os === "Win32" && flock.platform.browser.mozilla) ?
-            4096 : 2048
+        
+        // This buffer size determines the overall latency of Flocking's audio output. On Firefox, it will be 2x.
+        bufferSize: (flock.platform.os === "Win32" && flock.platform.browser.mozilla) ?
+            16384: 4096
     });
     
     flock.idIdx = 0;
@@ -450,9 +451,9 @@ var flock = flock || {};
                     self.clear(id);
                     self.postMessage({
                         msg: "tick",
-                        value: [timeFromNow, Date.now()]
+                        value: timeFromNow
                     });
-                });
+                }, timeFromNow);
                 self.scheduled.push(id);
             };
             
@@ -496,17 +497,7 @@ var flock = flock || {};
             }
         };
         
-        // TODO: Put these somewhere more sensible.
-        that.addOneShotListener = function (eventName, target, fn) {
-            var listener = function (e) {
-                fn.apply(null, e.data.value);
-                target.removeEventListener(eventName, listener, false);
-            };
-            target.addEventListener(eventName, listener, false);
-            return listener;
-        };
-        
-        that.addFilteredListener = function (eventName, target, value, fn) {
+        that.addFilteredListener = function (eventName, target, value, fn, isOneShot) {
             if (!that.valueListeners[value]) {
                 that.valueListeners[value] = [];
             }
@@ -514,7 +505,10 @@ var flock = flock || {};
             var listeners = that.valueListeners[value],
                 listener = function (e) {
                 if (e.data.value === value) {
-                    fn();
+                    fn(e.data.value);
+                    if (isOneShot) {
+                        target.removeEventListener(eventName, listener, false);
+                    }
                 }
             };
             listener.wrappedListener = fn;
@@ -543,20 +537,21 @@ var flock = flock || {};
         };
         
         that.repeat = function (interval, fn) {
-            var worker = that.workers.interval,
-                ms = that.timeConverter.value(interval),
-                listener = that.addFilteredListener("message", worker, ms, fn);
-            
-            that.scheduleWorker(worker, ms);
-            return listener;
+            return that.schedule(that.workers.interval, interval, fn, false);
         };
         
         that.once = function (time, fn) {
-            var worker = that.workers.specifiedTime,
-                ms = that.timeConverter.value(time),
-                listener = that.addOneShotListener("message", worker, fn);
-            
-            that.scheduleWorker(worker, ms);
+            return that.schedule(that.workers.specifiedTime, time, fn, true);
+        };
+        
+        that.schedule = function (worker, time, fn, isOneShot) {
+            var ms = that.timeConverter.value(time),
+                listener = that.addFilteredListener("message", worker, ms, fn, isOneShot),
+                msg = that.messages.schedule;
+
+            msg.value = ms;
+            worker.postMessage(msg);
+
             return listener;
         };
         
@@ -570,12 +565,6 @@ var flock = flock || {};
             }
             
             return listeners;
-        };
-        
-        that.scheduleWorker = function (worker, value) {
-            var msg = that.messages.schedule;
-            msg.value = value;
-            worker.postMessage(msg);
         };
         
         that.clear = function (listener) {
@@ -852,21 +841,19 @@ var flock = flock || {};
     };
     
     /**
-     * Generates an interleaved audio buffer from the output unit generator for the specified
-     * 'needed' number of samples. If number of needed samples isn't divisble by the control rate,
-     * the output buffer's size will be rounded up to the nearest control period.
+     * Generates an interleaved audio buffer from the source buffers.
+     * If the output buffer size isn't divisble by the control rate,
+     * it will be rounded down to the nearest block size.
      *
-     * @param {Number} needed the number of samples to generate
-     * @param {Function} evalFn a function to invoke when writing each buffer
-     * @param {Array} an array of buffers to write
+     * @param {Array} outBuf the output buffer to write into
+     * @param {Function} evalFn a function to invoke before writing each control block
+     * @param {Array} sourceBufs the array of channel buffers to interleave and write out
      * @param {Object} audioSettings the current audio system settings
-     * @return a channel-interleaved output buffer containing roughly the number of needed samples
+     * @return a channel-interleaved output buffer
      */
-    flock.interleavedDemandWriter = function (outBuf, evalFn, sourceBufs, audioSettings) {
+    flock.interleavedWriter = function (outBuf, evalFn, sourceBufs, audioSettings) {
         var kr = audioSettings.rates.control,
             chans = audioSettings.chans,
-            // Figure out how many control periods worth of samples to generate.
-            // This means that we could conceivably write slightly more or less than needed.
             numKRBufs = audioSettings.bufferSize / kr,
             i,
             chan,
@@ -896,30 +883,30 @@ var flock = flock || {};
      */
     flock.enviro.moz = function (that) {
         that.audioEl = new Audio();
-        that.model.writeInterval = 1;
-        that.model.sampleOverflow = -(that.audioSettings.bufferSize * 4);
+        that.model.bufferDur = (that.audioSettings.bufferSize / that.audioSettings.rates.audio) * 1000;
+        that.model.queuePollInterval = Math.ceil(that.model.bufferDur / 20);
         that.audioEl.mozSetup(that.audioSettings.chans, that.audioSettings.rates.audio);
+        that.outBuffer = new Float32Array(that.audioSettings.bufferSize * that.audioSettings.chans);
         
         that.startGeneratingSamples = function () {
             if (that.scheduled) {
                 return;
             }
-            that.asyncScheduler.repeat(that.model.writeInterval, that.writeSamples);
+            that.asyncScheduler.repeat(that.model.queuePollInterval, that.writeSamples);
             that.scheduled = true;
         };
         
         that.writeSamples = function () {
             var playState = that.model.playState,
                 currentOffset = that.audioEl.mozCurrentSampleOffset(),
-                needed = currentOffset - playState.written,
-                outBuf;
+                queued = playState.written - currentOffset,
+                outBuf = that.outBuffer;
             
-            if (needed < that.model.sampleOverflow || that.nodes.length < 1) {
+            if (queued > that.audioSettings.bufferSize || that.nodes.length < 1) {
                 return;
             }
             
-            outBuf = new Float32Array(that.audioSettings.bufferSize * that.audioSettings.chans);
-            flock.interleavedDemandWriter(outBuf, that.gen, that.buses, that.audioSettings);
+            flock.interleavedWriter(outBuf, that.gen, that.buses, that.audioSettings);
             playState.written += that.audioEl.mozWriteAudio(outBuf);
             
             if (playState.written >= playState.total) {
