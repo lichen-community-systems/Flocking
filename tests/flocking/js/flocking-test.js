@@ -508,7 +508,6 @@ var flock = flock || {};
     };
     
     test("flock.synth.group", function () {
-        //             "input", "get", "set", "gen", "play", "pause"
         var synth1DidGen = false;
         var synth2DidGen = false;
         
@@ -563,6 +562,77 @@ var flock = flock || {};
         group.gen();
         ok(synth1DidGen && synth2DidGen,
             "All nodes should recieve the gen() method when it is called on the group.");
+    });
+    
+    
+    var checkVoiceInputValues = function (synth, voiceName, expectedValues, msg) {
+        var inputVals = synth.activeVoices[voiceName].input(Object.keys(expectedValues));
+        deepEqual(inputVals, expectedValues, msg);
+    };
+    
+    var checkVoicesAndInputValues = function (synth, voiceNames, expectedValues, msg) {
+        voiceNames = $.makeArray(voiceNames);
+        expectedValues = $.makeArray(expectedValues);
+        
+        equals(Object.keys(synth.activeVoices).length, voiceNames.length,
+            "The expected voices should be playing.");
+        
+        $.each(voiceNames, function (i, voiceName) {
+            checkVoiceInputValues(synth, voiceName, expectedValues[i], msg);
+        });
+    };
+    
+    test("flock.synth.polyphonic", function () {
+        var def = {
+            id: "carrier",
+            ugen: "flock.test.mockUGen",
+            freq: 440,
+            mul: {
+                id: "env",
+                ugen: "flock.test.mockUGen",
+                gate: 0
+            }
+        };
+        
+        var poly = flock.synth.polyphonic(def, {
+            addToEnvironment: false
+        });
+        equals(Object.keys(poly.activeVoices).length, 0,
+            "When a polyphonic synth is instantiated, it should have no active voices.");
+        
+        // One voice on.
+        poly.noteOn("cat");
+        checkVoicesAndInputValues(poly, "cat", {
+            "env.gate": 1,
+            "carrier.freq": 440
+        }, "The first voice should be active.");
+        
+        // Multiple voices on.
+        poly.noteOn("dog", {
+            "carrier.freq": 220
+        });
+        checkVoicesAndInputValues(poly, ["cat", "dog"], [
+            {
+                "env.gate": 1,
+                "carrier.freq": 440
+            },
+            {
+                "env.gate": 1,
+                "carrier.freq": 220
+            }
+        ], "Both voices should be active");
+
+        // Back to one voice on.
+        poly.noteOff("cat");
+        checkVoicesAndInputValues(poly, "dog",{
+            "env.gate": 1,
+            "carrier.freq": 220
+        }, "Only the second voice should still be active.");
+        
+        // No voices.
+        poly.noteOff("dog");
+        equals(Object.keys(poly.activeVoices).length, 0,
+            "No voices should be active.");
     });
     
     
