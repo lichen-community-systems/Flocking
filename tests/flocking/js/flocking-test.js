@@ -446,6 +446,125 @@ var flock = flock || {};
         testSetMultiple("input");
     });
     
+    test("flock.nodeList", function () {
+        var nl = flock.nodeList();
+        equal(nl.nodes.length, 0,
+            "When a NodeList is instantiated, it should contain no nodes.");
+        
+        var testNodes = [{id: "first"}, {id: "second"}, {id: "third"}];
+        nl.head(testNodes[0]);
+        equal(nl.nodes.length, 1,
+            "The node should have been added to the list.");
+        equal(nl.nodes[0], testNodes[0],
+            "The node should have been added at the correct index.");
+        
+        nl.remove(testNodes[0]);
+        equal(nl.nodes.length, 0,
+            "The node should have been removed from the list");
+            
+        nl.remove(testNodes[0]);
+        equal(nl.nodes.length, 0,
+            "Removing a node that is not in the list should not cause errors, and the list should remain the same.");
+        
+        nl.head(testNodes[2]);
+        nl.head(testNodes[0]);
+        deepEqual(nl.nodes, [testNodes[0], testNodes[2]],
+            "Adding a node to the head of the list should put it in the correct position.");
+        
+        nl.tail(testNodes[0]);
+        deepEqual(nl.nodes, [testNodes[0], testNodes[2], testNodes[0]],
+            "Adding a node twice should include it twice, in the correct positions.");
+        
+        nl.remove(testNodes[0]);
+        deepEqual(nl.nodes, [testNodes[2], testNodes[0]],
+            "Removing a duplicate node should remove the first one.");
+        
+
+        nl.at(1, testNodes[1]);
+        deepEqual(nl.nodes, [testNodes[2], testNodes[1], testNodes[0]],
+            "Adding a node at a specific position should work.");
+        nl.remove(testNodes[1]);
+
+        nl.before(testNodes[0], testNodes[1]);
+        deepEqual(nl.nodes, [testNodes[2], testNodes[1], testNodes[0]],
+            "Adding a node before another node should work.");
+            
+        nl.after(testNodes[0], testNodes[1]);
+        deepEqual(nl.nodes, [testNodes[2], testNodes[1], testNodes[0], testNodes[1]],
+            "Adding a duplicate node after another node should work.");
+        
+        nl.remove(testNodes[1]);
+        nl.remove(testNodes[0]);
+        nl.after(testNodes[2], testNodes[0]);
+        deepEqual(nl.nodes, [testNodes[2], testNodes[0], testNodes[1]],
+            "Adding a node after another node should work.");
+    });
+    
+    var checkValueOnNodes = function (nodes, ugenName, inputName, expected) {
+        $.each(nodes, function (i, node) {
+            var actual = node.ugens.named[ugenName].input(inputName);
+            equal(expected, actual, "Node #" + i + " should have the correct value.")
+        });
+    };
+    
+    test("flock.synth.group", function () {
+        //             "input", "get", "set", "gen", "play", "pause"
+        var synth1DidGen = false;
+        var synth2DidGen = false;
+        
+        var synthOpts = {
+            addToEnvironment: false
+        };
+        var synth1 = flock.synth({
+            id: "mock",
+            ugen: "flock.test.mockUGen",
+            freq: 110,
+            mul: 0.1,
+            options: {
+                buffer: flock.generate(64, 1),
+                gen: function () {
+                    synth1DidGen = true;
+                }
+            }
+        }, synthOpts);
+        var synth2 = flock.synth({
+            id: "mock",
+            ugen: "flock.test.mockUGen",
+            freq: 220,
+            mul: 0.2,
+            options: {
+                buffer: flock.generate(64, 2),
+                gen: function () {
+                    synth2DidGen = true;
+                }
+            }
+        }, synthOpts);
+        
+        var group = flock.synth.group(synthOpts);
+        group.head(synth1);
+        group.tail(synth2);
+        equals(2, group.nodes.length,
+            "Both synths should have been added to the group.");
+            
+        var inputVal = group.input("mock.freq");
+        equals(inputVal, 220,
+            "Getting an input on the group with input() should return the tail synth's value.");
+
+        inputVal = group.get("mock.freq");
+        equals(inputVal, 220,
+            "Getting an input on the group with get() should return the tail synth's value.");
+            
+        group.input("mock.freq", 440);
+        checkValueOnNodes(group.nodes, "mock", "freq", 440);
+
+        group.set("mock.mul", 0.5);
+        checkValueOnNodes(group.nodes, "mock", "mul", 0.5);
+        
+        group.gen();
+        ok(synth1DidGen && synth2DidGen,
+            "All nodes should recieve the gen() method when it is called on the group.");
+    });
+    
     
     module("Parsing tests");
     
@@ -735,98 +854,6 @@ var flock = flock || {};
         equals(synth.ugens.named.gerbil.inputs.ear, expectedInput, 
             "The old ugen's input should have been copied over to the new one.");
         equals(synth.out.inputs.sources.inputs.gerbil, newUGen, "The new ugen's output should be wired back up.");
-    });
-    
-    /*
-    +    
-    +    flock.nodeList = function () {
-    +        var that = {
-    +            nodes: []
-    +        };
-    +        
-    +        that.head = function (node) {
-    +            that.nodes.unshift(node);
-    +        };
-    +        
-    +        that.before = function (refNode, node) {
-    +            var refIdx = that.nodes.indexOf(refNode);
-    +            that.at(refIdx, node);
-    +        };
-    +        
-    +        that.after = function (refNode, node) {
-    +            var refIdx = that.nodes.indexOf(refNode);
-    +            that.at(refIdx + 1, node);
-    +        };
-    +        
-    +        that.at = function (idx, node) {
-    +            that.nodes.splice(idx, 0, node);
-    +        };
-    +        
-    +        that.tail = function (node) {
-    +            that.nodes.push(node);
-    +        };
-    +        
-    +        that.remove = function (node) {
-    +            var idx = that.nodes.indexOf(node);
-    +            that.nodes.splice(idx, 1);
-    +        };
-    +        
-    +        return that;
-    +    };
-    */
-    test("flock.nodeList", function () {
-        var nl = flock.nodeList();
-        equal(nl.nodes.length, 0,
-            "When a NodeList is instantiated, it should contain no nodes.");
-        
-        var testNodes = [{id: "first"}, {id: "second"}, {id: "third"}];
-        nl.head(testNodes[0]);
-        equal(nl.nodes.length, 1,
-            "The node should have been added to the list.");
-        equal(nl.nodes[0], testNodes[0],
-            "The node should have been added at the correct index.");
-        
-        nl.remove(testNodes[0]);
-        equal(nl.nodes.length, 0,
-            "The node should have been removed from the list");
-            
-        nl.remove(testNodes[0]);
-        equal(nl.nodes.length, 0,
-            "Removing a node that is not in the list should not cause errors, and the list should remain the same.");
-        
-        nl.head(testNodes[2]);
-        nl.head(testNodes[0]);
-        deepEqual(nl.nodes, [testNodes[0], testNodes[2]],
-            "Adding a node to the head of the list should put it in the correct position.");
-        
-        nl.tail(testNodes[0]);
-        deepEqual(nl.nodes, [testNodes[0], testNodes[2], testNodes[0]],
-            "Adding a node twice should include it twice, in the correct positions.");
-        
-        nl.remove(testNodes[0]);
-        deepEqual(nl.nodes, [testNodes[2], testNodes[0]],
-            "Removing a duplicate node should remove the first one.");
-        
-
-        nl.at(1, testNodes[1]);
-        deepEqual(nl.nodes, [testNodes[2], testNodes[1], testNodes[0]],
-            "Adding a node at a specific position should work.");
-        nl.remove(testNodes[1]);
-
-        nl.before(testNodes[0], testNodes[1]);
-        deepEqual(nl.nodes, [testNodes[2], testNodes[1], testNodes[0]],
-            "Adding a node before another node should work.");
-            
-        nl.after(testNodes[0], testNodes[1]);
-        deepEqual(nl.nodes, [testNodes[2], testNodes[1], testNodes[0], testNodes[1]],
-            "Adding a duplicate node after another node should work.");
-        
-        nl.remove(testNodes[1]);
-        nl.remove(testNodes[0]);
-        nl.after(testNodes[2], testNodes[0]);
-        deepEqual(nl.nodes, [testNodes[2], testNodes[0], testNodes[1]],
-            "Adding a node after another node should work.");
-            
     });
     
 }());
