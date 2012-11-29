@@ -570,17 +570,65 @@ var flock = flock || {};
         deepEqual(inputVals, expectedValues, msg);
     };
     
-    var checkVoicesAndInputValues = function (synth, voiceNames, expectedValues, msg) {
-        voiceNames = $.makeArray(voiceNames);
-        expectedValues = $.makeArray(expectedValues);
+    var checkVoicesAndInputValues = function (synth, expectations, msg) {
+        var numActive = Object.keys(synth.activeVoices).length,
+            numExpected = Object.keys(expectations).length;
         
-        equals(Object.keys(synth.activeVoices).length, voiceNames.length,
+        equals(numActive, numExpected,
             "The expected voices should be playing.");
         
-        $.each(voiceNames, function (i, voiceName) {
-            checkVoiceInputValues(synth, voiceName, expectedValues[i], msg);
+        $.each(expectations, function (voiceName, expectedValues) {
+            checkVoiceInputValues(synth, voiceName, expectedValues, msg);
         });
     };
+    
+    var polySynthTestSpecs = [
+        {
+            event: "noteOn",
+            args: ["cat"],
+            expected: {
+                "cat": {
+                    "env.gate": 1,
+                    "carrier.freq": 440
+                }
+            },
+            msg: "The first voice should be active."
+        },
+        {
+            event: "noteOn",
+            args: ["dog", {
+                "carrier.freq": 220
+            }],
+            expected: {
+                cat: {
+                    "env.gate": 1,
+                    "carrier.freq": 440
+                },
+                dog: {
+                    "env.gate": 1,
+                    "carrier.freq": 220
+                }
+            },
+            msg: "Both voices should be active"
+        },
+        {
+            event: "noteOff",
+            args: ["cat"],
+            expected: {
+                "dog": {
+                    "env.gate": 1,
+                    "carrier.freq": 220
+                }
+            },
+            msg: "Only the second voice should still be active."
+        },
+        {
+            event: "noteOff",
+            args: ["dog"],
+            expected: {},
+            msg: "No voices should be active."
+        }
+    ];
     
     test("flock.synth.polyphonic", function () {
         var def = {
@@ -600,39 +648,11 @@ var flock = flock || {};
         equals(Object.keys(poly.activeVoices).length, 0,
             "When a polyphonic synth is instantiated, it should have no active voices.");
         
-        // One voice on.
-        poly.noteOn("cat");
-        checkVoicesAndInputValues(poly, "cat", {
-            "env.gate": 1,
-            "carrier.freq": 440
-        }, "The first voice should be active.");
-        
-        // Multiple voices on.
-        poly.noteOn("dog", {
-            "carrier.freq": 220
+        $.each(polySynthTestSpecs, function (i, testSpec) {
+            var fn = poly[testSpec.event];
+            fn.apply(poly, testSpec.args);
+            checkVoicesAndInputValues(poly, testSpec.expected, testSpec.msg);
         });
-        checkVoicesAndInputValues(poly, ["cat", "dog"], [
-            {
-                "env.gate": 1,
-                "carrier.freq": 440
-            },
-            {
-                "env.gate": 1,
-                "carrier.freq": 220
-            }
-        ], "Both voices should be active");
-
-        // Back to one voice on.
-        poly.noteOff("cat");
-        checkVoicesAndInputValues(poly, "dog",{
-            "env.gate": 1,
-            "carrier.freq": 220
-        }, "Only the second voice should still be active.");
-        
-        // No voices.
-        poly.noteOff("dog");
-        equals(Object.keys(poly.activeVoices).length, 0,
-            "No voices should be active.");
     });
     
     
