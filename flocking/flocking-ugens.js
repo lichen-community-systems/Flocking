@@ -1847,8 +1847,15 @@ var flock = flock || {};
      * Granular Synthesis UGens *
      ****************************/
      
-    // input arguments should be - delayLineDur, numGrains, grainDur (with randomization parameter?)
-    flock.ugen.granulator = function (inputs, output, options) {
+    /**
+     * Granulator synthesis unit generator.
+     * Inputs: 
+     *   - grainDur: the duration of each grain
+     *   - delayDur: the duration of the delay line for the input signal
+     *   - trigger: a trigger signal that, when it move to a positive number, will trigger a grain
+     *   - source: the input signal to granulate
+     */
+    flock.ugen.triggerGrains = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         $.extend(true, that.model, {
             activeGrains: [],
@@ -1858,7 +1865,8 @@ var flock = flock || {};
             delay: {
                 readPos: 0,
                 writePos: 0,
-                numSamps: 0
+                numSamps: 0,
+                sampsWritten: 0
             }
         });
 
@@ -1897,9 +1905,15 @@ var flock = flock || {};
                 m.delay.writePos = ++m.delay.writePos % m.delay.numSamps;
                 out[i] = 0; // Zero the buffer prior to summing all the grains' outputs.
             }
+            m.delay.sampsWritten += numSamps;
+            
+            // Don't start outputting grains until the delay line is full.
+            if (m.delay.sampsWritten < m.delay.numSamps) {
+                return;
+            }
             
             if (trigger > 0.0 && m.prevTrigger <= 0.0) {
-                grain = m.freeGrains.pop() || {};
+                grain = m.freeGrains.pop();
                 grain.sampIdx = 0;
                 grain.envIdx = 0;
                 grain.readPos = Math.round(Math.random() * m.delay.numSamps);
@@ -1917,12 +1931,17 @@ var flock = flock || {};
                     grain.envIdx++;
                     out[k] += samp * amp;
                 }
-                // Too costly! Simplify grain management.
-                /*if (grain.sampIdx >= m.numGrainSamps) {
-                    m.freeGrains.push(grain);
-                    m.activeGrains.splice(k, 1);
-                }*/
             }
+
+            // TODO: More efficient grain management strategy.
+            m.activeGrains = m.activeGrains.filter(function (grain) {
+                if (grain.sampIdx >= m.numGrainSamps) {
+                    m.freeGrains.push(grain);
+                    return false;
+                }
+                
+                return true;
+            });
             
             that.mulAdd(numSamps);
         };
@@ -1967,55 +1986,12 @@ var flock = flock || {};
         that.init();
         return that;
     };
-    
-    
-    // input arguments should be - delayLength, numGrains, grainLength (with randomization parameter?)
-    flock.ugen.granulatorTest = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
-        that.delayLine = new Float32Array(that.model.sampleRate * 10); // Max delay line buffer size of 10 seconds.
-         
-        $.extend(true, that.model, {
-            writePos: 0,
-            readPos: 0,
-            numWritten: 0
-        });
-         
-        that.gen = function (numSamps) {
-            var m = that.model,
-                inputs = that.inputs,
-                out = that.output,
-                source = inputs.source.output,
-                delayLineLength = inputs.delayLineLength.output[0],
-                numGrains = inputs.numGrains.output[0],
-                i,
-                j,
-                k;
 
-            if (delayLineLength !== m.delayLineLength) {
-                m.delayLineLength = delayLineLength;
-                m.numDelaySamps = delayLineLength * m.sampleRate;
-            }
-             
-            // Only read from the delay line if it is full.
-            if (m.numWritten >= m.numDelaySamps) {
-                // Read from the delay line
-                for (j = 0; j < numGrains; j++) {
-                    for (k = 0; k < numSamps; k++) {
-                        out[k] = that.delayLine[m.readPos];
-                        m.readPos = ++m.readPos % m.numDelaySamps;
-                    }
-                }
-            }
-
-            // Write to the delay line.
-            for (i = 0; i < numSamps; i++) {
-                that.delayLine[m.writePos] = source[i];
-                m.writePos = ++m.writePos % m.numDelaySamps;
-            }
-            m.numWritten += numSamps;
-        };
-        
-        return that;
-    };
-
+    flock.defaults("flock.ugen.triggerGrains", {
+        rate: "audio",
+        inputs: {
+            grainDur: 0.1,
+            delayDur: 1.0
+        }
+    });
 }(jQuery));
