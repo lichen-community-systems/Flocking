@@ -793,7 +793,7 @@ var flock = flock || {};
         };
         
         that.gen = function () {
-            that.clearBuses();
+            flock.enviro.clearBuses(that.audioSettings.numBuses, that.buses, that.audioSettings.rates.control);
             flock.enviro.evalGraph(that.nodes, that.audioSettings.rates.control);
         };
                 
@@ -812,26 +812,24 @@ var flock = flock || {};
                 }
             });
         };
-        
-        that.clearBuses = function () {
-            var numBuses = that.audioSettings.numBuses,
-                buses = that.buses,
-                i,
-                bus,
-                j;
-                
-            for (i = 0; i < numBuses; i++) {
-                bus = buses[i];
-                for (j = 0; j < bus.length; j++) {
-                    bus[j] = 0;
-                }
-            }
-        };
 
         setupEnviro(that);
         return that;
     };
 
+    flock.enviro.clearBuses = function (numBuses, buses, busLen) {
+        var i,
+            bus,
+            j;
+            
+        for (i = 0; i < numBuses; i++) {
+            bus = buses[i];
+            for (j = 0; j < busLen; j++) {
+                bus[j] = 0;
+            }
+        }
+    };
+    
     flock.enviro.createAudioBuffers = function (numBufs, kr) {
         var bufs = [],
             i;

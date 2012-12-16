@@ -3,16 +3,6 @@ body {
     margin-left: 2%;
 }
 
-.fileSelector label {
-    display: none;
-}
-
-#fileBrowser {
-    display: none;
-    padding: 10px;
-}
-
-
 .view {
     clear: both;
 }
@@ -42,23 +32,6 @@ body {
 #dataUrlField {
     width:50%;
     height: 100px;
-}
-
-#filePath {
-    font-family: courier, monospace;
-    font-size: 80%;
-    padding-top: 2.5%;
-    padding-right: 3%;
-    padding-left: 3%;
-}
-
-#browse {
-    border: 2px solid #888;
-    border-radius: 10px;
-    font-size: 100%;
-    font-style: italic;
-    background: #fff;
-    padding: 1.5%;
 }
 
 .speedSelector {
