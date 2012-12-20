@@ -816,7 +816,7 @@ var flock = flock || {};
         setupEnviro(that);
         return that;
     };
-
+    
     flock.enviro.clearBuses = function (numBuses, buses, busLen) {
         var i,
             bus,

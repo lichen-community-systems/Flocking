@@ -576,6 +576,27 @@ var flock = flock || {};
         }
     });
     
+    // TODO: Resolve with other buffer-related code and move up to core.
+    flock.buffer = {};
+    
+    // TODO: Should this be done earlier (during ugen parsing)?
+    // TODO: Less generic signature.
+    flock.buffer.resolveBufferDef = function (ugen) {
+        var m = ugen.model,
+            inputs = ugen.inputs,
+            bufDef = m.bufDef = inputs.buffer,
+            chan = inputs.channel ? inputs.channel.output[0] : 0;
+
+        if (typeof (bufDef) === "string") {
+            ugen.buffer = flock.enviro.shared.buffers[bufDef][chan]; // TODO: Direct reference to shared environment.
+        } else {
+            flock.parse.bufferForDef(bufDef, function (buffer, name) {
+                ugen.buffer = buffer ? buffer[inputs.channel.output[0]] : ugen.buffer;
+                m.name = name;
+                m.idx = 0;
+            });
+        }
+    };
     
     /****************
      * Buffer UGens *
@@ -661,28 +682,9 @@ var flock = flock || {};
         that.onInputChanged = function (inputName) {
             var m = that.model,
                 inputs = that.inputs;
-                
-            
-            // TODO: Move this to defaults.
-            if (!inputs.channel) {
-                inputs.channel = flock.ugen.value({value: 0.0}, new Float32Array(1));
-                m.channel = that.inputs.channel.output[0];
-            }
             
             if (m.bufDef !== that.inputs.buffer || inputName === "buffer") {
-                var bufDef = m.bufDef = inputs.buffer,
-                    chan = that.inputs.channel.output[0];
-
-                if (typeof (bufDef) === "string") {
-                    that.buffer = flock.enviro.shared.buffers[bufDef][chan];
-                } else {
-                    // TODO: Should this be done earlier (during ugen parsing)?
-                    flock.parse.bufferForDef(bufDef, function (buffer, name) {
-                        that.buffer = buffer ? buffer[inputs.channel.output[0]] : that.buffer;
-                        m.name = name;
-                        m.idx = 0;
-                    });
-                }
+                flock.buffer.resolveBufferDef(that);
             }
             
             // TODO: Optimize for non-regular speed constant rate input.
@@ -699,6 +701,7 @@ var flock = flock || {};
     flock.defaults("flock.ugen.playBuffer", {
         rate: "audio",
         inputs: {
+            channel: 0,
             loop: 0.0,
             speed: 1.0
         }
@@ -1848,12 +1851,18 @@ var flock = flock || {};
      ****************************/
      
     /**
-     * Granulator synthesis unit generator.
+     * Triggers grains from an audio buffer.
+     *
      * Inputs: 
-     *   - grainDur: the duration of each grain
-     *   - delayDur: the duration of the delay line for the input signal
-     *   - trigger: a trigger signal that, when it move to a positive number, will trigger a grain
-     *   - source: the input signal to granulate
+     *   - dur: the duration of each grain
+     *   - trigger: a trigger signal that, when it move to a positive number, will start a grain
+     *   - buffer: a bufferDef object describing the buffer to granulate
+     *   - centerPos: the postion within the sound buffer when the grain will reach maximum amplitude
+     *   - amp: the peak amplitude of the grain
+     *   - (rate)
+     *
+     * Options:
+     *   - (interpolation)
      */
     flock.ugen.triggerGrains = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
@@ -1861,75 +1870,53 @@ var flock = flock || {};
             activeGrains: [],
             freeGrains: [],
             env: null,
-            currentGrainPosition: 0,
-            delay: {
-                readPos: 0,
-                writePos: 0,
-                numSamps: 0,
-                sampsWritten: 0
-            }
         });
 
         that.gen = function (numSamps) {
             var m = that.model,
                 inputs = that.inputs,
                 out = that.output,
-                source = inputs.source.output,
-                grainDur = inputs.grainDur.output[0],
-                delayDur = inputs.delayDur.output[0],
+                buf = that.buffer,
+                dur = inputs.dur.output[0],
+                centerPos = inputs.centerPos.output[0] * m.sampleRate,
+                ampScale = inputs.amp.output[0],
                 trigger = inputs.trigger.output[0],
                 i,
                 j,
-                k,
                 grain,
                 samp,
                 amp;
         
             // Update the grain envelope if the grain duration input has changed.
-            if (grainDur !== m.grainDur) {
-                m.grainDur = grainDur > m.maxGrainDur ? m.maxGrainDur : grainDur;
-                m.numGrainSamps = Math.round(m.sampleRate * m.grainDur);
+            // TODO: What happens when this changes while older grains are still sounding?
+            if (dur !== m.dur) {
+                m.dur = dur > m.maxDur ? m.maxDur : dur;
+                m.numGrainSamps = Math.round(m.sampleRate * m.dur);
+                m.grainCenter = Math.round(m.numGrainSamps / 2);
                 for (i = 0; i < m.numGrainSamps; i++) {
                     m.env[i] = Math.sin(Math.PI * i / m.numGrainSamps);
                 }
-            }
-            
-            if (delayDur !== m.delay.dur) {
-                m.delay.dur = delayDur > m.delay.maxDur ? m.delay.maxDur : delayDur;
-                m.delay.numSamps = Math.round(m.sampleRate * m.delay.dur);
-            }
-
-            // Write source samples into the delay line.
-            for (i = 0; i < numSamps; i++) {
-                m.delay.buffer[m.delay.writePos] = source[i];
-                m.delay.writePos = ++m.delay.writePos % m.delay.numSamps;
-                out[i] = 0; // Zero the buffer prior to summing all the grains' outputs.
-            }
-            m.delay.sampsWritten += numSamps;
-            
-            // Don't start outputting grains until the delay line is full.
-            if (m.delay.sampsWritten < m.delay.numSamps) {
-                return;
             }
             
             if (trigger > 0.0 && m.prevTrigger <= 0.0) {
                 grain = m.freeGrains.pop();
                 grain.sampIdx = 0;
                 grain.envIdx = 0;
-                grain.readPos = Math.round(Math.random() * m.delay.numSamps);
+                // TODO: Support negative indexing of the buffer.
+                grain.readPos = centerPos >= m.grainCenter ? Math.round(centerPos - m.grainCenter) : 0;
                 m.activeGrains.push(grain);
             }
             m.prevTrigger = trigger;
             
-            for (j = 0; j < m.activeGrains.length; j++) {
-                grain = m.activeGrains[j];
-                for (k = 0; k < Math.min(m.numGrainSamps - grain.sampIdx, numSamps); k++) {
-                    samp = m.delay.buffer[grain.readPos];
-                    grain.readPos = ++grain.readPos % m.delay.numSamps
+            for (i = 0; i < m.activeGrains.length; i++) {
+                grain = m.activeGrains[i];
+                for (j = 0; j < Math.min(m.numGrainSamps - grain.sampIdx, numSamps); j++) {
+                    samp = buf[grain.readPos];
+                    grain.readPos = ++grain.readPos % that.buffer.length;
                     grain.sampIdx++;
-                    amp = m.env[grain.envIdx];
+                    amp = m.env[grain.envIdx] * ampScale;
                     grain.envIdx++;
-                    out[k] += samp * amp;
+                    out[j] += samp * amp;
                 }
             }
 
@@ -1947,6 +1934,7 @@ var flock = flock || {};
         };
         
         that.onInputChanged = function () {
+            flock.buffer.resolveBufferDef(that);
             flock.onMulAddInputChanged(that);
         };
         
@@ -1965,19 +1953,13 @@ var flock = flock || {};
         };
         
         that.init = function () {
-            // Allocates a buffer for enveloping each grain and for the delay line,
-            // setting them to hard maximum lengths.
+            // Allocates a buffer for the grain envelope and preallocates a pool of grains.
             var m = that.model,
-                maxGrainLength,
-                maxDelayLength;
+                maxGrainLength;
             
-            m.maxGrainDur = that.options.maxGrainDur || 30,
-            maxGrainLength = Math.round(m.maxGrainDur * m.sampleRate),
-            m.delay.maxDur = that.options.maxDelayDur || 30,
-            maxDelayLength = Math.round(m.delay.maxDur * m.sampleRate);
-                
+            m.maxDur = that.options.maxDur || 30;
+            maxGrainLength = Math.round(m.maxDur * m.sampleRate);
             m.env = new Float32Array(maxGrainLength);
-            m.delay.buffer = new Float32Array(maxDelayLength);
             
             that.preallocateGrains();
             that.onInputChanged();
@@ -1990,8 +1972,10 @@ var flock = flock || {};
     flock.defaults("flock.ugen.triggerGrains", {
         rate: "audio",
         inputs: {
-            grainDur: 0.1,
-            delayDur: 1.0
+            centerPos: 0,
+            channel: 0,
+            amp: 1.0,
+            dur: 0.1
         }
     });
 }(jQuery));
