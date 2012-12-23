@@ -577,23 +577,72 @@ var flock = flock || {};
     });
     
     // TODO: Resolve with other buffer-related code and move up to core.
-    flock.buffer = {};
+    // TODO: Use a real event system.
+    flock.buffer = {
+        listeners: {},
+        
+        addListener: function (id, ugen) {
+            if (!ugen.onBufferReady) {
+                return;
+            }
+            
+            var listeners = flock.buffer.listeners[id];
+            if (!listeners) {
+                listeners = flock.buffer.listeners[id] = [];
+            }
+            listeners.push(ugen);
+        },
+        
+        fireOnce: function (id, buffer) {
+            var listeners = flock.buffer.listeners[id],
+                i,
+                ugen;
+                
+            if (!listeners) {
+                return;
+            }
+            
+            // Fire onBufferReady() on each ugen listener.
+            for (i = 0; i < listeners.length; i++) {
+                ugen = listeners[i];
+                ugen.onBufferReady(buffer, id);
+            }
+            
+            // Clear all listeners.
+            flock.buffer.listeners[name] = [];
+        }
+    };
+    
+    flock.buffer.fireReady = function (ugen, id, buffer, name, chan) {
+        ugen.buffer = buffer ? buffer[chan] : ugen.buffer;
+        ugen.model.name = name;
+        flock.buffer.fireOnce(id, buffer);
+    };
+    
+    flock.buffer.resolveBufferId = function (ugen, id, chan) {
+        var buffer = flock.enviro.shared.buffers[id]; // TODO: Direct reference to shared environment.
+        flock.buffer.addListener(id, ugen);
+        if (buffer) {
+            // Buffer has already been loaded.
+            flock.buffer.fireReady(ugen, id, buffer, id, chan);
+        }
+    };
     
     // TODO: Should this be done earlier (during ugen parsing)?
-    // TODO: Less generic signature.
+    // TODO: Factor this into a ugen mixin.
     flock.buffer.resolveBufferDef = function (ugen) {
         var m = ugen.model,
             inputs = ugen.inputs,
             bufDef = m.bufDef = inputs.buffer,
-            chan = inputs.channel ? inputs.channel.output[0] : 0;
+            chan = inputs.channel ? inputs.channel.output[0] : 0,
+            buf;
 
         if (typeof (bufDef) === "string") {
-            ugen.buffer = flock.enviro.shared.buffers[bufDef][chan]; // TODO: Direct reference to shared environment.
+            flock.buffer.resolveBufferId(ugen, bufDef, chan);
         } else {
+            flock.buffer.addListener(bufDef.id, ugen);
             flock.parse.bufferForDef(bufDef, function (buffer, name) {
-                ugen.buffer = buffer ? buffer[inputs.channel.output[0]] : ugen.buffer;
-                m.name = name;
-                m.idx = 0;
+                flock.buffer.fireReady(ugen, bufDef.id, buffer, name, chan)
             });
         }
     };
@@ -679,6 +728,10 @@ var flock = flock || {};
             m.idx = bufIdx;
         };
         
+        that.onBufferReady = function () {
+            that.model.idx = 0;
+        };
+        
         that.onInputChanged = function (inputName) {
             var m = that.model,
                 inputs = that.inputs;
@@ -705,6 +758,64 @@ var flock = flock || {};
             loop: 0.0,
             speed: 1.0
         }
+    });
+    
+    /**
+     * Outputs the duration of the specified buffer. Runs at either constant or control rate.
+     * Use control rate only when the underlying buffer may change dynamically.
+     *
+     * Inputs:
+     *  buffer: a bufDef object specifying the buffer to track
+     */
+    flock.ugen.bufferDuration = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.krGen = function (numSamps) {
+            var i;
+            for (i = 0; i < numSamps; i++) {
+                out[i] = that.model.value = that.buffer.length / that.model.sampleRate;
+            }
+        };
+        
+        that.onInputChanged = function (inputName) {
+            if (that.model.bufDef !== that.inputs.buffer || inputName === "buffer") {
+                flock.buffer.resolveBufferDef(that);
+            }
+        };
+        
+        that.onBufferReady = function (buffer) {
+            that.output[0] = that.model.value = buffer.length / that.model.sampleRate;
+        };
+        
+        that.init = function () {
+            var r = that.rate;
+            that.gen = (r === flock.rates.CONTROL || r === flock.rates.AUDIO) ? that.krGen : undefined;
+            that.output[0] = that.model.value = 0.0;
+            that.onInputChanged();
+        };
+        
+        that.init();
+        return that;
+    };
+
+    flock.defaults("flock.ugen.bufferDuration", {
+        rate: "constant",
+        inputs: {}
+    });
+    
+    
+    /**
+     * Constant-rate unit generator that outputs the environment's current sample rate.
+     */
+    flock.ugen.sampleRate = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        that.output[0] = that.model.sampleRate;
+        return that;
+    };
+    
+    flock.defaults("flock.ugen.sampleRate", {
+        rate: "constant",
+        inputs: {}
     });
     
     
@@ -791,36 +902,41 @@ var flock = flock || {};
         var that = flock.ugen(inputs, output, options);
         that.model.counter = 0;
         that.model.level = 0;
+        that.model.end = Math.random();
     
         that.gen = function (numSamps) {
             var m = that.model,
                 freq = inputs.freq.output[0], // Freq is kr.
                 remain = numSamps,
                 out = that.output,
-                counter = m.counter,
-                level = m.level,
                 currSamp = 0,
                 sampsForLevel,
                 i;
             
             freq = freq > 0.001 ? freq : 0.001;
             do {
-                if (counter <= 0) {
-                    counter = m.sampleRate / freq;
-                    counter = counter > 1 ? counter : 1;
-                    level = Math.random();
+                if (m.counter <= 0) {
+                    m.counter = m.sampleRate / freq;
+                    m.counter = m.counter > 1 ? m.counter : 1;
+                    if (that.options.interpolation === "linear") {
+                        m.start = m.value = m.end;
+                        m.end = Math.random();
+                        m.ramp = m.ramp = (m.end - m.start) / m.counter;
+                    } else {
+                        m.start = m.value = Math.random();
+                        m.ramp = 0;
+                    }
                 }
-                sampsForLevel = remain < counter ? remain : counter;
+                sampsForLevel = remain < m.counter ? remain : m.counter;
                 remain -= sampsForLevel;
-                counter -= sampsForLevel;
+                m.counter -= sampsForLevel;
                 for (i = 0; i < sampsForLevel; i++) {
-                    out[currSamp] = level;
+                    out[currSamp] = m.value;
+                    m.value += m.ramp;
                     currSamp++;
                 }
 
             } while (remain);
-            m.counter = counter;
-            m.level = level;
         
             that.mulAdd(numSamps);
         };
@@ -900,7 +1016,12 @@ var flock = flock || {};
     };
     
     flock.defaults("flock.ugen.line", {
-        rate: "control"
+        rate: "control",
+        inputs: {
+            start: 0.0,
+            end: 1.0,
+            duration: 1.0
+        }
     });
     
 
@@ -958,10 +1079,82 @@ var flock = flock || {};
     };
     
     flock.defaults("flock.ugen.xLine", {
-        rate: "control"
+        rate: "control",
+        inputs: {
+            start: 0.0,
+            end: 1.0,
+            duration: 1.0
+        }
     });
 
-
+    /**
+     * Loops through a linear ramp from start to end, incrementing the output by step.
+     * Equivalent to SuperCollider's Phasor unit generator.
+     *
+     * Inputs:
+     *  start: the value to start ramping from
+     *  end: the value to ramp to
+     *  step: the value to increment per sample
+     *  reset: the value to return to when the loop is reset by a trigger signal
+     *  trigger: a trigger signal that, when it cross the zero line, will reset the loop back to the reset point
+     */
+    flock.ugen.loop = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.gen = function (numSamps) {
+            var m = that.model,
+                inputs = that.inputs,
+                out = that.output,
+                step = inputs.step.output,
+                trig = inputs.trigger.output[0],
+                i,
+                j;
+            
+            if ((trig > 0.0 && m.prevTrig <= 0.0)) {
+                m.value = inputs.reset.output[0];
+            }
+            m.prevTrig = trig;
+            
+            // TODO: Add sample priming to the ugen graph to remove this conditional.
+            if (m.value === undefined) {
+                m.value = inputs.start.output[0];
+            }
+            
+            for (i = 0, j = 0; i < numSamps; i++, j += m.stepInc) {
+                if (m.value >= inputs.end.output[0]) {
+                    m.value = inputs.start.output[0];
+                }
+                
+                m.value += step[j];
+                out[i] = m.value;
+            }
+            
+            that.mulAdd(numSamps);
+        };
+        
+        that.onInputChanged = function () {
+            // TODO: Utility function for calculating strides.
+            that.model.trigInc = that.inputs.trigger.rate === "audio" ? 1 : 0;
+            that.model.stepInc = that.inputs.step.rate === "audio" ? 1 : 0;
+            flock.onMulAddInputChanged(that);
+        };
+        
+        that.onInputChanged();
+        
+        return that;
+    };
+    
+    flock.defaults("flock.ugen.loop", {
+        rate: "control",
+        inputs: {
+            start: 0.0,
+            end: 1.0,
+            reset: 0.0,
+            step: 0.1,
+            trigger: 0.0
+        }
+    });
+    
     flock.ugen.env = {};
     
     // TODO: Better names for these inputs; harmonize them with flock.ugen.line
@@ -1933,8 +2126,10 @@ var flock = flock || {};
             that.mulAdd(numSamps);
         };
         
-        that.onInputChanged = function () {
-            flock.buffer.resolveBufferDef(that);
+        that.onInputChanged = function (inputName) {
+            if (that.model.bufDef !== that.inputs.buffer || inputName === "buffer") {
+                flock.buffer.resolveBufferDef(that);
+            }
             flock.onMulAddInputChanged(that);
         };
         
