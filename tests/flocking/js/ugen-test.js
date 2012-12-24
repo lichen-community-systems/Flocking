@@ -115,7 +115,8 @@ flock.test = flock.test || {};
         };
         
         var evalFn = function () {
-            flock.enviro.shared.clearBuses();
+            var env = flock.enviro.shared;
+            flock.enviro.clearBuses(env.audioSettings.numBuses, env.buses, env.audioSettings.rates.control);            
             outUGen.gen(numSamps);
         };
         var actual = flock.interleavedWriter(new Float32Array(numSamps * chans), 
