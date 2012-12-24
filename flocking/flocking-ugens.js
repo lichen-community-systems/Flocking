@@ -2076,6 +2076,7 @@ var flock = flock || {};
                 trigger = inputs.trigger.output[0],
                 i,
                 j,
+                k,
                 grain,
                 samp,
                 amp;
@@ -2095,21 +2096,27 @@ var flock = flock || {};
                 grain = m.freeGrains.pop();
                 grain.sampIdx = 0;
                 grain.envIdx = 0;
-                // TODO: Support negative indexing of the buffer.
-                grain.readPos = centerPos >= m.grainCenter ? Math.round(centerPos - m.grainCenter) : 0;
+                grain.readPos = Math.round(centerPos - m.grainCenter);
+                while (grain.readPos < 0) {
+                    grain.readPos += that.buffer.length;
+                }
                 m.activeGrains.push(grain);
             }
             m.prevTrigger = trigger;
             
-            for (i = 0; i < m.activeGrains.length; i++) {
-                grain = m.activeGrains[i];
-                for (j = 0; j < Math.min(m.numGrainSamps - grain.sampIdx, numSamps); j++) {
+            for (i = 0; i < numSamps; i++) {
+                out[i] = 0.0;
+            }
+            
+            for (j = 0; j < m.activeGrains.length; j++) {
+                grain = m.activeGrains[j];
+                for (k = 0; k < Math.min(m.numGrainSamps - grain.sampIdx, numSamps); k++) {
                     samp = buf[grain.readPos];
                     grain.readPos = ++grain.readPos % that.buffer.length;
                     grain.sampIdx++;
                     amp = m.env[grain.envIdx] * ampScale;
                     grain.envIdx++;
-                    out[j] += samp * amp;
+                    out[k] += samp * amp;
                 }
             }
 
