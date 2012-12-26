@@ -278,6 +278,16 @@ flock.test = flock.test || {};
         generateAndCheckNoise(lfNoise, 88200, 8);
     });
     
+    test("flock.ugen.lfNoise() linear interpolation", function () {
+        var freq = flock.ugen.value({value: 4}, new Float32Array(44100));
+        var lfNoise = flock.ugen.lfNoise({freq: freq}, new Float32Array(44100), {
+            interpolation: "linear"
+        });
+        lfNoise.gen(44100);
+        flock.test.testUnbrokenOutput(lfNoise.output, -1.0, 1.0);
+        flock.test.assertContinuous(lfNoise.output, 0.0001, "The output should be smooth and continuous when interpolated.")
+    });
+    
     
     module("mul & add tests");
     
@@ -536,21 +546,10 @@ flock.test = flock.test || {};
         return ug;
     };
     
-    var checkUGenShape = function (ug) {
-        flock.test.assertNotNaN(ug.output, 
-            "The ugen should never output NaN.");
-        flock.test.assertNotSilent(ug.output, 
-            "1 second of output from the ugen should not be completely silent");
-        flock.test.assertUnbroken(ug.output, 
-            "The ugen should produce an unbroken audio tone.");
-        flock.test.assertWithinRange(ug.output, -0.75, 0.75, 
-            "The ugen should produce output values ranging between -0.75 and 075.");
-    };
-    
     var testOsc = function (ugenType, otherTests) {
         test(ugenType, function () {
             var ug = makeAndPrimeOsc(ugenType, 44100);
-            checkUGenShape(ug);
+            flock.test.testUnbrokenOutput(ug.output, -0.75, 0.75);
             if (otherTests) {
                 otherTests(ug);
             }
@@ -1066,5 +1065,73 @@ flock.test = flock.test || {};
         expected = flock.test.ascendingBuffer(64, 65);
         deepEqual(delay.output, expected,
             "The delay's third block should contain the source's second block of samples.");
+    });
+    
+    var loopDef =  {
+        ugen: "flock.ugen.loop",
+        start: 1.0,
+        end: 66,
+        reset: 2.0,
+        step: 1.0
+    };
+    
+    var testTriggeredSignals = function (ugen, testSpecs) {
+        for (var i = 0; i < testSpecs.length; i++) {
+            var spec = testSpecs[i];
+            if (spec.trigger !== undefined) {
+                ugen.input("trigger", spec.trigger);
+            }
+            ugen.gen(64);
+            flock.test.assertArrayEquals(ugen.output, spec.value, spec.msg);
+        }
+    };
+    
+    test("flock.ugen.loop audio rate", function () {
+        var arLoopDef = $.extend(true, {rate: "audio"}, loopDef);
+        var loop = flock.parse.ugenForDef(arLoopDef);
+        
+        testTriggeredSignals(loop, [
+            {
+                value: flock.test.ascendingBuffer(64, 1),
+                msg: "The loop unit generator should output a signal increasing from 1 to 64"
+            },
+            {
+                value: flock.generate(64, function (i) {
+                    return i === 0 ? 65 : i;
+                }),
+                msg: "Then it should complete the cycle and loop back to the start point."
+            },
+            {
+                value: flock.generate(64, function (i) {
+                    return i + 2 % 66;
+                }),
+                trigger: 1.0,
+                msg: "When it receives a trigger signal, the loop ugen should move back to the reset point."
+            }
+        ]);
+    });
+    
+    test("flock.ugen.loop control rate", function () {
+        var krLoopDef = $.extend(true, {rate: "control"}, loopDef);
+        var loop = flock.parse.ugenForDef(krLoopDef);
+        testTriggeredSignals(loop, [
+            {
+                value: [1],
+                msg: "The loop unit generator should output a control rate signal containing the first value."
+            },
+            {
+                value: [65],
+                msg: "At the next control point, it should complete the signal."
+            },
+            {
+                value: [64],
+                msg: "At the next control point, it should have looped back and incremented accordingly."
+            },
+            {
+                value: [2.0],
+                trigger: 1.0,
+                msg: "When it receives a trigger signal, the loop ugen should move back to the reset point."
+            }
+        ]);
     });
 }());

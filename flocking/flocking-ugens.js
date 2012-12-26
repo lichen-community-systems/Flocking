@@ -598,7 +598,7 @@ var flock = flock || {};
                 i,
                 ugen;
                 
-            if (!listeners) {
+            if (!listeners || !buffer) {
                 return;
             }
             
@@ -1125,8 +1125,8 @@ var flock = flock || {};
                     m.value = inputs.start.output[0];
                 }
                 
-                m.value += step[j];
                 out[i] = m.value;
+                m.value += step[j];
             }
             
             that.mulAdd(numSamps);
@@ -2092,13 +2092,13 @@ var flock = flock || {};
                 }
             }
             
-            if (trigger > 0.0 && m.prevTrigger <= 0.0) {
+            if (trigger > 0.0 && m.prevTrigger <= 0.0 && m.activeGrains.length < m.maxNumGrains) {
                 grain = m.freeGrains.pop();
                 grain.sampIdx = 0;
                 grain.envIdx = 0;
                 grain.readPos = Math.round(centerPos - m.grainCenter);
                 while (grain.readPos < 0) {
-                    grain.readPos += that.buffer.length;
+                    grain.readPos += buf.length;
                 }
                 m.activeGrains.push(grain);
             }
@@ -2112,7 +2112,7 @@ var flock = flock || {};
                 grain = m.activeGrains[j];
                 for (k = 0; k < Math.min(m.numGrainSamps - grain.sampIdx, numSamps); k++) {
                     samp = buf[grain.readPos];
-                    grain.readPos = ++grain.readPos % that.buffer.length;
+                    grain.readPos = ++grain.readPos % buf.length;
                     grain.sampIdx++;
                     amp = m.env[grain.envIdx] * ampScale;
                     grain.envIdx++;
