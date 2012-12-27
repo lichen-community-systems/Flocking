@@ -103,7 +103,11 @@ flock.test = flock.test || {};
     
     // TODO: Create these graphs declaratively!
     
-    module("Output tests");
+    module("Output tests", {
+        setup: function () {
+            flock.enviro.shared = flock.enviro();
+        }
+    });
     
     var checkOutput = function (numSamps, chans, outUGen, expectedBuffer, msg) {
         var audioSettings = {
@@ -646,7 +650,12 @@ flock.test = flock.test || {};
     });
     
     
-    module("flock.ugen.playBuffer() tests");
+    module("flock.ugen.playBuffer() tests", {
+        setup: function () {
+            // Register the buffer ourselves. Buffers are multichannel, so need to be wrapped in an array.
+            flock.enviro.shared.buffers[playbackDef.inputs.buffer.id] = [flock.test.fillBuffer(1, 64)];
+        }
+    });
     
     var playbackDef = {
         ugen: "flock.ugen.playBuffer",
@@ -658,9 +667,6 @@ flock.test = flock.test || {};
             speed: 1.0
         }
     };
-
-    // Register the buffer ourselves. Buffers are multichannel, so need to be wrapped in an array.
-    flock.enviro.shared.buffers[playbackDef.inputs.buffer.id] = [flock.test.fillBuffer(1, 64)];
 
     test("flock.ugen.playBuffer, speed: 1.0", function () {
         var player = flock.parse.ugenForDef(playbackDef);
@@ -1067,7 +1073,7 @@ flock.test = flock.test || {};
             "The delay's third block should contain the source's second block of samples.");
     });
     
-    var loopDef =  {
+    var loopOneDef =  {
         ugen: "flock.ugen.loop",
         start: 1.0,
         end: 66,
@@ -1075,63 +1081,166 @@ flock.test = flock.test || {};
         step: 1.0
     };
     
-    var testTriggeredSignals = function (ugen, testSpecs) {
-        for (var i = 0; i < testSpecs.length; i++) {
-            var spec = testSpecs[i];
-            if (spec.trigger !== undefined) {
-                ugen.input("trigger", spec.trigger);
+    var testTriggeredSignals = function (synth, ugen, tests) {
+        for (var i = 0; i < tests.length; i++) {
+            var test = tests[i];
+            if (test.trigger !== undefined) {
+                ugen.input("trigger", test.trigger);
             }
-            ugen.gen(64);
-            flock.test.assertArrayEquals(ugen.output, spec.value, spec.msg);
+            synth.gen();
+            flock.test.assertArrayEquals(ugen.output, test.value, test.msg);
         }
     };
     
-    test("flock.ugen.loop audio rate", function () {
-        var arLoopDef = $.extend(true, {rate: "audio"}, loopDef);
-        var loop = flock.parse.ugenForDef(arLoopDef);
-        
-        testTriggeredSignals(loop, [
-            {
-                value: flock.test.ascendingBuffer(64, 1),
-                msg: "The loop unit generator should output a signal increasing from 1 to 64"
+    var testLoopUGen = function (testSpecs) {
+        module("flock.ugen.loop");
+        $.each(testSpecs, function (i, testSpec) {
+            var def = $.extend(true, {rate: testSpec.rate, id: "looper"}, testSpec.def),
+                synth = flock.synth(def),
+                loop = synth.ugens.named.looper;
+            
+            test(testSpec.name, function () {
+                testTriggeredSignals(synth, loop, testSpec.tests);
+            });
+        });
+    };
+    
+    var loopTestSpecs = [
+        {
+            name: "audio rate",
+            rate: "audio",
+            def: loopOneDef,
+            tests: [
+                {
+                    value: flock.test.ascendingBuffer(64, 1),
+                    msg: "The loop unit generator should output a signal increasing from 1 to 64"
+                },
+                {
+                    value: flock.generate(64, function (i) {
+                        return i === 0 ? 65 : i;
+                    }),
+                    msg: "Then it should complete the cycle and loop back to the start point."
+                },
+                {
+                    value: flock.generate(64, function (i) {
+                        return i + 2 % 66;
+                    }),
+                    trigger: 1.0,
+                    msg: "When it receives a trigger signal, the loop ugen should move back to the reset point."
+                }
+            ]
+        },
+        {
+            name: "control rate",
+            rate: "control",
+            def: loopOneDef,
+            tests: [
+                {
+                    value: [1.0],
+                    msg: "The loop unit generator should output a control rate signal containing the first value."
+                },
+                {
+                    value: [2.0],
+                    msg: "At the next control point, it should have increased by one step value."
+                },
+                {
+                    value: [3.0],
+                    msg: "At the next control point, it should have continued to increase by one step value."
+                },
+                {
+                    value: [2.0],
+                    trigger: 1.0,
+                    msg: "When it receives a trigger signal, the loop ugen should move back to the reset point."
+                }
+            ]
+        },
+        {
+            name: "control rate, wraparound",
+            rate: "control",
+            def: {
+                ugen: "flock.ugen.loop",
+                start: 0.0,
+                end: 2.0,
+                step: 1.0
             },
-            {
-                value: flock.generate(64, function (i) {
-                    return i === 0 ? 65 : i;
-                }),
-                msg: "Then it should complete the cycle and loop back to the start point."
+            tests: [
+                {
+                    value: [0.0],
+                    msg: "The loop unit generator should output a control rate signal containing the first value."
+                },
+                {
+                    value: [1.0],
+                    msg: "At the next control point, it should increase by one step value."
+                },
+                {
+                    value: [0.0],
+                    msg: "At the next control point, it should have looped back to the start."
+                },
+                {
+                    value: [1.0],
+                    msg: "At the next control point, it should increase by one step value."
+                }
+            ]
+        },
+        {
+            name: "control rate, step value is the duration of a sample in seconds.",
+            rate: "control",
+            def: {
+                ugen: "flock.ugen.loop",
+                start: 0,
+                end: 1.0,
+                step: 1.0 / 44100
             },
-            {
-                value: flock.generate(64, function (i) {
-                    return i + 2 % 66;
-                }),
-                trigger: 1.0,
-                msg: "When it receives a trigger signal, the loop ugen should move back to the reset point."
-            }
-        ]);
+            tests: [
+                {
+                    value: [0],
+                    msg: "The value at the first control period should be start value."
+                },
+                {
+                    value: flock.generate(1, 1.0 / 44100),
+                    msg: "At the second control point, the value should be the duration of 64 samples."
+                }
+            ]
+        }
+    ];
+    
+    testLoopUGen(loopTestSpecs);
+    
+    module("flock.ugen.bufferDuration tests", {
+        setup: function () {
+            flock.enviro.shared.buffers["bufferDurationTests"] = [
+                flock.test.ascendingBuffer(110250, 0) // 2.5 second buffer
+            ];
+        }
     });
     
-    test("flock.ugen.loop control rate", function () {
-        var krLoopDef = $.extend(true, {rate: "control"}, loopDef);
-        var loop = flock.parse.ugenForDef(krLoopDef);
-        testTriggeredSignals(loop, [
-            {
-                value: [1],
-                msg: "The loop unit generator should output a control rate signal containing the first value."
-            },
-            {
-                value: [65],
-                msg: "At the next control point, it should complete the signal."
-            },
-            {
-                value: [64],
-                msg: "At the next control point, it should have looped back and incremented accordingly."
-            },
-            {
-                value: [2.0],
-                trigger: 1.0,
-                msg: "When it receives a trigger signal, the loop ugen should move back to the reset point."
-            }
-        ]);
-    });
+    var testBufferDuration = function (rate) {
+        test(rate + " rate", function () {
+            var durationDef = {
+                id: "dur",
+                rate: rate,
+                ugen: "flock.ugen.bufferDuration",
+                buffer: {
+                    id: "bufferDurationTests"
+                }
+            };
+        
+            var synth = flock.synth(durationDef),
+                durUGen = synth.ugens.named.dur;
+        
+            synth.gen();
+            equal(durUGen.output[0], 2.5,
+                "The buffer's length in seconds should be returned");
+        });
+    };
+    
+    var testBufferDurationAtAllRates = function () {
+        var supportedRates = ["constant", "control"];
+        $.each(supportedRates, function (i, rate) {
+            testBufferDuration(rate);
+        });
+    };
+    
+    testBufferDurationAtAllRates();
+    
 }());

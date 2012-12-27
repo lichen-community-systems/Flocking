@@ -593,7 +593,7 @@ var flock = flock || {};
             listeners.push(ugen);
         },
         
-        fireOnce: function (id, buffer) {
+        fireOnce: function (id, channelBuffer, buffer) {
             var listeners = flock.buffer.listeners[id],
                 i,
                 ugen;
@@ -605,7 +605,7 @@ var flock = flock || {};
             // Fire onBufferReady() on each ugen listener.
             for (i = 0; i < listeners.length; i++) {
                 ugen = listeners[i];
-                ugen.onBufferReady(buffer, id);
+                ugen.onBufferReady(channelBuffer, id, buffer);
             }
             
             // Clear all listeners.
@@ -616,7 +616,7 @@ var flock = flock || {};
     flock.buffer.fireReady = function (ugen, id, buffer, name, chan) {
         ugen.buffer = buffer ? buffer[chan] : ugen.buffer;
         ugen.model.name = name;
-        flock.buffer.fireOnce(id, buffer);
+        flock.buffer.fireOnce(id, ugen.buffer, buffer);
     };
     
     flock.buffer.resolveBufferId = function (ugen, id, chan) {
@@ -769,11 +769,15 @@ var flock = flock || {};
      */
     flock.ugen.bufferDuration = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
+        // TODO: Buffers need to track their own sample rates, rather than assuming everything
+        // is at the environment's sample rate. This means we also need to convert buffers between rates.
+        that.model.audioSampleRate = options.audioSettings.rates.audio;
         
         that.krGen = function (numSamps) {
-            var i;
+            var m = that.model,
+                i;
             for (i = 0; i < numSamps; i++) {
-                out[i] = that.model.value = that.buffer.length / that.model.sampleRate;
+                that.output[i] = m.value = that.buffer.length / m.audioSampleRate;
             }
         };
         
@@ -784,7 +788,7 @@ var flock = flock || {};
         };
         
         that.onBufferReady = function (buffer) {
-            that.output[0] = that.model.value = buffer.length / that.model.sampleRate;
+            that.output[0] = that.model.value = buffer.length / that.model.audioSampleRate;
         };
         
         that.init = function () {
@@ -800,7 +804,9 @@ var flock = flock || {};
 
     flock.defaults("flock.ugen.bufferDuration", {
         rate: "constant",
-        inputs: {}
+        inputs: {
+            channel: 0
+        }
     });
     
     
@@ -2071,15 +2077,16 @@ var flock = flock || {};
                 out = that.output,
                 buf = that.buffer,
                 dur = inputs.dur.output[0],
-                centerPos = inputs.centerPos.output[0] * m.sampleRate,
-                ampScale = inputs.amp.output[0],
-                trigger = inputs.trigger.output[0],
+                amp = inputs.amp.output,
+                centerPos = inputs.centerPos.output,
+                trigger = inputs.trigger.output,
                 i,
                 j,
                 k,
+                l,
                 grain,
-                samp,
-                amp;
+                start,
+                samp;
         
             // Update the grain envelope if the grain duration input has changed.
             // TODO: What happens when this changes while older grains are still sounding?
@@ -2092,51 +2099,56 @@ var flock = flock || {};
                 }
             }
             
-            if (trigger > 0.0 && m.prevTrigger <= 0.0 && m.activeGrains.length < m.maxNumGrains) {
-                grain = m.freeGrains.pop();
-                grain.sampIdx = 0;
-                grain.envIdx = 0;
-                grain.readPos = Math.round(centerPos - m.grainCenter);
-                while (grain.readPos < 0) {
-                    grain.readPos += buf.length;
+            // TODO: This triggering is not sample accurate, since all grains will start sounding at the start of the control
+            // period, rather than throughout it.
+            for (i = 0, j = 0, k = 0, l = 0; i < numSamps; i++, j += m.centerPosInc, k += m.triggerInc, l += m.ampInc) {
+                if (trigger[k] > 0.0 && m.prevTrigger <= 0.0 && m.activeGrains.length < m.maxNumGrains) {
+                    grain = m.freeGrains.pop();
+                    grain.sampIdx = 0;
+                    grain.envIdx = 0;
+                    grain.amp = amp[l];
+                    start = (centerPos[j] * m.sampleRate) - m.grainCenter;
+                    while (start < 0) {
+                        start += buf.length;
+                    }
+                    grain.readPos = Math.round(start);
+                    m.activeGrains.push(grain);
                 }
-                m.activeGrains.push(grain);
-            }
-            m.prevTrigger = trigger;
-            
-            for (i = 0; i < numSamps; i++) {
+                m.prevTrigger = trigger[k];
                 out[i] = 0.0;
             }
             
-            for (j = 0; j < m.activeGrains.length; j++) {
+            for (j = 0; j < m.activeGrains.length;) {
                 grain = m.activeGrains[j];
                 for (k = 0; k < Math.min(m.numGrainSamps - grain.sampIdx, numSamps); k++) {
                     samp = buf[grain.readPos];
+                    out[k] += samp * m.env[grain.envIdx] * grain.amp;
                     grain.readPos = ++grain.readPos % buf.length;
                     grain.sampIdx++;
-                    amp = m.env[grain.envIdx] * ampScale;
                     grain.envIdx++;
-                    out[k] += samp * amp;
+                }
+                if (grain.sampIdx >= m.numGrainSamps) {
+                    m.freeGrains.push(grain);
+                    m.activeGrains.splice(j, 1);
+                } else {
+                    j++;
                 }
             }
 
-            // TODO: More efficient grain management strategy.
-            m.activeGrains = m.activeGrains.filter(function (grain) {
-                if (grain.sampIdx >= m.numGrainSamps) {
-                    m.freeGrains.push(grain);
-                    return false;
-                }
-                
-                return true;
-            });
-            
             that.mulAdd(numSamps);
         };
         
         that.onInputChanged = function (inputName) {
-            if (that.model.bufDef !== that.inputs.buffer || inputName === "buffer") {
+            var m = that.model,
+                inputs = that.inputs;
+            
+            if (m.bufDef !== inputs.buffer || inputName === "buffer") {
                 flock.buffer.resolveBufferDef(that);
             }
+            
+            m.centerPosInc = inputs.centerPos.rate === flock.rates.AUDIO ? 1 : 0;
+            m.triggerInc = inputs.trigger.rate === flock.rates.AUDIO ? 1 : 0;
+            
             flock.onMulAddInputChanged(that);
         };
         
@@ -2178,6 +2190,46 @@ var flock = flock || {};
             channel: 0,
             amp: 1.0,
             dur: 0.1
+        }
+    });
+    
+    flock.ugen.print = function (input, output, options) {
+        var that = flock.ugen(input, output, options);
+        that.model.label = that.options.label ? that.options.label + ": " : "";
+        that.model.counter = 0;
+        
+        that.gen = function (numSamps) {
+            var inputs = that.inputs,
+                m = that.model,
+                label = m.label,
+                source = inputs.source.output,
+                trig = inputs.trigger.output[0],
+                freq = inputs.freq.output[0],
+                sampInterval = freq * m.sampleRate,
+                i;
+                
+            if (trig > 0.0 && m.prevTrig <= 0.0) {
+                console.log(label + source);
+            }
+            
+            for (i = 0; i < numSamps; i++) {
+                if (m.counter >= sampInterval) {
+                    console.log(label + source[i]);
+                    m.counter = 0;
+                }
+                m.counter++;
+                that.output[i] = source[i];
+            }
+        };
+        
+        return that;
+    };
+    
+    flock.defaults("flock.ugen.print", {
+        rate: "control",
+        inputs: {
+            trigger: 0.0,
+            freq: 1.0
         }
     });
 }(jQuery));
