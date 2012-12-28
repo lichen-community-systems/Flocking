@@ -983,6 +983,9 @@ var flock = flock || {};
      * @param that the environment to mix into
      */
     flock.enviro.webkit = function (that) {
+        if (!flock.enviro.webkit.audioContext) {
+            flock.enviro.webkit.audioContext = new webkitAudioContext();
+        }
         that.context = flock.enviro.webkit.audioContext;
         that.source = that.context.createBufferSource();
         that.jsNode = that.context.createJavaScriptNode(that.audioSettings.bufferSize);
@@ -999,7 +1002,6 @@ var flock = flock || {};
     };
     
     // Singleton AudioContext since the webkit implementation freaks if we try to instantiate a new one.
-    flock.enviro.webkit.audioContext = new webkitAudioContext();
     
     // Immediately register a singleton environment for the page.
     // Users are free to replace this with their own if needed.
