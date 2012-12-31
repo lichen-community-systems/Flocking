@@ -2099,8 +2099,6 @@ var flock = flock || {};
                 }
             }
             
-            // TODO: This triggering is not sample accurate, since all grains will start sounding at the start of the control
-            // period, rather than throughout it.
             for (i = 0, j = 0, k = 0, l = 0; i < numSamps; i++, j += m.centerPosInc, k += m.triggerInc, l += m.ampInc) {
                 if (trigger[k] > 0.0 && m.prevTrigger <= 0.0 && m.activeGrains.length < m.maxNumGrains) {
                     grain = m.freeGrains.pop();
@@ -2112,6 +2110,7 @@ var flock = flock || {};
                         start += buf.length;
                     }
                     grain.readPos = Math.round(start);
+                    grain.writePos = i;
                     m.activeGrains.push(grain);
                 }
                 m.prevTrigger = trigger[k];
@@ -2120,7 +2119,7 @@ var flock = flock || {};
             
             for (j = 0; j < m.activeGrains.length;) {
                 grain = m.activeGrains[j];
-                for (k = 0; k < Math.min(m.numGrainSamps - grain.sampIdx, numSamps); k++) {
+                for (k = grain.writePos; k < Math.min(m.numGrainSamps - grain.sampIdx, numSamps); k++) {
                     samp = buf[grain.readPos];
                     out[k] += samp * m.env[grain.envIdx] * grain.amp;
                     grain.readPos = ++grain.readPos % buf.length;
@@ -2132,6 +2131,7 @@ var flock = flock || {};
                     m.activeGrains.splice(j, 1);
                 } else {
                     j++;
+                    grain.writePos = grain.writePos % 64;
                 }
             }
 
@@ -2205,15 +2205,21 @@ var flock = flock || {};
                 source = inputs.source.output,
                 trig = inputs.trigger.output[0],
                 freq = inputs.freq.output[0],
-                sampInterval = freq * m.sampleRate,
+                freq = freq,
                 i;
                 
             if (trig > 0.0 && m.prevTrig <= 0.0) {
                 console.log(label + source);
             }
             
+            if (m.freq !== freq) {
+                m.sampInterval = Math.round(m.sampleRate / freq);
+                m.freq = freq;
+                m.counter = m.sampInterval;
+            }
+            
             for (i = 0; i < numSamps; i++) {
-                if (m.counter >= sampInterval) {
+                if (m.counter >= m.sampInterval) {
                     console.log(label + source[i]);
                     m.counter = 0;
                 }
