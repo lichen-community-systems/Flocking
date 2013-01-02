@@ -1471,7 +1471,7 @@ var flock = flock || {};
 
             // TOOD: Options merging! This is absurd!
             mikeOpts.settings = mikeOpts.settings || {};
-            mikeOpts.settings.sampleRate = String(mikeOpts.settings.sampleRate || flock.enviro.shared.audioSettings.rates.audio);
+            mikeOpts.settings.sampleRate = String(mikeOpts.settings.sampleRate || that.options.audioSettings.rates.audio);
             
             // Setup and listen to Mike.js.
             that.mike = new Mike(mikeOpts);
@@ -2080,12 +2080,15 @@ var flock = flock || {};
                 amp = inputs.amp.output,
                 centerPos = inputs.centerPos.output,
                 trigger = inputs.trigger.output,
+                speed = inputs.speed.output,
                 i,
                 j,
                 k,
                 l,
+                n,
                 grain,
                 start,
+                bufIdx,
                 samp;
         
             // Update the grain envelope if the grain duration input has changed.
@@ -2099,7 +2102,10 @@ var flock = flock || {};
                 }
             }
             
-            for (i = 0, j = 0, k = 0, l = 0; i < numSamps; i++, j += m.centerPosInc, k += m.triggerInc, l += m.ampInc) {
+            // TODO: Absurd loop.
+            for (i = 0, j = 0, k = 0, l = 0, n = 0; i < numSamps; i++,
+                j += m.centerPosInc, k += m.triggerInc, l += m.ampInc, n += m.speedInc) {
+                
                 if (trigger[k] > 0.0 && m.prevTrigger <= 0.0 && m.activeGrains.length < m.maxNumGrains) {
                     grain = m.freeGrains.pop();
                     grain.sampIdx = 0;
@@ -2111,6 +2117,7 @@ var flock = flock || {};
                     }
                     grain.readPos = Math.round(start);
                     grain.writePos = i;
+                    grain.speed = speed[n];
                     m.activeGrains.push(grain);
                 }
                 m.prevTrigger = trigger[k];
@@ -2120,9 +2127,10 @@ var flock = flock || {};
             for (j = 0; j < m.activeGrains.length;) {
                 grain = m.activeGrains[j];
                 for (k = grain.writePos; k < Math.min(m.numGrainSamps - grain.sampIdx, numSamps); k++) {
-                    samp = buf[grain.readPos];
+                    bufIdx = Math.round(grain.readPos); // TODO: Interpolation.
+                    samp = buf[bufIdx];
                     out[k] += samp * m.env[grain.envIdx] * grain.amp;
-                    grain.readPos = ++grain.readPos % buf.length;
+                    grain.readPos = (grain.readPos + grain.speed) % buf.length;
                     grain.sampIdx++;
                     grain.envIdx++;
                 }
@@ -2131,7 +2139,7 @@ var flock = flock || {};
                     m.activeGrains.splice(j, 1);
                 } else {
                     j++;
-                    grain.writePos = grain.writePos % 64;
+                    grain.writePos = grain.writePos % that.options.audioSettings.rates.control;
                 }
             }
 
@@ -2148,6 +2156,8 @@ var flock = flock || {};
             
             m.centerPosInc = inputs.centerPos.rate === flock.rates.AUDIO ? 1 : 0;
             m.triggerInc = inputs.trigger.rate === flock.rates.AUDIO ? 1 : 0;
+            m.ampInc = inputs.amp.rate === flock.rates.AUDIO ? 1 : 0;
+            m.rateInc = inputs.speed.rate === flock.rates.AUDIO ? 1 : 0;
             
             flock.onMulAddInputChanged(that);
         };
@@ -2189,7 +2199,8 @@ var flock = flock || {};
             centerPos: 0,
             channel: 0,
             amp: 1.0,
-            dur: 0.1
+            dur: 0.1,
+            speed: 1.0
         }
     });
     
