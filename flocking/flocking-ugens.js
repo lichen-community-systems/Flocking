@@ -2053,12 +2053,12 @@ var flock = flock || {};
      * Triggers grains from an audio buffer.
      *
      * Inputs: 
-     *   - dur: the duration of each grain
+     *   - dur: the duration of each grain (control or constant rate only)
      *   - trigger: a trigger signal that, when it move to a positive number, will start a grain
      *   - buffer: a bufferDef object describing the buffer to granulate
      *   - centerPos: the postion within the sound buffer when the grain will reach maximum amplitude
      *   - amp: the peak amplitude of the grain
-     *   - (rate)
+     *   - speed: the rate at which grain samples are selected from the buffer; 1.0 is normal speed, -1.0 is backwards
      *
      * Options:
      *   - (interpolation)
@@ -2069,6 +2069,7 @@ var flock = flock || {};
             activeGrains: [],
             freeGrains: [],
             env: null,
+            strides: {}
         });
 
         that.gen = function (numSamps) {
@@ -2081,11 +2082,13 @@ var flock = flock || {};
                 centerPos = inputs.centerPos.output,
                 trigger = inputs.trigger.output,
                 speed = inputs.speed.output,
+                posIdx = 0,
+                trigIdx = 0,
+                ampIdx = 0,
+                speedIdx = 0,
                 i,
                 j,
                 k,
-                l,
-                n,
                 grain,
                 start,
                 bufIdx,
@@ -2102,28 +2105,32 @@ var flock = flock || {};
                 }
             }
             
-            // TODO: Absurd loop.
-            for (i = 0, j = 0, k = 0, l = 0, n = 0; i < numSamps; i++,
-                j += m.centerPosInc, k += m.triggerInc, l += m.ampInc, n += m.speedInc) {
-                
-                if (trigger[k] > 0.0 && m.prevTrigger <= 0.0 && m.activeGrains.length < m.maxNumGrains) {
+            // Trigger new grains.
+            for (i = 0; i < numSamps; i++) {
+                if (trigger[trigIdx] > 0.0 && m.prevTrigger <= 0.0 && m.activeGrains.length < m.maxNumGrains) {
                     grain = m.freeGrains.pop();
                     grain.sampIdx = 0;
                     grain.envIdx = 0;
-                    grain.amp = amp[l];
-                    start = (centerPos[j] * m.sampleRate) - m.grainCenter;
+                    grain.amp = amp[ampIdx];
+                    start = (centerPos[posIdx] * m.sampleRate) - m.grainCenter;
                     while (start < 0) {
                         start += buf.length;
                     }
                     grain.readPos = Math.round(start);
                     grain.writePos = i;
-                    grain.speed = speed[n];
+                    grain.speed = speed[speedIdx];
                     m.activeGrains.push(grain);
                 }
-                m.prevTrigger = trigger[k];
+                m.prevTrigger = trigger[trigIdx];
                 out[i] = 0.0;
+                
+                posIdx += m.strides.centerPos;
+                trigIdx += m.strides.trigger;
+                ampIdx += m.strides.amp;
+                speedIdx += m.strides.speed;
             }
             
+            // Output samples for all active grains.
             for (j = 0; j < m.activeGrains.length;) {
                 grain = m.activeGrains[j];
                 for (k = grain.writePos; k < Math.min(m.numGrainSamps - grain.sampIdx, numSamps); k++) {
@@ -2154,10 +2161,11 @@ var flock = flock || {};
                 flock.buffer.resolveBufferDef(that);
             }
             
-            m.centerPosInc = inputs.centerPos.rate === flock.rates.AUDIO ? 1 : 0;
-            m.triggerInc = inputs.trigger.rate === flock.rates.AUDIO ? 1 : 0;
-            m.ampInc = inputs.amp.rate === flock.rates.AUDIO ? 1 : 0;
-            m.rateInc = inputs.speed.rate === flock.rates.AUDIO ? 1 : 0;
+            // TODO: Utility for calculating strides.
+            m.strides.centerPos = inputs.centerPos.rate === flock.rates.AUDIO ? 1 : 0;
+            m.strides.trigger = inputs.trigger.rate === flock.rates.AUDIO ? 1 : 0;
+            m.strides.amp = inputs.amp.rate === flock.rates.AUDIO ? 1 : 0;
+            m.strides.speed = inputs.speed.rate === flock.rates.AUDIO ? 1 : 0;
             
             flock.onMulAddInputChanged(that);
         };
