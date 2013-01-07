@@ -42,10 +42,11 @@ var flock = flock || {};
         return new Float32Array(buf);
     };
     
-    flock.test.constantBuffer = function (size, val) {
-        var buf = new Float32Array(size),
+    
+    flock.test.constantBuffer = function (bufOrSize, val) {
+        var buf = typeof (bufOrSize) === "number" ? new Float32Array(bufOrSize) : bufOrSize,
             i;
-        for (i = 0; i < size; i++) {
+        for (i = 0; i < buf.length; i++) {
             buf[i] = val;
         }
         return buf;
@@ -271,6 +272,4 @@ var flock = flock || {};
         flock.test.assertWithinRange(output, expectedMin, expectedMax,
             "The ugen should produce output values ranging between " + expectedMin + " and " + expectedMax + ".");
     };
-    
-    
 }());

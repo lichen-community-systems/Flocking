@@ -19,6 +19,7 @@ var flock = flock || {};
      * Utilities *
      *************/
     
+    // TODO: Check API; write unit tests.
     flock.aliasUGen = function (sourcePath, aliasName, inputDefaults, defaultOptions) {
         var root = flock.get(undefined, sourcePath);
         flock.set(root, aliasName, function (inputs, output, options) {
@@ -28,6 +29,7 @@ var flock = flock || {};
         flock.defaults(sourcePath + "." + aliasName, inputDefaults);
     };
     
+    // TODO: Check API; write unit tests.
     flock.aliasUGens = function (sourcePath, aliasesSpec) {
         var aliasName,
             settings;
@@ -220,6 +222,63 @@ var flock = flock || {};
     });
 
 
+    flock.ugen.math = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        that.expandedSource = new Float32Array(that.options.audioSettings.rates.control);
+
+        that.krSourceKrInputGen = function () {
+            var op = that.activeInput,
+                input = that.inputs[op],
+                sourceBuf = flock.generate(that.expandedSource, that.inputs.source.output[0]);
+            DSP[op](that.output, sourceBuf, input.output[0]);
+        };
+        
+        that.krSourceArInputGen = function () {
+            var op = that.activeInput,
+                input = that.inputs[op],
+                sourceBuf = flock.generate(that.expandedSource, that.inputs.source.output[0]);
+            DSP[op](that.output, sourceBuf, input.output);
+        };
+        
+        that.arSourceKrInputGen = function () {
+            var op = that.activeInput,
+                input = that.inputs[op],
+                sourceBuf = that.inputs.source.output;
+            DSP[op](that.output, sourceBuf, input.output[0]);
+        };
+        
+        that.arSourceArInputGen = function () {
+            var op = that.activeInput,
+                input = that.inputs[op];
+            DSP[op](that.output, that.inputs.source.output, input.output);
+        };
+        
+        that.onInputChanged = function () {
+            // Find the first input and use it. Multiple inputters, beware.
+            // TODO: Support multiple operations.
+            var inputs = Object.keys(that.inputs),
+                i,
+                input,
+                isInputAudioRate;
+            
+            for (i = 0; i < inputs.length; i++) {
+                input = inputs[i];
+                if (input !== "source") {
+                    that.activeInput = input;
+                    isInputAudioRate = that.inputs[input].rate === "audio";
+                    that.gen = that.inputs.source.rate === "audio" ?
+                        (isInputAudioRate ? that.arSourceArInputGen : that.arSourceKrInputGen) :
+                        (isInputAudioRate ? that.krSourceArInputGen : that.krSourceKrInputGen);
+                    break;
+                }
+            }
+        };
+        
+        that.onInputChanged();
+        return that;
+    };
+    
+    
     flock.ugen.sum = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
@@ -1308,13 +1367,13 @@ var flock = flock || {};
             if (nextAtt !== prevAtt) {
                 m.attackTime = nextAtt;
                 attCoef = m.attackCoef =
-                    nextAtt === 0.0 ? 0.0 : Math.exp(flock.LOG1 / (nextAtt * m.sampleRate));
+                    nextAtt === 0.0 ? 0.0 : Math.exp(flock.LOG01 / (nextAtt * m.sampleRate));
             }
                 
             if (nextRel !== prevRel) {
                 m.releaseTime = nextRel;
                 relCoef = m.releaseCoef =
-                    (nextRel === 0.0) ? 0.0 : Math.exp(flock.LOG1 / (nextRel * m.sampleRate));
+                    (nextRel === 0.0) ? 0.0 : Math.exp(flock.LOG01 / (nextRel * m.sampleRate));
             }
             
             for (i = 0; i < numSamps; i++) {
@@ -1840,9 +1899,63 @@ var flock = flock || {};
      * Filters *
      ***********/
     
-    flock.ugen.filter = {};
-     
-    flock.ugen.filter.butter = function (inputs, output, options) {
+    /**
+     * A generic FIR and IIR filter engine. You specify the coefficients, and this will do the rest.
+     */
+     // TODO: Unit tests.
+    flock.ugen.filter = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.gen = function (numSamps) {
+            var m = that.model,
+                inputs = that.inputs,
+                q = inputs.q.output[0],
+                freq = inputs.freq.output[0];
+                
+            if (m.prevFreq !== freq || m.prevQ !== q) {
+                that.updateCoefficients(m, freq, q);
+            }
+            
+            that.filterEngine.filter(that.output, that.inputs.source.output);
+            
+            m.prevQ = q;
+            m.prevFreq = freq;
+        };
+        
+        that.init = function () {
+            var recipeOpt = that.options.recipe
+            var recipe = typeof (recipeOpt) === "string" ? flock.get(window, recipeOpt) : recipeOpt;
+            
+            if (!recipe) {
+                throw new Error("Can't instantiate a flock.ugen.filter() without specifying a filter coefficient recipe.");
+            }
+            
+            that.filterEngine = new Filter(recipe.sizes.b, recipe.sizes.a);
+            that.model.coeffs = {
+                a: that.filterEngine.a,
+                b: that.filterEngine.b
+            };
+            
+            that.updateCoefficients = flock.get(recipe, that.options.type);
+            that.onInputChanged();
+        };
+        
+        that.init();
+        return that;
+    };
+    
+    flock.defaults("flock.ugen.filter", {
+        inputs: {
+            freq: 440,
+            q: 1.0
+        }
+    });
+
+    /**
+     * An optimized biquad filter unit generator.
+     */
+    // TODO: Unit tests.
+    flock.ugen.filter.biquad = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
         that.gen = function (numSamps) {
@@ -1851,36 +1964,39 @@ var flock = flock || {};
                 out = that.output,
                 co = m.coeffs,
                 freq = inputs.freq.output[0],
-                bw = inputs.bandwidth.output[0],
+                q = inputs.q.output[0],
                 source = inputs.source.output,
                 i,
                 w;
             
-            if (m.prevBW !== bw || m.prevFreq !== freq) {
-                that.calcCoefficients(m, freq, bw);
+            if (m.prevFreq !== freq || m.prevQ !== q) {
+                that.updateCoefficients(m, freq, q);
             }
 
             for (i = 0; i < numSamps; i++) {
-                w = source[i] - co.b1 * m.d0 - co.b2 * m.d1;
-                out[i] = co.a0 * w + co.a1 * m.d0 + co.a2 * m.d1;
+                w = source[i] - co.a[0] * m.d0 - co.a[1] * m.d1;
+                out[i] = co.b[0] * w + co.b[1] * m.d0 + co.b[2] * m.d1;
                 m.d1 = m.d0;
                 m.d0 = w;
             }
             
-            m.prevBW = bw;
+            m.prevQ = q;
             m.prevFreq = freq;
         };
         
-        
         that.onInputChanged = function () {
-            that.calcCoefficients = that.options.coefficientCalculator ||
-                flock.ugen.filter.butter.coefficients[that.options.type];
+            var typeOpt = that.options.type;
+            that.updateCoefficients = typeof (typeOpt) === "string" ?
+                flock.get(window, typeOpt) : typeOpt;
         };
         
         that.init = function () {
             that.model.d0 = 0.0;
             that.model.d1 = 0.0;
-            that.model.coeffs = {};
+            that.model.coeffs = {
+                a: new Float32Array(2),
+                b: new Float32Array(3)
+            };
             that.onInputChanged();
         };
         
@@ -1888,96 +2004,211 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.filter.butter", {
+    flock.defaults("flock.ugen.filter.biquad", {
         inputs: {
             freq: 440,
-            bandwidth: 110
+            q: 1.0
         }
     });
     
-    flock.ugen.filter.butter.types = {
+    flock.ugen.filter.biquad.types = {
         "hp": {
             inputDefaults: {
-                freq: 10000,
-                bandwidth: 0
+                freq: 440,
+                q: 1.0
             },
-            options: {type: "highPass"}
+            options: {
+                type: "flock.coefficients.butterworth.highPass"
+            }
+        },
+        "rhp": {
+            inputDefaults: {
+                freq: 440,
+                q: 1.0
+            },
+            options: {
+                type: "flock.coefficients.rbj.highPass"
+            }
         },
         "lp": {
             inputDefaults: {
                 freq: 440,
-                bandwidth: 0
+                q: 1.0
             },
-            options: {type: "lowPass"}
+            options: {
+                type: "flock.coefficients.butterworth.lowPass"
+            }
+        },
+        "rlp": {
+            inputDefaults: {
+                freq: 440,
+                q: 1.0
+            },
+            options: {
+                type: "flock.coefficients.rbj.lowPass"
+            }
         },
         "bp": {
             inputDefaults: {
                 freq: 440,
-                bandwidth: 110
+                q: 4.0
             },
-            options: {type: "bandPass"}
+            options: {
+                type: "flock.coefficients.butterworth.bandPass"
+            }
         },
         "br": {
             inputDefaults: {
-                freq: 10000,
-                bandwidth: 5000
+                freq: 440,
+                q: 1.0
             },
-            options: {type: "bandReject"}
+            options: {
+                type: "flock.coefficients.butterworth.bandReject"
+            }
         }
     };
     
-    // Provide cover methods for instantiating the different types of butterworth filters.
-    flock.aliasUGens("flock.ugen.filter.butter", flock.ugen.filter.butter.types);
+    // Convenience methods for instantiating common types of biquad filters.
+    flock.aliasUGens("flock.ugen.filter.biquad", flock.ugen.filter.biquad.types);
     
-    flock.ugen.filter.butter.coefficients = {
-        lowPass: function (model, freq) {
-            var co = model.coeffs,
-                lambdaSquared,
-                rootTwoLambda;
-            co.lambda = 1 / Math.tan(Math.PI * freq / model.sampleRate);
-            lambdaSquared = co.lambda * co.lambda;
-            rootTwoLambda = flock.ROOT2 * co.lambda;
-            co.a0 = 1 / (1 + rootTwoLambda + lambdaSquared);
-            co.a1 = 2 * co.a0;
-            co.a2 = co.a0;
-            co.b1 = 2 * (1 - lambdaSquared) * co.a0;
-            co.b2 = (1 - rootTwoLambda + lambdaSquared) * co.a0;
+    flock.coefficients = {
+        butterworth: {
+            sizes: {
+                a: 2,
+                b: 3
+            },
+            
+            lowPass: function (model, freq) {
+                var co = model.coeffs;
+                var lambda = 1 / Math.tan(Math.PI * freq / model.sampleRate);
+                var lambdaSquared = lambda * lambda;
+                var rootTwoLambda = flock.ROOT2 * lambda;
+                var b0 = 1 / (1 + rootTwoLambda + lambdaSquared)
+                co.b[0] = b0;
+                co.b[1] = 2 * b0;
+                co.b[2] = b0;
+                co.a[0] = 2 * (1 - lambdaSquared) * b0;
+                co.a[1] = (1 - rootTwoLambda + lambdaSquared) * b0;
+            },
+        
+            highPass: function (model, freq) {
+                var co = model.coeffs;
+                var lambda = Math.tan(Math.PI * freq / model.sampleRate);
+                var lambdaSquared = lambda * lambda;
+                var rootTwoLambda = flock.ROOT2 * lambda;
+                var b0 = 1 / (1 + rootTwoLambda + lambdaSquared);
+                
+                co.b[0] = b0;
+                co.b[1] = -2 * b0;
+                co.b[2] = b0;
+                co.a[0] = 2 * (lambdaSquared - 1) * b0;
+                co.a[1] = (1 - rootTwoLambda + lambdaSquared) * b0;
+            },
+        
+            bandPass: function (model, freq, q) {
+                var co = model.coeffs;
+                var bw = freq / q;
+                var lambda = 1 / Math.tan(Math.PI * bw / model.sampleRate);
+                var theta = 2 * Math.cos(flock.TWOPI * freq / model.sampleRate);
+                var b0 = 1 / (1 + lambda);
+                
+                co.b[0] = b0;
+                co.b[1] = 0;
+                co.b[2] = -b0;
+                co.a[0] = -(lambda * theta * b0);
+                co.a[1] = b0 * (lambda - 1);
+            },
+        
+            bandReject: function (model, freq, q) {
+                var co = model.coeffs;
+                var bw = freq / q;
+                var lambda = Math.tan(Math.PI * bw / model.sampleRate);
+                var theta = 2 * Math.cos(flock.TWOPI * freq / model.sampleRate);
+                var b0 = 1 / (1 + lambda);
+                var b1 = -theta * b0;
+                
+                co.b[0] = b0;
+                co.b[1] = b1;
+                co.b[2] = b0;
+                co.a[0] = b1;
+                co.a[1] = (1 - lambda) * b0;
+            }
         },
         
-        highPass: function (model, freq) {
-            var co = model.coeffs,
-                lambdaSquared,
-                rootTwoLambda;
-            co.lambda = Math.tan(Math.PI * freq / model.sampleRate);
-            lambdaSquared = co.lambda * co.lambda;
-            rootTwoLambda = flock.ROOT2 * co.lambda;
-            co.a0 = 1 / (1 + rootTwoLambda + lambdaSquared);
-            co.a1 = -2 * co.a0;
-            co.a2 = co.a0;
-            co.b1 = 2 * (lambdaSquared - 1) * co.a0;
-            co.b2 = (1 - rootTwoLambda + lambdaSquared) * co.a0;
-        },
-        
-        bandPass: function (model, freq, bw) {
-            var co = model.coeffs;
-            co.lambda = 1 / Math.tan(Math.PI * bw / model.sampleRate);
-            co.theta = 2 * Math.cos(flock.TWOPI * freq / model.sampleRate);
-            co.a0 = 1 / (1 + co.lambda);
-            co.a1 = 0;
-            co.a2 = -co.a0;
-            co.b1 = -(co.lambda * co.theta * co.a0);
-            co.b2 = co.a0 * (co.lambda - 1);
-        },
-        
-        bandReject: function (model, freq, bw) {
-            var co = model.coeffs;
-            co.lambda = Math.tan(Math.PI * bw / model.sampleRate);
-            co.theta = 2 * Math.cos(flock.TWOPI * freq / model.sampleRate);
-            co.a0 = 1 / (1 + co.lambda);
-            co.a1 = -co.theta * co.a0;
-            co.a2 = co.a0;
-            co.b1 = co.a1;
-            co.b2 = (1 - co.lambda) * co.a0;
+        // From Robert Brisow-Johnston's Filter Cookbook:
+        // http://dspwiki.com/index.php?title=Cookbook_Formulae_for_audio_EQ_biquad_filter_coefficients
+        rbj: {
+            sizes: {
+                a: 2,
+                b: 3
+            },
+            
+            lowPass: function (model, freq, q) {
+                var co = model.coeffs;
+                var w0 = flock.TWOPI * freq / model.sampleRate;
+                var cosw0 = Math.cos(w0);
+                var sinw0 = Math.sin(w0);
+                var bw = freq / q;
+                var alpha = sinw0 / (2 * q);
+                var oneLessCosw0 = 1 - cosw0;
+                var a0 = 1 + alpha;
+                var b0 = (oneLessCosw0 / 2) / a0;
+                
+                co.b[0] = b0;
+                co.b[1] = oneLessCosw0 / a0;
+                co.b[2] = b0;
+                co.a[0] = (-2 * cosw0) / a0;
+                co.a[1] = (1 - alpha) / a0;
+            },
+            
+            highPass: function (model, freq, q) {
+                var co = model.coeffs;
+                var w0 = flock.TWOPI * freq / model.sampleRate;
+                var cosw0 = Math.cos(w0);
+                var sinw0 = Math.sin(w0);
+                var alpha = sinw0 / (2 * q);
+                var onePlusCosw0 = 1 + cosw0;
+                var a0 = 1 + alpha;
+                var b0 = (onePlusCosw0 / 2) / a0;
+                
+                co.b[0] = b0;
+                co.b[1] = (-onePlusCosw0) / a0;
+                co.b[2] = b0;
+                co.a[0] = (-2 * cosw0) / a0;
+                co.a[1] = (1 - alpha) / a0;
+            },
+            
+            bandPass: function (model, freq, q) {
+                var co = model.coeffs;
+                var w0 = flock.TWOPI * freq / model.sampleRate;
+                var cosw0 = Math.cos(w0);
+                var sinw0 = Math.sin(w0);
+                var alpha = sinw0 / (2 * q);
+                var a0 = 1 + alpha;
+                var qByAlpha = q * alpha;
+                
+                co.b[0] = qByAlpha / a0;
+                co.b[1] = 0;
+                co.b[2] = -qByAlpha / a0;
+                co.a[0] = (-2 * cosw0) / a0;
+                co.a[1] = (1 - alpha) / a0;
+            },
+            
+            bandReject: function (model, freq, q) {
+                var co = model.coeffs;
+                var w0 = flock.TWOPI * freq / model.sampleRate;
+                var cosw0 = Math.cos(w0);
+                var sinw0 = Math.sin(w0);
+                var alpha = sinw0 / (2 * q);
+                var a0 = 1 + alpha;
+                var ra0 = 1 / a0;
+                var b1 = (-2 * cosw0) / a0;
+                co.b[0] = ra0;
+                co.b[1] = b1;
+                co.b[2] = ra0;
+                co.a[0] = b1;
+                co.a[1] = (1 - alpha) / a0;
+            }
         }
     };
     
