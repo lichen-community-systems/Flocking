@@ -54,8 +54,15 @@ var flock = flock || {};
         "sound/aiff": "aiff"
     };
     
+    flock.file.typeAliases = {
+        "aif": "aiff",
+        "wave": "wav"
+    };
+    
     flock.file.parseFileExtension = function (fileName) {
-        return fileName.substring(fileName.lastIndexOf(".") + 1);
+        var ext = fileName.substring(fileName.lastIndexOf(".") + 1),
+            alias = flock.file.typeAliases[ext];
+        return alias || ext;
     };
     
     flock.file.parseMIMEType = function (mimeType) {

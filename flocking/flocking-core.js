@@ -197,6 +197,48 @@ var flock = flock || {};
         return buffer;
     };
     
+    flock.interpolate = {};
+    
+    /**
+     * Performs linear interpretation.
+     */
+    flock.interpolate.linear = function (idx, table) {
+        idx = idx % table.length;
+        
+        var i1 = Math.floor(idx),
+            i2 = i1 + 1 % table.length,
+            frac = idx - i1,
+            y1 = table[i1],
+            y2 = table[i2];
+        
+        return y1 + frac * (y2 - y1);
+    };
+    
+    /**
+     * Performs cubic interpretation.
+     */
+    flock.interpolate.cubic = function (idx, table) {
+        idx = idx % table.length;
+        
+        var len = table.length,
+            i1 = Math.floor(idx),
+            i0 = i1 > 0 ? i1 - 1 : len - 1,
+            i2 = i1 + 1 % len,
+            i3 = i1 + 2 % len,
+            frac = idx - i1,
+            fracSq = frac * frac,
+            fracCub = frac * fracSq,
+            y0 = table[i0],
+            y1 = table[i1],
+            y2 = table[i2],
+            y3 = table[i3],
+            a = 0.5 * (y1 - y2) + (y3 - y0),
+            b = (y0 + y2) * 0.5 - y1,
+            c = y2 - (0.3333333333333333 * y0) - (0.5 * y1) - (0.16666666666666667 * y3);
+        
+        return (a * fracCub) + (b * fracSq) + (c * frac) + y1;
+    };
+    
     flock.pathParseError = function (path, token) {
         throw new Error("Error parsing path: " + path + ". Segment '" + token + 
             "' could not be resolved.");
@@ -816,7 +858,7 @@ var flock = flock || {};
         setupEnviro(that);
         return that;
     };
-
+    
     flock.enviro.clearBuses = function (numBuses, buses, busLen) {
         var i,
             bus,
@@ -925,7 +967,7 @@ var flock = flock || {};
         that.stopGeneratingSamples = function () {
             that.asyncScheduler.clearRepeat(that.model.writeInterval);
             that.scheduled = false;
-        };        
+        };
     };
     
     
@@ -983,7 +1025,10 @@ var flock = flock || {};
      * @param that the environment to mix into
      */
     flock.enviro.webkit = function (that) {
-        that.context = new webkitAudioContext();
+        if (!flock.enviro.webkit.audioContext) {
+            flock.enviro.webkit.audioContext = new webkitAudioContext();
+        }
+        that.context = flock.enviro.webkit.audioContext;
         that.source = that.context.createBufferSource();
         that.jsNode = that.context.createJavaScriptNode(that.audioSettings.bufferSize);
         
@@ -997,6 +1042,8 @@ var flock = flock || {};
         
         setupWebKitEnviro(that);
     };
+    
+    // Singleton AudioContext since the webkit implementation freaks if we try to instantiate a new one.
     
     // Immediately register a singleton environment for the page.
     // Users are free to replace this with their own if needed.

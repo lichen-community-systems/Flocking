@@ -261,14 +261,15 @@ var flock = flock || {};
             "There should be no other properties in the object.");
     };
     
-    flock.test.assertUnbrokenSignal = function (ug, min, max) {
-        flock.test.assertNotNaN(ug.output,
+    flock.test.testUnbrokenOutput = function (output, expectedMin, expectedMax, range) {
+        output = range ? output.subarray(range.start, range.end) : output;
+        flock.test.assertNotNaN(output,
             "The ugen should never output NaN.");
-        flock.test.assertNotSilent(ug.output,
-            "The ugen's output should not contain more than 10% silence.");
-        flock.test.assertUnbroken(ug.output,
+        flock.test.assertNotSilent(output,
+            "The output should not be completely silent");
+        flock.test.assertUnbroken(output,
             "The ugen should produce an unbroken audio tone.");
-        flock.test.assertWithinRange(ug.output, min, max,
-            "The ugen should produce output values ranging between " + min + " and " + max + " .");
+        flock.test.assertWithinRange(output, expectedMin, expectedMax,
+            "The ugen should produce output values ranging between " + expectedMin + " and " + expectedMax + ".");
     };
 }());

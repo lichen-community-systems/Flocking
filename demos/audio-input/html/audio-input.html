@@ -26,6 +26,22 @@
                     mike: {
                         swfPath: "../../../third-party/mike.js/swf/mike.swf"
                     }
+                },
+                mul: {
+                    ugen: "flock.ugen.sinOsc",
+                    freq: {
+                        ugen: "flock.ugen.mouse.cursor",
+                        add: 60,
+                        mul: 960
+                    },
+                    mul: {
+                        ugen: "flock.ugen.mouse.cursor",
+                        add: 0.1,
+                        mul: 0.9,
+                        options: {
+                            axis: "y"
+                        }
+                    }
                 }
             });
             // TODO: Use a standard Flocking play button control here.
