@@ -341,17 +341,18 @@ var flock = flock || {};
     };
     
     flock.input.setValuesForPaths = function (root, valueMap, baseTarget, valueParser) {
-        var path,
+        var resultMap = {},
+            path,
             val,
             result;
         
         for (path in valueMap) {
             val = valueMap[path];
             result = flock.input.set(root, path, val, baseTarget, valueParser);
-            valueMap[path] = result;
+            resultMap[path] = result;
         }
         
-        return valueMap;
+        return resultMap;
     };
     
     /**
@@ -677,87 +678,10 @@ var flock = flock || {};
         bpm: 60
     });
     
-     
-    /***********************
-     * Synths and Playback *
-     ***********************/
     
-    var setupEnviro = function (that) {
-        var setupFn = typeof (window.webkitAudioContext) !== "undefined" ?
-            flock.enviro.webkit : flock.enviro.moz;
-        setupFn(that);
-    };
-    
-    flock.enviro = function (options) {
-        options = options || {};        
-        var defaultSettings = flock.defaults("flock.audioSettings"),
-            // TODO: Replace with options merging.
-            that = {
-                audioSettings: {
-                    rates: {
-                        audio: options.sampleRate || defaultSettings.rates.audio,
-                        control: options.controlRate || defaultSettings.rates.control,
-                        constant: options.constantRate || defaultSettings.rates.constant
-                    },
-                    chans: options.chans || 2,
-                    bufferSize: options.bufferSize || defaultSettings.bufferSize,
-                    numBuses: options.numBuses || 16
-                },
-                model: {
-                    playState: {
-                        written: 0,
-                        total: null
-                    }
-                },
-                nodes: [],
-            
-                isPlaying: false
-            };
-        
-        // TODO: Buffers are named but buses are numbered. Should we have a consistent strategy?
-        // The advantage to numbers is that they're easily modulatable with a ugen. Names are easier to deal with.
-        that.buses = flock.enviro.createAudioBuffers(that.audioSettings.numBuses, 
-                that.audioSettings.rates.control);
-        that.buffers = {};
-        that.asyncScheduler = flock.scheduler.async({
-            timeConverter: "flock.convert.ms"
-        });
-        
-        /**
-         * Starts generating samples from all synths.
-         *
-         * @param {Number} dur optional duration to play in seconds
-         */
-        that.play = function (dur) {
-            var playState = that.model.playState,
-                sps = dur * (that.audioSettings.rates.audio * that.audioSettings.chans);
-                
-            playState.total = dur === undefined ? Infinity :
-                playState.total === Infinity ? sps : playState.written + sps;
-            that.startGeneratingSamples();
-            that.isPlaying = true;
-        };
-        
-        /**
-         * Stops generating samples from all synths.
-         */
-        that.stop = function () {
-            that.stopGeneratingSamples();
-            that.isPlaying = false;
-        };
-        
-        that.reset = function () {
-            that.stop();
-            that.asyncScheduler.clearAll();
-            // Clear the environment's node list.
-            while (that.nodes.length > 0) {
-                that.nodes.pop();
-            }
-        };
-        
-        that.gen = function () {
-            that.clearBuses();
-            flock.enviro.evalGraph(that.nodes, that.audioSettings.rates.control);
+    flock.nodeList = function () {
+        var that = {
+            nodes: []
         };
         
         that.head = function (node) {
@@ -786,6 +710,92 @@ var flock = flock || {};
             var idx = that.nodes.indexOf(node);
             that.nodes.splice(idx, 1);
         };
+        
+        return that;
+    };
+    
+    /***********************
+     * Synths and Playback *
+     ***********************/
+    
+    var setupEnviro = function (that) {
+        var setupFn = typeof (window.webkitAudioContext) !== "undefined" ?
+            flock.enviro.webkit : flock.enviro.moz;
+        setupFn(that);
+    };
+    
+    flock.enviro = function (options) {
+        options = options || {};        
+        var defaultSettings = flock.defaults("flock.audioSettings"),
+            // TODO: Replace with options merging.
+            that = flock.nodeList();
+            
+        that.audioSettings = {
+            rates: {
+                audio: options.sampleRate || defaultSettings.rates.audio,
+                control: options.controlRate || defaultSettings.rates.control,
+                constant: options.constantRate || defaultSettings.rates.constant
+            },
+            chans: options.chans || 2,
+            bufferSize: options.bufferSize || defaultSettings.bufferSize,
+            numBuses: options.numBuses || 16
+        };
+        
+        that.model = {
+            playState: {
+                written: 0,
+                total: null
+            },
+            
+            isPlaying: false
+        };
+
+        
+        // TODO: Buffers are named but buses are numbered. Should we have a consistent strategy?
+        // The advantage to numbers is that they're easily modulatable with a ugen. Names are easier to deal with.
+        that.buses = flock.enviro.createAudioBuffers(that.audioSettings.numBuses, 
+                that.audioSettings.rates.control);
+        that.buffers = {};
+        that.asyncScheduler = flock.scheduler.async({
+            timeConverter: "flock.convert.ms"
+        });
+        
+        /**
+         * Starts generating samples from all synths.
+         *
+         * @param {Number} dur optional duration to play in seconds
+         */
+        that.play = function (dur) {
+            var playState = that.model.playState,
+                sps = dur * (that.audioSettings.rates.audio * that.audioSettings.chans);
+                
+            playState.total = dur === undefined ? Infinity :
+                playState.total === Infinity ? sps : playState.written + sps;
+            that.startGeneratingSamples();
+            that.model.isPlaying = true;
+        };
+        
+        /**
+         * Stops generating samples from all synths.
+         */
+        that.stop = function () {
+            that.stopGeneratingSamples();
+            that.model.isPlaying = false;
+        };
+        
+        that.reset = function () {
+            that.stop();
+            that.asyncScheduler.clearAll();
+            // Clear the environment's node list.
+            while (that.nodes.length > 0) {
+                that.nodes.pop();
+            }
+        };
+        
+        that.gen = function () {
+            flock.enviro.clearBuses(that.audioSettings.numBuses, that.buses, that.audioSettings.rates.control);
+            flock.enviro.evalGraph(that.nodes, that.audioSettings.rates.control);
+        };
                 
         that.loadBuffer = function (name, src, onLoadFn) {
             if (!src && onLoadFn) {
@@ -802,26 +812,24 @@ var flock = flock || {};
                 }
             });
         };
-        
-        that.clearBuses = function () {
-            var numBuses = that.audioSettings.numBuses,
-                buses = that.buses,
-                i,
-                bus,
-                j;
-                
-            for (i = 0; i < numBuses; i++) {
-                bus = buses[i];
-                for (j = 0; j < bus.length; j++) {
-                    bus[j] = 0;
-                }
-            }
-        };
 
         setupEnviro(that);
         return that;
     };
 
+    flock.enviro.clearBuses = function (numBuses, buses, busLen) {
+        var i,
+            bus,
+            j;
+            
+        for (i = 0; i < numBuses; i++) {
+            bus = buses[i];
+            for (j = 0; j < busLen; j++) {
+                bus[j] = 0;
+            }
+        }
+    };
+    
     flock.enviro.createAudioBuffers = function (numBufs, kr) {
         var bufs = [],
             i;
@@ -1001,7 +1009,7 @@ var flock = flock || {};
     flock.synth = function (def, options) {
         var that = {
             rate: flock.rates.AUDIO,
-            enviro: flock.enviro.shared,
+            enviro: flock.enviro.shared, // TODO: Direct reference to the shared environment.
             ugens: flock.synth.ugenCache(),
             model: {
                 synthDef: def
@@ -1015,9 +1023,9 @@ var flock = flock || {};
          * @param numSamps the number of samples to generate
          * @return a buffer containing the generated audio
          */
-        that.gen = function () {
-            // Synths always evaluate their ugen graph at the audio rate.
-            flock.enviro.evalGraph(that.ugens.active, that.enviro.audioSettings.rates.control);
+        that.gen = function (numSamps) {
+            numSamps = numSamps || that.enviro.audioSettings.rates.control;
+            flock.enviro.evalGraph(that.ugens.active, numSamps);
         };
         
         /**
@@ -1245,5 +1253,161 @@ var flock = flock || {};
         
         return that;
     };
+    
+    
+    flock.synth.group = function (options) {
+        var that = flock.nodeList(options);
+        that.rate = flock.rates.AUDIO;
+        that.enviro = flock.enviro.shared; // TODO: Direct reference to the shared environment.
+        that.model = {};
+        that.options = options;
+        
+        flock.synth.group.makeDispatchedMethods(that, [
+            "input", "get", "set", "gen", "play", "pause"
+        ]);
+        
+        that.init = function () {
+            if (that.options.addToEnvironment !== false) {
+                that.enviro.tail(that);
+            }    
+        };
+        
+        that.init();
+        return that;
+    };
+    
+    flock.synth.group.makeDispatcher = function (nodes, msg) {
+        return function () {
+            var i,
+                node,
+                val;
+            for (i = 0; i < nodes.length; i++) {
+                node = nodes[i];
+                val = node[msg].apply(node, arguments);
+            }
+            
+            return val;
+        };
+    };
+    
+    flock.synth.group.makeDispatchedMethods = function (that, methodNames) {
+        var name,
+            i;
+            
+        for (i = 0; i < methodNames.length; i++) {
+            name = methodNames[i];
+            that[name] = flock.synth.group.makeDispatcher(that.nodes, name, flock.synth.group.dispatch);
+        }
+        
+        return that;
+    };
+    
+    
+    flock.synth.polyphonic = function (def, options) {
+        // TODO: Infusion and grades.
+        options = $.extend({}, flock.defaults("flock.synth.polyphonic"), options)
+        var that = flock.synth.group(options);
+        that.options = options;
+        that.model = {
+            synthDef: def
+        };
+        that.activeVoices = {};
+        that.freeVoices = [];
+        
+        that.noteChange = function (voice, eventName, changeSpec) {
+            var noteEventSpec = that.options.noteSpecs[eventName];
+            changeSpec = $.extend({}, noteEventSpec, changeSpec);
+            voice.input(changeSpec);
+        };
+        
+        that.noteOn = function (noteName, changeSpec) {
+            var voice = that.nextFreeVoice();
+            if (that.activeVoices[noteName]) {
+                that.noteOff(noteName);
+            }
+            that.activeVoices[noteName] = voice;
+            that.noteChange(voice, "on", changeSpec);
+            
+            return voice;
+        };
+        
+        that.noteOff = function (noteName, changeSpec) {
+            var voice = that.activeVoices[noteName];
+            if (!voice) {
+                return null;
+            }
+            that.noteChange(voice, "off", changeSpec);
+            delete that.activeVoices[noteName];
+            that.freeVoices.push(voice);
+            
+            return voice;
+        };
+        
+        that.createVoice = function () {
+            var voice = flock.synth(that.model.synthDef, {
+                    addToEnvironment: false
+                }),
+                normalizer = that.options.amplitudeNormalizer,
+                ampKey = that.options.amplitudeKey,
+                normValue;
+                
+            if (normalizer) {
+                if (typeof(normalizer) === "function") {
+                    norm(voice, ampKey);
+                } else if (normalizer === "static") {
+                    normValue = 1.0 / that.options.maxVoices;
+                    voice.input(ampKey, normValue);
+                }
+                // TODO: Implement dynamic voice normalization.
+            }
+            that.nodes.push(voice);
+            
+            return voice;
+        };
+        
+        that.pooledVoiceAllocator = function () {
+            return that.freeVoices.pop();
+        };
+        
+        that.lazyVoiceAllocator = function () {
+            return that.freeVoices.length > 1 ?
+                that.freeVoices.pop() : Object.keys(that.activeVoices).length > that.options.maxVoices ?
+                null : that.createVoice();
+        };
+        
+        that.init = function () {
+            if (!that.options.initVoicesLazily) {
+                for (var i = 0; i < that.options.maxVoices; i++) {
+                    that.freeVoices[i] = that.createVoice();
+                }
+                that.nextFreeVoice = that.pooledVoiceAllocator;
+            } else {
+                that.nextFreeVoice = that.lazyVoiceAllocator;
+            }
+        };
+        
+        that.init();
+        return that;
+    };
+    
+    flock.defaults("flock.synth.polyphonic", {
+        noteSpecs: {
+            on: {
+                "env.gate": 1
+            },
+            
+            off: {
+                "env.gate": 0
+            }
+        },
+        
+        maxVoices: 16,
+        
+        initVoicesLazily: true,
+        
+        amplitudeKey: "env.sustain",
+        
+        amplitudeNormalizer: "static" // "dynamic", "static", Function, falsey
+    });
     
 }(jQuery));
