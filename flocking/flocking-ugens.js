@@ -144,7 +144,7 @@ var flock = flock || {};
             inputs: inputs,
             output: output,
             options: options,
-            model: {}
+            model: options.model || {}
         };
         
         that.options.audioSettings = that.options.audioSettings || flock.enviro.shared.audioSettings;
@@ -180,6 +180,22 @@ var flock = flock || {};
                 flock.isIterable(path) ? that.get(path) : that.set(path, val);
         };
     
+        // TODO: Move this into a grade.
+        that.calculateStrides = function () {
+            var m = that.model,
+                strideNames = that.options.strideInputs,
+                inputs = that.inputs,
+                i,
+                name;
+            
+            m.strides = m.strides || {};
+            
+            for (i = 0; i < strideNames.length; i++) {
+                name = strideNames[i];
+                m.strides[name] = inputs[name].rate === flock.rates.AUDIO ? 1 : 0;
+            }
+        };
+        
         // No-op base onInputChanged() implementation.
         that.onInputChanged = flock.identity;
         
@@ -261,14 +277,12 @@ var flock = flock || {};
                 tableIncRad = m.tableIncRad,
                 output = that.output,
                 phase = m.phase,
-                phaseInc = m.phaseInc,
-                freqInc = m.freqInc,
                 i,
                 j,
                 k,
                 idx;
 
-            for (i = 0, j = 0, k = 0; i < numSamps; i++, j += phaseInc, k += freqInc) {
+            for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.phase, k += m.strides.freq) {
                 idx = Math.round(phase + phaseOffset[j] * tableIncRad);
                 if (idx >= tableLen) {
                     idx -= tableLen;
@@ -303,12 +317,7 @@ var flock = flock || {};
     };
 
     flock.ugen.osc.onInputChanged = function (that) {
-        var m = that.model,
-            inputs = that.inputs;
-        
-        m.freqInc = inputs.freq.rate === flock.rates.AUDIO ? 1 : 0;
-        m.phaseInc = inputs.phase.rate === flock.rates.AUDIO ? 1 : 0;
-        
+        that.calculateStrides();
         flock.onMulAddInputChanged(that);
     };
     
@@ -317,6 +326,12 @@ var flock = flock || {};
         inputs: {
             freq: 440.0,
             phase: 0.0
+        },
+        options: {
+            strideInputs: [
+                "freq",
+                "phase"
+            ]
         }
     });
 
@@ -402,8 +417,6 @@ var flock = flock || {};
             var m = that.model,
                 freq = that.inputs.freq.output,
                 phaseOffset = that.inputs.phase.output,
-                freqInc = m.freqInc,
-                phaseInc = m.phaseInc,
                 out = that.output,
                 phase = m.phase,
                 sampleRate = m.sampleRate,
@@ -411,7 +424,7 @@ var flock = flock || {};
                 j,
                 k;
 
-            for (i = 0, j = 0, k = 0; i < numSamps; i++, j += phaseInc, k += freqInc) {
+            for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.phase, k += m.strides.freq) {
                 out[i] = Math.sin(phase + phaseOffset[j]);
                 phase += freq[k] / sampleRate * flock.TWOPI;
             }
@@ -438,7 +451,6 @@ var flock = flock || {};
         that.gen = function (numSamps) {
             var m = that.model,
                 freq = that.inputs.freq.output,
-                freqInc = m.freqInc,
                 out = that.output,
                 scale = m.scale,
                 phaseOffset = that.inputs.phase.output[0], // Phase is control rate
@@ -446,7 +458,7 @@ var flock = flock || {};
                 i,
                 j;
 
-            for (i = 0, j = 0; i < numSamps; i++, j += freqInc) {
+            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.freq) {
                 out[i] = phase + phaseOffset;
                 phase += freq[j] * scale;
                 if (phase >= 1.0) { 
@@ -464,6 +476,7 @@ var flock = flock || {};
             var m = that.model;
             m.freqInc = that.inputs.freq.rate === flock.rates.AUDIO ? 1 : 0;
             m.phase = 0.0;
+            that.calculateStrides();
             flock.onMulAddInputChanged(that);
         };
         
@@ -475,6 +488,9 @@ var flock = flock || {};
         rate: "audio",
         inputs: {
             phase: 0.0
+        },
+        options: {
+            strideInputs: ["freq"]
         }
     });
     
@@ -535,7 +551,7 @@ var flock = flock || {};
                 m = that.model,
                 out = that.output,
                 freq = inputs.freq.output,
-                freqInc = m.freqInc,
+                freqInc = m.strides.freq,
                 phaseOffset = inputs.phase.output[0],
                 phase = m.phase,
                 scale = m.scale,
@@ -561,9 +577,8 @@ var flock = flock || {};
         };
         
         that.onInputChanged = function () {
-            var m = that.model;
-            m.phase = 0.0;
-            m.freqInc = that.inputs.freq.rate === "audio" ? 1 : 0;
+            that.model.phase = 0.0;
+            that.calculateStrides();
             flock.onMulAddInputChanged(that);
         };
         
@@ -581,6 +596,9 @@ var flock = flock || {};
         inputs: {
             freq: 440,
             phase: 0.0
+        },
+        options: {
+            strideInputs: ["freq"]
         }
     });
     
@@ -661,10 +679,6 @@ var flock = flock || {};
      
     flock.ugen.playBuffer = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.model = {
-            idx: 0,
-            channel: undefined
-        };
         
         // Start with a zeroed buffer, since the buffer input may be loaded asynchronously.
         that.buffer = new Float32Array(that.output.length); 
@@ -765,6 +779,12 @@ var flock = flock || {};
             channel: 0,
             loop: 0.0,
             speed: 1.0
+        },
+        options: {
+            model: {
+                idx: 0,
+                channel: undefined
+            }
         }
     });
     
@@ -1103,7 +1123,7 @@ var flock = flock || {};
 
     /**
      * Loops through a linear ramp from start to end, incrementing the output by step.
-     * Equivalent to SuperCollider's Phasor unit generator.
+     * Equivalent to SuperCollider's or CSound's Phasor unit generator.
      *
      * Inputs:
      *  start: the value to start ramping from
@@ -1112,7 +1132,7 @@ var flock = flock || {};
      *  reset: the value to return to when the loop is reset by a trigger signal
      *  trigger: a trigger signal that, when it cross the zero line, will reset the loop back to the reset point
      */
-    flock.ugen.loop = function (inputs, output, options) {
+    flock.ugen.phasor = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
         that.gen = function (numSamps) {
@@ -1120,36 +1140,35 @@ var flock = flock || {};
                 inputs = that.inputs,
                 out = that.output,
                 step = inputs.step.output,
-                trig = inputs.trigger.output[0],
+                trig = inputs.trigger.output,
                 i,
-                j;
-            
-            if ((trig > 0.0 && m.prevTrig <= 0.0)) {
-                m.value = inputs.reset.output[0];
-            }
-            m.prevTrig = trig;
+                j,
+                k;
             
             // TODO: Add sample priming to the ugen graph to remove this conditional.
             if (m.value === undefined) {
                 m.value = inputs.start.output[0];
             }
             
-            for (i = 0, j = 0; i < numSamps; i++, j += m.stepInc) {
+            for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.trigger, k += m.strides.step) {
+                if ((trig[j] > 0.0 && m.prevTrig <= 0.0)) {
+                    m.value = inputs.reset.output[0];
+                }
+                m.prevTrig = trig[j];
+                
                 if (m.value >= inputs.end.output[0]) {
                     m.value = inputs.start.output[0];
                 }
                 
                 out[i] = m.value;
-                m.value += step[j];
+                m.value += step[k];
             }
             
             that.mulAdd(numSamps);
         };
         
         that.onInputChanged = function () {
-            // TODO: Utility function for calculating strides.
-            that.model.trigInc = that.inputs.trigger.rate === "audio" ? 1 : 0;
-            that.model.stepInc = that.inputs.step.rate === "audio" ? 1 : 0;
+            that.calculateStrides();
             flock.onMulAddInputChanged(that);
         };
         
@@ -1158,7 +1177,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.loop", {
+    flock.defaults("flock.ugen.phasor", {
         rate: "control",
         inputs: {
             start: 0.0,
@@ -1166,6 +1185,12 @@ var flock = flock || {};
             reset: 0.0,
             step: 0.1,
             trigger: 0.0
+        },
+        options: {
+            strideInputs: [
+                "trigger",
+                "step"
+            ]
         }
     });
     
@@ -1231,16 +1256,6 @@ var flock = flock || {};
         
         that.init = function () {
             var m = that.model;
-            
-            that.onInputChanged();
-            
-            // Set default model state.
-            m.stage = {
-                currentStep: 0,
-                stepInc: 0,
-                numSteps: 0
-            };
-            m.previousGate = 0.0;
             m.level = that.inputs.start.output[0];
             m.targetLevel = that.inputs.sustain.output[0];
         };
@@ -1257,6 +1272,16 @@ var flock = flock || {};
             sustain: 1.0,
             release: 1.0,
             gate: 0.0
+        },
+        options: {
+            model: {
+                previousGate: 0.0,
+                stage: {
+                    currentStep: 0,
+                    stepInc: 0,
+                    numSteps: 0
+                }
+            }
         }
     });
     
@@ -1475,10 +1500,9 @@ var flock = flock || {};
         
         that.init = function () {
             var m = that.model,
-                mikeOpts = that.options.mike || {};
+                mikeOpts = that.options.mike;
 
-            // TOOD: Options merging! This is absurd!
-            mikeOpts.settings = mikeOpts.settings || {};
+            // Flash needs the sample rate as a string?!
             mikeOpts.settings.sampleRate = String(mikeOpts.settings.sampleRate || that.options.audioSettings.rates.audio);
             
             // Setup and listen to Mike.js.
@@ -1518,6 +1542,11 @@ var flock = flock || {};
         rate: "audio",
         inputs: {
             device: 0
+        },
+        options: {
+            mike: {
+                settings: {}
+            }
         }
     });
     
@@ -1527,19 +1556,13 @@ var flock = flock || {};
      ***********************/
      
     flock.ugen.scope = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options),
-            fps = options.fps || 60; // TODO: Real options merging!
+        var that = flock.ugen(inputs, output, options);
         
-        that.model.spf = Math.round(that.model.sampleRate / fps);
+        that.model.spf = Math.round(that.model.sampleRate / that.options.fps);
         that.model.bufIdx = 0;
         
         // Setup the scopeView widget. 
-        that.model.scope = that.options.styles || {
-            scaleY: 0.75,
-            strokeColor: "#777777",
-            strokeWidth: 3
-        }; // TODO: Options merging!
-        
+        that.model.scope = that.options.styles;
         that.model.scope.values = new Float32Array(that.model.spf);
         that.scopeView = flock.gfx.scopeView(that.options.canvas, that.model.scope);
         
@@ -1569,11 +1592,20 @@ var flock = flock || {};
         
         that.onInputChanged();
         that.scopeView.refreshView();
+        
         return that;
     };
     
     flock.defaults("flock.ugen.scope", {
-        rate: "audio"
+        rate: "audio",
+        options: {
+            fps: 60,
+            styles: {
+                scaleY: 0.75,
+                strokeColor: "#777777",
+                strokeWidth: 3
+            }
+        }
     });
     
     
@@ -1952,7 +1984,6 @@ var flock = flock || {};
     
     flock.ugen.delay = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.model.pos = 0;
         
         that.gen = function (numSamps) {
             var m = that.model,
@@ -1998,17 +2029,17 @@ var flock = flock || {};
         inputs: {
             maxTime: 1.0,
             time: 1.0
+        },
+        options: {
+            model: {
+                pos: 0
+            }
         }
     });
     
     
     flock.ugen.decay = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        $.extend(that.model, {
-            time: 0,
-            lastSamp: 0,
-            coeff: 0
-        });
         
         that.gen = function (numSamps) {
             var m = that.model,
@@ -2050,6 +2081,13 @@ var flock = flock || {};
         rate: "audio",
         inputs: {
             time: 1.0
+        },
+        options: {
+            model: {
+                time: 0,
+                lastSamp: 0,
+                coeff: 0
+            }
         }
     });
 
@@ -2069,17 +2107,13 @@ var flock = flock || {};
      *   - speed: the rate at which grain samples are selected from the buffer; 1.0 is normal speed, -1.0 is backwards
      *
      * Options:
-     *   - (interpolation)
+     *   - interpolation: "cubic", "linear", or "none"/undefined
      */
+    // TODO: Unit tests.
     flock.ugen.triggerGrains = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        $.extend(true, that.model, {
-            activeGrains: [],
-            freeGrains: [],
-            env: null,
-            strides: {}
-        });
-
+        that.buffer = new Float32Array(that.output.length);
+        
         that.gen = function (numSamps) {
             var m = that.model,
                 inputs = that.inputs,
@@ -2090,7 +2124,6 @@ var flock = flock || {};
                 centerPos = inputs.centerPos.output,
                 trigger = inputs.trigger.output,
                 speed = inputs.speed.output,
-                interp = that.options.interpolation,
                 posIdx = 0,
                 trigIdx = 0,
                 ampIdx = 0,
@@ -2114,6 +2147,8 @@ var flock = flock || {};
             }
             
             // Trigger new grains.
+            // TODO: Why does this constantly trigger new grains with an audio rate trigger signal,
+            //       rarely or never cleaning old ones up?
             for (i = 0; i < numSamps; i++) {
                 if (trigger[trigIdx] > 0.0 && m.prevTrigger <= 0.0 && m.activeGrains.length < m.maxNumGrains) {
                     grain = m.freeGrains.pop();
@@ -2168,22 +2203,15 @@ var flock = flock || {};
                 flock.buffer.resolveBufferDef(that);
             }
             
-            // TODO: Utility for calculating strides.
-            m.strides.centerPos = inputs.centerPos.rate === flock.rates.AUDIO ? 1 : 0;
-            m.strides.trigger = inputs.trigger.rate === flock.rates.AUDIO ? 1 : 0;
-            m.strides.amp = inputs.amp.rate === flock.rates.AUDIO ? 1 : 0;
-            m.strides.speed = inputs.speed.rate === flock.rates.AUDIO ? 1 : 0;
-            
+            that.calculateStrides();
             flock.onMulAddInputChanged(that);
         };
         
-        that.preallocateGrains = function () {
-            var m = that.model,
-                i;
+        that.allocateGrains = function (numGrains) {
+            numGrains = numGrains || that.model.maxNumGrains
             
-            m.maxNumGrains = that.options.maxNumGrains || 512;
-            for (i = 0; i < m.maxNumGrains; i++) {
-                m.freeGrains.push({
+            for (var i = 0; i < numGrains; i++) {
+                that.model.freeGrains.push({
                     sampIdx: 0,
                     envIdx: 0,
                     readPos: 0
@@ -2192,15 +2220,11 @@ var flock = flock || {};
         };
         
         that.init = function () {
-            // Allocates a buffer for the grain envelope and preallocates a pool of grains.
             var m = that.model,
-                maxGrainLength;
+                maxGrainLength = Math.round(m.maxDur * m.sampleRate);
             
-            m.maxDur = that.options.maxDur || 30;
-            maxGrainLength = Math.round(m.maxDur * m.sampleRate);
-            m.env = new Float32Array(maxGrainLength);
-            
-            that.preallocateGrains();
+            that.model.env = new Float32Array(maxGrainLength);
+            that.allocateGrains();
             that.onInputChanged();
         };
         
@@ -2216,13 +2240,31 @@ var flock = flock || {};
             amp: 1.0,
             dur: 0.1,
             speed: 1.0
+        },
+        options: {
+            model: {
+                maxDur: 30,
+                maxNumGrains: 512,
+                activeGrains: [],
+                freeGrains: [],
+                env: null,
+                strides: {}
+            },
+            strideInputs: [
+                "centerPos",
+                "trigger",
+                "amp",
+                "speed"
+            ],
+            interpolation: "cubic"
         }
     });
     
+    
+    // TODO: Unit tests.
     flock.ugen.print = function (input, output, options) {
         var that = flock.ugen(input, output, options);
         that.model.label = that.options.label ? that.options.label + ": " : "";
-        that.model.counter = 0;
         
         that.gen = function (numSamps) {
             var inputs = that.inputs,
@@ -2262,6 +2304,11 @@ var flock = flock || {};
         inputs: {
             trigger: 0.0,
             freq: 1.0
+        },
+        options: {
+            model: {
+                counter: 0
+            }
         }
     });
 }(jQuery));

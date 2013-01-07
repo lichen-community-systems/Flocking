@@ -133,7 +133,8 @@
         // by a perfect fourth.
         var freq = synth.input("carrier.freq"),
             clock = flock.scheduler.async();
-        clock.repeat(1.0, function () {
+            
+            clock.repeat(1.0, function () {
             if (freq <= 3520) {
                 freq *= 4/3;
                 synth.input("carrier.freq", freq);
