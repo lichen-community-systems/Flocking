@@ -180,7 +180,15 @@ var flock = flock || {};
                 flock.isIterable(path) ? that.get(path) : that.set(path, val);
         };
     
-        that.onInputChanged = flock.identity; // No-op base implementation.
+        // No-op base onInputChanged() implementation.
+        that.onInputChanged = flock.identity;
+        
+        // Assigns an interpolator function to the UGen.
+        // This is inactive by default, but can be used in custom gen() functions.
+        // Will be undefined if no interpolation default or option has been set,
+        // or if it is set to "none"--make sure you check before invoking it.
+        that.interpolate = flock.interpolate[that.options.interpolation];
+        
         return that;
     };
     
@@ -2082,6 +2090,7 @@ var flock = flock || {};
                 centerPos = inputs.centerPos.output,
                 trigger = inputs.trigger.output,
                 speed = inputs.speed.output,
+                interp = that.options.interpolation,
                 posIdx = 0,
                 trigIdx = 0,
                 ampIdx = 0,
@@ -2091,7 +2100,6 @@ var flock = flock || {};
                 k,
                 grain,
                 start,
-                bufIdx,
                 samp;
         
             // Update the grain envelope if the grain duration input has changed.
@@ -2134,8 +2142,7 @@ var flock = flock || {};
             for (j = 0; j < m.activeGrains.length;) {
                 grain = m.activeGrains[j];
                 for (k = grain.writePos; k < Math.min(m.numGrainSamps - grain.sampIdx, numSamps); k++) {
-                    bufIdx = Math.round(grain.readPos); // TODO: Interpolation.
-                    samp = buf[bufIdx];
+                    samp = that.interpolate ? that.interpolate(grain.readPos, buf) : buf[Math.floor(grain.readPos)];
                     out[k] += samp * m.env[grain.envIdx] * grain.amp;
                     grain.readPos = (grain.readPos + grain.speed) % buf.length;
                     grain.sampIdx++;
