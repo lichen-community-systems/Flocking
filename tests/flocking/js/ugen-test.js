@@ -1181,6 +1181,7 @@ flock.test = flock.test || {};
     });
     
     // Test the flock.ugen.filter unit generator with all filter types and a set of generic input values.
+    /*
     forEachFilterType(function (recipeName, recipe, filterType) {
         var name = "flock.ugen.filter() " + recipeName + "." + filterType;
         testEachFilterInputValue(name, function (inputs) {
@@ -1207,7 +1208,7 @@ flock.test = flock.test || {};
             flock.test.assertUnbrokenSignal(filterSynth.get("filter"), -1.0, 1.0);
         });
     });
-    
+    */
     
     test("flock.ugen.delay", function () {
         var sourceBuffer = flock.test.ascendingBuffer(64, 1),

@@ -19,6 +19,7 @@ var flock = flock || {};
      * Utilities *
      *************/
     
+    // TODO: Check API; write unit tests.
     flock.aliasUGen = function (sourcePath, aliasName, inputDefaults, defaultOptions) {
         var root = flock.get(undefined, sourcePath);
         flock.set(root, aliasName, function (inputs, output, options) {
@@ -28,6 +29,7 @@ var flock = flock || {};
         flock.defaults(sourcePath + "." + aliasName, inputDefaults);
     };
     
+    // TODO: Check API; write unit tests.
     flock.aliasUGens = function (sourcePath, aliasesSpec) {
         var aliasName,
             settings;
@@ -1658,6 +1660,7 @@ var flock = flock || {};
     /**
      * A generic FIR and IIR filter engine. You specify the coefficients, and this will do the rest.
      */
+     // TODO: Unit tests.
     flock.ugen.filter = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
@@ -1709,6 +1712,7 @@ var flock = flock || {};
     /**
      * An optimized biquad filter unit generator.
      */
+    // TODO: Unit tests.
     flock.ugen.filter.biquad = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
