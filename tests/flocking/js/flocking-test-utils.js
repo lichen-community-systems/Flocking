@@ -42,10 +42,11 @@ var flock = flock || {};
         return new Float32Array(buf);
     };
     
-    flock.test.constantBuffer = function (size, val) {
-        var buf = new Float32Array(size),
+    
+    flock.test.constantBuffer = function (bufOrSize, val) {
+        var buf = typeof (bufOrSize) === "number" ? new Float32Array(bufOrSize) : bufOrSize,
             i;
-        for (i = 0; i < size; i++) {
+        for (i = 0; i < buf.length; i++) {
             buf[i] = val;
         }
         return buf;
@@ -260,5 +261,14 @@ var flock = flock || {};
             "There should be no other properties in the object.");
     };
     
-    
+    flock.test.assertUnbrokenSignal = function (ug, min, max) {
+        flock.test.assertNotNaN(ug.output,
+            "The ugen should never output NaN.");
+        flock.test.assertNotSilent(ug.output,
+            "The ugen's output should not contain more than 10% silence.");
+        flock.test.assertUnbroken(ug.output,
+            "The ugen should produce an unbroken audio tone.");
+        flock.test.assertWithinRange(ug.output, min, max,
+            "The ugen should produce output values ranging between " + min + " and " + max + " .");
+    };
 }());
