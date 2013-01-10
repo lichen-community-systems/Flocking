@@ -1712,118 +1712,101 @@ var flock = flock || {};
         }
     };
  
+     // Additions by Mayank not fully staged
+    flock.delayLine = function (initialDelayLength) {
+        var that = {
+            model: {
+                delayLength: 0,
+                readPos: 0,
+                writePos: 0,
+                buffer: new Float32Array(initialDelayLength)
+            }
+        };
  
- // Additions by Mayank not fully staged
- flock.delayLine = function(initialDelayLength) {
+        that.write = function (sample) {
+            var m = that.model;
+            m.buffer[m.writePos] = sample;
+            m.writePos = (m.writePos + 1) % m.delayLength;
+        };
  
-     var that = {};
-     var delayLength;
-     var readPos;
-     var writePos;
-     var buffer;
-     
-     that.write = function(sample) {
-         buffer[writePos] = sample;
-         writePos = (writePos+1)%delayLength;
-     }
-     that.read = function() {
-         var sample = buffer[readPos];
-         readPos = (readPos+1)%delayLength;
-         return sample;
-     }
-     that.setReadPos = function (newReadPos) {
-         readPos = newReadPos;
-     }
-     that.setWritePos = function(newWritePos) {
-         writePos = newWritePos;
-     }
-     that.getReadPos = function () {
-         return readPos;
-     }
-     that.getWritePos = function() {
-         return writePos;
-     }
-     that.getDelayLength = function() {
-         return delayLength;
-     }
-     that.setDelayLength = function(newDelayLength) {
-         // TODO: make this a non-destructive operation if buffer exists / delayLength is defined
-         delayLength = newDelayLength;
-         buffer = new Float32Array(delayLength);
-     }
-     
-     that.print = function () {
-         for (var z=0;z<delayLength;z++) {
-             console.log(buffer[z]);
-         }
-     }
-     
-     that.init = function() {
-         writePos = 0;
-         readPos = 0;
-     }
-     that.setDelayLength(initialDelayLength);
-     that.init();
-     return that;
- };
+        that.read = function () {
+            var m = that.model;
+            var sample = m.buffer[m.readPos];
+            m.readPos = (m.readPos + 1) % m.delayLength;
+            return sample;
+        };
  
- // input arguments should be - delayLength, numGrains, grainLength (with randomization parameter?)
- flock.ugen.granulator = function (inputs, output, options) {
-     var that = flock.ugen(inputs, output, options);
+        that.setDelayLength = function (newDelayLength) {
+            // TODO: make this a non-destructive operation if buffer exists / delayLength is defined
+            var m = that.model;
+            m.delayLength = newDelayLength;
+            m.buffer = new Float32Array(m.delayLength);
+        }; 
+        return that;
+    };
+    
+    // input arguments should be - delayLength, numGrains, grainLength (with randomization parameter?)
+    flock.ugen.granulator = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
      
-     $.extend(true, that.model, {
-         grainLength: that.model.sampleRate*inputs.grainLength.inputs.value, 
-         numGrains: inputs.numGrains.inputs.value,
-         delayLength: that.model.sampleRate*inputs.delayLength.inputs.value,
-         currentGrainPosition: [],
-         currentGrainWindowPosition: [],
-         windowFunction: [],
-         writePos: 0
-     });
+        $.extend(true, that.model, {
+            grainLength: 0,
+            numGrains: 0,
+            delayLength: that.model.sampleRate * inputs.delayLength.inputs.value,
+            currentGrainPosition: [],
+            currentGrainWindowPosition: [],
+            windowFunction: [],
+            writePos: 0
+        });
      
-     that.delayLine = new Float32Array(that.model.delayLength);
-      
-     that.init = function () {
-         var m = that.model,
-         i;
-         for (i=0;i<m.numGrains;i++)     
-         {
-             m.currentGrainPosition[i] = 0;
-             m.currentGrainWindowPosition[i]=Math.floor(Math.random()*m.grainLength);;
-         }
-         for (i=0;i<m.grainLength;i++)
-         {
-             m.windowFunction[i] = Math.sin(3.1415*i/m.grainLength);
-         }
-     }
+        that.delayLine = new Float32Array(that.model.delayLength);
+           
+        that.gen = function (numSamps) {
+            var m = that.model,
+            inputs = that.inputs,
+            out = that.output,
+            source = inputs.source.output,
+            grainLength = that.model.sampleRate * inputs.grainLength.output[0], 
+            numGrains = inputs.numGrains.output[0],
+            i,
+            j;
+                 
+                 
+            // if numGrains has changed, zero the extra buffers
+            if (m.numGrains !== numGrains) {
+                for (i = m.numGrains; i < numGrains; i++) {
+                    m.currentGrainPosition[i] = 0;
+                    m.currentGrainWindowPosition[i] = Math.floor(Math.random() * m.grainLength);
+                }
+                m.numGrains = numGrains;
+            }
      
-     that.gen = function (numSamps) {
-     var m = that.model,
-     inputs = that.inputs,
-     out = that.output,
-     source = inputs.source.output,
-     i,
-     j;
-     for (i = 0; i < numSamps; i++) {
-         // continuously write into delayline
-         that.delayLine[m.writePos] = source[i];
-         m.writePos = (m.writePos+1)%m.delayLength;
-         out[i]=0;
-         // now fill with grains
-         for (j=0;j<m.numGrains;j++) {
-             out[i]+=that.delayLine[m.currentGrainPosition[j]]*m.windowFunction[m.currentGrainWindowPosition[j]];
-             m.currentGrainPosition[j] = (m.currentGrainPosition[j] + 1) % m.delayLength;
-             m.currentGrainWindowPosition[j] = (m.currentGrainWindowPosition[j] + 1) % m.grainLength;
-             //randomize reset position of grains
-             if (m.currentGrainWindowPosition[j] === 0) {
-                 m.currentGrainPosition[j] = Math.floor(Math.random()*m.delayLength);
-             }
-         }
-         out[i]/=m.numGrains;
-     }
-     };
-     that.init();
-     return that;
-};
+            // If grainLength has changed, recalculate window
+            if (m.grainLength !== grainLength) {
+                m.grainLength = Math.floor(grainLength);
+                for (i = 0; i < m.grainLength; i++) {
+                    m.windowFunction[i] = Math.sin(3.1415 * i / m.grainLength);
+                }
+            }
+            
+            for (i = 0; i < numSamps; i++) {
+                // continuously write into delayline
+                that.delayLine[m.writePos] = source[i];
+                m.writePos = (m.writePos + 1) % m.delayLength;
+                out[i] = 0;
+                // now fill with grains
+                for (j = 0; j < m.numGrains; j++) { out[i] += that.delayLine[m.currentGrainPosition[j]] * m.windowFunction[m.currentGrainWindowPosition[j]];
+                    m.currentGrainPosition[j] = (m.currentGrainPosition[j] + 1) % m.delayLength;
+                    m.currentGrainWindowPosition[j] = (m.currentGrainWindowPosition[j] + 1) % m.grainLength;
+                    //randomize reset position of grains
+                    if (m.currentGrainWindowPosition[j] === 0) {
+                        m.currentGrainPosition[j] = Math.floor(Math.random() * m.delayLength);
+                    }
+                }
+                out[i] /= m.numGrains;
+            }
+        };
+        return that;
+    };
 
 }(jQuery));
