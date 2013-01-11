@@ -53,6 +53,7 @@ var flock = flock || {};
         var that = {
             options: $.extend({}, flock.defaults(name), options)
         };
+        that.model = that.options.model || {};
         
         return that;
     };
@@ -1054,15 +1055,11 @@ var flock = flock || {};
      * They are created with a synthDef object, a declarative structure describing the synth's unit generator graph.
      */
     flock.synth = function (def, options) {
-        var that = {
-            rate: flock.rates.AUDIO,
-            enviro: flock.enviro.shared, // TODO: Direct reference to the shared environment.
-            ugens: flock.synth.ugenCache(),
-            model: {
-                synthDef: def
-            },
-            options: options || {}
-        };
+        var that = flock.component("flock.synth", options);
+        that.rate = flock.rates.AUDIO;
+        that.model.synthDef = def;
+        that.enviro = flock.enviro.shared; // TODO: Direct reference to the shared environment.
+        that.ugens = flock.synth.ugenCache();
         
         /**
          * Generates an audio rate signal by evaluating this synth's unit generator graph.
@@ -1159,6 +1156,9 @@ var flock = flock || {};
         that.init();
         return that;
     };
+    
+    flock.defaults("flock.synth", {});
+    
     
     flock.synth.ugenCache = function () {
         var that = {
@@ -1442,18 +1442,13 @@ var flock = flock || {};
             on: {
                 "env.gate": 1
             },
-            
             off: {
                 "env.gate": 0
             }
         },
-        
         maxVoices: 16,
-        
         initVoicesLazily: true,
-        
         amplitudeKey: "env.sustain",
-        
         amplitudeNormalizer: "static" // "dynamic", "static", Function, falsey
     });
     
