@@ -722,10 +722,8 @@ var flock = flock || {};
     });
     
     
-    flock.nodeList = function () {
-        var that = {
-            nodes: []
-        };
+    flock.nodeListFinalInit = function (that) {
+        that.nodes = [];
         
         that.head = function (node) {
             that.nodes.unshift(node);
@@ -753,9 +751,12 @@ var flock = flock || {};
             var idx = that.nodes.indexOf(node);
             that.nodes.splice(idx, 1);
         };
-        
-        return that;
     };
+    
+    fluid.defaults("flock.nodeList", {
+        gradeNames: ["fluid.littleComponent", "autoInit"],
+        finalInitFunction: "flock.nodeListFinalInit"
+    });
     
     /***********************
      * Synths and Playback *
@@ -767,32 +768,19 @@ var flock = flock || {};
         setupFn(that);
     };
     
-    flock.enviro = function (options) {
-        options = options || {};        
-        var defaultSettings = flock.defaults("flock.audioSettings"),
-            // TODO: Replace with options merging.
-            that = flock.nodeList();
-            
+    flock.enviroFinalInit = function (that) {
+        // TODO: Move audio settings to enviro's defaults.
+        var defaultSettings = flock.defaults("flock.audioSettings");
         that.audioSettings = {
             rates: {
-                audio: options.sampleRate || defaultSettings.rates.audio,
-                control: options.controlRate || defaultSettings.rates.control,
-                constant: options.constantRate || defaultSettings.rates.constant
+                audio: that.options.sampleRate || defaultSettings.rates.audio,
+                control: that.options.controlRate || defaultSettings.rates.control,
+                constant: that.options.constantRate || defaultSettings.rates.constant
             },
-            chans: options.chans || 2,
-            bufferSize: options.bufferSize || defaultSettings.bufferSize,
-            numBuses: options.numBuses || 16
+            chans: that.options.chans || 2,
+            bufferSize: that.options.bufferSize || defaultSettings.bufferSize,
+            numBuses: that.options.numBuses || 16
         };
-        
-        that.model = {
-            playState: {
-                written: 0,
-                total: null
-            },
-            
-            isPlaying: false
-        };
-
         
         // TODO: Buffers are named but buses are numbered. Should we have a consistent strategy?
         // The advantage to numbers is that they're easily modulatable with a ugen. Names are easier to deal with.
@@ -857,8 +845,20 @@ var flock = flock || {};
         };
 
         setupEnviro(that);
-        return that;
     };
+    
+    fluid.defaults("flock.enviro", {
+        gradeNames: ["fluid.modelComponent", "flock.nodeList", "autoInit"],
+        finalInitFunction: "flock.enviroFinalInit",
+        model: {
+            playState: {
+                written: 0,
+                total: null
+            },
+            
+            isPlaying: false
+        }
+    });
     
     flock.enviro.clearBuses = function (numBuses, buses, busLen) {
         var i,
@@ -1302,12 +1302,9 @@ var flock = flock || {};
     };
     
     
-    flock.synth.group = function (options) {
-        var that = flock.nodeList(options);
-        that.rate = flock.rates.AUDIO;
+    flock.synth.groupFinalInit = function (that) {
+        that.rate = that.options.rate;
         that.enviro = flock.enviro.shared; // TODO: Direct reference to the shared environment.
-        that.model = {};
-        that.options = options;
         
         flock.synth.group.makeDispatchedMethods(that, [
             "input", "get", "set", "gen", "play", "pause"
@@ -1320,8 +1317,13 @@ var flock = flock || {};
         };
         
         that.init();
-        return that;
     };
+    
+    fluid.defaults("flock.synth.group", {
+        gradeNames: ["fluid.modelComponent", "flock.nodeList", "autoInit"],
+        finalInitFunction: "flock.synth.groupFinalInit",
+        rate: flock.rates.AUDIO
+    });
     
     flock.synth.group.makeDispatcher = function (nodes, msg) {
         return function () {
@@ -1349,15 +1351,9 @@ var flock = flock || {};
         return that;
     };
     
-    
     flock.synth.polyphonic = function (def, options) {
-        // TODO: Infusion and grades.
-        options = $.extend({}, flock.defaults("flock.synth.polyphonic"), options)
-        var that = flock.synth.group(options);
-        that.options = options;
-        that.model = {
-            synthDef: def
-        };
+        var that = fluid.initComponent("flock.synth.polyphonic", options);
+        that.model.synthDef = def;
         that.activeVoices = {};
         that.freeVoices = [];
         
@@ -1437,7 +1433,11 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.synth.polyphonic", {
+    fluid.defaults("flock.synth.polyphonic", {
+        gradeNames: ["flock.synth.group"],
+        argumentMap: {
+            options: 1
+        },
         noteSpecs: {
             on: {
                 "env.gate": 1

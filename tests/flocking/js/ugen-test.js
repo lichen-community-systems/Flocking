@@ -1275,7 +1275,7 @@ flock.test = flock.test || {};
     });
     
     var loopOneDef =  {
-        ugen: "flock.ugen.loop",
+        ugen: "flock.ugen.phasor",
         start: 1.0,
         end: 66,
         reset: 2.0,
@@ -1294,7 +1294,7 @@ flock.test = flock.test || {};
     };
     
     var testLoopUGen = function (testSpecs) {
-        module("flock.ugen.loop");
+        module("flock.ugen.phasor");
         $.each(testSpecs, function (i, testSpec) {
             var def = $.extend(true, {rate: testSpec.rate, id: "looper"}, testSpec.def),
                 synth = flock.synth(def),
@@ -1359,7 +1359,7 @@ flock.test = flock.test || {};
             name: "control rate, wraparound",
             rate: "control",
             def: {
-                ugen: "flock.ugen.loop",
+                ugen: "flock.ugen.phasor",
                 start: 0.0,
                 end: 2.0,
                 step: 1.0
@@ -1387,7 +1387,7 @@ flock.test = flock.test || {};
             name: "control rate, step value is the duration of a sample in seconds.",
             rate: "control",
             def: {
-                ugen: "flock.ugen.loop",
+                ugen: "flock.ugen.phasor",
                 start: 0,
                 end: 1.0,
                 step: 1.0 / 44100
