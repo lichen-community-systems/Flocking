@@ -39,15 +39,6 @@ var flock = flock || {};
      * Utilities *
      *************/
     
-    flock.idIdx = 0;
-    flock.id = function () {
-        return "flock-id-" + flock.idIdx++;
-    };
-    
-    flock.identity = function (val) {
-        return val;
-    };
-    
     flock.isIterable = function (o) {
         return o && o.length !== undefined && typeof (o.length) === "number";
     };
@@ -165,6 +156,7 @@ var flock = flock || {};
         
         return buffer;
     };
+    
     
     flock.interpolate = {};
     
@@ -629,6 +621,7 @@ var flock = flock || {};
                 that.workers[type] = worker;
             }
             
+            // TODO: Convert to Infusion subcomponent.
             converter = that.options.timeConverter;
             converterType = typeof (converter) === "string" ? converter : converter.type;
             that.timeConverter = flock.invoke(undefined, converterType, converter.options);
@@ -644,15 +637,20 @@ var flock = flock || {};
     });
 
     
-    flock.scheduler.async.beat = function (bpm) {
-        var options = fluid.defaults("flock.scheduler.async.beat");
+    flock.scheduler.async.beat = function (bpm, options) {
+        var that = fluid.initComponent("flock.sycheduler.async.beat", options);
         if (bpm !== undefined) {
-            options.timeConverter.options.bpm = bpm;
+            that.timeConverter.options.bpm = bpm;
         }
-        return flock.scheduler.async(options);
+        return that;
     };
     
     fluid.defaults("flock.scheduler.async.beat", {
+        gradeNames: ["flock.scheduler.async"],
+        initFunction: "flock.scheduler.async.beat",
+        argumentMap: {
+            options: 1
+        },
         timeConverter: {
             type: "flock.convert.beats",
             options: {
@@ -672,7 +670,7 @@ var flock = flock || {};
         }
     };
     
-    flock.convert.ms = flock.convert.makeStatelessConverter(flock.identity);
+    flock.convert.ms = flock.convert.makeStatelessConverter(fluid.identity);
     
     flock.convert.seconds = flock.convert.makeStatelessConverter(function (secs) {
         return secs * 1000;
@@ -688,7 +686,6 @@ var flock = flock || {};
     fluid.defaults("flock.convert.beats", {
         gradeNames: ["fluid.littleComponent", "autoInit"],
         finalInitFunction: "flock.convert.beatsFinalInit",
-        
         bpm: 60
     });
     

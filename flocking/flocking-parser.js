@@ -201,7 +201,7 @@ var flock = flock || {};
     flock.parse.bufferForDef = function (bufDef, onLoad, enviro) {
         enviro = enviro || flock.enviro.shared;
 
-        var id = bufDef.id || flock.id(),
+        var id = bufDef.id || fluid.allocateGuid(),
             src;
             
         if (bufDef.url) {

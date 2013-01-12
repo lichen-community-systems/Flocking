@@ -190,7 +190,7 @@ var flock = flock || {};
     });
     
     var testNormalize = function (normal, unnormalized, expected) {
-        var actual = flock.normalize($.map(unnormalized, flock.identity), normal);
+        var actual = flock.normalize($.map(unnormalized, fluid.identity), normal);
         deepEqual(actual, expected, "Buffer normalized to " + normal + ".");
     };
     

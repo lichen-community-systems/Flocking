@@ -115,7 +115,7 @@ var flock = flock || {};
         
         // If we have no mul or add inputs, bail immediately.
         if (!mul && !add) {
-            that.mulAdd = flock.identity;
+            that.mulAdd = fluid.identity;
             return;
         }
     
@@ -199,7 +199,7 @@ var flock = flock || {};
         };
         
         // No-op base onInputChanged() implementation.
-        that.onInputChanged = flock.identity;
+        that.onInputChanged = fluid.identity;
         
         // Assigns an interpolator function to the UGen.
         // This is inactive by default, but can be used in custom gen() functions.
@@ -304,7 +304,7 @@ var flock = flock || {};
                 that.gen = that.sumGen;
             } else {
                 that.output = that.inputs.sources.output;
-                that.gen = flock.identity;
+                that.gen = fluid.identity;
             }
         };
         

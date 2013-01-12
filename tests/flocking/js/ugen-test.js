@@ -197,21 +197,24 @@ flock.test = flock.test || {};
     
     var testOutputs = function (numRuns, defs, bus, expectedOutput, msg) {
         var synths = [],
-            i;
-        defs = $.makeArray(defs);
+            i,
+            env = flock.enviro.shared;
         
+        defs = $.makeArray(defs);
         $.each(defs, function (i, def) {
-            var synth = flock.synth(def);
+            var synth = flock.synth(def, {
+                enviro: env
+            });
             synths.push(synth);
         });
         
         for (i = 0; i < numRuns; i++) {
-            flock.enviro.shared.gen();
-            flock.test.assertArrayEquals(flock.enviro.shared.buses[bus], expectedOutput, i + ": " + msg);
+            env.gen();
+            flock.test.assertArrayEquals(env.buses[bus], expectedOutput, i + ": " + msg);
         }
         
         $.each(synths, function (i, synth) {
-            flock.enviro.shared.remove(synth);
+            env.remove(synth);
         });
                 
         return synths;
@@ -955,10 +958,15 @@ flock.test = flock.test || {};
     };
     
     test("flock.ugen.in() single bus input", function () {
-        flock.enviro.shared = flock.enviro();
+        var env = flock.enviro.shared = flock.enviro();
         
-        var outSynth = flock.synth(outSynthDef);
-        var inSynth = flock.synth(inSynthDef);
+        var outSynth = flock.synth(outSynthDef, {
+            enviro: env
+        });
+        var inSynth = flock.synth(inSynthDef, {
+            enviro: env
+        });
+        
         inSynth.enviro.gen();
         var actual = inSynth.ugens.named["in"].output;
         equals(actual, inSynth.enviro.buses[3],
@@ -1295,9 +1303,12 @@ flock.test = flock.test || {};
     
     var testLoopUGen = function (testSpecs) {
         module("flock.ugen.phasor");
+        var env = flock.enviro.shared = flock.enviro()
         $.each(testSpecs, function (i, testSpec) {
             var def = $.extend(true, {rate: testSpec.rate, id: "looper"}, testSpec.def),
-                synth = flock.synth(def),
+                synth = flock.synth(def, {
+                    enviro: env
+                }),
                 loop = synth.ugens.named.looper;
             
             test(testSpec.name, function () {
