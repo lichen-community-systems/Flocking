@@ -49,28 +49,6 @@ var flock = flock || {};
     };
     flock.defaults.store = {};
     
-    flock.component = function (name, options) {
-        var that = {
-            options: $.extend({}, flock.defaults(name), options)
-        };
-        that.model = that.options.model || {};
-        
-        return that;
-    };
-    
-    flock.defaults("flock.audioSettings", {
-        rates: {
-            audio: 44100,
-            control: 64,
-            constant: 1
-        },        
-        tableSize: 8192,
-        
-        // This buffer size determines the overall latency of Flocking's audio output. On Firefox, it will be 2x.
-        bufferSize: (flock.platform.os === "Win32" && flock.platform.browser.mozilla) ?
-            16384: 4096
-    });
-    
     flock.idIdx = 0;
     flock.id = function () {
         return "flock-id-" + flock.idIdx++;
@@ -525,8 +503,7 @@ var flock = flock || {};
         }
     };
     
-    flock.scheduler.async = function (options) {
-        var that = flock.component("flock.scheduler.async", options);
+    flock.scheduler.asyncFinalInit = function (that) {
         that.workers = {};
         that.valueListeners = {};
         that.messages = { // Reuse message objects to avoid creating garbage.
@@ -668,21 +645,24 @@ var flock = flock || {};
         };
          
         that.init();
-        return that;
     };
     
-    flock.defaults("flock.scheduler.async", {
+    fluid.defaults("flock.scheduler.async", {
+        gradeNames: ["fluid.littleComponent", "autoInit"],
+        finalInitFunction: "flock.scheduler.asyncFinalInit",
         timeConverter: "flock.convert.seconds"
     });
+
     
     flock.scheduler.async.beat = function (bpm) {
-        var options = flock.defaults("flock.scheduler.async.beat");
-        options.timeConverter.options.bpm = bpm;
-        
+        var options = fluid.defaults("flock.scheduler.async.beat");
+        if (bpm !== undefined) {
+            options.timeConverter.options.bpm = bpm;
+        }
         return flock.scheduler.async(options);
     };
     
-    flock.defaults("flock.scheduler.async.beat", {
+    fluid.defaults("flock.scheduler.async.beat", {
         timeConverter: {
             type: "flock.convert.beats",
             options: {
@@ -708,16 +688,17 @@ var flock = flock || {};
         return secs * 1000;
     });
     
-    flock.convert.beats = function (options) {
-        var that = flock.component("flock.convert.beats", options);
+    flock.convert.beatsFinalInit = function (that) {
         that.value = function (beats) {
             var bpm = that.options.bpm;
             return bpm <= 0 ? 0 : (beats / bpm) * 60000;
         };
-        return that;
     };
     
-    flock.defaults("flock.convert.beats", {
+    fluid.defaults("flock.convert.beats", {
+        gradeNames: ["fluid.littleComponent", "autoInit"],
+        finalInitFunction: "flock.convert.beatsFinalInit",
+        
         bpm: 60
     });
     
@@ -769,18 +750,7 @@ var flock = flock || {};
     };
     
     flock.enviroFinalInit = function (that) {
-        // TODO: Move audio settings to enviro's defaults.
-        var defaultSettings = flock.defaults("flock.audioSettings");
-        that.audioSettings = {
-            rates: {
-                audio: that.options.sampleRate || defaultSettings.rates.audio,
-                control: that.options.controlRate || defaultSettings.rates.control,
-                constant: that.options.constantRate || defaultSettings.rates.constant
-            },
-            chans: that.options.chans || 2,
-            bufferSize: that.options.bufferSize || defaultSettings.bufferSize,
-            numBuses: that.options.numBuses || 16
-        };
+        that.audioSettings = that.options.audioSettings;
         
         // TODO: Buffers are named but buses are numbered. Should we have a consistent strategy?
         // The advantage to numbers is that they're easily modulatable with a ugen. Names are easier to deal with.
@@ -857,6 +827,19 @@ var flock = flock || {};
             },
             
             isPlaying: false
+        },
+        audioSettings: {
+            rates: {
+                audio: 44100,
+                control: 64,
+                constant: 1
+            },
+            chans: 2,
+            numBuses: 16,
+            tableSize: 8192,
+            // This buffer size determines the overall latency of Flocking's audio output. On Firefox, it will be 2x.
+            bufferSize: (flock.platform.os === "Win32" && flock.platform.browser.mozilla) ?
+                16384: 4096
         }
     });
     
@@ -975,8 +958,7 @@ var flock = flock || {};
     var setupWebKitEnviro = function (that) {
         that.jsNode.onaudioprocess = function (e) {
             // TODO: Do all these settings need to be read every time onaudioprocess gets called?
-            var defaultSettings = flock.defaults("flock.audioSettings"),
-                kr = defaultSettings.rates.control,
+            var kr = that.audioSeetings.rates.control,
                 playState = that.model,
                 chans = that.audioSettings.chans,
                 bufSize = that.audioSettings.bufferSize,
@@ -1055,7 +1037,7 @@ var flock = flock || {};
      * They are created with a synthDef object, a declarative structure describing the synth's unit generator graph.
      */
     flock.synth = function (def, options) {
-        var that = flock.component("flock.synth", options);
+        var that = fluid.initComponent("flock.synth", options);
         that.rate = flock.rates.AUDIO;
         that.model.synthDef = def;
         that.enviro = flock.enviro.shared; // TODO: Direct reference to the shared environment.
@@ -1157,7 +1139,12 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.synth", {});
+    fluid.defaults("flock.synth", {
+        gradeNames: ["fluid.modelComponent"],
+        argumentMap: {
+            options: 1
+        }
+    });
     
     
     flock.synth.ugenCache = function () {

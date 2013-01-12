@@ -150,8 +150,7 @@ var flock = flock || {};
      * @return the parsed unit generator object
      */
     flock.parse.ugenForDef = function (ugenDef, rates, visitors) {
-        var defaultSettings = flock.defaults("flock.audioSettings");
-        rates = rates || defaultSettings.rates;
+        rates = rates || flock.enviro.shared.audioSettings.rates;
     
         // If we receive a plain scalar value, expand it into a value ugenDef.
         ugenDef = flock.parse.expandValueDef(ugenDef);

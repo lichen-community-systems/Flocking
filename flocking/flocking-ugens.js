@@ -401,8 +401,7 @@ var flock = flock || {};
             namespaceObj = flock.get(undefined, namespace);
         
         namespaceObj[oscName] = function (inputs, output, options) {
-            var defaultSettings = flock.defaults("flock.audioSettings"),
-                size = (options && options.tableSize) || defaultSettings.tableSize,
+            var size = (options && options.tableSize) || flock.enviro.shared.audioSettings.tableSize, // TODO: Direct enviro reference.
                 scale = flock.TWOPI / size;
             inputs.table = tableFillFn(size, scale);
             return flock.ugen.osc(inputs, output, options);
