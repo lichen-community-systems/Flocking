@@ -826,7 +826,6 @@ var flock = flock || {};
             },
             chans: 2,
             numBuses: 16,
-            tableSize: 8192,
             // This buffer size determines the overall latency of Flocking's audio output. On Firefox, it will be 2x.
             bufferSize: (flock.platform.os === "Win32" && flock.platform.browser.mozilla) ?
                 16384: 4096
@@ -1030,7 +1029,7 @@ var flock = flock || {};
         var that = fluid.initComponent("flock.synth", options);
         that.rate = flock.rates.AUDIO;
         that.model.synthDef = def;
-        that.enviro = flock.enviro.shared; // TODO: Direct reference to the shared environment.
+        that.enviro = that.options.enviro;
         that.ugens = flock.synth.ugenCache();
         
         /**
@@ -1133,7 +1132,11 @@ var flock = flock || {};
         gradeNames: ["fluid.modelComponent"],
         argumentMap: {
             options: 1
-        }
+        },
+        mergePolicy: {
+            enviro: "nomerge"
+        },
+        enviro: flock.enviro.shared
     });
     
     
@@ -1281,7 +1284,7 @@ var flock = flock || {};
     
     flock.synth.groupFinalInit = function (that) {
         that.rate = that.options.rate;
-        that.enviro = flock.enviro.shared; // TODO: Direct reference to the shared environment.
+        that.enviro = that.options.enviro;
         
         flock.synth.group.makeDispatchedMethods(that, [
             "input", "get", "set", "gen", "play", "pause"
@@ -1299,7 +1302,11 @@ var flock = flock || {};
     fluid.defaults("flock.synth.group", {
         gradeNames: ["fluid.modelComponent", "flock.nodeList", "autoInit"],
         finalInitFunction: "flock.synth.groupFinalInit",
-        rate: flock.rates.AUDIO
+        mergePolicy: {
+            enviro: "nomerge"
+        },
+        rate: flock.rates.AUDIO,
+        enviro: flock.enviro.shared
     });
     
     flock.synth.group.makeDispatcher = function (nodes, msg) {

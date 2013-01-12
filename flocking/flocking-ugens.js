@@ -391,7 +391,8 @@ var flock = flock || {};
                 "freq",
                 "phase"
             ]
-        }
+        },
+        tableSize: 8192
     });
 
     flock.ugen.osc.define = function (name, tableFillFn) {
@@ -401,9 +402,11 @@ var flock = flock || {};
             namespaceObj = flock.get(undefined, namespace);
         
         namespaceObj[oscName] = function (inputs, output, options) {
-            var size = (options && options.tableSize) || flock.enviro.shared.audioSettings.tableSize, // TODO: Direct enviro reference.
-                scale = flock.TWOPI / size;
-            inputs.table = tableFillFn(size, scale);
+            // TODO: Awkward options pre-merging. Refactor osc API.
+            var defaults = fluid.defaults("flock.ugen.osc"),
+                merged = fluid.merge(null, defaults, options),
+                s = merged.tableSize;
+            inputs.table = tableFillFn(s, flock.TWOPI / s);
             return flock.ugen.osc(inputs, output, options);
         };
         
