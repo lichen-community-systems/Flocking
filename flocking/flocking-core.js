@@ -38,16 +38,6 @@ var flock = flock || {};
     /*************
      * Utilities *
      *************/
-     
-    flock.defaults = function (name, defaults) {
-        if (defaults) {
-            flock.defaults.store[name] = defaults;
-            return defaults;
-        }
-        
-        return flock.defaults.store[name];
-    };
-    flock.defaults.store = {};
     
     flock.idIdx = 0;
     flock.id = function () {

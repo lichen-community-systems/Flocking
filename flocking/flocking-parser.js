@@ -167,7 +167,7 @@ var flock = flock || {};
         flock.parse.expandRate(ugenDef);
     
         // Merge the ugenDef with default values defined by the ugen itself.
-        var defaults = flock.defaults(ugenDef.ugen) || {};
+        var defaults = fluid.defaults(ugenDef.ugen) || {};
         ugenDef = $.extend(true, {}, defaults, ugenDef);
         
         var inputDefs = ugenDef.inputs,

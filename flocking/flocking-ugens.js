@@ -26,7 +26,7 @@ var flock = flock || {};
             options = $.extend(true, {}, defaultOptions, options);
             return root(inputs, output, options);
         });
-        flock.defaults(sourcePath + "." + aliasName, inputDefaults);
+        fluid.defaults(sourcePath + "." + aliasName, inputDefaults);
     };
     
     // TODO: Check API; write unit tests.
@@ -217,7 +217,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.value", {
+    fluid.defaults("flock.ugen.value", {
         rate: "constant"
     });
 
@@ -312,7 +312,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.sum", {
+    fluid.defaults("flock.ugen.sum", {
         rate: "audio"
     });
     
@@ -380,7 +380,7 @@ var flock = flock || {};
         flock.onMulAddInputChanged(that);
     };
     
-    flock.defaults("flock.ugen.osc", {
+    fluid.defaults("flock.ugen.osc", {
         rate: "audio",
         inputs: {
             freq: 440.0,
@@ -407,7 +407,7 @@ var flock = flock || {};
             return flock.ugen.osc(inputs, output, options);
         };
         
-        flock.defaults(name, flock.defaults("flock.ugen.osc"));
+        fluid.defaults(name, fluid.defaults("flock.ugen.osc"));
     };
     
     
@@ -499,7 +499,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.sin", flock.defaults("flock.ugen.osc"));
+    fluid.defaults("flock.ugen.sin", fluid.defaults("flock.ugen.osc"));
 
     
     flock.ugen.lfSaw = function (inputs, output, options) {
@@ -542,7 +542,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.lfSaw", {
+    fluid.defaults("flock.ugen.lfSaw", {
         rate: "audio",
         inputs: {
             phase: 0.0
@@ -592,7 +592,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.lfPulse", {
+    fluid.defaults("flock.ugen.lfPulse", {
         rate: "audio",
         inputs: {
             phase: 0.0,
@@ -649,7 +649,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.impulse", {
+    fluid.defaults("flock.ugen.impulse", {
         rate: "audio",
         inputs: {
             freq: 440,
@@ -831,7 +831,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.playBuffer", {
+    fluid.defaults("flock.ugen.playBuffer", {
         rate: "audio",
         inputs: {
             channel: 0,
@@ -888,7 +888,7 @@ var flock = flock || {};
         return that;
     };
 
-    flock.defaults("flock.ugen.bufferDuration", {
+    fluid.defaults("flock.ugen.bufferDuration", {
         rate: "constant",
         inputs: {
             channel: 0
@@ -905,7 +905,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.sampleRate", {
+    fluid.defaults("flock.ugen.sampleRate", {
         rate: "constant",
         inputs: {}
     });
@@ -955,7 +955,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.dust", {
+    fluid.defaults("flock.ugen.dust", {
         rate: "audio",
         inputs: {
             density: 1.0
@@ -985,7 +985,7 @@ var flock = flock || {};
         return that;
     };
 
-    flock.defaults("flock.ugen.whiteNoise", {
+    fluid.defaults("flock.ugen.whiteNoise", {
         rate: "audio"
     });
     
@@ -1041,7 +1041,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.lfNoise", {
+    fluid.defaults("flock.ugen.lfNoise", {
         rate: "audio",
         inputs: {
             freq: 440
@@ -1107,7 +1107,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.line", {
+    fluid.defaults("flock.ugen.line", {
         rate: "control",
         inputs: {
             start: 0.0,
@@ -1170,7 +1170,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.xLine", {
+    fluid.defaults("flock.ugen.xLine", {
         rate: "control",
         inputs: {
             start: 0.0,
@@ -1235,7 +1235,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.phasor", {
+    fluid.defaults("flock.ugen.phasor", {
         rate: "control",
         inputs: {
             start: 0.0,
@@ -1322,7 +1322,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.env.simpleASR", {
+    fluid.defaults("flock.ugen.env.simpleASR", {
         rate: "control",
         inputs: {
             start: 0.0,
@@ -1394,7 +1394,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.amplitude", {
+    fluid.defaults("flock.ugen.amplitude", {
         rate: "audio",
         inputs: {
             attack: 0.01,
@@ -1418,7 +1418,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.normalize", {
+    fluid.defaults("flock.ugen.normalize", {
         rate: "audio",
         inputs: {
             max: 1.0
@@ -1471,7 +1471,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.out", {
+    fluid.defaults("flock.ugen.out", {
         rate: "audio",
         inputs: {
             bus: 0,
@@ -1514,7 +1514,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.in", {
+    fluid.defaults("flock.ugen.in", {
         rate: "audio",
         inputs: {
             bus: 0
@@ -1596,7 +1596,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.audioIn", {
+    fluid.defaults("flock.ugen.audioIn", {
         rate: "audio",
         inputs: {
             device: 0
@@ -1654,7 +1654,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.scope", {
+    fluid.defaults("flock.ugen.scope", {
         rate: "audio",
         options: {
             fps: 60,
@@ -1838,7 +1838,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.mouse.cursor", {
+    fluid.defaults("flock.ugen.mouse.cursor", {
         rate: "control",
         inputs: {
             lag: 0.5,
@@ -1889,7 +1889,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.mouse.click", {
+    fluid.defaults("flock.ugen.mouse.click", {
         rate: "control"
     });
     
@@ -1943,7 +1943,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.filter", {
+    fluid.defaults("flock.ugen.filter", {
         inputs: {
             freq: 440,
             q: 1.0
@@ -2003,7 +2003,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.filter.biquad", {
+    fluid.defaults("flock.ugen.filter.biquad", {
         inputs: {
             freq: 440,
             q: 1.0
@@ -2254,7 +2254,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.delay", {
+    fluid.defaults("flock.ugen.delay", {
         rate: "audio",
         inputs: {
             maxTime: 1.0,
@@ -2307,7 +2307,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.decay", {
+    fluid.defaults("flock.ugen.decay", {
         rate: "audio",
         inputs: {
             time: 1.0
@@ -2462,7 +2462,7 @@ var flock = flock || {};
         return that;
     };
 
-    flock.defaults("flock.ugen.triggerGrains", {
+    fluid.defaults("flock.ugen.triggerGrains", {
         rate: "audio",
         inputs: {
             centerPos: 0,
@@ -2529,7 +2529,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.print", {
+    fluid.defaults("flock.ugen.print", {
         rate: "control",
         inputs: {
             trigger: 0.0,
