@@ -14,7 +14,9 @@ var flock = flock || {};
 
 (function () {
     "use strict";
-
+    
+    flock();
+    
     module("Time Converters");
     
     test("flock.convert.seconds", function () {

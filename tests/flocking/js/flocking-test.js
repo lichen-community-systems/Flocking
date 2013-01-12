@@ -15,6 +15,8 @@ var flock = flock || {};
 (function () {
     "use strict";
     
+    flock();
+    
     var simpleSynthDef = {
         ugen: "flock.ugen.out",
         inputs: {

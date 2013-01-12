@@ -15,6 +15,8 @@ var flock = flock || {};
 (function () {
     "use strict";
     
+    flock();
+    
     module("Dust tests");
 
     var checkSampleBoundary = function (buffer, min, max) {

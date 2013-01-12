@@ -15,6 +15,8 @@ var flock = flock || {};
 (function () {
     "use strict";
 
+    flock();
+    
     module("flock.ugen.value tests");
     
     var gen = function (ugens, duration) {

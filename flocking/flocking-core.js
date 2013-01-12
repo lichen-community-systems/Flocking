@@ -12,10 +12,17 @@
 /*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
-var flock = flock || {};
+var flock;
 
 (function ($) {
     "use strict";
+    
+    flock = function (options) {
+        var enviroOpts = !options ? undefined : {
+            audioSettings: options
+        };
+        flock.enviro.shared = flock.enviro(enviroOpts);
+    };
     
     flock.OUT_UGEN_ID = "flocking-out";
     flock.TWOPI = 2.0 * Math.PI;
@@ -994,6 +1001,8 @@ var flock = flock || {};
      * @param that the environment to mix into
      */
     flock.enviro.webkit = function (that) {
+        // Singleton AudioContext since the webkit implementation
+        // freaks if we try to instantiate a new one.
         if (!flock.enviro.webkit.audioContext) {
             flock.enviro.webkit.audioContext = new webkitAudioContext();
         }
@@ -1012,11 +1021,17 @@ var flock = flock || {};
         setupWebKitEnviro(that);
     };
     
-    // Singleton AudioContext since the webkit implementation freaks if we try to instantiate a new one.
+    flock.autoEnviroFinalInit = function (that) {
+        if (!flock.enviro.shared && !that.options.enviro) {
+            flock();
+        }
+    };
     
-    // Immediately register a singleton environment for the page.
-    // Users are free to replace this with their own if needed.
-    flock.enviro.shared = flock.enviro();
+    fluid.defaults("flock.autoEnviro", {
+        gradeNames: ["fluid.littleComponent", "autoInit"],
+        finalInitFunction: "flock.autoEnviroFinalInit"
+    });
+    
     
     /**
      * Synths represent a collection of signal-generating units, wired together to form an instrument.
@@ -1026,7 +1041,7 @@ var flock = flock || {};
         var that = fluid.initComponent("flock.synth", options);
         that.rate = flock.rates.AUDIO;
         that.model.synthDef = def;
-        that.enviro = that.options.enviro;
+        that.enviro = that.options.enviro || flock.enviro.shared;
         that.ugens = flock.synth.ugenCache();
         
         /**
@@ -1126,14 +1141,13 @@ var flock = flock || {};
     };
     
     fluid.defaults("flock.synth", {
-        gradeNames: ["fluid.modelComponent"],
+        gradeNames: ["fluid.modelComponent", "flock.autoEnviro"],
         argumentMap: {
             options: 1
         },
         mergePolicy: {
             enviro: "nomerge"
-        },
-        enviro: flock.enviro.shared
+        }
     });
     
     
@@ -1281,7 +1295,7 @@ var flock = flock || {};
     
     flock.synth.groupFinalInit = function (that) {
         that.rate = that.options.rate;
-        that.enviro = that.options.enviro;
+        that.enviro = that.options.enviro || flock.enviro.shared;
         
         flock.synth.group.makeDispatchedMethods(that, [
             "input", "get", "set", "gen", "play", "pause"
@@ -1297,13 +1311,12 @@ var flock = flock || {};
     };
     
     fluid.defaults("flock.synth.group", {
-        gradeNames: ["fluid.modelComponent", "flock.nodeList", "autoInit"],
+        gradeNames: ["fluid.modelComponent", "flock.nodeList", "flock.autoEnviro", "autoInit"],
         finalInitFunction: "flock.synth.groupFinalInit",
         mergePolicy: {
             enviro: "nomerge"
         },
-        rate: flock.rates.AUDIO,
-        enviro: flock.enviro.shared
+        rate: flock.rates.AUDIO
     });
     
     flock.synth.group.makeDispatcher = function (nodes, msg) {
