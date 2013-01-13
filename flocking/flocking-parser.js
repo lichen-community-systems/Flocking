@@ -26,15 +26,17 @@ var flock = flock || {};
                 inputs: {
                     sources: ugenDef,
                     bus: 0,
-                    expand: options.chans
+                    expand: options.audioSettings.chans
                 }
             };
         }
         
-        return flock.parse.ugenForDef(ugenDef, options.rates, options.visitors);
+        return flock.parse.ugenForDef(ugenDef, options);
     };
 
-    flock.parse.makeUGen = function (ugenDef, parsedInputs, rates) {
+    flock.parse.makeUGen = function (ugenDef, parsedInputs, options) {
+        var rates = options.audioSettings.rates;
+        
         // Assume audio rate if no rate was specified by the user.
         if (!ugenDef.rate) {
             ugenDef.rate = flock.rates.AUDIO;
@@ -54,12 +56,16 @@ var flock = flock || {};
             sampleRate = 1;
         }
         
-        ugenDef.options = ugenDef.options || {};
-        ugenDef.options.sampleRate = sampleRate;
-        ugenDef.options.rate = ugenDef.rate;
-        ugenDef.options.audioSettings = {
-            rates: rates
-        };
+        // TODO: Options merging!
+        ugenDef.options = $.extend(true, {}, ugenDef.options, {
+            sampleRate: sampleRate,
+            rate: ugenDef.rate,
+            audioSettings: {
+                rates: rates,
+                buffers: options.buffers,
+                buses: options.buses
+            }
+        });
         
         return flock.invoke(undefined, ugenDef.ugen, [
             parsedInputs, 
@@ -118,17 +124,17 @@ var flock = flock || {};
         return ugenDef;
     };
 
-    flock.parse.ugenDef = function (ugenDefs, rates, visitors) {
+    flock.parse.ugenDef = function (ugenDefs, options) {
         var parseFn = flock.isIterable(ugenDefs) ? flock.parse.ugensForDefs : flock.parse.ugenForDef;
-        var parsed = parseFn(ugenDefs, rates, visitors);
+        var parsed = parseFn(ugenDefs, options);
         return parsed;
     };
     
-    flock.parse.ugensForDefs = function (ugenDefs, rates, visitors) {
+    flock.parse.ugensForDefs = function (ugenDefs, options) {
         var parsed = [],
             i;
         for (i = 0; i < ugenDefs.length; i++) {
-            parsed[i] = flock.parse.ugenForDef(ugenDefs[i], rates, visitors);
+            parsed[i] = flock.parse.ugenForDef(ugenDefs[i], options);
         }
         return parsed;
     };
@@ -145,19 +151,33 @@ var flock = flock || {};
      *      - inputs keyed by name at the top level of the ugenDef
      * 
      * @param {UGenDef} ugenDef the unit generator definition to parse
-     * @param {Object} rates an object containing the current audio, control, and constant rates
-     * @param {Array of Functions} visitors an optional list of visitor functions to invoke when the ugen has been created
+     * @param {Object} options an options object containing:
+     *           {Object} audioSettings the environment's audio settings
+     *           {Array} buses the environment's global buses
+     *           {Array} buffers the environmnet's global buffers
+     *           {Array of Functions} visitors an optional list of visitor functions to invoke when the ugen has been created
      * @return the parsed unit generator object
      */
-    flock.parse.ugenForDef = function (ugenDef, rates, visitors) {
-        rates = rates || flock.enviro.shared.audioSettings.rates;
-    
+    flock.parse.ugenForDef = function (ugenDef, options) {
+        // TODO: Options merging!
+        options = options || {
+            audioSettings: flock.enviro.shared.audioSettings,
+            buses: flock.enviro.shared.buses,
+            buffers: flock.enviro.shared.buffers
+        };
+        
+        var o = options,
+            visitors = o.visitors,
+            rates;
+        
+        rates = o.audioSettings && o.audioSettings.rates ? o.audioSettings.rates : flock.enviro.shared.audioSettings.rates,
+        
         // If we receive a plain scalar value, expand it into a value ugenDef.
         ugenDef = flock.parse.expandValueDef(ugenDef);
         
         // We received an array of ugen defs.
         if (flock.isIterable(ugenDef)) {
-            return flock.parse.ugensForDefs(ugenDef, rates, visitors);
+            return flock.parse.ugensForDefs(ugenDef, options);
         }
     
         if (!ugenDef.inputs) {
@@ -177,15 +197,15 @@ var flock = flock || {};
         for (inputDef in inputDefs) {
             // Create ugens for all inputs except special inputs.
             inputs[inputDef] = flock.parse.specialInputs.indexOf(inputDef) > -1 ? 
-                ugenDef.inputs[inputDef] :                                         // Don't instantiate a ugen, just pass the def on as-is.
-                flock.parse.ugenForDef(ugenDef.inputs[inputDef], rates, visitors); // parse the ugendef and create a ugen instance.
+                ugenDef.inputs[inputDef] : // Don't instantiate a ugen, just pass the def on as-is.
+                flock.parse.ugenForDef(ugenDef.inputs[inputDef], options); // parse the ugendef and create a ugen instance.
         }
     
         if (!ugenDef.ugen) {
             throw new Error("Unit generator definition lacks a 'ugen' property; can't initialize the synth graph.");
         }
     
-        var ugen = flock.parse.makeUGen(ugenDef, inputs, rates);
+        var ugen = flock.parse.makeUGen(ugenDef, inputs, options);
         ugen.id = ugenDef.id;
         
         if (visitors) {

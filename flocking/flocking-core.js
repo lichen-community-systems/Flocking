@@ -1074,7 +1074,11 @@ var flock;
          */
         that.set = function (path, val, swap) {
             return flock.input.set(that.ugens.named, path, val, undefined, function (ugenDef, path, target, previous) {
-                var ugen = flock.parse.ugenDef(ugenDef, that.enviro.audioSettings.rates);
+                var ugen = flock.parse.ugenDef(ugenDef, {
+                    audioSettings: that.enviro.audioSettings,
+                    buses: that.enviro.buses,
+                    buffers: that.enviro.buffers
+                });
                 that.ugens.replace(ugen, previous, swap);
                 return ugen;
             });
@@ -1121,14 +1125,13 @@ var flock;
         };
 
         that.init = function () {
-            // Set up the ugenCache as a visitor for the parsing stage, 
-            // so that we don't have to traverse the graph again later.
-            var parseOptions = $.extend({}, that.enviro.audioSettings, {
-                visitors: that.ugens.add
-            });
-            
             // Parse the synthDef into a graph of unit generators.
-            that.out = flock.parse.synthDef(that.model.synthDef, parseOptions);
+            that.out = flock.parse.synthDef(that.model.synthDef, {
+                visitors: that.ugens.add,
+                buffers: that.enviro.buffers,
+                buses: that.enviro.buses,
+                audioSettings: that.enviro.audioSettings
+            });
             
             // Add this synth to the tail of the synthesis environment if appropriate.
             if (that.options.addToEnvironment !== false) {

@@ -165,7 +165,11 @@ var flock = flock || {};
          */
         that.set = function (path, val, swap) {
             return flock.input.set(that.inputs, path, val, that, function (ugenDef) {
-                return flock.parse.ugenDef(ugenDef, that.options.audioSettings.rates);
+                return flock.parse.ugenDef(ugenDef, {
+                    audioSettings: that.options.audioSettings,
+                    buses: that.options.audioSettings.buses,
+                    buffers: that.options.audioSettings.buffers
+                });
             });
         };
         
@@ -707,7 +711,7 @@ var flock = flock || {};
     };
     
     flock.buffer.resolveBufferId = function (ugen, id, chan) {
-        var buffer = flock.enviro.shared.buffers[id]; // TODO: Direct reference to shared environment.
+        var buffer = ugen.options.audioSettings.buffers[id];
         flock.buffer.addListener(id, ugen);
         if (buffer) {
             // Buffer has already been loaded.
@@ -758,7 +762,7 @@ var flock = flock || {};
             // If the channel has changed, update the buffer we're reading from.
             if (m.channel !== chan) {
                 m.channel = chan;
-                that.buffer = source = flock.enviro.shared.buffers[m.name][chan];
+                that.buffer = source = that.options.audioSettings.buffers[m.name][chan];
             }
             
             for (i = 0; i < numSamps; i++) {
@@ -791,7 +795,7 @@ var flock = flock || {};
             // If the channel has changed, update the buffer we're reading from.
             if (m.channel !== chan) {
                 m.channel = chan;
-                that.buffer = source = flock.enviro.shared.buffers[m.name][chan];
+                that.buffer = source = that.options.audioSettings.buffers[m.name][chan];
             }
             
             for (i = 0; i < numSamps; i++) {
@@ -1438,7 +1442,7 @@ var flock = flock || {};
     
         that.gen = function (numSamps) {
             var sources = that.inputs.sources,
-                buses = flock.enviro.shared.buses, // TODO: Hardcoded reference to shared enviroment.
+                buses = that.options.audioSettings.buses,
                 bufStart = that.inputs.bus.output[0],
                 expand = that.inputs.expand.output[0],
                 i,
@@ -1487,13 +1491,12 @@ var flock = flock || {};
         var that = flock.ugen(inputs, output, options);
         
         that.singleBusGen = function () {
-            // TODO: Hardcoded reference to shared enviroment.
-            that.output = flock.enviro.shared.buses[that.inputs.bus.output[0]];
+            that.output = that.options.audioSettings.buses[that.inputs.bus.output[0]];
         };
         
         that.multiBusGen = function (numSamps) {
             var busesInput = that.inputs.bus,
-                enviroBuses = flock.enviro.shared.buses, // TODO: Hardcoded reference to shared enviroment.
+                enviroBuses = that.options.audioSettings.buses,
                 out = that.output,
                 i,
                 j,
