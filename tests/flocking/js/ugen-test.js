@@ -104,10 +104,17 @@ flock.test = flock.test || {};
     
     
     // TODO: Create these graphs declaratively!
-    
+    // TODO: Wicked stupid hack!
+    var audioSettings = {};
     module("Output tests", {
         setup: function () {
             flock.enviro.shared = flock.enviro();
+            audioSettings = {
+                audioSettings: {
+                    buses: flock.enviro.shared.buses,
+                    rates: flock.enviro.shared.audioSettings.rates
+                }
+            };
         }
     });
     
@@ -133,7 +140,7 @@ flock.test = flock.test || {};
     test("flock.interleavedWriter() mono input, mono output", function () {
         // Test with a single input buffer being multiplexed by ugen.out.
         var mockLeftUGen = flock.test.makeMockUGen(mockLeft);
-        var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen}, []);
+        var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen}, [], audioSettings);
         out.input("expand", 1);
         
         // Pull the whole buffer.
@@ -153,7 +160,7 @@ flock.test = flock.test || {};
     test("flock.interleavedWriter() mono input, stereo output", function () {
         // Test with a single mono input buffer.
         var mockLeftUGen = flock.test.makeMockUGen(mockLeft);
-        var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen, expand: stereoExpandValueUGen}, []);
+        var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen, expand: stereoExpandValueUGen}, [], audioSettings);
         
         // Pull the whole buffer.
         var expected = new Float32Array([
@@ -174,7 +181,7 @@ flock.test = flock.test || {};
                 flock.test.makeMockUGen(mockRight)
             ],
             bus: bufferValueUGen
-        }, []);
+        }, [], audioSettings);
         out.input("expand", 1);
         
         // Pull the whole buffer. Expect a stereo interleaved buffer as the result, 
