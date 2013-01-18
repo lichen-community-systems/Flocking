@@ -6,13 +6,13 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global Float32Array, window, Mike, jQuery*/
+/*global Float32Array, window, Mike*/
 /*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
     forin: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
 var flock = flock || {};
 
-(function ($) {
+(function () {
     "use strict";
 
     /*************
@@ -23,7 +23,7 @@ var flock = flock || {};
     flock.aliasUGen = function (sourcePath, aliasName, inputDefaults, defaultOptions) {
         var root = flock.get(undefined, sourcePath);
         flock.set(root, aliasName, function (inputs, output, options) {
-            options = $.extend(true, {}, defaultOptions, options);
+            options = fluid.extend(true, {}, defaultOptions, options);
             return root(inputs, output, options);
         });
         fluid.defaults(sourcePath + "." + aliasName, inputDefaults);
@@ -2547,4 +2547,4 @@ var flock = flock || {};
             }
         }
     });
-}(jQuery));
+}());

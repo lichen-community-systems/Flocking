@@ -8,13 +8,13 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global Float32Array, Audio, window, webkitAudioContext, Blob, Worker, self, jQuery*/
+/*global Float32Array, Audio, window, webkitAudioContext, Blob, Worker, self*/
 /*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
 var flock;
 
-(function ($) {
+(function () {
     "use strict";
     
     flock = function (options) {
@@ -38,7 +38,7 @@ var flock;
     
     flock.platform = {
         os: window.navigator.platform || "",
-        browser: $.browser
+        browser: typeof(jQuery) !== "undefined" ? jQuery.browser : {}
     };
     
     
@@ -110,7 +110,7 @@ var flock;
      */
     flock.arrayChoose = function (arr, strategy) {
         strategy = strategy || flock.randomIndex;
-        arr = $.makeArray(arr);
+        arr = fluid.makeArray(arr);
         var idx = strategy(arr);
         return arr[idx];
     };
@@ -1164,7 +1164,7 @@ var flock;
             var i,
                 ugen;
             
-            ugens = $.makeArray(ugens);
+            ugens = fluid.makeArray(ugens);
             for (i = 0; i < ugens.length; i++) {
                 ugen = ugens[i];
                 if (ugen.gen) {
@@ -1186,7 +1186,7 @@ var flock;
                 inputs,
                 input;
             
-            ugens = $.makeArray(ugens);
+            ugens = fluid.makeArray(ugens);
             for (i = 0; i < ugens.length; i++) {
                 ugen = ugens[i];
                 idx = active.indexOf(ugen);
@@ -1258,8 +1258,8 @@ var flock;
                 current;
                 
             // Note: This algorithm assumes that number of previous and current ugens is the same length.
-            previousUGens = $.makeArray(previousUGens);
-            ugens = $.makeArray(ugens);
+            previousUGens = fluid.makeArray(previousUGens);
+            ugens = fluid.makeArray(ugens);
             
             for (i = 0; i < previousUGens.length; i++) {
                 prev = previousUGens[i];
@@ -1356,7 +1356,7 @@ var flock;
         
         that.noteChange = function (voice, eventName, changeSpec) {
             var noteEventSpec = that.options.noteSpecs[eventName];
-            changeSpec = $.extend({}, noteEventSpec, changeSpec);
+            changeSpec = fluid.extend({}, noteEventSpec, changeSpec);
             voice.input(changeSpec);
         };
         
@@ -1449,4 +1449,4 @@ var flock;
         amplitudeNormalizer: "static" // "dynamic", "static", Function, falsey
     });
     
-}(jQuery));
+}());

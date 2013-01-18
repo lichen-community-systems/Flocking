@@ -6,13 +6,13 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global Float32Array,jQuery*/
+/*global Float32Array*/
 /*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
 var flock = flock || {};
 
-(function ($) {
+(function () {
     "use strict";
 
     flock.parse = flock.parse || {};
@@ -57,7 +57,7 @@ var flock = flock || {};
         }
         
         // TODO: Options merging!
-        ugenDef.options = $.extend(true, {}, ugenDef.options, {
+        ugenDef.options = fluid.extend(true, {}, ugenDef.options, {
             sampleRate: sampleRate,
             rate: ugenDef.rate,
             audioSettings: {
@@ -188,7 +188,7 @@ var flock = flock || {};
     
         // Merge the ugenDef with default values defined by the ugen itself.
         var defaults = fluid.defaults(ugenDef.ugen) || {};
-        ugenDef = $.extend(true, {}, defaults, ugenDef);
+        ugenDef = fluid.extend(true, {}, defaults, ugenDef);
         
         var inputDefs = ugenDef.inputs,
             inputs = {},
@@ -209,8 +209,8 @@ var flock = flock || {};
         ugen.id = ugenDef.id;
         
         if (visitors) {
-            visitors = $.makeArray(visitors);
-            $.each(visitors, function (idx, visitor) {
+            visitors = fluid.makeArray(visitors);
+            fluid.each(visitors, function (visitor) {
                 visitor(ugen, ugenDef, rates);
             });
         }
@@ -233,4 +233,4 @@ var flock = flock || {};
         enviro.loadBuffer(id, src, onLoad);
     };
 
-}(jQuery));
+}());

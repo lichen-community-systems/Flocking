@@ -321,6 +321,11 @@ var fluid = fluid || fluid_1_5;
         }
     };
     
+    // TODO: Temporary Flocking hack.
+    fluid.extend = function () {
+        return $.extend.apply(null, arguments);
+    };
+    
     /** Scan through a list or hash of objects, terminating on the first member which
      * matches a predicate function.
      * @param source {Arrayable or Object} The list or hash of objects to be searched.
@@ -1123,6 +1128,7 @@ var fluid = fluid || fluid_1_5;
         if (options === undefined) {
             return fluid.resolveGradedOptions(componentName);
         } else {
+            // TODO: Temporary Flocking hack.
             /*
             if (options && options.options) {
                 fluid.fail("Probable error in options structure for " + componentName +
