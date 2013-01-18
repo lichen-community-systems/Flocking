@@ -119,7 +119,7 @@ var flock = flock || {};
             mimeType = url.substring(mimeTypeStartIdx, mimeTypeEndIdx);
             
         if (isBase64) {
-            data = window.atob(data);
+            data = flock.global.atob(data);
         }
                 
         onSuccess(flock.file.stringToBuffer(data), flock.file.parseMIMEType(mimeType));
