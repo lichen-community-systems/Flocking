@@ -13,6 +13,8 @@
 var flock = flock || {};
 
 (function () {
+    
+    flock.global = flock.global || this;
     "use strict";
     
     

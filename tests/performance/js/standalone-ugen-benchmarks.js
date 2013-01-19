@@ -13,7 +13,9 @@ var flock = flock || {};
 
 (function () {
     "use strict";
-
+    
+    flock();
+    
     flock.test = flock.test || {};
 	
     var makeRandomizedInputUGenTestSpec = function (ugenDef, inputs, rate, numSampsToGen) {

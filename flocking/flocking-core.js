@@ -20,6 +20,7 @@ var flock;
         var enviroOpts = !options ? undefined : {
             audioSettings: options
         };
+        flock.scheduler.async.workerPath = options ? options.workerPath : undefined;
         flock.enviro.shared = flock.enviro(enviroOpts);
     };
     
@@ -402,113 +403,6 @@ var flock;
 
     flock.scheduler = {};
     
-    flock.shim = {
-        URL: window.URL || window.webkitURL || window.msURL || window.oURL
-    };
-    
-     /**
-      * Creates a Web Worker from a String or Function.
-      *
-      * Note that if a Function is used, it will be converted into a string
-      * and then evaluated again in the Worker's "alternate universe."
-      * As a result functions passed to workers will not capture their lexical scope, etc.
-      *
-      * @param {String|Function} code the code to pass to the Web Worker to be evaluated
-      * @return a standard W3C Worker instance
-      */
-    flock.worker = function (code) {
-        var type = typeof (code),
-            url,
-            blob;
-        
-        if (type === "function") {
-            code = "(" + code.toString() + ")();";
-        } else if (type !== "string") {
-            throw new Error("A flock.worker must be initialized with a String or a Function.");
-        }
-         
-        if (window.Blob) {
-            blob = new Blob([code]);
-            url = flock.shim.URL.createObjectURL(blob);
-        } else {
-            url = "data:text/javascript;base64," + window.btoa(code);
-        }
-        return new Worker(url);
-    };
-     
-    flock.worker.code = {
-        interval: function () {
-            self.scheduled = {};
-
-            self.onInterval = function (interval) {
-                self.postMessage({
-                    msg: "tick",
-                    value: interval
-                });
-            };
-
-            self.schedule = function (interval) {
-                var id = setInterval(function () {
-                    self.onInterval(interval);
-                }, interval);
-                self.scheduled[interval] = id;
-            };
-
-            self.clear = function (interval) {
-                var id = self.scheduled[interval];
-                clearInterval(id);
-            };
-             
-            self.clearAll = function () {
-                for (var interval in self.scheduled) {
-                    self.clear(interval);
-                }
-            };
-
-            self.addEventListener("message", function (e) {
-                self[e.data.msg](e.data.value);
-            }, false);
-        },
-        
-        specifiedTime: function () {
-            self.scheduled = [];
-            
-            self.schedule = function (timeFromNow) {
-                var id;
-                id = setTimeout(function () {
-                    self.clear(id);
-                    self.postMessage({
-                        msg: "tick",
-                        value: timeFromNow
-                    });
-                }, timeFromNow);
-                self.scheduled.push(id);
-            };
-            
-            // TODO: How do we pass the id back to the client?
-            self.clear = function (id, idx) {
-                idx = idx === undefined ? self.scheduled.indexOf(id) : idx;
-                if (idx > -1) {
-                    self.scheduled.splice(idx, 1);
-                }
-                clearTimeout(id);
-            };
-            
-            self.clearAll = function () {
-                for (var i = 0; i < self.scheduled.length; i++) {
-                    var id = self.scheduled[i];
-                    clearTimeout(id);
-                }
-                self.scheduled.length = 0;
-            };
-
-            // TODO: Cut and pastage.
-            self.addEventListener("message", function (e) {
-                self[e.data.msg](e.data.value);
-            }, false);
-        }
-    };
-    
     flock.scheduler.asyncFinalInit = function (that) {
         that.workers = {};
         that.valueListeners = {};
@@ -634,17 +528,19 @@ var flock;
         };
         
         that.init = function () {
-            // TODO: This is pretty silly. Refactor flock.worker().
-            var workerTypes = flock.worker.code,
-                worker,
-                converter,
-                converterType;
+            var workerTypes = that.options.workers,
+                type,
+                impl;
             
-            for (var type in workerTypes) {
-                worker = flock.worker(workerTypes[type]);
-                that.workers[type] = worker;
+            for (type in workerTypes) {
+                impl = workerTypes[type];
+                that.workers[type] = new Worker(flock.scheduler.async.workerPath || that.options.workerPath);
+                that.workers[type].postMessage({
+                    msg: "start",
+                    value: impl
+                });
             }
-            
+
             // TODO: Convert to Infusion subcomponent.
             converter = that.options.timeConverter;
             converterType = typeof (converter) === "string" ? converter : converter.type;
@@ -657,7 +553,12 @@ var flock;
     fluid.defaults("flock.scheduler.async", {
         gradeNames: ["fluid.littleComponent", "autoInit"],
         finalInitFunction: "flock.scheduler.asyncFinalInit",
-        timeConverter: "flock.convert.seconds"
+        timeConverter: "flock.convert.seconds",
+        workerPath: "../../../flocking/flocking-worker.js",
+        workers: {
+            interval: "intervalClock",
+            specifiedTime: "specifiedTimeClock"
+        }
     });
 
     

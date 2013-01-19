@@ -15,7 +15,9 @@ var flock = flock || {};
 (function () {
     "use strict";
     
-    flock();
+    flock({
+        workerPath: "../../../flocking/flocking-worker.js"
+    });
     
     module("Time Converters");
     
@@ -48,7 +50,7 @@ var flock = flock || {};
             "100 beats at 0 bpm should convert to 0 ms.");
     });
     
-    
+
     module("Asynchronous Scheduler tests");
     
     var checkScheduledCallback = function (expectedScheduledTime, scheduledTime, scheduledAt, receivedAt) {
@@ -162,7 +164,6 @@ var flock = flock || {};
         lastFired = Date.now();
     });
     
-    
     asyncTest("flock.scheduler.async.repeat() multiple listeners", function () {
         var sked = flock.scheduler.async({
                 timeConverter: "flock.convert.ms"
@@ -274,5 +275,4 @@ var flock = flock || {};
     
     testClearScheduler("flock.scheduler.async.clearRepeat()", "clearRepeat");
     testClearScheduler("flock.scheduler.async.clearAll()", "clearAll");
-
 }());
