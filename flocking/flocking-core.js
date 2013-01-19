@@ -12,9 +12,30 @@
 /*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
-var flock;
+var flock, fluid;
 
 (function () {
+    
+    /***/
+    // From Infusion's requireStub.js. Temporarily required until the whole require() workflow is sorted out.
+    if (typeof (window) !== "undefined") {
+        var requireStub = function (moduleName) {
+            if (moduleName !== "infusion") {
+                throw new Error("requireStub.js cannot be used to test modules other than Infusion, " +
+                    "which is capable of running in both Node.js and a browser.");
+            }
+            return fluid;
+        };
+
+        window.require = requireStub;
+        if (typeof (fluid) === "undefined") {
+            throw new Error("Please include flocking-core.js after Fluid Infusion in the document's <head>");
+        }
+        fluid.require = requireStub;
+    }
+    /***/
+    
+    fluid = require("infusion");
     
     flock = function (options) {
         var enviroOpts = !options ? undefined : {
