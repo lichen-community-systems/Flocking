@@ -15,7 +15,7 @@ var flock = flock || {};
 (function () {
     "use strict";
     
-    flock();
+    flock.init();
     
     module("Dust tests");
 

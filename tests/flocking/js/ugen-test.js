@@ -16,7 +16,7 @@ flock.test = flock.test || {};
 (function () {
     "use strict";
     
-    flock();
+    flock.init();
     
     var mockLeft = [
         1, 2, 3, 4, 5,

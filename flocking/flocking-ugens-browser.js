@@ -10,10 +10,14 @@
 /*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
     forin: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
-var flock = flock || {};
-
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
+    
 (function () {
     "use strict";
+    
+    fluid.registerNamespace("flock.ugen");
+    
     
     /***************************
      * Browser-dependent UGens *

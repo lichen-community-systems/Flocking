@@ -18,7 +18,7 @@ var demo = demo || {};
 (function () {
     "use strict";
     
-    flock({
+    flock.init({
         workerPath: "../../../flocking/flocking-worker.js"
     });
     

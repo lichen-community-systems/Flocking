@@ -10,13 +10,14 @@
 /*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
-var flock = flock || {};
-
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
+    
 (function () {
     "use strict";
-
-    flock.parse = flock.parse || {};
-
+    
+    fluid.registerNamespace("flock.parse");
+    
     flock.parse.synthDef = function (ugenDef, options) {
         // We didn't get an out ugen specified, so we need to make one.
         if (typeof (ugenDef.length) === "number" || (ugenDef.id !== flock.OUT_UGEN_ID && ugenDef.ugen !== "flock.ugen.out")) {

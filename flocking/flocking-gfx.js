@@ -10,12 +10,14 @@
 /*jslint browser: true, white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
-var flock = flock || {};
-flock.gfx = flock.gfx || {};
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
-
+    
+    fluid.registerNamespace("flock.gfx");
+    
     /**
      * Sets various stroke and fill styles for the specified 2d context.
      */

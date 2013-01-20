@@ -12,42 +12,19 @@
 /*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
-var flock, fluid;
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
 
 (function () {
-    
-    /***/
-    // From Infusion's requireStub.js. Temporarily required until the whole require() workflow is sorted out.
-    if (typeof (window) !== "undefined") {
-        var requireStub = function (moduleName) {
-            if (moduleName !== "infusion") {
-                throw new Error("requireStub.js cannot be used to test modules other than Infusion, " +
-                    "which is capable of running in both Node.js and a browser.");
-            }
-            return fluid;
-        };
+    "use strict";
 
-        window.require = requireStub;
-        if (typeof (fluid) === "undefined") {
-            throw new Error("Please include flocking-core.js after Fluid Infusion in the document's <head>");
-        }
-        fluid.require = requireStub;
-    }
-    /***/
-    
-    fluid = require("infusion");
-    
-    flock = function (options) {
+    flock.init = function (options) {
         var enviroOpts = !options ? undefined : {
             audioSettings: options
         };
         flock.scheduler.async.workerPath = options ? options.workerPath : undefined;
         flock.enviro.shared = flock.enviro(enviroOpts);
     };
-    
-    // Grab hold of the global object and then move into strict mode.
-    flock.global = this;
-    "use strict";
     
     flock.OUT_UGEN_ID = "flocking-out";
     flock.TWOPI = 2.0 * Math.PI;
@@ -238,11 +215,10 @@ var flock, fluid;
     };
     
     flock.get = function (root, path) {
-        if (arguments.length == 1 && typeof (root) === "string") {
-            path = root;
-            root = flock.global;
-        } else if (!root){
-            root = flock.global;
+        if (!root) {
+            return fluid.getGlobalValue(path);
+        } else if (arguments.length == 1 && typeof (root) === "string") {
+            return fluid.getGlobalValue(root);
         }
 
         if (!path || path === "") {
@@ -263,14 +239,7 @@ var flock, fluid;
     };
     
     flock.set = function (root, path, value) {
-        if (arguments.length == 1 && typeof (root) === "string") {
-            path = root;
-            root = flock.global;
-        } else if (!root){
-            root = flock.global;
-        }
-
-        if (!path || path === "") {
+        if (!root || !path || path === "") {
             return;
         }
         
@@ -563,8 +532,8 @@ var flock, fluid;
             }
 
             // TODO: Convert to Infusion subcomponent.
-            converter = that.options.timeConverter;
-            converterType = typeof (converter) === "string" ? converter : converter.type;
+            var converter = that.options.timeConverter;
+            var converterType = typeof (converter) === "string" ? converter : converter.type;
             that.timeConverter = flock.invoke(undefined, converterType, converter.options);
         };
          
@@ -808,7 +777,7 @@ var flock, fluid;
     
     flock.autoEnviroFinalInit = function (that) {
         if (!flock.enviro.shared && !that.options.enviro) {
-            flock();
+            flock.init();
         }
     };
     

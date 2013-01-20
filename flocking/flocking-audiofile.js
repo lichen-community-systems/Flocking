@@ -10,18 +10,18 @@
 /*jslint white: true, funcinvoke: true, undef: true, newcap: true, regexp: true, browser: true, 
     forin: true, continue: true, forvar: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
-var flock = flock || {};
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
 
 (function () {
     
-    flock.global = flock.global || this;
     "use strict";
-    
     
     /*********************
      * Network utilities *
      *********************/
-    flock.net = {};
+     
+    fluid.registerNamespace("flock.net");
     
     flock.net.load = function (options) {
         var xhr = new XMLHttpRequest();
@@ -45,7 +45,7 @@ var flock = flock || {};
      * File Utilties *
      *****************/
      
-    flock.file = {};
+    fluid.registerNamespace("flock.file");
     
     flock.file.mimeTypes = {
         "audio/wav": "wav",
@@ -121,7 +121,7 @@ var flock = flock || {};
             mimeType = url.substring(mimeTypeStartIdx, mimeTypeEndIdx);
             
         if (isBase64) {
-            data = flock.global.atob(data);
+            data = atob(data);
         }
                 
         onSuccess(flock.file.stringToBuffer(data), flock.file.parseMIMEType(mimeType));
@@ -148,7 +148,7 @@ var flock = flock || {};
     };
     
     
-    flock.audio = {};
+    fluid.registerNamespace("flock.audio");
     
     /**
      * Decodes audio sample data in the specified format. This decoder currently supports WAVE and AIFF file formats.
