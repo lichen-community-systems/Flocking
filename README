@@ -1,1 +1,10 @@
 node-flocking is a Node.js module for Flocking (flockingjs.org).
+
+Steps to run:
+# Build cubeb
+# Clone node-flocking
+# Clone flocking into node-flocking (this will become a submodule soon)
+# "npm install cubeb"
+# "npm install dsp"
+# Test it with "node index.js"
+
