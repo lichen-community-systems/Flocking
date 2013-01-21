@@ -16,6 +16,8 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
     
+    // TODO: Fix this in Infusion
+    var $ = typeof(jQuery) !== "undefined" ? jQuery : fluid.registerNamespace("fluid.jQueryStandalone");
     fluid.registerNamespace("flock.parse");
     
     flock.parse.synthDef = function (ugenDef, options) {
@@ -58,7 +60,7 @@ var fluid = fluid || require("infusion"),
         }
         
         // TODO: Options merging!
-        ugenDef.options = fluid.extend(true, {}, ugenDef.options, {
+        ugenDef.options = $.extend(true, {}, ugenDef.options, {
             sampleRate: sampleRate,
             rate: ugenDef.rate,
             audioSettings: {
@@ -189,7 +191,7 @@ var fluid = fluid || require("infusion"),
     
         // Merge the ugenDef with default values defined by the ugen itself.
         var defaults = fluid.defaults(ugenDef.ugen) || {};
-        ugenDef = fluid.extend(true, {}, defaults, ugenDef);
+        ugenDef = $.extend(true, {}, defaults, ugenDef);
         
         var inputDefs = ugenDef.inputs,
             inputs = {},

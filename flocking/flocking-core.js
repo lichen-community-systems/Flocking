@@ -18,6 +18,9 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
+    // TODO: Fix this in Infusion
+    var $ = typeof(jQuery) !== "undefined" ? jQuery : fluid.registerNamespace("fluid.jQueryStandalone");
+    
     flock.init = function (options) {
         var enviroOpts = !options ? undefined : {
             audioSettings: options
@@ -38,11 +41,24 @@ var fluid = fluid || require("infusion"),
         CONSTANT: "constant"
     };
     
-    flock.platform = {
-        os: typeof(window) !== "undefined" ? window.navigator.platform : "",
-        browser: typeof(jQuery) !== "undefined" ? jQuery.browser : {}
+    flock.sampleFormats = {
+        FLOAT32LE: "float32LE"
     };
     
+    fluid.registerNamespace("flock.platform");
+    flock.platform.isBrowser = typeof (window) !== "undefined";
+    flock.platform.os = flock.platform.isBrowser ? window.navigator.platform : fluid.require("os").platform();
+    flock.platform.browser = flock.platform.isBrowser ? jQuery.browser : {};
+    flock.platform.audioEngine = flock.platform.isBrowser ? 
+        (typeof (window.webkitAudioContext) !== "undefined" ? "webkit" : "moz") :
+        "nodejs";
+    
+    flock.enviroStrategies = {
+        "webkit": "flock.enviro.webkit",
+        "moz": "flock.enviro.moz",
+        "nodejs": "flock.enviro.nodejs"
+    };
+
     
     /*************
      * Utilities *
@@ -208,6 +224,43 @@ var fluid = fluid || require("infusion"),
         
         return (a * fracCub) + (b * fracSq) + (c * frac) + y1;
     };
+    
+    /**
+     * Generates an interleaved audio buffer from the source buffers.
+     * If the output buffer size isn't divisble by the control rate,
+     * it will be rounded down to the nearest block size.
+     *
+     * @param {Array} outBuf the output buffer to write into
+     * @param {Function} evalFn a function to invoke before writing each control block
+     * @param {Array} sourceBufs the array of channel buffers to interleave and write out
+     * @param {Object} audioSettings the current audio system settings
+     * @return a channel-interleaved output buffer
+     */
+    flock.interleavedWriter = function (outBuf, evalFn, sourceBufs, audioSettings) {
+        var kr = audioSettings.rates.control,
+            chans = audioSettings.chans,
+            numKRBufs = audioSettings.bufferSize / kr,
+            i,
+            chan,
+            samp;
+            
+        for (i = 0; i < numKRBufs; i++) {
+            evalFn();
+            var offset = i * kr * chans;
+            
+            // Interleave each output channel.
+            for (chan = 0; chan < chans; chan++) {
+                var sourceBuf = sourceBufs[chan];
+                for (samp = 0; samp < kr; samp++) {
+                    var frameIdx = samp * chans + offset;
+                    outBuf[frameIdx + chan] = sourceBuf[samp];
+                }
+            }
+        }
+        
+        return outBuf;
+    };
+    
     
     flock.pathParseError = function (path, token) {
         throw new Error("Error parsing path: " + path + ". Segment '" + token + 
@@ -391,7 +444,11 @@ var fluid = fluid || require("infusion"),
      * Time and Scheduling *
      ***********************/
 
-    flock.scheduler = {};
+    fluid.registerNamespace("flock.scheduler");
+    
+    flock.webWorker = function (url) {
+        return flock.platform.isBrowser ? new Worker(url) : new (fluid.require("webworker").Worker)(url);
+    }
     
     flock.scheduler.asyncFinalInit = function (that) {
         that.workers = {};
@@ -524,7 +581,7 @@ var fluid = fluid || require("infusion"),
             
             for (type in workerTypes) {
                 impl = workerTypes[type];
-                that.workers[type] = new Worker(flock.scheduler.async.workerPath || that.options.workerPath);
+                that.workers[type] = flock.webWorker(flock.scheduler.async.workerPath || that.options.workerPath);
                 that.workers[type].postMessage({
                     msg: "start",
                     value: impl
@@ -646,9 +703,8 @@ var fluid = fluid || require("infusion"),
      ***********************/
     
     var setupEnviro = function (that) {
-        var setupFn = typeof (window.webkitAudioContext) !== "undefined" ?
-            flock.enviro.webkit : flock.enviro.moz;
-        setupFn(that);
+        var strategyType = flock.enviroStrategies[flock.platform.audioEngine];
+        fluid.invokeGlobalFunction(strategyType, [that]);
     };
     
     flock.enviroFinalInit = function (that) {
@@ -736,11 +792,13 @@ var fluid = fluid || require("infusion"),
                 control: 64,
                 constant: 1
             },
+            sampleFormat: flock.sampleFormats.FLOAT32LE,
             chans: 2,
             numBuses: 16,
             // This buffer size determines the overall latency of Flocking's audio output. On Firefox, it will be 2x.
             bufferSize: (flock.platform.os === "Win32" && flock.platform.browser.mozilla) ?
-                16384: 4096
+                16384: 4096,
+            latency: 10 // A hint to some audio backends; currently only used by node-cubeb.
         }
     });
     
@@ -1110,7 +1168,7 @@ var fluid = fluid || require("infusion"),
         
         that.noteChange = function (voice, eventName, changeSpec) {
             var noteEventSpec = that.options.noteSpecs[eventName];
-            changeSpec = fluid.extend({}, noteEventSpec, changeSpec);
+            changeSpec = $.extend({}, noteEventSpec, changeSpec);
             voice.input(changeSpec);
         };
         

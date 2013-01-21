@@ -15,45 +15,6 @@ var fluid = fluid || require("infusion"),
 
 (function () {
     "use strict";
-
-    fluid = fluid || require("infusion");
-    flock = fluid.registerNamespace("flock");
-    
-    /**
-     * Generates an interleaved audio buffer from the source buffers.
-     * If the output buffer size isn't divisble by the control rate,
-     * it will be rounded down to the nearest block size.
-     *
-     * @param {Array} outBuf the output buffer to write into
-     * @param {Function} evalFn a function to invoke before writing each control block
-     * @param {Array} sourceBufs the array of channel buffers to interleave and write out
-     * @param {Object} audioSettings the current audio system settings
-     * @return a channel-interleaved output buffer
-     */
-    flock.interleavedWriter = function (outBuf, evalFn, sourceBufs, audioSettings) {
-        var kr = audioSettings.rates.control,
-            chans = audioSettings.chans,
-            numKRBufs = audioSettings.bufferSize / kr,
-            i,
-            chan,
-            samp;
-            
-        for (i = 0; i < numKRBufs; i++) {
-            evalFn();
-            var offset = i * kr * chans;
-            
-            // Interleave each output channel.
-            for (chan = 0; chan < chans; chan++) {
-                var sourceBuf = sourceBufs[chan];
-                for (samp = 0; samp < kr; samp++) {
-                    var frameIdx = samp * chans + offset;
-                    outBuf[frameIdx + chan] = sourceBuf[samp];
-                }
-            }
-        }
-        
-        return outBuf;
-    };
     
     /**
      * Mixes in Firefox-specific Audio Data API implementations for outputting audio

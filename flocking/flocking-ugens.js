@@ -15,6 +15,8 @@ var fluid = fluid || require("infusion"),
 
 (function () {
     "use strict";
+    // TODO: Fix this in Infusion
+    var $ = typeof(jQuery) !== "undefined" ? jQuery : fluid.registerNamespace("fluid.jQueryStandalone");    
     
     /*************
      * Utilities *
@@ -24,7 +26,7 @@ var fluid = fluid || require("infusion"),
     flock.aliasUGen = function (sourcePath, aliasName, inputDefaults, defaultOptions) {
         var root = flock.get(sourcePath);
         flock.set(root, aliasName, function (inputs, output, options) {
-            options = fluid.extend(true, {}, defaultOptions, options);
+            options = $.extend(true, {}, defaultOptions, options);
             return root(inputs, output, options);
         });
         fluid.defaults(sourcePath + "." + aliasName, inputDefaults);
