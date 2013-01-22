@@ -42,7 +42,7 @@ var fluid = fluid || require("infusion"),
     };
     
     flock.sampleFormats = {
-        FLOAT32LE: "float32LE"
+        FLOAT32NE: "float32NE"
     };
     
     fluid.registerNamespace("flock.platform");
@@ -792,13 +792,15 @@ var fluid = fluid || require("infusion"),
                 control: 64,
                 constant: 1
             },
-            sampleFormat: flock.sampleFormats.FLOAT32LE,
             chans: 2,
             numBuses: 16,
             // This buffer size determines the overall latency of Flocking's audio output. On Firefox, it will be 2x.
             bufferSize: (flock.platform.os === "Win32" && flock.platform.browser.mozilla) ?
                 16384: 4096,
-            latency: 10 // A hint to some audio backends; currently only used by node-cubeb.
+            
+            // A hint to some audio backends; currently only used by node-cubeb.
+            sampleFormat: flock.sampleFormats.FLOAT32NE,
+            latency: 10
         }
     });
     
