@@ -26,29 +26,21 @@ var fluid = fluid || require("infusion"),
         };
 
         that.writeSamples = function (frameCount) {
-            var chans = that.audioSettings.chans,
-                numSamps = frameCount * chans,
-                kr = that.audioSettings.rates.control,
-                playState = that.model,
-                bufSize = that.audioSettings.bufferSize,
-                sourceBufs = that.buses,
-                offset = 0,
-                i;
+            var settings = that.audioSettings,
+                stream = that.cubebState.stream,
+                playState = that.model;
                 
-            // If there are no nodes providing samples, write out silence.
             if (that.nodes.length < 1) {
-                that.cubebState.stream.write(new Buffer(flock.generate.silence(numSamps))); // TODO: Garbage heavy.
-                return;
+                // If there are no nodes providing samples, write out silence.
+                stream.write(that.silence);
+            } else {
+                // TODO: Inline interleavedWriter
+                flock.interleavedWriter(that.outputArray, that.gen, that.buses, that.audioSettings);
+                stream.write(that.outputBuffer);
             }
-            
-            flock.interleavedWriter(that.outputArray, that.gen, sourceBufs, that.audioSettings);
-            for (i = 0; i < that.outputArray.length; i++) {                
-                that.outputBuffer.writeFloatLE(that.outputArray[i], i * 4);
-            }
-            that.cubebState.stream.write(that.outputBuffer);
             
             // TODO: This code is likely similar or identical in all environment strategies.
-            playState.written += bufSize * chans;
+            playState.written += settings.bufferSize * settings.chans;
             if (playState.written >= playState.total) {
                 that.stop();
             }
@@ -60,10 +52,12 @@ var fluid = fluid || require("infusion"),
         
         that.init = function () {
             var settings = that.audioSettings,
-                sampleFormatSpec = flock.enviro.nodejs.sampleFormats[settings.sampleFormat];
+                sampleFormatSpec = flock.enviro.nodejs.sampleFormats[settings.sampleFormat],
+                numBufferSamps = settings.bufferSize * sampleFormatSpec.bytes * settings.chans;
             
-            that.outputArray = new Float32Array(settings.bufferSize * settings.chans);
-            that.outputBuffer = new Buffer(settings.bufferSize * sampleFormatSpec.bytes * settings.chans);
+            that.outputBuffer = new Buffer(numBufferSamps);
+            that.outputArray = new Float32Array(that.outputBuffer);
+            that.silence = flock.generate.silence(new Buffer(numBufferSamps));
             
             that.cubebState = {
                 context: new cubeb.Context("Flocking Context")
@@ -86,8 +80,8 @@ var fluid = fluid || require("infusion"),
     };
     
     flock.enviro.nodejs.sampleFormats = {
-        "float32LE": {
-            cubebFormat: cubeb.SAMPLE_FLOAT32LE,
+        "float32NE": {
+            cubebFormat: cubeb.SAMPLE_FLOAT32NE,
             bytes: 4
         }
     };

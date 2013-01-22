@@ -15,5 +15,5 @@ var synth = flock.demo.nodeTest();
 synth.play();
 
 setTimeout(function () {
-    // Wait 10 seconds before bailing.
-}, 10000);
+    // Wait 25 seconds before Node exits.
+}, 25000);
