@@ -6,7 +6,8 @@ fluid.registerNamespace("flock.demo");
 flock.demo.nodeTest = function () {
     flock.init({
         workerPath: "./flocking/flocking/flocking-worker.js",
-        bufferSize: 8192
+        bufferSize: 8192,
+        latency: 250
     });
 
     return flock.synth({

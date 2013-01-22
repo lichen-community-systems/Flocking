@@ -35,7 +35,7 @@ var fluid = fluid || require("infusion"),
                 stream.write(that.silence);
             } else {
                 // TODO: Inline interleavedWriter
-                flock.interleavedWriter(that.outputArray, that.gen, that.buses, that.audioSettings);
+                flock.interleavedWriter(that.outputView, that.gen, that.buses, that.audioSettings);
                 stream.write(that.outputBuffer);
             }
             
@@ -56,7 +56,7 @@ var fluid = fluid || require("infusion"),
                 numBufferSamps = settings.bufferSize * sampleFormatSpec.bytes * settings.chans;
             
             that.outputBuffer = new Buffer(numBufferSamps);
-            that.outputArray = new Float32Array(that.outputBuffer);
+            that.outputView = new Float32Array(that.outputBuffer);
             that.silence = flock.generate.silence(new Buffer(numBufferSamps));
             
             that.cubebState = {
