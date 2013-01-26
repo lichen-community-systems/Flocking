@@ -197,7 +197,7 @@ var flock = flock || {};
                     expect(numRuns * 2);
                     start();
                 }
-                flock.clear(fired);
+                fluid.clear(fired);
                 return;
             }
             
@@ -211,7 +211,7 @@ var flock = flock || {};
                     listener2: true
                 }, "After the first listener has been removed, only the second should fire.");
             }
-            flock.clear(fired);
+            fluid.clear(fired);
             runs++;
         };
         
@@ -255,7 +255,7 @@ var flock = flock || {};
                 
                     if (runs >= numRuns) {
                         flock.test.assertSoleProperty(record, prop);
-                        flock.clear(record);
+                        fluid.clear(record);
                         runNextTestStage();
                         return;
                     }

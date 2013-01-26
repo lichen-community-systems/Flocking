@@ -136,32 +136,6 @@ var fluid = fluid || require("infusion"),
         ]);
     });
     
-    test("flock.clear()", function () {
-        var obj = {
-            "cat": "meow",
-            "dog": "bark"
-        };
-        
-        flock.clear(obj);
-        deepEqual(obj, {},
-            "All properties should have been deleted.");
-        
-        obj = {};
-        flock.clear(obj);
-        deepEqual(obj, {},
-            "An empty object should successfully remain empty.");
-        
-        obj = undefined;
-        flock.clear(obj);
-        equal(obj, undefined,
-            "An undefined object should remain undefined after being cleared.");
-        
-        obj = null;
-        flock.clear(obj);
-        equal(obj, null,
-            "An null object should remain null after being cleared.");
-    });
-    
     test("flock.generate()", function () {
         // Buffer size and static number for the generator.
         var expected = new Float32Array([1.0, 1.0, 1.0]);
