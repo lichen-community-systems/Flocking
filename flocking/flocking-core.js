@@ -8,7 +8,7 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global Float32Array, window, Blob, Worker, self*/
+/*global Float32Array, window, jQuery*/
 /*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
@@ -25,7 +25,6 @@ var fluid = fluid || require("infusion"),
         var enviroOpts = !options ? undefined : {
             audioSettings: options
         };
-        flock.scheduler.async.workerPath = options ? options.workerPath : undefined;
         flock.enviro.shared = flock.enviro(enviroOpts);
     };
     
@@ -506,64 +505,6 @@ var fluid = fluid || require("infusion"),
         }
     });
     
-    flock.scheduler.webWorkerClockFinalInit = function (that) {
-        that.worker = new Worker(that.options.workerPath);
-        
-        // Start the worker-side clock.
-        that.worker.postMessage({
-            msg: "start",
-            value: that.options.clockType
-        });
-        
-        // Listen for tick messages from the worker and fire accordingly.
-        target.addEventListener("message", function (e) {
-            that.events.tick.fire(e.data.value);
-        }, false);
-
-        that.postToWorker = function (msgName, value) {
-            var msg = that.model.messages[msgName];
-            if (value !== undefined) {
-                msg.value = value;
-            }
-            worker.postMessage(msg);
-        };
-        
-        that.schedule = function (time) {
-            that.postToWorker("schedule", time);
-        };
-        
-        that.clear = function (time) {
-            that.postToWorker("clear", time);
-        };
-        
-        that.clearAll = function () {
-            that.postToWorker("clearAll")
-        };
-    };
-    
-    fluid.defaults("flock.scheduler.webWorkerClock", {
-        gradeNames: ["fluid.modelComponent", "fluid.eventedComponent", "autoInit"],
-        finalInitFunction: "flock.scheduler.webWorkerClockFinalInit",
-        model: {
-            messages: {
-                schedule: {
-                    msg: "schedule"
-                },
-                clear: {
-                    msg: "clear"
-                },
-                clearAll: {
-                    msg: "clearAll"
-                }
-            }
-        },
-        events: {
-            tick: null
-        },
-        clockType: "intervalClock",
-        workerPath: "../../../flocking/flocking-worker.js"
-    });
-    
     
     flock.scheduler.asyncFinalInit = function (that) {
         that.clocks = {
@@ -677,12 +618,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.scheduler.async", {
         gradeNames: ["fluid.littleComponent", "autoInit"],
         finalInitFunction: "flock.scheduler.asyncFinalInit",
-        timeConverter: "flock.convert.seconds",
-        workerPath: "../../../flocking/flocking-worker.js",
-        workers: {
-            interval: "intervalClock",
-            specifiedTime: "specifiedTimeClock"
-        }
+        timeConverter: "flock.convert.seconds"
     });
 
     
@@ -869,7 +805,7 @@ var fluid = fluid || require("infusion"),
                 constant: 1
             },
             chans: 2,
-            numBuses: 16,
+            numBuses: 2,
             // This buffer size determines the overall latency of Flocking's audio output. On Firefox, it will be 2x.
             bufferSize: (flock.platform.os === "Win32" && flock.platform.browser.mozilla) ?
                 16384: 4096,

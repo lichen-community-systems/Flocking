@@ -15,9 +15,7 @@ var flock = flock || {};
 (function () {
     "use strict";
     
-    flock.init({
-        workerPath: "../../../flocking/flocking-worker.js"
-    });
+    flock.init();
     
     module("Time Converters");
     
@@ -55,7 +53,7 @@ var flock = flock || {};
     
     var checkScheduledCallback = function (expectedScheduledTime, scheduledTime, scheduledAt, receivedAt) {
         var duration = receivedAt - scheduledAt,
-            tolerance = 10;
+            tolerance = 5;
         
         equals(scheduledTime, expectedScheduledTime,
             "The callback for once() should return the correct scheduled time.");
@@ -95,7 +93,7 @@ var flock = flock || {};
                 timeConverter: "flock.convert.ms"
             }),
             scheduledDelays = [100, 200],
-            tolerance = 10,
+            tolerance = 5,
             fired = {},
             makeRecordingListener,
             testingListenerImpl,

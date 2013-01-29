@@ -1449,6 +1449,7 @@ var fluid = fluid || require("infusion"),
                 bufStart = that.inputs.bus.output[0],
                 expand = that.inputs.expand.output[0],
                 i,
+                busStartIdx,
                 j,
                 source,
                 rate,
@@ -1462,10 +1463,11 @@ var fluid = fluid || require("infusion"),
             }
             
             for (i = 0; i < expand; i++) {
+                busStartIdx = bufStart + i;
                 for (j = 0; j < sources.length; j++) {
                     source = sources[j];
                     rate = source.rate;
-                    bus = buses[bufStart + i + j];
+                    bus = buses[busStartIdx + j];
                     inc = rate === flock.rates.AUDIO ? 1 : 0;
                     outIdx = 0;
                     
