@@ -15,8 +15,8 @@ var fluid = fluid || require("infusion"),
 
 (function () {
     "use strict";
-    // TODO: Fix this in Infusion
-    var $ = typeof(jQuery) !== "undefined" ? jQuery : fluid.registerNamespace("fluid.jQueryStandalone");    
+
+    var $ = fluid.registerNamespace("jQuery");
     
     /*************
      * Utilities *
