@@ -28,9 +28,13 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
     };
 
     var context = vm.createContext({
-        window: {},
-        console: console
+        console: console,
+        setTimeout: setTimeout
     });
+    
+    context.window = context;
+
+    /** Load a standard, non-require-aware Fluid framework file into the Fluid context **/
 
     var loadInContext = function (path) {
         var fullpath = buildPath(path);
@@ -47,14 +51,27 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
     }
     
     var fluid = context.fluid;
+    
+    fluid.loadInContext = loadInContext;
+    
+    /** Load a node-aware JavaScript file using either a supplied or the native
+      * Fluid require function (the difference relates primarily to the base
+      * directory used for loading - although the file will need to make use of
+      * a registerNamespace or similar call to get access to the required global namespace */
 
     fluid.require = function (moduleName, foreignRequire, namespace) {
         foreignRequire = foreignRequire || require;
-        namespace = namespace || moduleName;
         var module = foreignRequire(moduleName);
-        fluid.set(context, namespace, module);
+        if (namespace) {
+            fluid.set(context, namespace, module);
+        }
         return module;
     };
+    
+    /** Produce a loader object exposing a "require" object which will automatically
+     * prefix the supplied directory name to any requested modules before forwarding
+     * the operation to fluid.require 
+     */
     
     fluid.getLoader = function (dirName, foreignRequire) {
         return {

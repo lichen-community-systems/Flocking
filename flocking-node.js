@@ -39,6 +39,8 @@ var fluid = fluid || require("infusion"),
                 stream.write(that.outputBuffer);
             }
             
+            stream.release();
+            
             // TODO: This code is likely similar or identical in all environment strategies.
             playState.written += settings.bufferSize * settings.chans;
             if (playState.written >= playState.total) {
