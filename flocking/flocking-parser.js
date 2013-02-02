@@ -58,16 +58,17 @@ var fluid = fluid || require("infusion"),
             sampleRate = 1;
         }
         
-        // TODO: Options merging!
+        // TODO: Infusion options merging!
         ugenDef.options = $.extend(true, {}, ugenDef.options, {
             sampleRate: sampleRate,
             rate: ugenDef.rate,
             audioSettings: {
-                rates: rates,
-                buffers: options.buffers,
-                buses: options.buses
+                rates: rates
             }
         });
+        // TODO: When we switch to Infusion options merging, these should have a mergePolicy of preserve.
+        ugenDef.options.audioSettings.buffers = options.buffers;
+        ugenDef.options.audioSettings.buses = options.buses;
         
         return flock.invoke(undefined, ugenDef.ugen, [
             parsedInputs, 
@@ -156,23 +157,20 @@ var fluid = fluid || require("infusion"),
      * @param {Object} options an options object containing:
      *           {Object} audioSettings the environment's audio settings
      *           {Array} buses the environment's global buses
-     *           {Array} buffers the environmnet's global buffers
+     *           {Array} buffers the environment's global buffers
      *           {Array of Functions} visitors an optional list of visitor functions to invoke when the ugen has been created
      * @return the parsed unit generator object
      */
     flock.parse.ugenForDef = function (ugenDef, options) {
-        // TODO: Options merging!
-        options = options || {
-            audioSettings: flock.enviro.shared.audioSettings,
+        options = $.extend(true, {
+            audioSettings: flock.enviro.shared.options.audioSettings,
             buses: flock.enviro.shared.buses,
             buffers: flock.enviro.shared.buffers
-        };
+        }, options);
         
         var o = options,
             visitors = o.visitors,
-            rates;
-        
-        rates = o.audioSettings && o.audioSettings.rates ? o.audioSettings.rates : flock.enviro.shared.audioSettings.rates,
+            rates = o.audioSettings.rates;
         
         // If we receive a plain scalar value, expand it into a value ugenDef.
         ugenDef = flock.parse.expandValueDef(ugenDef);

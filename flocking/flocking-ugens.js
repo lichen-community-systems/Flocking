@@ -1447,9 +1447,7 @@ var fluid = fluid || require("infusion"),
             var sources = that.inputs.sources,
                 buses = that.options.audioSettings.buses,
                 bufStart = that.inputs.bus.output[0],
-                expand = that.inputs.expand.output[0],
                 i,
-                busStartIdx,
                 j,
                 source,
                 rate,
@@ -1457,24 +1455,22 @@ var fluid = fluid || require("infusion"),
                 inc,
                 outIdx,
                 k;
-            
+                        
             if (typeof (sources.length) !== "number") {
                 sources = [sources];
             }
             
-            for (i = 0; i < expand; i++) {
-                busStartIdx = bufStart + i;
-                for (j = 0; j < sources.length; j++) {
-                    source = sources[j];
-                    rate = source.rate;
-                    bus = buses[busStartIdx + j];
-                    inc = rate === flock.rates.AUDIO ? 1 : 0;
-                    outIdx = 0;
+            // TODO: Bring auto-expansion back.
+            for (j = 0; j < sources.length; j++) {
+                source = sources[j];
+                rate = source.rate;
+                bus = buses[j];
+                inc = rate === flock.rates.AUDIO ? 1 : 0;
+                outIdx = 0;
                     
-                    for (k = 0; k < numSamps; k++, outIdx += inc) {
-                        // TODO: Support control rate interpolation.
-                        bus[k] = bus[k] + source.output[outIdx];
-                    }
+                for (k = 0; k < numSamps; k++, outIdx += inc) {
+                    // TODO: Support control rate interpolation.
+                    bus[k] = bus[k] + source.output[outIdx];
                 }
             }
         };
@@ -1486,8 +1482,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.out", {
         rate: "audio",
         inputs: {
-            bus: 0,
-            expand: 1
+            bus: 0
         }
     });
     

@@ -966,8 +966,14 @@ flock.test = flock.test || {};
         }
     };
     
+    var inEnviroOptions = {
+        audioSettings: {
+            numBuses: 16
+        }
+    };
+    
     test("flock.ugen.in() single bus input", function () {
-        var env = flock.enviro.shared = flock.enviro();
+        var env = flock.enviro.shared = flock.enviro(inEnviroOptions);
         
         var outSynth = flock.synth(outSynthDef, {
             enviro: env
@@ -985,7 +991,7 @@ flock.test = flock.test || {};
     });
     
     test("flock.ugen.in() multiple bus input", function () {
-        flock.enviro.shared = flock.enviro();
+        flock.enviro.shared = flock.enviro(inEnviroOptions);
         
         var bus3Synth = flock.synth(outSynthDef);
         var bus4Def = $.extend(true, {}, outSynthDef, {
