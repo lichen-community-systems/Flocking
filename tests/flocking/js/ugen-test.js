@@ -141,7 +141,7 @@ flock.test = flock.test || {};
         // Test with a single input buffer being multiplexed by ugen.out.
         var mockLeftUGen = flock.test.makeMockUGen(mockLeft);
         var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen}, [], audioSettings);
-        out.input("expand", 1);
+        out.input("expand", 2);
         
         // Pull the whole buffer.
         var expected = new Float32Array([
@@ -182,7 +182,7 @@ flock.test = flock.test || {};
             ],
             bus: bufferValueUGen
         }, [], audioSettings);
-        out.input("expand", 1);
+        out.input("expand", 2);
         
         // Pull the whole buffer. Expect a stereo interleaved buffer as the result, 
         // containing two copies of the original input buffer.
@@ -948,6 +948,7 @@ flock.test = flock.test || {};
         rate: "audio",
         inputs: {
             bus: 3,
+            expand: 1,
             sources: {
                 ugen: "flock.test.mockUGen",
                 options: {
@@ -973,7 +974,7 @@ flock.test = flock.test || {};
     };
     
     test("flock.ugen.in() single bus input", function () {
-        var env = flock.enviro.shared = flock.enviro(inEnviroOptions);
+        var env = flock.enviro(inEnviroOptions);
         
         var outSynth = flock.synth(outSynthDef, {
             enviro: env
@@ -985,7 +986,7 @@ flock.test = flock.test || {};
         inSynth.enviro.gen();
         var actual = inSynth.ugens.named["in"].output;
         equals(actual, inSynth.enviro.buses[3],
-            "With a single source intput, the output of flock.ugen.in should be the actual bus referenced.");
+            "With a single source input, the output of flock.ugen.in should be the actual bus referenced.");
         deepEqual(actual, outSynthDef.inputs.sources.options.buffer,
             "And it should reflect exactly the output of the flock.ugen.out that is writing to the buffer.");
     });

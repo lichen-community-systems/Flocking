@@ -522,7 +522,7 @@ var fluid = fluid || require("infusion"),
         
         that.gen = function () {
             flock.enviro.clearBuses(that.audioSettings.numBuses, that.buses, that.audioSettings.rates.control);
-            flock.enviro.evalGraph(that.nodes, that.audioSettings.rates.control);
+            flock.enviro.evalGraph(that.nodes);
         };
                 
         that.loadBuffer = function (name, src, onLoadFn) {
@@ -595,12 +595,12 @@ var fluid = fluid || require("infusion"),
         return bufs;
     };
     
-    flock.enviro.evalGraph = function (nodes, kr) {
+    flock.enviro.evalGraph = function (nodes) {
         var i,
             node;
         for (i = 0; i < nodes.length; i++) {
             node = nodes[i];
-            node.gen(node.rate === flock.rates.AUDIO ? kr : 1);
+            node.gen(node.model.sampsPerBlock);
         }
     };
     
@@ -623,8 +623,9 @@ var fluid = fluid || require("infusion"),
     flock.synth = function (def, options) {
         var that = fluid.initComponent("flock.synth", options);
         that.rate = flock.rates.AUDIO;
-        that.model.synthDef = def;
         that.enviro = that.options.enviro || flock.enviro.shared;
+        that.model.sampsPerBlock = that.enviro.audioSettings.rates.control;
+        that.model.synthDef = def;
         that.ugens = flock.synth.ugenCache();
         
         /**
@@ -633,9 +634,8 @@ var fluid = fluid || require("infusion"),
          * @param numSamps the number of samples to generate
          * @return a buffer containing the generated audio
          */
-        that.gen = function (numSamps) {
-            numSamps = numSamps || that.enviro.audioSettings.rates.control;
-            flock.enviro.evalGraph(that.ugens.active, numSamps);
+        that.gen = function () {
+            flock.enviro.evalGraph(that.ugens.active);
         };
         
         /**

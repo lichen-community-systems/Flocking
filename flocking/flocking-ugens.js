@@ -154,6 +154,7 @@ var fluid = fluid || require("infusion"),
         
         that.options.audioSettings = that.options.audioSettings || flock.enviro.shared.audioSettings;
         that.model.sampleRate = options.sampleRate || that.options.audioSettings.rates[that.rate];
+        that.model.sampsPerBlock = that.rate === flock.rates.AUDIO ? that.options.audioSettings.rates.control : 1;
         
         that.get = function (path) {
             return flock.input.get(that.inputs, path);
@@ -1447,30 +1448,33 @@ var fluid = fluid || require("infusion"),
             var sources = that.inputs.sources,
                 buses = that.options.audioSettings.buses,
                 bufStart = that.inputs.bus.output[0],
+                expand = that.inputs.expand.output[0],
+                numSources,
+                numOutputBuses,
                 i,
                 j,
                 source,
                 rate,
                 bus,
                 inc,
-                outIdx,
-                k;
+                outIdx;
                         
             if (typeof (sources.length) !== "number") {
                 sources = [sources];
             }
+            numSources = sources.length;
+            numOutputBuses = Math.max(expand, numSources);
             
-            // TODO: Bring auto-expansion back.
-            for (j = 0; j < sources.length; j++) {
-                source = sources[j];
+            for (i = 0; i < numOutputBuses; i++) {
+                source = sources[i % numSources];
                 rate = source.rate;
-                bus = buses[j];
+                bus = buses[bufStart + i];
                 inc = rate === flock.rates.AUDIO ? 1 : 0;
                 outIdx = 0;
                     
-                for (k = 0; k < numSamps; k++, outIdx += inc) {
+                for (j = 0; j < numSamps; j++, outIdx += inc) {
                     // TODO: Support control rate interpolation.
-                    bus[k] = bus[k] + source.output[outIdx];
+                    bus[j] = bus[j] + source.output[outIdx];
                 }
             }
         };
@@ -1482,7 +1486,8 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.out", {
         rate: "audio",
         inputs: {
-            bus: 0
+            bus: 0,
+            expand: 2
         }
     });
     
