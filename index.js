@@ -2,6 +2,7 @@ var fluid = require("infusion"),
     loader = fluid.getLoader(__dirname);
 
 loader.require("./flocking/flocking/flocking-core.js");
+loader.require("./flocking/flocking/flocking-scheduler.js");
 loader.require("./flocking-node.js");
 loader.require("./flocking/flocking/flocking-parser.js");
 loader.require("./flocking/flocking/flocking-ugens.js");
