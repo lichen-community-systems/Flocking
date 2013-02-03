@@ -394,7 +394,7 @@ var fluid = fluid || require("infusion"),
             freq: 440.0,
             phase: 0.0
         },
-        options: {
+        ugenOptions: {
             strideInputs: [
                 "freq",
                 "phase"
@@ -558,7 +558,7 @@ var fluid = fluid || require("infusion"),
         inputs: {
             phase: 0.0
         },
-        options: {
+        ugenOptions: {
             strideInputs: ["freq"]
         }
     });
@@ -666,7 +666,7 @@ var fluid = fluid || require("infusion"),
             freq: 440,
             phase: 0.0
         },
-        options: {
+        ugenOptions: {
             strideInputs: ["freq"]
         }
     });
@@ -849,7 +849,7 @@ var fluid = fluid || require("infusion"),
             loop: 0.0,
             speed: 1.0
         },
-        options: {
+        ugenOptions: {
             model: {
                 idx: 0,
                 channel: undefined
@@ -1255,7 +1255,7 @@ var fluid = fluid || require("infusion"),
             step: 0.1,
             trigger: 0.0
         },
-        options: {
+        ugenOptions: {
             strideInputs: [
                 "trigger",
                 "step"
@@ -1342,7 +1342,7 @@ var fluid = fluid || require("infusion"),
             release: 1.0,
             gate: 0.0
         },
-        options: {
+        ugenOptions: {
             model: {
                 previousGate: 0.0,
                 stage: {
@@ -1899,7 +1899,7 @@ var fluid = fluid || require("infusion"),
             maxTime: 1.0,
             time: 1.0
         },
-        options: {
+        ugenOptions: {
             model: {
                 pos: 0
             }
@@ -1951,7 +1951,7 @@ var fluid = fluid || require("infusion"),
         inputs: {
             time: 1.0
         },
-        options: {
+        ugenOptions: {
             model: {
                 time: 0,
                 lastSamp: 0,
@@ -2110,7 +2110,7 @@ var fluid = fluid || require("infusion"),
             dur: 0.1,
             speed: 1.0
         },
-        options: {
+        ugenOptions: {
             model: {
                 maxDur: 30,
                 maxNumGrains: 512,
@@ -2174,7 +2174,7 @@ var fluid = fluid || require("infusion"),
             trigger: 0.0,
             freq: 1.0
         },
-        options: {
+        ugenOptions: {
             model: {
                 counter: 0
             }

@@ -187,7 +187,13 @@ var fluid = fluid || require("infusion"),
         flock.parse.expandRate(ugenDef);
     
         // Merge the ugenDef with default values defined by the ugen itself.
+        // TODO: Infusion options merging.
         var defaults = fluid.defaults(ugenDef.ugen) || {};
+        // TODO: Insane!
+        defaults = fluid.copy(defaults);
+        defaults.options = defaults.ugenOptions;
+        delete defaults.ugenOptions;
+        //
         ugenDef = $.extend(true, {}, defaults, ugenDef);
         
         var inputDefs = ugenDef.inputs,

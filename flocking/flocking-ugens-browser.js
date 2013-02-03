@@ -66,7 +66,7 @@ var fluid = fluid || require("infusion"),
     
     fluid.defaults("flock.ugen.scope", {
         rate: "audio",
-        options: {
+        ugenOptions: {
             fps: 60,
             styles: {
                 scaleY: 0.75,
@@ -383,7 +383,7 @@ var fluid = fluid || require("infusion"),
         inputs: {
             device: 0
         },
-        options: {
+        ugenOptions: {
             mike: {
                 settings: {}
             }

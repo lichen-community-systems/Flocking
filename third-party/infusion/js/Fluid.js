@@ -761,6 +761,12 @@ var fluid = fluid || fluid_1_5;
     };
     
     // unsupported, NON-API function
+    fluid.event.impersonateListener = function (origListener, newListener) {
+        fluid.event.identifyListener(origListener);
+        newListener.$$fluid_guid = origListener.$$fluid_guid;
+    };
+    
+    // unsupported, NON-API function
     fluid.event.mapPriority = function (priority, count) {
         return (priority === null || priority === undefined ? -count :
            (priority === "last" ? -Number.MAX_VALUE :
@@ -892,7 +898,7 @@ var fluid = fluid || fluid_1_5;
                 if (!id) {
                     fluid.fail("Cannot remove unregistered listener function ", listener, " from event " + that.name);
                 }
-                namespace = namespace || byId[id].namespace || id;
+                namespace = namespace || (byId[id] && byId[id].namespace) || id;
                 delete byId[id];
                 delete listeners[namespace];
                 sortedListeners = fluid.event.sortListeners(listeners);
@@ -1123,13 +1129,10 @@ var fluid = fluid || fluid_1_5;
         if (options === undefined) {
             return fluid.resolveGradedOptions(componentName);
         } else {
-            // TODO: Temporary Flocking hack.
-            /*
             if (options && options.options) {
                 fluid.fail("Probable error in options structure for " + componentName +
                     " with option named \"options\" - perhaps you meant to write these options at top level in fluid.defaults? - ", options);
             }
-            */
             fluid.rawDefaults(componentName, options);
             if (fluid.hasGrade(options, "autoInit")) {
                 fluid.makeComponent(componentName, fluid.resolveGradedOptions(componentName));
