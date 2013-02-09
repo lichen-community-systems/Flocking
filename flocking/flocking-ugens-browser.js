@@ -32,7 +32,7 @@ var fluid = fluid || require("infusion"),
         // Setup the scopeView widget. 
         that.model.scope = that.options.styles;
         that.model.scope.values = new Float32Array(that.model.spf);
-        that.scopeView = flock.gfx.scopeView(that.options.canvas, that.model.scope);
+        that.scopeView = flock.view.scope(that.options.canvas, that.model.scope);
         
         that.gen = function (numSamps) {
             var m = that.model,
@@ -69,9 +69,8 @@ var fluid = fluid || require("infusion"),
         ugenOptions: {
             fps: 60,
             styles: {
-                scaleY: 0.75,
                 strokeColor: "#777777",
-                strokeWidth: 3
+                strokeWidth: 1
             }
         }
     });
