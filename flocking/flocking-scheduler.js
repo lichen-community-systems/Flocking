@@ -17,6 +17,32 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.scheduler");
     
+    flock.shim = {
+        URL: typeof (window) !== "undefined" ? window.URL || window.webkitURL || window.msURL : undefined
+    };
+    
+    flock.worker = function (code) {
+        var type = typeof (code),
+            url,
+            blob;
+        
+        if (type === "function") {
+            code = "(" + code.toString() + ")();";
+        } else if (type !== "string") {
+            throw new Error("A flock.worker must be initialized with a String or a Function.");
+        }
+         
+        if (window.Blob) {
+            blob = new Blob([code], {
+                type: "text/javascript"
+            });
+            url = flock.shim.URL.createObjectURL(blob);
+        } else {
+            url = "data:text/javascript;base64," + window.btoa(code);
+        }
+        return new Worker(url);
+    };
+    
     
     /**********
      * Clocks *
@@ -39,7 +65,7 @@ var fluid = fluid || require("infusion"),
         };
         
         that.clearAll = function () {
-            for (var interval in self.scheduled) {
+            for (var interval in that.scheduled) {
                 that.clear(interval);
             }
         };
@@ -91,16 +117,170 @@ var fluid = fluid || require("infusion"),
     });
     
     
+    flock.scheduler.webWorkerClockFinalInit = function (that) {
+        that.worker = new flock.worker(flock.scheduler.webWorkerClock.workerImpl);
+        
+        // Start the worker-side clock.
+        that.worker.postMessage({
+            msg: "start",
+            value: that.options.clockType
+        });
+        
+        // Listen for tick messages from the worker and fire accordingly.
+        that.worker.addEventListener("message", function (e) {
+            that.events.tick.fire(e.data.value);
+        }, false);
+
+        that.postToWorker = function (msgName, value) {
+            var msg = that.model.messages[msgName];
+            if (value !== undefined) {
+                msg.value = value;
+            }
+            that.worker.postMessage(msg);
+        };
+        
+        that.schedule = function (time) {
+            that.postToWorker("schedule", time);
+        };
+        
+        that.clear = function (time) {
+            that.postToWorker("clear", time);
+        };
+        
+        that.clearAll = function () {
+            that.postToWorker("clearAll");
+        };
+    };
+    
+    fluid.defaults("flock.scheduler.webWorkerClock", {
+        gradeNames: ["fluid.modelComponent", "fluid.eventedComponent", "autoInit"],
+        finalInitFunction: "flock.scheduler.webWorkerClockFinalInit",
+        model: {
+            messages: {
+                schedule: {
+                    msg: "schedule"
+                },
+                clear: {
+                    msg: "clear"
+                },
+                clearAll: {
+                    msg: "clearAll"
+                }
+            }
+        },
+        events: {
+            tick: null
+        },
+        clockType: "intervalClock"
+    });
+    
+    // This code is only intended to run from within a Worker, via flock.worker.
+    flock.scheduler.webWorkerClock.workerImpl = function () {
+        "use strict";
+        
+        var flock = flock || {};
+        flock.worker = flock.worker || {};
+    
+        flock.worker.clock = function () {
+            var that = {};
+        
+            that.tick = function (interval) {
+                self.postMessage({
+                    msg: "tick",
+                    value: interval
+                });
+            };
+        
+            return that;
+        };
+    
+        flock.worker.intervalClock = function () {
+            var that = flock.worker.clock();
+            that.scheduled = {};
+        
+            that.schedule = function (interval) {
+                var id = setInterval(function () {
+                    that.tick(interval);
+                }, interval);
+                that.scheduled[interval] = id;
+            };
+
+            // TODO: Copy-pasted from flock.scheduler.intervalClock.
+            that.clear = function (interval) {
+                var id = that.scheduled[interval];
+                clearInterval(id);
+                delete that.scheduled[interval];
+            };
+        
+            // TODO: Copy-pasted from flock.scheduler.intervalClock.
+            that.clearAll = function () {
+                for (var interval in that.scheduled) {
+                    that.clear(interval);
+                }
+            };
+            
+            return that;
+        };
+    
+        flock.worker.scheduleClock = function () {
+            var that = flock.worker.clock();
+            that.scheduled = [];
+        
+            that.schedule = function (timeFromNow) {
+                var id;
+                id = setTimeout(function () {
+                    that.clear(id);
+                    that.tick(timeFromNow);
+                }, timeFromNow);
+                that.scheduled.push(id);
+            };
+        
+            // TODO: Copy-pasted from flock.scheduler.scheduleClock.
+            that.clear = function (id, idx) {
+                idx = idx === undefined ? that.scheduled.indexOf(id) : idx;
+                if (idx > -1) {
+                    that.scheduled.splice(idx, 1);
+                }
+                clearTimeout(id);
+            };
+        
+            // TODO: Copy-pasted from flock.scheduler.scheduleClock.
+            that.clearAll = function () {
+                for (var i = 0; i < that.scheduled.length; i++) {
+                    var id = that.scheduled[i];
+                    clearTimeout(id);
+                }
+                that.scheduled.length = 0;
+            };
+        
+            return that;
+        };
+        
+        self.addEventListener("message", function (e) {
+            if (e.data.msg === "start") {
+                flock.clock = flock.worker[e.data.value]();
+            } else if (flock.clock) {
+                flock.clock[e.data.msg](e.data.value);
+            }
+        }, false);
+    };
+    
+    fluid.defaults("flock.scheduler.webWorkerIntervalClock", {
+        gradeNames: ["flock.scheduler.webWorkerClock", "autoInit"],
+        clockType: "intervalClock"
+    });
+    
+    fluid.defaults("flock.scheduler.webWorkerScheduleClock", {
+        gradeNames: ["flock.scheduler.webWorkerClock", "autoInit"],
+        clockType: "scheduleClock"
+    });
+    
+    
     /**************
      * Schedulers *
      **************/
      
     flock.scheduler.asyncFinalInit = function (that) {
-        that.clocks = {
-            interval: flock.scheduler.intervalClock(),
-            scheduled: flock.scheduler.scheduleClock()
-        };
-        
         that.valueListeners = {};
         
         that.addFilteredListener = function (clock, value, fn, isOneShot) {
@@ -141,11 +321,11 @@ var fluid = fluid || require("infusion"),
         };
         
         that.repeat = function (interval, fn) {
-            return that.schedule(that.clocks.interval, interval, fn, false);
+            return that.schedule(that.intervalClock, interval, fn, false);
         };
         
         that.once = function (time, fn) {
-            return that.schedule(that.clocks.scheduled, time, fn, true);
+            return that.schedule(that.scheduleClock, time, fn, true);
         };
         
         that.schedule = function (clock, time, fn, isOneShot) {
@@ -175,30 +355,20 @@ var fluid = fluid || require("infusion"),
             }
             
             // TODO: Rather inefficient.
-            var type,
-                clock;
-            for (type in that.clocks) {
-                clock = that.clocks[type];
-                clock.events.tick.removeListener(listener);
-            }
+            that.intervalClock.events.tick.removeListener(listener);
+            that.scheduleClock.events.tick.removeListener(listener);
         };
         
         that.clearRepeat = function (interval) {
-            that.removeFilteredListener(that.clocks.interval, interval);
-            that.clocks.interval.clear(interval);
+            that.removeFilteredListener(that.intervalClock, interval);
+            that.intervalClock.clear(interval);
         };
         
         that.clearAll = function () {
-            var type,
-                clock,
-                value;
-            
-            for (type in that.clocks) {
-                clock = that.clocks[type];
-                clock.clearAll();
-            }
-            
-            for (value in that.valueListeners) {
+            that.intervalClock.clearAll();
+            that.scheduleClock.clearAll();
+
+            for (var value in that.valueListeners) {
                 delete that.valueListeners[value];
             }
         };
@@ -208,6 +378,9 @@ var fluid = fluid || require("infusion"),
             var converter = that.options.timeConverter;
             var converterType = typeof (converter) === "string" ? converter : converter.type;
             that.timeConverter = flock.invoke(undefined, converterType, converter.options);
+            
+            that.intervalClock = fluid.initSubcomponent(that, "intervalClock", [fluid.COMPONENT_OPTIONS]);
+            that.scheduleClock = fluid.initSubcomponent(that, "scheduleClock", [fluid.COMPONENT_OPTIONS]);
         };
          
         that.init();
@@ -216,7 +389,14 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.scheduler.async", {
         gradeNames: ["fluid.littleComponent", "autoInit"],
         finalInitFunction: "flock.scheduler.asyncFinalInit",
-        timeConverter: "flock.convert.seconds"
+        
+        timeConverter: "flock.convert.seconds",
+        intervalClock: {
+            type: "flock.scheduler.webWorkerIntervalClock"
+        },
+        scheduleClock: {
+            type: "flock.scheduler.webWorkerScheduleClock"
+        }
     });
 
     
