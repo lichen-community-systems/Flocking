@@ -26,17 +26,31 @@ var fluid = fluid || require("infusion"),
         that.model.bufferDur = (that.audioSettings.bufferSize / that.audioSettings.rates.audio) * 1000;
         that.model.queuePollInterval = Math.ceil(that.model.bufferDur / 20);
         that.audioEl.mozSetup(that.audioSettings.chans, that.audioSettings.rates.audio);
-        that.outBuffer = new Float32Array(that.audioSettings.bufferSize * that.audioSettings.chans);
         that.schedulers.gen = flock.scheduler.async({
             timeConverter: "flock.convert.ms"
         });
+        
+        var numSamps = that.audioSettings.bufferSize * that.audioSettings.chans;
+        that.outBuffer = new Float32Array(numSamps);
+        that.silentBuffer = new Float32Array(numSamps);
         
         that.startGeneratingSamples = function () {
             if (that.scheduled) {
                 return;
             }
+            
+            if (flock.platform.os.indexOf("Linux") >= 0 || flock.platform.os.indexOf("Android") >=0) {
+                that.prebufferSilence();
+            }
+            
             that.schedulers.gen.repeat(that.model.queuePollInterval, that.writeSamples);
             that.scheduled = true;
+        };
+        
+        that.prebufferSilence = function () {
+            while (that.audioEl.mozCurrentSampleOffset() === 0) {
+                that.audioEl.mozWriteAudio(that.silentBuffer);
+            }
         };
         
         that.writeSamples = function () {
