@@ -69,6 +69,8 @@ var fluid = fluid || require("infusion"),
                 that.clear(interval);
             }
         };
+        
+        that.end = that.clearAll;
     };
     
     fluid.defaults("flock.scheduler.intervalClock", {
@@ -106,6 +108,8 @@ var fluid = fluid || require("infusion"),
             }
             that.scheduled.length = 0;
         };
+        
+        that.end = that.clearAll;
     };
     
     fluid.defaults("flock.scheduler.scheduleClock", {
@@ -150,6 +154,10 @@ var fluid = fluid || require("infusion"),
         that.clearAll = function () {
             that.postToWorker("clearAll");
         };
+        
+        that.end = function () {
+            that.postToWorker("end");
+        };
     };
     
     fluid.defaults("flock.scheduler.webWorkerClock", {
@@ -165,6 +173,9 @@ var fluid = fluid || require("infusion"),
                 },
                 clearAll: {
                     msg: "clearAll"
+                },
+                end: {
+                    msg: "end"
                 }
             }
         },
@@ -259,6 +270,11 @@ var fluid = fluid || require("infusion"),
         self.addEventListener("message", function (e) {
             if (e.data.msg === "start") {
                 flock.clock = flock.worker[e.data.value]();
+            } else if (e.data.msg === "end") {
+                if (flock.clock) {
+                    flock.clock.clearAll();
+                    self.close();
+                }
             } else if (flock.clock) {
                 flock.clock[e.data.msg](e.data.value);
             }
@@ -373,6 +389,11 @@ var fluid = fluid || require("infusion"),
             }
         };
         
+        that.end = function () {
+            that.intervalClock.end();
+            that.scheduleClock.end();
+        };
+        
         that.init = function () {
             // TODO: Convert to Infusion subcomponent.
             var converter = that.options.timeConverter;
@@ -399,7 +420,7 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    
+
     flock.scheduler.async.beat = function (bpm, options) {
         var that = fluid.initComponent("flock.scheduler.async.beat", options);
         if (bpm !== undefined) {
