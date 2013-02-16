@@ -19,6 +19,15 @@ var fluid = fluid || require("infusion"),
     var cubeb = require("cubeb");
     fluid.registerNamespace("flock.enviro");
     
+    // Override the defaults for flock.scheduler.asyc, which should never use Workers in Node.js
+    // TODO: This is somewhat sleazy and unscalable; could be replaced by introducing IoC into Flocking.
+    var schedulers = ["flock.scheduler.async", "flock.scheduler.async.beat"];
+    fluid.each(schedulers, function (schedulerName) {
+        var skedDef = fluid.defaults(schedulerName);
+        skedDef.intervalClock.type = "flock.scheduler.intervalClock";
+        skedDef.scheduleClock.type = "flock.scheduler.scheduleClock";
+    });
+    
     flock.enviro.nodejs = function (that) {
         
         that.startGeneratingSamples = function () {

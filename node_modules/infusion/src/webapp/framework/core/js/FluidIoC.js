@@ -1156,8 +1156,6 @@ outer:  for (var i = 0; i < exist.length; ++i) {
         
     fluid.staticEnvironment = fluid.typeTag("fluid.staticEnvironment");
     
-    fluid.staticEnvironment.environmentClass = fluid.typeTag("fluid.browser");
-    
     fluid.globalThreadLocal = fluid.threadLocal(function() {
         return fluid.typeTag("fluid.dynamicEnvironment");
     });
