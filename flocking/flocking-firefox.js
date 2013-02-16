@@ -24,7 +24,7 @@ var fluid = fluid || require("infusion"),
     flock.enviro.moz = function (that) {
         that.audioEl = new Audio();
         that.model.bufferDur = (that.audioSettings.bufferSize / that.audioSettings.rates.audio) * 1000;
-        that.model.queuePollInterval = Math.ceil(that.model.bufferDur / 20);
+        that.model.queuePollInterval = Math.ceil(that.model.bufferDur / that.audioSettings.genPollIntervalFactor);
         that.audioEl.mozSetup(that.audioSettings.chans, that.audioSettings.rates.audio);
         that.schedulers.gen = flock.scheduler.async({
             timeConverter: "flock.convert.ms"
@@ -39,7 +39,7 @@ var fluid = fluid || require("infusion"),
                 return;
             }
             
-            if (flock.platform.os.indexOf("Linux") >= 0 || flock.platform.os.indexOf("Android") >=0) {
+            if (flock.platform.isLinuxBased && that.audioEl.mozCurrentSampleOffset() === 0) {
                 that.prebufferSilence();
             }
             

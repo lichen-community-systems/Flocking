@@ -50,7 +50,7 @@ var fluid = fluid || require("infusion"),
     flock.platform.audioEngine = flock.platform.isBrowser ? 
         (typeof (window.webkitAudioContext) !== "undefined" ? "webkit" : "moz") :
         "nodejs";
-    
+    flock.platform.isLinuxBased = flock.platform.os.indexOf("Linux") > -1 || flock.platform.os.indexOf("Android") > -1;
     flock.enviroStrategies = {
         "webkit": "flock.enviro.webkit",
         "moz": "flock.enviro.moz",
@@ -566,10 +566,11 @@ var fluid = fluid || require("infusion"),
             // This buffer size determines the overall latency of Flocking's audio output. On Firefox, it will be 2x.
             bufferSize: (flock.platform.os === "Win32" && flock.platform.browser.mozilla) ?
                 16384: 4096,
-            
-            // A hint to some audio backends; currently only used by node-cubeb.
+                
+            // Hints to some audio backends; currently only used by node-cubeb.
             sampleFormat: flock.sampleFormats.FLOAT32NE,
-            latency: 10
+            latency: 10,
+            genPollIntervalFactor: flock.platform.isLinuxBased ? 1 : 20 // Only used on Firefox.
         }
     });
     
