@@ -18,9 +18,7 @@ var demo = demo || {};
 (function () {
     "use strict";
     
-    flock.init({
-        workerPath: "../../../flocking/flocking-worker.js"
-    });
+    flock.init();
     
     var setupEditor = function (that, editorId, theme, mode) {
         theme = theme || "ace/theme/twilight";

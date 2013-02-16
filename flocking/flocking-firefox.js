@@ -27,12 +27,15 @@ var fluid = fluid || require("infusion"),
         that.model.queuePollInterval = Math.ceil(that.model.bufferDur / 20);
         that.audioEl.mozSetup(that.audioSettings.chans, that.audioSettings.rates.audio);
         that.outBuffer = new Float32Array(that.audioSettings.bufferSize * that.audioSettings.chans);
+        that.schedulers.gen = flock.scheduler.async({
+            timeConverter: "flock.convert.ms"
+        });
         
         that.startGeneratingSamples = function () {
             if (that.scheduled) {
                 return;
             }
-            that.asyncScheduler.repeat(that.model.queuePollInterval, that.writeSamples);
+            that.schedulers.gen.repeat(that.model.queuePollInterval, that.writeSamples);
             that.scheduled = true;
         };
         
@@ -55,7 +58,7 @@ var fluid = fluid || require("infusion"),
         };
         
         that.stopGeneratingSamples = function () {
-            that.asyncScheduler.clearRepeat(that.model.writeInterval);
+            that.schedulers.gen.clearRepeat(that.model.writeInterval);
             that.scheduled = false;
         };
     };

@@ -484,9 +484,9 @@ var fluid = fluid || require("infusion"),
         that.buses = flock.enviro.createAudioBuffers(that.audioSettings.numBuses, 
                 that.audioSettings.rates.control);
         that.buffers = {};
-        that.asyncScheduler = flock.scheduler.async({
-            timeConverter: "flock.convert.ms"
-        });
+        that.schedulers = {
+            async: flock.scheduler.async()
+        };
         
         /**
          * Starts generating samples from all synths.
@@ -513,7 +513,7 @@ var fluid = fluid || require("infusion"),
         
         that.reset = function () {
             that.stop();
-            that.asyncScheduler.clearAll();
+            that.schedulers.async.clearAll();
             // Clear the environment's node list.
             while (that.nodes.length > 0) {
                 that.nodes.pop();

@@ -575,7 +575,7 @@ var synth = flock.synth({
     sources: makeHarmonics(fundamentalMultiplier)
 });
 
-synth.enviro.asyncScheduler.repeat(2000, function () {
+synth.enviro.schedulers.async.repeat(2.0, function () {
     var fundamental = (fundamentalMultiplier * Math.random()) + 60;
     synth.input("adder.sources", makeHarmonics(fundamental));
 });
