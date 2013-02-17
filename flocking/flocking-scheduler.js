@@ -209,6 +209,7 @@ var fluid = fluid || require("infusion"),
             var that = flock.worker.clock();
             that.scheduled = {};
         
+            // TODO: Copy-pasted from flock.scheduler.intervalClock.
             that.schedule = function (interval) {
                 var id = setInterval(function () {
                     that.tick(interval);
@@ -237,6 +238,7 @@ var fluid = fluid || require("infusion"),
             var that = flock.worker.clock();
             that.scheduled = [];
         
+            // TODO: Copy-pasted from flock.scheduler.scheduleClock.
             that.schedule = function (timeFromNow) {
                 var id;
                 id = setTimeout(function () {
@@ -323,9 +325,9 @@ var fluid = fluid || require("infusion"),
         that.addIntervalListener = function (interval, fn) {
             var listener = flock.scheduler.makeRepeatingValueListener(interval, fn);
             listener.wrappedListener = fn;
-            that.intervalClock.events.tick.addListener(listener);
             that.intervalListeners[interval] = that.intervalListeners[interval] || [];
             that.intervalListeners[interval].push(listener);
+            that.intervalClock.events.tick.addListener(listener);
             
             return listener;
         };
@@ -412,12 +414,11 @@ var fluid = fluid || require("infusion"),
         
         that.clearAll = function () {
             that.intervalClock.clearAll();
-            that.scheduleClock.clearAll();
-
             for (var interval in that.intervalListeners) {
                 that.clearRepeat(interval);
             }
             
+            that.scheduleClock.clearAll();
             for (var listener in that.scheduleListeners) {
                 that.clear(listener);
             }
@@ -429,11 +430,7 @@ var fluid = fluid || require("infusion"),
         };
         
         that.init = function () {
-            // TODO: Convert to Infusion subcomponent.
-            var converter = that.options.timeConverter;
-            var converterType = typeof (converter) === "string" ? converter : converter.type;
-            that.timeConverter = flock.invoke(undefined, converterType, converter.options);
-            
+            that.timeConverter = fluid.initSubcomponent(that, "timeConverter", [fluid.COMPONENT_OPTIONS]);
             that.intervalClock = fluid.initSubcomponent(that, "intervalClock", [fluid.COMPONENT_OPTIONS]);
             that.scheduleClock = fluid.initSubcomponent(that, "scheduleClock", [fluid.COMPONENT_OPTIONS]);
         };
@@ -444,8 +441,9 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.scheduler.async", {
         gradeNames: ["fluid.littleComponent", "autoInit"],
         finalInitFunction: "flock.scheduler.asyncFinalInit",
-        
-        timeConverter: "flock.convert.seconds",
+        timeConverter: {
+            type: "flock.convert.seconds"
+        },
         intervalClock: {
             type: "flock.scheduler.webWorkerIntervalClock"
         },

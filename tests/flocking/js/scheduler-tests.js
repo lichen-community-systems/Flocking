@@ -49,7 +49,13 @@ var flock = flock || {};
     });
     
 
-    module("Asynchronous Scheduler tests");
+    var sked;
+    
+    module("Asynchronous Scheduler tests", {
+        teardown: function () {
+            sked.end();
+        }
+    });
     
     var checkScheduledCallback = function (expectedScheduledTime, scheduledTime, scheduledAt, receivedAt) {
         var duration = receivedAt - scheduledAt,
@@ -62,14 +68,15 @@ var flock = flock || {};
     };
     
     asyncTest("flock.scheduler.async.once()", function () {
+        expect(21);
+        
         var runs = 10,
             numRuns = 0,
-            scheduledDelay = 500,
-            sked = flock.scheduler.async({
-                timeConverter: "flock.convert.ms"
-            });
+            scheduledDelay = 500;
         
-        expect(21);
+        sked = flock.scheduler.async({
+            timeConverter: "flock.convert.ms"
+        });
         
         var scheduledAt;
         var scheduledAction = function (scheduledTime) {
@@ -89,11 +96,8 @@ var flock = flock || {};
     
     asyncTest("flock.scheduler.once() multiple listeners, different intervals", function () {
         // TODO: Cut and pastage and inconsistencies everywhere!
-        var sked = flock.scheduler.async({
-                timeConverter: "flock.convert.ms"
-            }),
-            scheduledDelays = [100, 200],
-            tolerance = 5,
+        var scheduledDelays = [100, 200],
+            tolerance = 7,
             fired = {},
             makeRecordingListener,
             testingListenerImpl,
@@ -101,6 +105,10 @@ var flock = flock || {};
             listener2,
             testingListener,
             scheduledAt;
+        
+        sked = flock.scheduler.async({
+            timeConverter: "flock.convert.ms"
+        });
         
         makeRecordingListener = function (record, prop) {
             return function (scheduledTime) {
@@ -127,17 +135,18 @@ var flock = flock || {};
     });
     
     asyncTest("flock.scheduler.async.repeat()", function () {
-        var sked = flock.scheduler.async({
-                timeConverter: "flock.convert.ms"
-            }),
-            expectedInterval = 100,
+        expect(2 * numRuns);
+        
+        var expectedInterval = 100,
             numRuns = 100,
             runs = 0,
             lastFired = 0,
             mistimingTolerance = 35, // TODO: This value is excessively high.
             callback;
         
-        expect(2 * numRuns);
+        sked = flock.scheduler.async({
+            timeConverter: "flock.convert.ms"
+        });
         
         callback = function () {
             var now = Date.now(),
@@ -163,10 +172,7 @@ var flock = flock || {};
     });
     
     asyncTest("flock.scheduler.async.repeat() multiple listeners", function () {
-        var sked = flock.scheduler.async({
-                timeConverter: "flock.convert.ms"
-            }),
-            interval = 100,
+        var interval = 100,
             numRuns = 10,
             runs = 0,
             fired = {},
@@ -176,6 +182,10 @@ var flock = flock || {};
             listener1,
             listener2,
             testingListener;
+        
+        sked = flock.scheduler.async({
+            timeConverter: "flock.convert.ms"
+        });
         
         makeRecordingListener = function (record, prop) {
             return function () {
@@ -221,10 +231,7 @@ var flock = flock || {};
     
     var testClearScheduler = function (name, clearFnName) {
         asyncTest(name, function () {
-            var sked = flock.scheduler.async({
-                    timeConverter: "flock.convert.ms"
-                }),
-                interval = 100,
+            var interval = 100,
                 numRuns = 10,
                 runs = 0,
                 fired = {},
@@ -234,6 +241,10 @@ var flock = flock || {};
                 listener2,
                 stages;
         
+            sked = flock.scheduler.async({
+                timeConverter: "flock.convert.ms"
+            });
+            
             runNextTestStage = function () {
                 var stage = stages.shift();
                 sked[clearFnName](interval);
