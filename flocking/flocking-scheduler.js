@@ -296,60 +296,62 @@ var fluid = fluid || require("infusion"),
      * Schedulers *
      **************/
      
-    flock.scheduler.asyncFinalInit = function (that) {
-        that.valueListeners = {};
+    flock.scheduler.makeOneShotValueListener = function (value, fn, removeFn) {
+        var listener = function (time) {
+            if (time === value) {
+                fn(time);
+                removeFn(listener);
+            }
+        };
         
-        that.addFilteredListener = function (clock, value, fn, isOneShot) {
-            // TODO: Rewrite.
-            var listener = function (time) {
-                if (time === value) {
-                    fn(time);
-                    if (isOneShot) {
-                        clock.events.tick.removeListener(listener);
-                    }
-                }
-            };
+        return listener;
+    };
+    
+    flock.scheduler.makeRepeatingValueListener = function (value, fn) {
+        return function (time) {
+            if (time === value) {
+                fn(time);
+            }
+        };
+    };
+    
+    // TODO: Duplication!
+    flock.scheduler.asyncFinalInit = function (that) {
+        that.intervalListeners = {};
+        that.scheduleListeners = [];
+        
+        that.addIntervalListener = function (interval, fn) {
+            var listener = flock.scheduler.makeRepeatingValueListener(interval, fn);
             listener.wrappedListener = fn;
-            clock.events.tick.addListener(listener);
-            that.valueListeners[value] = that.valueListeners[value] || [];
-            that.valueListeners[value].push(listener);
-
+            that.intervalClock.events.tick.addListener(listener);
+            that.intervalListeners[interval] = that.intervalListeners[interval] || [];
+            that.intervalListeners[interval].push(listener);
+            
             return listener;
         };
         
-        that.removeFilteredListener = function (clock, value) {
-            // TODO: Rewrite.
-            var listeners = that.valueListeners[value],
-                i,
-                listener;
-            
-            if (!listeners) {
-                return;
-            }
-            
-            for (i = 0; i < listeners.length; i++) {
-                listener = listeners[i];
-                clock.events.tick.removeListener(listener);
-            }
-            listeners.length = 0;
+        that.addScheduleListener = function (time, fn) {
+            var listener = flock.scheduler.makeOneShotValueListener(time, fn, that.clear);
+            listener.wrappedListener = fn;
+            that.scheduleListeners.push(listener);
+            that.scheduleClock.events.tick.addListener(listener);
             
             return listener;
         };
         
         that.repeat = function (interval, fn) {
-            return that.schedule(that.intervalClock, interval, fn, false);
+            var ms = that.timeConverter.value(interval),
+                listener = that.addIntervalListener(ms, fn);
+            
+            that.intervalClock.schedule(ms);
+            return listener;
         };
         
         that.once = function (time, fn) {
-            return that.schedule(that.scheduleClock, time, fn, true);
-        };
-        
-        that.schedule = function (clock, time, fn, isOneShot) {
             var ms = that.timeConverter.value(time),
-                listener = that.addFilteredListener(clock, ms, fn, isOneShot);
+                listener = that.addScheduleListener(ms, fn);
             
-            clock.schedule(ms);
-
+            that.scheduleClock.schedule(ms);
             return listener;
         };
         
@@ -371,21 +373,53 @@ var fluid = fluid || require("infusion"),
             }
             
             // TODO: Rather inefficient.
+            var idx = that.scheduleListeners.indexOf(listener),
+                interval;
+            if (idx > -1) {
+                that.scheduleClock.events.tick.removeListener(listener);
+                that.scheduleListeners.splice(idx, 1);
+                return;
+            }
+            
             that.intervalClock.events.tick.removeListener(listener);
-            that.scheduleClock.events.tick.removeListener(listener);
+            for (interval in that.intervalListeners) {
+                idx = that.intervalListeners[interval].indexOf(listener);
+                if (idx > -1) {
+                    that.intervalListeners[interval].splice(idx, 1);
+                }
+            }
         };
         
         that.clearRepeat = function (interval) {
-            that.removeFilteredListener(that.intervalClock, interval);
             that.intervalClock.clear(interval);
+            
+            var listeners = that.intervalListeners[interval],
+                i,
+                listener;
+            
+            if (!listeners) {
+                return;
+            }
+            
+            for (i = 0; i < listeners.length; i++) {
+                listener = listeners[i];
+                that.intervalClock.events.tick.removeListener(listener);
+            }
+            listeners.length = 0;
+            
+            return listener;
         };
         
         that.clearAll = function () {
             that.intervalClock.clearAll();
             that.scheduleClock.clearAll();
 
-            for (var value in that.valueListeners) {
-                delete that.valueListeners[value];
+            for (var interval in that.intervalListeners) {
+                that.clearRepeat(interval);
+            }
+            
+            for (var listener in that.scheduleListeners) {
+                that.clear(listener);
             }
         };
         
