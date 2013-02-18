@@ -2146,7 +2146,7 @@ var fluid = fluid || require("infusion"),
                 i;
                 
             if (trig > 0.0 && m.prevTrig <= 0.0) {
-                console.log(label + source);
+                fluid.log(label + source);
             }
             
             if (m.freq !== freq) {
@@ -2157,7 +2157,7 @@ var fluid = fluid || require("infusion"),
             
             for (i = 0; i < numSamps; i++) {
                 if (m.counter >= m.sampInterval) {
-                    console.log(label + source[i]);
+                    fluid.log(label + source[i]);
                     m.counter = 0;
                 }
                 m.counter++;
