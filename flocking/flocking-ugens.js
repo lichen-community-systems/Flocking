@@ -356,7 +356,7 @@ var fluid = fluid || require("infusion"),
                 } else if (idx < 0) {
                     idx += tableLen;
                 }
-                output[i] = table[idx];
+                output[i] = that.interpolate ? that.interpolate(idx, table) : table[idx];
                 phase += freq[k] * tableIncHz;
                 if (phase >= tableLen) {
                     phase -= tableLen;
