@@ -14,7 +14,7 @@ var flock = flock || {};
 (function () {
     "use strict";
 
-    flock();
+    flock.init();
     
     flock.test = flock.test || {};
 
