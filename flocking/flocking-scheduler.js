@@ -14,8 +14,6 @@ var fluid = fluid || require("infusion"),
 
 (function () {
     "use strict";
-
-    fluid.registerNamespace("flock.scheduler");
     
     flock.shim = {
         URL: typeof (window) !== "undefined" ? window.URL || window.webkitURL || window.msURL : undefined
@@ -44,11 +42,20 @@ var fluid = fluid || require("infusion"),
     };
     
     
+    fluid.registerNamespace("flock.scheduler");
+    
     /**********
      * Clocks *
      **********/
     
-    flock.scheduler.intervalClockFinalInit = function (that) {
+    fluid.defaults("flock.scheduler.intervalClock", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        events: {
+            tick: null
+        }
+    });
+    
+    flock.scheduler.intervalClock.finalInit = function (that) {
         that.scheduled = {};
         
         that.schedule = function (interval) {
@@ -73,15 +80,15 @@ var fluid = fluid || require("infusion"),
         that.end = that.clearAll;
     };
     
-    fluid.defaults("flock.scheduler.intervalClock", {
+    
+    fluid.defaults("flock.scheduler.scheduleClock", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
-        finalInitFunction: "flock.scheduler.intervalClockFinalInit",
         events: {
             tick: null
         }
     });
     
-    flock.scheduler.scheduleClockFinalInit = function (that) {
+    flock.scheduler.scheduleClock.finalInit = function (that) {
         that.scheduled = [];
         
         that.schedule = function (timeFromNow) {
@@ -112,16 +119,32 @@ var fluid = fluid || require("infusion"),
         that.end = that.clearAll;
     };
     
-    fluid.defaults("flock.scheduler.scheduleClock", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
-        finalInitFunction: "flock.scheduler.scheduleClockFinalInit",
+    
+    fluid.defaults("flock.scheduler.webWorkerClock", {
+        gradeNames: ["fluid.modelComponent", "fluid.eventedComponent", "autoInit"],
+        model: {
+            messages: {
+                schedule: {
+                    msg: "schedule"
+                },
+                clear: {
+                    msg: "clear"
+                },
+                clearAll: {
+                    msg: "clearAll"
+                },
+                end: {
+                    msg: "end"
+                }
+            }
+        },
         events: {
             tick: null
-        }
+        },
+        clockType: "intervalClock"
     });
     
-    
-    flock.scheduler.webWorkerClockFinalInit = function (that) {
+    flock.scheduler.webWorkerClock.finalInit = function (that) {
         that.worker = new flock.worker(flock.scheduler.webWorkerClock.workerImpl);
         
         // Start the worker-side clock.
@@ -160,30 +183,6 @@ var fluid = fluid || require("infusion"),
         };
     };
     
-    fluid.defaults("flock.scheduler.webWorkerClock", {
-        gradeNames: ["fluid.modelComponent", "fluid.eventedComponent", "autoInit"],
-        finalInitFunction: "flock.scheduler.webWorkerClockFinalInit",
-        model: {
-            messages: {
-                schedule: {
-                    msg: "schedule"
-                },
-                clear: {
-                    msg: "clear"
-                },
-                clearAll: {
-                    msg: "clearAll"
-                },
-                end: {
-                    msg: "end"
-                }
-            }
-        },
-        events: {
-            tick: null
-        },
-        clockType: "intervalClock"
-    });
     
     // This code is only intended to run from within a Worker, via flock.worker.
     flock.scheduler.webWorkerClock.workerImpl = function () {
@@ -317,8 +316,22 @@ var fluid = fluid || require("infusion"),
         };
     };
     
+    
+    fluid.defaults("flock.scheduler.async", {
+        gradeNames: ["fluid.littleComponent", "autoInit"],
+        timeConverter: {
+            type: "flock.convert.seconds"
+        },
+        intervalClock: {
+            type: "flock.scheduler.webWorkerIntervalClock"
+        },
+        scheduleClock: {
+            type: "flock.scheduler.webWorkerScheduleClock"
+        }
+    });
+    
     // TODO: Duplication!
-    flock.scheduler.asyncFinalInit = function (that) {
+    flock.scheduler.async.finalInit = function (that) {
         that.intervalListeners = {};
         that.scheduleListeners = [];
         
@@ -437,20 +450,6 @@ var fluid = fluid || require("infusion"),
          
         that.init();
     };
-    
-    fluid.defaults("flock.scheduler.async", {
-        gradeNames: ["fluid.littleComponent", "autoInit"],
-        finalInitFunction: "flock.scheduler.asyncFinalInit",
-        timeConverter: {
-            type: "flock.convert.seconds"
-        },
-        intervalClock: {
-            type: "flock.scheduler.webWorkerIntervalClock"
-        },
-        scheduleClock: {
-            type: "flock.scheduler.webWorkerScheduleClock"
-        }
-    });
 
 
     flock.scheduler.async.beat = function (bpm, options) {
@@ -495,17 +494,15 @@ var fluid = fluid || require("infusion"),
         return secs * 1000;
     });
     
-    flock.convert.beatsFinalInit = function (that) {
+    fluid.defaults("flock.convert.beats", {
+        gradeNames: ["fluid.littleComponent", "autoInit"],
+        bpm: 60
+    });
+    
+    flock.convert.beats.finalInit = function (that) {
         that.value = function (beats) {
             var bpm = that.options.bpm;
             return bpm <= 0 ? 0 : (beats / bpm) * 60000;
         };
     };
-    
-    fluid.defaults("flock.convert.beats", {
-        gradeNames: ["fluid.littleComponent", "autoInit"],
-        finalInitFunction: "flock.convert.beatsFinalInit",
-        bpm: 60
-    });
-    
 }());

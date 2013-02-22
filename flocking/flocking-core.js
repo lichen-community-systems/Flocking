@@ -43,6 +43,7 @@ var fluid = fluid || require("infusion"),
         FLOAT32NE: "float32NE"
     };
     
+    // TODO: Move to components in the static environment?
     fluid.registerNamespace("flock.platform");
     flock.platform.isBrowser = typeof (window) !== "undefined";
     flock.platform.os = flock.platform.isBrowser ? window.navigator.platform : fluid.require("os").platform();
@@ -431,7 +432,11 @@ var fluid = fluid || require("infusion"),
     };
     
     
-    flock.nodeListFinalInit = function (that) {
+    fluid.defaults("flock.nodeList", {
+        gradeNames: ["fluid.littleComponent", "autoInit"]
+    });
+    
+    flock.nodeList.finalInit = function (that) {
         that.nodes = [];
         
         that.head = function (node) {
@@ -462,21 +467,41 @@ var fluid = fluid || require("infusion"),
         };
     };
     
-    fluid.defaults("flock.nodeList", {
-        gradeNames: ["fluid.littleComponent", "autoInit"],
-        finalInitFunction: "flock.nodeListFinalInit"
-    });
     
     /***********************
      * Synths and Playback *
      ***********************/
     
-    var setupEnviro = function (that) {
-        var strategyType = flock.enviroStrategies[flock.platform.audioEngine];
-        fluid.invokeGlobalFunction(strategyType, [that]);
-    };
+    fluid.defaults("flock.enviro", {
+        gradeNames: ["fluid.modelComponent", "flock.nodeList", "autoInit"],
+        model: {
+            playState: {
+                written: 0,
+                total: null
+            },
+            
+            isPlaying: false
+        },
+        audioSettings: {
+            rates: {
+                audio: 44100,
+                control: 64,
+                constant: 1
+            },
+            chans: 2,
+            numBuses: 2,
+            // This buffer size determines the overall latency of Flocking's audio output. On Firefox, it will be 2x.
+            bufferSize: (flock.platform.os === "Win32" && flock.platform.browser.mozilla) ?
+                16384: 4096,
+            
+            // Hints to some audio backends; currently only used by node-cubeb.
+            sampleFormat: flock.sampleFormats.FLOAT32NE,
+            latency: 10,
+            genPollIntervalFactor: flock.platform.isLinuxBased ? 1 : 20 // Only used on Firefox.
+        }
+    });
     
-    flock.enviroFinalInit = function (that) {
+    flock.enviro.finalInit = function (that) {
         that.audioSettings = that.options.audioSettings;
         
         // TODO: Buffers are named but buses are numbered. Should we have a consistent strategy?
@@ -541,38 +566,10 @@ var fluid = fluid || require("infusion"),
             });
         };
 
-        setupEnviro(that);
+        // TODO: Convert to subcomponent with IoC.
+        var strategyType = flock.enviroStrategies[flock.platform.audioEngine];
+        fluid.invokeGlobalFunction(strategyType, [that]);
     };
-    
-    fluid.defaults("flock.enviro", {
-        gradeNames: ["fluid.modelComponent", "flock.nodeList", "autoInit"],
-        finalInitFunction: "flock.enviroFinalInit",
-        model: {
-            playState: {
-                written: 0,
-                total: null
-            },
-            
-            isPlaying: false
-        },
-        audioSettings: {
-            rates: {
-                audio: 44100,
-                control: 64,
-                constant: 1
-            },
-            chans: 2,
-            numBuses: 2,
-            // This buffer size determines the overall latency of Flocking's audio output. On Firefox, it will be 2x.
-            bufferSize: (flock.platform.os === "Win32" && flock.platform.browser.mozilla) ?
-                16384: 4096,
-                
-            // Hints to some audio backends; currently only used by node-cubeb.
-            sampleFormat: flock.sampleFormats.FLOAT32NE,
-            latency: 10,
-            genPollIntervalFactor: flock.platform.isLinuxBased ? 1 : 20 // Only used on Firefox.
-        }
-    });
     
     flock.enviro.clearBuses = function (numBuses, buses, busLen) {
         var i,
@@ -737,7 +734,7 @@ var fluid = fluid || require("infusion"),
         }
     });
     
-    
+    // TODO: Componentize.
     flock.synth.ugenCache = function () {
         var that = {
             named: {},
@@ -880,7 +877,15 @@ var fluid = fluid || require("infusion"),
     };
     
     
-    flock.synth.groupFinalInit = function (that) {
+    fluid.defaults("flock.synth.group", {
+        gradeNames: ["fluid.modelComponent", "flock.nodeList", "flock.autoEnviro", "autoInit"],
+        mergePolicy: {
+            enviro: "nomerge"
+        },
+        rate: flock.rates.AUDIO
+    });
+    
+    flock.synth.group.finalInit = function (that) {
         that.rate = that.options.rate;
         that.enviro = that.options.enviro || flock.enviro.shared;
         
@@ -896,15 +901,6 @@ var fluid = fluid || require("infusion"),
         
         that.init();
     };
-    
-    fluid.defaults("flock.synth.group", {
-        gradeNames: ["fluid.modelComponent", "flock.nodeList", "flock.autoEnviro", "autoInit"],
-        finalInitFunction: "flock.synth.groupFinalInit",
-        mergePolicy: {
-            enviro: "nomerge"
-        },
-        rate: flock.rates.AUDIO
-    });
     
     flock.synth.group.makeDispatcher = function (nodes, msg) {
         return function () {
