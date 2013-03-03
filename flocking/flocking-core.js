@@ -170,6 +170,43 @@ var fluid = fluid || require("infusion"),
         return buffer;
     };
     
+    flock.range = function (buf) {
+        var range = {
+            max: Number.NEGATIVE_INFINITY,
+            min: Infinity
+        };
+        var i, val;
+        
+        for (i = 0; i < buf.length; i++) {
+            val = buf[i];
+            if (val > range.max) {
+                range.max = val;
+            }
+            if (val < range.min) {
+                range.min = val;
+            }
+        }
+        
+        return range;
+    };
+    
+    flock.scale = function (buf, minVal, maxVal) {
+        if (!buf) {
+            return;
+        }
+        
+        var range = flock.range(buf),
+            mul = (range.max - range.min) / 2,
+            sub = (range.max + range.min) / 2,
+            i;
+        
+        for (i = 0; i < buf.length; i++) {
+            buf[i] = (buf[i] - sub) / mul;
+        }
+        
+        return buf;
+    };
+    
     
     flock.interpolate = {};
     
@@ -180,7 +217,7 @@ var fluid = fluid || require("infusion"),
         idx = idx % table.length;
         
         var i1 = Math.floor(idx),
-            i2 = i1 + 1 % table.length,
+            i2 = (i1 + 1) % table.length,
             frac = idx - i1,
             y1 = table[i1],
             y2 = table[i2];
@@ -197,8 +234,8 @@ var fluid = fluid || require("infusion"),
         var len = table.length,
             i1 = Math.floor(idx),
             i0 = i1 > 0 ? i1 - 1 : len - 1,
-            i2 = i1 + 1 % len,
-            i3 = i1 + 2 % len,
+            i2 = (i1 + 1) % len,
+            i3 = (i1 + 2) % len,
             frac = idx - i1,
             fracSq = frac * frac,
             fracCub = frac * fracSq,

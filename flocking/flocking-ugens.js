@@ -350,13 +350,13 @@ var fluid = fluid || require("infusion"),
                 idx;
 
             for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.phase, k += m.strides.freq) {
-                idx = Math.round(phase + phaseOffset[j] * tableIncRad);
+                idx = phase + phaseOffset[j] * tableIncRad;
                 if (idx >= tableLen) {
                     idx -= tableLen;
                 } else if (idx < 0) {
                     idx += tableLen;
                 }
-                output[i] = table[idx];
+                output[i] = that.interpolate ? that.interpolate(idx, table) : table[Math.floor(idx)];
                 phase += freq[k] * tableIncHz;
                 if (phase >= tableLen) {
                     phase -= tableLen;
