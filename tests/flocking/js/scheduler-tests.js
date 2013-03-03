@@ -75,7 +75,11 @@ var flock = flock || {};
             scheduledDelay = 500;
         
         sked = flock.scheduler.async({
-            timeConverter: "flock.convert.ms"
+            components: {
+                timeConverter: {
+                    type: "flock.convert.ms"
+                }
+            }
         });
         
         var scheduledAt;
@@ -107,7 +111,11 @@ var flock = flock || {};
             scheduledAt;
         
         sked = flock.scheduler.async({
-            timeConverter: "flock.convert.ms"
+            components: {
+                timeConverter: {
+                    type: "flock.convert.ms"
+                }
+            }
         });
         
         makeRecordingListener = function (record, prop) {
@@ -145,7 +153,11 @@ var flock = flock || {};
             callback;
         
         sked = flock.scheduler.async({
-            timeConverter: "flock.convert.ms"
+            components: {
+                timeConverter: {
+                    type: "flock.convert.ms"
+                }
+            }
         });
         
         callback = function () {
@@ -184,7 +196,11 @@ var flock = flock || {};
             testingListener;
         
         sked = flock.scheduler.async({
-            timeConverter: "flock.convert.ms"
+            components: {
+                timeConverter: {
+                    type: "flock.convert.ms"
+                }
+            }
         });
         
         makeRecordingListener = function (record, prop) {
@@ -242,7 +258,11 @@ var flock = flock || {};
                 stages;
         
             sked = flock.scheduler.async({
-                timeConverter: "flock.convert.ms"
+                components: {
+                    timeConverter: {
+                        type: "flock.convert.ms"
+                    }
+                }
             });
             
             runNextTestStage = function () {

@@ -17,10 +17,6 @@ Send your synths via Ajax, save them for later using HTML5 local data storage, o
 other synthesis engines. In the future, this JSON-based format will also enable better authoring tools and 
 synthesis environments to be built on top of Flocking.
 
-Flocking is light on dependencies--no classical inheritance systems or other funny stuff to buy into. 
-Just plain old objects and functions. jQuery is there to provide a bit of extra help, 
-but you're free to pick the frameworks and tools you love the best.
-
 
 Community
 ---------
@@ -40,8 +36,6 @@ Flocking is an early prototype. It has bugs, it's growing fast, and help is welc
  * More unit generators! 
    * ADSR envelopes
    * Dynamics processor (compressor/limiter)
-   * FIR & IIR Filters
-   * Granular synthesis
  * The ability to record sessions and export an audio file from your browser
  
  

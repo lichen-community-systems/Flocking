@@ -16,6 +16,15 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
     
+    fluid.defaults("flock.enviro.webkit", {
+        gradeNames: ["fluid.modelComponent", "autoInit"],
+        mergePolicy: {
+            genFn: "nomerge",
+            nodes: "nomerge",
+            buses: "nomerge"
+        }
+    });
+    
     var setupWebKitEnviro = function (that) {
         that.jsNode.onaudioprocess = function (e) {
             // TODO: Do all these settings need to be read every time onaudioprocess gets called?
@@ -68,7 +77,12 @@ var fluid = fluid || require("infusion"),
      *
      * @param that the environment to mix into
      */
-    flock.enviro.webkit = function (that) {
+    flock.enviro.webkit.finalInit = function (that) {
+        that.audioSettings = that.options.audioSettings;
+        that.buses = that.options.buses;
+        that.nodes = that.options.nodes;
+        that.gen = that.options.genFn;
+        
         // Singleton AudioContext since the webkit implementation
         // freaks if we try to instantiate a new one.
         if (!flock.enviro.webkit.audioContext) {
@@ -88,5 +102,9 @@ var fluid = fluid || require("infusion"),
         
         setupWebKitEnviro(that);
     };
+    
+    fluid.demands("flock.enviro.audioStrategy", "flock.platform.webkit", {
+        funcName: "flock.enviro.webkit"
+    });
 
 }());

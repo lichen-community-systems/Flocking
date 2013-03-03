@@ -8,6 +8,8 @@
     
         <script src="../../../third-party/jquery/js/jquery.min.js"></script>
         <script src="../../../third-party/infusion/js/Fluid.js"></script>
+        <script src="../../../third-party/infusion/js/FluidIoC.js"></script>
+        <script src="../../../third-party/infusion/js/DataBinding.js"></script>
         <script src="../../../third-party/dspapi/js/dspapi.js"></script>
         
         <script src="../../../flocking/flocking-core.js"></script>
@@ -575,7 +577,7 @@ var synth = flock.synth({
     sources: makeHarmonics(fundamentalMultiplier)
 });
 
-synth.enviro.schedulers.async.repeat(2.0, function () {
+synth.enviro.asyncScheduler.repeat(2.0, function () {
     var fundamental = (fundamentalMultiplier * Math.random()) + 60;
     synth.input("adder.sources", makeHarmonics(fundamental));
 });

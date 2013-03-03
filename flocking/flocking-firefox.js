@@ -16,19 +16,44 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
     
+    fluid.defaults("flock.enviro.moz", {
+        gradeNames: ["fluid.modelComponent", "autoInit"],
+        components: {
+            genScheduler: {
+                type: "flock.scheduler.async",
+                options: {
+                    components: {
+                        timeConverter: {
+                            type: "flock.convert.ms"
+                        }
+                    }
+                }
+            }
+        },
+        
+        mergePolicy: {
+            genFn: "nomerge",
+            nodes: "nomerge",
+            buses: "nomerge"
+        }
+    });
+    
     /**
      * Mixes in Firefox-specific Audio Data API implementations for outputting audio
      *
      * @param that the environment to mix into
      */
-    flock.enviro.moz = function (that) {
+    flock.enviro.moz.finalInit = function (that) {
+        // TODO: Remove options unpacking.
+        that.audioSettings = that.options.audioSettings;
+        that.gen = that.options.genFn;
+        that.nodes = that.options.nodes;
+        that.buses = that.options.buses;
+        
         that.audioEl = new Audio();
         that.model.bufferDur = (that.audioSettings.bufferSize / that.audioSettings.rates.audio) * 1000;
         that.model.queuePollInterval = Math.ceil(that.model.bufferDur / that.audioSettings.genPollIntervalFactor);
         that.audioEl.mozSetup(that.audioSettings.chans, that.audioSettings.rates.audio);
-        that.schedulers.gen = flock.scheduler.async({
-            timeConverter: "flock.convert.ms"
-        });
         
         var numSamps = that.audioSettings.bufferSize * that.audioSettings.chans;
         that.outBuffer = new Float32Array(numSamps);
@@ -43,7 +68,7 @@ var fluid = fluid || require("infusion"),
                 that.prebufferSilence();
             }
             
-            that.schedulers.gen.repeat(that.model.queuePollInterval, that.writeSamples);
+            that.genScheduler.repeat(that.model.queuePollInterval, that.writeSamples);
             that.scheduled = true;
         };
         
@@ -72,9 +97,13 @@ var fluid = fluid || require("infusion"),
         };
         
         that.stopGeneratingSamples = function () {
-            that.schedulers.gen.clearRepeat(that.model.writeInterval);
+            that.genScheduler.clearRepeat(that.model.writeInterval);
             that.scheduled = false;
         };
     };
+
+    fluid.demands("flock.enviro.audioStrategy", "flock.platform.moz", {
+        funcName: "flock.enviro.moz"
+    });
 
 }());

@@ -319,14 +319,16 @@ var fluid = fluid || require("infusion"),
     
     fluid.defaults("flock.scheduler.async", {
         gradeNames: ["fluid.littleComponent", "autoInit"],
-        timeConverter: {
-            type: "flock.convert.seconds"
-        },
-        intervalClock: {
-            type: "flock.scheduler.webWorkerIntervalClock"
-        },
-        scheduleClock: {
-            type: "flock.scheduler.webWorkerScheduleClock"
+        components: {
+            timeConverter: {
+                type: "flock.convert.seconds"
+            },
+            intervalClock: {
+                type: "flock.scheduler.webWorkerIntervalClock"
+            },
+            scheduleClock: {
+                type: "flock.scheduler.webWorkerScheduleClock"
+            }
         }
     });
     
@@ -441,14 +443,6 @@ var fluid = fluid || require("infusion"),
             that.intervalClock.end();
             that.scheduleClock.end();
         };
-        
-        that.init = function () {
-            that.timeConverter = fluid.initSubcomponent(that, "timeConverter", [fluid.COMPONENT_OPTIONS]);
-            that.intervalClock = fluid.initSubcomponent(that, "intervalClock", [fluid.COMPONENT_OPTIONS]);
-            that.scheduleClock = fluid.initSubcomponent(that, "scheduleClock", [fluid.COMPONENT_OPTIONS]);
-        };
-         
-        that.init();
     };
 
 
@@ -465,10 +459,12 @@ var fluid = fluid || require("infusion"),
         argumentMap: {
             options: 1
         },
-        timeConverter: {
-            type: "flock.convert.beats",
-            options: {
-                bpm: 60
+        components: {
+            timeConverter: {
+                type: "flock.convert.beats",
+                options: {
+                    bpm: 60
+                }
             }
         }
     });

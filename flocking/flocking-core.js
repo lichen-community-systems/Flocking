@@ -47,16 +47,12 @@ var fluid = fluid || require("infusion"),
     fluid.registerNamespace("flock.platform");
     flock.platform.isBrowser = typeof (window) !== "undefined";
     flock.platform.os = flock.platform.isBrowser ? window.navigator.platform : fluid.require("os").platform();
+    flock.platform.isLinuxBased = flock.platform.os.indexOf("Linux") > -1 || flock.platform.os.indexOf("Android") > -1;
     flock.platform.browser = flock.platform.isBrowser ? jQuery.browser : {};
     flock.platform.audioEngine = flock.platform.isBrowser ? 
         (typeof (window.webkitAudioContext) !== "undefined" ? "webkit" : "moz") :
         "nodejs";
-    flock.platform.isLinuxBased = flock.platform.os.indexOf("Linux") > -1 || flock.platform.os.indexOf("Android") > -1;
-    flock.enviroStrategies = {
-        "webkit": "flock.enviro.webkit",
-        "moz": "flock.enviro.moz",
-        "nodejs": "flock.enviro.nodejs"
-    };
+    fluid.staticEnvironment.audioEngine = fluid.typeTag("flock.platform." + flock.platform.audioEngine);
 
     
     /*************
@@ -433,12 +429,13 @@ var fluid = fluid || require("infusion"),
     
     
     fluid.defaults("flock.nodeList", {
-        gradeNames: ["fluid.littleComponent", "autoInit"]
+        gradeNames: ["fluid.littleComponent", "autoInit"],
+        members: {
+            nodes: []
+        }
     });
     
-    flock.nodeList.finalInit = function (that) {
-        that.nodes = [];
-        
+    flock.nodeList.preInit = function (that) {
         that.head = function (node) {
             that.nodes.unshift(node);
         };
@@ -498,10 +495,27 @@ var fluid = fluid || require("infusion"),
             sampleFormat: flock.sampleFormats.FLOAT32NE,
             latency: 10,
             genPollIntervalFactor: flock.platform.isLinuxBased ? 1 : 20 // Only used on Firefox.
+        },
+        components: {
+            asyncScheduler: {
+                type: "flock.scheduler.async"
+            },
+            
+            // TODO: These shared options should be factored into a separate component that is shared.
+            audioStrategy: {
+                type: "flock.enviro.audioStrategy",
+                options: {
+                    audioSettings: "{enviro}.options.audioSettings",
+                    model: "{enviro}.model",
+                    nodes: "{enviro}.nodes",
+                    buses: "{enviro}.buses",
+                    genFn: "{enviro}.gen"
+                }
+            }
         }
     });
     
-    flock.enviro.finalInit = function (that) {
+    flock.enviro.preInit = function (that) {
         that.audioSettings = that.options.audioSettings;
         
         // TODO: Buffers are named but buses are numbered. Should we have a consistent strategy?
@@ -509,9 +523,6 @@ var fluid = fluid || require("infusion"),
         that.buses = flock.enviro.createAudioBuffers(that.audioSettings.numBuses, 
                 that.audioSettings.rates.control);
         that.buffers = {};
-        that.schedulers = {
-            async: flock.scheduler.async()
-        };
         
         /**
          * Starts generating samples from all synths.
@@ -524,7 +535,7 @@ var fluid = fluid || require("infusion"),
                 
             playState.total = dur === undefined ? Infinity :
                 playState.total === Infinity ? sps : playState.written + sps;
-            that.startGeneratingSamples();
+            that.audioStrategy.startGeneratingSamples();
             that.model.isPlaying = true;
         };
         
@@ -532,13 +543,13 @@ var fluid = fluid || require("infusion"),
          * Stops generating samples from all synths.
          */
         that.stop = function () {
-            that.stopGeneratingSamples();
+            that.audioStrategy.stopGeneratingSamples();
             that.model.isPlaying = false;
         };
         
         that.reset = function () {
             that.stop();
-            that.schedulers.async.clearAll();
+            that.asyncScheduler.clearAll();
             // Clear the environment's node list.
             while (that.nodes.length > 0) {
                 that.nodes.pop();
@@ -565,10 +576,6 @@ var fluid = fluid || require("infusion"),
                 }
             });
         };
-
-        // TODO: Convert to subcomponent with IoC.
-        var strategyType = flock.enviroStrategies[flock.platform.audioEngine];
-        fluid.invokeGlobalFunction(strategyType, [that]);
     };
     
     flock.enviro.clearBuses = function (numBuses, buses, busLen) {
@@ -602,16 +609,16 @@ var fluid = fluid || require("infusion"),
         }
     };
     
-    flock.autoEnviroFinalInit = function (that) {
+    
+    fluid.defaults("flock.autoEnviro", {
+        gradeNames: ["fluid.littleComponent", "autoInit"]
+    });
+    
+    flock.autoEnviro.finalInit = function (that) {
         if (!flock.enviro.shared && !that.options.enviro) {
             flock.init();
         }
     };
-    
-    fluid.defaults("flock.autoEnviro", {
-        gradeNames: ["fluid.littleComponent", "autoInit"],
-        finalInitFunction: "flock.autoEnviroFinalInit"
-    });
     
     
     /**
@@ -621,10 +628,9 @@ var fluid = fluid || require("infusion"),
     flock.synth = function (def, options) {
         var that = fluid.initComponent("flock.synth", options);
         that.rate = flock.rates.AUDIO;
-        that.enviro = that.options.enviro || flock.enviro.shared;
+        that.enviro = that.enviro || flock.enviro.shared;
         that.model.sampsPerBlock = that.enviro.audioSettings.rates.control;
         that.model.synthDef = def;
-        that.ugens = flock.synth.ugenCache();
         
         /**
          * Generates an audio rate signal by evaluating this synth's unit generator graph.
@@ -731,15 +737,21 @@ var fluid = fluid || require("infusion"),
         },
         mergePolicy: {
             enviro: "nomerge"
+        },
+        components: {
+            ugens: {
+                type: "flock.synth.ugenCache"
+            }
         }
     });
     
-    // TODO: Componentize.
-    flock.synth.ugenCache = function () {
-        var that = {
-            named: {},
-            active: []
-        };
+    fluid.defaults("flock.synth.ugenCache", {
+        gradeNames: ["fluid.littleComponent", "autoInit"]
+    });
+    
+    flock.synth.ugenCache.finalInit = function (that) {
+        that.named = {};
+        that.active = [];
         
         that.add = function (ugens) {
             var i,
@@ -887,7 +899,7 @@ var fluid = fluid || require("infusion"),
     
     flock.synth.group.finalInit = function (that) {
         that.rate = that.options.rate;
-        that.enviro = that.options.enviro || flock.enviro.shared;
+        that.enviro = that.enviro || flock.enviro.shared;
         
         flock.synth.group.makeDispatchedMethods(that, [
             "input", "get", "set", "gen", "play", "pause"
