@@ -1745,32 +1745,42 @@ var flock = flock || {};
         return that;
     };
     
-    // input arguments should be - delayLength, numGrains, grainLength (with randomization parameter?)
+    // input arguments should be - delayDur, numGrains, grainDur (with randomization parameter?)
     flock.ugen.granulator = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
      
         $.extend(true, that.model, {
             grainLength: 0,
             numGrains: 0,
-            delayLength: that.model.sampleRate * inputs.delayLength.inputs.value,
             currentGrainPosition: [],
             currentGrainWindowPosition: [],
             windowFunction: [],
             writePos: 0
         });
-     
-        that.delayLine = new Float32Array(that.model.delayLength);
+        
            
         that.gen = function (numSamps) {
             var m = that.model,
             inputs = that.inputs,
             out = that.output,
+			grainDur = inputs.grainDur.output[0],
+			delayDur = inputs.delayDur.output[0],
             source = inputs.source.output,
-            grainLength = that.model.sampleRate * inputs.grainLength.output[0], 
             numGrains = inputs.numGrains.output[0],
             i,
             j;
                  
+			if (m.delayDur !== delayDur) {
+				m.delayDur = delayDur;
+				delayLength = m.sampleRate * m.delayDur;
+				that.delayLine = new Float32Array(that.model.delayLength);
+			}	 
+			
+			if (m.grainDur !== grainDur) {
+				m.grainDur = grainDur;
+	            grainLength = m.sampleRate * m.grainDur;
+			}
+
                  
             // if numGrains has changed, zero the extra buffers
             if (m.numGrains !== numGrains) {
@@ -1808,5 +1818,20 @@ var flock = flock || {};
         };
         return that;
     };
+	
+	flock.defaults("flock.ugen.granulator", {
+		rate: "audio",
+		inputs: {
+			grainLength: 0.1,
+			numGrains: 5,
+			delayDur: 1,
+		},
+		options: {
+            currentGrainPosition: [],
+            currentGrainWindowPosition: [],
+            windowFunction: [],
+            writePos: 0
+		}
+	});
 
 }(jQuery));
