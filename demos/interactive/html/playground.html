@@ -10,6 +10,7 @@
         <script src="../lib/ace_0.2.0/ace.js" charset="utf-8"></script>
         <script src="../lib/ace_0.2.0/theme-twilight.js" charset="utf-8"></script>
         <script src="../lib/ace_0.2.0/mode-javascript.js" charset="utf-8"></script>
+        <script src="../../../third-party/dspapi/js/dspapi.js"></script>
         
         <script src="../../../flocking/flocking-core.js"></script>
         <script src="../../../flocking/flocking-parser.js"></script>
@@ -43,44 +44,50 @@
                     <option value="simple_triangle">Triangle</option>
                     <option value="simple_square">Square</option>
                     <option value="simple_saw">Saw</option>
+                    <option value="stereo">Stereo</option>
+                    <option value="freq_stairs">Frequency stairs</option>
                 </optgroup>
                 <optgroup label="Noise">
+                    <option value="noise_white">White noise</option>
                     <option value="noise_dust">Dust</option>
                     <option value="noise_lf">LFNoise</option>
                     <option value="noise_sin">LFNoise &amp; SinOsc</option>
                     <option value="noise_impulse">Impulse</option>
+                    <option value="impulse_phase">Impulse Phase Modulation</option>
                 </optgroup>
-                <optgroup label="Modulation">
+                <optgroup label="Synthesis Techniques">
                     <option value="amp_mod" selected="selected">Amplitude modulation</option>
                     <option value="freq_mod">Frequency modulation</option>
                     <option value="phase_mod">Phase modulation</option>
-                    <option value="impulse_phase">Impulse Phase Modulation</option>
+                    <option value="sum">Additive Synthesis</option>
                 </optgroup>
                 <optgroup label="Filters">
                     <option value="lowpass">Low pass filter</option>
                     <option value="highpass">High pass filter</option>
                     <option value="bandpass">Band pass filter</option>
                     <option value="bandreject">Band reject filter</option>
+                    <option value="delay">Delay</option>
                 </optgroup>
                 <optgroup label="Envelopes">
                     <option value="simpleASR">Simple Attack/Sustain/Release</option>
+                    <option value="decay">Decay</option>
                 </optgroup>
                 <optgroup label="Lines">
                     <option value="line_freq">SinOsc Freq</option>
                     <option value="line_mod">Mod SinOsc Freq</option>
                     <option value="line_phase">SinOsc Phase</option>
                 </optgroup>
-                <optgroup label="Mouse">
+                <optgroup label="DOM UGens">
+                    <option value="scope">Scope</option>
                     <option value="mouse_x">Mouse X</option>
                     <option value="mouse_y">Mouse Y</option>
                     <option value="mouse_xy">Mouse X &amp; Y</option>
                     <option value="mouse_click">Mouse click</option>
                 </optgroup>
-                <option value="freq_stairs">Frequency stairs</option>
-                <option value="scope">Scope</option>
-                <option value="stereo">Stereo</option>
-                <option value="sum">Additive Synthesis</option>
-                <option value="multipleSynths">Multiple Synths</option>
+                <optgroup label="Synths and Scheduling">
+                    <option value="multipleSynths">Multiple Synths</option>
+                    <option value="polyphonicSynth">Polyphonic Synth</option>
+                </optgroup>
             </select>
             <button id="load-button">Load</button>
         </div>
@@ -127,7 +134,8 @@
         // by a perfect fourth.
         var freq = synth.input("carrier.freq"),
             clock = flock.scheduler.async();
-        clock.repeat(1.0, function () {
+            
+            clock.repeat(1.0, function () {
             if (freq <= 3520) {
                 freq *= 4/3;
                 synth.input("carrier.freq", freq);
@@ -219,6 +227,50 @@
                 }
             }
         });
+        </script>
+        
+        <script type="application/flocking" id="decay">
+// Decay as an envelope for white noise.
+var synth = flock.synth({
+    ugen: "flock.ugen.decay",
+    source: {
+        ugen: "flock.ugen.impulse",
+        rate: "audio",
+        freq: {
+            ugen: "flock.ugen.xLine",
+            rate: "control",
+            start: 1,
+            end: 50,
+            duration: 20
+        },
+        phase: 0.25,
+        mul: 0.25
+    },
+    time: 0.2,
+    mul: {
+        ugen: "flock.ugen.whiteNoise"
+    }
+});
+        </script>
+        
+        <script type="application/flocking" id="noise_white">
+// Filtering white noise with the mouse.
+var synth = flock.synth({
+    ugen: "flock.ugen.filter.biquad.bp",
+    source: {
+        ugen: "flock.ugen.whiteNoise",
+        mul: 0.5
+    },
+    freq: {
+        ugen: "flock.ugen.mouse.cursor",
+        mul: 1660,
+        add: 40,
+        options: {
+            interoplation: "exponential"
+        }
+    },
+    q: 2.0
+});
         </script>
         
         <script type="application/flocking" id="noise_dust">// Simple example of Dust generating random audio noise.
@@ -439,6 +491,39 @@ var synth = flock.synth(
         });
         </script>
         
+        <script type="application/flocking" id="delay">
+// Use Dust to trigger the Delay unit generator as an envelope for a Decaying WhiteNoise source
+var synth = flock.synth({
+    ugen: "flock.ugen.delay",
+    source: {
+        ugen: "flock.ugen.decay",
+        source: {
+            ugen: "flock.ugen.dust",
+            density: 1.0,
+            mul: 0.5
+        },
+        time: 0.3,
+        mul: {
+            ugen: "flock.ugen.whiteNoise"
+        }
+    },
+    maxTime: 1.0,
+    time: 0.2,
+    add: {
+        ugen: "flock.ugen.decay",
+        source: {
+            ugen: "flock.ugen.dust",
+            density: 1.0,
+            mul: 0.5
+        },
+        time: 0.3,
+        mul: {
+            ugen: "flock.ugen.whiteNoise"
+        }
+    }
+});
+        </script>
+        
         <script type="application/flocking" id="sum">
 // A bank of oscillators added together.
 var harmonics = [1, 3, 5, 7, 11, 13, 15, 17, 19, 21],
@@ -524,9 +609,78 @@ clock.repeat(1, function () {
     intervalSynth.input("carrier.freq", fundamental * newInterval);
 });
         </script>
+        <script type="application/flocking" id="polyphonicSynth">
+var fundamental = 440;
+
+var polySynth = flock.synth.polyphonic({
+    id: "carrier",
+    ugen: "flock.ugen.sin",
+    freq: fundamental,
+    mul: {
+        id: "env",
+        ugen: "flock.ugen.env.simpleASR",
+        attack: 0.25,
+        sustain: 1.0,
+        release: 0.5
+    }
+});
+
+var score = [
+    {
+        action: "noteOn",
+        noteName: "root",
+        change: {
+            "carrier.freq": fundamental
+        }
+    },
+
+    {
+        action: "noteOn",
+        noteName: "mediant",
+        change: {
+            "carrier.freq": fundamental * 5/4
+        }
+    },
+
+    {
+        action: "noteOn",
+        noteName: "dominant",
+        change: {
+            "carrier.freq": fundamental * 3/2
+        }
+    },
+
+    {
+        action: "noteOff",
+        noteName: "root"
+    },
+
+    {
+        action: "noteOff",
+        noteName: "mediant"
+    },
+
+    {
+        action: "noteOff",
+        noteName: "dominant"
+    }
+];
+
+var clock = flock.scheduler.async();
+
+var idx = 0;
+clock.repeat(0.5, function () {
+    if (idx >= score.length) {
+        idx = 0;
+    }
+    var event = score[idx];
+    polySynth[event.action](event.noteName, event.change);
+    idx++;
+});
+        </script>
         <script type="application/flocking" id="lowpass">
 var synth = flock.synth({
-    ugen: "flock.ugen.filter.butter.lp",
+    ugen: "flock.ugen.filter.biquad.lp",
     freq: {
         ugen: "flock.ugen.sin",
         rate: "control",
@@ -544,13 +698,13 @@ var synth = flock.synth({
     source: {
         ugen: "flock.ugen.lfSaw",
         freq: 200,
-        mul: 0.25
+        mul: 0.1
     }
 });
         </script>
         <script type="application/flocking" id="highpass">
 var synth = flock.synth({
-    ugen: "flock.ugen.filter.butter.hp",
+    ugen: "flock.ugen.filter.biquad.hp",
     freq: {
         ugen: "flock.ugen.sin",
         rate: "control",
@@ -568,44 +722,49 @@ var synth = flock.synth({
     source: {
         ugen: "flock.ugen.lfSaw",
         freq: 200,
-        mul: 0.25
+        mul: 0.1
     }
 });
         </script>
         <script type="application/flocking" id="bandpass">
 var synth = flock.synth({
-    ugen: "flock.ugen.filter.butter.bp",
+    ugen: "flock.ugen.filter.biquad.bp",
     freq: {
         ugen: "flock.ugen.mouse.cursor",
+        options: {
+            interpolation: "exponential"
+        },
         mul: 10000,
         add: 100,
         lag: 1
     },
-    bandwidth: 1350,
+    q: 3.0,
     source: {
         ugen: "flock.ugen.lfSaw",
         freq: 200,
-        mul: 0.25
+        mul: 0.1
     }
 });
         </script>
         <script type="application/flocking" id="bandreject">
 var synth = flock.synth({
-    ugen: "flock.ugen.filter.butter.br",
+    ugen: "flock.ugen.filter.biquad.br",
     freq: {
         ugen: "flock.ugen.mouse.cursor",
+        options: {
+            interpolation: "exponential"
+        },
         mul: 10000,
         add: 100,
         lag: 1
     },
-    bandwidth: 1350,
+    q: 3.0,
     source: {
         ugen: "flock.ugen.lfSaw",
         freq: 200,
-        mul: 0.25
+        mul: 0.1
     }
 });
-
         </script>
     </body>
 </html>

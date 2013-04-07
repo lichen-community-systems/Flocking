@@ -103,7 +103,11 @@ flock.test = flock.test || {};
     
     // TODO: Create these graphs declaratively!
     
-    module("Output tests");
+    module("Output tests", {
+        setup: function () {
+            flock.enviro.shared = flock.enviro();
+        }
+    });
     
     var checkOutput = function (numSamps, chans, outUGen, expectedBuffer, msg) {
         var audioSettings = {
@@ -115,7 +119,8 @@ flock.test = flock.test || {};
         };
         
         var evalFn = function () {
-            flock.enviro.shared.clearBuses();
+            var env = flock.enviro.shared;
+            flock.enviro.clearBuses(env.audioSettings.numBuses, env.buses, env.audioSettings.rates.control);            
             outUGen.gen(numSamps);
         };
         var actual = flock.interleavedWriter(new Float32Array(numSamps * chans), 
@@ -275,6 +280,16 @@ flock.test = flock.test || {};
         
         // Two seconds worth of samples. The resulting buffer should contain double the number of unique values.
         generateAndCheckNoise(lfNoise, 88200, 8);
+    });
+    
+    test("flock.ugen.lfNoise() linear interpolation", function () {
+        var freq = flock.ugen.value({value: 4}, new Float32Array(44100));
+        var lfNoise = flock.ugen.lfNoise({freq: freq}, new Float32Array(44100), {
+            interpolation: "linear"
+        });
+        lfNoise.gen(44100);
+        flock.test.testUnbrokenOutput(lfNoise.output, -1.0, 1.0);
+        flock.test.assertContinuous(lfNoise.output, 0.0001, "The output should be smooth and continuous when interpolated.")
     });
     
     
@@ -535,21 +550,10 @@ flock.test = flock.test || {};
         return ug;
     };
     
-    var checkUGenShape = function (ug) {
-        flock.test.assertNotNaN(ug.output, 
-            "The ugen should never output NaN.");
-        flock.test.assertNotSilent(ug.output, 
-            "1 second of output from the ugen should not be completely silent");
-        flock.test.assertUnbroken(ug.output, 
-            "The ugen should produce an unbroken audio tone.");
-        flock.test.assertWithinRange(ug.output, -0.75, 0.75, 
-            "The ugen should produce output values ranging between -0.75 and 075.");
-    };
-    
     var testOsc = function (ugenType, otherTests) {
         test(ugenType, function () {
             var ug = makeAndPrimeOsc(ugenType, 44100);
-            checkUGenShape(ug);
+            flock.test.testUnbrokenOutput(ug.output, -0.75, 0.75);
             if (otherTests) {
                 otherTests(ug);
             }
@@ -646,7 +650,12 @@ flock.test = flock.test || {};
     });
     
     
-    module("flock.ugen.playBuffer() tests");
+    module("flock.ugen.playBuffer() tests", {
+        setup: function () {
+            // Register the buffer ourselves. Buffers are multichannel, so need to be wrapped in an array.
+            flock.enviro.shared.buffers[playbackDef.inputs.buffer.id] = [flock.test.fillBuffer(1, 64)];
+        }
+    });
     
     var playbackDef = {
         ugen: "flock.ugen.playBuffer",
@@ -658,9 +667,6 @@ flock.test = flock.test || {};
             speed: 1.0
         }
     };
-
-    // Register the buffer ourselves. Buffers are multichannel, so need to be wrapped in an array.
-    flock.enviro.shared.buffers[playbackDef.inputs.buffer.id] = [flock.test.fillBuffer(1, 64)];
 
     test("flock.ugen.playBuffer, speed: 1.0", function () {
         var player = flock.parse.ugenForDef(playbackDef);
@@ -933,7 +939,7 @@ flock.test = flock.test || {};
             sources: {
                 ugen: "flock.test.mockUGen",
                 options: {
-                    buffer: flock.test.ascendingBuffer(64)
+                    buffer: flock.test.ascendingBuffer(64, 1)
                 }
             }
         }
@@ -985,7 +991,7 @@ flock.test = flock.test || {};
     });
     
     test("flock.ugen.normalize()", function () {
-        var testBuffer = flock.test.ascendingBuffer(64, -32),
+        var testBuffer = flock.test.ascendingBuffer(64, -31),
             mock = {
                 ugen: "flock.test.mockUGen",
                 options: {
@@ -1009,14 +1015,433 @@ flock.test = flock.test || {};
         
         var normalizer = normalizerSynth.ugens.named.normalizer;
         normalizerSynth.gen();
-        var expected = flock.normalize(flock.test.ascendingBuffer(64, -32), 1.0);
+        var expected = flock.normalize(flock.test.ascendingBuffer(64, -31), 1.0);
         deepEqual(normalizer.output, expected,
             "The signal should be normalized to 1.0.");
         
         normalizer.input("max", 0.5);
         normalizer.gen(64);
-        expected = flock.normalize(flock.test.ascendingBuffer(64, -32), 0.5);
+        expected = flock.normalize(flock.test.ascendingBuffer(64, -31), 0.5);
         deepEqual(normalizer.output, expected,
             "When the 'max' input is changed to 0.5, the signal should be normalized to 0.5");
     });
+    
+
+    module("flock.ugen.math() tests");
+    
+    var testMath = function (synthDef, expected, msg) {
+        synthDef.id = "math";
+        var synth = flock.synth(synthDef),
+            math = synth.ugens.named.math;
+        math.gen();
+        deepEqual(math.output, expected, msg);
+    };
+    
+    test("flock.ugen.math()", function () {
+        testMath({
+            ugen: "flock.ugen.math",
+            inputs: {
+                source: 2,
+                add: 5
+            }
+        }, flock.test.constantBuffer(64, 7), "Value add");
+        
+        testMath({
+            ugen: "flock.ugen.math",
+            inputs: {
+                source: 3,
+                sub: 2
+            }
+        }, flock.test.constantBuffer(64, 1), "Value subtract");
+        
+        testMath({
+            ugen: "flock.ugen.math",
+            inputs: {
+                source: 3,
+                mul: 2
+            }
+        }, flock.test.constantBuffer(64, 6), "Value multiply");
+        
+        testMath({
+            ugen: "flock.ugen.math",
+            inputs: {
+                source: 3,
+                div: 2
+            }
+        }, flock.test.constantBuffer(64, 1.5), "Value divide");
+        
+        var incBuffer = flock.generate(64, function (i) {
+            return i + 1;
+        });
+        
+        var expected = flock.generate(64, function (i) {
+            return i + 4;
+        });
+        
+        var krArUGenDef = {
+            ugen: "flock.ugen.math",
+            inputs: {
+                source: {
+                    ugen: "flock.test.mockUGen",
+                    rate: "audio",
+                    options: {
+                        buffer: incBuffer
+                    }
+                },
+                add: 3
+            }
+        };
+        
+        testMath(krArUGenDef, expected, "Audio rate source, value add");
+        
+        krArUGenDef.inputs.source.rate = "control";
+        testMath(krArUGenDef, flock.test.constantBuffer(64, 4), "Control rate source, value add");
+        
+        krArUGenDef.inputs.add = {
+            ugen: "flock.test.mockUGen",
+            rate: "control",
+            options: {
+                buffer: incBuffer
+            }
+        };
+        testMath(krArUGenDef, flock.test.constantBuffer(64, 2), "Control rate source, control rate add.");
+        
+        krArUGenDef.inputs.source.rate = "audio";
+        krArUGenDef.inputs.add.rate = "audio";
+        testMath(krArUGenDef, flock.generate(64, function (i) {
+            var j = i + 1;
+            return j + j;
+        }), "Audio rate source, audio rate add.");
+    });
+    
+    
+    module("flock.ugen.filter tests");
+    
+    var filterInputValues = [
+        {
+            freq: 440,
+            q: 1.0
+        },
+        {
+            freq: 880,
+            q: 0.5
+        },
+        {
+            freq: 22050,
+            q: 0.1
+        },
+        {
+            freq: 440,
+            q: 10
+        },
+        {
+            freq: 880,
+            q: 20
+        },
+        {
+            freq: 22050,
+            q: 100
+        }
+    ];
+    
+    var checkCoefficient = function (coefficient) {
+        ok(!isNaN(coefficient), "The coefficient should never be NaN");
+        ok(coefficient !== Infinity, "The coefficient should never be Infinity");
+        ok(coefficient !== Number.NEGATIVE_INFINITY, "The coefficient should never be negative Infinity");
+        //ok(coefficient >= -1.0 && coefficient <= 1.0, "The coefficient should be in the range of -1.0 to 1.0");
+    };
+    
+    var checkCoefficients = function (model) {
+        $.each(model.coeffs, function (i, coefficientArray) {
+            $.each(coefficientArray, function (i, coefficient) {
+                checkCoefficient(coefficient);
+            });
+        });
+    };
+    
+    var forEachFilterType = function (fn) {
+        $.each(flock.coefficients, function (recipeName, recipe) {
+            $.each(recipe, function (filterType, calculator) {
+                // TODO: This suggests that the payload for filter recipes isn't quite right.
+                if (filterType === "sizes") {
+                    return;
+                }
+                fn(recipeName, recipe, filterType, calculator);
+            });
+        });
+    };
+    
+    var testEachFilterInputValue = function (name, fn) {
+        test(name, function () {
+            $.each(filterInputValues, function (i, inputs) {
+                fn(inputs);
+            });
+        })
+    };
+    
+    // Test all coefficient recipes.
+    forEachFilterType(function (recipeName, receipe, filterType, fn) {
+        var name = "flock.coefficients." + recipeName + "." + filterType;
+        
+        testEachFilterInputValue(name, function (inputs) {
+            var model = {
+                coeffs: {
+                    a: new Float32Array(2),
+                    b: new Float32Array(3)
+                },
+                sampleRate: 44100
+            };
+            
+            fn(model, inputs.freq, inputs.q);
+            checkCoefficients(model);
+        });
+    });
+    
+    // Test the flock.ugen.filter unit generator with all filter types and a set of generic input values.
+    /*
+    forEachFilterType(function (recipeName, recipe, filterType) {
+        var name = "flock.ugen.filter() " + recipeName + "." + filterType;
+        testEachFilterInputValue(name, function (inputs) {
+            var ugen = {
+                id: "filter",
+                ugen: "flock.ugen.filter",
+                inputs: inputs,
+                options: {
+                    // TODO: API bug. I should just be able to specify a type (as a key path) without a recipe if I want.
+                    recipe: recipe,
+                    type: filterType
+                }
+            };
+            ugen.inputs.source = {
+                ugen: "flock.ugen.lfNoise",
+                inputs: {
+                    freq: 440,
+                    mul: 0.95
+                }
+            };
+            
+            var filterSynth = flock.synth(ugen);
+            filterSynth.gen(64);
+            flock.test.assertUnbrokenSignal(filterSynth.get("filter"), -1.0, 1.0);
+        });
+    });
+    */
+    
+    test("flock.ugen.delay", function () {
+        var sourceBuffer = flock.test.ascendingBuffer(64, 1),
+            sampGenCount = 0,
+            incrementingMock = {
+                ugen: "flock.test.mockUGen",
+                options: {
+                    buffer: sourceBuffer,
+                    gen: function (that, numSamps) {
+                        var i;
+                        for (i = 0; i < numSamps; i++) {
+                            that.output[i] = that.output[i] + sampGenCount;
+                        }
+                        sampGenCount += numSamps;
+                    }
+                }
+            },
+            delayLineDef = {
+                id: "delay",
+                ugen: "flock.ugen.delay",
+                inputs: {
+                    source: incrementingMock,
+                    time: 64 / 44100
+                }
+            };
+        
+        var delaySynth = flock.synth(delayLineDef);
+        var delay = delaySynth.ugens.named.delay;
+        delaySynth.gen();
+        
+        // First block should be silent.
+        var expected = new Float32Array(64);
+        deepEqual(delay.output, expected,
+            "With a delay time equal to the length of a block, the first output block should be silent.");
+        
+        // Second should contain the first block's contents.
+        delaySynth.gen();
+        expected = flock.test.ascendingBuffer(64, 1);
+        deepEqual(delay.output, expected,
+            "The delay's second block should contain the source's first block of samples.");
+        
+        // Third block should be similarly delayed.
+        delaySynth.gen();
+        expected = flock.test.ascendingBuffer(64, 65);
+        deepEqual(delay.output, expected,
+            "The delay's third block should contain the source's second block of samples.");
+    });
+    
+    var loopOneDef =  {
+        ugen: "flock.ugen.loop",
+        start: 1.0,
+        end: 66,
+        reset: 2.0,
+        step: 1.0
+    };
+    
+    var testTriggeredSignals = function (synth, ugen, tests) {
+        for (var i = 0; i < tests.length; i++) {
+            var test = tests[i];
+            if (test.trigger !== undefined) {
+                ugen.input("trigger", test.trigger);
+            }
+            synth.gen();
+            flock.test.assertArrayEquals(ugen.output, test.value, test.msg);
+        }
+    };
+    
+    var testLoopUGen = function (testSpecs) {
+        module("flock.ugen.loop");
+        $.each(testSpecs, function (i, testSpec) {
+            var def = $.extend(true, {rate: testSpec.rate, id: "looper"}, testSpec.def),
+                synth = flock.synth(def),
+                loop = synth.ugens.named.looper;
+            
+            test(testSpec.name, function () {
+                testTriggeredSignals(synth, loop, testSpec.tests);
+            });
+        });
+    };
+    
+    var loopTestSpecs = [
+        {
+            name: "audio rate",
+            rate: "audio",
+            def: loopOneDef,
+            tests: [
+                {
+                    value: flock.test.ascendingBuffer(64, 1),
+                    msg: "The loop unit generator should output a signal increasing from 1 to 64"
+                },
+                {
+                    value: flock.generate(64, function (i) {
+                        return i === 0 ? 65 : i;
+                    }),
+                    msg: "Then it should complete the cycle and loop back to the start point."
+                },
+                {
+                    value: flock.generate(64, function (i) {
+                        return i + 2 % 66;
+                    }),
+                    trigger: 1.0,
+                    msg: "When it receives a trigger signal, the loop ugen should move back to the reset point."
+                }
+            ]
+        },
+        {
+            name: "control rate",
+            rate: "control",
+            def: loopOneDef,
+            tests: [
+                {
+                    value: [1.0],
+                    msg: "The loop unit generator should output a control rate signal containing the first value."
+                },
+                {
+                    value: [2.0],
+                    msg: "At the next control point, it should have increased by one step value."
+                },
+                {
+                    value: [3.0],
+                    msg: "At the next control point, it should have continued to increase by one step value."
+                },
+                {
+                    value: [2.0],
+                    trigger: 1.0,
+                    msg: "When it receives a trigger signal, the loop ugen should move back to the reset point."
+                }
+            ]
+        },
+        {
+            name: "control rate, wraparound",
+            rate: "control",
+            def: {
+                ugen: "flock.ugen.loop",
+                start: 0.0,
+                end: 2.0,
+                step: 1.0
+            },
+            tests: [
+                {
+                    value: [0.0],
+                    msg: "The loop unit generator should output a control rate signal containing the first value."
+                },
+                {
+                    value: [1.0],
+                    msg: "At the next control point, it should increase by one step value."
+                },
+                {
+                    value: [0.0],
+                    msg: "At the next control point, it should have looped back to the start."
+                },
+                {
+                    value: [1.0],
+                    msg: "At the next control point, it should increase by one step value."
+                }
+            ]
+        },
+        {
+            name: "control rate, step value is the duration of a sample in seconds.",
+            rate: "control",
+            def: {
+                ugen: "flock.ugen.loop",
+                start: 0,
+                end: 1.0,
+                step: 1.0 / 44100
+            },
+            tests: [
+                {
+                    value: [0],
+                    msg: "The value at the first control period should be start value."
+                },
+                {
+                    value: flock.generate(1, 1.0 / 44100),
+                    msg: "At the second control point, the value should be the duration of 64 samples."
+                }
+            ]
+        }
+    ];
+    
+    testLoopUGen(loopTestSpecs);
+    
+    module("flock.ugen.bufferDuration tests", {
+        setup: function () {
+            flock.enviro.shared.buffers["bufferDurationTests"] = [
+                flock.test.ascendingBuffer(110250, 0) // 2.5 second buffer
+            ];
+        }
+    });
+    
+    var testBufferDuration = function (rate) {
+        test(rate + " rate", function () {
+            var durationDef = {
+                id: "dur",
+                rate: rate,
+                ugen: "flock.ugen.bufferDuration",
+                buffer: {
+                    id: "bufferDurationTests"
+                }
+            };
+        
+            var synth = flock.synth(durationDef),
+                durUGen = synth.ugens.named.dur;
+        
+            synth.gen();
+            equal(durUGen.output[0], 2.5,
+                "The buffer's length in seconds should be returned");
+        });
+    };
+    
+    var testBufferDurationAtAllRates = function () {
+        var supportedRates = ["constant", "control"];
+        $.each(supportedRates, function (i, rate) {
+            testBufferDuration(rate);
+        });
+    };
+    
+    testBufferDurationAtAllRates();
+    
 }());

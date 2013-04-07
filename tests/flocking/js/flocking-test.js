@@ -446,6 +446,215 @@ var flock = flock || {};
         testSetMultiple("input");
     });
     
+    test("flock.nodeList", function () {
+        var nl = flock.nodeList();
+        equal(nl.nodes.length, 0,
+            "When a NodeList is instantiated, it should contain no nodes.");
+        
+        var testNodes = [{id: "first"}, {id: "second"}, {id: "third"}];
+        nl.head(testNodes[0]);
+        equal(nl.nodes.length, 1,
+            "The node should have been added to the list.");
+        equal(nl.nodes[0], testNodes[0],
+            "The node should have been added at the correct index.");
+        
+        nl.remove(testNodes[0]);
+        equal(nl.nodes.length, 0,
+            "The node should have been removed from the list");
+            
+        nl.remove(testNodes[0]);
+        equal(nl.nodes.length, 0,
+            "Removing a node that is not in the list should not cause errors, and the list should remain the same.");
+        
+        nl.head(testNodes[2]);
+        nl.head(testNodes[0]);
+        deepEqual(nl.nodes, [testNodes[0], testNodes[2]],
+            "Adding a node to the head of the list should put it in the correct position.");
+        
+        nl.tail(testNodes[0]);
+        deepEqual(nl.nodes, [testNodes[0], testNodes[2], testNodes[0]],
+            "Adding a node twice should include it twice, in the correct positions.");
+        
+        nl.remove(testNodes[0]);
+        deepEqual(nl.nodes, [testNodes[2], testNodes[0]],
+            "Removing a duplicate node should remove the first one.");
+        
+
+        nl.at(1, testNodes[1]);
+        deepEqual(nl.nodes, [testNodes[2], testNodes[1], testNodes[0]],
+            "Adding a node at a specific position should work.");
+        nl.remove(testNodes[1]);
+
+        nl.before(testNodes[0], testNodes[1]);
+        deepEqual(nl.nodes, [testNodes[2], testNodes[1], testNodes[0]],
+            "Adding a node before another node should work.");
+            
+        nl.after(testNodes[0], testNodes[1]);
+        deepEqual(nl.nodes, [testNodes[2], testNodes[1], testNodes[0], testNodes[1]],
+            "Adding a duplicate node after another node should work.");
+        
+        nl.remove(testNodes[1]);
+        nl.remove(testNodes[0]);
+        nl.after(testNodes[2], testNodes[0]);
+        deepEqual(nl.nodes, [testNodes[2], testNodes[0], testNodes[1]],
+            "Adding a node after another node should work.");
+    });
+    
+    var checkValueOnNodes = function (nodes, ugenName, inputName, expected) {
+        $.each(nodes, function (i, node) {
+            var actual = node.ugens.named[ugenName].input(inputName);
+            equal(expected, actual, "Node #" + i + " should have the correct value.")
+        });
+    };
+    
+    test("flock.synth.group", function () {
+        var synth1DidGen = false;
+        var synth2DidGen = false;
+        
+        var synthOpts = {
+            addToEnvironment: false
+        };
+        var synth1 = flock.synth({
+            id: "mock",
+            ugen: "flock.test.mockUGen",
+            freq: 110,
+            mul: 0.1,
+            options: {
+                buffer: flock.generate(64, 1),
+                gen: function () {
+                    synth1DidGen = true;
+                }
+            }
+        }, synthOpts);
+        var synth2 = flock.synth({
+            id: "mock",
+            ugen: "flock.test.mockUGen",
+            freq: 220,
+            mul: 0.2,
+            options: {
+                buffer: flock.generate(64, 2),
+                gen: function () {
+                    synth2DidGen = true;
+                }
+            }
+        }, synthOpts);
+        
+        var group = flock.synth.group(synthOpts);
+        group.head(synth1);
+        group.tail(synth2);
+        equals(2, group.nodes.length,
+            "Both synths should have been added to the group.");
+            
+        var inputVal = group.input("mock.freq");
+        equals(inputVal, 220,
+            "Getting an input on the group with input() should return the tail synth's value.");
+
+        inputVal = group.get("mock.freq");
+        equals(inputVal, 220,
+            "Getting an input on the group with get() should return the tail synth's value.");
+            
+        group.input("mock.freq", 440);
+        checkValueOnNodes(group.nodes, "mock", "freq", 440);
+
+        group.set("mock.mul", 0.5);
+        checkValueOnNodes(group.nodes, "mock", "mul", 0.5);
+        
+        group.gen();
+        ok(synth1DidGen && synth2DidGen,
+            "All nodes should recieve the gen() method when it is called on the group.");
+    });
+    
+    
+    var checkVoiceInputValues = function (synth, voiceName, expectedValues, msg) {
+        var inputVals = synth.activeVoices[voiceName].input(Object.keys(expectedValues));
+        deepEqual(inputVals, expectedValues, msg);
+    };
+    
+    var checkVoicesAndInputValues = function (synth, expectations, msg) {
+        var numActive = Object.keys(synth.activeVoices).length,
+            numExpected = Object.keys(expectations).length;
+        
+        equals(numActive, numExpected,
+            "The expected voices should be playing.");
+        
+        $.each(expectations, function (voiceName, expectedValues) {
+            checkVoiceInputValues(synth, voiceName, expectedValues, msg);
+        });
+    };
+    
+    var polySynthTestSpecs = [
+        {
+            event: "noteOn",
+            args: ["cat"],
+            expected: {
+                "cat": {
+                    "env.gate": 1,
+                    "carrier.freq": 440
+                }
+            },
+            msg: "The first voice should be active."
+        },
+        {
+            event: "noteOn",
+            args: ["dog", {
+                "carrier.freq": 220
+            }],
+            expected: {
+                cat: {
+                    "env.gate": 1,
+                    "carrier.freq": 440
+                },
+                dog: {
+                    "env.gate": 1,
+                    "carrier.freq": 220
+                }
+            },
+            msg: "Both voices should be active"
+        },
+        {
+            event: "noteOff",
+            args: ["cat"],
+            expected: {
+                "dog": {
+                    "env.gate": 1,
+                    "carrier.freq": 220
+                }
+            },
+            msg: "Only the second voice should still be active."
+        },
+        {
+            event: "noteOff",
+            args: ["dog"],
+            expected: {},
+            msg: "No voices should be active."
+        }
+    ];
+    
+    test("flock.synth.polyphonic", function () {
+        var def = {
+            id: "carrier",
+            ugen: "flock.test.mockUGen",
+            freq: 440,
+            mul: {
+                id: "env",
+                ugen: "flock.test.mockUGen",
+                gate: 0
+            }
+        };
+        
+        var poly = flock.synth.polyphonic(def, {
+            addToEnvironment: false
+        });
+        equals(Object.keys(poly.activeVoices).length, 0,
+            "When a polyphonic synth is instantiated, it should have no active voices.");
+        
+        $.each(polySynthTestSpecs, function (i, testSpec) {
+            var fn = poly[testSpec.event];
+            fn.apply(poly, testSpec.args);
+            checkVoicesAndInputValues(poly, testSpec.expected, testSpec.msg);
+        });
+    });
+    
     
     module("Parsing tests");
     

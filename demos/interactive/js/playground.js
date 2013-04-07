@@ -35,7 +35,7 @@ var demo = demo || {};
     var setupPlayButton = function (that) {
         // TODO: might be able to avoid eval()'ing if we load each demo's JavaScript source via Ajax and inject it as a script block.
         that.playButton.click(function (e) {
-    		if (!flock.enviro.shared.isPlaying) {
+    		if (!flock.enviro.shared.model.isPlaying) {
     		    eval(that.editor.getSession().getValue());
                 
     			that.playButton.html("Stop");
@@ -77,7 +77,7 @@ var demo = demo || {};
             var code = $("#" + id).html();
             that.editor.getSession().setValue(code);
             
-            if (flock.enviro.shared.isPlaying) {
+            if (flock.enviro.shared.model.isPlaying) {
                 that.playButton.click(); // Stop the previous demo if it is playing.
             }
         };

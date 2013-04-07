@@ -8,7 +8,7 @@
 
 /*global Float32Array, window, Mike, jQuery*/
 /*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
-    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
+    forin: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
 var flock = flock || {};
 
@@ -19,6 +19,7 @@ var flock = flock || {};
      * Utilities *
      *************/
     
+    // TODO: Check API; write unit tests.
     flock.aliasUGen = function (sourcePath, aliasName, inputDefaults, defaultOptions) {
         var root = flock.get(undefined, sourcePath);
         flock.set(root, aliasName, function (inputs, output, options) {
@@ -28,6 +29,7 @@ var flock = flock || {};
         flock.defaults(sourcePath + "." + aliasName, inputDefaults);
     };
     
+    // TODO: Check API; write unit tests.
     flock.aliasUGens = function (sourcePath, aliasesSpec) {
         var aliasName,
             settings;
@@ -144,7 +146,7 @@ var flock = flock || {};
             inputs: inputs,
             output: output,
             options: options,
-            model: {}
+            model: options.model || {}
         };
         
         that.options.audioSettings = that.options.audioSettings || flock.enviro.shared.audioSettings;
@@ -180,7 +182,31 @@ var flock = flock || {};
                 flock.isIterable(path) ? that.get(path) : that.set(path, val);
         };
     
-        that.onInputChanged = flock.identity; // No-op base implementation.
+        // TODO: Move this into a grade.
+        that.calculateStrides = function () {
+            var m = that.model,
+                strideNames = that.options.strideInputs,
+                inputs = that.inputs,
+                i,
+                name;
+            
+            m.strides = m.strides || {};
+            
+            for (i = 0; i < strideNames.length; i++) {
+                name = strideNames[i];
+                m.strides[name] = inputs[name].rate === flock.rates.AUDIO ? 1 : 0;
+            }
+        };
+        
+        // No-op base onInputChanged() implementation.
+        that.onInputChanged = flock.identity;
+        
+        // Assigns an interpolator function to the UGen.
+        // This is inactive by default, but can be used in custom gen() functions.
+        // Will be undefined if no interpolation default or option has been set,
+        // or if it is set to "none"--make sure you check before invoking it.
+        that.interpolate = flock.interpolate[that.options.interpolation];
+        
         return that;
     };
     
@@ -196,6 +222,63 @@ var flock = flock || {};
     });
 
 
+    flock.ugen.math = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        that.expandedSource = new Float32Array(that.options.audioSettings.rates.control);
+
+        that.krSourceKrInputGen = function () {
+            var op = that.activeInput,
+                input = that.inputs[op],
+                sourceBuf = flock.generate(that.expandedSource, that.inputs.source.output[0]);
+            DSP[op](that.output, sourceBuf, input.output[0]);
+        };
+        
+        that.krSourceArInputGen = function () {
+            var op = that.activeInput,
+                input = that.inputs[op],
+                sourceBuf = flock.generate(that.expandedSource, that.inputs.source.output[0]);
+            DSP[op](that.output, sourceBuf, input.output);
+        };
+        
+        that.arSourceKrInputGen = function () {
+            var op = that.activeInput,
+                input = that.inputs[op],
+                sourceBuf = that.inputs.source.output;
+            DSP[op](that.output, sourceBuf, input.output[0]);
+        };
+        
+        that.arSourceArInputGen = function () {
+            var op = that.activeInput,
+                input = that.inputs[op];
+            DSP[op](that.output, that.inputs.source.output, input.output);
+        };
+        
+        that.onInputChanged = function () {
+            // Find the first input and use it. Multiple inputters, beware.
+            // TODO: Support multiple operations.
+            var inputs = Object.keys(that.inputs),
+                i,
+                input,
+                isInputAudioRate;
+            
+            for (i = 0; i < inputs.length; i++) {
+                input = inputs[i];
+                if (input !== "source") {
+                    that.activeInput = input;
+                    isInputAudioRate = that.inputs[input].rate === "audio";
+                    that.gen = that.inputs.source.rate === "audio" ?
+                        (isInputAudioRate ? that.arSourceArInputGen : that.arSourceKrInputGen) :
+                        (isInputAudioRate ? that.krSourceArInputGen : that.krSourceKrInputGen);
+                    break;
+                }
+            }
+        };
+        
+        that.onInputChanged();
+        return that;
+    };
+    
+    
     flock.ugen.sum = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
@@ -253,14 +336,12 @@ var flock = flock || {};
                 tableIncRad = m.tableIncRad,
                 output = that.output,
                 phase = m.phase,
-                phaseInc = m.phaseInc,
-                freqInc = m.freqInc,
                 i,
                 j,
                 k,
                 idx;
 
-            for (i = 0, j = 0, k = 0; i < numSamps; i++, j += phaseInc, k += freqInc) {
+            for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.phase, k += m.strides.freq) {
                 idx = Math.round(phase + phaseOffset[j] * tableIncRad);
                 if (idx >= tableLen) {
                     idx -= tableLen;
@@ -295,12 +376,7 @@ var flock = flock || {};
     };
 
     flock.ugen.osc.onInputChanged = function (that) {
-        var m = that.model,
-            inputs = that.inputs;
-        
-        m.freqInc = inputs.freq.rate === flock.rates.AUDIO ? 1 : 0;
-        m.phaseInc = inputs.phase.rate === flock.rates.AUDIO ? 1 : 0;
-        
+        that.calculateStrides();
         flock.onMulAddInputChanged(that);
     };
     
@@ -309,6 +385,12 @@ var flock = flock || {};
         inputs: {
             freq: 440.0,
             phase: 0.0
+        },
+        options: {
+            strideInputs: [
+                "freq",
+                "phase"
+            ]
         }
     });
 
@@ -394,8 +476,6 @@ var flock = flock || {};
             var m = that.model,
                 freq = that.inputs.freq.output,
                 phaseOffset = that.inputs.phase.output,
-                freqInc = m.freqInc,
-                phaseInc = m.phaseInc,
                 out = that.output,
                 phase = m.phase,
                 sampleRate = m.sampleRate,
@@ -403,7 +483,7 @@ var flock = flock || {};
                 j,
                 k;
 
-            for (i = 0, j = 0, k = 0; i < numSamps; i++, j += phaseInc, k += freqInc) {
+            for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.phase, k += m.strides.freq) {
                 out[i] = Math.sin(phase + phaseOffset[j]);
                 phase += freq[k] / sampleRate * flock.TWOPI;
             }
@@ -430,7 +510,6 @@ var flock = flock || {};
         that.gen = function (numSamps) {
             var m = that.model,
                 freq = that.inputs.freq.output,
-                freqInc = m.freqInc,
                 out = that.output,
                 scale = m.scale,
                 phaseOffset = that.inputs.phase.output[0], // Phase is control rate
@@ -438,7 +517,7 @@ var flock = flock || {};
                 i,
                 j;
 
-            for (i = 0, j = 0; i < numSamps; i++, j += freqInc) {
+            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.freq) {
                 out[i] = phase + phaseOffset;
                 phase += freq[j] * scale;
                 if (phase >= 1.0) { 
@@ -456,6 +535,7 @@ var flock = flock || {};
             var m = that.model;
             m.freqInc = that.inputs.freq.rate === flock.rates.AUDIO ? 1 : 0;
             m.phase = 0.0;
+            that.calculateStrides();
             flock.onMulAddInputChanged(that);
         };
         
@@ -467,6 +547,9 @@ var flock = flock || {};
         rate: "audio",
         inputs: {
             phase: 0.0
+        },
+        options: {
+            strideInputs: ["freq"]
         }
     });
     
@@ -527,7 +610,7 @@ var flock = flock || {};
                 m = that.model,
                 out = that.output,
                 freq = inputs.freq.output,
-                freqInc = m.freqInc,
+                freqInc = m.strides.freq,
                 phaseOffset = inputs.phase.output[0],
                 phase = m.phase,
                 scale = m.scale,
@@ -553,9 +636,8 @@ var flock = flock || {};
         };
         
         that.onInputChanged = function () {
-            var m = that.model;
-            m.phase = 0.0;
-            m.freqInc = that.inputs.freq.rate === "audio" ? 1 : 0;
+            that.model.phase = 0.0;
+            that.calculateStrides();
             flock.onMulAddInputChanged(that);
         };
         
@@ -573,9 +655,82 @@ var flock = flock || {};
         inputs: {
             freq: 440,
             phase: 0.0
+        },
+        options: {
+            strideInputs: ["freq"]
         }
     });
     
+    // TODO: Resolve with other buffer-related code and move up to core.
+    // TODO: Use a real event system.
+    flock.buffer = {
+        listeners: {},
+        
+        addListener: function (id, ugen) {
+            if (!ugen.onBufferReady) {
+                return;
+            }
+            
+            var listeners = flock.buffer.listeners[id];
+            if (!listeners) {
+                listeners = flock.buffer.listeners[id] = [];
+            }
+            listeners.push(ugen);
+        },
+        
+        fireOnce: function (id, channelBuffer, buffer) {
+            var listeners = flock.buffer.listeners[id],
+                i,
+                ugen;
+                
+            if (!listeners || !buffer) {
+                return;
+            }
+            
+            // Fire onBufferReady() on each ugen listener.
+            for (i = 0; i < listeners.length; i++) {
+                ugen = listeners[i];
+                ugen.onBufferReady(channelBuffer, id, buffer);
+            }
+            
+            // Clear all listeners.
+            flock.buffer.listeners[name] = [];
+        }
+    };
+    
+    flock.buffer.fireReady = function (ugen, id, buffer, name, chan) {
+        ugen.buffer = buffer ? buffer[chan] : ugen.buffer;
+        ugen.model.name = name;
+        flock.buffer.fireOnce(id, ugen.buffer, buffer);
+    };
+    
+    flock.buffer.resolveBufferId = function (ugen, id, chan) {
+        var buffer = flock.enviro.shared.buffers[id]; // TODO: Direct reference to shared environment.
+        flock.buffer.addListener(id, ugen);
+        if (buffer) {
+            // Buffer has already been loaded.
+            flock.buffer.fireReady(ugen, id, buffer, id, chan);
+        }
+    };
+    
+    // TODO: Should this be done earlier (during ugen parsing)?
+    // TODO: Factor this into a ugen mixin.
+    flock.buffer.resolveBufferDef = function (ugen) {
+        var m = ugen.model,
+            inputs = ugen.inputs,
+            bufDef = m.bufDef = inputs.buffer,
+            chan = inputs.channel ? inputs.channel.output[0] : 0,
+            buf;
+
+        if (typeof (bufDef) === "string") {
+            flock.buffer.resolveBufferId(ugen, bufDef, chan);
+        } else {
+            flock.buffer.addListener(bufDef.id, ugen);
+            flock.parse.bufferForDef(bufDef, function (buffer, name) {
+                flock.buffer.fireReady(ugen, bufDef.id, buffer, name, chan)
+            });
+        }
+    };
     
     /****************
      * Buffer UGens *
@@ -583,10 +738,6 @@ var flock = flock || {};
      
     flock.ugen.playBuffer = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.model = {
-            idx: 0,
-            channel: undefined
-        };
         
         // Start with a zeroed buffer, since the buffer input may be loaded asynchronously.
         that.buffer = new Float32Array(that.output.length); 
@@ -658,31 +809,16 @@ var flock = flock || {};
             m.idx = bufIdx;
         };
         
+        that.onBufferReady = function () {
+            that.model.idx = 0;
+        };
+        
         that.onInputChanged = function (inputName) {
             var m = that.model,
                 inputs = that.inputs;
-                
-            
-            // TODO: Move this to defaults.
-            if (!inputs.channel) {
-                inputs.channel = flock.ugen.value({value: 0.0}, new Float32Array(1));
-                m.channel = that.inputs.channel.output[0];
-            }
             
             if (m.bufDef !== that.inputs.buffer || inputName === "buffer") {
-                var bufDef = m.bufDef = inputs.buffer,
-                    chan = that.inputs.channel.output[0];
-
-                if (typeof (bufDef) === "string") {
-                    that.buffer = flock.enviro.shared.buffers[bufDef][chan];
-                } else {
-                    // TODO: Should this be done earlier (during ugen parsing)?
-                    flock.parse.bufferForDef(bufDef, function (buffer, name) {
-                        that.buffer = buffer ? buffer[inputs.channel.output[0]] : that.buffer;
-                        m.name = name;
-                        m.idx = 0;
-                    });
-                }
+                flock.buffer.resolveBufferDef(that);
             }
             
             // TODO: Optimize for non-regular speed constant rate input.
@@ -699,16 +835,87 @@ var flock = flock || {};
     flock.defaults("flock.ugen.playBuffer", {
         rate: "audio",
         inputs: {
+            channel: 0,
             loop: 0.0,
             speed: 1.0
+        },
+        options: {
+            model: {
+                idx: 0,
+                channel: undefined
+            }
         }
+    });
+    
+    /**
+     * Outputs the duration of the specified buffer. Runs at either constant or control rate.
+     * Use control rate only when the underlying buffer may change dynamically.
+     *
+     * Inputs:
+     *  buffer: a bufDef object specifying the buffer to track
+     */
+    flock.ugen.bufferDuration = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        // TODO: Buffers need to track their own sample rates, rather than assuming everything
+        // is at the environment's sample rate. This means we also need to convert buffers between rates.
+        that.model.audioSampleRate = options.audioSettings.rates.audio;
+        
+        that.krGen = function (numSamps) {
+            var m = that.model,
+                i;
+            for (i = 0; i < numSamps; i++) {
+                that.output[i] = m.value = that.buffer.length / m.audioSampleRate;
+            }
+        };
+        
+        that.onInputChanged = function (inputName) {
+            if (that.model.bufDef !== that.inputs.buffer || inputName === "buffer") {
+                flock.buffer.resolveBufferDef(that);
+            }
+        };
+        
+        that.onBufferReady = function (buffer) {
+            that.output[0] = that.model.value = buffer.length / that.model.audioSampleRate;
+        };
+        
+        that.init = function () {
+            var r = that.rate;
+            that.gen = (r === flock.rates.CONTROL || r === flock.rates.AUDIO) ? that.krGen : undefined;
+            that.output[0] = that.model.value = 0.0;
+            that.onInputChanged();
+        };
+        
+        that.init();
+        return that;
+    };
+
+    flock.defaults("flock.ugen.bufferDuration", {
+        rate: "constant",
+        inputs: {
+            channel: 0
+        }
+    });
+    
+    
+    /**
+     * Constant-rate unit generator that outputs the environment's current sample rate.
+     */
+    flock.ugen.sampleRate = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        that.output[0] = that.model.sampleRate;
+        return that;
+    };
+    
+    flock.defaults("flock.ugen.sampleRate", {
+        rate: "constant",
+        inputs: {}
     });
     
     
     /*********
      * Noise *
      *********/
-     
+    
     flock.ugen.dust = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         that.model.density = 0.0;
@@ -756,41 +963,73 @@ var flock = flock || {};
         }
     });
     
+    
+    flock.ugen.whiteNoise = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.gen = function (numSamps) {
+            var out = that.output,
+                i;
+        
+            for (i = 0; i < numSamps; i++) {
+                out[i] = Math.random();
+            }
+            
+            that.mulAdd(numSamps);
+        };
+        
+        that.onInputChanged = function () {
+            flock.onMulAddInputChanged(that);
+        };
+        
+        that.onInputChanged();
+        return that;
+    };
+
+    flock.defaults("flock.ugen.whiteNoise", {
+        rate: "audio"
+    });
+    
 
     flock.ugen.lfNoise = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         that.model.counter = 0;
         that.model.level = 0;
+        that.model.end = Math.random();
     
         that.gen = function (numSamps) {
             var m = that.model,
                 freq = inputs.freq.output[0], // Freq is kr.
                 remain = numSamps,
                 out = that.output,
-                counter = m.counter,
-                level = m.level,
                 currSamp = 0,
                 sampsForLevel,
                 i;
             
             freq = freq > 0.001 ? freq : 0.001;
             do {
-                if (counter <= 0) {
-                    counter = m.sampleRate / freq;
-                    counter = counter > 1 ? counter : 1;
-                    level = Math.random();
+                if (m.counter <= 0) {
+                    m.counter = m.sampleRate / freq;
+                    m.counter = m.counter > 1 ? m.counter : 1;
+                    if (that.options.interpolation === "linear") {
+                        m.start = m.value = m.end;
+                        m.end = Math.random();
+                        m.ramp = m.ramp = (m.end - m.start) / m.counter;
+                    } else {
+                        m.start = m.value = Math.random();
+                        m.ramp = 0;
+                    }
                 }
-                sampsForLevel = remain < counter ? remain : counter;
+                sampsForLevel = remain < m.counter ? remain : m.counter;
                 remain -= sampsForLevel;
-                counter -= sampsForLevel;
+                m.counter -= sampsForLevel;
                 for (i = 0; i < sampsForLevel; i++) {
-                    out[currSamp] = level;
+                    out[currSamp] = m.value;
+                    m.value += m.ramp;
                     currSamp++;
                 }
 
             } while (remain);
-            m.counter = counter;
-            m.level = level;
         
             that.mulAdd(numSamps);
         };
@@ -870,7 +1109,12 @@ var flock = flock || {};
     };
     
     flock.defaults("flock.ugen.line", {
-        rate: "control"
+        rate: "control",
+        inputs: {
+            start: 0.0,
+            end: 1.0,
+            duration: 1.0
+        }
     });
     
 
@@ -928,10 +1172,87 @@ var flock = flock || {};
     };
     
     flock.defaults("flock.ugen.xLine", {
-        rate: "control"
+        rate: "control",
+        inputs: {
+            start: 0.0,
+            end: 1.0,
+            duration: 1.0
+        }
     });
 
-
+    /**
+     * Loops through a linear ramp from start to end, incrementing the output by step.
+     * Equivalent to SuperCollider's or CSound's Phasor unit generator.
+     *
+     * Inputs:
+     *  start: the value to start ramping from
+     *  end: the value to ramp to
+     *  step: the value to increment per sample
+     *  reset: the value to return to when the loop is reset by a trigger signal
+     *  trigger: a trigger signal that, when it cross the zero line, will reset the loop back to the reset point
+     */
+    flock.ugen.phasor = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.gen = function (numSamps) {
+            var m = that.model,
+                inputs = that.inputs,
+                out = that.output,
+                step = inputs.step.output,
+                trig = inputs.trigger.output,
+                i,
+                j,
+                k;
+            
+            // TODO: Add sample priming to the ugen graph to remove this conditional.
+            if (m.value === undefined) {
+                m.value = inputs.start.output[0];
+            }
+            
+            for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.trigger, k += m.strides.step) {
+                if ((trig[j] > 0.0 && m.prevTrig <= 0.0)) {
+                    m.value = inputs.reset.output[0];
+                }
+                m.prevTrig = trig[j];
+                
+                if (m.value >= inputs.end.output[0]) {
+                    m.value = inputs.start.output[0];
+                }
+                
+                out[i] = m.value;
+                m.value += step[k];
+            }
+            
+            that.mulAdd(numSamps);
+        };
+        
+        that.onInputChanged = function () {
+            that.calculateStrides();
+            flock.onMulAddInputChanged(that);
+        };
+        
+        that.onInputChanged();
+        
+        return that;
+    };
+    
+    flock.defaults("flock.ugen.phasor", {
+        rate: "control",
+        inputs: {
+            start: 0.0,
+            end: 1.0,
+            reset: 0.0,
+            step: 0.1,
+            trigger: 0.0
+        },
+        options: {
+            strideInputs: [
+                "trigger",
+                "step"
+            ]
+        }
+    });
+    
     flock.ugen.env = {};
     
     // TODO: Better names for these inputs; harmonize them with flock.ugen.line
@@ -994,16 +1315,6 @@ var flock = flock || {};
         
         that.init = function () {
             var m = that.model;
-            
-            that.onInputChanged();
-            
-            // Set default model state.
-            m.stage = {
-                currentStep: 0,
-                stepInc: 0,
-                numSteps: 0
-            };
-            m.previousGate = 0.0;
             m.level = that.inputs.start.output[0];
             m.targetLevel = that.inputs.sustain.output[0];
         };
@@ -1020,6 +1331,16 @@ var flock = flock || {};
             sustain: 1.0,
             release: 1.0,
             gate: 0.0
+        },
+        options: {
+            model: {
+                previousGate: 0.0,
+                stage: {
+                    currentStep: 0,
+                    stepInc: 0,
+                    numSteps: 0
+                }
+            }
         }
     });
     
@@ -1046,13 +1367,13 @@ var flock = flock || {};
             if (nextAtt !== prevAtt) {
                 m.attackTime = nextAtt;
                 attCoef = m.attackCoef =
-                    nextAtt === 0.0 ? 0.0 : Math.exp(flock.LOG1 / (nextAtt * m.sampleRate));
+                    nextAtt === 0.0 ? 0.0 : Math.exp(flock.LOG01 / (nextAtt * m.sampleRate));
             }
                 
             if (nextRel !== prevRel) {
                 m.releaseTime = nextRel;
                 relCoef = m.releaseCoef =
-                    (nextRel === 0.0) ? 0.0 : Math.exp(flock.LOG1 / (nextRel * m.sampleRate));
+                    (nextRel === 0.0) ? 0.0 : Math.exp(flock.LOG01 / (nextRel * m.sampleRate));
             }
             
             for (i = 0; i < numSamps; i++) {
@@ -1238,11 +1559,10 @@ var flock = flock || {};
         
         that.init = function () {
             var m = that.model,
-                mikeOpts = that.options.mike || {};
+                mikeOpts = that.options.mike;
 
-            // TOOD: Options merging! This is absurd!
-            mikeOpts.settings = mikeOpts.settings || {};
-            mikeOpts.settings.sampleRate = String(mikeOpts.settings.sampleRate || flock.enviro.shared.audioSettings.rates.audio);
+            // Flash needs the sample rate as a string?!
+            mikeOpts.settings.sampleRate = String(mikeOpts.settings.sampleRate || that.options.audioSettings.rates.audio);
             
             // Setup and listen to Mike.js.
             that.mike = new Mike(mikeOpts);
@@ -1281,6 +1601,11 @@ var flock = flock || {};
         rate: "audio",
         inputs: {
             device: 0
+        },
+        options: {
+            mike: {
+                settings: {}
+            }
         }
     });
     
@@ -1290,19 +1615,13 @@ var flock = flock || {};
      ***********************/
      
     flock.ugen.scope = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options),
-            fps = options.fps || 60; // TODO: Real options merging!
+        var that = flock.ugen(inputs, output, options);
         
-        that.model.spf = Math.round(that.model.sampleRate / fps);
+        that.model.spf = Math.round(that.model.sampleRate / that.options.fps);
         that.model.bufIdx = 0;
         
         // Setup the scopeView widget. 
-        that.model.scope = that.options.styles || {
-            scaleY: 0.75,
-            strokeColor: "#777777",
-            strokeWidth: 3
-        }; // TODO: Options merging!
-        
+        that.model.scope = that.options.styles;
         that.model.scope.values = new Float32Array(that.model.spf);
         that.scopeView = flock.gfx.scopeView(that.options.canvas, that.model.scope);
         
@@ -1332,11 +1651,20 @@ var flock = flock || {};
         
         that.onInputChanged();
         that.scopeView.refreshView();
+        
         return that;
     };
     
     flock.defaults("flock.ugen.scope", {
-        rate: "audio"
+        rate: "audio",
+        options: {
+            fps: 60,
+            styles: {
+                scaleY: 0.75,
+                strokeColor: "#777777",
+                strokeWidth: 3
+            }
+        }
     });
     
     
@@ -1571,9 +1899,63 @@ var flock = flock || {};
      * Filters *
      ***********/
     
-    flock.ugen.filter = {};
-     
-    flock.ugen.filter.butter = function (inputs, output, options) {
+    /**
+     * A generic FIR and IIR filter engine. You specify the coefficients, and this will do the rest.
+     */
+     // TODO: Unit tests.
+    flock.ugen.filter = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.gen = function (numSamps) {
+            var m = that.model,
+                inputs = that.inputs,
+                q = inputs.q.output[0],
+                freq = inputs.freq.output[0];
+                
+            if (m.prevFreq !== freq || m.prevQ !== q) {
+                that.updateCoefficients(m, freq, q);
+            }
+            
+            that.filterEngine.filter(that.output, that.inputs.source.output);
+            
+            m.prevQ = q;
+            m.prevFreq = freq;
+        };
+        
+        that.init = function () {
+            var recipeOpt = that.options.recipe
+            var recipe = typeof (recipeOpt) === "string" ? flock.get(window, recipeOpt) : recipeOpt;
+            
+            if (!recipe) {
+                throw new Error("Can't instantiate a flock.ugen.filter() without specifying a filter coefficient recipe.");
+            }
+            
+            that.filterEngine = new Filter(recipe.sizes.b, recipe.sizes.a);
+            that.model.coeffs = {
+                a: that.filterEngine.a,
+                b: that.filterEngine.b
+            };
+            
+            that.updateCoefficients = flock.get(recipe, that.options.type);
+            that.onInputChanged();
+        };
+        
+        that.init();
+        return that;
+    };
+    
+    flock.defaults("flock.ugen.filter", {
+        inputs: {
+            freq: 440,
+            q: 1.0
+        }
+    });
+
+    /**
+     * An optimized biquad filter unit generator.
+     */
+    // TODO: Unit tests.
+    flock.ugen.filter.biquad = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
         that.gen = function (numSamps) {
@@ -1582,36 +1964,39 @@ var flock = flock || {};
                 out = that.output,
                 co = m.coeffs,
                 freq = inputs.freq.output[0],
-                bw = inputs.bandwidth.output[0],
+                q = inputs.q.output[0],
                 source = inputs.source.output,
                 i,
                 w;
             
-            if (m.prevBW !== bw || m.prevFreq !== freq) {
-                that.calcCoefficients(m, freq, bw);
+            if (m.prevFreq !== freq || m.prevQ !== q) {
+                that.updateCoefficients(m, freq, q);
             }
 
             for (i = 0; i < numSamps; i++) {
-              w = source[i] - co.b1 * m.d0 - co.b2 * m.d1;
-              out[i] = co.a0 * w + co.a1 * m.d0 + co.a2 * m.d1;
-              m.d1 = m.d0;
-              m.d0 = w;
+                w = source[i] - co.a[0] * m.d0 - co.a[1] * m.d1;
+                out[i] = co.b[0] * w + co.b[1] * m.d0 + co.b[2] * m.d1;
+                m.d1 = m.d0;
+                m.d0 = w;
             }
             
-            m.prevBW = bw;
+            m.prevQ = q;
             m.prevFreq = freq;
         };
         
-        
         that.onInputChanged = function () {
-            that.calcCoefficients = that.options.coefficientCalculator ||
-                flock.ugen.filter.butter.coefficients[that.options.type];
+            var typeOpt = that.options.type;
+            that.updateCoefficients = typeof (typeOpt) === "string" ?
+                flock.get(window, typeOpt) : typeOpt;
         };
         
         that.init = function () {
             that.model.d0 = 0.0;
             that.model.d1 = 0.0;
-            that.model.coeffs = {};
+            that.model.coeffs = {
+                a: new Float32Array(2),
+                b: new Float32Array(3)
+            };
             that.onInputChanged();
         };
         
@@ -1619,132 +2004,546 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.filter.butter", {
+    flock.defaults("flock.ugen.filter.biquad", {
         inputs: {
             freq: 440,
-            bandwidth: 110
+            q: 1.0
         }
     });
     
-    flock.ugen.filter.butter.types = {
+    flock.ugen.filter.biquad.types = {
         "hp": {
             inputDefaults: {
-                freq: 10000,
-                bandwidth: 0
+                freq: 440,
+                q: 1.0
             },
-            options: {type: "highPass"}
+            options: {
+                type: "flock.coefficients.butterworth.highPass"
+            }
+        },
+        "rhp": {
+            inputDefaults: {
+                freq: 440,
+                q: 1.0
+            },
+            options: {
+                type: "flock.coefficients.rbj.highPass"
+            }
         },
         "lp": {
             inputDefaults: {
                 freq: 440,
-                bandwidth: 0
+                q: 1.0
             },
-            options: {type: "lowPass"}
+            options: {
+                type: "flock.coefficients.butterworth.lowPass"
+            }
+        },
+        "rlp": {
+            inputDefaults: {
+                freq: 440,
+                q: 1.0
+            },
+            options: {
+                type: "flock.coefficients.rbj.lowPass"
+            }
         },
         "bp": {
             inputDefaults: {
                 freq: 440,
-                bandwidth: 110
+                q: 4.0
             },
-            options: {type: "bandPass"}
+            options: {
+                type: "flock.coefficients.butterworth.bandPass"
+            }
         },
         "br": {
             inputDefaults: {
-                freq: 10000,
-                bandwidth: 5000
+                freq: 440,
+                q: 1.0
             },
-            options: {type: "bandReject"}
+            options: {
+                type: "flock.coefficients.butterworth.bandReject"
+            }
         }
     };
     
-    // Provide cover methods for instantiating the different types of butterworth filters.
-    flock.aliasUGens("flock.ugen.filter.butter", flock.ugen.filter.butter.types);
+    // Convenience methods for instantiating common types of biquad filters.
+    flock.aliasUGens("flock.ugen.filter.biquad", flock.ugen.filter.biquad.types);
     
-    flock.ugen.filter.butter.coefficients = {
-        lowPass: function (model, freq) {
-            var co = model.coeffs,
-                lambdaSquared,
-                rootTwoLambda;
-            co.lambda = 1 / Math.tan(Math.PI * freq / model.sampleRate);
-            lambdaSquared = co.lambda * co.lambda;
-            rootTwoLambda = flock.ROOT2 * co.lambda;
-            co.a0 = 1 / (1 + rootTwoLambda + lambdaSquared);
-            co.a1 = 2 * co.a0;
-            co.a2 = co.a0;
-            co.b1 = 2 * (1 - lambdaSquared) * co.a0;
-            co.b2 = (1 - rootTwoLambda + lambdaSquared) * co.a0;
+    flock.coefficients = {
+        butterworth: {
+            sizes: {
+                a: 2,
+                b: 3
+            },
+            
+            lowPass: function (model, freq) {
+                var co = model.coeffs;
+                var lambda = 1 / Math.tan(Math.PI * freq / model.sampleRate);
+                var lambdaSquared = lambda * lambda;
+                var rootTwoLambda = flock.ROOT2 * lambda;
+                var b0 = 1 / (1 + rootTwoLambda + lambdaSquared)
+                co.b[0] = b0;
+                co.b[1] = 2 * b0;
+                co.b[2] = b0;
+                co.a[0] = 2 * (1 - lambdaSquared) * b0;
+                co.a[1] = (1 - rootTwoLambda + lambdaSquared) * b0;
+            },
+        
+            highPass: function (model, freq) {
+                var co = model.coeffs;
+                var lambda = Math.tan(Math.PI * freq / model.sampleRate);
+                var lambdaSquared = lambda * lambda;
+                var rootTwoLambda = flock.ROOT2 * lambda;
+                var b0 = 1 / (1 + rootTwoLambda + lambdaSquared);
+                
+                co.b[0] = b0;
+                co.b[1] = -2 * b0;
+                co.b[2] = b0;
+                co.a[0] = 2 * (lambdaSquared - 1) * b0;
+                co.a[1] = (1 - rootTwoLambda + lambdaSquared) * b0;
+            },
+        
+            bandPass: function (model, freq, q) {
+                var co = model.coeffs;
+                var bw = freq / q;
+                var lambda = 1 / Math.tan(Math.PI * bw / model.sampleRate);
+                var theta = 2 * Math.cos(flock.TWOPI * freq / model.sampleRate);
+                var b0 = 1 / (1 + lambda);
+                
+                co.b[0] = b0;
+                co.b[1] = 0;
+                co.b[2] = -b0;
+                co.a[0] = -(lambda * theta * b0);
+                co.a[1] = b0 * (lambda - 1);
+            },
+        
+            bandReject: function (model, freq, q) {
+                var co = model.coeffs;
+                var bw = freq / q;
+                var lambda = Math.tan(Math.PI * bw / model.sampleRate);
+                var theta = 2 * Math.cos(flock.TWOPI * freq / model.sampleRate);
+                var b0 = 1 / (1 + lambda);
+                var b1 = -theta * b0;
+                
+                co.b[0] = b0;
+                co.b[1] = b1;
+                co.b[2] = b0;
+                co.a[0] = b1;
+                co.a[1] = (1 - lambda) * b0;
+            }
         },
         
-        highPass: function (model, freq) {
-            var co = model.coeffs,
-                lambdaSquared,
-                rootTwoLambda;
-            co.lambda = Math.tan(Math.PI * freq / model.sampleRate);
-            lambdaSquared = co.lambda * co.lambda;
-            rootTwoLambda = flock.ROOT2 * co.lambda;
-            co.a0 = 1 / (1 + rootTwoLambda + lambdaSquared);
-            co.a1 = -2 * co.a0;
-            co.a2 = co.a0;
-            co.b1 = 2 * (lambdaSquared - 1) * co.a0;
-            co.b2 = (1 - rootTwoLambda + lambdaSquared) * co.a0;
-        },
-        
-        bandPass: function (model, freq, bw) {
-            var co = model.coeffs;
-            co.lambda = 1 / Math.tan(Math.PI * bw / model.sampleRate);
-            co.theta = 2 * Math.cos(flock.TWOPI * freq / model.sampleRate);
-            co.a0 = 1 / (1 + co.lambda);
-            co.a1 = 0;
-            co.a2 = -co.a0;
-            co.b1 = -(co.lambda * co.theta * co.a0);
-            co.b2 = co.a0 * (co.lambda - 1);
-        },
-        
-        bandReject: function (model, freq, bw) {
-            var co = model.coeffs;
-            co.lambda = Math.tan(Math.PI * bw / model.sampleRate);
-            co.theta = 2 * Math.cos(flock.TWOPI * freq / model.sampleRate);
-            co.a0 = 1 / (1 + co.lambda);
-            co.a1 = -co.theta * co.a0;
-            co.a2 = co.a0;
-            co.b1 = co.a1;
-            co.b2 = (1 - co.lambda) * co.a0;
+        // From Robert Brisow-Johnston's Filter Cookbook:
+        // http://dspwiki.com/index.php?title=Cookbook_Formulae_for_audio_EQ_biquad_filter_coefficients
+        rbj: {
+            sizes: {
+                a: 2,
+                b: 3
+            },
+            
+            lowPass: function (model, freq, q) {
+                var co = model.coeffs;
+                var w0 = flock.TWOPI * freq / model.sampleRate;
+                var cosw0 = Math.cos(w0);
+                var sinw0 = Math.sin(w0);
+                var bw = freq / q;
+                var alpha = sinw0 / (2 * q);
+                var oneLessCosw0 = 1 - cosw0;
+                var a0 = 1 + alpha;
+                var b0 = (oneLessCosw0 / 2) / a0;
+                
+                co.b[0] = b0;
+                co.b[1] = oneLessCosw0 / a0;
+                co.b[2] = b0;
+                co.a[0] = (-2 * cosw0) / a0;
+                co.a[1] = (1 - alpha) / a0;
+            },
+            
+            highPass: function (model, freq, q) {
+                var co = model.coeffs;
+                var w0 = flock.TWOPI * freq / model.sampleRate;
+                var cosw0 = Math.cos(w0);
+                var sinw0 = Math.sin(w0);
+                var alpha = sinw0 / (2 * q);
+                var onePlusCosw0 = 1 + cosw0;
+                var a0 = 1 + alpha;
+                var b0 = (onePlusCosw0 / 2) / a0;
+                
+                co.b[0] = b0;
+                co.b[1] = (-onePlusCosw0) / a0;
+                co.b[2] = b0;
+                co.a[0] = (-2 * cosw0) / a0;
+                co.a[1] = (1 - alpha) / a0;
+            },
+            
+            bandPass: function (model, freq, q) {
+                var co = model.coeffs;
+                var w0 = flock.TWOPI * freq / model.sampleRate;
+                var cosw0 = Math.cos(w0);
+                var sinw0 = Math.sin(w0);
+                var alpha = sinw0 / (2 * q);
+                var a0 = 1 + alpha;
+                var qByAlpha = q * alpha;
+                
+                co.b[0] = qByAlpha / a0;
+                co.b[1] = 0;
+                co.b[2] = -qByAlpha / a0;
+                co.a[0] = (-2 * cosw0) / a0;
+                co.a[1] = (1 - alpha) / a0;
+            },
+            
+            bandReject: function (model, freq, q) {
+                var co = model.coeffs;
+                var w0 = flock.TWOPI * freq / model.sampleRate;
+                var cosw0 = Math.cos(w0);
+                var sinw0 = Math.sin(w0);
+                var alpha = sinw0 / (2 * q);
+                var a0 = 1 + alpha;
+                var ra0 = 1 / a0;
+                var b1 = (-2 * cosw0) / a0;
+                co.b[0] = ra0;
+                co.b[1] = b1;
+                co.b[2] = ra0;
+                co.a[0] = b1;
+                co.a[1] = (1 - alpha) / a0;
+            }
         }
     };
- 
-     // Additions by Mayank not fully staged
-    flock.delayLine = function (initialDelayLength) {
-        var that = {
-            model: {
-                delayLength: 0,
-                readPos: 0,
-                writePos: 0,
-                buffer: new Float32Array(initialDelayLength)
+    
+    
+    flock.ugen.delay = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.gen = function (numSamps) {
+            var m = that.model,
+                inputs = that.inputs,
+                out = that.output,
+                source = inputs.source.output,
+                time = inputs.time.output[0],
+                delayBuffer = that.delayBuffer,
+                i;
+            
+            if (time !== m.time) {
+                m.time = time;
+                m.delaySamps = time * that.model.sampleRate;
+            }
+            
+            for (i = 0; i < numSamps; i++) {
+                if (m.pos >= m.delaySamps) {
+                    m.pos = 0;
+                }
+                out[i] = delayBuffer[m.pos];
+                delayBuffer[m.pos] = source[i];
+                m.pos++;
+            }
+            
+            that.mulAdd(numSamps);
+        };
+        
+        that.onInputChanged = function (inputName) {
+            flock.onMulAddInputChanged(that);
+            
+            if (!inputName || inputName === "maxTime") {
+                var delayBufferLength = that.model.sampleRate * that.inputs.maxTime.output[0];
+                that.delayBuffer = new Float32Array(delayBufferLength);
             }
         };
- 
-        that.write = function (sample) {
-            var m = that.model;
-            m.buffer[m.writePos] = sample;
-            m.writePos = (m.writePos + 1) % m.delayLength;
-        };
- 
-        that.read = function () {
-            var m = that.model;
-            var sample = m.buffer[m.readPos];
-            m.readPos = (m.readPos + 1) % m.delayLength;
-            return sample;
-        };
- 
-        that.setDelayLength = function (newDelayLength) {
-            // TODO: make this a non-destructive operation if buffer exists / delayLength is defined
-            var m = that.model;
-            m.delayLength = newDelayLength;
-            m.buffer = new Float32Array(m.delayLength);
-        }; 
+        
+        that.onInputChanged();
         return that;
     };
     
+    flock.defaults("flock.ugen.delay", {
+        rate: "audio",
+        inputs: {
+            maxTime: 1.0,
+            time: 1.0
+        },
+        options: {
+            model: {
+                pos: 0
+            }
+        }
+    });
+    
+    
+    flock.ugen.decay = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.gen = function (numSamps) {
+            var m = that.model,
+                inputs = that.inputs,
+                out = that.output,
+                source = inputs.source.output,
+                time = inputs.time.output[0],
+                i;
+
+            if (time !== m.time) {
+                m.time = time;
+                m.coeff = time === 0.0 ? 0.0 : Math.exp(flock.LOG001 / (time * that.model.sampleRate));
+            }
+            
+            // TODO: Optimize this conditional.
+            if (m.coeff === 0.0) {
+                for (i = 0; i < numSamps; i++) {
+                    out[i] = source[i];
+                }
+            } else {
+                for (i = 0; i < numSamps; i++) {
+                    m.lastSamp = source[i] + m.coeff * m.lastSamp;
+                    out[i] = m.lastSamp;
+                }
+            }
+            
+            that.mulAdd(numSamps);
+        };
+          
+        that.onInputChanged = function () {
+            flock.onMulAddInputChanged(that);
+        };
+           
+        that.onInputChanged();
+        return that;
+    };
+    
+    flock.defaults("flock.ugen.decay", {
+        rate: "audio",
+        inputs: {
+            time: 1.0
+        },
+        options: {
+            model: {
+                time: 0,
+                lastSamp: 0,
+                coeff: 0
+            }
+        }
+    });
+
+    /****************************
+     * Granular Synthesis UGens *
+     ****************************/
+     
+    /**
+     * Triggers grains from an audio buffer.
+     *
+     * Inputs: 
+     *   - dur: the duration of each grain (control or constant rate only)
+     *   - trigger: a trigger signal that, when it move to a positive number, will start a grain
+     *   - buffer: a bufferDef object describing the buffer to granulate
+     *   - centerPos: the postion within the sound buffer when the grain will reach maximum amplitude
+     *   - amp: the peak amplitude of the grain
+     *   - speed: the rate at which grain samples are selected from the buffer; 1.0 is normal speed, -1.0 is backwards
+     *
+     * Options:
+     *   - interpolation: "cubic", "linear", or "none"/undefined
+     */
+    // TODO: Unit tests.
+    flock.ugen.triggerGrains = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        that.buffer = new Float32Array(that.output.length);
+        
+        that.gen = function (numSamps) {
+            var m = that.model,
+                inputs = that.inputs,
+                out = that.output,
+                buf = that.buffer,
+                dur = inputs.dur.output[0],
+                amp = inputs.amp.output,
+                centerPos = inputs.centerPos.output,
+                trigger = inputs.trigger.output,
+                speed = inputs.speed.output,
+                posIdx = 0,
+                trigIdx = 0,
+                ampIdx = 0,
+                speedIdx = 0,
+                i,
+                j,
+                k,
+                grain,
+                start,
+                samp;
+        
+            // Update the grain envelope if the grain duration input has changed.
+            // TODO: What happens when this changes while older grains are still sounding?
+            if (dur !== m.dur) {
+                m.dur = dur > m.maxDur ? m.maxDur : dur;
+                m.numGrainSamps = Math.round(m.sampleRate * m.dur);
+                m.grainCenter = Math.round(m.numGrainSamps / 2);
+                for (i = 0; i < m.numGrainSamps; i++) {
+                    m.env[i] = Math.sin(Math.PI * i / m.numGrainSamps);
+                }
+            }
+            
+            // Trigger new grains.
+            // TODO: Why does this constantly trigger new grains with an audio rate trigger signal,
+            //       rarely or never cleaning old ones up?
+            for (i = 0; i < numSamps; i++) {
+                if (trigger[trigIdx] > 0.0 && m.prevTrigger <= 0.0 && m.activeGrains.length < m.maxNumGrains) {
+                    grain = m.freeGrains.pop();
+                    grain.sampIdx = 0;
+                    grain.envIdx = 0;
+                    grain.amp = amp[ampIdx];
+                    start = (centerPos[posIdx] * m.sampleRate) - m.grainCenter;
+                    while (start < 0) {
+                        start += buf.length;
+                    }
+                    grain.readPos = Math.round(start);
+                    grain.writePos = i;
+                    grain.speed = speed[speedIdx];
+                    m.activeGrains.push(grain);
+                }
+                m.prevTrigger = trigger[trigIdx];
+                out[i] = 0.0;
+                
+                posIdx += m.strides.centerPos;
+                trigIdx += m.strides.trigger;
+                ampIdx += m.strides.amp;
+                speedIdx += m.strides.speed;
+            }
+            
+            // Output samples for all active grains.
+            for (j = 0; j < m.activeGrains.length;) {
+                grain = m.activeGrains[j];
+                for (k = grain.writePos; k < Math.min(m.numGrainSamps - grain.sampIdx, numSamps); k++) {
+                    samp = that.interpolate ? that.interpolate(grain.readPos, buf) : buf[Math.floor(grain.readPos)];
+                    out[k] += samp * m.env[grain.envIdx] * grain.amp;
+                    grain.readPos = (grain.readPos + grain.speed) % buf.length;
+                    grain.sampIdx++;
+                    grain.envIdx++;
+                }
+                if (grain.sampIdx >= m.numGrainSamps) {
+                    m.freeGrains.push(grain);
+                    m.activeGrains.splice(j, 1);
+                } else {
+                    j++;
+                    grain.writePos = grain.writePos % that.options.audioSettings.rates.control;
+                }
+            }
+
+            that.mulAdd(numSamps);
+        };
+        
+        that.onInputChanged = function (inputName) {
+            var m = that.model,
+                inputs = that.inputs;
+            
+            if (m.bufDef !== inputs.buffer || inputName === "buffer") {
+                flock.buffer.resolveBufferDef(that);
+            }
+            
+            that.calculateStrides();
+            flock.onMulAddInputChanged(that);
+        };
+        
+        that.allocateGrains = function (numGrains) {
+            numGrains = numGrains || that.model.maxNumGrains
+            
+            for (var i = 0; i < numGrains; i++) {
+                that.model.freeGrains.push({
+                    sampIdx: 0,
+                    envIdx: 0,
+                    readPos: 0
+                });
+            }
+        };
+        
+        that.init = function () {
+            var m = that.model,
+                maxGrainLength = Math.round(m.maxDur * m.sampleRate);
+            
+            that.model.env = new Float32Array(maxGrainLength);
+            that.allocateGrains();
+            that.onInputChanged();
+        };
+        
+        that.init();
+        return that;
+    };
+
+    flock.defaults("flock.ugen.triggerGrains", {
+        rate: "audio",
+        inputs: {
+            centerPos: 0,
+            channel: 0,
+            amp: 1.0,
+            dur: 0.1,
+            speed: 1.0
+        },
+        options: {
+            model: {
+                maxDur: 30,
+                maxNumGrains: 512,
+                activeGrains: [],
+                freeGrains: [],
+                env: null,
+                strides: {}
+            },
+            strideInputs: [
+                "centerPos",
+                "trigger",
+                "amp",
+                "speed"
+            ],
+            interpolation: "cubic"
+        }
+    });
+    
+    
+    // TODO: Unit tests.
+    flock.ugen.print = function (input, output, options) {
+        var that = flock.ugen(input, output, options);
+        that.model.label = that.options.label ? that.options.label + ": " : "";
+        
+        that.gen = function (numSamps) {
+            var inputs = that.inputs,
+                m = that.model,
+                label = m.label,
+                source = inputs.source.output,
+                trig = inputs.trigger.output[0],
+                freq = inputs.freq.output[0],
+                freq = freq,
+                i;
+                
+            if (trig > 0.0 && m.prevTrig <= 0.0) {
+                console.log(label + source);
+            }
+            
+            if (m.freq !== freq) {
+                m.sampInterval = Math.round(m.sampleRate / freq);
+                m.freq = freq;
+                m.counter = m.sampInterval;
+            }
+            
+            for (i = 0; i < numSamps; i++) {
+                if (m.counter >= m.sampInterval) {
+                    console.log(label + source[i]);
+                    m.counter = 0;
+                }
+                m.counter++;
+                that.output[i] = source[i];
+            }
+        };
+        
+        return that;
+    };
+    
+    flock.defaults("flock.ugen.print", {
+        rate: "control",
+        inputs: {
+            trigger: 0.0,
+            freq: 1.0
+        },
+        options: {
+            model: {
+                counter: 0
+            }
+        }
+    });
+    
+
     // input arguments should be - delayDur, numGrains, grainDur (with randomization parameter?)
     flock.ugen.granulator = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);

@@ -42,10 +42,11 @@ var flock = flock || {};
         return new Float32Array(buf);
     };
     
-    flock.test.constantBuffer = function (size, val) {
-        var buf = new Float32Array(size),
+    
+    flock.test.constantBuffer = function (bufOrSize, val) {
+        var buf = typeof (bufOrSize) === "number" ? new Float32Array(bufOrSize) : bufOrSize,
             i;
-        for (i = 0; i < size; i++) {
+        for (i = 0; i < buf.length; i++) {
             buf[i] = val;
         }
         return buf;
@@ -207,7 +208,11 @@ var flock = flock || {};
         if (that.options.buffer) {
             that.output = that.options.buffer;
         }
-        that.gen = function () {}; // No op function--we just pass the output buffer back as-is.
+        that.gen = function (numSamps) {
+            if (that.options.gen) {
+                that.options.gen(that, numSamps);
+            }
+        };
         return that;
     };
     
@@ -241,7 +246,7 @@ var flock = flock || {};
         step = step === undefined ? 1 : step;
         
         return flock.generate(numSamps, function (i) {
-            return start + i + step;
+            return start + (i * step);
         });
     };
     
@@ -256,5 +261,15 @@ var flock = flock || {};
             "There should be no other properties in the object.");
     };
     
-    
+    flock.test.testUnbrokenOutput = function (output, expectedMin, expectedMax, range) {
+        output = range ? output.subarray(range.start, range.end) : output;
+        flock.test.assertNotNaN(output,
+            "The ugen should never output NaN.");
+        flock.test.assertNotSilent(output,
+            "The output should not be completely silent");
+        flock.test.assertUnbroken(output,
+            "The ugen should produce an unbroken audio tone.");
+        flock.test.assertWithinRange(output, expectedMin, expectedMax,
+            "The ugen should produce output values ranging between " + expectedMin + " and " + expectedMax + ".");
+    };
 }());

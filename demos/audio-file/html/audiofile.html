@@ -25,9 +25,9 @@
             <div class="selectors">
                 <form class="fileSelector">
                     <label for="fileBrowser">Choose a sound file</label>
-                    <input id="fileBrowser" type="file" />
-                    <button id="browse">Choose a sound file...</button>
-                    <span id="filePath"></span>
+                    <input class="fileBrowser" type="file" />
+                    <button class="browse">Choose a sound file...</button>
+                    <span class="filePath"></span>
                 </form>
             
                 <form class="dataUrlSelector">
@@ -56,8 +56,8 @@
                     id: "player",
                     ugen: "flock.ugen.playBuffer",
                     buffer: {
-                        id: "selectedSound",            // The sound file will be loaded into an environment buffer named "selectedSound."
-                        selector: "#fileBrowser"        // The File object selected by the #fileBrowser input element will be read.
+                        id: "selectedSound",                    // The sound file will be loaded into an environment buffer named "selectedSound."
+                        selector: ".fileSelector .fileBrowser"  // The File object selected by the #fileBrowser input element will be read.
                     },
                     speed: 1.0,
                     loop: 1.0
@@ -76,9 +76,9 @@
             fileSelectorView = demo.fileSelectorView(synth, {
                 playerId: "player",
                 selectors: {
-                    input: "#fileBrowser",
-                    button: "#browse",
-                    fileName: "#filePath"
+                    input: ".fileSelector .fileBrowser",
+                    button: ".fileSelector .browse",
+                    fileName: ".fileSelector .filePath"
                 }
             }),
             
