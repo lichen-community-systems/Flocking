@@ -2569,8 +2569,11 @@ var flock = flock || {};
             numGrains = inputs.numGrains.output[0],
             source = inputs.source.output,
             i,
-            j;
-                 
+            j,
+            grainPos,
+            windowPos,
+            amp;
+            
 			if (m.delayDur !== delayDur) {
 				m.delayDur = delayDur;
 				m.delayLength = Math.floor(m.sampleRate * m.delayDur);
@@ -2595,19 +2598,31 @@ var flock = flock || {};
             }
             
             for (i = 0; i < numSamps; i++) {
-                // continuously write into delayline
+                // Update the delay line's write position
                 that.delayLine[m.writePos] = source[i];
                 m.writePos = (m.writePos + 1) % m.delayLength;
+                
+                // Clear the previous output.
                 out[i] = 0;
-                // now fill with grains
-                for (j = 0; j < m.numGrains; j++) { out[i] += that.delayLine[m.currentGrainPosition[j]] * m.windowFunction[m.currentGrainWindowPosition[j]];
-                    m.currentGrainPosition[j] = (m.currentGrainPosition[j] + 1) % m.delayLength;
-                    m.currentGrainWindowPosition[j] = (m.currentGrainWindowPosition[j] + 1) % m.grainLength;
-                    //randomize reset position of grains
+                
+                // Now fill with grains
+                for (j = 0; j < m.numGrains; j++) {
+                    grainPos = m.currentGrainPosition[j];
+                    windowPos = m.currentGrainWindowPosition[j];
+                    amp = m.windowFunction[windowPos];
+                    out[i] += that.delayLine[grainPos] * amp;
+                    
+                    // Update positions in the delay line and grain envelope arrays for next tim.
+                    m.currentGrainPosition[j] = (grainPos + 1) % m.delayLength;
+                    m.currentGrainWindowPosition[j] = (windowPos + 1) % m.grainLength;
+                    
+                    // Randomize the reset position of grains.
                     if (m.currentGrainWindowPosition[j] === 0) {
                         m.currentGrainPosition[j] = Math.floor(Math.random() * m.delayLength);
                     }
                 }
+                
+                // Normalize the output amplitude.
                 out[i] /= m.numGrains;
             }
         };
@@ -2617,9 +2632,9 @@ var flock = flock || {};
 	flock.defaults("flock.ugen.granulator", {
 		rate: "audio",
 		inputs: {
-			grainLength: 0.1,
-			numGrains: 5,
+			grainDur: 0.1,
 			delayDur: 1,
+			numGrains: 5
 		},
 		options: {
             model: {
