@@ -616,7 +616,12 @@ clock.repeat(1, function () {
         <script type="application/flocking" id="granulator">
 var synth = flock.synth({
     ugen: "flock.ugen.granulator",
-    numGrains: 10,
+    numGrains: {
+        ugen: "flock.ugen.line",
+        start: 1,
+        end: 10,
+        duration: 20
+    },
     grainDur: 0.05,
     delayDur: 5,
     mul: 0.5,

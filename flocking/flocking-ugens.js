@@ -2574,6 +2574,9 @@ var flock = flock || {};
                 windowPos,
                 amp;
             
+            // TODO: Probably too expensive to modulate delayDur at control rate.
+            // Perhaps either move this into onInputChanged() and treat it as a constant input parameter
+            // or introduce a maximum delay length and reuse the same array throughout (just changing indices).
             if (m.delayDur !== delayDur) {
                 m.delayDur = delayDur;
                 m.delayLength = Math.floor(m.sampleRate * m.delayDur);
@@ -2588,8 +2591,11 @@ var flock = flock || {};
                 }
             }
 
-            // if numGrains has changed, zero the extra buffers
-            if (m.numGrains !== numGrains) {
+            // If numGrains has changed, zero the extra buffers.
+            // Need to hold on to "raw" input so we can compare unrounded values.
+            if (m.rawNumGrains !== numGrains) {
+                m.rawNumGrains = numGrains;
+                numGrains = Math.round(numGrains);
                 for (i = m.numGrains; i < numGrains; i++) {
                     m.currentGrainPosition[i] = 0;
                     m.currentGrainWindowPosition[i] = Math.floor(Math.random() * m.grainLength);
@@ -2612,7 +2618,7 @@ var flock = flock || {};
                     amp = m.windowFunction[windowPos];
                     out[i] += that.delayLine[grainPos] * amp;
                     
-                    // Update positions in the delay line and grain envelope arrays for next tim.
+                    // Update positions in the delay line and grain envelope arrays for next time.
                     m.currentGrainPosition[j] = (grainPos + 1) % m.delayLength;
                     m.currentGrainWindowPosition[j] = (windowPos + 1) % m.grainLength;
                     
