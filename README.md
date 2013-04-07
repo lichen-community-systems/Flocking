@@ -88,7 +88,7 @@ by another sine oscillator ("mod"):
 Compatibility
 -------------
 
-Flocking is currently tested on the latest versions of Firefox and Chrome, as well as Safari 6+.
+Flocking is currently tested on the latest versions of Firefox, Chrome and Safari on Mac, Windows, Linux, iOS, and Android.
 
 Licensing
 ---------
@@ -104,7 +104,8 @@ a composer, thinker, and early pioneer of computer music who my composition teac
 I hope you find this library useful enough to create projects as beautiful and inspiring as Jim's _Flocking_.
 
 ### Thanks to:###
- * [Vitus](https://github.com/derDoc) for his awesome interactive Flocking Playground contributions
+ * [Mayank Sanganeria](http://github.com/e7mac) for his granulator unit generator
+ * [Vitus](https://github.com/derDoc) for his contributions to the interactive Flocking Playground
  * [Myles Borins](https://github.com/thealphanerd) for pushing the limits of Flocking very early in its development
  * Alex Geddie for teaching me a ton about synthesis and computer music
  * [Antranig Basman](https://github.com/amb26) for code review and advice
