@@ -2625,8 +2625,15 @@ var flock = flock || {};
                 // Normalize the output amplitude.
                 out[i] /= m.numGrains;
             }
+            
+            that.mulAdd(numSamps);
         };
         
+        that.onInputChanged = function () {
+            flock.onMulAddInputChanged(that);
+        };
+        
+        that.onInputChanged();
         return that;
     };
 	
