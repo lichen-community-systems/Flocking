@@ -2544,19 +2544,21 @@ var flock = flock || {};
     });
     
 
-    // input arguments should be - delayDur, numGrains, grainDur (with randomization parameter?)
+    /**
+     * Granulates a source signal using an integral delay line.
+     * This implementation is particularly useful for live granulation.
+     * Contributed by Mayank Sanganeria.
+     *
+     * Inputs:
+     *   - grainDur: the duration of each grain (control or constant rate only)
+     *   - delayDur: the duration of the delay line (control or constant rate only)
+     *   - numGrains: the number of grains to generate (control or constant rate only)
+     *   - mul: amplitude scale factor
+     *   - add: amplide add
+     */
+    // TODO: Unit tests.
     flock.ugen.granulator = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-     
-        $.extend(true, that.model, {
-            grainLength: 0,
-            numGrains: 0,
-            currentGrainPosition: [],
-            currentGrainWindowPosition: [],
-            windowFunction: [],
-            writePos: 0
-        });
-        
            
         that.gen = function (numSamps) {
             var m = that.model,
@@ -2564,23 +2566,25 @@ var flock = flock || {};
             out = that.output,
 			grainDur = inputs.grainDur.output[0],
 			delayDur = inputs.delayDur.output[0],
-            source = inputs.source.output,
             numGrains = inputs.numGrains.output[0],
+            source = inputs.source.output,
             i,
             j;
                  
 			if (m.delayDur !== delayDur) {
 				m.delayDur = delayDur;
-				delayLength = m.sampleRate * m.delayDur;
+				m.delayLength = Math.floor(m.sampleRate * m.delayDur);
 				that.delayLine = new Float32Array(that.model.delayLength);
 			}	 
 			
 			if (m.grainDur !== grainDur) {
 				m.grainDur = grainDur;
-	            grainLength = m.sampleRate * m.grainDur;
+	            m.grainLength = Math.floor(m.sampleRate * m.grainDur);
+                for (i = 0; i < m.grainLength; i++) {
+                    m.windowFunction[i] = Math.sin(Math.PI * i / m.grainLength);
+                }
 			}
 
-                 
             // if numGrains has changed, zero the extra buffers
             if (m.numGrains !== numGrains) {
                 for (i = m.numGrains; i < numGrains; i++) {
@@ -2588,14 +2592,6 @@ var flock = flock || {};
                     m.currentGrainWindowPosition[i] = Math.floor(Math.random() * m.grainLength);
                 }
                 m.numGrains = numGrains;
-            }
-     
-            // If grainLength has changed, recalculate window
-            if (m.grainLength !== grainLength) {
-                m.grainLength = Math.floor(grainLength);
-                for (i = 0; i < m.grainLength; i++) {
-                    m.windowFunction[i] = Math.sin(3.1415 * i / m.grainLength);
-                }
             }
             
             for (i = 0; i < numSamps; i++) {
@@ -2626,10 +2622,14 @@ var flock = flock || {};
 			delayDur: 1,
 		},
 		options: {
-            currentGrainPosition: [],
-            currentGrainWindowPosition: [],
-            windowFunction: [],
-            writePos: 0
+            model: {
+                grainLength: 0,
+                numGrains: 0,
+                currentGrainPosition: [],
+                currentGrainWindowPosition: [],
+                windowFunction: [],
+                writePos: 0
+            }
 		}
 	});
 
