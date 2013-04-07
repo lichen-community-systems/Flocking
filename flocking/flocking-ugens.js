@@ -2562,31 +2562,31 @@ var flock = flock || {};
            
         that.gen = function (numSamps) {
             var m = that.model,
-            inputs = that.inputs,
-            out = that.output,
-			grainDur = inputs.grainDur.output[0],
-			delayDur = inputs.delayDur.output[0],
-            numGrains = inputs.numGrains.output[0],
-            source = inputs.source.output,
-            i,
-            j,
-            grainPos,
-            windowPos,
-            amp;
+                inputs = that.inputs,
+                out = that.output,
+                grainDur = inputs.grainDur.output[0],
+                delayDur = inputs.delayDur.output[0],
+                numGrains = inputs.numGrains.output[0],
+                source = inputs.source.output,
+                i,
+                j,
+                grainPos,
+                windowPos,
+                amp;
             
-			if (m.delayDur !== delayDur) {
-				m.delayDur = delayDur;
-				m.delayLength = Math.floor(m.sampleRate * m.delayDur);
-				that.delayLine = new Float32Array(that.model.delayLength);
-			}	 
+            if (m.delayDur !== delayDur) {
+                m.delayDur = delayDur;
+                m.delayLength = Math.floor(m.sampleRate * m.delayDur);
+                that.delayLine = new Float32Array(that.model.delayLength);
+            }
 			
-			if (m.grainDur !== grainDur) {
-				m.grainDur = grainDur;
-	            m.grainLength = Math.floor(m.sampleRate * m.grainDur);
+            if (m.grainDur !== grainDur) {
+                m.grainDur = grainDur;
+                m.grainLength = Math.floor(m.sampleRate * m.grainDur);
                 for (i = 0; i < m.grainLength; i++) {
                     m.windowFunction[i] = Math.sin(Math.PI * i / m.grainLength);
                 }
-			}
+            }
 
             // if numGrains has changed, zero the extra buffers
             if (m.numGrains !== numGrains) {
@@ -2626,17 +2626,18 @@ var flock = flock || {};
                 out[i] /= m.numGrains;
             }
         };
+        
         return that;
     };
 	
-	flock.defaults("flock.ugen.granulator", {
-		rate: "audio",
-		inputs: {
-			grainDur: 0.1,
-			delayDur: 1,
-			numGrains: 5
-		},
-		options: {
+    flock.defaults("flock.ugen.granulator", {
+        rate: "audio",
+        inputs: {
+            grainDur: 0.1,
+            delayDur: 1,
+            numGrains: 5
+        },
+        options: {
             model: {
                 grainLength: 0,
                 numGrains: 0,
@@ -2645,7 +2646,7 @@ var flock = flock || {};
                 windowFunction: [],
                 writePos: 0
             }
-		}
-	});
+        }
+    });
 
 }(jQuery));
