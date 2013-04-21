@@ -2281,14 +2281,14 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 	
-    flock.defaults("flock.ugen.granulator", {
+    fluid.defaults("flock.ugen.granulator", {
         rate: "audio",
         inputs: {
             grainDur: 0.1,
             delayDur: 1,
             numGrains: 5
         },
-        options: {
+        ugenOptions: {
             model: {
                 grainLength: 0,
                 numGrains: 0,
