@@ -33,7 +33,7 @@ flock.demo.nodeTest = function () {
     // and assigning it a new frequency from the list of intervals.
     clock.repeat(1/16, function () {
         var intervalSynth = flock.choose(synths),
-            newInterval = flock.choose(weightedIntervals)
+            newInterval = flock.choose(weightedIntervals),
             newFreq = fundamental * newInterval;
         fluid.log(newFreq);
         intervalSynth.input("carrier.freq", newFreq);
