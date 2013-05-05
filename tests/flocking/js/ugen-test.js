@@ -15,7 +15,9 @@ flock.test = flock.test || {};
 
 (function () {
     "use strict";
-        
+    
+    flock.init();
+    
     var mockLeft = [
         1, 2, 3, 4, 5,
         6, 7, 8, 9, 10,
@@ -37,7 +39,7 @@ flock.test = flock.test || {};
     var stereoExpandValueUGen = flock.ugen.value({value: 2}, new Float32Array(1), {
         audioSettings: audioSettings
     });
-    
+        
     module("ugen.input() tests");
     
     var setAndCheckInput = function (ugen, inputName, val) {
@@ -1301,6 +1303,9 @@ flock.test = flock.test || {};
             "The delay's third block should contain the source's second block of samples.");
     });
     
+    
+    module("flock.ugen.phasor");
+    
     var loopOneDef =  {
         ugen: "flock.ugen.phasor",
         start: 1.0,
@@ -1321,13 +1326,9 @@ flock.test = flock.test || {};
     };
     
     var testLoopUGen = function (testSpecs) {
-        module("flock.ugen.phasor");
-        var env = flock.enviro.shared = flock.enviro()
         $.each(testSpecs, function (i, testSpec) {
             var def = $.extend(true, {rate: testSpec.rate, id: "looper"}, testSpec.def),
-                synth = flock.synth(def, {
-                    enviro: env
-                }),
+                synth = flock.synth(def),
                 loop = synth.ugens.named.looper;
             
             test(testSpec.name, function () {
