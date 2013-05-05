@@ -528,9 +528,7 @@ var fluid = fluid || require("infusion"),
             bufferSize: (flock.platform.os === "Win32" && flock.platform.browser.mozilla) ?
                 16384: 4096,
             
-            // Hints to some audio backends; currently only used by node-cubeb.
-            sampleFormat: flock.sampleFormats.FLOAT32NE,
-            latency: 10,
+            // Hints to some audio backends.
             genPollIntervalFactor: flock.platform.isLinuxBased ? 1 : 20 // Only used on Firefox.
         },
         components: {
