@@ -16,39 +16,58 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    var cubeb = require("cubeb");
-    fluid.registerNamespace("flock.enviro");
+    var Speaker = require("speaker");
+    var Readable = require("stream").Readable;
     
-    // Override the defaults for flock.scheduler.asyc, which should never use Workers in Node.js
-    // TODO: This is somewhat sleazy and unscalable; could be replaced by introducing IoC into Flocking.
-    var schedulers = ["flock.scheduler.async", "flock.scheduler.async.beat"];
-    fluid.each(schedulers, function (schedulerName) {
-        var skedDef = fluid.defaults(schedulerName);
-        skedDef.intervalClock.type = "flock.scheduler.intervalClock";
-        skedDef.scheduleClock.type = "flock.scheduler.scheduleClock";
+    // Override the default browser-based worker clocks with their same-thread equivalents.
+    fluid.demands("flock.scheduler.webWorkerIntervalClock", ["flock.platform.nodejs", "flock.scheduler.async"], {
+        funcName: "flock.scheduler.intervalClock"
     });
     
-    flock.enviro.nodejs = function (that) {
+    fluid.demands("flock.scheduler.webWorkerScheduleClock", ["flock.platform.nodejs", "flock.scheduler.async"], {
+        funcName: "flock.scheduler.scheduleClock"
+    });
+
+
+    fluid.registerNamespace("flock.enviro");
+    
+    fluid.defaults("flock.enviro.nodejs", {
+        gradeNames: ["fluid.modelComponent", "autoInit"],
+        mergePolicy: {
+            genFn: "nomerge",
+            nodes: "nomerge",
+            buses: "nomerge"
+        }
+    });
+    
+    flock.enviro.nodejs.finalInit = function (that) {
+        that.audioSettings = that.options.audioSettings;
+        that.gen = that.options.genFn;
+        that.buses = that.options.buses;
+        that.nodes = that.options.nodes;
         
         that.startGeneratingSamples = function () {
-            that.cubebState.stream.start();
+            that.outputStream._read = that.writeSamples;
+            that.outputStream.pipe(that.speaker);
         };
 
-        that.writeSamples = function (frameCount) {
+        that.writeSamples = function (numBytes) {
             var settings = that.audioSettings,
-                stream = that.cubebState.stream,
                 playState = that.model;
                 
             if (that.nodes.length < 1) {
                 // If there are no nodes providing samples, write out silence.
-                stream.write(that.silence);
+                that.outputStream.push(that.silence);
             } else {
                 // TODO: Inline interleavedWriter
                 flock.interleavedWriter(that.outputView, that.gen, that.buses, that.audioSettings);
-                stream.write(that.outputBuffer);
+                
+                // TODO: Get rid of buffer copying!
+                for (var i = 0; i < that.outputView.length; i++) {
+                    that.outputBuffer.writeFloatLE(that.outputView[i], i * 4);
+                }
+                that.outputStream.push(that.outputBuffer);
             }
-            
-            stream.release();
             
             // TODO: This code is likely similar or identical in all environment strategies.
             playState.written += settings.bufferSize * settings.chans;
@@ -58,43 +77,39 @@ var fluid = fluid || require("infusion"),
         };
         
         that.stopGeneratingSamples = function () {
-            that.cubebState.stream.stop();
+            that.outputStream.unpipe(that.speaker);
+            that.outputStream._read = undefined;
         };
         
         that.init = function () {
             var settings = that.audioSettings,
-                sampleFormatSpec = flock.enviro.nodejs.sampleFormats[settings.sampleFormat],
-                numBufferSamps = settings.bufferSize * sampleFormatSpec.bytes * settings.chans;
+                numSamps = settings.bufferSize * settings.chans,
+                numBytes = numSamps * 4; // Flocking uses Float32s, hence * 4
             
-            that.outputBuffer = new Buffer(numBufferSamps);
-            that.outputView = new Float32Array(that.outputBuffer);
-            that.silence = flock.generate.silence(new Buffer(numBufferSamps));
-            
-            that.cubebState = {
-                context: new cubeb.Context("Flocking Context")
-            };
-            
-            that.cubebState.stream = new cubeb.Stream(
-                that.cubebState.context,
-                "Flocking Stream",
-                sampleFormatSpec.cubebFormat,
-                settings.chans,
-                settings.rates.audio,
-                settings.bufferSize,
-                settings.latency,
-                that.writeSamples,
-                fluid.identity
-            );
+            that.speaker = new Speaker();
+            that.outputStream = flock.enviro.nodejs.setupOutputStream(settings);
+            that.outputView = new Float32Array(numSamps);
+            that.outputBuffer = new Buffer(numBytes);
+            that.silence = flock.generate.silence(new Buffer(numBytes));
         };
         
         that.init();
     };
     
-    flock.enviro.nodejs.sampleFormats = {
-        "float32NE": {
-            cubebFormat: cubeb.SAMPLE_FLOAT32NE,
-            bytes: 4
-        }
+    flock.enviro.nodejs.setupOutputStream = function (settings) {
+        var outputStream = new Readable();
+        outputStream.bitDepth = 32;
+        outputStream.float = true
+        outputStream.signed = true;
+        outputStream.channels = settings.chans;
+        outputStream.sampleRate = settings.rates.audio;
+        outputStream.samplesPerFrame = settings.bufferSize;
+        
+        return outputStream;
     };
+    
+    fluid.demands("flock.enviro.audioStrategy", "flock.platform.nodejs", {
+        funcName: "flock.enviro.nodejs"
+    });
     
 }());

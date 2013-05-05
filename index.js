@@ -12,3 +12,4 @@ loader.require("./tests/test-synth.js")
 var flock = fluid.registerNamespace("flock");
 var synth = flock.demo.nodeTest();
 synth.play();
+console.log("Playing...");
