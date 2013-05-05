@@ -1,6 +1,0 @@
-{"renderer": {
-      "name": "Renderer",
-       "description": "Dynamically renders HTML templates on the client-side, without requiring you to mix your code and markup together.",
-    "files": ["fluidParser.js", "fluidRenderer.js", "RendererUtilities.js"],
-    "dependencies": ["jQuery", "framework", "fastXmlPull"]
-}}
