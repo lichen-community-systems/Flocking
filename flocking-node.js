@@ -51,25 +51,37 @@ var fluid = fluid || require("infusion"),
             that.outputStream.pipe(that.speaker);
         };
 
+        // TODO: The current implementation ignores the numBytes argument in favour of a fixed buffer size.
+        // This may cause over or underruns in cases where node-speaker doesn't pull samples at a fixed rate.
         that.writeSamples = function (numBytes) {
             var settings = that.audioSettings,
-                playState = that.model;
-                
+                playState = that.model,
+                kr = settings.rates.control,
+                chans = settings.chans,
+                out = that.outputBuffer;
+            
             if (that.nodes.length < 1) {
                 // If there are no nodes providing samples, write out silence.
                 that.outputStream.push(that.silence);
             } else {
-                // TODO: Inline interleavedWriter
-                flock.interleavedWriter(that.outputView, that.gen, that.buses, that.audioSettings);
-                
-                // TODO: Get rid of buffer copying!
-                for (var i = 0; i < that.outputView.length; i++) {
-                    that.outputBuffer.writeFloatLE(that.outputView[i], i * 4);
+                // TODO: Some duplication with flock.enviro.moz.interleavedWriter().
+                for (var i = 0; i < that.model.krPeriods; i++) {
+                    that.gen();
+                    var offset = i * kr * chans;
+        
+                    // Interleave each output channel.
+                    for (var chan = 0; chan < chans; chan++) {
+                        var bus = that.buses[chan];
+                        for (var sampIdx = 0; sampIdx < kr; sampIdx++) {
+                            var frameIdx = sampIdx * chans + offset;
+                            out.writeFloatLE(bus[sampIdx], (frameIdx + chan) * 4);
+                        }
+                    }
                 }
-                that.outputStream.push(that.outputBuffer);
+                
+                that.outputStream.push(out);
             }
             
-            // TODO: This code is likely similar or identical in all environment strategies.
             playState.written += settings.bufferSize * settings.chans;
             if (playState.written >= playState.total) {
                 that.stop();
@@ -88,9 +100,10 @@ var fluid = fluid || require("infusion"),
             
             that.speaker = new Speaker();
             that.outputStream = flock.enviro.nodejs.setupOutputStream(settings);
-            that.outputView = new Float32Array(numSamps);
             that.outputBuffer = new Buffer(numBytes);
             that.silence = flock.generate.silence(new Buffer(numBytes));
+            
+            that.model.krPeriods = settings.bufferSize / settings.rates.control;
         };
         
         that.init();
