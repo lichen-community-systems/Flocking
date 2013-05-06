@@ -16,6 +16,9 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
     
+    /**
+     * Web Audio API Audio Strategy
+     */
     fluid.defaults("flock.enviro.webkit", {
         gradeNames: ["fluid.modelComponent", "autoInit"],
         mergePolicy: {
@@ -25,8 +28,21 @@ var fluid = fluid || require("infusion"),
         }
     });
     
-    var setupWebKitEnviro = function (that) {
-        that.jsNode.onaudioprocess = function (e) {
+    flock.enviro.webkit.finalInit = function (that) {
+        that.audioSettings = that.options.audioSettings;
+        that.buses = that.options.buses;
+        that.nodes = that.options.nodes;
+        that.gen = that.options.genFn;
+        
+        that.startGeneratingSamples = function () {
+            that.jsNode.connect(that.context.destination);
+        };
+        
+        that.stopGeneratingSamples = function () {
+            that.jsNode.disconnect(0);
+        };
+        
+        that.writeSamples = function (e) {
             // TODO: Do all these settings need to be read every time onaudioprocess gets called?
             var kr = that.audioSettings.rates.control,
                 playState = that.model,
@@ -34,10 +50,7 @@ var fluid = fluid || require("infusion"),
                 bufSize = that.audioSettings.bufferSize,
                 numKRBufs = bufSize / kr,
                 sourceBufs = that.buses,
-                outBufs = e.outputBuffer,
-                i,
-                chan,
-                samp;
+                outBufs = e.outputBuffer;
                 
             // If there are no nodes providing samples, write out silence.
             if (that.nodes.length < 1) {
@@ -47,17 +60,17 @@ var fluid = fluid || require("infusion"),
                 return;
             }
 
-            for (i = 0; i < numKRBufs; i++) {
+            for (var i = 0; i < that.model.krPeriods; i++) {
                 that.gen();
                 var offset = i * kr;
 
                 // Loop through each channel.
-                for (chan = 0; chan < chans; chan++) {
+                for (var chan = 0; chan < chans; chan++) {
                     var sourceBuf = sourceBufs[chan],
                         outBuf = outBufs.getChannelData(chan);
                     
                     // And output each sample.
-                    for (samp = 0; samp < kr; samp++) {
+                    for (var samp = 0; samp < kr; samp++) {
                         outBuf[samp + offset] = sourceBuf[samp];
                     }
                 }
@@ -68,39 +81,24 @@ var fluid = fluid || require("infusion"),
                 that.stop();
             }
         };
-        that.source.connect(that.jsNode);
-    };
-    
-    
-    /**
-     * Mixes in WebKit-specific Web Audio API implementations for outputting audio
-     *
-     * @param that the environment to mix into
-     */
-    flock.enviro.webkit.finalInit = function (that) {
-        that.audioSettings = that.options.audioSettings;
-        that.buses = that.options.buses;
-        that.nodes = that.options.nodes;
-        that.gen = that.options.genFn;
         
-        // Singleton AudioContext since the webkit implementation
-        // freaks if we try to instantiate a new one.
-        if (!flock.enviro.webkit.audioContext) {
-            flock.enviro.webkit.audioContext = new webkitAudioContext();
-        }
-        that.context = flock.enviro.webkit.audioContext;
-        that.source = that.context.createBufferSource();
-        that.jsNode = that.context.createJavaScriptNode(that.audioSettings.bufferSize);
-        
-        that.startGeneratingSamples = function () {
-            that.jsNode.connect(that.context.destination);
+        that.init = function () {
+            var settings = that.audioSettings;
+            that.model.krPeriods = settings.bufferSize / settings.rates.control;
+            
+            // Singleton AudioContext since the WebKit implementation
+            // freaks if we try to instantiate a new one.
+            if (!flock.enviro.webkit.audioContext) {
+                flock.enviro.webkit.audioContext = new webkitAudioContext();
+            }
+            that.context = flock.enviro.webkit.audioContext;
+            that.source = that.context.createBufferSource();
+            that.jsNode = that.context.createJavaScriptNode(settings.bufferSize);
+            that.jsNode.onaudioprocess = that.writeSamples;
+            that.source.connect(that.jsNode);
         };
         
-        that.stopGeneratingSamples = function () {
-            that.jsNode.disconnect(0);
-        };
-        
-        setupWebKitEnviro(that);
+        that.init();
     };
     
     fluid.demands("flock.enviro.audioStrategy", "flock.platform.webkit", {

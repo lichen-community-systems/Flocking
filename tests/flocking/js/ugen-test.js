@@ -129,12 +129,19 @@ flock.test = flock.test || {};
             flock.enviro.clearBuses(env.audioSettings.numBuses, env.buses, env.audioSettings.rates.control);            
             outUGen.gen(numSamps);
         };
-        var actual = flock.interleavedWriter(new Float32Array(numSamps * chans), 
-            evalFn, flock.enviro.shared.buses, audioSettings);
+        
+        var actual = flock.enviro.moz.interleavedWriter(
+            new Float32Array(numSamps * chans),
+            evalFn,
+            flock.enviro.shared.buses,
+            audioSettings.bufferSize / audioSettings.rates.control,
+            audioSettings.rates.control,
+            audioSettings.chans
+        );
         deepEqual(actual, expectedBuffer, msg);
     };
     
-    test("flock.interleavedWriter() mono input, mono output", function () {
+    test("flock.enviro.moz.interleavedWriter() mono input, mono output", function () {
         // Test with a single input buffer being multiplexed by ugen.out.
         var mockLeftUGen = flock.test.makeMockUGen(mockLeft);
         var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen}, [], {
@@ -159,7 +166,7 @@ flock.test = flock.test || {};
             "We should receive a mono buffer containing the input buffer unmodified.");
     });
     
-    test("flock.interleavedWriter() mono input, stereo output", function () {
+    test("flock.enviro.moz.interleavedWriter() mono input, stereo output", function () {
         // Test with a single mono input buffer.
         var mockLeftUGen = flock.test.makeMockUGen(mockLeft);
         var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen, expand: stereoExpandValueUGen}, [], {
@@ -180,7 +187,7 @@ flock.test = flock.test || {};
             "We should receive a stereo buffer containing two copies of the original input buffer.");
     });
     
-    test("flock.interleavedWriter() stereo input", function () {
+    test("flock.enviro.moz.interleavedWriter() stereo input", function () {
         // Test with two input buffers.
         var out = flock.ugen.out({
             sources: [
