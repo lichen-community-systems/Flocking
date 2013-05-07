@@ -1,12 +1,12 @@
 /*
-* Flocking WebKit-Specific Code
+* Flocking WebAudio Strategy
 * http://github.com/colinbdclark/flocking
 *
 * Copyright 2013, Colin Clark
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global Float32Array, webkitAudioContext*/
+/*global Float32Array, AudioContext, webkitAudioContext*/
 /*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
@@ -19,7 +19,7 @@ var fluid = fluid || require("infusion"),
     /**
      * Web Audio API Audio Strategy
      */
-    fluid.defaults("flock.enviro.webkit", {
+    fluid.defaults("flock.enviro.webAudio", {
         gradeNames: ["fluid.modelComponent", "autoInit"],
         mergePolicy: {
             genFn: "nomerge",
@@ -28,7 +28,7 @@ var fluid = fluid || require("infusion"),
         }
     });
     
-    flock.enviro.webkit.finalInit = function (that) {
+    flock.enviro.webAudio.finalInit = function (that) {
         that.audioSettings = that.options.audioSettings;
         that.buses = that.options.buses;
         that.nodes = that.options.nodes;
@@ -88,10 +88,10 @@ var fluid = fluid || require("infusion"),
             
             // Singleton AudioContext since the WebKit implementation
             // freaks if we try to instantiate a new one.
-            if (!flock.enviro.webkit.audioContext) {
-                flock.enviro.webkit.audioContext = new webkitAudioContext();
+            if (!flock.enviro.webAudio.audioContext) {
+                flock.enviro.webAudio.audioContext = new flock.enviro.webAudio.contextConstructor();
             }
-            that.context = flock.enviro.webkit.audioContext;
+            that.context = flock.enviro.webAudio.audioContext;
             that.source = that.context.createBufferSource();
             that.jsNode = that.context.createJavaScriptNode(settings.bufferSize);
             that.jsNode.onaudioprocess = that.writeSamples;
@@ -101,8 +101,10 @@ var fluid = fluid || require("infusion"),
         that.init();
     };
     
-    fluid.demands("flock.enviro.audioStrategy", "flock.platform.webkit", {
-        funcName: "flock.enviro.webkit"
+    flock.enviro.webAudio.contextConstructor = window.AudioContext || window.webkitAudioContext;
+    
+    fluid.demands("flock.enviro.audioStrategy", "flock.platform.webAudio", {
+        funcName: "flock.enviro.webAudio"
     });
 
 }());
