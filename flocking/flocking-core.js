@@ -49,8 +49,8 @@ var fluid = fluid || require("infusion"),
     flock.platform.os = flock.platform.isBrowser ? window.navigator.platform : fluid.require("os").platform();
     flock.platform.isLinuxBased = flock.platform.os.indexOf("Linux") > -1 || flock.platform.os.indexOf("Android") > -1;
     flock.platform.browser = flock.platform.isBrowser ? jQuery.browser : {};
-    flock.platform.isWebAudio = (typeof (window.AudioContext) !== "undefined" && (new AudioContext()).createJavaScriptNode) ||
-        typeof (window.webkitAudioContext) !== "undefined";
+    flock.platform.isWebAudio = (typeof (AudioContext) !== "undefined" && (new AudioContext()).createJavaScriptNode) ||
+        typeof (webkitAudioContext) !== "undefined";
     flock.platform.audioEngine = flock.platform.isBrowser ? (flock.platform.isWebAudio ? "webAudio" : "moz") : "nodejs";
     fluid.staticEnvironment.audioEngine = fluid.typeTag("flock.platform." + flock.platform.audioEngine);
 
