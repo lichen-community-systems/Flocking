@@ -51,9 +51,7 @@ var fluid = fluid || require("infusion"),
             that.outputStream.pipe(that.speaker);
         };
 
-        // TODO: The current implementation ignores the numBytes argument in favour of a fixed buffer size.
-        // This may cause over or underruns in cases where node-speaker doesn't pull samples at a fixed rate.
-        that.writeSamples = function (numBytes) {
+        that.pushSamples = function () {
             var settings = that.audioSettings,
                 playState = that.model,
                 kr = settings.rates.control,
@@ -62,13 +60,13 @@ var fluid = fluid || require("infusion"),
             
             if (that.nodes.length < 1) {
                 // If there are no nodes providing samples, write out silence.
-                that.outputStream.push(that.silence);
+                out.push(that.silence);
             } else {
                 // TODO: Some duplication with flock.enviro.moz.interleavedWriter().
                 for (var i = 0; i < that.model.krPeriods; i++) {
                     that.gen();
                     var offset = i * kr * chans;
-        
+
                     // Interleave each output channel.
                     for (var chan = 0; chan < chans; chan++) {
                         var bus = that.buses[chan];
@@ -78,14 +76,19 @@ var fluid = fluid || require("infusion"),
                         }
                     }
                 }
-                
+
                 that.outputStream.push(out);
             }
-            
+
             playState.written += settings.bufferSize * settings.chans;
             if (playState.written >= playState.total) {
                 that.stop();
             }
+        };
+        
+        that.writeSamples = function (numBytes) {
+            var settings = that.audioSettings;
+            setTimeout(that.pushSamples, that.model.pushRate); // TODO: Adaptive scheduling, don't hardcode.
         };
         
         that.stopGeneratingSamples = function () {
@@ -99,18 +102,24 @@ var fluid = fluid || require("infusion"),
                 numBytes = numSamps * 4; // Flocking uses Float32s, hence * 4
             
             that.speaker = new Speaker();
+            
             that.outputStream = flock.enviro.nodejs.setupOutputStream(settings);
             that.outputBuffer = new Buffer(numBytes);
             that.silence = flock.generate.silence(new Buffer(numBytes));
             
             that.model.krPeriods = settings.bufferSize / settings.rates.control;
+            that.model.bufferDur = settings.bufferSize / settings.rates.audio;
+            that.model.earlyDur = settings.bufferSize / 1500;
+            that.model.pushRate = that.model.bufferDur * 1000 - that.model.earlyDur;
         };
         
         that.init();
     };
     
     flock.enviro.nodejs.setupOutputStream = function (settings) {
-        var outputStream = new Readable();
+        var outputStream = new Readable({
+            highWaterMark: settings.bufferSize // TODO: Necessary?
+        });
         outputStream.bitDepth = 32;
         outputStream.float = true
         outputStream.signed = true;
