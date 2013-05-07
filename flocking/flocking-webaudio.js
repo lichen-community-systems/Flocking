@@ -35,11 +35,13 @@ var fluid = fluid || require("infusion"),
         that.gen = that.options.genFn;
         
         that.startGeneratingSamples = function () {
+            that.jsNode.onaudioprocess = that.writeSamples; // TODO: When Firefox ships, is this still necessary?
             that.jsNode.connect(that.context.destination);
         };
         
         that.stopGeneratingSamples = function () {
             that.jsNode.disconnect(0);
+            that.jsNode.onaudioprocess = undefined;
         };
         
         that.writeSamples = function (e) {
@@ -94,7 +96,6 @@ var fluid = fluid || require("infusion"),
             that.context = flock.enviro.webAudio.audioContext;
             that.source = that.context.createBufferSource();
             that.jsNode = that.context.createJavaScriptNode(settings.bufferSize);
-            that.jsNode.onaudioprocess = that.writeSamples;
             that.source.connect(that.jsNode);
         };
         
