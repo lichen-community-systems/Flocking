@@ -887,9 +887,6 @@ var fluid = fluid || require("infusion"),
     
     fluid.defaults("flock.synth.group", {
         gradeNames: ["fluid.modelComponent", "flock.nodeList", "flock.autoEnviro", "autoInit"],
-        mergePolicy: {
-            enviro: "nomerge"
-        },
         rate: flock.rates.AUDIO
     });
     
