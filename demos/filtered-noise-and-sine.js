@@ -9,11 +9,6 @@ loader.require("../flocking/flocking/flocking-ugens.js");
 
 flock = fluid.registerNamespace("flock");
 
-flock.init({
-    bufferSize: 64,
-    latency: 1
-});
-
 var synth = flock.synth({
     ugen: "flock.ugen.sum",
     sources: [
