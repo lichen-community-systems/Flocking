@@ -627,7 +627,7 @@ var fluid = fluid || require("infusion"),
     flock.synth = function (def, options) {
         var that = fluid.initComponent("flock.synth", options);
         that.rate = flock.rates.AUDIO;
-        that.enviro = that.enviro || flock.enviro.shared;
+        that.enviro = flock.enviro.shared;
         that.model.sampsPerBlock = that.enviro.audioSettings.rates.control;
         that.model.synthDef = def;
         
@@ -733,9 +733,6 @@ var fluid = fluid || require("infusion"),
         gradeNames: ["fluid.modelComponent", "flock.autoEnviro"],
         argumentMap: {
             options: 1
-        },
-        mergePolicy: {
-            enviro: "nomerge"
         },
         components: {
             ugens: {
@@ -898,7 +895,7 @@ var fluid = fluid || require("infusion"),
     
     flock.synth.group.finalInit = function (that) {
         that.rate = that.options.rate;
-        that.enviro = that.enviro || flock.enviro.shared;
+        that.enviro = flock.enviro.shared;
         
         flock.synth.group.makeDispatchedMethods(that, [
             "input", "get", "set", "gen", "play", "pause"
