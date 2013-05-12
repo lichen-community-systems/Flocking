@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <title>Asm.js-Based UGen Benchmarks (Flocking)</title>
+    
+        <link rel="stylesheet" type="text/css" href="../third-party/sheep/css/sheep.css" />
+	
+        <script src="../../../third-party/jquery/js/jquery.min.js"></script>
+        <script src="../../../third-party/infusion/js/Fluid.js"></script>
+        <script src="../../../third-party/infusion/js/FluidIoC.js"></script>
+        <script src="../../../third-party/infusion/js/DataBinding.js"></script>
+        
+        <script src="../../../flocking/flocking-core.js"></script>
+        <script src="../../../flocking/flocking-scheduler.js"></script>
+        <script src="../../../flocking/flocking-firefox.js"></script>
+        <script src="../../../flocking/flocking-webaudio.js"></script>
+        <script src="../../../flocking/flocking-ugens.js"></script>
+        <script src="../../../flocking/flocking-ugens-asm.js"></script>
+        <script src="../../../flocking/flocking-parser.js"></script>
+
+        <script src="../../flocking/js/flocking-test-utils.js"></script>
+        <script src="../third-party/sheep/third-party/js/spin.min.js"></script>
+        <script src="../third-party/sheep/js/sheep.js"></script>
+        <script src="../js/asmjs-ugen-benchmarks.js"></script>
+    </head>
+
+    <body id="body">
+
+        <script type="text/javascript">
+            flock.test.asmjsUGenBenchmarks();
+        </script>
+    </body>
+</html>

@@ -44,7 +44,9 @@ var fluid = fluid || require("infusion"),
             ugenDef.rate = flock.rates.AUDIO;
         }
     
-        var buffer = new Float32Array(ugenDef.rate === flock.rates.AUDIO ? rates.control : 1),
+        var backingBuffer = new ArrayBuffer(4096),
+            buffer = Float32Array(backingBuffer, 0, (ugenDef.rate === flock.rates.AUDIO ? rates.control : 1) * 4),
+        //var buffer = new Float32Array(ugenDef.rate === flock.rates.AUDIO ? rates.control : 1),
             sampleRate;
     
         // Set the ugen's sample rate value according to the rate the user specified.
