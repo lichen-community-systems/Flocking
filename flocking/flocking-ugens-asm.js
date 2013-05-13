@@ -33,65 +33,36 @@ var fluid = fluid || require("infusion"),
                 that.inputs.mul.output[0],
                 that.inputs.add.output[0],
                 that.model.sampleRate,
-                that.model.phase
+                that.model.phase,
+                flock.TWOPI
             );
         };
 
         return that;
     };
 
-    flock.ugen.asmSin.module = function (stdlib, foreign, heap) {
-        "use asm";
-    
-        var sin = stdlib.Math.sin;
-        var pi = 3.14159;
-        var out = new stdlib.Float32Array(heap);
-    
-        function gen (numSamps, freq, phaseOffset, mul, add, sampleRate, phase) {
-            numSamps = numSamps|0;
-            freq = +freq;
-            phaseOffset = +phaseOffset;
-            mul = +mul;
-            add = +add;
-            sampleRate = +sampleRate;
-            phase = +phase;
-             
-            var i = 0;
-        
-            for (; (i | 0) < (numSamps | 0); i = i + 1 | 0) {
-                out[i >> 2] = +(sin(phase + phaseOffset) * mul + add);
-                phase = +(phase + (freq / sampleRate * pi * 2.0));
-            }
-        
-            return +phase;
-        }
-    
-        return {
-            gen: gen
-        };
-    };
+    flock.ugen.asmSin.module = {}
 
     flock.ugen.asmSin.module.body = 
         "\"use asm\";" + 
 
         "var sin = stdlib.Math.sin;" + 
-        "var pi = 3.14159;" + 
         "var out = new stdlib.Float32Array(heap);" + 
 
-        "function gen (numSamps, freq, phaseOffset, mul, add, sampleRate, phase) {" + 
+        "function gen (numSamps, freq, phaseOffset, mul, add, sampleRate, phase, pi2) {" + 
         "    numSamps = numSamps|0;" + 
         "    freq = +freq;" + 
         "    phaseOffset = +phaseOffset;" + 
         "    mul = +mul;" + 
         "    add = +add;" + 
         "    sampleRate = +sampleRate;" + 
-        "    phase = +phase;" + 
+        "    phase = +phase;" +
+        "    pi2 = +pi2;" +  
          
-        "    var i = 0;" + 
-    
-        "    for (; (i | 0) < (numSamps | 0); i = i + 1 | 0) {" +
-        "        out[i >> 2] = +(sin(phase + phaseOffset) * mul + add);" +
-        "        phase = +(phase + (freq / sampleRate * pi * 2.0));" +
+        "    var i = 0;" +
+        "    for (; (i | 0) < (numSamps | 0); i = i + 1|0) {" +
+        "        out[i >> 2] = sin(phase + phaseOffset) * mul + add;" +
+        "        phase = phase + (freq / sampleRate * pi2);" +
         "    }" +
     
         "    return +phase;" +
