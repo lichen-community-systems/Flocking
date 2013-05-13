@@ -154,7 +154,7 @@ var fluid = fluid || require("infusion"),
         
         that.options.audioSettings = that.options.audioSettings || flock.enviro.shared.audioSettings;
         that.model.sampleRate = options.sampleRate || that.options.audioSettings.rates[that.rate];
-        that.model.sampsPerBlock = that.rate === flock.rates.AUDIO ? that.options.audioSettings.rates.control : 1;
+        that.model.blockSize = that.rate === flock.rates.AUDIO ? that.options.audioSettings.rates.control : 1;
         
         that.get = function (path) {
             return flock.input.get(that.inputs, path);

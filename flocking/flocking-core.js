@@ -500,15 +500,12 @@ var fluid = fluid || require("infusion"),
                 type: "flock.scheduler.async"
             },
             
-            // TODO: These shared options should be factored into a separate component that is shared.
             audioStrategy: {
                 type: "flock.enviro.audioStrategy",
                 options: {
                     audioSettings: "{enviro}.options.audioSettings",
-                    model: "{enviro}.model",
-                    nodes: "{enviro}.nodes",
-                    buses: "{enviro}.buses",
-                    genFn: "{enviro}.gen"
+                    model: "{enviro}.model" // TODO: too broad. AudioStrategies only use {enviro}.model.playState, 
+                                            // but do also add their own model state.
                 }
             }
         }
@@ -555,12 +552,8 @@ var fluid = fluid || require("infusion"),
             }
         };
         
-        that.gen = function () {
-            flock.enviro.clearBuses(that.audioSettings.numBuses, that.buses, that.audioSettings.rates.control);
-            flock.enviro.evalGraph(that.nodes);
-        };
-                
         that.loadBuffer = function (name, src, onLoadFn) {
+            // TODO: Replace with a promise.
             if (!src && onLoadFn) {
                 // Assume the buffer has already been loaded by other means.
                 onLoadFn(that.buffers[name], name);
@@ -577,17 +570,8 @@ var fluid = fluid || require("infusion"),
         };
     };
     
-    flock.enviro.clearBuses = function (numBuses, buses, busLen) {
-        var i,
-            bus,
-            j;
-            
-        for (i = 0; i < numBuses; i++) {
-            bus = buses[i];
-            for (j = 0; j < busLen; j++) {
-                bus[j] = 0;
-            }
-        }
+    flock.enviro.finalInit = function (that) {
+        that.gen = that.audioStrategy.nodeEvaluator.gen;
     };
     
     flock.enviro.createAudioBuffers = function (numBufs, kr) {
@@ -599,13 +583,61 @@ var fluid = fluid || require("infusion"),
         return bufs;
     };
     
-    flock.enviro.evalGraph = function (nodes) {
-        var i,
-            node;
-        for (i = 0; i < nodes.length; i++) {
-            node = nodes[i];
-            node.gen(node.model.sampsPerBlock);
+    fluid.defaults("flock.enviro.audioStrategy", {
+        gradeNames: ["fluid.modelComponent"],
+        
+        components: {
+            nodeEvaluator: {
+                type: "flock.enviro.nodeEvaluator",
+                options: {
+                    numBuses: "{enviro}.options.audioSettings.numBuses",
+                    controlRate: "{enviro}.options.audioSettings.rates.control",
+                    buses: "{enviro}.buses",
+                    nodes: "{enviro}.nodes"
+                }
+            }
         }
+    });
+    
+    /*****************
+     * Node Evalutor *
+     *****************/
+    
+    fluid.defaults("flock.enviro.nodeEvaluator", {
+        gradeNames: ["fluid.littleComponent", "autoInit"],
+
+        mergePolicy: {
+            nodes: "nomerge",
+            buses: "nomerge"
+        }
+    });
+    
+    flock.enviro.nodeEvaluator.finalInit = function (that) {
+        that.nodes = that.options.nodes;
+        that.buses = that.options.buses;
+        
+        that.gen = function () {
+            var numBuses = that.options.numBuses,
+                busLen = that.options.controlRate,
+                i,
+                bus,
+                j,
+                node;
+            
+            // Clear all buses before evaluating the synth graph.
+            for (i = 0; i < numBuses; i++) {
+                bus = that.buses[i];
+                for (j = 0; j < busLen; j++) {
+                    bus[j] = 0;
+                }
+            }
+            
+            // Now evaluate each node.
+            for (i = 0; i < that.nodes.length; i++) {
+                node = that.nodes[i];
+                node.gen(node.model.blockSize);
+            }
+        };
     };
     
     
@@ -614,7 +646,7 @@ var fluid = fluid || require("infusion"),
     });
     
     flock.autoEnviro.finalInit = function (that) {
-        if (!flock.enviro.shared && !that.options.enviro) {
+        if (!flock.enviro.shared) {
             flock.init();
         }
     };
@@ -628,7 +660,7 @@ var fluid = fluid || require("infusion"),
         var that = fluid.initComponent("flock.synth", options);
         that.rate = flock.rates.AUDIO;
         that.enviro = flock.enviro.shared;
-        that.model.sampsPerBlock = that.enviro.audioSettings.rates.control;
+        that.model.blockSize = that.enviro.audioSettings.rates.control;
         that.model.synthDef = def;
         
         /**
@@ -638,7 +670,15 @@ var fluid = fluid || require("infusion"),
          * @return a buffer containing the generated audio
          */
         that.gen = function () {
-            flock.enviro.evalGraph(that.ugens.active);
+            // TODO: Copy/pasted from nodeEvaluator.
+            var nodes = that.ugens.active,
+                i,
+                node;
+            
+            for (i = 0; i < nodes.length; i++) {
+                node = nodes[i];
+                node.gen(node.model.blockSize);
+            }
         };
         
         /**

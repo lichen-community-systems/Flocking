@@ -124,15 +124,19 @@ flock.test = flock.test || {};
             bufferSize: 40
         };
         
-        var evalFn = function () {
-            var env = flock.enviro.shared;
-            flock.enviro.clearBuses(env.audioSettings.numBuses, env.buses, env.audioSettings.rates.control);            
-            outUGen.gen(numSamps);
-        };
+        outUGen.model.blockSize = audioSettings.rates.control;
         
+        var env = flock.enviro.shared;
+        var nodeEvaluator = flock.enviro.nodeEvaluator({
+            numBuses: env.options.audioSettings.numBuses,
+            controlRate: audioSettings.rates.control
+        });
+        nodeEvaluator.buses = env.buses;
+        nodeEvaluator.nodes = [outUGen];
+
         var actual = flock.enviro.moz.interleavedWriter(
             new Float32Array(numSamps * chans),
-            evalFn,
+            nodeEvaluator.gen,
             flock.enviro.shared.buses,
             audioSettings.bufferSize / audioSettings.rates.control,
             audioSettings.rates.control,

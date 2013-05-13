@@ -17,7 +17,8 @@ var fluid = fluid || require("infusion"),
     "use strict";
     
     fluid.defaults("flock.enviro.moz", {
-        gradeNames: ["fluid.modelComponent", "autoInit"],
+        gradeNames: ["flock.enviro.audioStrategy", "autoInit"],
+        
         components: {
             genScheduler: {
                 type: "flock.scheduler.async",
@@ -29,12 +30,6 @@ var fluid = fluid || require("infusion"),
                     }
                 }
             }
-        },
-        
-        mergePolicy: {
-            genFn: "nomerge",
-            nodes: "nomerge",
-            buses: "nomerge"
         }
     });
     
@@ -44,11 +39,6 @@ var fluid = fluid || require("infusion"),
      * @param that the environment to mix into
      */
     flock.enviro.moz.finalInit = function (that) {
-        // TODO: Remove options unpacking.
-        that.audioSettings = that.options.audioSettings;
-        that.gen = that.options.genFn;
-        that.nodes = that.options.nodes;
-        that.buses = that.options.buses;
         
         that.startGeneratingSamples = function () {
             if (that.scheduled) {
@@ -74,19 +64,20 @@ var fluid = fluid || require("infusion"),
                 currentOffset = that.audioEl.mozCurrentSampleOffset(),
                 queued = playState.written - currentOffset,
                 outBuf = that.outBuffer,
-                settings = that.audioSettings;
+                audioSettings = that.options.audioSettings;
             
-            if (queued > that.audioSettings.bufferSize || that.nodes.length < 1) {
+            if (queued > audioSettings.bufferSize || that.nodeEvaluator.nodes.length < 1) {
                 return;
             }
             
+            // TODO: Inline and mock out mozWriteAudio for unit testing.
             flock.enviro.moz.interleavedWriter(
                 outBuf,
-                that.gen,
-                that.buses,
+                that.nodeEvaluator.gen,
+                that.nodeEvaluator.buses,
                 that.model.krPeriods,
-                settings.rates.control,
-                settings.chans
+                audioSettings.rates.control,
+                audioSettings.chans
             );
             
             playState.written += that.audioEl.mozWriteAudio(outBuf);
@@ -101,17 +92,20 @@ var fluid = fluid || require("infusion"),
         };
         
         that.init = function () {
-            var settings = that.audioSettings,
-                numSamps = settings.bufferSize * settings.chans;
+            var audioSettings = that.options.audioSettings,
+                rates = audioSettings.rates,
+                bufSize = audioSettings.bufferSize,
+                chans = audioSettings.chans,
+                numSamps = bufSize * chans;
             
             that.outBuffer = new Float32Array(numSamps);
             that.silentBuffer = new Float32Array(numSamps);
             that.audioEl = new Audio();
-            that.audioEl.mozSetup(settings.chans, settings.rates.audio);
+            that.audioEl.mozSetup(chans, rates.audio);
             
-            that.model.bufferDur = (settings.bufferSize / settings.rates.audio) * 1000;
-            that.model.queuePollInterval = Math.ceil(that.model.bufferDur / settings.genPollIntervalFactor);
-            that.model.krPeriods = settings.bufferSize / settings.rates.control;
+            that.model.bufferDur = (bufSize / rates.audio) * 1000;
+            that.model.queuePollInterval = Math.ceil(that.model.bufferDur / audioSettings.genPollIntervalFactor);
+            that.model.krPeriods = bufSize / rates.control;
         };
         
         that.init();
