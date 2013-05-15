@@ -14,6 +14,8 @@ var flock = flock || {};
 (function () {
     "use strict";
 
+    flock.init();
+    
     flock.test = flock.test || {};
 
     var makeSynthDefTestSpec = function (synthDef, rate, numSampleBlocks) {

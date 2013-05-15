@@ -6,14 +6,19 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
+/*global sheep*/
 /*jslint white: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
-    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
+    forin: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
 var flock = flock || {};
 
 (function () {
     "use strict";
-
+    
+    flock.init({
+        numBuses: 10
+    });
+    
     flock.test = flock.test || {};
 	
     var makeRandomizedInputUGenTestSpec = function (ugenDef, inputs, rate, numSampsToGen) {
@@ -24,12 +29,14 @@ var flock = flock || {};
                 var ug = flock.parse.ugenForDef(ugenDef),
                     i,
                     input,
-                    inputName;
+                    inputName,
+                    randomized;
                 
                 for (i = 0; i < inputs.length; i++) {
                     input = inputs[i];
                     inputName = typeof (input) === "string" ? input : input.name;
-                    ug.inputs[inputName] = flock.test.makeMockUGen(flock.test.makeRandomInputGenerator(input, input.scale, input.round), rate);
+                    randomized = flock.test.makeRandomInputGenerator(input, input.scale, input.round);
+                    ug.inputs[inputName] = flock.test.makeMockUGen(randomized, rate);
                 }
 				
                 ug.onInputChanged();
@@ -43,41 +50,158 @@ var flock = flock || {};
         };
     }; 
 
-    flock.test.timeIsolatedUGens = function (ugens, inputs, rates, numSamps) {
+    flock.test.timeIsolatedUGens = function (ugens, inputs, rates, interpolations, numSamps) {
         rates = rates || [flock.rates.AUDIO];
         
         var ugenDefs = [],
             testSpecs = [],
             i,
             j,
+            k,
             ugenDef,
             rate,
             testSpec,
-            k,
+            l,
             input,
             inputName,
             randomizer;
 						
         for (i = 0; i < ugens.length; i++) {
             for (j = 0; j < rates.length; j++) {
-                ugenDef = {};
-                rate = rates[j];
-			
-                ugenDef.ugen = ugens[i];
-                for (k = 0; k < inputs.length; k++) {
-                    input = inputs[k];
-                    inputName = (typeof (input) === "string") ? input : input.name;
-                    randomizer = flock.test.makeRandomInputGenerator(input);
-                    ugenDef[inputName] = randomizer();
+                for (k = 0; k < interpolations.length; k++) {
+                    ugenDef = {};
+                    rate = rates[j];
+                    ugenDef.ugen = ugens[i];
+                    ugenDef.options = {
+                        interpolation: interpolations[k]
+                    };
+                    
+                    for (l = 0; l < inputs.length; l++) {
+                        input = inputs[l];
+                        inputName = (typeof (input) === "string") ? input : input.name;
+                        randomizer = flock.test.makeRandomInputGenerator(input);
+                        ugenDef[inputName] = randomizer();
+                    }
+                    ugenDefs.push(ugenDef);
+                    testSpec = makeRandomizedInputUGenTestSpec(ugenDef, inputs, rate, numSamps);
+                    testSpec.name = ugenDef.ugen + " " + rate + ", interpolation: " + ugenDef.options.interpolation;
+                    testSpecs.push(testSpec);
                 }
-                ugenDefs.push(ugenDef);
-                testSpec = makeRandomizedInputUGenTestSpec(ugenDef, inputs, rate, numSamps);
-                testSpec.name = ugenDef.ugen + " " + rate;
-                testSpecs.push(testSpec);
             }
         }
         
         sheep.test(testSpecs, true);
     };
 
+       
+    /*************
+     * The Tests *
+     *************/
+    
+    flock.test.standaloneUGenBenchmarks = function () {
+        var freqSpec = {
+            name: "freq",
+            scale: 1200
+        },
+        
+        phaseSpec = {
+            name: "phase",
+            scale: flock.TWOPI
+        },
+        
+        audioAndControl = [
+            flock.rates.AUDIO,
+            flock.rates.CONTROL
+        ],
+        
+        allInterpolations = [
+            "none",
+            "linear",
+            "cubic"
+        ];
+        
+        // Non-interpolating basic oscillators.
+        flock.test.timeIsolatedUGens([
+            "flock.ugen.sin",
+            "flock.ugen.lfSaw"
+        ], [
+            freqSpec,
+            phaseSpec,
+            "mul",
+            "add"
+        ], audioAndControl, ["none"]);
+        
+        flock.test.timeIsolatedUGens([
+            "flock.ugen.lfPulse"
+        ], [
+            freqSpec,
+            phaseSpec,
+            "width",
+            "mul",
+            "add"
+        ], audioAndControl, ["none"]);
+        
+        
+        // Interpolating basic oscillators.
+        flock.test.timeIsolatedUGens([
+            "flock.ugen.sinOsc",
+            "flock.ugen.triOsc",
+            "flock.ugen.sawOsc",
+            "flock.ugen.squareOsc"
+        ], [
+            freqSpec,
+            phaseSpec,
+            "mul",
+            "add"
+        ], audioAndControl, allInterpolations);
+        
+        
+        // Noise.
+        flock.test.timeIsolatedUGens([
+            "flock.ugen.lfNoise",
+        ], [
+            freqSpec,
+            "mul",
+            "add"
+        ], audioAndControl, ["none", "linear"]);
+        
+        flock.test.timeIsolatedUGens([
+            "flock.ugen.dust"
+        ], [
+            "density",
+            "mul",
+            "add"
+        ], audioAndControl, ["none"]);
+        
+        
+        // Other UGens.
+        flock.test.timeIsolatedUGens([
+            "flock.ugen.line",
+            "flock.ugen.xLine"
+        ], [
+            "start",
+            "end",
+            "duration"
+        ], audioAndControl, ["none"]);
+        
+        flock.test.timeIsolatedUGens([
+            "flock.ugen.amplitude",
+        ], [
+            "source",
+            "attack",
+            "release"
+        ], audioAndControl, ["none"]);
+        
+        flock.test.timeIsolatedUGens([
+            "flock.ugen.out",
+        ], [
+            "sources",
+            {
+                name: "bus",
+                scale: 10,
+                round: true
+            }
+        ], audioAndControl, ["none"]);
+    };
+    
 }());

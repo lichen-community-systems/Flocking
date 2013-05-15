@@ -15,14 +15,22 @@ var flock = flock || {};
 (function () {
     "use strict";
 
+    flock.init();
+    
     module("flock.ugen.value tests");
     
     var gen = function (ugens, duration) {
         var kr = 64,
             periods = Math.ceil(44100 * duration / kr),
-            i;
+            i,
+            j,
+            ugen;
+            
         for (i = 0; i < periods; i++) {
-            flock.enviro.evalGraph(ugens, kr);
+            for (j = 0; j < ugens.length; j++) {
+                ugen = ugens[j];
+                ugen.gen(kr);
+            }
         }
     };
     
@@ -34,7 +42,7 @@ var flock = flock || {};
         
         for (i = 0; i < numRuns; i++) {
             currentStartTime = Date.now();
-            gen(ugens, 10);
+            gen(ugens, 1);
             currentEndTime = Date.now();
             avgDuration += currentEndTime - currentStartTime;            
         }

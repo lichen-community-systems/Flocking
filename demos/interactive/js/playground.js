@@ -18,6 +18,8 @@ var demo = demo || {};
 (function () {
     "use strict";
     
+    flock.init();
+    
     var setupEditor = function (that, editorId, theme, mode) {
         theme = theme || "ace/theme/twilight";
         mode = mode || "ace/mode/javascript";

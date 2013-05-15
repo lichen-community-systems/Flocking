@@ -15,14 +15,16 @@ flock.test = flock.test || {};
 
 (function () {
     "use strict";
-
+    
+    flock.init();
+    
     var mockLeft = [
         1, 2, 3, 4, 5,
         6, 7, 8, 9, 10,
         11, 12, 13, 14, 15,
         16, 17, 18, 19, 20
     ];
-
+    
     var mockRight = [
         20, 19, 18, 17, 16,
         15, 14, 13, 12, 11,
@@ -30,9 +32,14 @@ flock.test = flock.test || {};
         5, 4, 3, 2, 1
     ];
     
-    var bufferValueUGen = flock.ugen.value({value: 0}, new Float32Array(1));
-    var stereoExpandValueUGen = flock.ugen.value({value: 2}, new Float32Array(1));
-    
+    var audioSettings = fluid.defaults("flock.enviro").audioSettings;
+    var bufferValueUGen = flock.ugen.value({value: 0}, new Float32Array(1), {
+        audioSettings: audioSettings
+    });
+    var stereoExpandValueUGen = flock.ugen.value({value: 2}, new Float32Array(1), {
+        audioSettings: audioSettings
+    });
+        
     module("ugen.input() tests");
     
     var setAndCheckInput = function (ugen, inputName, val) {
@@ -88,7 +95,7 @@ flock.test = flock.test || {};
         setAndCheckArrayInput(mockUGen, "cat", defs, function (i, def) {
             equals(mockUGen.input("cat")[i].id, def.id);
         });
-
+    
         // And with a scalar.
         setAndCheckInput(mockUGen, "cat", 500);
         equals(mockUGen.inputs.cat.model.value, 500, "The input ugen should be a value ugen with the correct model value.");
@@ -102,7 +109,6 @@ flock.test = flock.test || {};
     
     
     // TODO: Create these graphs declaratively!
-    
     module("Output tests", {
         setup: function () {
             flock.enviro.shared = flock.enviro();
@@ -118,21 +124,37 @@ flock.test = flock.test || {};
             bufferSize: 40
         };
         
-        var evalFn = function () {
-            var env = flock.enviro.shared;
-            flock.enviro.clearBuses(env.audioSettings.numBuses, env.buses, env.audioSettings.rates.control);            
-            outUGen.gen(numSamps);
-        };
-        var actual = flock.interleavedWriter(new Float32Array(numSamps * chans), 
-            evalFn, flock.enviro.shared.buses, audioSettings);
+        outUGen.model.blockSize = audioSettings.rates.control;
+        
+        var env = flock.enviro.shared;
+        var nodeEvaluator = flock.enviro.nodeEvaluator({
+            numBuses: env.options.audioSettings.numBuses,
+            controlRate: audioSettings.rates.control
+        });
+        nodeEvaluator.buses = env.buses;
+        nodeEvaluator.nodes = [outUGen];
+
+        var actual = flock.enviro.moz.interleavedWriter(
+            new Float32Array(numSamps * chans),
+            nodeEvaluator.gen,
+            flock.enviro.shared.buses,
+            audioSettings.bufferSize / audioSettings.rates.control,
+            audioSettings.rates.control,
+            audioSettings.chans
+        );
         deepEqual(actual, expectedBuffer, msg);
     };
-
-    test("flock.interleavedWriter() mono input, mono output", function () {
+    
+    test("flock.enviro.moz.interleavedWriter() mono input, mono output", function () {
         // Test with a single input buffer being multiplexed by ugen.out.
         var mockLeftUGen = flock.test.makeMockUGen(mockLeft);
-        var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen}, []);
-        out.input("expand", 1);
+        var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen}, [], {
+            audioSettings: {
+                buses: flock.enviro.shared.buses,
+                rates: flock.enviro.shared.audioSettings.rates
+            }
+        });
+        out.input("expand", 2);
         
         // Pull the whole buffer.
         var expected = new Float32Array([
@@ -141,17 +163,22 @@ flock.test = flock.test || {};
         ]);
         checkOutput(40, 1, out, expected, 
             "We should receive a mono buffer containing two copies of the original input buffer.");
-
+    
         // Pull a partial buffer.
         expected = new Float32Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
         checkOutput(20, 1, out, expected, 
             "We should receive a mono buffer containing the input buffer unmodified.");
     });
     
-    test("flock.interleavedWriter() mono input, stereo output", function () {
+    test("flock.enviro.moz.interleavedWriter() mono input, stereo output", function () {
         // Test with a single mono input buffer.
         var mockLeftUGen = flock.test.makeMockUGen(mockLeft);
-        var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen, expand: stereoExpandValueUGen}, []);
+        var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen, expand: stereoExpandValueUGen}, [], {
+            audioSettings: {
+                buses: flock.enviro.shared.buses,
+                rates: flock.enviro.shared.audioSettings.rates
+            }
+        });
         
         // Pull the whole buffer.
         var expected = new Float32Array([
@@ -163,8 +190,8 @@ flock.test = flock.test || {};
         checkOutput(20, 2, out, expected, 
             "We should receive a stereo buffer containing two copies of the original input buffer.");
     });
-
-    test("flock.interleavedWriter() stereo input", function () {
+    
+    test("flock.enviro.moz.interleavedWriter() stereo input", function () {
         // Test with two input buffers.
         var out = flock.ugen.out({
             sources: [
@@ -172,8 +199,13 @@ flock.test = flock.test || {};
                 flock.test.makeMockUGen(mockRight)
             ],
             bus: bufferValueUGen
-        }, []);
-        out.input("expand", 1);
+        }, [], {
+            audioSettings: {
+                buses: flock.enviro.shared.buses,
+                rates: flock.enviro.shared.audioSettings.rates
+            }
+        });
+        out.input("expand", 2);
         
         // Pull the whole buffer. Expect a stereo interleaved buffer as the result, 
         // containing two copies of the original input buffer.
@@ -197,21 +229,22 @@ flock.test = flock.test || {};
     
     var testOutputs = function (numRuns, defs, bus, expectedOutput, msg) {
         var synths = [],
-            i;
-        defs = $.makeArray(defs);
+            i,
+            env = flock.enviro.shared;
         
+        defs = $.makeArray(defs);
         $.each(defs, function (i, def) {
             var synth = flock.synth(def);
             synths.push(synth);
         });
         
         for (i = 0; i < numRuns; i++) {
-            flock.enviro.shared.gen();
-            flock.test.assertArrayEquals(flock.enviro.shared.buses[bus], expectedOutput, i + ": " + msg);
+            env.gen();
+            flock.test.assertArrayEquals(env.buses[bus], expectedOutput, i + ": " + msg);
         }
         
         $.each(synths, function (i, synth) {
-            flock.enviro.shared.remove(synth);
+            env.remove(synth);
         });
                 
         return synths;
@@ -293,6 +326,76 @@ flock.test = flock.test || {};
     });
     
     
+    module("Dust tests");
+
+    var checkSampleBoundary = function (buffer, min, max) {
+        var aboveMin = true,
+            belowMax = true,
+            i,
+            samp;
+            
+        for (i = 0; i < buffer.length; i++) {
+            samp = buffer[i];
+            aboveMin = (samp >= min);
+            belowMax = (samp <= max);
+        }
+        
+        ok(aboveMin, "No samples in the buffer should go below " + min);
+        ok(belowMax, "No samples in the buffer should exceed " + max);
+    };
+    
+    var countNonZeroSamples = function (buffer) {
+        var numNonZero = 0,
+            i,
+            samp;
+        for (i = 0; i < buffer.length; i++) {
+            samp = buffer[i];
+            numNonZero = (samp > 0.0) ? numNonZero + 1 : numNonZero;
+        }
+        return numNonZero;
+    };
+        
+    var checkDensity = function (dust, density) {
+        // Run the algorithm 100x and average the results.
+        var nonZeroSum = 0,
+            numRuns = 1500,
+            buffer = dust.output,
+            i,
+            avgNumNonZeroSamples;
+    
+        for (i = 0; i < numRuns; i++) {
+            dust.gen(44100);
+            nonZeroSum += countNonZeroSamples(buffer);
+        }
+        avgNumNonZeroSamples = nonZeroSum / numRuns;
+        equals(Math.round(avgNumNonZeroSamples), density, 
+            "There should be roughly " + density + " non-zero samples in a one-second buffer.");
+    };
+
+    test("flock.ugen.dust", function () {
+        var density = 1.0;
+        var dust = flock.ugen.dust({
+            density: flock.ugen.value({value: density}, new Float32Array(44100))
+        }, new Float32Array(44100));
+        dust.gen(44100);
+        var buffer = dust.output;
+        
+        // Check basic details about the buffer: it should be the correct length,
+        // and never contain values above 1.0.
+        ok(buffer, "A buffer should be returned from dust.audio()");
+        equals(buffer.length, 44100, "And it should be the specified length.");
+        checkSampleBoundary(buffer, 0.0, 1.0);
+
+        // Check that the buffer contains an avg. density of 1.0 non-zero samples per second.
+        checkDensity(dust, density);
+
+        // And now try a density of 200.
+        density = 200;
+        dust.inputs.density = flock.ugen.value({value: density}, new Float32Array(44100));
+        checkDensity(dust, density); 
+    });
+    
+    
     module("mul & add tests");
     
     var testSignal = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
@@ -321,7 +424,7 @@ flock.test = flock.test || {};
     var generateTestOutput = function () {
         return [10, 10, 10, 10, 10, 10, 10, 10, 10, 10];
     };
-
+    
     var signalTest = function (fn, inputs, expected, msg) {
         var output = generateTestOutput(),
             args = [10, output].concat(inputs);
@@ -398,7 +501,7 @@ flock.test = flock.test || {};
         expected = [12, 12, 12, 12, 12, 12, 12, 12, 12, 12];
         mulAddUGenTest(undefined, krInput, expected, 
             "flock.ugen.mulAdd() with control rate add should use the first value of the add signal.");
-
+    
         // ar add
         expected = [12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
         mulAddUGenTest(undefined, audioInput, expected, 
@@ -433,7 +536,7 @@ flock.test = flock.test || {};
             one = flock.test.makeMockUGen(addBuffer),
             two = flock.test.makeMockUGen(addBuffer),
             three = flock.test.makeMockUGen(addBuffer);
-
+    
         var inputs = {
             sources: [one]
         };
@@ -502,7 +605,7 @@ flock.test = flock.test || {};
         }, 
         table,
         "At a frequency of 1 and sampling rate of 4, requesting 4 samples should return the whole table.");
-
+    
         checkOsc({
             freq: 1,
             sampleRate: 4,
@@ -530,8 +633,8 @@ flock.test = flock.test || {};
         new Float32Array([1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3]),
         "At a frequency of 2 and sampling rate of 4, 16 samples should still consist of the first and third samples.");
     });
-
-
+    
+    
     module("flock.ugen.osc() tests: specific wave forms");
     
     var basicDef = {
@@ -635,16 +738,16 @@ flock.test = flock.test || {};
         
         actual = genOneSecondImpulse(1.0, 0.5);
         testImpulses(actual, [22050], "With a frequency of 1 Hz and phase of 0.5");
-
+    
         actual = genOneSecondImpulse(1.0, 0.01);
         testImpulses(actual, [44100 - (44100 / 100) + 1], "With a frequency of 1 Hz and phase of 0.01");
         
         actual = genOneSecondImpulse(2.0, 0.0);
         testImpulses(actual, [22050], "With a frequency of 2 Hz and phase of 0");
-
+    
         actual = genOneSecondImpulse(2.0, 0.5);
         testImpulses(actual, [11025, 33075], "With a frequency of 2 Hz and phase of 0.5");
-
+    
         actual = genOneSecondImpulse(2.0, 1.0);
         testImpulses(actual, [0, 22050], "With a frequency of 2 Hz and phase of 1");
     });
@@ -667,7 +770,7 @@ flock.test = flock.test || {};
             speed: 1.0
         }
     };
-
+    
     test("flock.ugen.playBuffer, speed: 1.0", function () {
         var player = flock.parse.ugenForDef(playbackDef);
         
@@ -746,7 +849,7 @@ flock.test = flock.test || {};
             "The first half of the line's values should but generated.");
         flock.test.assertArrayEquals(line.output.subarray(32), flock.test.constantBuffer(32, 0),
             "The last 32 samples of the buffer should be empty.");
-
+    
         line.gen(32);
         flock.test.assertArrayEquals(line.output.subarray(0, 32), flock.test.fillBuffer(32, 63), 
             "The second half of the line's values should be generated.");
@@ -920,7 +1023,7 @@ flock.test = flock.test || {};
     
     test("flock.ugen.amplitude() with changing value.", function () {
         var tracker = flock.parse.ugenForDef(ampDescendingLine);
-
+    
         var controlPeriods = Math.round(44100 / 64),
             i;
         
@@ -936,6 +1039,7 @@ flock.test = flock.test || {};
         rate: "audio",
         inputs: {
             bus: 3,
+            expand: 1,
             sources: {
                 ugen: "flock.test.mockUGen",
                 options: {
@@ -954,21 +1058,27 @@ flock.test = flock.test || {};
         }
     };
     
+    var inEnviroOptions = {
+        audioSettings: {
+            numBuses: 16
+        }
+    };
+    
     test("flock.ugen.in() single bus input", function () {
-        flock.enviro.shared = flock.enviro();
-        
+        flock.enviro.shared = flock.enviro(inEnviroOptions);
         var outSynth = flock.synth(outSynthDef);
         var inSynth = flock.synth(inSynthDef);
+        
         inSynth.enviro.gen();
         var actual = inSynth.ugens.named["in"].output;
         equals(actual, inSynth.enviro.buses[3],
-            "With a single source intput, the output of flock.ugen.in should be the actual bus referenced.");
+            "With a single source input, the output of flock.ugen.in should be the actual bus referenced.");
         deepEqual(actual, outSynthDef.inputs.sources.options.buffer,
             "And it should reflect exactly the output of the flock.ugen.out that is writing to the buffer.");
     });
     
     test("flock.ugen.in() multiple bus input", function () {
-        flock.enviro.shared = flock.enviro();
+        flock.enviro.shared = flock.enviro(inEnviroOptions);
         
         var bus3Synth = flock.synth(outSynthDef);
         var bus4Def = $.extend(true, {}, outSynthDef, {
@@ -1026,7 +1136,7 @@ flock.test = flock.test || {};
             "When the 'max' input is changed to 0.5, the signal should be normalized to 0.5");
     });
     
-
+    
     module("flock.ugen.math() tests");
     
     var testMath = function (synthDef, expected, msg) {
@@ -1274,8 +1384,11 @@ flock.test = flock.test || {};
             "The delay's third block should contain the source's second block of samples.");
     });
     
+    
+    module("flock.ugen.phasor");
+    
     var loopOneDef =  {
-        ugen: "flock.ugen.loop",
+        ugen: "flock.ugen.phasor",
         start: 1.0,
         end: 66,
         reset: 2.0,
@@ -1294,7 +1407,6 @@ flock.test = flock.test || {};
     };
     
     var testLoopUGen = function (testSpecs) {
-        module("flock.ugen.loop");
         $.each(testSpecs, function (i, testSpec) {
             var def = $.extend(true, {rate: testSpec.rate, id: "looper"}, testSpec.def),
                 synth = flock.synth(def),
@@ -1359,7 +1471,7 @@ flock.test = flock.test || {};
             name: "control rate, wraparound",
             rate: "control",
             def: {
-                ugen: "flock.ugen.loop",
+                ugen: "flock.ugen.phasor",
                 start: 0.0,
                 end: 2.0,
                 step: 1.0
@@ -1387,7 +1499,7 @@ flock.test = flock.test || {};
             name: "control rate, step value is the duration of a sample in seconds.",
             rate: "control",
             def: {
-                ugen: "flock.ugen.loop",
+                ugen: "flock.ugen.phasor",
                 start: 0,
                 end: 1.0,
                 step: 1.0 / 44100

@@ -10,10 +10,13 @@
 /*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
-var flock = flock || {};
-
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
+    
 (function () {
     "use strict";
+    
+    flock.init();
     
     var simpleSynthDef = {
         ugen: "flock.ugen.out",
@@ -133,32 +136,6 @@ var flock = flock || {};
         ]);
     });
     
-    test("flock.clear()", function () {
-        var obj = {
-            "cat": "meow",
-            "dog": "bark"
-        };
-        
-        flock.clear(obj);
-        deepEqual(obj, {},
-            "All properties should have been deleted.");
-        
-        obj = {};
-        flock.clear(obj);
-        deepEqual(obj, {},
-            "An empty object should successfully remain empty.");
-        
-        obj = undefined;
-        flock.clear(obj);
-        equal(obj, undefined,
-            "An undefined object should remain undefined after being cleared.");
-        
-        obj = null;
-        flock.clear(obj);
-        equal(obj, null,
-            "An null object should remain null after being cleared.");
-    });
-    
     test("flock.generate()", function () {
         // Buffer size and static number for the generator.
         var expected = new Float32Array([1.0, 1.0, 1.0]);
@@ -190,7 +167,7 @@ var flock = flock || {};
     });
     
     var testNormalize = function (normal, unnormalized, expected) {
-        var actual = flock.normalize($.map(unnormalized, flock.identity), normal);
+        var actual = flock.normalize($.map(unnormalized, fluid.identity), normal);
         deepEqual(actual, expected, "Buffer normalized to " + normal + ".");
     };
     

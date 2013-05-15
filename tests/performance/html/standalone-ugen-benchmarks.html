@@ -7,7 +7,14 @@
         <link rel="stylesheet" type="text/css" href="../third-party/sheep/css/sheep.css" />
 	
         <script src="../../../third-party/jquery/js/jquery.min.js"></script>
+        <script src="../../../third-party/infusion/js/Fluid.js"></script>
+        <script src="../../../third-party/infusion/js/FluidIoC.js"></script>
+        <script src="../../../third-party/infusion/js/DataBinding.js"></script>
+        
         <script src="../../../flocking/flocking-core.js"></script>
+        <script src="../../../flocking/flocking-scheduler.js"></script>
+        <script src="../../../flocking/flocking-firefox.js"></script>
+        <script src="../../../flocking/flocking-webaudio.js"></script>
         <script src="../../../flocking/flocking-ugens.js"></script>
         <script src="../../../flocking/flocking-parser.js"></script>
 
@@ -20,89 +27,7 @@
     <body id="body">
 
         <script type="text/javascript">
-            var freqSpec = {
-                name: "freq",
-                scale: 1200
-            },
-            
-            phaseSpec = {
-                name: "phase",
-                scale: flock.TWOPI
-            },
-                 
-            audioAndControl = [
-                flock.rates.AUDIO,
-                flock.rates.CONTROL
-            ];
-					
-            flock.test.timeIsolatedUGens([
-                "flock.ugen.sin", 
-                "flock.ugen.sinOsc", 
-                "flock.ugen.triOsc", 
-                "flock.ugen.sawOsc",
-                "flock.ugen.lfSaw",
-                "flock.ugen.squareOsc"
-            ], [
-                freqSpec,
-                phaseSpec,
-                "mul",
-                "add"
-            ], audioAndControl);
-			
-            flock.test.timeIsolatedUGens([
-				"flock.ugen.lfNoise",
-			], [
-				freqSpec,
-				"mul",
-				"add"
-			], audioAndControl);
-            
-            flock.test.timeIsolatedUGens([
-                "flock.ugen.dust"
-            ], [
-                "density",
-                "mul",
-                "add"
-            ], audioAndControl);
-			
-            flock.test.timeIsolatedUGens([
-                "flock.ugen.lfPulse"
-            ], [
-                freqSpec,
-                phaseSpec,
-                "width",
-                "mul",
-                "add"
-            ], audioAndControl);
-			
-            flock.test.timeIsolatedUGens([
-                "flock.ugen.line",
-                "flock.ugen.xLine"
-            ], [
-                "start",
-                "end",
-                "duration"
-            ], audioAndControl);
-			
-            flock.test.timeIsolatedUGens([
-                "flock.ugen.amplitude",
-            ], [
-                "source",
-                "attack",
-                "release"
-            ], audioAndControl);
-            
-            flock.test.timeIsolatedUGens([
-                "flock.ugen.out",
-            ], [
-                "sources",
-                {
-                    name: "bus",
-                    scale: 10,
-                    round: true
-                }
-            ], audioAndControl);
-            
+            flock.test.standaloneUGenBenchmarks();
         </script>
     </body>
 </html>

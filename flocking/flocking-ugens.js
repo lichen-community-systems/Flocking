@@ -6,27 +6,30 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global Float32Array, window, Mike, jQuery*/
+/*global Float32Array*/
 /*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
     forin: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
-var flock = flock || {};
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
 
-(function ($) {
+(function () {
     "use strict";
 
+    var $ = fluid.registerNamespace("jQuery");
+    
     /*************
      * Utilities *
      *************/
-    
+
     // TODO: Check API; write unit tests.
     flock.aliasUGen = function (sourcePath, aliasName, inputDefaults, defaultOptions) {
-        var root = flock.get(undefined, sourcePath);
+        var root = flock.get(sourcePath);
         flock.set(root, aliasName, function (inputs, output, options) {
             options = $.extend(true, {}, defaultOptions, options);
             return root(inputs, output, options);
         });
-        flock.defaults(sourcePath + "." + aliasName, inputDefaults);
+        fluid.defaults(sourcePath + "." + aliasName, inputDefaults);
     };
     
     // TODO: Check API; write unit tests.
@@ -115,7 +118,7 @@ var flock = flock || {};
         
         // If we have no mul or add inputs, bail immediately.
         if (!mul && !add) {
-            that.mulAdd = flock.identity;
+            that.mulAdd = fluid.identity;
             return;
         }
     
@@ -151,6 +154,7 @@ var flock = flock || {};
         
         that.options.audioSettings = that.options.audioSettings || flock.enviro.shared.audioSettings;
         that.model.sampleRate = options.sampleRate || that.options.audioSettings.rates[that.rate];
+        that.model.blockSize = that.rate === flock.rates.AUDIO ? that.options.audioSettings.rates.control : 1;
         
         that.get = function (path) {
             return flock.input.get(that.inputs, path);
@@ -165,7 +169,11 @@ var flock = flock || {};
          */
         that.set = function (path, val, swap) {
             return flock.input.set(that.inputs, path, val, that, function (ugenDef) {
-                return flock.parse.ugenDef(ugenDef, that.options.audioSettings.rates);
+                return flock.parse.ugenDef(ugenDef, {
+                    audioSettings: that.options.audioSettings,
+                    buses: that.options.audioSettings.buses,
+                    buffers: that.options.audioSettings.buffers
+                });
             });
         };
         
@@ -199,7 +207,7 @@ var flock = flock || {};
         };
         
         // No-op base onInputChanged() implementation.
-        that.onInputChanged = flock.identity;
+        that.onInputChanged = fluid.identity;
         
         // Assigns an interpolator function to the UGen.
         // This is inactive by default, but can be used in custom gen() functions.
@@ -217,7 +225,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.value", {
+    fluid.defaults("flock.ugen.value", {
         rate: "constant"
     });
 
@@ -304,7 +312,7 @@ var flock = flock || {};
                 that.gen = that.sumGen;
             } else {
                 that.output = that.inputs.sources.output;
-                that.gen = flock.identity;
+                that.gen = fluid.identity;
             }
         };
         
@@ -312,7 +320,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.sum", {
+    fluid.defaults("flock.ugen.sum", {
         rate: "audio"
     });
     
@@ -342,13 +350,13 @@ var flock = flock || {};
                 idx;
 
             for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.phase, k += m.strides.freq) {
-                idx = Math.round(phase + phaseOffset[j] * tableIncRad);
+                idx = phase + phaseOffset[j] * tableIncRad;
                 if (idx >= tableLen) {
                     idx -= tableLen;
                 } else if (idx < 0) {
                     idx += tableLen;
                 }
-                output[i] = table[idx];
+                output[i] = that.interpolate ? that.interpolate(idx, table) : table[idx | 0];
                 phase += freq[k] * tableIncHz;
                 if (phase >= tableLen) {
                     phase -= tableLen;
@@ -380,35 +388,37 @@ var flock = flock || {};
         flock.onMulAddInputChanged(that);
     };
     
-    flock.defaults("flock.ugen.osc", {
+    fluid.defaults("flock.ugen.osc", {
         rate: "audio",
         inputs: {
             freq: 440.0,
             phase: 0.0
         },
-        options: {
+        ugenOptions: {
             strideInputs: [
                 "freq",
                 "phase"
             ]
-        }
+        },
+        tableSize: 8192
     });
 
     flock.ugen.osc.define = function (name, tableFillFn) {
         var lastSegIdx = name.lastIndexOf("."),
             namespace = name.substring(0, lastSegIdx),
             oscName = name.substring(lastSegIdx + 1),
-            namespaceObj = flock.get(undefined, namespace);
+            namespaceObj = flock.get(namespace);
         
         namespaceObj[oscName] = function (inputs, output, options) {
-            var defaultSettings = flock.defaults("flock.audioSettings"),
-                size = (options && options.tableSize) || defaultSettings.tableSize,
-                scale = flock.TWOPI / size;
-            inputs.table = tableFillFn(size, scale);
+            // TODO: Awkward options pre-merging. Refactor osc API.
+            var defaults = fluid.defaults("flock.ugen.osc"),
+                merged = fluid.merge(null, defaults, options),
+                s = merged.tableSize;
+            inputs.table = tableFillFn(s, flock.TWOPI / s);
             return flock.ugen.osc(inputs, output, options);
         };
         
-        flock.defaults(name, flock.defaults("flock.ugen.osc"));
+        fluid.defaults(name, fluid.defaults("flock.ugen.osc"));
     };
     
     
@@ -500,7 +510,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.sin", flock.defaults("flock.ugen.osc"));
+    fluid.defaults("flock.ugen.sin", fluid.defaults("flock.ugen.osc"));
 
     
     flock.ugen.lfSaw = function (inputs, output, options) {
@@ -543,12 +553,12 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.lfSaw", {
+    fluid.defaults("flock.ugen.lfSaw", {
         rate: "audio",
         inputs: {
             phase: 0.0
         },
-        options: {
+        ugenOptions: {
             strideInputs: ["freq"]
         }
     });
@@ -593,7 +603,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.lfPulse", {
+    fluid.defaults("flock.ugen.lfPulse", {
         rate: "audio",
         inputs: {
             phase: 0.0,
@@ -650,13 +660,13 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.impulse", {
+    fluid.defaults("flock.ugen.impulse", {
         rate: "audio",
         inputs: {
             freq: 440,
             phase: 0.0
         },
-        options: {
+        ugenOptions: {
             strideInputs: ["freq"]
         }
     });
@@ -705,7 +715,7 @@ var flock = flock || {};
     };
     
     flock.buffer.resolveBufferId = function (ugen, id, chan) {
-        var buffer = flock.enviro.shared.buffers[id]; // TODO: Direct reference to shared environment.
+        var buffer = ugen.options.audioSettings.buffers[id];
         flock.buffer.addListener(id, ugen);
         if (buffer) {
             // Buffer has already been loaded.
@@ -756,7 +766,7 @@ var flock = flock || {};
             // If the channel has changed, update the buffer we're reading from.
             if (m.channel !== chan) {
                 m.channel = chan;
-                that.buffer = source = flock.enviro.shared.buffers[m.name][chan];
+                that.buffer = source = that.options.audioSettings.buffers[m.name][chan];
             }
             
             for (i = 0; i < numSamps; i++) {
@@ -789,7 +799,7 @@ var flock = flock || {};
             // If the channel has changed, update the buffer we're reading from.
             if (m.channel !== chan) {
                 m.channel = chan;
-                that.buffer = source = flock.enviro.shared.buffers[m.name][chan];
+                that.buffer = source = that.options.audioSettings.buffers[m.name][chan];
             }
             
             for (i = 0; i < numSamps; i++) {
@@ -832,14 +842,14 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.playBuffer", {
+    fluid.defaults("flock.ugen.playBuffer", {
         rate: "audio",
         inputs: {
             channel: 0,
             loop: 0.0,
             speed: 1.0
         },
-        options: {
+        ugenOptions: {
             model: {
                 idx: 0,
                 channel: undefined
@@ -889,7 +899,7 @@ var flock = flock || {};
         return that;
     };
 
-    flock.defaults("flock.ugen.bufferDuration", {
+    fluid.defaults("flock.ugen.bufferDuration", {
         rate: "constant",
         inputs: {
             channel: 0
@@ -906,7 +916,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.sampleRate", {
+    fluid.defaults("flock.ugen.sampleRate", {
         rate: "constant",
         inputs: {}
     });
@@ -956,7 +966,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.dust", {
+    fluid.defaults("flock.ugen.dust", {
         rate: "audio",
         inputs: {
             density: 1.0
@@ -986,7 +996,7 @@ var flock = flock || {};
         return that;
     };
 
-    flock.defaults("flock.ugen.whiteNoise", {
+    fluid.defaults("flock.ugen.whiteNoise", {
         rate: "audio"
     });
     
@@ -1042,7 +1052,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.lfNoise", {
+    fluid.defaults("flock.ugen.lfNoise", {
         rate: "audio",
         inputs: {
             freq: 440
@@ -1108,7 +1118,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.line", {
+    fluid.defaults("flock.ugen.line", {
         rate: "control",
         inputs: {
             start: 0.0,
@@ -1171,7 +1181,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.xLine", {
+    fluid.defaults("flock.ugen.xLine", {
         rate: "control",
         inputs: {
             start: 0.0,
@@ -1236,7 +1246,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.phasor", {
+    fluid.defaults("flock.ugen.phasor", {
         rate: "control",
         inputs: {
             start: 0.0,
@@ -1245,7 +1255,7 @@ var flock = flock || {};
             step: 0.1,
             trigger: 0.0
         },
-        options: {
+        ugenOptions: {
             strideInputs: [
                 "trigger",
                 "step"
@@ -1323,7 +1333,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.env.simpleASR", {
+    fluid.defaults("flock.ugen.env.simpleASR", {
         rate: "control",
         inputs: {
             start: 0.0,
@@ -1332,7 +1342,7 @@ var flock = flock || {};
             release: 1.0,
             gate: 0.0
         },
-        options: {
+        ugenOptions: {
             model: {
                 previousGate: 0.0,
                 stage: {
@@ -1395,7 +1405,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.amplitude", {
+    fluid.defaults("flock.ugen.amplitude", {
         rate: "audio",
         inputs: {
             attack: 0.01,
@@ -1419,7 +1429,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.normalize", {
+    fluid.defaults("flock.ugen.normalize", {
         rate: "audio",
         inputs: {
             max: 1.0
@@ -1436,34 +1446,35 @@ var flock = flock || {};
     
         that.gen = function (numSamps) {
             var sources = that.inputs.sources,
-                buses = flock.enviro.shared.buses, // TODO: Hardcoded reference to shared enviroment.
+                buses = that.options.audioSettings.buses,
                 bufStart = that.inputs.bus.output[0],
                 expand = that.inputs.expand.output[0],
+                numSources,
+                numOutputBuses,
                 i,
                 j,
                 source,
                 rate,
                 bus,
                 inc,
-                outIdx,
-                k;
-            
+                outIdx;
+                        
             if (typeof (sources.length) !== "number") {
                 sources = [sources];
             }
+            numSources = sources.length;
+            numOutputBuses = Math.max(expand, numSources);
             
-            for (i = 0; i < expand; i++) {
-                for (j = 0; j < sources.length; j++) {
-                    source = sources[j];
-                    rate = source.rate;
-                    bus = buses[bufStart + i + j];
-                    inc = rate === flock.rates.AUDIO ? 1 : 0;
-                    outIdx = 0;
+            for (i = 0; i < numOutputBuses; i++) {
+                source = sources[i % numSources];
+                rate = source.rate;
+                bus = buses[bufStart + i];
+                inc = rate === flock.rates.AUDIO ? 1 : 0;
+                outIdx = 0;
                     
-                    for (k = 0; k < numSamps; k++, outIdx += inc) {
-                        // TODO: Support control rate interpolation.
-                        bus[k] = bus[k] + source.output[outIdx];
-                    }
+                for (j = 0; j < numSamps; j++, outIdx += inc) {
+                    // TODO: Support control rate interpolation.
+                    bus[j] = bus[j] + source.output[outIdx];
                 }
             }
         };
@@ -1472,11 +1483,11 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.out", {
+    fluid.defaults("flock.ugen.out", {
         rate: "audio",
         inputs: {
             bus: 0,
-            expand: 1
+            expand: 2
         }
     });
     
@@ -1485,13 +1496,12 @@ var flock = flock || {};
         var that = flock.ugen(inputs, output, options);
         
         that.singleBusGen = function () {
-            // TODO: Hardcoded reference to shared enviroment.
-            that.output = flock.enviro.shared.buses[that.inputs.bus.output[0]];
+            that.output = that.options.audioSettings.buses[that.inputs.bus.output[0]];
         };
         
         that.multiBusGen = function (numSamps) {
             var busesInput = that.inputs.bus,
-                enviroBuses = flock.enviro.shared.buses, // TODO: Hardcoded reference to shared enviroment.
+                enviroBuses = that.options.audioSettings.buses,
                 out = that.output,
                 i,
                 j,
@@ -1515,383 +1525,11 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.in", {
+    fluid.defaults("flock.ugen.in", {
         rate: "audio",
         inputs: {
             bus: 0
         }
-    });
-    
-    
-    flock.ugen.audioIn = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
-        
-        that.gen = function (numSamps) {
-            var out = that.output,
-                m = that.model,
-                idx = m.idx,
-                inputBuffer = m.inputBuffer,
-                i;
-            
-            for (i = 0; i < numSamps; i++) {
-                if (idx >= inputBuffer.length) {
-                    inputBuffer = m.inputBuffers.shift() || [];
-                    idx = 0;
-                }
-                
-                out[i] = idx < inputBuffer.length ? inputBuffer[idx++] : 0.0;
-            }
-            
-            m.idx = idx;
-            m.inputBuffer = inputBuffer;
-            
-            that.mulAdd(numSamps);
-        };
-        
-        that.onAudioData = function (data) {
-            that.model.inputBuffers.push(data);
-        };
-        
-        that.setDevice = function (deviceIdx) {
-            deviceIdx = deviceIdx !== undefined ? deviceIdx : that.inputs.device.output[0];
-            that.mike.setMicrophone(deviceIdx);
-        };
-        
-        that.init = function () {
-            var m = that.model,
-                mikeOpts = that.options.mike;
-
-            // Flash needs the sample rate as a string?!
-            mikeOpts.settings.sampleRate = String(mikeOpts.settings.sampleRate || that.options.audioSettings.rates.audio);
-            
-            // Setup and listen to Mike.js.
-            that.mike = new Mike(mikeOpts);
-            
-            that.mike.on("ready", function () {
-                that.setDevice();
-            });
-            
-            that.mike.on("microphonechange", function () {
-                this.start();
-            });
-            
-            that.mike.on("data", that.onAudioData);
-            
-            // Initialize the model before audio has started flowing from the device.
-            m.inputBuffers = [];
-            m.inputBuffer = [];
-            m.idx = 0;
-        };
-        
-        that.onInputChanged = function (inputName) {
-            if (inputName === "device") {
-                that.setDevice();
-                return;
-            }
-            flock.onMulAddInputChanged(that);
-        };
-        
-        that.onInputChanged();
-        that.init();
-        
-        return that;
-    };
-    
-    flock.defaults("flock.ugen.audioIn", {
-        rate: "audio",
-        inputs: {
-            device: 0
-        },
-        options: {
-            mike: {
-                settings: {}
-            }
-        }
-    });
-    
-    
-    /***********************
-     * DOM-dependent UGens *
-     ***********************/
-     
-    flock.ugen.scope = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
-        
-        that.model.spf = Math.round(that.model.sampleRate / that.options.fps);
-        that.model.bufIdx = 0;
-        
-        // Setup the scopeView widget. 
-        that.model.scope = that.options.styles;
-        that.model.scope.values = new Float32Array(that.model.spf);
-        that.scopeView = flock.gfx.scopeView(that.options.canvas, that.model.scope);
-        
-        that.gen = function (numSamps) {
-            var m = that.model,
-                spf = m.spf,
-                bufIdx = m.bufIdx,
-                buf = m.scope.values,
-                i;
-            
-            for (i = 0; i < numSamps; i++) {
-                buf[bufIdx] = that.inputs.source.output[i];
-                if (bufIdx < spf) {
-                    bufIdx += 1;
-                } else {
-                    bufIdx = 0;
-                    that.scopeView.refreshView();
-                }
-            }
-            m.bufIdx = bufIdx;
-        };
-        
-        that.onInputChanged = function () {
-            // Pass the "source" input directly back as the output from this ugen.
-            that.output = that.inputs.source.output;
-        };
-        
-        that.onInputChanged();
-        that.scopeView.refreshView();
-        
-        return that;
-    };
-    
-    flock.defaults("flock.ugen.scope", {
-        rate: "audio",
-        options: {
-            fps: 60,
-            styles: {
-                scaleY: 0.75,
-                strokeColor: "#777777",
-                strokeWidth: 3
-            }
-        }
-    });
-    
-    
-    flock.ugen.mouse = {};
-    
-    /**
-     * Tracks the mouse's position along the specified axis within the boundaries the whole screen.
-     * This unit generator will generate a signal between 0.0 and 1.0 based on the position of the mouse;
-     * use the mul and add inputs to scale this value to an appropriate control signal.
-     */
-    flock.ugen.mouse.cursor = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
-        that.options.axis = that.options && that.options.axis ? that.options.axis : "x"; // By default, track the mouse along the x axis.
-        
-        /**
-         * Generates a control rate signal between 0.0 and 1.0 by tracking the mouse's position along the specified axis.
-         *
-         * @param numSamps the number of samples to generate
-         */
-        that.exponentialGen = function (numSamps) {
-            var m = that.model,
-                scaledMouse = m.mousePosition / m.size,
-                movingAvg = m.movingAvg,
-                lag = that.inputs.lag.output[0],
-                add = that.inputs.add.output[0],
-                mul = that.inputs.mul.output[0],
-                lagCoef = m.lagCoef,
-                out = that.output,
-                pow = Math.pow,
-                i,
-                max;
-            
-            if (lag !== lagCoef) {
-                lagCoef = lag === 0 ? 0.0 : Math.exp(flock.LOG001 / (lag * m.sampleRate));
-                m.lagCoef = lagCoef;
-            }
-            
-            for (i = 0; i < numSamps; i++) {
-                max = mul + add;
-                scaledMouse = pow(max  / add, scaledMouse) * add;
-                movingAvg = scaledMouse + lagCoef * (movingAvg - scaledMouse); // 1-pole filter averages mouse values.
-                out[i] = movingAvg;
-            }
-            
-            m.movingAvg = movingAvg;
-        };
-        
-        that.linearGen = function (numSamps) {
-            var m = that.model,
-                scaledMouse = m.mousePosition / m.size,
-                movingAvg = m.movingAvg,
-                lag = that.inputs.lag.output[0],
-                add = that.inputs.add.output[0],
-                mul = that.inputs.mul.output[0],
-                lagCoef = m.lagCoef,
-                out = that.output,
-                i;
-            
-            if (lag !== lagCoef) {
-                lagCoef = lag === 0 ? 0.0 : Math.exp(flock.LOG001 / (lag * m.sampleRate));
-                m.lagCoef = lagCoef;
-            }
-            
-            for (i = 0; i < numSamps; i++) {
-                movingAvg = scaledMouse + lagCoef * (movingAvg - scaledMouse);
-                out[i] = movingAvg * mul + add;
-            }
-            
-            m.movingAvg = movingAvg;
-        };
-        
-        that.noInterpolationGen = function (numSamps) {
-            var m = that.model,
-                scaledMouse = m.mousePosition / m.size,
-                add = that.inputs.add.output[0],
-                mul = that.inputs.mul.output[0],
-                out = that.output,
-                i;
-                
-            for (i = 0; i < numSamps; i++) {
-                out[i] = scaledMouse * mul + add;
-            }
-        };
-        
-        that.moveListener = function (e) {
-            var m = that.model,
-                pos = e[m.eventProp],
-                off;
-            
-            if (pos === undefined) {
-                off = $(e.target).offset();
-                e.offsetX = e.clientX - off.left;
-                e.offsetY = e.clientY - off.top;
-                pos = e[m.eventProp];
-            }
-            m.mousePosition = m.isWithinTarget ? pos : 0.0;
-        };
-        
-        that.overListener = function (e) {
-            that.model.isWithinTarget = true;
-        };
-        
-        that.outListener = function (e) {
-            var m = that.model;
-            m.isWithinTarget = false;
-            m.mousePosition = 0.0;
-        };
-        
-        that.downListener = function (e) {
-            that.model.isMouseDown = true;
-        };
-        
-        that.upListener = function (e) {
-            var m = that.model;
-            m.isMouseDown = false;
-            m.mousePosition = 0;
-        };
-        
-        that.moveWhileDownListener = function (e) {
-            if (that.model.isMouseDown) {
-                that.moveListener(e);
-            }
-        };
-        
-        that.bindEvents = function () {
-            var m = that.model,
-                target = m.target,
-                moveListener = that.moveListener;
-                
-            if (that.options.onlyOnMouseDown) {
-                target.mousedown(that.downListener);
-                target.mouseup(that.upListener);
-                moveListener = that.moveWhileDownListener;
-            }
-            
-            target.mouseover(that.overListener);
-            target.mouseout(that.outListener);
-            target.mousemove(moveListener);
-        };
-        
-        that.onInputChanged = function () {
-            flock.onMulAddInputChanged(that);
-            
-            var interp = that.options.interpolation;
-            that.gen = interp === "none" ? that.noInterpolationGen : interp === "exponential" ? that.exponentialGen : that.linearGen;
-            that.model.exponential = interp === "exponential";
-        };
-        
-        that.init = function () {
-            var m = that.model,
-                options = that.options,
-                axis = options.axis,
-                target = $(options.target || window);
-
-            if (axis === "x" || axis === "width" || axis === "horizontal") {
-                m.eventProp = "offsetX";
-                m.size = target.width();
-            } else {
-                m.eventProp = "offsetY";
-                m.size = target.height();
-            }
-            
-            m.mousePosition = 0;
-            m.movingAvg = 0;
-            m.target = target;
-            
-            that.bindEvents();
-            that.onInputChanged();
-        };
-        
-        that.init();
-        return that;
-    };
-    
-    flock.defaults("flock.ugen.mouse.cursor", {
-        rate: "control",
-        inputs: {
-            lag: 0.5,
-            add: 0.0,
-            mul: 1.0
-        }
-    });
-    
-    
-    flock.ugen.mouse.click = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
-        
-        that.gen = function (numSamps) {
-            var out = that.output,
-                m = that.model,
-                i;
-                
-            for (i = 0; i < numSamps; i++) {
-                out[i] = m.value;
-                that.mulAdd(numSamps);
-            }
-        };
-        
-        that.mouseDownListener = function (e) {
-            that.model.value = 1.0;
-        };
-        
-        that.mouseUpListener = function (e) {
-            that.model.value = 0.0;
-        };
-        
-        that.init = function () {
-            var m = that.model;
-            m.target = typeof (that.options.target) === "string" ? 
-                document.querySelector(that.options.target) : that.options.target || window;
-            m.value = 0.0;
-            m.target.addEventListener("mousedown", that.mouseDownListener, false);
-            m.target.addEventListener("mouseup", that.mouseUpListener, false);
-            
-            that.onInputChanged();
-        };
-        
-        that.onInputChanged = function () {
-            flock.onMulAddInputChanged(that);
-        };
-        
-        that.init();
-        return that;
-    };
-    
-    flock.defaults("flock.ugen.mouse.click", {
-        rate: "control"
     });
     
     
@@ -1924,7 +1562,7 @@ var flock = flock || {};
         
         that.init = function () {
             var recipeOpt = that.options.recipe
-            var recipe = typeof (recipeOpt) === "string" ? flock.get(window, recipeOpt) : recipeOpt;
+            var recipe = typeof (recipeOpt) === "string" ? flock.get(recipeOpt) : recipeOpt;
             
             if (!recipe) {
                 throw new Error("Can't instantiate a flock.ugen.filter() without specifying a filter coefficient recipe.");
@@ -1944,7 +1582,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.filter", {
+    fluid.defaults("flock.ugen.filter", {
         inputs: {
             freq: 440,
             q: 1.0
@@ -1987,7 +1625,7 @@ var flock = flock || {};
         that.onInputChanged = function () {
             var typeOpt = that.options.type;
             that.updateCoefficients = typeof (typeOpt) === "string" ?
-                flock.get(window, typeOpt) : typeOpt;
+                flock.get(typeOpt) : typeOpt;
         };
         
         that.init = function () {
@@ -2004,7 +1642,7 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.filter.biquad", {
+    fluid.defaults("flock.ugen.filter.biquad", {
         inputs: {
             freq: 440,
             q: 1.0
@@ -2255,13 +1893,13 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.delay", {
+    fluid.defaults("flock.ugen.delay", {
         rate: "audio",
         inputs: {
             maxTime: 1.0,
             time: 1.0
         },
-        options: {
+        ugenOptions: {
             model: {
                 pos: 0
             }
@@ -2308,12 +1946,12 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.decay", {
+    fluid.defaults("flock.ugen.decay", {
         rate: "audio",
         inputs: {
             time: 1.0
         },
-        options: {
+        ugenOptions: {
             model: {
                 time: 0,
                 lastSamp: 0,
@@ -2408,7 +2046,7 @@ var flock = flock || {};
             for (j = 0; j < m.activeGrains.length;) {
                 grain = m.activeGrains[j];
                 for (k = grain.writePos; k < Math.min(m.numGrainSamps - grain.sampIdx, numSamps); k++) {
-                    samp = that.interpolate ? that.interpolate(grain.readPos, buf) : buf[Math.floor(grain.readPos)];
+                    samp = that.interpolate ? that.interpolate(grain.readPos, buf) : buf[grain.readPos | 0];
                     out[k] += samp * m.env[grain.envIdx] * grain.amp;
                     grain.readPos = (grain.readPos + grain.speed) % buf.length;
                     grain.sampIdx++;
@@ -2463,7 +2101,7 @@ var flock = flock || {};
         return that;
     };
 
-    flock.defaults("flock.ugen.triggerGrains", {
+    fluid.defaults("flock.ugen.triggerGrains", {
         rate: "audio",
         inputs: {
             centerPos: 0,
@@ -2472,7 +2110,7 @@ var flock = flock || {};
             dur: 0.1,
             speed: 1.0
         },
-        options: {
+        ugenOptions: {
             model: {
                 maxDur: 30,
                 maxNumGrains: 512,
@@ -2508,7 +2146,7 @@ var flock = flock || {};
                 i;
                 
             if (trig > 0.0 && m.prevTrig <= 0.0) {
-                console.log(label + source);
+                fluid.log(label + source);
             }
             
             if (m.freq !== freq) {
@@ -2519,7 +2157,7 @@ var flock = flock || {};
             
             for (i = 0; i < numSamps; i++) {
                 if (m.counter >= m.sampInterval) {
-                    console.log(label + source[i]);
+                    fluid.log(label + source[i]);
                     m.counter = 0;
                 }
                 m.counter++;
@@ -2530,13 +2168,13 @@ var flock = flock || {};
         return that;
     };
     
-    flock.defaults("flock.ugen.print", {
+    fluid.defaults("flock.ugen.print", {
         rate: "control",
         inputs: {
             trigger: 0.0,
             freq: 1.0
         },
-        options: {
+        ugenOptions: {
             model: {
                 counter: 0
             }
@@ -2579,13 +2217,13 @@ var flock = flock || {};
             // or introduce a maximum delay length and reuse the same array throughout (just changing indices).
             if (m.delayDur !== delayDur) {
                 m.delayDur = delayDur;
-                m.delayLength = Math.floor(m.sampleRate * m.delayDur);
+                m.delayLength = (m.sampleRate * m.delayDur) | 0;
                 that.delayLine = new Float32Array(that.model.delayLength);
             }
 			
             if (m.grainDur !== grainDur) {
                 m.grainDur = grainDur;
-                m.grainLength = Math.floor(m.sampleRate * m.grainDur);
+                m.grainLength = (m.sampleRate * m.grainDur) | 0;
                 for (i = 0; i < m.grainLength; i++) {
                     m.windowFunction[i] = Math.sin(Math.PI * i / m.grainLength);
                 }
@@ -2598,7 +2236,7 @@ var flock = flock || {};
                 numGrains = Math.round(numGrains);
                 for (i = m.numGrains; i < numGrains; i++) {
                     m.currentGrainPosition[i] = 0;
-                    m.currentGrainWindowPosition[i] = Math.floor(Math.random() * m.grainLength);
+                    m.currentGrainWindowPosition[i] = (Math.random() * m.grainLength) | 0;
                 }
                 m.numGrains = numGrains;
             }
@@ -2624,7 +2262,7 @@ var flock = flock || {};
                     
                     // Randomize the reset position of grains.
                     if (m.currentGrainWindowPosition[j] === 0) {
-                        m.currentGrainPosition[j] = Math.floor(Math.random() * m.delayLength);
+                        m.currentGrainPosition[j] = (Math.random() * m.delayLength) | 0;
                     }
                 }
                 
@@ -2643,14 +2281,14 @@ var flock = flock || {};
         return that;
     };
 	
-    flock.defaults("flock.ugen.granulator", {
+    fluid.defaults("flock.ugen.granulator", {
         rate: "audio",
         inputs: {
             grainDur: 0.1,
             delayDur: 1,
             numGrains: 5
         },
-        options: {
+        ugenOptions: {
             model: {
                 grainLength: 0,
                 numGrains: 0,
@@ -2662,4 +2300,4 @@ var flock = flock || {};
         }
     });
 
-}(jQuery));
+}());

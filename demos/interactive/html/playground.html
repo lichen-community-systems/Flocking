@@ -7,15 +7,23 @@
         <link rel="stylesheet" type="text/css" href="../css/playground.css" />
     
         <script src="../../../third-party/jquery/js/jquery.min.js"></script>
-        <script src="../lib/ace_0.2.0/ace.js" charset="utf-8"></script>
-        <script src="../lib/ace_0.2.0/theme-twilight.js" charset="utf-8"></script>
-        <script src="../lib/ace_0.2.0/mode-javascript.js" charset="utf-8"></script>
+        <script src="../../../third-party/infusion/js/Fluid.js"></script>
+        <script src="../../../third-party/infusion/js/FluidIoC.js"></script>
+        <script src="../../../third-party/infusion/js/DataBinding.js"></script>
         <script src="../../../third-party/dspapi/js/dspapi.js"></script>
         
         <script src="../../../flocking/flocking-core.js"></script>
+        <script src="../../../flocking/flocking-scheduler.js"></script>
+        <script src="../../../flocking/flocking-firefox.js"></script>
+        <script src="../../../flocking/flocking-webaudio.js"></script>
         <script src="../../../flocking/flocking-parser.js"></script>
         <script src="../../../flocking/flocking-ugens.js"></script>
+        <script src="../../../flocking/flocking-ugens-browser.js"></script>
         <script src="../../../flocking/flocking-gfx.js"></script>
+        
+        <script src="../lib/ace_0.2.0/ace.js" charset="utf-8"></script>
+        <script src="../lib/ace_0.2.0/theme-twilight.js" charset="utf-8"></script>
+        <script src="../lib/ace_0.2.0/mode-javascript.js" charset="utf-8"></script>
         
         <script src="../js/playground.js"></script>
         
@@ -367,9 +375,8 @@ var synth = flock.synth(
             options: {
                 canvas: "#gfx",
                 styles: {
-                    scaleY: 3.0,
                     strokeColor: "#777777",
-                    strokeWidth: 3
+                    strokeWidth: 1
                 }
             }
         });
@@ -532,7 +539,7 @@ var synth = flock.synth({
 var harmonics = [1, 3, 5, 7, 11, 13, 15, 17, 19, 21],
     ugenTypes = ["flock.ugen.sin", "flock.ugen.lfSaw", "flock.ugen.lfPulse", "flock.ugen.lfNoise"],
     fundamentalMultiplier = 440,
-    maxFreq = flock.enviro.shared.audioSettings.rates.audio / 2; // Highest harmonic shouldn't be more than half the Nyquist frequency.
+    maxFreq = flock.enviro.shared.audioSettings.rates.audio / 4; // Highest harmonic shouldn't be more than a quarter of the Nyquist frequency.
 
 var makeHarmonic = function (ugenTypes, fundamental, harmonic, octave, maxAmp) {
     var freqScale = (harmonic * octave),
@@ -573,7 +580,7 @@ var synth = flock.synth({
     sources: makeHarmonics(fundamentalMultiplier)
 });
 
-synth.enviro.asyncScheduler.repeat(2000, function () {
+synth.enviro.asyncScheduler.repeat(2.0, function () {
     var fundamental = (fundamentalMultiplier * Math.random()) + 60;
     synth.input("adder.sources", makeHarmonics(fundamental));
 });

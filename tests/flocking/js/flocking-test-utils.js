@@ -257,7 +257,7 @@ var flock = flock || {};
         
         equal(obj[prop], value,
             "The expected property should have the correct value.");
-        equal(1, Object.keys(obj).length,
+        equal(Object.keys(obj).length, 1,
             "There should be no other properties in the object.");
     };
     

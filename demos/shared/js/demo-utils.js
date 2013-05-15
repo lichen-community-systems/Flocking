@@ -62,7 +62,11 @@ var demo = demo || {};
             if (that.fileName) {
                 that.fileName.innerHTML = that.input.files[0].name;
             }
-            synth.input(options.playerId).onInputChanged("buffer");
+            
+            var players = fluid.makeArray(options.playerId);
+            fluid.each(players, function (id) {
+                synth.input(id).onInputChanged("buffer");
+            });
         });
 		
         // On Firefox, bind a click event to the browse button, which delegates to the hidden (ugly) file input element.
@@ -89,11 +93,14 @@ var demo = demo || {};
         that.field.addEventListener("change", function () {
             that.dataUrl = that.field.value;
             
-            var player = synth.input(options.playerId),
-                bufDef = player.input("buffer");
+            var players = fluid.makeArray(options.playerId);
+            fluid.each(players, function (id) {
+                var player = synth.input(id),
+                    bufDef = player.input("buffer");
             
-            bufDef.url = that.dataUrl;
-            player.onInputChanged("buffer");
+                bufDef.url = that.dataUrl;
+                player.onInputChanged("buffer");
+            });
         });
     };
     
