@@ -356,7 +356,7 @@ var fluid = fluid || require("infusion"),
                 } else if (idx < 0) {
                     idx += tableLen;
                 }
-                output[i] = that.interpolate ? that.interpolate(idx, table) : table[Math.floor(idx)];
+                output[i] = that.interpolate ? that.interpolate(idx, table) : table[idx | 0];
                 phase += freq[k] * tableIncHz;
                 if (phase >= tableLen) {
                     phase -= tableLen;
@@ -2046,7 +2046,7 @@ var fluid = fluid || require("infusion"),
             for (j = 0; j < m.activeGrains.length;) {
                 grain = m.activeGrains[j];
                 for (k = grain.writePos; k < Math.min(m.numGrainSamps - grain.sampIdx, numSamps); k++) {
-                    samp = that.interpolate ? that.interpolate(grain.readPos, buf) : buf[Math.floor(grain.readPos)];
+                    samp = that.interpolate ? that.interpolate(grain.readPos, buf) : buf[grain.readPos | 0];
                     out[k] += samp * m.env[grain.envIdx] * grain.amp;
                     grain.readPos = (grain.readPos + grain.speed) % buf.length;
                     grain.sampIdx++;
@@ -2217,13 +2217,13 @@ var fluid = fluid || require("infusion"),
             // or introduce a maximum delay length and reuse the same array throughout (just changing indices).
             if (m.delayDur !== delayDur) {
                 m.delayDur = delayDur;
-                m.delayLength = Math.floor(m.sampleRate * m.delayDur);
+                m.delayLength = (m.sampleRate * m.delayDur) | 0;
                 that.delayLine = new Float32Array(that.model.delayLength);
             }
 			
             if (m.grainDur !== grainDur) {
                 m.grainDur = grainDur;
-                m.grainLength = Math.floor(m.sampleRate * m.grainDur);
+                m.grainLength = (m.sampleRate * m.grainDur) | 0;
                 for (i = 0; i < m.grainLength; i++) {
                     m.windowFunction[i] = Math.sin(Math.PI * i / m.grainLength);
                 }
@@ -2236,7 +2236,7 @@ var fluid = fluid || require("infusion"),
                 numGrains = Math.round(numGrains);
                 for (i = m.numGrains; i < numGrains; i++) {
                     m.currentGrainPosition[i] = 0;
-                    m.currentGrainWindowPosition[i] = Math.floor(Math.random() * m.grainLength);
+                    m.currentGrainWindowPosition[i] = (Math.random() * m.grainLength) | 0;
                 }
                 m.numGrains = numGrains;
             }
@@ -2262,7 +2262,7 @@ var fluid = fluid || require("infusion"),
                     
                     // Randomize the reset position of grains.
                     if (m.currentGrainWindowPosition[j] === 0) {
-                        m.currentGrainPosition[j] = Math.floor(Math.random() * m.delayLength);
+                        m.currentGrainPosition[j] = (Math.random() * m.delayLength) | 0;
                     }
                 }
                 

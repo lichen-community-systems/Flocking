@@ -216,7 +216,7 @@ var fluid = fluid || require("infusion"),
     flock.interpolate.linear = function (idx, table) {
         idx = idx % table.length;
         
-        var i1 = Math.floor(idx),
+        var i1 = idx | 0,
             i2 = (i1 + 1) % table.length,
             frac = idx - i1,
             y1 = table[i1],
@@ -232,7 +232,7 @@ var fluid = fluid || require("infusion"),
         idx = idx % table.length;
         
         var len = table.length,
-            i1 = Math.floor(idx),
+            i1 = idx | 0,
             i0 = i1 > 0 ? i1 - 1 : len - 1,
             i2 = (i1 + 1) % len,
             i3 = (i1 + 2) % len,
