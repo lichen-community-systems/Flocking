@@ -1,0 +1,30 @@
+{
+  "name": "flocking",
+  "version": "0.1.0",
+  "description": "Creative audio synthesis for the Web",
+  "homepage": "http://flockingjs.org/",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/colinbdclark/Flocking.git"
+  },
+  "keywords": [
+    "Flocking",
+    "WebAudio"
+  ],
+  "author": "Colin Clark",
+  "license": [
+    "GPL",
+    "MIT"
+  ],
+  "readmeFilename": "README.md",
+  "gitHead": "e1c848d68c1bbfdcab500f3d2ae791911da24973",
+  "devDependencies": {
+    "grunt": "~0.4.1",
+    "grunt-contrib-uglify": "~0.2.0",
+    "grunt-contrib-concat": "~0.3.0",
+    "grunt-contrib-clean": "~0.4.1"
+  }
+}
