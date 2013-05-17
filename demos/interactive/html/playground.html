@@ -131,35 +131,57 @@
         });
         </script>
         <script type="application/flocking" id="freq_stairs">//Frequency Stair Stepping Demo
-        var startingFreq = 110;
 
-        // Create a new sine tone synth.
-        var synth = flock.synth({
-            id: "carrier",
-            ugen: "flock.ugen.sinOsc",
-            freq: startingFreq,
-            mul: 0.25
-        });
+var clock = flock.scheduler.async(),
+    freqs = [110, 220, 330, 440, 550, 660, 880],
+    synth = flock.synth({
+        id: "carrier",
+        ugen: "flock.ugen.sinOsc",
+        freq: freqs[0],
+        mul: 0.25
+    });
+    
+    // Old-style.
+    /*var idx = 0;
+    clock.repeat(1.0, function () {
+        synth.input("carrier.freq", freqs[idx]);
+        if (idx < freqs.length) {
+            idx++;
+        }
+    });
+    
+    clock.once(9.0, function () {
+        synth.input("carrier.mul", 0.0);
+    });*/
 
-        // Every second, increase the frequency of the synth
-        // by a perfect fourth.
-        var freq = synth.input("carrier.freq"),
-            clock = flock.scheduler.async();
-            
-            /*clock.repeat(1.0, function () {
-            if (freq <= 3520) {
-                freq *= 4/3;
-                synth.input("carrier.freq", freq);
-            }*/
-        clock.repeat(1.0, {
-            synth: synth,
-            changeSynth: {
-                "carrier.freq": {
-                    ugen: "flock.ugen.sequence",
-                    buffer: [110, 220, 330, 440, 550, 660, 880]
+    // New, declarative style.
+    clock.schedule([
+        {
+            interval: "repeat",
+            time: 1.0,
+            change: {
+                synth: synth,
+                value: {
+                    "carrier.freq": {
+                        ugen: "flock.ugen.sequence",
+                        buffer: freqs
+                    }
                 }
             }
-        });
+        },
+        
+        {
+            interval: "once",
+            time: 9,
+            change: {
+                synth: synth,
+                value: {
+                    "carrier.mul": 0.0
+                }
+            }
+        }
+    ]);
+
         </script>
 
         <script type="application/flocking" id="freq_mod">//Frequency Modulation (FM) Synthesis Demo

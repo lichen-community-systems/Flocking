@@ -44,6 +44,7 @@ var fluid = fluid || require("infusion"),
     
     fluid.registerNamespace("flock.scheduler");
     
+
     /**********
      * Clocks *
      **********/
@@ -358,54 +359,42 @@ var fluid = fluid || require("infusion"),
         
         that.repeat = function (interval, changeSpec) {
             var ms = that.timeConverter.value(interval),
-                fn,
-                synth,
-                listener;
-            
-            if (typeof (changeSpec) === "function") {
-                fn = changeSpec;
-            } else {
-                // TODO: Factor out this hideous mess!
-                var synths = fluid.transform(changeSpec.changeSynth, function (def, path) {
-                    return flock.synth(def, {
-                        rate: flock.rates.DEMAND
-                    });
-                });
-                
-                fn = function () {
-                    var changes = fluid.transform(synths, function (synth, path) {
-                        synth.gen(1);
-                        var ugens = synth.ugens.active;
-                        return ugens[ugens.length - 1].output[0];
-                    });
-                    changeSpec.synth.set(changes);
-                }
-            }
-            
-            listener = that.addIntervalListener(ms, fn);
+                fn = typeof (changeSpec) === "function" ? changeSpec : flock.synth.createDemandEvaluator(changeSpec),
+                listener = that.addIntervalListener(ms, fn);
             
             that.intervalClock.schedule(ms);
             return listener;
         };
         
-        that.once = function (time, fn) {
+        that.once = function (time, changeSpec) {
             var ms = that.timeConverter.value(time),
+                fn = typeof (changeSpec) === "function" ? changeSpec : flock.synth.createDemandEvaluator(changeSpec),
                 listener = that.addScheduleListener(ms, fn);
-            
+ 
             that.scheduleClock.schedule(ms);
             return listener;
         };
         
-        that.sequence = function (times, fn) {
+        that.sequence = function (times, changeSpec) {
             var listeners = [],
                 listener;
                 
             for (var i = 0; i < times.length; i++) {
-                listener = that.once(times[i], fn)
+                listener = that.once(times[i], changeSpec);
                 listeners.push(listener);
             }
             
             return listeners;
+        };
+        
+        that.schedule = function (schedules) {
+            var i,
+                schedule;
+            
+            for (i = 0; i < schedules.length; i++) {
+                schedule = schedules[i];
+                flock.invoke(that, schedule.interval, [schedule.time, schedule.change]);
+            }
         };
         
         that.clear = function (listener) {

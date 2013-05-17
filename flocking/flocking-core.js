@@ -791,6 +791,7 @@ var fluid = fluid || require("infusion"),
     flock.synth.ugenCache.finalInit = function (that) {
         that.named = {};
         that.active = [];
+        that.all = []; // TODO: Memory leak; need to remove ugens from both all and active.
         
         that.add = function (ugens) {
             var i,
@@ -799,6 +800,7 @@ var fluid = fluid || require("infusion"),
             ugens = fluid.makeArray(ugens);
             for (i = 0; i < ugens.length; i++) {
                 ugen = ugens[i];
+                that.all.push(ugen);
                 if (ugen.gen) {
                     that.active.push(ugen);
                 }
@@ -1077,4 +1079,21 @@ var fluid = fluid || require("infusion"),
         amplitudeNormalizer: "static" // "dynamic", "static", Function, falsey
     });
     
+    flock.synth.createDemandEvaluator = function (changeSpec) {
+        // TODO: Factor out this hideous mess!
+        var synths = fluid.transform(changeSpec.value, function (def, path) {
+            return flock.synth(def, {
+                rate: flock.rates.DEMAND
+            });
+        });
+        
+        return function () {
+            var changes = fluid.transform(synths, function (synth, path) {
+                synth.gen(1);
+                var ugens = synth.ugens.all;
+                return ugens[ugens.length - 1].output[0];
+            });
+            changeSpec.synth.set(changes);
+        };
+    };
 }());
