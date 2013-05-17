@@ -21,7 +21,9 @@ var fluid = fluid || require("infusion"),
     
     flock.parse.synthDef = function (ugenDef, options) {
         // We didn't get an out ugen specified, so we need to make one.
-        if (typeof (ugenDef.length) === "number" || (ugenDef.id !== flock.OUT_UGEN_ID && ugenDef.ugen !== "flock.ugen.out")) {
+        if (options.rate === flock.rates.AUDIO && 
+            (typeof (ugenDef.length) === "number" || 
+            (ugenDef.id !== flock.OUT_UGEN_ID && ugenDef.ugen !== "flock.ugen.out"))) {
             ugenDef = {
                 id: flock.OUT_UGEN_ID,
                 ugen: "flock.ugen.out",
@@ -119,6 +121,7 @@ var fluid = fluid || require("infusion"),
     flock.parse.rateMap = {
         "ar": flock.rates.AUDIO,
         "kr": flock.rates.CONTROL,
+        "dr": flock.rates.DEMAND,
         "cr": flock.rates.CONSTANT
     };
 

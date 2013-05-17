@@ -146,10 +146,18 @@
         var freq = synth.input("carrier.freq"),
             clock = flock.scheduler.async();
             
-            clock.repeat(1.0, function () {
+            /*clock.repeat(1.0, function () {
             if (freq <= 3520) {
                 freq *= 4/3;
                 synth.input("carrier.freq", freq);
+            }*/
+        clock.repeat(1.0, {
+            synth: synth,
+            changeSynth: {
+                "carrier.freq": {
+                    ugen: "flock.ugen.sequence",
+                    buffer: [110, 220, 330, 440, 550, 660, 880]
+                }
             }
         });
         </script>

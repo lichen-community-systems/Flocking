@@ -36,6 +36,7 @@ var fluid = fluid || require("infusion"),
     flock.rates = {
         AUDIO: "audio",
         CONTROL: "control",
+        DEMAND: "demand",
         CONSTANT: "constant"
     };
     
@@ -753,6 +754,7 @@ var fluid = fluid || require("infusion"),
         that.init = function () {
             // Parse the synthDef into a graph of unit generators.
             that.out = flock.parse.synthDef(that.model.synthDef, {
+                rate: that.options.rate,
                 visitors: that.ugens.add,
                 buffers: that.enviro.buffers,
                 buses: that.enviro.buses,
@@ -778,7 +780,8 @@ var fluid = fluid || require("infusion"),
             ugens: {
                 type: "flock.synth.ugenCache"
             }
-        }
+        },
+        rate: flock.rates.AUDIO
     });
     
     fluid.defaults("flock.synth.ugenCache", {

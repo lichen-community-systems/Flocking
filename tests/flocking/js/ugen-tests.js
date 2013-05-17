@@ -1556,4 +1556,139 @@ flock.test = flock.test || {};
     
     testBufferDurationAtAllRates();
     
+    
+    module("flock.ugen.sequence tests");
+    
+    var testSequenceDemand = function (ugen, expectedSequence) {
+        for (var i = 0; i < expectedSequence.length; i++) {
+            ugen.gen(1);
+            equal(ugen.output[0], expectedSequence[i]);
+        }
+    };
+
+    
+    var testSequenceAudio = function (ugen, expectedSequence) {
+        ugen.gen(64);
+        flock.test.assertArrayEquals(ugen.output, expectedSequence);
+    };
+    
+    var testSequences = function (testSpec) {
+        var ugen = testSpec.ugen;
+        var fn = ugen.rate === "audio" ? testSequenceAudio : testSequenceDemand;
+        
+        fluid.each(testSpec.tests, function (test) {
+            if (test.inputs) {
+                ugen.set(test.inputs);
+            }
+            
+            fn(ugen, test.expectedSequence);
+        });
+    };
+    
+    var seqUGenDef = {
+        ugen: "flock.ugen.sequence",
+        inputs: {
+            freq: (44100 / 64) * 4,
+            start: 0.0,
+            loop: 0.0
+        },
+        options: {
+            list: [12, 24, 48]
+        }
+    };
+    
+    test("Demand rate", function () {
+        seqUGenDef.rate = "demand";
+        var seq = flock.parse.ugenDef(seqUGenDef);
+        
+        testSequences({
+            ugen: seq,
+            tests: [
+                {
+                    expectedSequence: [12, 24, 48, 48, 48]
+                },
+                {
+                    inputs: {
+                        loop: 1.0
+                    },
+                    expectedSequence: [12, 24, 48, 12, 24, 48, 12]
+                },
+                {
+                    inputs: {
+                        start: 1,
+                        end: 2
+                    },
+                    expectedSequence: [24, 24, 24, 24]
+                },
+                {
+                    inputs: {
+                        start: 0,
+                        end: null
+                    },
+                    expectedSequence: [48, 12, 24, 48]
+                }
+            ]
+        });
+    });
+    
+    test("Audio rate", function () {
+        seqUGenDef.rate = "audio";
+        var seq = flock.parse.ugenDef(seqUGenDef);
+        
+        testSequences({
+            ugen: seq,
+            tests: [
+                {
+                    expectedSequence: [
+                        12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+                        24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+                        48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48,
+                        48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48
+                    ]
+                },
+            
+                // Looping.
+                {
+                    inputs: {
+                        "loop": 0.5
+                    },
+                    expectedSequence:  [
+                        12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+                        24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+                        48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48,
+                        12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12
+                    ]
+                },
+            
+                // With start/end boundaries.
+                {
+                    inputs: {
+                        start: 1,
+                        end: 2
+                    },
+                    expectedSequence: [
+                        24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+                        24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+                        24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+                        24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24
+                    ]
+                },
+            
+                // Back to no boundaries.
+                {
+                    inputs: {
+                        start: 0,
+                        end: null
+                    },
+                    expectedSequence: [
+                        48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48,
+                        12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+                        24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+                        48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48
+                    ]
+                }
+            ]
+        });
+    });
+    
 }());

@@ -356,9 +356,33 @@ var fluid = fluid || require("infusion"),
             return listener;
         };
         
-        that.repeat = function (interval, fn) {
+        that.repeat = function (interval, changeSpec) {
             var ms = that.timeConverter.value(interval),
-                listener = that.addIntervalListener(ms, fn);
+                fn,
+                synth,
+                listener;
+            
+            if (typeof (changeSpec) === "function") {
+                fn = changeSpec;
+            } else {
+                // TODO: Factor out this hideous mess!
+                var synths = fluid.transform(changeSpec.changeSynth, function (def, path) {
+                    return flock.synth(def, {
+                        rate: flock.rates.DEMAND
+                    });
+                });
+                
+                fn = function () {
+                    var changes = fluid.transform(synths, function (synth, path) {
+                        synth.gen(1);
+                        var ugens = synth.ugens.active;
+                        return ugens[ugens.length - 1].output[0];
+                    });
+                    changeSpec.synth.set(changes);
+                }
+            }
+            
+            listener = that.addIntervalListener(ms, fn);
             
             that.intervalClock.schedule(ms);
             return listener;
