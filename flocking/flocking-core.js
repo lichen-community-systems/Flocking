@@ -1079,21 +1079,4 @@ var fluid = fluid || require("infusion"),
         amplitudeNormalizer: "static" // "dynamic", "static", Function, falsey
     });
     
-    flock.synth.createDemandEvaluator = function (changeSpec) {
-        // TODO: Factor out this hideous mess!
-        var synths = fluid.transform(changeSpec.value, function (def, path) {
-            return flock.synth(def, {
-                rate: flock.rates.DEMAND
-            });
-        });
-        
-        return function () {
-            var changes = fluid.transform(synths, function (synth, path) {
-                synth.gen(1);
-                var ugens = synth.ugens.all;
-                return ugens[ugens.length - 1].output[0];
-            });
-            changeSpec.synth.set(changes);
-        };
-    };
 }());

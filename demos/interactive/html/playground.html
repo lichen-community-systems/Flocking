@@ -141,46 +141,46 @@ var clock = flock.scheduler.async(),
         mul: 0.25
     });
     
-    // Old-style.
-    /*var idx = 0;
-    clock.repeat(1.0, function () {
-        synth.input("carrier.freq", freqs[idx]);
-        if (idx < freqs.length) {
-            idx++;
-        }
-    });
-    
-    clock.once(9.0, function () {
-        synth.input("carrier.mul", 0.0);
-    });*/
+// Old-style.
+/*var idx = 0;
+clock.repeat(1.0, function () {
+    synth.input("carrier.freq", freqs[idx]);
+    if (idx < freqs.length) {
+        idx++;
+    }
+});
 
-    // New, declarative style.
-    clock.schedule([
-        {
-            interval: "repeat",
-            time: 1.0,
-            change: {
-                synth: synth,
-                value: {
-                    "carrier.freq": {
-                        ugen: "flock.ugen.sequence",
-                        buffer: freqs
-                    }
-                }
-            }
-        },
-        
-        {
-            interval: "once",
-            time: 9,
-            change: {
-                synth: synth,
-                value: {
-                    "carrier.mul": 0.0
+clock.once(9.0, function () {
+    synth.input("carrier.mul", 0.0);
+});*/
+
+// New, declarative style.
+clock.schedule([
+    {
+        interval: "repeat",
+        time: 1.0,
+        change: {
+            synth: synth,
+            valueSynth: {
+                "carrier.freq": {
+                    ugen: "flock.ugen.sequence",
+                    buffer: freqs
                 }
             }
         }
-    ]);
+    },
+    
+    {
+        interval: "once",
+        time: 9,
+        change: {
+            synth: synth,
+            value: {
+                "carrier.mul": 0.0
+            }
+        }
+    }
+]);
 
         </script>
 

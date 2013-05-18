@@ -359,7 +359,8 @@ var fluid = fluid || require("infusion"),
         
         that.repeat = function (interval, changeSpec) {
             var ms = that.timeConverter.value(interval),
-                fn = typeof (changeSpec) === "function" ? changeSpec : flock.synth.createDemandEvaluator(changeSpec),
+                fn = typeof (changeSpec) === "function" ? changeSpec : 
+                    flock.scheduler.async.evaluateChangeSpec(changeSpec),
                 listener = that.addIntervalListener(ms, fn);
             
             that.intervalClock.schedule(ms);
@@ -368,7 +369,8 @@ var fluid = fluid || require("infusion"),
         
         that.once = function (time, changeSpec) {
             var ms = that.timeConverter.value(time),
-                fn = typeof (changeSpec) === "function" ? changeSpec : flock.synth.createDemandEvaluator(changeSpec),
+                fn = typeof (changeSpec) === "function" ? changeSpec : 
+                    flock.scheduler.async.evaluateChangeSpec(changeSpec),
                 listener = that.addScheduleListener(ms, fn);
  
             that.scheduleClock.schedule(ms);
@@ -455,6 +457,24 @@ var fluid = fluid || require("infusion"),
         that.end = function () {
             that.intervalClock.end();
             that.scheduleClock.end();
+        };
+    };
+    
+    flock.scheduler.async.evaluateChangeSpec = function (changeSpec) {
+        var synths = fluid.transform(changeSpec.valueSynth, function (def, path) {
+            return flock.synth(def, {
+                rate: flock.rates.DEMAND
+            });
+        });
+        
+        return function () {
+            var changes = fluid.transform(synths, function (synth, path) {
+                synth.gen(1);
+                var ugens = synth.ugens.all;
+                return ugens[ugens.length - 1].output[0];
+            });
+            $.extend(true, changes, changeSpec.value);
+            changeSpec.synth.set(changes);
         };
     };
 
