@@ -461,23 +461,33 @@ var fluid = fluid || require("infusion"),
     };
     
     flock.scheduler.async.evaluateChangeSpec = function (changeSpec) {
-        var synths = fluid.transform(changeSpec.valueSynth, function (def, path) {
-            return flock.synth(def, {
-                rate: flock.rates.DEMAND
-            });
-        });
+        var synths = {},
+            staticChanges = {};
         
+        // Find all synthDefs and create demand rate synths for them.
+        for (var path in changeSpec.values) {
+            var change = changeSpec.values[path];
+            if (change.synthDef) {
+                change.rate = flock.rates.DEMAND;
+                synths[path] = flock.synth(change);
+            } else {
+                staticChanges[path] = change;
+            }
+        }
+        
+        // Create a scheduler listener that evaluates the changeSpec and updates the synth.
         return function () {
-            var changes = fluid.transform(synths, function (synth, path) {
+            for (var path in synths) {
+                var synth = synths[path];
                 synth.gen(1);
                 var ugens = synth.ugens.all;
-                return ugens[ugens.length - 1].output[0];
-            });
-            $.extend(true, changes, changeSpec.value);
-            changeSpec.synth.set(changes);
+                staticChanges[path] = ugens[ugens.length - 1].output[0];
+            }
+            
+            changeSpec.synth.set(staticChanges);
         };
     };
-
+    
 
     flock.scheduler.async.beat = function (bpm, options) {
         var that = fluid.initComponent("flock.scheduler.async.beat", options);

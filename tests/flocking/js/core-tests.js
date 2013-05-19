@@ -40,7 +40,8 @@ var fluid = fluid || require("infusion"),
     };
     
     var createSynth = function (synthDef) {
-        return flock.synth(synthDef, {
+        return flock.synth({
+            synthDef: synthDef,
             sampleRate: 1,
             chans: 1
         });
@@ -329,7 +330,9 @@ var fluid = fluid || require("infusion"),
             }
         };
         
-        var synth = flock.synth(def);
+        var synth = flock.synth({
+            synthDef: def
+        });
         var actual = synth.input("carrier.freq.sources.1"),
             expected = synth.ugens.named.adder.inputs.sources[1];
         equal(actual, expected, "Getting a ugen input within an array should return the correct ugen.");
@@ -492,26 +495,30 @@ var fluid = fluid || require("infusion"),
             addToEnvironment: false
         };
         var synth1 = flock.synth({
-            id: "mock",
-            ugen: "flock.test.mockUGen",
-            freq: 110,
-            mul: 0.1,
-            options: {
-                buffer: flock.generate(64, 1),
-                gen: function () {
-                    synth1DidGen = true;
+            synthDef: {
+                id: "mock",
+                ugen: "flock.test.mockUGen",
+                freq: 110,
+                mul: 0.1,
+                options: {
+                    buffer: flock.generate(64, 1),
+                    gen: function () {
+                        synth1DidGen = true;
+                    }
                 }
             }
         }, synthOpts);
         var synth2 = flock.synth({
-            id: "mock",
-            ugen: "flock.test.mockUGen",
-            freq: 220,
-            mul: 0.2,
-            options: {
-                buffer: flock.generate(64, 2),
-                gen: function () {
-                    synth2DidGen = true;
+            synthDef: {
+                id: "mock",
+                ugen: "flock.test.mockUGen",
+                freq: 220,
+                mul: 0.2,
+                options: {
+                    buffer: flock.generate(64, 2),
+                    gen: function () {
+                        synth2DidGen = true;
+                    }
                 }
             }
         }, synthOpts);
@@ -619,7 +626,8 @@ var fluid = fluid || require("infusion"),
             }
         };
         
-        var poly = flock.synth.polyphonic(def, {
+        var poly = flock.synth.polyphonic({
+            synthDef: def,
             addToEnvironment: false
         });
         equals(Object.keys(poly.activeVoices).length, 0,
@@ -644,8 +652,9 @@ var fluid = fluid || require("infusion"),
     };
     
     var checkParsedTestSynthDef = function (synthDef, expectedNumEvalUGens) {
-        var synth = flock.synth(synthDef),
-            namedUGens = synth.ugens.named;
+        var synth = flock.synth({
+            synthDef: synthDef
+        }), namedUGens = synth.ugens.named;
         
         checkRegisteredUGens(synth, expectedNumEvalUGens);
         ok(namedUGens.sine, "The sine ugen should be keyed by its id....");
@@ -701,8 +710,11 @@ var fluid = fluid || require("infusion"),
             }
         ];
         
-        var synth = flock.synth(multiChanTestSynthDef),
-            namedUGens = synth.ugens.named;
+        var synth = flock.synth({
+            synthDef: multiChanTestSynthDef
+        });
+        var namedUGens = synth.ugens.named;
+        
         checkRegisteredUGens(synth, 3);
         ok(namedUGens.leftSine, "The left sine ugen should have been parsed correctly.");
         ok(namedUGens.rightSine, "The right sine ugen should have been parsed correctly.");
@@ -731,8 +743,10 @@ var fluid = fluid || require("infusion"),
             }
         };
     
-        var synth = flock.synth(mixedSynthDef),
-            namedUGens = synth.ugens.named;
+        var synth = flock.synth({
+            synthDef: mixedSynthDef
+        }), namedUGens = synth.ugens.named;
+        
         equals(namedUGens.carrier.inputs.freq, namedUGens.mod, 
             "The modulator should have been set as the frequency input to the carrier.");
         equals(namedUGens.mod.inputs.freq.model.value, 440, 
@@ -815,7 +829,10 @@ var fluid = fluid || require("infusion"),
     });
     
     var testRemoval = function (synthDef, testSpecs) {
-        var synth = flock.synth(synthDef);
+        var synth = flock.synth({
+            synthDef: synthDef
+        });
+        
         $.each(testSpecs, function (i, spec) {
             var toRemove = spec.ugenToRemove;
             if (toRemove) {
@@ -906,7 +923,9 @@ var fluid = fluid || require("infusion"),
     });
     
     test("flock.synth.ugenCache.replace(): reattach inputs", function () {
-        var synth = flock.synth(nestedSynthDef);
+        var synth = flock.synth({
+            synthDef: nestedSynthDef
+        });
         
         var toReplace = synth.ugens.named.gerbil,
             expectedInput = synth.ugens.named.ear,

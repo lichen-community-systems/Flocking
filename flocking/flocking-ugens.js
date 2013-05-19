@@ -294,7 +294,14 @@ var fluid = fluid || require("infusion"),
             }
         };
         
-        that.onInputChanged();
+        that.init = function () {
+            if (typeof (DSP) === "undefined") {
+                throw new Error("DSP is undefined. Please include dspapi.js to use the flock.math unit generator.");
+            }
+            that.onInputChanged();
+        };
+        
+        that.init();
         return that;
     };
     
@@ -735,17 +742,17 @@ var fluid = fluid || require("infusion"),
         }
     };
     
-    flock.buffer.resolveBufferArray = function (ugen, buffer) {
+    flock.buffer.resolveBufferArray = function (ugen, buffer, chan) {
         var id = fluid.allocateGuid();
         flock.buffer.addListener(id, ugen);
-        flock.buffer.fireReady(ugen, id, [buffer], id, 0); // TODO: Shady
+        flock.buffer.fireReady(ugen, id, [buffer], id, chan);
     };
     
-    flock.buffer.resolveBufferDef = function (ugen, bufDef) {
+    flock.buffer.resolveBufferDef = function (ugen, bufDef, chan) {
         flock.buffer.addListener(bufDef.id, ugen);
         flock.parse.bufferForDef(bufDef, function (buffer, name) {
             flock.buffer.fireReady(ugen, bufDef.id, buffer, name, chan)
-        });  
+        });
     };
     
     // TODO: Should this be done earlier (during ugen parsing)?
@@ -756,13 +763,15 @@ var fluid = fluid || require("infusion"),
             bufDef = m.bufDef = inputs.buffer,
             chan = inputs.channel ? inputs.channel.output[0] : 0,
             buf;
-
-        if (typeof (bufDef) === "string") {
+        
+        if (!bufDef) {
+            return;
+        } else if (typeof (bufDef) === "string") {
             flock.buffer.resolveBufferId(ugen, bufDef, chan);
         } else if (flock.isIterable(bufDef)) {
-            flock.buffer.resolveBufferArray(ugen, bufDef);
+            flock.buffer.resolveBufferArray(ugen, bufDef, chan);
         } else {
-            flock.buffer.resolveBufferDef(ugen, bufDef);
+            flock.buffer.resolveBufferDef(ugen, bufDef, chan);
         }
     };
     
@@ -1481,12 +1490,17 @@ var fluid = fluid || require("infusion"),
                 bus,
                 inc,
                 outIdx;
-                        
+                     
             if (typeof (sources.length) !== "number") {
                 sources = [sources];
             }
+            
             numSources = sources.length;
             numOutputBuses = Math.max(expand, numSources);
+            
+            if (numSources < 1) {
+                return;
+            }
             
             for (i = 0; i < numOutputBuses; i++) {
                 source = sources[i % numSources];
@@ -2331,15 +2345,26 @@ var fluid = fluid || require("infusion"),
             var list = that.buffer,
                 inputs = that.inputs,
                 freq = inputs.freq.output,
-                start = inputs.start ? Math.round(inputs.start.output[0]) : 0,
-                end = inputs.end ? Math.round(inputs.end.output[0]) : list.length,
                 loop = inputs.loop.output[0],
                 m = that.model,
                 scale = m.scale,
                 out = that.output,
+                start,
+                end,
                 i,
                 j,
                 val;
+
+            // TODO: Better buffer handling.
+            if (!list) {
+                for (i = 0; i < numSamps; i++) {
+                    out[i] = 0.0;
+                }
+                return;
+            }
+            
+            start = inputs.start ? Math.round(inputs.start.output[0]) : 0,
+            end = inputs.end ? Math.round(inputs.end.output[0]) : list.length,
             
             m.value = m.value === undefined ? list[start] : m.value;
             m.nextIdx = m.nextIdx === undefined ? start : m.nextIdx;

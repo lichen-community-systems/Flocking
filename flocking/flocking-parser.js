@@ -20,6 +20,10 @@ var fluid = fluid || require("infusion"),
     fluid.registerNamespace("flock.parse");
     
     flock.parse.synthDef = function (ugenDef, options) {
+        if (!ugenDef) {
+            ugenDef = [];
+        }
+        
         // We didn't get an out ugen specified, so we need to make one.
         if (options.rate === flock.rates.AUDIO && 
             (typeof (ugenDef.length) === "number" || 

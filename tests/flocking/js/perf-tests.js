@@ -57,17 +57,19 @@ var flock = flock || {};
     
     test("flock.ugen.value with stereo flock.ugen.out", function () {
         var synth = flock.synth({
-            id: flock.OUT_UGEN_ID,
-            ugen: "flock.ugen.out",
-            inputs: {
-                sources: {
-                    ugen: "flock.ugen.value",
-                    inputs: {
-                        value: 12
-                    }
-                },
-                bus: 0,
-                expand: 2
+            synthDef: {
+                id: flock.OUT_UGEN_ID,
+                ugen: "flock.ugen.out",
+                inputs: {
+                    sources: {
+                        ugen: "flock.ugen.value",
+                        inputs: {
+                            value: 12
+                        }
+                    },
+                    bus: 0,
+                    expand: 2
+                }
             }
         });
         

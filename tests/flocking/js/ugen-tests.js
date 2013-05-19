@@ -234,7 +234,9 @@ flock.test = flock.test || {};
         
         defs = $.makeArray(defs);
         $.each(defs, function (i, def) {
-            var synth = flock.synth(def);
+            var synth = flock.synth({
+                synthDef: def
+            });
             synths.push(synth);
         });
         
@@ -1066,8 +1068,12 @@ flock.test = flock.test || {};
     
     test("flock.ugen.in() single bus input", function () {
         flock.enviro.shared = flock.enviro(inEnviroOptions);
-        var outSynth = flock.synth(outSynthDef);
-        var inSynth = flock.synth(inSynthDef);
+        var outSynth = flock.synth({
+            synthDef: outSynthDef
+        });
+        var inSynth = flock.synth({
+            synthDef: inSynthDef
+        });
         
         inSynth.enviro.gen();
         var actual = inSynth.ugens.named["in"].output;
@@ -1080,16 +1086,22 @@ flock.test = flock.test || {};
     test("flock.ugen.in() multiple bus input", function () {
         flock.enviro.shared = flock.enviro(inEnviroOptions);
         
-        var bus3Synth = flock.synth(outSynthDef);
+        var bus3Synth = flock.synth({
+            synthDef: outSynthDef
+        });
         var bus4Def = $.extend(true, {}, outSynthDef, {
             inputs: {
                 bus: 4
             }
         });
-        var bus4Synth = flock.synth(bus4Def);
+        var bus4Synth = flock.synth({
+            synthDef: bus4Def
+        });
         var multiInDef = $.extend(true, {}, inSynthDef);
         multiInDef.inputs.bus = [3, 4];
-        var inSynth = flock.synth(multiInDef);
+        var inSynth = flock.synth({
+            synthDef: multiInDef
+        });
         
         inSynth.enviro.gen();
         var actual = inSynth.ugens.named["in"].output;
@@ -1110,16 +1122,18 @@ flock.test = flock.test || {};
             };
             
         var normalizerSynth = flock.synth({
-            id: "normalizer",
-            ugen: "flock.ugen.normalize",
-            inputs: {
-                source: {
-                    ugen: "flock.ugen.sum",
-                    inputs: {
-                        sources: [mock, mock]
-                    }
-                },
-                max: 1.0
+            synthDef: {
+                id: "normalizer",
+                ugen: "flock.ugen.normalize",
+                inputs: {
+                    source: {
+                        ugen: "flock.ugen.sum",
+                        inputs: {
+                            sources: [mock, mock]
+                        }
+                    },
+                    max: 1.0
+                }
             }
         });
         
@@ -1141,13 +1155,16 @@ flock.test = flock.test || {};
     
     var testMath = function (synthDef, expected, msg) {
         synthDef.id = "math";
-        var synth = flock.synth(synthDef),
-            math = synth.ugens.named.math;
+        var synth = flock.synth({
+            synthDef: synthDef
+        });
+        var math = synth.ugens.named.math;
+        
         math.gen();
         deepEqual(math.output, expected, msg);
     };
     
-    test("flock.ugen.math()", function () {
+    test("flock.ugen.math() value inputs", function () {
         testMath({
             ugen: "flock.ugen.math",
             inputs: {
@@ -1179,15 +1196,17 @@ flock.test = flock.test || {};
                 div: 2
             }
         }, flock.test.constantBuffer(64, 1.5), "Value divide");
-        
+    });
+    
+    test("flock.ugen.math() audio and control rate inputs", function () {
         var incBuffer = flock.generate(64, function (i) {
             return i + 1;
         });
-        
+    
         var expected = flock.generate(64, function (i) {
             return i + 4;
         });
-        
+    
         var krArUGenDef = {
             ugen: "flock.ugen.math",
             inputs: {
@@ -1362,7 +1381,9 @@ flock.test = flock.test || {};
                 }
             };
         
-        var delaySynth = flock.synth(delayLineDef);
+        var delaySynth = flock.synth({
+            synthDef:delayLineDef
+        });
         var delay = delaySynth.ugens.named.delay;
         delaySynth.gen();
         
@@ -1408,9 +1429,11 @@ flock.test = flock.test || {};
     
     var testLoopUGen = function (testSpecs) {
         $.each(testSpecs, function (i, testSpec) {
-            var def = $.extend(true, {rate: testSpec.rate, id: "looper"}, testSpec.def),
-                synth = flock.synth(def),
-                loop = synth.ugens.named.looper;
+            var def = $.extend(true, {rate: testSpec.rate, id: "looper"}, testSpec.def);
+            var synth = flock.synth({
+                synthDef: def
+            });
+            var loop = synth.ugens.named.looper;
             
             test(testSpec.name, function () {
                 testTriggeredSignals(synth, loop, testSpec.tests);
@@ -1538,8 +1561,10 @@ flock.test = flock.test || {};
                 }
             };
         
-            var synth = flock.synth(durationDef),
-                durUGen = synth.ugens.named.dur;
+            var synth = flock.synth({
+                synthDef: durationDef
+            });
+            var durUGen = synth.ugens.named.dur;
         
             synth.gen();
             equal(durUGen.output[0], 2.5,
@@ -1590,10 +1615,8 @@ flock.test = flock.test || {};
         inputs: {
             freq: (44100 / 64) * 4,
             start: 0.0,
-            loop: 0.0
-        },
-        options: {
-            list: [12, 24, 48]
+            loop: 0.0,
+            buffer: [12, 24, 48]
         }
     };
     

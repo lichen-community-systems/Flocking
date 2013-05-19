@@ -21,8 +21,11 @@ var flock = flock || {};
     var makeSynthDefTestSpec = function (synthDef, rate, numSampleBlocks) {
         return {
             setup: function () {
-                var synth = flock.synth(synthDef),
-                    i,
+                var synth = flock.synth({
+                    synthDef: synthDef
+                });
+                
+                var i, 
                     ugen;
                 
                 // Change the rate of each unit generator to the specified rate.

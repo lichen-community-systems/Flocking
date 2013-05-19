@@ -81,7 +81,9 @@ var fluid = fluid || require("infusion"),
             if (!flock.enviro.webAudio.audioContext) {
                 flock.enviro.webAudio.audioContext = new flock.enviro.webAudio.contextConstructor();
             }
+            
             that.context = flock.enviro.webAudio.audioContext;
+            settings.rates.audio = that.context.sampleRate;
             that.source = that.context.createBufferSource();
             that.jsNode = that.context.createJavaScriptNode(settings.bufferSize);
             that.source.connect(that.jsNode);

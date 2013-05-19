@@ -573,6 +573,9 @@ var fluid = fluid || require("infusion"),
     
     flock.enviro.finalInit = function (that) {
         that.gen = that.audioStrategy.nodeEvaluator.gen;
+        
+        // TODO: Model-based (with ChangeApplier) sharing of audioSettings
+        that.options.audioSettings.rates.audio = that.audioStrategy.options.audioSettings.rates.audio;
     };
     
     flock.enviro.createAudioBuffers = function (numBufs, kr) {
@@ -646,23 +649,42 @@ var fluid = fluid || require("infusion"),
         gradeNames: ["fluid.littleComponent", "autoInit"]
     });
     
-    flock.autoEnviro.finalInit = function (that) {
+    flock.autoEnviro.preInit = function (that) {
         if (!flock.enviro.shared) {
             flock.init();
         }
     };
     
+    fluid.defaults("flock.node", {
+        gradeNames: ["flock.autoEnviro", "fluid.modelComponent", "autoInit"],
+        id: undefined
+    });
+    
+    flock.node.finalInit = function (that) {
+        that.id = that.options.id = that.options.id ? that.options.id : fluid.allocateGuid();
+    };
+    
+    fluid.defaults("flock.synth", {
+        gradeNames: ["flock.node", "autoInit"],
+        mergePolicy: {
+            synthDef: "nomerge"
+        },
+        components: {
+            ugens: {
+                type: "flock.synth.ugenCache"
+            }
+        },
+        rate: flock.rates.AUDIO
+    });
     
     /**
      * Synths represent a collection of signal-generating units, wired together to form an instrument.
      * They are created with a synthDef object, a declarative structure describing the synth's unit generator graph.
      */
-    flock.synth = function (def, options) {
-        var that = fluid.initComponent("flock.synth", options);
-        that.rate = flock.rates.AUDIO;
+    flock.synth.finalInit = function (that) {
+        that.rate = that.options.rate;
         that.enviro = flock.enviro.shared;
         that.model.blockSize = that.enviro.audioSettings.rates.control;
-        that.model.synthDef = def;
         
         /**
          * Generates an audio rate signal by evaluating this synth's unit generator graph.
@@ -752,8 +774,12 @@ var fluid = fluid || require("infusion"),
         };
 
         that.init = function () {
+            if (!that.options.synthDef) {
+                fluid.log("Warning: Instantiating a flock.synth instance with an empty synth def.")
+            }
+            
             // Parse the synthDef into a graph of unit generators.
-            that.out = flock.parse.synthDef(that.model.synthDef, {
+            that.out = flock.parse.synthDef(that.options.synthDef, {
                 rate: that.options.rate,
                 visitors: that.ugens.add,
                 buffers: that.enviro.buffers,
@@ -771,18 +797,17 @@ var fluid = fluid || require("infusion"),
         return that;
     };
     
-    fluid.defaults("flock.synth", {
-        gradeNames: ["fluid.modelComponent", "flock.autoEnviro"],
-        argumentMap: {
-            options: 1
-        },
-        components: {
-            ugens: {
-                type: "flock.synth.ugenCache"
-            }
-        },
-        rate: flock.rates.AUDIO
-    });
+    /**
+     * Makes a new syth.
+     * Deprecated. Use flock.synth instead. This is provided for semi-backwards-compatibility with
+     * previous version of Flocking where flock.synth had a multi-argument signature.
+     */
+    flock.synth.make = function (def, options) {
+        options = options || {};
+        options.synthDef = def;
+        return flock.synth(options);
+    };
+    
     
     fluid.defaults("flock.synth.ugenCache", {
         gradeNames: ["fluid.littleComponent", "autoInit"]
@@ -931,7 +956,7 @@ var fluid = fluid || require("infusion"),
     
     
     fluid.defaults("flock.synth.group", {
-        gradeNames: ["fluid.modelComponent", "flock.nodeList", "flock.autoEnviro", "autoInit"],
+        gradeNames: ["flock.node", "flock.nodeList", "autoInit"],
         rate: flock.rates.AUDIO
     });
     
@@ -978,9 +1003,27 @@ var fluid = fluid || require("infusion"),
         return that;
     };
     
-    flock.synth.polyphonic = function (def, options) {
-        var that = fluid.initComponent("flock.synth.polyphonic", options);
-        that.model.synthDef = def;
+    
+    fluid.defaults("flock.synth.polyphonic", {
+        gradeNames: ["flock.synth.group", "autoInit"],
+        mergePolicy: {
+            synthDef: "nomerge"
+        },
+        noteSpecs: {
+            on: {
+                "env.gate": 1
+            },
+            off: {
+                "env.gate": 0
+            }
+        },
+        maxVoices: 16,
+        initVoicesLazily: true,
+        amplitudeKey: "env.sustain",
+        amplitudeNormalizer: "static" // "dynamic", "static", Function, falsey
+    });
+    
+    flock.synth.polyphonic.finalInit = function (that) {
         that.activeVoices = {};
         that.freeVoices = [];
         
@@ -1014,10 +1057,12 @@ var fluid = fluid || require("infusion"),
         };
         
         that.createVoice = function () {
-            var voice = flock.synth(that.model.synthDef, {
-                    addToEnvironment: false
-                }),
-                normalizer = that.options.amplitudeNormalizer,
+            var voice = flock.synth({
+                synthDef: that.options.synthDef,
+                addToEnvironment: false
+            });
+            
+            var normalizer = that.options.amplitudeNormalizer,
                 ampKey = that.options.amplitudeKey,
                 normValue;
                 
@@ -1059,24 +1104,5 @@ var fluid = fluid || require("infusion"),
         that.init();
         return that;
     };
-    
-    fluid.defaults("flock.synth.polyphonic", {
-        gradeNames: ["flock.synth.group"],
-        argumentMap: {
-            options: 1
-        },
-        noteSpecs: {
-            on: {
-                "env.gate": 1
-            },
-            off: {
-                "env.gate": 0
-            }
-        },
-        maxVoices: 16,
-        initVoicesLazily: true,
-        amplitudeKey: "env.sustain",
-        amplitudeNormalizer: "static" // "dynamic", "static", Function, falsey
-    });
     
 }());
