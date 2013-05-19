@@ -798,7 +798,7 @@ clock.schedule([
         interval: "repeat",
         time: 1.0,
         change: {
-            synth: synth,
+            synth: "sin-synth",
             values: {
                 "carrier.freq": {
                     synthDef: {
@@ -814,7 +814,7 @@ clock.schedule([
         interval: "once",
         time: 8,
         change: {
-            synth: synth,
+            synth: "sin-synth",
             values: {
                 "carrier.mul.start": 0.25,
                 "carrier.mul.end": 0.0,

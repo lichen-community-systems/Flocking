@@ -468,6 +468,7 @@ var fluid = fluid || require("infusion"),
         for (var path in changeSpec.values) {
             var change = changeSpec.values[path];
             if (change.synthDef) {
+                change.addToEnvironment = false;
                 change.rate = flock.rates.DEMAND;
                 synths[path] = flock.synth(change);
             } else {
@@ -484,7 +485,10 @@ var fluid = fluid || require("infusion"),
                 staticChanges[path] = ugens[ugens.length - 1].output[0];
             }
             
-            changeSpec.synth.set(staticChanges);
+            // TODO: Hardcoded to the shared environment.
+            var targetSynth = typeof (changeSpec.synth) === "string" ?
+                flock.enviro.shared.namedNodes[changeSpec.synth] : changeSpec.synth;
+            targetSynth.set(staticChanges);
         };
     };
     

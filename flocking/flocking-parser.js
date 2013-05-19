@@ -129,8 +129,8 @@ var fluid = fluid || require("infusion"),
         "cr": flock.rates.CONSTANT
     };
 
-    flock.parse.expandRate = function (ugenDef) {
-        ugenDef.rate = flock.parse.rateMap[ugenDef.rate] || ugenDef.rate;
+    flock.parse.expandRate = function (ugenDef, options) {
+        ugenDef.rate = options.overrideRate ? options.rate : flock.parse.rateMap[ugenDef.rate] || ugenDef.rate;
         return ugenDef;
     };
 
@@ -190,8 +190,8 @@ var fluid = fluid || require("infusion"),
         if (!ugenDef.inputs) {
             ugenDef = flock.parse.expandUGenDef(ugenDef);
         }
-    
-        flock.parse.expandRate(ugenDef);
+        
+        flock.parse.expandRate(ugenDef, options);
     
         // Merge the ugenDef with default values defined by the ugen itself.
         // TODO: Infusion options merging.

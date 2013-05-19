@@ -433,13 +433,15 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.nodeList", {
         gradeNames: ["fluid.littleComponent", "autoInit"],
         members: {
-            nodes: []
+            nodes: [],
+            namedNodes: {}
         }
     });
     
     flock.nodeList.preInit = function (that) {
         that.head = function (node) {
             that.nodes.unshift(node);
+            that.namedNodes[node.id] = node;
         };
         
         that.before = function (refNode, node) {
@@ -454,15 +456,18 @@ var fluid = fluid || require("infusion"),
         
         that.at = function (idx, node) {
             that.nodes.splice(idx, 0, node);
+            that.namedNodes[node.id] = node;
         };
         
         that.tail = function (node) {
             that.nodes.push(node);
+            that.namedNodes[node.id] = node;
         };
         
         that.remove = function (node) {
             var idx = that.nodes.indexOf(node);
             that.nodes.splice(idx, 1);
+            delete that.namedNodes[node.id];
         };
     };
     
@@ -677,8 +682,9 @@ var fluid = fluid || require("infusion"),
      */
     flock.synth.finalInit = function (that) {
         that.rate = that.options.rate;
-        that.enviro = flock.enviro.shared;
+        that.enviro = that.enviro || flock.enviro.shared;
         that.model.blockSize = that.enviro.audioSettings.rates.control;
+        that.id = that.options.id; // TODO: Will this cause the destruction of the IoC universe?
         
         /**
          * Generates an audio rate signal by evaluating this synth's unit generator graph.
@@ -775,6 +781,7 @@ var fluid = fluid || require("infusion"),
             // Parse the synthDef into a graph of unit generators.
             that.out = flock.parse.synthDef(that.options.synthDef, {
                 rate: that.options.rate,
+                overrideRate: (that.options.rate === flock.rates.DEMAND), // At demand rate, override the rate of all ugens.
                 visitors: that.ugens.add,
                 buffers: that.enviro.buffers,
                 buses: that.enviro.buses,
@@ -956,7 +963,7 @@ var fluid = fluid || require("infusion"),
     
     flock.synth.group.finalInit = function (that) {
         that.rate = that.options.rate;
-        that.enviro = flock.enviro.shared;
+        that.enviro = that.enviro || flock.enviro.shared;
         
         flock.synth.group.makeDispatchedMethods(that, [
             "input", "get", "set", "gen", "play", "pause"
