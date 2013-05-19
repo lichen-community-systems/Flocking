@@ -133,7 +133,7 @@ flock.test = flock.test || {};
         });
         nodeEvaluator.buses = env.buses;
         nodeEvaluator.nodes = [outUGen];
-
+    
         var actual = flock.enviro.moz.interleavedWriter(
             new Float32Array(numSamps * chans),
             nodeEvaluator.gen,
@@ -329,7 +329,7 @@ flock.test = flock.test || {};
     
     
     module("Dust tests");
-
+    
     var checkSampleBoundary = function (buffer, min, max) {
         var aboveMin = true,
             belowMax = true,
@@ -373,7 +373,7 @@ flock.test = flock.test || {};
         equals(Math.round(avgNumNonZeroSamples), density, 
             "There should be roughly " + density + " non-zero samples in a one-second buffer.");
     };
-
+    
     test("flock.ugen.dust", function () {
         var density = 1.0;
         var dust = flock.ugen.dust({
@@ -387,10 +387,10 @@ flock.test = flock.test || {};
         ok(buffer, "A buffer should be returned from dust.audio()");
         equals(buffer.length, 44100, "And it should be the specified length.");
         checkSampleBoundary(buffer, 0.0, 1.0);
-
+    
         // Check that the buffer contains an avg. density of 1.0 non-zero samples per second.
         checkDensity(dust, density);
-
+    
         // And now try a density of 200.
         density = 200;
         dust.inputs.density = flock.ugen.value({value: density}, new Float32Array(44100));
@@ -1590,7 +1590,7 @@ flock.test = flock.test || {};
             equal(ugen.output[0], expectedSequence[i]);
         }
     };
-
+    
     
     var testSequenceAudio = function (ugen, expectedSequence) {
         ugen.gen(64);
@@ -1713,5 +1713,5 @@ flock.test = flock.test || {};
             ]
         });
     });
-    
+
 }());

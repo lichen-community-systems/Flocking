@@ -596,8 +596,10 @@ var fluid = fluid || require("infusion"),
                 options: {
                     numBuses: "{enviro}.options.audioSettings.numBuses",
                     controlRate: "{enviro}.options.audioSettings.rates.control",
-                    buses: "{enviro}.buses",
-                    nodes: "{enviro}.nodes"
+                    members: {
+                        buses: "{enviro}.buses",
+                        nodes: "{enviro}.nodes"
+                    }
                 }
             }
         }
@@ -608,18 +610,10 @@ var fluid = fluid || require("infusion"),
      *****************/
     
     fluid.defaults("flock.enviro.nodeEvaluator", {
-        gradeNames: ["fluid.littleComponent", "autoInit"],
-
-        mergePolicy: {
-            nodes: "nomerge",
-            buses: "nomerge"
-        }
+        gradeNames: ["fluid.littleComponent", "autoInit"]
     });
     
     flock.enviro.nodeEvaluator.finalInit = function (that) {
-        that.nodes = that.options.nodes;
-        that.buses = that.options.buses;
-        
         that.gen = function () {
             var numBuses = that.options.numBuses,
                 busLen = that.options.controlRate,
@@ -667,7 +661,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.synth", {
         gradeNames: ["flock.node", "autoInit"],
         mergePolicy: {
-            synthDef: "nomerge"
+            synthDef: "noexpand, nomerge"
         },
         components: {
             ugens: {
@@ -1007,7 +1001,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.synth.polyphonic", {
         gradeNames: ["flock.synth.group", "autoInit"],
         mergePolicy: {
-            synthDef: "nomerge"
+            synthDef: "noexpand, nomerge"
         },
         noteSpecs: {
             on: {
