@@ -662,7 +662,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.synth", {
         gradeNames: ["flock.node", "autoInit"],
         mergePolicy: {
-            synthDef: "noexpand, nomerge"
+            synthDef: "nomerge"
         },
         components: {
             ugens: {
@@ -1003,7 +1003,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.synth.polyphonic", {
         gradeNames: ["flock.synth.group", "autoInit"],
         mergePolicy: {
-            synthDef: "noexpand, nomerge"
+            synthDef: "nomerge"
         },
         noteSpecs: {
             on: {
@@ -1099,6 +1099,16 @@ var fluid = fluid || require("infusion"),
         
         that.init();
         return that;
+    };
+    
+    /**
+     * Monkey patches fluid.isPrimitive until an general Infusion solution can be put in place for
+     * defining custom primitive detection logic. Currently, ArrayBufferViews are detected as objects.
+     */
+    fluid.isPrimitive = function (value) {
+        var valueType = typeof (value);
+        return !value || valueType === "string" || valueType === "boolean" || valueType === "number" || 
+            valueType === "function" || value instanceof Float32Array;
     };
     
 }());
