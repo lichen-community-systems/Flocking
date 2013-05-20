@@ -441,7 +441,7 @@ var fluid = fluid || require("infusion"),
     flock.nodeList.preInit = function (that) {
         that.head = function (node) {
             that.nodes.unshift(node);
-            that.namedNodes[node.id] = node;
+            that.namedNodes[node.nickName] = node;
         };
         
         that.before = function (refNode, node) {
@@ -456,18 +456,18 @@ var fluid = fluid || require("infusion"),
         
         that.at = function (idx, node) {
             that.nodes.splice(idx, 0, node);
-            that.namedNodes[node.id] = node;
+            that.namedNodes[node.nickName] = node;
         };
         
         that.tail = function (node) {
             that.nodes.push(node);
-            that.namedNodes[node.id] = node;
+            that.namedNodes[node.nickName] = node;
         };
         
         that.remove = function (node) {
             var idx = that.nodes.indexOf(node);
             that.nodes.splice(idx, 1);
-            delete that.namedNodes[node.id];
+            delete that.namedNodes[node.nickName];
         };
     };
     
@@ -510,8 +510,9 @@ var fluid = fluid || require("infusion"),
                 type: "flock.enviro.audioStrategy",
                 options: {
                     audioSettings: "{enviro}.options.audioSettings",
-                    model: "{enviro}.model" // TODO: too broad. AudioStrategies only use {enviro}.model.playState, 
-                                            // but do also add their own model state.
+                    model: {
+                        playState: "{enviro}.model.playState"
+                    }
                 }
             }
         }
@@ -519,9 +520,6 @@ var fluid = fluid || require("infusion"),
     
     flock.enviro.preInit = function (that) {
         that.audioSettings = that.options.audioSettings;
-        
-        // TODO: Buffers are named but buses are numbered. Should we have a consistent strategy?
-        // The advantage to numbers is that they're easily modulatable with a ugen. Names are easier to deal with.
         that.buses = flock.enviro.createAudioBuffers(that.audioSettings.numBuses, 
                 that.audioSettings.rates.control);
         that.buffers = {};
@@ -532,11 +530,12 @@ var fluid = fluid || require("infusion"),
          * @param {Number} dur optional duration to play in seconds
          */
         that.play = function (dur) {
+            dur = dur === undefined ? Infinity : dur;
+            
             var playState = that.model.playState,
-                sps = dur * (that.audioSettings.rates.audio * that.audioSettings.chans);
+                sps = dur * that.audioSettings.rates.audio * that.audioSettings.chans;
                 
-            playState.total = dur === undefined ? Infinity :
-                playState.total === Infinity ? sps : playState.written + sps;
+            playState.total = playState.written + sps;
             that.audioStrategy.startGeneratingSamples();
             that.model.isPlaying = true;
         };
@@ -654,14 +653,11 @@ var fluid = fluid || require("infusion"),
         }
     };
     
+    
     fluid.defaults("flock.node", {
-        gradeNames: ["flock.autoEnviro", "fluid.modelComponent", "autoInit"],
-        id: undefined
+        gradeNames: ["flock.autoEnviro", "fluid.modelComponent", "autoInit"]
     });
     
-    flock.node.finalInit = function (that) {
-        that.id = that.options.id = that.options.id ? that.options.id : fluid.allocateGuid();
-    };
     
     fluid.defaults("flock.synth", {
         gradeNames: ["flock.node", "autoInit"],
@@ -684,7 +680,6 @@ var fluid = fluid || require("infusion"),
         that.rate = that.options.rate;
         that.enviro = that.enviro || flock.enviro.shared;
         that.model.blockSize = that.enviro.audioSettings.rates.control;
-        that.id = that.options.id; // TODO: Will this cause the destruction of the IoC universe?
         
         /**
          * Generates an audio rate signal by evaluating this synth's unit generator graph.
@@ -817,7 +812,7 @@ var fluid = fluid || require("infusion"),
     flock.synth.ugenCache.finalInit = function (that) {
         that.named = {};
         that.active = [];
-        that.all = []; // TODO: Memory leak; need to remove ugens from both all and active.
+        that.all = []; // TODO: Memory leak! Need to remove ugens from both all and active.
         
         that.add = function (ugens) {
             var i,
