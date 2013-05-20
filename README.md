@@ -32,17 +32,22 @@ Status
 Flocking is an early prototype. It has bugs, it's growing fast, and help is welcome and appreciated.
 
 ### Short Term To Dos###
- * Declarative scheduling and composition
- * More unit generators! 
-   * ADSR envelopes
-   * Dynamics processor (compressor/limiter)
+ * More unit generators!
+   * ADSR and other envelopes
+   * Dynamics processors (compressor/limiter)
+   * Lots more
+ * Full multichannel support and channel expansion
+ * The ability to connect one unit generator to multiple inputs
+ * Sample-accurate scheduling
+ * Major improvements to the Demo Playground/IDE
+ * MediaStream-based audio input
  * The ability to record sessions and export an audio file from your browser
  
  
 Using Flocking
 --------------
 
-At the moment, there are four key concepts in Flocking: Unit Generators (ugens), Synths, SynthDefs, and the Environment.
+At the moment, there are a handful of key concepts in Flocking: Unit Generators (ugens), Synths, SynthDefs, Schedulers, and the Environment.
 
 **Unit Generators** are the basic building blocks of synthesis. They have multiple inputs and a single output buffer, and 
 they do the primary work of generating or processing audio signals in Flocking. A unit generator can be wired up as an 
@@ -78,6 +83,40 @@ by another sine oscillator ("mod"):
             freq: 1.0                       // Give it a frequency of 1 Hz, or one wobble per second.
         }
     }
+
+**Schedulers** are components that allow you to schedule changes to Synths over time. Currently, there is one type of Scheduler, the asynchronous scheduler. It is driven by the browser's notoriously inaccurate setTimeout() and setInterval() clocks. A sample accurate scheduler will be provided in a future release of Flocking, but in the meantime the asynchronous scheduler does a decent job of keeping non-robotic time. Here's an example of the declarative powers of the Flocking scheduler:
+
+    var scheduler = flock.scheduler.async();
+    scheduler.schedule([
+        {
+            interval: "repeat",       // Schedule a repeating change
+            time: 0.25,               // Every quarter of a second.
+            change: {
+                synth: "sin-synth",   // Update values a synth with the global nickname "sin-synth".
+                values: {
+                    "carrier.freq": { // Change the synth's frequency by scheduling a demand-rate
+                        synthDef: {   // Synth that generate values by iterating through the list.
+                            ugen: "flock.ugen.sequence",
+                            loop: 1.0,
+                            buffer: [110, 220, 330, 440, 550, 660, 880]
+                        }
+                    }
+                }
+            }
+        }
+    ]);
+    
+If you need to, you can always schedule events via plain old functions:
+
+    // Fade out after 10 seconds.
+    scheduler.once(10, function () {
+        synth.set({
+            "carrier.mul.start": 0.25,
+            "carrier.mul.end": 0.0,
+            "carrier.mul.duration": 1.0
+        });
+    });
+
 
 Compatibility
 -------------
