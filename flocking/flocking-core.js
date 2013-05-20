@@ -43,13 +43,52 @@ var fluid = fluid || require("infusion"),
     flock.sampleFormats = {
         FLOAT32NE: "float32NE"
     };
+
+    flock.browser = function () {
+        if (typeof (navigator) === "undefined") {
+            return {};
+        }
+
+        // This is a modified version of jQuery's browser detection code,
+        // which they removed from jQuery 2.0.
+        // Some of us still have to live in the messy reality of the web.
+        var ua = navigator.userAgent.toLowerCase(),
+            browser = {},
+            match,
+            matched;
+        
+        match = /(chrome)[ \/]([\w.]+)/.exec( ua ) ||
+            /(webkit)[ \/]([\w.]+)/.exec( ua ) ||
+            /(opera)(?:.*version|)[ \/]([\w.]+)/.exec( ua ) ||
+            /(msie) ([\w.]+)/.exec( ua ) ||
+            ua.indexOf("compatible") < 0 && /(mozilla)(?:.*? rv:([\w.]+)|)/.exec( ua ) || [];
+        
+        matched = {
+            browser: match[ 1 ] || "",
+            version: match[ 2 ] || "0"
+        };
+
+        if (matched.browser) {
+            browser[matched.browser] = true;
+            browser.version = matched.version;
+        }
+
+        // Chrome is Webkit, but Webkit is also Safari.
+        if ( browser.chrome ) {
+            browser.webkit = true;
+        } else if ( browser.webkit ) {
+            browser.safari = true;
+        }
+        
+        return browser;
+    };
     
     // TODO: Move to components in the static environment and into the appropriate platform files.
     fluid.registerNamespace("flock.platform");
     flock.platform.isBrowser = typeof (window) !== "undefined";
     flock.platform.os = flock.platform.isBrowser ? window.navigator.platform : fluid.require("os").platform();
     flock.platform.isLinuxBased = flock.platform.os.indexOf("Linux") > -1 || flock.platform.os.indexOf("Android") > -1;
-    flock.platform.browser = flock.platform.isBrowser ? jQuery.browser : {};
+    flock.platform.browser = flock.browser();
     flock.platform.isWebAudio = (typeof (AudioContext) !== "undefined" && (new AudioContext()).createJavaScriptNode) ||
         typeof (webkitAudioContext) !== "undefined";
     flock.platform.audioEngine = flock.platform.isBrowser ? (flock.platform.isWebAudio ? "webAudio" : "moz") : "nodejs";
