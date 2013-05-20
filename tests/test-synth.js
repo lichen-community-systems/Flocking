@@ -14,10 +14,12 @@ flock.demo.nodeTest = function () {
         var ampScale = 0.4 / intervals.length;
         return fluid.transform(intervals, function (interval, idx) {
             return flock.synth({
-                id: "carrier",
-                ugen: "flock.ugen.sin",
-                freq: fundamental * interval,
-                mul: ampScale
+                synthDef: {
+                    id: "carrier",
+                    ugen: "flock.ugen.sin",
+                    freq: fundamental * interval,
+                    mul: ampScale
+                }
             });
         });
     }
