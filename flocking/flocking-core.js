@@ -36,6 +36,7 @@ var fluid = fluid || require("infusion"),
     flock.rates = {
         AUDIO: "audio",
         CONTROL: "control",
+        DEMAND: "demand",
         CONSTANT: "constant"
     };
     
@@ -432,13 +433,15 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.nodeList", {
         gradeNames: ["fluid.littleComponent", "autoInit"],
         members: {
-            nodes: []
+            nodes: [],
+            namedNodes: {}
         }
     });
     
     flock.nodeList.preInit = function (that) {
         that.head = function (node) {
             that.nodes.unshift(node);
+            that.namedNodes[node.nickName] = node;
         };
         
         that.before = function (refNode, node) {
@@ -453,15 +456,18 @@ var fluid = fluid || require("infusion"),
         
         that.at = function (idx, node) {
             that.nodes.splice(idx, 0, node);
+            that.namedNodes[node.nickName] = node;
         };
         
         that.tail = function (node) {
             that.nodes.push(node);
+            that.namedNodes[node.nickName] = node;
         };
         
         that.remove = function (node) {
             var idx = that.nodes.indexOf(node);
             that.nodes.splice(idx, 1);
+            delete that.namedNodes[node.nickName];
         };
     };
     
@@ -504,8 +510,9 @@ var fluid = fluid || require("infusion"),
                 type: "flock.enviro.audioStrategy",
                 options: {
                     audioSettings: "{enviro}.options.audioSettings",
-                    model: "{enviro}.model" // TODO: too broad. AudioStrategies only use {enviro}.model.playState, 
-                                            // but do also add their own model state.
+                    model: {
+                        playState: "{enviro}.model.playState"
+                    }
                 }
             }
         }
@@ -513,9 +520,6 @@ var fluid = fluid || require("infusion"),
     
     flock.enviro.preInit = function (that) {
         that.audioSettings = that.options.audioSettings;
-        
-        // TODO: Buffers are named but buses are numbered. Should we have a consistent strategy?
-        // The advantage to numbers is that they're easily modulatable with a ugen. Names are easier to deal with.
         that.buses = flock.enviro.createAudioBuffers(that.audioSettings.numBuses, 
                 that.audioSettings.rates.control);
         that.buffers = {};
@@ -526,11 +530,12 @@ var fluid = fluid || require("infusion"),
          * @param {Number} dur optional duration to play in seconds
          */
         that.play = function (dur) {
+            dur = dur === undefined ? Infinity : dur;
+            
             var playState = that.model.playState,
-                sps = dur * (that.audioSettings.rates.audio * that.audioSettings.chans);
+                sps = dur * that.audioSettings.rates.audio * that.audioSettings.chans;
                 
-            playState.total = dur === undefined ? Infinity :
-                playState.total === Infinity ? sps : playState.written + sps;
+            playState.total = playState.written + sps;
             that.audioStrategy.startGeneratingSamples();
             that.model.isPlaying = true;
         };
@@ -572,6 +577,9 @@ var fluid = fluid || require("infusion"),
     
     flock.enviro.finalInit = function (that) {
         that.gen = that.audioStrategy.nodeEvaluator.gen;
+        
+        // TODO: Model-based (with ChangeApplier) sharing of audioSettings
+        that.options.audioSettings.rates.audio = that.audioStrategy.options.audioSettings.rates.audio;
     };
     
     flock.enviro.createAudioBuffers = function (numBufs, kr) {
@@ -592,8 +600,10 @@ var fluid = fluid || require("infusion"),
                 options: {
                     numBuses: "{enviro}.options.audioSettings.numBuses",
                     controlRate: "{enviro}.options.audioSettings.rates.control",
-                    buses: "{enviro}.buses",
-                    nodes: "{enviro}.nodes"
+                    members: {
+                        buses: "{enviro}.buses",
+                        nodes: "{enviro}.nodes"
+                    }
                 }
             }
         }
@@ -604,18 +614,10 @@ var fluid = fluid || require("infusion"),
      *****************/
     
     fluid.defaults("flock.enviro.nodeEvaluator", {
-        gradeNames: ["fluid.littleComponent", "autoInit"],
-
-        mergePolicy: {
-            nodes: "nomerge",
-            buses: "nomerge"
-        }
+        gradeNames: ["fluid.littleComponent", "autoInit"]
     });
     
     flock.enviro.nodeEvaluator.finalInit = function (that) {
-        that.nodes = that.options.nodes;
-        that.buses = that.options.buses;
-        
         that.gen = function () {
             var numBuses = that.options.numBuses,
                 busLen = that.options.controlRate,
@@ -645,23 +647,39 @@ var fluid = fluid || require("infusion"),
         gradeNames: ["fluid.littleComponent", "autoInit"]
     });
     
-    flock.autoEnviro.finalInit = function (that) {
+    flock.autoEnviro.preInit = function (that) {
         if (!flock.enviro.shared) {
             flock.init();
         }
     };
     
     
+    fluid.defaults("flock.node", {
+        gradeNames: ["flock.autoEnviro", "fluid.modelComponent", "autoInit"]
+    });
+    
+    
+    fluid.defaults("flock.synth", {
+        gradeNames: ["flock.node", "autoInit"],
+        mergePolicy: {
+            synthDef: "noexpand, nomerge"
+        },
+        components: {
+            ugens: {
+                type: "flock.synth.ugenCache"
+            }
+        },
+        rate: flock.rates.AUDIO
+    });
+    
     /**
      * Synths represent a collection of signal-generating units, wired together to form an instrument.
      * They are created with a synthDef object, a declarative structure describing the synth's unit generator graph.
      */
-    flock.synth = function (def, options) {
-        var that = fluid.initComponent("flock.synth", options);
-        that.rate = flock.rates.AUDIO;
-        that.enviro = flock.enviro.shared;
+    flock.synth.finalInit = function (that) {
+        that.rate = that.options.rate;
+        that.enviro = that.enviro || flock.enviro.shared;
         that.model.blockSize = that.enviro.audioSettings.rates.control;
-        that.model.synthDef = def;
         
         /**
          * Generates an audio rate signal by evaluating this synth's unit generator graph.
@@ -751,8 +769,14 @@ var fluid = fluid || require("infusion"),
         };
 
         that.init = function () {
+            if (!that.options.synthDef) {
+                fluid.log("Warning: Instantiating a flock.synth instance with an empty synth def.")
+            }
+            
             // Parse the synthDef into a graph of unit generators.
-            that.out = flock.parse.synthDef(that.model.synthDef, {
+            that.out = flock.parse.synthDef(that.options.synthDef, {
+                rate: that.options.rate,
+                overrideRate: (that.options.rate === flock.rates.DEMAND), // At demand rate, override the rate of all ugens.
                 visitors: that.ugens.add,
                 buffers: that.enviro.buffers,
                 buses: that.enviro.buses,
@@ -769,17 +793,17 @@ var fluid = fluid || require("infusion"),
         return that;
     };
     
-    fluid.defaults("flock.synth", {
-        gradeNames: ["fluid.modelComponent", "flock.autoEnviro"],
-        argumentMap: {
-            options: 1
-        },
-        components: {
-            ugens: {
-                type: "flock.synth.ugenCache"
-            }
-        }
-    });
+    /**
+     * Makes a new syth.
+     * Deprecated. Use flock.synth instead. This is provided for semi-backwards-compatibility with
+     * previous version of Flocking where flock.synth had a multi-argument signature.
+     */
+    flock.synth.make = function (def, options) {
+        options = options || {};
+        options.synthDef = def;
+        return flock.synth(options);
+    };
+    
     
     fluid.defaults("flock.synth.ugenCache", {
         gradeNames: ["fluid.littleComponent", "autoInit"]
@@ -788,6 +812,7 @@ var fluid = fluid || require("infusion"),
     flock.synth.ugenCache.finalInit = function (that) {
         that.named = {};
         that.active = [];
+        that.all = []; // TODO: Memory leak! Need to remove ugens from both all and active.
         
         that.add = function (ugens) {
             var i,
@@ -796,6 +821,7 @@ var fluid = fluid || require("infusion"),
             ugens = fluid.makeArray(ugens);
             for (i = 0; i < ugens.length; i++) {
                 ugen = ugens[i];
+                that.all.push(ugen);
                 if (ugen.gen) {
                     that.active.push(ugen);
                 }
@@ -926,13 +952,13 @@ var fluid = fluid || require("infusion"),
     
     
     fluid.defaults("flock.synth.group", {
-        gradeNames: ["fluid.modelComponent", "flock.nodeList", "flock.autoEnviro", "autoInit"],
+        gradeNames: ["flock.node", "flock.nodeList", "autoInit"],
         rate: flock.rates.AUDIO
     });
     
     flock.synth.group.finalInit = function (that) {
         that.rate = that.options.rate;
-        that.enviro = flock.enviro.shared;
+        that.enviro = that.enviro || flock.enviro.shared;
         
         flock.synth.group.makeDispatchedMethods(that, [
             "input", "get", "set", "gen", "play", "pause"
@@ -973,9 +999,27 @@ var fluid = fluid || require("infusion"),
         return that;
     };
     
-    flock.synth.polyphonic = function (def, options) {
-        var that = fluid.initComponent("flock.synth.polyphonic", options);
-        that.model.synthDef = def;
+    
+    fluid.defaults("flock.synth.polyphonic", {
+        gradeNames: ["flock.synth.group", "autoInit"],
+        mergePolicy: {
+            synthDef: "noexpand, nomerge"
+        },
+        noteSpecs: {
+            on: {
+                "env.gate": 1
+            },
+            off: {
+                "env.gate": 0
+            }
+        },
+        maxVoices: 16,
+        initVoicesLazily: true,
+        amplitudeKey: "env.sustain",
+        amplitudeNormalizer: "static" // "dynamic", "static", Function, falsey
+    });
+    
+    flock.synth.polyphonic.finalInit = function (that) {
         that.activeVoices = {};
         that.freeVoices = [];
         
@@ -1009,10 +1053,12 @@ var fluid = fluid || require("infusion"),
         };
         
         that.createVoice = function () {
-            var voice = flock.synth(that.model.synthDef, {
-                    addToEnvironment: false
-                }),
-                normalizer = that.options.amplitudeNormalizer,
+            var voice = flock.synth({
+                synthDef: that.options.synthDef,
+                addToEnvironment: false
+            });
+            
+            var normalizer = that.options.amplitudeNormalizer,
                 ampKey = that.options.amplitudeKey,
                 normValue;
                 
@@ -1054,24 +1100,5 @@ var fluid = fluid || require("infusion"),
         that.init();
         return that;
     };
-    
-    fluid.defaults("flock.synth.polyphonic", {
-        gradeNames: ["flock.synth.group"],
-        argumentMap: {
-            options: 1
-        },
-        noteSpecs: {
-            on: {
-                "env.gate": 1
-            },
-            off: {
-                "env.gate": 0
-            }
-        },
-        maxVoices: 16,
-        initVoicesLazily: true,
-        amplitudeKey: "env.sustain",
-        amplitudeNormalizer: "static" // "dynamic", "static", Function, falsey
-    });
     
 }());

@@ -55,29 +55,31 @@
         <script>
 
             var synth = flock.synth({
-                ugen: "flock.ugen.scope",
+                synthDef: {
+                    ugen: "flock.ugen.scope",
 
-                // The playBuffer ugen plays back audio buffers loaded from a url or file.
-                // Currently, Flocking has support for .wav and .aiff files.
-                source: {
-                    id: "player",
-                    ugen: "flock.ugen.playBuffer",
-                    buffer: {
-                        id: "selectedSound",                    // The sound file will be loaded into an environment buffer named "selectedSound."
-                        selector: ".fileSelector .fileBrowser"  // The File object selected by the #fileBrowser input element will be read.
+                    // The playBuffer ugen plays back audio buffers loaded from a url or file.
+                    // Currently, Flocking has support for .wav and .aiff files.
+                    source: {
+                        id: "player",
+                        ugen: "flock.ugen.playBuffer",
+                        buffer: {
+                            id: "selectedSound",                    // The sound file will be loaded into an environment buffer named "selectedSound."
+                            selector: ".fileSelector .fileBrowser"  // The File object selected by the #fileBrowser input element will be read.
+                        },
+                        speed: 1.0,
+                        loop: 1.0
                     },
-                    speed: 1.0,
-                    loop: 1.0
-                },
 
-                options: {
-                    canvas: "#waveform",
-                    styles: {
-                        strokeColor: "#888",
-                        strokeWidth: 1
+                    options: {
+                        canvas: "#waveform",
+                        styles: {
+                            strokeColor: "#888",
+                            strokeWidth: 1
+                        }
                     }
                 }
-            }),
+        }),
             
             fileSelectorView = demo.fileSelectorView(synth, {
                 playerId: "player",
