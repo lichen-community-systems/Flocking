@@ -20,8 +20,14 @@ var fluid = fluid || require("infusion"),
     fluid.registerNamespace("flock.parse");
     
     flock.parse.synthDef = function (ugenDef, options) {
+        if (!ugenDef) {
+            ugenDef = [];
+        }
+        
         // We didn't get an out ugen specified, so we need to make one.
-        if (typeof (ugenDef.length) === "number" || (ugenDef.id !== flock.OUT_UGEN_ID && ugenDef.ugen !== "flock.ugen.out")) {
+        if (options.rate === flock.rates.AUDIO && 
+            (typeof (ugenDef.length) === "number" || 
+            (ugenDef.id !== flock.OUT_UGEN_ID && ugenDef.ugen !== "flock.ugen.out"))) {
             ugenDef = {
                 id: flock.OUT_UGEN_ID,
                 ugen: "flock.ugen.out",
@@ -119,11 +125,12 @@ var fluid = fluid || require("infusion"),
     flock.parse.rateMap = {
         "ar": flock.rates.AUDIO,
         "kr": flock.rates.CONTROL,
+        "dr": flock.rates.DEMAND,
         "cr": flock.rates.CONSTANT
     };
 
-    flock.parse.expandRate = function (ugenDef) {
-        ugenDef.rate = flock.parse.rateMap[ugenDef.rate] || ugenDef.rate;
+    flock.parse.expandRate = function (ugenDef, options) {
+        ugenDef.rate = options.overrideRate ? options.rate : flock.parse.rateMap[ugenDef.rate] || ugenDef.rate;
         return ugenDef;
     };
 
@@ -183,8 +190,8 @@ var fluid = fluid || require("infusion"),
         if (!ugenDef.inputs) {
             ugenDef = flock.parse.expandUGenDef(ugenDef);
         }
-    
-        flock.parse.expandRate(ugenDef);
+        
+        flock.parse.expandRate(ugenDef, options);
     
         // Merge the ugenDef with default values defined by the ugen itself.
         // TODO: Infusion options merging.

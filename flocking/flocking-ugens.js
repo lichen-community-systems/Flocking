@@ -155,6 +155,7 @@ var fluid = fluid || require("infusion"),
         that.options.audioSettings = that.options.audioSettings || flock.enviro.shared.audioSettings;
         that.model.sampleRate = options.sampleRate || that.options.audioSettings.rates[that.rate];
         that.model.blockSize = that.rate === flock.rates.AUDIO ? that.options.audioSettings.rates.control : 1;
+        that.model.sampleDur = 1.0 / that.model.sampleRate;
         
         that.get = function (path) {
             return flock.input.get(that.inputs, path);
@@ -169,6 +170,10 @@ var fluid = fluid || require("infusion"),
          */
         that.set = function (path, val, swap) {
             return flock.input.set(that.inputs, path, val, that, function (ugenDef) {
+                if (ugenDef === null) {
+                    return undefined;
+                }
+                
                 return flock.parse.ugenDef(ugenDef, {
                     audioSettings: that.options.audioSettings,
                     buses: that.options.audioSettings.buses,
@@ -214,6 +219,13 @@ var fluid = fluid || require("infusion"),
         // Will be undefined if no interpolation default or option has been set,
         // or if it is set to "none"--make sure you check before invoking it.
         that.interpolate = flock.interpolate[that.options.interpolation];
+        
+        if (that.rate === flock.rates.DEMAND && that.inputs.freq) {
+            that.inputs.freq = flock.parse.ugenDef({
+                ugen: "flock.ugen.value",
+                value: 1.0
+            });
+        }
         
         return that;
     };
@@ -282,7 +294,14 @@ var fluid = fluid || require("infusion"),
             }
         };
         
-        that.onInputChanged();
+        that.init = function () {
+            if (typeof (DSP) === "undefined") {
+                throw new Error("DSP is undefined. Please include dspapi.js to use the flock.math unit generator.");
+            }
+            that.onInputChanged();
+        };
+        
+        that.init();
         return that;
     };
     
@@ -723,22 +742,36 @@ var fluid = fluid || require("infusion"),
         }
     };
     
+    flock.buffer.resolveBufferArray = function (ugen, buffer, chan) {
+        var id = fluid.allocateGuid();
+        flock.buffer.addListener(id, ugen);
+        flock.buffer.fireReady(ugen, id, [buffer], id, chan);
+    };
+    
+    flock.buffer.resolveBufferDef = function (ugen, bufDef, chan) {
+        flock.buffer.addListener(bufDef.id, ugen);
+        flock.parse.bufferForDef(bufDef, function (buffer, name) {
+            flock.buffer.fireReady(ugen, bufDef.id, buffer, name, chan)
+        });
+    };
+    
     // TODO: Should this be done earlier (during ugen parsing)?
     // TODO: Factor this into a ugen mixin.
-    flock.buffer.resolveBufferDef = function (ugen) {
+    flock.buffer.resolveBuffer = function (ugen) {
         var m = ugen.model,
             inputs = ugen.inputs,
             bufDef = m.bufDef = inputs.buffer,
             chan = inputs.channel ? inputs.channel.output[0] : 0,
             buf;
-
-        if (typeof (bufDef) === "string") {
+        
+        if (!bufDef) {
+            return;
+        } else if (typeof (bufDef) === "string") {
             flock.buffer.resolveBufferId(ugen, bufDef, chan);
+        } else if (flock.isIterable(bufDef)) {
+            flock.buffer.resolveBufferArray(ugen, bufDef, chan);
         } else {
-            flock.buffer.addListener(bufDef.id, ugen);
-            flock.parse.bufferForDef(bufDef, function (buffer, name) {
-                flock.buffer.fireReady(ugen, bufDef.id, buffer, name, chan)
-            });
+            flock.buffer.resolveBufferDef(ugen, bufDef, chan);
         }
     };
     
@@ -828,7 +861,7 @@ var fluid = fluid || require("infusion"),
                 inputs = that.inputs;
             
             if (m.bufDef !== that.inputs.buffer || inputName === "buffer") {
-                flock.buffer.resolveBufferDef(that);
+                flock.buffer.resolveBuffer(that);
             }
             
             // TODO: Optimize for non-regular speed constant rate input.
@@ -880,7 +913,7 @@ var fluid = fluid || require("infusion"),
         
         that.onInputChanged = function (inputName) {
             if (that.model.bufDef !== that.inputs.buffer || inputName === "buffer") {
-                flock.buffer.resolveBufferDef(that);
+                flock.buffer.resolveBuffer(that);
             }
         };
         
@@ -931,7 +964,6 @@ var fluid = fluid || require("infusion"),
         that.model.density = 0.0;
         that.model.scale = 0.0;
         that.model.threshold = 0.0;
-        that.model.sampleDur = 1.0 / that.model.sampleRate;
     
         that.gen = function (numSamps) {
             var m = that.model,
@@ -1458,12 +1490,17 @@ var fluid = fluid || require("infusion"),
                 bus,
                 inc,
                 outIdx;
-                        
+                     
             if (typeof (sources.length) !== "number") {
                 sources = [sources];
             }
+            
             numSources = sources.length;
             numOutputBuses = Math.max(expand, numSources);
+            
+            if (numSources < 1) {
+                return;
+            }
             
             for (i = 0; i < numOutputBuses; i++) {
                 source = sources[i % numSources];
@@ -2069,7 +2106,7 @@ var fluid = fluid || require("infusion"),
                 inputs = that.inputs;
             
             if (m.bufDef !== inputs.buffer || inputName === "buffer") {
-                flock.buffer.resolveBufferDef(that);
+                flock.buffer.resolveBuffer(that);
             }
             
             that.calculateStrides();
@@ -2300,4 +2337,86 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+    flock.ugen.sequence = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        that.model.scale = that.model.sampleDur;
+        
+        that.gen = function (numSamps) {
+            var list = that.buffer,
+                inputs = that.inputs,
+                freq = inputs.freq.output,
+                loop = inputs.loop.output[0],
+                m = that.model,
+                scale = m.scale,
+                out = that.output,
+                start,
+                end,
+                i,
+                j,
+                val;
+
+            // TODO: Better buffer handling.
+            if (!list) {
+                for (i = 0; i < numSamps; i++) {
+                    out[i] = 0.0;
+                }
+                return;
+            }
+            
+            start = inputs.start ? Math.round(inputs.start.output[0]) : 0,
+            end = inputs.end ? Math.round(inputs.end.output[0]) : list.length,
+            
+            m.value = m.value === undefined ? list[start] : m.value;
+            m.nextIdx = m.nextIdx === undefined ? start : m.nextIdx;
+            
+            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.freq) {
+                if (m.nextIdx >= end) {
+                    if (loop > 0.0) {
+                        m.nextIdx = start;
+                    } else {
+                        out[i] = m.value;
+                        continue;
+                    }
+                }
+                
+                out[i] = m.value = list[m.nextIdx];
+                m.phase += freq[j] * scale;
+                
+                if (m.phase >= 1.0) {
+                    m.phase = 0.0;
+                    m.nextIdx++;
+                }
+            }
+            
+            that.mulAdd(numSamps);
+        };
+         
+        that.onInputChanged = function (inputName) {
+            that.calculateStrides();
+            flock.onMulAddInputChanged(that);
+            flock.buffer.resolveBuffer(that);
+        };
+        
+        that.onInputChanged();
+        return that;
+    };
+    
+    fluid.defaults("flock.ugen.sequence", {
+        rate: "control",
+        
+        inputs: {
+            start: 0,
+            freq: 1.0,
+            loop: 0.0
+        },
+        
+        ugenOptions: {
+            model: {
+                phase: 0
+            },
+            
+            strideInputs: ["freq"]
+        }
+    });
+    
 }());

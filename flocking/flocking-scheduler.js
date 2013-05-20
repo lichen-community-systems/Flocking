@@ -44,6 +44,7 @@ var fluid = fluid || require("infusion"),
     
     fluid.registerNamespace("flock.scheduler");
     
+
     /**********
      * Clocks *
      **********/
@@ -356,32 +357,46 @@ var fluid = fluid || require("infusion"),
             return listener;
         };
         
-        that.repeat = function (interval, fn) {
+        that.repeat = function (interval, changeSpec) {
             var ms = that.timeConverter.value(interval),
+                fn = typeof (changeSpec) === "function" ? changeSpec : 
+                    flock.scheduler.async.evaluateChangeSpec(changeSpec),
                 listener = that.addIntervalListener(ms, fn);
             
             that.intervalClock.schedule(ms);
             return listener;
         };
         
-        that.once = function (time, fn) {
+        that.once = function (time, changeSpec) {
             var ms = that.timeConverter.value(time),
+                fn = typeof (changeSpec) === "function" ? changeSpec : 
+                    flock.scheduler.async.evaluateChangeSpec(changeSpec),
                 listener = that.addScheduleListener(ms, fn);
-            
+ 
             that.scheduleClock.schedule(ms);
             return listener;
         };
         
-        that.sequence = function (times, fn) {
+        that.sequence = function (times, changeSpec) {
             var listeners = [],
                 listener;
                 
             for (var i = 0; i < times.length; i++) {
-                listener = that.once(times[i], fn)
+                listener = that.once(times[i], changeSpec);
                 listeners.push(listener);
             }
             
             return listeners;
+        };
+        
+        that.schedule = function (schedules) {
+            var i,
+                schedule;
+            
+            for (i = 0; i < schedules.length; i++) {
+                schedule = schedules[i];
+                flock.invoke(that, schedule.interval, [schedule.time, schedule.change]);
+            }
         };
         
         that.clear = function (listener) {
@@ -444,7 +459,39 @@ var fluid = fluid || require("infusion"),
             that.scheduleClock.end();
         };
     };
-
+    
+    flock.scheduler.async.evaluateChangeSpec = function (changeSpec) {
+        var synths = {},
+            staticChanges = {};
+        
+        // Find all synthDefs and create demand rate synths for them.
+        for (var path in changeSpec.values) {
+            var change = changeSpec.values[path];
+            if (change.synthDef) {
+                change.addToEnvironment = false;
+                change.rate = flock.rates.DEMAND;
+                synths[path] = flock.synth(change);
+            } else {
+                staticChanges[path] = change;
+            }
+        }
+        
+        // Create a scheduler listener that evaluates the changeSpec and updates the synth.
+        return function () {
+            for (var path in synths) {
+                var synth = synths[path];
+                synth.gen(1);
+                var ugens = synth.ugens.all;
+                staticChanges[path] = ugens[ugens.length - 1].output[0];
+            }
+            
+            // TODO: Hardcoded to the shared environment.
+            var targetSynth = typeof (changeSpec.synth) === "string" ?
+                flock.enviro.shared.namedNodes[changeSpec.synth] : changeSpec.synth;
+            targetSynth.set(staticChanges);
+        };
+    };
+    
 
     flock.scheduler.async.beat = function (bpm, options) {
         var that = fluid.initComponent("flock.scheduler.async.beat", options);
