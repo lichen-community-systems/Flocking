@@ -12,15 +12,19 @@
   },
   "keywords": [
     "Flocking",
-    "WebAudio"
+    "WebAudio",
+    "sound",
+    "audio",
+    "music",
+    "synthesis"
   ],
   "author": "Colin Clark",
   "license": [
     "GPL",
     "MIT"
   ],
+  "bugs": "http://github.com/colinbdclark/Flocking/issues",
   "readmeFilename": "README.md",
-  "gitHead": "e1c848d68c1bbfdcab500f3d2ae791911da24973",
   "devDependencies": {
     "grunt": "~0.4.1",
     "grunt-contrib-uglify": "~0.2.0",

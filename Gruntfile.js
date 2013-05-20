@@ -1,54 +1,58 @@
 module.exports = function(grunt) {
 
-  // Project configuration.
-  grunt.initConfig({
-    pkg: grunt.file.readJSON('package.json'),
-    concat: {
-      options: {
-        separator: ';'
-      },
-      dist: {
-        src: [
-          'flocking/flocking-core.js',
-          'flocking/flocking-scheduler.js',
-          'flocking/flocking-firefox.js',
-          'flocking/flocking-webaudio.js',
-          'flocking/flocking-parser.js',
-          'flocking/flocking-ugens.js',
-          'flocking/flocking-ugens-browser.js',
-          'flocking/flocking-gfx.js',
-          'flocking/flocking-audiofile.js', 
-        ],
-        dest: 'dist/<%= pkg.name %>.js'
-      }
-    },
-    uglify: {
-      options: {
-        banner: '/*! <%= pkg.name %> <%= grunt.template.today("yyyy-mm-dd") %> */\n'
-      },
-      build: {
-        src: 'dist/<%= pkg.name %>.js',
-        dest: 'dist/<%= pkg.name %>.min.js'
-      }
-    },
-    clean: {
-      all: {
-        src: ['dist/']
-      }
-    }
-  });
+    // Project configuration.
+    grunt.initConfig({
+        pkg: grunt.file.readJSON("package.json"),
+        
+        concat: {
+            options: {
+                separator: ";",
+                banner: "<%= flock.banners.short %>"
+            },
+            dist: {
+                src: [
+                    "third-party/jquery/js/*.js",
+                    "third-party/**/*.js",
+                    "flocking/js/*.js"
+                ],
+                dest: "dist/<%= pkg.name %>-all.js"
+            }
+        },
+        
+        uglify: {
+            options: {
+                banner: "<%= flock.banners.short %>"
+            },
+            dist: {
+                files: [
+                    {
+                        expand: true,
+                        cwd: 'dist/',
+                        src: ['*.js'],
+                        dest: 'dist/',
+                        ext: '.min.js',
+                    }
+                ]
+            }
+        },
+        
+        clean: {
+            all: {
+                src: ["dist/"]
+            }
+        },
+        
+        flock: {
+            banners: {
+                short: "/*! Flocking <%= pkg.version %>, Copyright <%= grunt.template.today('yyyy') %> Colin Clark | flockingjs.org */\n\n"
+            }
+        }
+    });
 
-  // Load the plugin that provides the "concat" task.
-  grunt.loadNpmTasks('grunt-contrib-concat');
+    // Load relevant Grunt plugins.
+    grunt.loadNpmTasks("grunt-contrib-concat");
+    grunt.loadNpmTasks("grunt-contrib-uglify");
+    grunt.loadNpmTasks("grunt-contrib-clean");
 
-  // Load the plugin that provides the "uglify" task.
-  grunt.loadNpmTasks('grunt-contrib-uglify');
-
-  // Load the plugin that provides the "clean" task.
-
-  grunt.loadNpmTasks('grunt-contrib-clean');
-
-  // Default task(s).
-  grunt.registerTask('default', ['concat', 'uglify']);  
-
+    grunt.registerTask("default", ["clean", "concat", "uglify"]);
 };
