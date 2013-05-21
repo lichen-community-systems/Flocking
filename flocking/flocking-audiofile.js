@@ -23,6 +23,7 @@ var fluid = fluid || require("infusion"),
      
     fluid.registerNamespace("flock.net");
     
+    // TODO: Componentize.
     flock.net.load = function (options) {
         var xhr = new XMLHttpRequest();
         xhr.onreadystatechange = function () {
@@ -30,13 +31,17 @@ var fluid = fluid || require("infusion"),
                 if (xhr.status === 200) {
                     options.success(xhr.response);
                 } else {
+                    if (!options.error) {
+                        throw new Error(xhr.statusText);
+                    }
+                    
                     options.error(xhr.statusText);
                 }
             }
         };
         // Default to array buffer response, since this code is most likely to be used for audio files.
-        xhr.responseType = options.responseType || "arraybuffer"; 
-        xhr.open(options.method, options.url, true); 
+        xhr.responseType = options.responseType || "arraybuffer";
+        xhr.open(options.method || "GET", options.url, true);
         xhr.send(options.data);
     };
     

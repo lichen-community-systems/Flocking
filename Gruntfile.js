@@ -11,9 +11,30 @@ module.exports = function(grunt) {
             },
             dist: {
                 src: [
-                    "third-party/jquery/js/*.js",
-                    "third-party/**/*.js",
-                    "flocking/js/*.js"
+                    // jQuery
+                    "third-party/jquery/js/jquery-2.0.0.js",
+                    
+                    // Fluid Infusion
+                    "third-party/infusion/js/Fluid.js",
+                    "third-party/infusion/js/FluidIoC.js",
+                    "third-party/infusion/js/DataBinding.js",
+                    
+                    // Marcus Geelnard's DSPI API polyfill
+                    "third-party/dspapi/js/dspapi.js",
+                    
+                    // DataView Polyfill
+                    "third-party/polydataview/js/polydataview.js",
+                    
+                    // Flocking
+                    "flocking/flocking-core.js",
+                    "flocking/flocking-parser.js",
+                    "flocking/flocking-audiofile.js",
+                    "flocking/flocking-scheduler.js",
+                    "flocking/flocking-firefox.js",
+                    "flocking/flocking-webaudio.js",
+                    "flocking/flocking-ugens.js",
+                    "flocking/flocking-ugens-browser.js",
+                    "flocking/flocking-gfx.js"
                 ],
                 dest: "dist/<%= pkg.name %>-all.js"
             }
