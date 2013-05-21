@@ -1943,6 +1943,38 @@ var fluid = fluid || require("infusion"),
         }
     });
     
+    // Simple optimised delay for exactly 1 sample
+    flock.ugen.delay1 = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.gen = function (numSamps) {
+            var m = that.model,
+                inputs = that.inputs,
+                out = that.output,
+                source = inputs.source.output,
+                i;
+            
+            for (i = 0; i < numSamps; i++) {
+                out[i] = m.prevval;
+                m.prevval = source[i];
+            }
+            
+            that.mulAdd(numSamps);
+        };
+
+        return that;
+    };
+    
+    fluid.defaults("flock.ugen.delay1", {
+        rate: "audio",
+        inputs: {
+        },
+        ugenOptions: {
+            model: {
+                prevval: 0
+            }
+        }
+    });
     
     flock.ugen.decay = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
