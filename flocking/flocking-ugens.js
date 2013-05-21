@@ -1962,6 +1962,11 @@ var fluid = fluid || require("infusion"),
             that.mulAdd(numSamps);
         };
 
+        that.onInputChanged = function (inputName) {
+            flock.onMulAddInputChanged(that);
+        };
+        
+        that.onInputChanged();
         return that;
     };
     
