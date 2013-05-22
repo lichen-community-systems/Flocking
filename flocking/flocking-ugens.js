@@ -211,9 +211,11 @@ var fluid = fluid || require("infusion"),
             }
         };
         
-        // No-op base onInputChanged() implementation.
-        that.onInputChanged = fluid.identity;
-        
+        // base onInputChanged() implementation.
+        that.onInputChanged = function () {
+            flock.onMulAddInputChanged(that);
+        };
+                
         // Assigns an interpolator function to the UGen.
         // This is inactive by default, but can be used in custom gen() functions.
         // Will be undefined if no interpolation default or option has been set,
@@ -990,10 +992,6 @@ var fluid = fluid || require("infusion"),
             that.mulAdd(numSamps);
         };
         
-        that.onInputChanged = function () {
-            flock.onMulAddInputChanged(that);
-        };
-        
         that.onInputChanged();
         return that;
     };
@@ -1018,10 +1016,6 @@ var fluid = fluid || require("infusion"),
             }
             
             that.mulAdd(numSamps);
-        };
-        
-        that.onInputChanged = function () {
-            flock.onMulAddInputChanged(that);
         };
         
         that.onInputChanged();
@@ -1074,10 +1068,6 @@ var fluid = fluid || require("infusion"),
             } while (remain);
         
             that.mulAdd(numSamps);
-        };
-        
-        that.onInputChanged = function () {
-            flock.onMulAddInputChanged(that);
         };
         
         that.onInputChanged();
@@ -1427,10 +1417,6 @@ var fluid = fluid || require("infusion"),
             m.previousValue = prevVal;
             
             that.mulAdd(numSamps);
-        };
-        
-        that.onInputChanged = function () {
-            flock.onMulAddInputChanged(that);
         };
         
         that.onInputChanged();
@@ -1975,10 +1961,6 @@ var fluid = fluid || require("infusion"),
             that.mulAdd(numSamps);
         };
           
-        that.onInputChanged = function () {
-            flock.onMulAddInputChanged(that);
-        };
-           
         that.onInputChanged();
         return that;
     };
@@ -2308,10 +2290,6 @@ var fluid = fluid || require("infusion"),
             }
             
             that.mulAdd(numSamps);
-        };
-        
-        that.onInputChanged = function () {
-            flock.onMulAddInputChanged(that);
         };
         
         that.onInputChanged();
