@@ -992,10 +992,6 @@ var fluid = fluid || require("infusion"),
             that.mulAdd(numSamps);
         };
         
-        that.onInputChanged = function () {
-            flock.onMulAddInputChanged(that);
-        };
-        
         that.onInputChanged();
         return that;
     };
@@ -1020,10 +1016,6 @@ var fluid = fluid || require("infusion"),
             }
             
             that.mulAdd(numSamps);
-        };
-        
-        that.onInputChanged = function () {
-            flock.onMulAddInputChanged(that);
         };
         
         that.onInputChanged();
@@ -1076,10 +1068,6 @@ var fluid = fluid || require("infusion"),
             } while (remain);
         
             that.mulAdd(numSamps);
-        };
-        
-        that.onInputChanged = function () {
-            flock.onMulAddInputChanged(that);
         };
         
         that.onInputChanged();
@@ -1429,10 +1417,6 @@ var fluid = fluid || require("infusion"),
             m.previousValue = prevVal;
             
             that.mulAdd(numSamps);
-        };
-        
-        that.onInputChanged = function () {
-            flock.onMulAddInputChanged(that);
         };
         
         that.onInputChanged();
@@ -1977,10 +1961,6 @@ var fluid = fluid || require("infusion"),
             that.mulAdd(numSamps);
         };
           
-        that.onInputChanged = function () {
-            flock.onMulAddInputChanged(that);
-        };
-           
         that.onInputChanged();
         return that;
     };
@@ -2310,10 +2290,6 @@ var fluid = fluid || require("infusion"),
             }
             
             that.mulAdd(numSamps);
-        };
-        
-        that.onInputChanged = function () {
-            flock.onMulAddInputChanged(that);
         };
         
         that.onInputChanged();
