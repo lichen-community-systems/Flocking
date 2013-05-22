@@ -211,9 +211,11 @@ var fluid = fluid || require("infusion"),
             }
         };
         
-        // No-op base onInputChanged() implementation.
-        that.onInputChanged = fluid.identity;
-        
+        // base onInputChanged() implementation.
+        that.onInputChanged = function () {
+            flock.onMulAddInputChanged(that);
+        };
+                
         // Assigns an interpolator function to the UGen.
         // This is inactive by default, but can be used in custom gen() functions.
         // Will be undefined if no interpolation default or option has been set,
