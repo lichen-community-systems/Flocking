@@ -303,8 +303,13 @@ flock.test = flock.test || {};
     };
     
     test("flock.ugen.lfNoise()", function () {
-        var freq = flock.ugen.value({value: 4}, new Float32Array(88200));
-        var lfNoise = flock.ugen.lfNoise({freq: freq}, new Float32Array(88200));
+        var lfNoise = flock.parse.ugenDef({
+            ugen: "flock.ugen.lfNoise",
+            inputs: {
+                freq: 4
+            }
+        });
+        lfNoise.output = new Float32Array(88200);
         
         // One second worth of samples. The resulting buffer should contain 4 unique values.
         generateAndCheckNoise(lfNoise, 44100, 4);
@@ -318,13 +323,31 @@ flock.test = flock.test || {};
     });
     
     test("flock.ugen.lfNoise() linear interpolation", function () {
-        var freq = flock.ugen.value({value: 4}, new Float32Array(44100));
-        var lfNoise = flock.ugen.lfNoise({freq: freq}, new Float32Array(44100), {
-            interpolation: "linear"
-        });
+        var lfNoise = flock.parse.ugenDef({
+            ugen: "flock.ugen.lfNoise",
+            inputs: {
+                freq: 4
+            },
+            options: {
+                interpolation: "linear"
+            }
+        });        
+        lfNoise.output = new Float32Array(44100);
+
         lfNoise.gen(44100);
         flock.test.testUnbrokenOutput(lfNoise.output, -1.0, 1.0);
         flock.test.assertContinuous(lfNoise.output, 0.0001, "The output should be smooth and continuous when interpolated.")
+    });
+    
+    
+    module("PinkNoise tests");
+    
+    test("flock.ugen.pinkNoise() sane output", function () {
+        var pink = flock.parse.ugenDef({
+            ugen: "flock.ugen.pinkNoise"
+        });
+        pink.gen(64);
+        flock.test.testUnbrokenOutput(pink.output, -1.0, 1.0);
     });
     
     

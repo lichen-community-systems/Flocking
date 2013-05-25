@@ -140,6 +140,19 @@ var fluid = fluid || require("infusion"),
         return parsed;
     };
     
+    flock.parse.ugenDef.mergeOptions = function (ugenDef, options) {
+        // TODO: Infusion options merging.
+        var defaults = fluid.defaults(ugenDef.ugen) || {};
+
+        // TODO: Insane!
+        defaults = fluid.copy(defaults);
+        defaults.options = defaults.ugenOptions;
+        delete defaults.ugenOptions;
+        //
+        
+        return $.extend(true, {}, defaults, ugenDef);
+    };
+    
     flock.parse.ugensForDefs = function (ugenDefs, options) {
         var parsed = [],
             i;
@@ -192,16 +205,7 @@ var fluid = fluid || require("infusion"),
         }
         
         flock.parse.expandRate(ugenDef, options);
-    
-        // Merge the ugenDef with default values defined by the ugen itself.
-        // TODO: Infusion options merging.
-        var defaults = fluid.defaults(ugenDef.ugen) || {};
-        // TODO: Insane!
-        defaults = fluid.copy(defaults);
-        defaults.options = defaults.ugenOptions;
-        delete defaults.ugenOptions;
-        //
-        ugenDef = $.extend(true, {}, defaults, ugenDef);
+        ugenDef = flock.parse.ugenDef.mergeOptions(ugenDef, options);
         
         var inputDefs = ugenDef.inputs,
             inputs = {},
