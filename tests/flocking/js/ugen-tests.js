@@ -1737,4 +1737,76 @@ flock.test = flock.test || {};
         });
     });
 
+    module("flock.ugen.midiFreq tests");
+
+    var testNoteControl = function (ugen, midiNote, expected, msg) {
+        if (midiNote) {
+            ugen.set("source", midiNote);
+        }
+        
+        if (ugen.get("source").gen) {
+            ugen.get("source").gen(1);
+        }
+        ugen.gen(1);
+        flock.test.equalRounded(2, ugen.output[0], expected, msg);
+    };
+    
+    var testNotesControl = function (ugen, testSpecs) {
+        fluid.each(testSpecs, function (testSpec) {
+            testNoteControl(ugen, testSpec.midiNote, testSpec.expectedFreq, testSpec.msg);
+        });
+    };
+    
+    test("12TET/A440, constant rate input", function () {
+        var midiFreq = flock.parse.ugenDef({
+            ugen: "flock.ugen.midiFreq",
+            source: 60
+        });
+        
+        testNotesControl(midiFreq, [
+            {
+                midiNote: 60,
+                expectedFreq: 261.63,
+                msg: "C4 (MIDI 60) should be converted to 261.64 Hz."
+            },
+            {
+                midiNote: 21,
+                expectedFreq: 27.50,
+                msg: "A0 (MIDI 21) should be converted to 27.5 Hz."
+            },
+            {
+                midiNote: 108,
+                expectedFreq: 4186.01,
+                msg: "C8 (MIDI 108) should be converted to 4186 Hz."
+            }
+        ]);
+    });
+    
+    test("12TET/A440, control rate input", function () {
+        var midiFreq = flock.parse.ugenDef({
+            ugen: "flock.ugen.midiFreq",
+            source: {
+                ugen: "flock.ugen.sequence",
+                rate: "control",
+                buffer: [21, 22, 23],
+                freq: 10000
+            }
+        });
+        
+        testNotesControl(midiFreq, [
+            {
+                expectedFreq: 27.50,
+                msg: "The frequency value of the first item in the sequence should be returned (MIDI 21)."
+            },
+            {
+                expectedFreq: 29.14,
+                msg: "The frequency value of the next item in the sequence should be returned (MIDI 22)."
+            },
+            {
+                expectedFreq: 30.87,
+                msg: "The frequency value of the last item in the sequence should be returned (MIDI 23)."
+            }
+        ]);
+    });
+    
 }());

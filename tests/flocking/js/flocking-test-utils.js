@@ -68,6 +68,11 @@ var flock = flock || {};
         }
     };
     
+    flock.test.equalRounded = function (numDecimals, actual, expected, msg) {
+        var rounded = parseFloat(actual.toFixed(2));
+        equal(rounded, expected, msg);
+    };
+    
     flock.test.assertNotSilent = function (buffer, msg) {
         var numNonZero = 0,
             foundAt = -1,

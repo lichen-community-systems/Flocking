@@ -384,7 +384,8 @@ var fluid = fluid || require("infusion"),
     flock.input.getValueForPath = function (root, path) {
         path = flock.input.expandPath(path);
         var input = flock.get(root, path);
-        return (input && input.model && typeof (input.model.value) !== "undefined") ?
+        // TODO: This algorithm needs to be made much clearer.
+        return (input && !input.gen && input.model && typeof (input.model.value) !== "undefined") ?
             input.model.value : input;
     };
     
@@ -757,6 +758,10 @@ var fluid = fluid || require("infusion"),
          */
         that.set = function (path, val, swap) {
             return flock.input.set(that.ugens.named, path, val, undefined, function (ugenDef, path, target, previous) {
+                if (ugenDef === null || ugenDef === undefined) {
+                    return previous;
+                }
+                
                 var ugen = flock.parse.ugenDef(ugenDef, {
                     audioSettings: that.enviro.audioSettings,
                     buses: that.enviro.buses,

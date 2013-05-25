@@ -82,6 +82,16 @@ var fluid = fluid || require("infusion"),
                 path: "dog.claws.count",
                 value: 25,
                 msg: "Path with non-existent middle segment should cause the container to be created."
+            },
+            {
+                path: "dog.sheltie",
+                value: undefined,
+                msg: "Valid path, undefined value."
+            },
+            {
+                path: "dog.sheltie",
+                value: null,
+                msg: "Valid path, null value."
             }
         ];
         
@@ -256,6 +266,14 @@ var fluid = fluid || require("infusion"),
             "And the underlying value ugen should also be updated.");
         equals(modUGen.inputs.freq.output[0], 2.0,
             "Even the ugen's output buffer should contain the new value.");
+        
+        // Set a null value.
+        synth.set("mod.freq", null);
+        equals(synth.get("mod.freq"), 2.0, "Setting an input to null should leave it untouched.");
+        
+        // Set a undefined value.
+        synth.set("mod.freq", undefined);
+        equals(synth.input("mod.freq"), 2.0, "Setting an input to undefined should leave it untouched.");
         
         // Set a ugen def.
         var testUGenDef = {

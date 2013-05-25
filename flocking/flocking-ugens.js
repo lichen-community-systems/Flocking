@@ -170,8 +170,8 @@ var fluid = fluid || require("infusion"),
          */
         that.set = function (path, val, swap) {
             return flock.input.set(that.inputs, path, val, that, function (ugenDef) {
-                if (ugenDef === null) {
-                    return undefined;
+                if (ugenDef === null || ugenDef === undefined) {
+                    return;
                 }
                 
                 return flock.parse.ugenDef(ugenDef, {
@@ -211,9 +211,12 @@ var fluid = fluid || require("infusion"),
             }
         };
         
-        // base onInputChanged() implementation.
+        // Base onInputChanged() implementation.
         that.onInputChanged = function () {
             flock.onMulAddInputChanged(that);
+            if (that.options.strideInputs) {
+                that.calculateStrides();
+            }
         };
                 
         // Assigns an interpolator function to the UGen.
@@ -1326,11 +1329,6 @@ var fluid = fluid || require("infusion"),
             }
             
             that.mulAdd(numSamps);
-        };
-        
-        that.onInputChanged = function () {
-            that.calculateStrides();
-            flock.onMulAddInputChanged(that);
         };
         
         that.onInputChanged();
@@ -2504,4 +2502,45 @@ var fluid = fluid || require("infusion"),
         }
     });
     
+    flock.ugen.midiFreq = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.gen = function (numSamps) {
+            var m = that.model,
+                a4 = m.a4,
+                noteNum = that.inputs.source.output,
+                out = that.output,
+                i,
+                j;
+            
+            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.source) {
+                out[i] = a4.freq * Math.pow(2, (noteNum[j] - a4.noteNum) * m.octaveScale);
+            }
+            
+        };
+        
+        that.init = function () {
+            that.model.octaveScale = 1 / that.model.notesPerOctave;
+            that.onInputChanged();
+        };
+        
+        that.init();
+        return that;
+    };
+    
+    fluid.defaults("flock.ugen.midiFreq", {
+        rate: "control",
+        ugenOptions: {
+            model: {
+                a4: {
+                    noteNum: 69,
+                    freq: 440
+                },
+                notesPerOctave: 12
+            },
+            strideInputs: [
+                "source"
+            ]
+        }
+    });
 }());
