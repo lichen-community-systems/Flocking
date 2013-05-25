@@ -58,6 +58,7 @@
                 </optgroup>
                 <optgroup label="Noise">
                     <option value="noise_white">White noise</option>
+                    <option value="noise_pink">Pink noise</option>
                     <option value="noise_dust">Dust</option>
                     <option value="noise_lf">LFNoise</option>
                     <option value="noise_sin">LFNoise &amp; SinOsc</option>
@@ -281,6 +282,15 @@ var synth = flock.synth({
             }
         },
         q: 2.0
+    }
+});
+        </script>
+        
+        <script type="application/flocking" id="noise_pink">
+var synth = flock.synth({
+    synthDef: {
+        ugen: "flock.ugen.pinkNoise",
+        mul: 0.5
     }
 });
         </script>
