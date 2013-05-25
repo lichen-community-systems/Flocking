@@ -963,9 +963,6 @@ var fluid = fluid || require("infusion"),
     
     flock.ugen.dust = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.model.density = 0.0;
-        that.model.scale = 0.0;
-        that.model.threshold = 0.0;
     
         that.gen = function (numSamps) {
             var m = that.model,
@@ -1000,6 +997,13 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         inputs: {
             density: 1.0
+        },
+        ugenOptions: {
+            model: {
+                density: 0.0,
+                scale: 0.0,
+                threshold: 0.0
+            }
         }
     });
     
@@ -1026,11 +1030,71 @@ var fluid = fluid || require("infusion"),
         rate: "audio"
     });
     
+    
+    /**
+     * Implements Larry Tramiel's first Pink Noise algorithm
+     * described at http://home.earthlink.net/~ltrammell/tech/pinkalg.htm,
+     * based on a version by David Lowenfels posted to musicdsp:
+     * http://www.musicdsp.org/showone.php?id=220.
+     */
+    flock.ugen.pinkNoise = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.gen = function (numSamps) {
+            var state = that.model.state,
+                a = that.a,
+                p = that.p,
+                offset = that.model.offset,
+                out = that.output,
+                i,
+                j,
+                rand,
+                val;
+                
+            for (i = 0; i < numSamps; i++) {
+                val = 0;
+                for (j = 0; j < state.length; j++) {
+                    rand = Math.random();
+                    state[j] = p[j] * (state[j] - rand) + rand;
+                    val += a[j] * state[j];
+                }
+                out[i] = val * 2 - offset;
+            }
+            
+            that.mulAdd(numSamps);
+        };
+        
+        that.init = function () {
+            that.a = new Float32Array(that.options.coeffs.a);
+            that.p = new Float32Array(that.options.coeffs.p);
+            that.model.state = new Float32Array(that.a.length);
+            
+            for (var i = 0; i < that.a.length; i++) {
+                that.model.offset += that.a[i];
+            }
+            
+            that.onInputChanged();
+        };
+        
+        that.init();
+        return that;
+    };
+    
+    fluid.defaults("flock.ugen.pinkNoise", {
+        rate: "audio",
+        ugenOptions: {
+            model: {
+                offset: 0
+            },
+            coeffs: {
+                a: [0.02109238, 0.07113478, 0.68873558],
+                p: [0.3190, 0.7756, 0.9613]
+            }
+        }
+    });
 
     flock.ugen.lfNoise = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.model.counter = 0;
-        that.model.level = 0;
         that.model.end = Math.random();
     
         that.gen = function (numSamps) {
@@ -1078,6 +1142,12 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         inputs: {
             freq: 440
+        },
+        ugenOptions: {
+            model: {
+                counter: 0,
+                level: 0
+            }
         }
     });
 
