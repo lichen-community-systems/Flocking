@@ -536,7 +536,7 @@ var fluid = fluid || require("infusion"),
             numBuses: 2,
             // This buffer size determines the overall latency of Flocking's audio output. On Firefox, it will be 2x.
             bufferSize: (flock.platform.os === "Win32" && flock.platform.browser.mozilla) ?
-                16384: 4096,
+                16384: 2048,
             
             // Hints to some audio backends.
             genPollIntervalFactor: flock.platform.isLinuxBased ? 1 : 20 // Only used on Firefox.
