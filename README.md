@@ -137,6 +137,7 @@ a composer, thinker, and early pioneer of computer music who my composition teac
 I hope you find this library useful enough to create projects as beautiful and inspiring as Jim's _Flocking_.
 
 ### Thanks to:###
+ * [Dan Stowell](https://github.com/danstowell) for the Freeverb and Delay1 unit generators
  * [Mayank Sanganeria](http://github.com/e7mac) for his granulator unit generator
  * [Vitus](https://github.com/derDoc) for his contributions to the interactive Flocking Playground
  * [Myles Borins](https://github.com/thealphanerd) for pushing the limits of Flocking very early in its development
