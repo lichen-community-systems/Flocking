@@ -28,6 +28,16 @@ var fluid = fluid || require("infusion"),
         that.startGeneratingSamples = function () {
             that.jsNode.onaudioprocess = that.writeSamples; // TODO: When Firefox ships, is this still necessary?
             that.jsNode.connect(that.context.destination);
+            
+            // Work around a bug in iOS Safari where it now requires a noteOn() 
+            // message to be invoked before sound will work at all. Just connecting a 
+            // ScriptProcessorNode inside a user event handler isn't sufficient.
+            if (that.model.shouldInitIOS) {
+                var s = that.source;
+                (s.start || s.noteOn).call(that.source, 0);
+                (s.stop || s.noteOff).call(that.source, 0);
+                that.model.shouldInitIOS = false;
+            }
         };
         
         that.stopGeneratingSamples = function () {
@@ -87,6 +97,8 @@ var fluid = fluid || require("infusion"),
             that.source = that.context.createBufferSource();
             that.jsNode = that.context.createJavaScriptNode(settings.bufferSize);
             that.source.connect(that.jsNode);
+            
+            that.model.shouldInitIOS = flock.platform.os === "iPhone" || "iPad"; 
         };
         
         that.init();
