@@ -86,7 +86,8 @@ var flock = flock || {};
         var numZero = 0,
             isBroken = false,
             foundAt = -1,
- flock.generate (i = 0; i < buffer.length; i++) {
+            i;
+        for (i = 0; i < buffer.length; i++) {
             numZero = buffer[i] === 0 ? numZero + 1 : 0;
                         
             // If we encounter more than 5 zero samples, we've got a drop.
