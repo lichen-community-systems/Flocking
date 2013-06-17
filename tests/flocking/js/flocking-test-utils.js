@@ -6,7 +6,7 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global module, test, expect, ok, equals, deepEqual, Float32Array*/
+/*global module, test, expect, ok, equal, deepEqual, Float32Array*/
 /*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
@@ -41,25 +41,15 @@ var flock = flock || {};
         
         return new Float32Array(buf);
     };
-    
-    
-    flock.test.constantBuffer = function (bufOrSize, val) {
-        var buf = typeof (bufOrSize) === "number" ? new Float32Array(bufOrSize) : bufOrSize,
-            i;
-        for (i = 0; i < buf.length; i++) {
-            buf[i] = val;
-        }
-        return buf;
-    };
-    
-    flock.test.assertArrayEquals = function (actual, expected, msg) {
+        
+    flock.test.arrayEqual = function (actual, expected, msg) {
         var i;
         for (i = 0; i < expected.length; i++) {
-            equals(actual[i], expected[i], msg + " Index: " + i);
+            equal(actual[i], expected[i], msg + " Index: " + i);
         }
     };
     
-    flock.test.assertNotNaN = function (buffer, msg) {
+    flock.test.arrayNotNaN = function (buffer, msg) {
         var i;
         for (i = 0; i < buffer.length; i++) {
             if (isNaN(buffer[i])) {
@@ -73,7 +63,7 @@ var flock = flock || {};
         equal(rounded, expected, msg);
     };
     
-    flock.test.assertNotSilent = function (buffer, msg) {
+    flock.test.arrayNotSilent = function (buffer, msg) {
         var numNonZero = 0,
             foundAt = -1,
             i;
@@ -87,7 +77,7 @@ var flock = flock || {};
         ok(numNonZero > (buffer.length / 10), msg + " First silent sample found at: " + foundAt);
     };
     
-    flock.test.assertSilent = function (buffer, msg) {
+    flock.test.arraySilent = function (buffer, msg) {
         var silentBuffer = flock.test.constantBuffer(buffer.length, 0.0);
         deepEqual(buffer, silentBuffer, "The buffer should be silent by containing all zeros.");
     };
@@ -96,8 +86,7 @@ var flock = flock || {};
         var numZero = 0,
             isBroken = false,
             foundAt = -1,
-            i;
-        for (i = 0; i < buffer.length; i++) {
+ flock.generate (i = 0; i < buffer.length; i++) {
             numZero = buffer[i] === 0 ? numZero + 1 : 0;
                         
             // If we encounter more than 5 zero samples, we've got a drop.
@@ -268,9 +257,9 @@ var flock = flock || {};
     
     flock.test.testUnbrokenOutput = function (output, expectedMin, expectedMax, range) {
         output = range ? output.subarray(range.start, range.end) : output;
-        flock.test.assertNotNaN(output,
+        flock.test.arrayNotNaN(output,
             "The ugen should never output NaN.");
-        flock.test.assertNotSilent(output,
+        flock.test.arrayNotSilent(output,
             "The output should not be completely silent");
         flock.test.assertUnbroken(output,
             "The ugen should produce an unbroken audio tone.");

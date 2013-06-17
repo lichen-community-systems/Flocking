@@ -6,7 +6,7 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global module, test, expect, ok, equals, deepEqual, Float32Array*/
+/*global module, test, expect, ok, equal, deepEqual, Float32Array*/
 
 var flock = flock || {};
 flock.test = flock.test || {};
@@ -23,6 +23,7 @@ flock.test = flock.test || {};
     
     test("Read base 64 encoding in data URL", function () {
         var expectedUnencoded = window.atob(flock.test.audio.b64Int16WAVData),
+            expectedArrayBuffer = flock.file.stringToBuffer(expectedUnencoded),
             dataFormatCombinations = [
                 {
                     name: "base64-encoded with a MIME type",
@@ -46,7 +47,7 @@ flock.test = flock.test || {};
         for (i = 0; i < dataFormatCombinations.length; i++) {
             formatSpec = dataFormatCombinations[i];
             flock.file.readDataUrl(formatSpec.url, function (data, type) {
-                flock.test.assertArrayEquals(data, flock.file.stringToBuffer(expectedUnencoded), "readDataUrl() should correctly parse and decode a data URL that is " + formatSpec.name);
+                flock.test.arrayEqual(new Int8Array(data), new Int8Array(expectedArrayBuffer), "readDataUrl() should correctly parse and decode a data URL that is " + formatSpec.name);
             });    
         } 
     });
@@ -188,8 +189,8 @@ flock.test = flock.test || {};
             equal(data.channels.length, 1, "The decoded audio should have only one channel buffer.");
             equal(format.bitRate, expectedBitDepth, "The decoded audio file's metadata should indicate a bith depth of " + expectedBitDepth + ".");
             equal(format.sampleRate, 44100, "The decoded audio file's metadata should indicate a sample rate of 44100 samples per second.");
-            flock.test.assertNotNaN(buffer, "The buffer should not output an NaN values");
-            flock.test.assertNotSilent(buffer, "The buffer should not be silent.");
+            flock.test.arrayNotNaN(buffer, "The buffer should not output an NaN values");
+            flock.test.arrayNotSilent(buffer, "The buffer should not be silent.");
             flock.test.assertUnbroken(buffer, "The buffer should not have any significant gaps in it.");
             flock.test.assertWithinRange(buffer, -1.0, 1.0, "The buffer's amplitude should be no louder than 1.0.");
             
@@ -197,7 +198,7 @@ flock.test = flock.test || {};
                 "The decoded audio file's metadata should indicate that there is a total of " + expectedDataSize + " samples of data in the file.");
             equal(buffer.length, decoded.format.numSampleFrames,
                 "The decoded audio buffer should have the same number of frames as the metadata reports.");
-            flock.test.assertArrayEquals(roundedBuffer, expectedData, "The decoded buffer should be a single period triangle wave incrementing by 0.1");
+            flock.test.arrayEqual(roundedBuffer, expectedData, "The decoded buffer should be a single period triangle wave incrementing by 0.1");
         };
 
         var eightBitSampleSize = 42;

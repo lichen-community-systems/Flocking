@@ -6,7 +6,7 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global module, test, expect, ok, equals, deepEqual, Float32Array*/
+/*global module, test, expect, ok, equal, deepEqual, Float32Array*/
 /*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
@@ -46,18 +46,18 @@ flock.test = flock.test || {};
         var returnVal = ugen.input(inputName, val);
         ok(returnVal, "Setting a new input should return the input unit generator.");
         ok(ugen.inputs[inputName], "Setting a new input should create a new unit generator with the appropriate name.");
-        equals(ugen.inputs[inputName], returnVal, "The return value when setting an input should be the input unit generator.");
+        equal(ugen.inputs[inputName], returnVal, "The return value when setting an input should be the input unit generator.");
         
         var valType = typeof (val);
         if (valType !== "number" && valType !== "string") {
-            equals(ugen.inputs[inputName], ugen.input(inputName), "The value returned from input() should be the same as the actual input value.");
+            equal(ugen.inputs[inputName], ugen.input(inputName), "The value returned from input() should be the same as the actual input value.");
         }
     };
     
     var setAndCheckArrayInput = function (ugen, inputName, vals, comparisonFn) {
         setAndCheckInput(ugen, inputName, vals);
         ok(flock.isIterable(ugen.input(inputName)), "The input should be set to an array of unit generators.");
-        equals(ugen.input(inputName).length, vals.length, "There should be " + vals.length + " unit generators in the array.");
+        equal(ugen.input(inputName).length, vals.length, "There should be " + vals.length + " unit generators in the array.");
         $.each(vals, comparisonFn);
     };
     
@@ -66,7 +66,7 @@ flock.test = flock.test || {};
         
         // Non-existent input.
         var val = mockUGen.input("cat");
-        equals(val, undefined, "Getting a non-existent input should return undefined.");
+        equal(val, undefined, "Getting a non-existent input should return undefined.");
         ok(!mockUGen.inputs.cat, "When getting a non-existent input, it should not be created.");
         
         // Setting a previously non-existent input.
@@ -79,7 +79,7 @@ flock.test = flock.test || {};
             id: "new-cat",
             ugen: "flock.test.mockUGen"
         });
-        equals(mockUGen.input("cat").id, "new-cat", "The new input should have the appropriate ID.");
+        equal(mockUGen.input("cat").id, "new-cat", "The new input should have the appropriate ID.");
         
         // And with an array of ugenDefs.
         var defs = [
@@ -93,17 +93,17 @@ flock.test = flock.test || {};
             }
         ];
         setAndCheckArrayInput(mockUGen, "cat", defs, function (i, def) {
-            equals(mockUGen.input("cat")[i].id, def.id);
+            equal(mockUGen.input("cat")[i].id, def.id);
         });
     
         // And with a scalar.
         setAndCheckInput(mockUGen, "cat", 500);
-        equals(mockUGen.inputs.cat.model.value, 500, "The input ugen should be a value ugen with the correct model value.");
+        equal(mockUGen.inputs.cat.model.value, 500, "The input ugen should be a value ugen with the correct model value.");
         
         // And an array of scalars.
         var vals = [100, 200, 300];
         setAndCheckArrayInput(mockUGen, "fish", vals, function (i, val) {
-            equals(mockUGen.input("fish")[i].model.value, val);
+            equal(mockUGen.input("fish")[i].model.value, val);
         });
     });
     
@@ -242,7 +242,7 @@ flock.test = flock.test || {};
         
         for (i = 0; i < numRuns; i++) {
             env.gen();
-            flock.test.assertArrayEquals(env.buses[bus], expectedOutput, i + ": " + msg);
+            flock.test.arrayEqual(env.buses[bus], expectedOutput, i + ": " + msg);
         }
         
         $.each(synths, function (i, synth) {
@@ -287,7 +287,7 @@ flock.test = flock.test || {};
             "The buffer should not contain any values smaller than " + expected.minValue);
         ok(maxFound <= expected.maxValue, 
             "The buffer should not contain any values larger than " + expected.maxValue);
-        equals(flock.test.countKeys(uniqueValues), expected.numUniqueValues, 
+        equal(flock.test.countKeys(uniqueValues), expected.numUniqueValues, 
             "The buffer should contain approximately " + expected.numUniqueValues + " unique random values");
     };
     
@@ -393,7 +393,7 @@ flock.test = flock.test || {};
             nonZeroSum += countNonZeroSamples(buffer);
         }
         avgNumNonZeroSamples = nonZeroSum / numRuns;
-        equals(Math.round(avgNumNonZeroSamples), density, 
+        equal(Math.round(avgNumNonZeroSamples), density, 
             "There should be roughly " + density + " non-zero samples in a one-second buffer.");
     };
     
@@ -408,7 +408,7 @@ flock.test = flock.test || {};
         // Check basic details about the buffer: it should be the correct length,
         // and never contain values above 1.0.
         ok(buffer, "A buffer should be returned from dust.audio()");
-        equals(buffer.length, 44100, "And it should be the specified length.");
+        equal(buffer.length, 44100, "And it should be the specified length.");
         checkSampleBoundary(buffer, 0.0, 1.0);
     
         // Check that the buffer contains an avg. density of 1.0 non-zero samples per second.
@@ -804,7 +804,7 @@ flock.test = flock.test || {};
         deepEqual(player.output, expected, "With a playback speed of 1.0, the output buffer should be identical to the source buffer.");
         
         player.gen(64);
-        expected = flock.test.constantBuffer(64, 0.0);
+        expected = flock.generate(64, 0.0);
         deepEqual(player.output, expected, "With looping turned off, the output buffer should be silent once we hit the end of the source buffer.");
         
         player.input("loop", 1.0);
@@ -817,7 +817,7 @@ flock.test = flock.test || {};
         var player = flock.parse.ugenForDef(playbackDef),
             expected = new Float32Array(64),
             expectedFirst = new Float32Array([1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63]),
-            expectedSecond = flock.test.constantBuffer(32, 0);
+            expectedSecond = flock.generate(32, 0);
             
         player.input("speed", 2.0);
         
@@ -828,7 +828,7 @@ flock.test = flock.test || {};
             "At double speed, the output buffer contain odd values from the source buffer, padded with zeros.");
         
         player.gen(64);
-        expected = flock.test.constantBuffer(64, 0.0);
+        expected = flock.generate(64, 0.0);
         deepEqual(player.output, expected, "With looping turned off, the output buffer should be silent once we hit the end of the source buffer.");
         
         player.input("loop", 1.0);
@@ -860,7 +860,7 @@ flock.test = flock.test || {};
         deepEqual(line.output, expected, "Line should generate all samples for its duration but one.");
         
         line.gen(64);
-        expected = flock.test.constantBuffer(64, 64);
+        expected = flock.generate(64, 64);
         deepEqual(line.output, expected, "After the line's duration is finished, it should constantly output the end value.");
     });
     
@@ -870,19 +870,19 @@ flock.test = flock.test || {};
         line.gen(32);
         
         // It's a 64 sample buffer, so split it in half to test it.
-        flock.test.assertArrayEquals(line.output.subarray(0, 32), flock.test.fillBuffer(0, 31), 
+        flock.test.arrayEqual(line.output.subarray(0, 32), flock.test.fillBuffer(0, 31), 
             "The first half of the line's values should but generated.");
-        flock.test.assertArrayEquals(line.output.subarray(32), flock.test.constantBuffer(32, 0),
+        flock.test.arrayEqual(line.output.subarray(32), flock.generate(32, 0),
             "The last 32 samples of the buffer should be empty.");
     
         line.gen(32);
-        flock.test.assertArrayEquals(line.output.subarray(0, 32), flock.test.fillBuffer(32, 63), 
+        flock.test.arrayEqual(line.output.subarray(0, 32), flock.test.fillBuffer(32, 63), 
             "The second half of the line's values should be generated.");
-        flock.test.assertArrayEquals(line.output.subarray(32), flock.test.constantBuffer(32, 0),
+        flock.test.arrayEqual(line.output.subarray(32), flock.generate(32, 0),
             "The last 32 samples of the buffer should be empty.");
                     
         line.gen(32);
-        flock.test.assertArrayEquals(line.output.subarray(0, 32), flock.test.constantBuffer(32, 64),
+        flock.test.arrayEqual(line.output.subarray(0, 32), flock.generate(32, 64),
             "After the line's duration is finished, it should constantly output the end value.");
     });
     
@@ -921,7 +921,7 @@ flock.test = flock.test || {};
         
         // Until the gate is closed, the ugen should just output silence.
         asr.gen(64);
-        flock.test.assertArrayEquals(asr.output, flock.test.constantBuffer(64, 0.0),
+        flock.test.arrayEqual(asr.output, flock.generate(64, 0.0),
             "When the gate is open at the beginning, the envelope's output should be 0.0.");
         
         // Trigger the attack stage.
@@ -931,7 +931,7 @@ flock.test = flock.test || {};
         
         // Output a full control period of the sustain value.
         asr.gen(64);
-        flock.test.assertArrayEquals(asr.output, flock.test.constantBuffer(64, 1.0), 
+        flock.test.arrayEqual(asr.output, flock.generate(64, 1.0), 
             "While the gate is open, the envelope should hold at the sustain level.");
         
         // Release the gate and test the release stage.
@@ -941,7 +941,7 @@ flock.test = flock.test || {};
         
         // Test a full control period of the end value.
         asr.gen(64);
-        flock.test.assertArrayEquals(asr.output, flock.test.constantBuffer(64, 0.0),
+        flock.test.arrayEqual(asr.output, flock.generate(64, 0.0),
             "When the gate is closed and the release stage has completed, the envelope's output should be 0.0.");
          
          // Trigger the attack stage again.
@@ -992,7 +992,7 @@ flock.test = flock.test || {};
         // Generate another control period of samples, which should be at the sustain level.
         asr.gen(64);
         testEnvelopeStage(asr.output.subarray(0, 32), 32, 0.7500630021095276, 1.0, "second half of the attack after halfway release second half.");
-        flock.test.assertArrayEquals(asr.output.subarray(32), flock.test.constantBuffer(32, 1.0), 
+        flock.test.arrayEqual(asr.output.subarray(32), flock.generate(32, 1.0), 
             "While the gate remains open after a mid-release attack, the envelope should hold at the sustain level.");
         
     });
@@ -1007,7 +1007,7 @@ flock.test = flock.test || {};
             source: {
                 ugen: "flock.test.mockUGen",
                 options: {
-                    buffer: flock.test.constantBuffer(64, 1.0)
+                    buffer: flock.generate(64, 1.0)
                 }
             },
             attack: 0.00001
@@ -1016,8 +1016,8 @@ flock.test = flock.test || {};
     
     var generateAndTestContinuousSamples = function (ugen, numSamps) {
         ugen.gen(numSamps);
-        flock.test.assertNotNaN(ugen.output, "The unit generator's output should not contain NaN.");
-        flock.test.assertNotSilent(ugen.output, 
+        flock.test.arrayNotNaN(ugen.output, "The unit generator's output should not contain NaN.");
+        flock.test.arrayNotSilent(ugen.output, 
             "The unit generator's output should not be silent.");
         flock.test.assertContinuous(ugen.output, 0.1,
             "The unit generator's output should not have any major value jumps in it.");
@@ -1027,7 +1027,7 @@ flock.test = flock.test || {};
         var tracker = flock.parse.ugenForDef(ampConstSignalDef);
         generateAndTestContinuousSamples(tracker, 64);
         // TODO: Why does an attack time of 0.00001 result in a ramp-up time of three samples, instead of just less than half a sample?
-        flock.test.assertArrayEquals(tracker.output.subarray(3, 64), flock.test.constantBuffer(61, 1.0), 
+        flock.test.arrayEqual(tracker.output.subarray(3, 64), flock.generate(61, 1.0), 
             "With a negligible attack time and a constant input value of 1.0, the amplitude ugen should ramp up quickly to, and remain at, 1.0.");
     });
     
@@ -1100,7 +1100,7 @@ flock.test = flock.test || {};
         
         inSynth.enviro.gen();
         var actual = inSynth.ugens.named["in"].output;
-        equals(actual, inSynth.enviro.buses[3],
+        equal(actual, inSynth.enviro.buses[3],
             "With a single source input, the output of flock.ugen.in should be the actual bus referenced.");
         deepEqual(actual, outSynthDef.inputs.sources.options.buffer,
             "And it should reflect exactly the output of the flock.ugen.out that is writing to the buffer.");
@@ -1194,7 +1194,7 @@ flock.test = flock.test || {};
                 source: 2,
                 add: 5
             }
-        }, flock.test.constantBuffer(64, 7), "Value add");
+        }, flock.generate(64, 7), "Value add");
         
         testMath({
             ugen: "flock.ugen.math",
@@ -1202,7 +1202,7 @@ flock.test = flock.test || {};
                 source: 3,
                 sub: 2
             }
-        }, flock.test.constantBuffer(64, 1), "Value subtract");
+        }, flock.generate(64, 1), "Value subtract");
         
         testMath({
             ugen: "flock.ugen.math",
@@ -1210,7 +1210,7 @@ flock.test = flock.test || {};
                 source: 3,
                 mul: 2
             }
-        }, flock.test.constantBuffer(64, 6), "Value multiply");
+        }, flock.generate(64, 6), "Value multiply");
         
         testMath({
             ugen: "flock.ugen.math",
@@ -1218,7 +1218,7 @@ flock.test = flock.test || {};
                 source: 3,
                 div: 2
             }
-        }, flock.test.constantBuffer(64, 1.5), "Value divide");
+        }, flock.generate(64, 1.5), "Value divide");
     });
     
     test("flock.ugen.math() audio and control rate inputs", function () {
@@ -1247,7 +1247,7 @@ flock.test = flock.test || {};
         testMath(krArUGenDef, expected, "Audio rate source, value add");
         
         krArUGenDef.inputs.source.rate = "control";
-        testMath(krArUGenDef, flock.test.constantBuffer(64, 4), "Control rate source, value add");
+        testMath(krArUGenDef, flock.generate(64, 4), "Control rate source, value add");
         
         krArUGenDef.inputs.add = {
             ugen: "flock.test.mockUGen",
@@ -1256,7 +1256,7 @@ flock.test = flock.test || {};
                 buffer: incBuffer
             }
         };
-        testMath(krArUGenDef, flock.test.constantBuffer(64, 2), "Control rate source, control rate add.");
+        testMath(krArUGenDef, flock.generate(64, 2), "Control rate source, control rate add.");
         
         krArUGenDef.inputs.source.rate = "audio";
         krArUGenDef.inputs.add.rate = "audio";
@@ -1446,7 +1446,7 @@ flock.test = flock.test || {};
                 ugen.input("trigger", test.trigger);
             }
             synth.gen();
-            flock.test.assertArrayEquals(ugen.output, test.value, test.msg);
+            flock.test.arrayEqual(ugen.output, test.value, test.msg);
         }
     };
     
@@ -1617,7 +1617,7 @@ flock.test = flock.test || {};
     
     var testSequenceAudio = function (ugen, expectedSequence) {
         ugen.gen(64);
-        flock.test.assertArrayEquals(ugen.output, expectedSequence);
+        flock.test.arrayEqual(ugen.output, expectedSequence);
     };
     
     var testSequences = function (testSpec) {

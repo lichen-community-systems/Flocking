@@ -6,7 +6,7 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global module, test, expect, ok, equals, deepEqual, Float32Array*/
+/*global module, test, expect, ok, equal, deepEqual, Float32Array*/
 /*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
@@ -61,7 +61,7 @@ var flock = flock || {};
         var duration = receivedAt - scheduledAt,
             tolerance = 5;
         
-        equals(scheduledTime, expectedScheduledTime,
+        equal(scheduledTime, expectedScheduledTime,
             "The callback for once() should return the correct scheduled time.");
         ok(duration >= expectedScheduledTime - tolerance && expectedScheduledTime <= 500 + tolerance,
             "The callback should be fired at the scheduled time, within a tolerance of " + tolerance + "ms.");
@@ -89,7 +89,7 @@ var flock = flock || {};
             if (numRuns < runs) {
                 sked.once(scheduledDelay, scheduledAction);
             } else {
-                equals(numRuns, runs,
+                equal(numRuns, runs,
                     "The scheduled callback should be invoked only once.");
                 start();
             }
@@ -101,7 +101,7 @@ var flock = flock || {};
     asyncTest("flock.scheduler.once() multiple listeners, different intervals", function () {
         // TODO: Cut and pastage and inconsistencies everywhere!
         var scheduledDelays = [100, 200],
-            tolerance = 7,
+            tolerance = 35, // TODO: Insanely high.
             fired = {},
             makeRecordingListener,
             testingListenerImpl,
@@ -142,15 +142,15 @@ var flock = flock || {};
         scheduledAt = Date.now();
     });
     
-    asyncTest("flock.scheduler.async.repeat()", function () {
-        expect(2 * numRuns);
-        
+    asyncTest("flock.scheduler.async.repeat()", function () {        
         var expectedInterval = 100,
             numRuns = 100,
             runs = 0,
             lastFired = 0,
-            mistimingTolerance = 35, // TODO: This value is excessively high.
+            mistimingTolerance = 50, // TODO: This value is excessively high.
             callback;
+            
+        expect(2 * numRuns);
         
         sked = flock.scheduler.async({
             components: {
@@ -274,7 +274,6 @@ var flock = flock || {};
                     sked.repeat(interval, stage);
                 } else {
                     start();
-                    expect(stages.length * 2);
                 }
             };
         
@@ -297,7 +296,8 @@ var flock = flock || {};
                 makeRecordingListener(fired, "listener1"),
                 makeRecordingListener(fired, "listener2")
             ];
-        
+            
+            expect(stages.length * 2);
             runNextTestStage();        
         });
     };
