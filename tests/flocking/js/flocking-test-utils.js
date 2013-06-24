@@ -87,6 +87,7 @@ var flock = flock || {};
             isBroken = false,
             foundAt = -1,
             i;
+
         for (i = 0; i < buffer.length; i++) {
             numZero = buffer[i] === 0 ? numZero + 1 : 0;
                         

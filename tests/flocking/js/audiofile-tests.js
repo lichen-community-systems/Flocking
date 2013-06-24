@@ -14,9 +14,10 @@ flock.test = flock.test || {};
 (function () {
     "use strict";
     
-    var expectedData =  [
+    var expectedData = [
     	0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 
-    	0.0, -0.1, -0.2, -0.3, -0.4, -0.5, -0.6, -0.7, -0.8, -0.9, -1.0, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0.0
+    	0.0, -0.1, -0.2, -0.3, -0.4, -0.5, -0.6, -0.7, -0.8, -0.9, -1.0, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 
+        0.0, 0.1
     ];
     
     module("flock.file.readDataUrl() tests");
@@ -47,7 +48,7 @@ flock.test = flock.test || {};
         for (i = 0; i < dataFormatCombinations.length; i++) {
             formatSpec = dataFormatCombinations[i];
             flock.file.readDataUrl(formatSpec.url, function (data, type) {
-                flock.test.arrayEqual(new Int8Array(data), new Int8Array(expectedArrayBuffer), "readDataUrl() should correctly parse and decode a data URL that is " + formatSpec.name);
+                deepEqual(new Int8Array(data), new Int8Array(expectedArrayBuffer), "readDataUrl() should correctly parse and decode a data URL that is " + formatSpec.name);
             });    
         } 
     });
@@ -183,7 +184,8 @@ flock.test = flock.test || {};
             var data = decoded.data,
                 format = decoded.format,
                 buffer = data.channels[0],
-                roundedBuffer = roundBuffer(buffer, 1);
+                roundedBuffer = roundBuffer(buffer, 1),
+                expected = expectedData;
 
             equal(format.numChannels, 1, "The decoded audio file's metadata should indicate that there is only one channel.");
             equal(data.channels.length, 1, "The decoded audio should have only one channel buffer.");
@@ -198,7 +200,7 @@ flock.test = flock.test || {};
                 "The decoded audio file's metadata should indicate that there is a total of " + expectedDataSize + " samples of data in the file.");
             equal(buffer.length, decoded.format.numSampleFrames,
                 "The decoded audio buffer should have the same number of frames as the metadata reports.");
-            flock.test.arrayEqual(roundedBuffer, expectedData, "The decoded buffer should be a single period triangle wave incrementing by 0.1");
+            deepEqual(roundedBuffer, expected, "The decoded buffer should be a single period triangle wave incrementing by 0.1");
         };
 
         var eightBitSampleSize = 42;
