@@ -870,19 +870,19 @@ flock.test = flock.test || {};
         line.gen(32);
         
         // It's a 64 sample buffer, so split it in half to test it.
-        deepEqual(line.output.subarray(0, 32), flock.test.fillBuffer(0, 31), 
+        deepEqual(flock.copyBuffer(line.output, 0, 32), flock.test.fillBuffer(0, 31), 
             "The first half of the line's values should but generated.");
-        deepEqual(line.output.subarray(32), flock.generate(32, 0),
+        deepEqual(flock.copyBuffer(line.output, 32), flock.generate(32, 0),
             "The last 32 samples of the buffer should be empty.");
     
         line.gen(32);
-        deepEqual(line.output.subarray(0, 32), flock.test.fillBuffer(32, 63), 
+        deepEqual(flock.copyBuffer(line.output, 0, 32), flock.test.fillBuffer(32, 63), 
             "The second half of the line's values should be generated.");
-        deepEqual(line.output.subarray(32), flock.generate(32, 0),
+        deepEqual(flock.copyBuffer(line.output, 32), flock.generate(32, 0),
             "The last 32 samples of the buffer should be empty.");
                     
         line.gen(32);
-        deepEqual(line.output.subarray(0, 32), flock.generate(32, 64),
+        deepEqual(flock.copyBuffer(line.output, 0, 32), flock.generate(32, 64),
             "After the line's duration is finished, it should constantly output the end value.");
     });
     
@@ -980,19 +980,19 @@ flock.test = flock.test || {};
         testEnvelopeStage(asr.output, 64, 0.0, 1.0, "attack");
         asr.input("gate", 0.0);
         asr.gen(32);
-        testEnvelopeStage(asr.output.subarray(0, 32), 32, 1.0, 0.5079365372657776, "halfway release");
+        testEnvelopeStage(flock.copyBuffer(asr.output, 0, 32), 32, 1.0, 0.5079365372657776, "halfway release");
         
         // Then trigger a new attack halfway through the release stage.
         // The envelope should immediately pick up the attack phase from the current level
         // TODO: Note that there will be a one-increment lag before turning direction to the attack phase in this case. Is this a noteworthy bug?
         asr.input("gate", 1.0);
         asr.gen(32);
-        testEnvelopeStage(asr.output.subarray(0, 32), 32, 0.4920634925365448, 0.7420005202293396, "attack after halfway release");
+        testEnvelopeStage(flock.copyBuffer(asr.output, 0, 32), 32, 0.4920634925365448, 0.7420005202293396, "attack after halfway release");
         
         // Generate another control period of samples, which should be at the sustain level.
         asr.gen(64);
-        testEnvelopeStage(asr.output.subarray(0, 32), 32, 0.7500630021095276, 1.0, "second half of the attack after halfway release second half.");
-        deepEqual(asr.output.subarray(32), flock.generate(32, 1.0), 
+        testEnvelopeStage(flock.copyBuffer(asr.output, 0, 32), 32, 0.7500630021095276, 1.0, "second half of the attack after halfway release second half.");
+        deepEqual(flock.copyBuffer(asr.output, 32), flock.generate(32, 1.0), 
             "While the gate remains open after a mid-release attack, the envelope should hold at the sustain level.");
         
     });
@@ -1027,7 +1027,7 @@ flock.test = flock.test || {};
         var tracker = flock.parse.ugenForDef(ampConstSignalDef);
         generateAndTestContinuousSamples(tracker, 64);
         // TODO: Why does an attack time of 0.00001 result in a ramp-up time of three samples, instead of just less than half a sample?
-        deepEqual(tracker.output.subarray(3, 64), flock.generate(61, 1.0), 
+        deepEqual(flock.copyBuffer(tracker.output, 3, 64), flock.generate(61, 1.0), 
             "With a negligible attack time and a constant input value of 1.0, the amplitude ugen should ramp up quickly to, and remain at, 1.0.");
     });
     

@@ -247,6 +247,23 @@ var fluid = fluid || require("infusion"),
         return buf;
     };
     
+    flock.copyBuffer = function (buffer, start, end) {
+        if (end === undefined) {
+            end = buffer.length;
+        }
+        
+        var len = end - start,
+            target = new Float32Array(len),
+            i,
+            j;
+        
+        for (i = start, j = 0; i < end; i++, j++) {
+            target[j] = buffer[i];
+        }
+        
+        return target;
+    };
+    
     
     flock.interpolate = {};
     
