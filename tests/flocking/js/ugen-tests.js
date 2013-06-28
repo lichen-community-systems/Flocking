@@ -62,7 +62,7 @@ flock.test = flock.test || {};
     };
     
     test("input() data type tests", function () {
-        var mockUGen = flock.test.makeMockUGen(new Float32Array(64));
+        var mockUGen = flock.mock.makeMockUGen(new Float32Array(64));
         
         // Non-existent input.
         var val = mockUGen.input("cat");
@@ -71,13 +71,13 @@ flock.test = flock.test || {};
         
         // Setting a previously non-existent input.
         setAndCheckInput(mockUGen, "cat", {
-            ugen: "flock.test.mockUGen"
+            ugen: "flock.mock.ugen"
         });
         
         // Replacing an existing input with an ugenDef.
         setAndCheckInput(mockUGen, "cat", {
             id: "new-cat",
-            ugen: "flock.test.mockUGen"
+            ugen: "flock.mock.ugen"
         });
         equal(mockUGen.input("cat").id, "new-cat", "The new input should have the appropriate ID.");
         
@@ -85,11 +85,11 @@ flock.test = flock.test || {};
         var defs = [
             {
                 id: "first-cat",
-                ugen: "flock.test.mockUGen"
+                ugen: "flock.mock.ugen"
             },
             {
                 id: "second-cat",
-                ugen: "flock.test.mockUGen"
+                ugen: "flock.mock.ugen"
             }
         ];
         setAndCheckArrayInput(mockUGen, "cat", defs, function (i, def) {
@@ -147,7 +147,7 @@ flock.test = flock.test || {};
     
     test("flock.enviro.moz.interleavedWriter() mono input, mono output", function () {
         // Test with a single input buffer being multiplexed by ugen.out.
-        var mockLeftUGen = flock.test.makeMockUGen(mockLeft);
+        var mockLeftUGen = flock.mock.makeMockUGen(mockLeft);
         var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen}, [], {
             audioSettings: {
                 buses: flock.enviro.shared.buses,
@@ -172,7 +172,7 @@ flock.test = flock.test || {};
     
     test("flock.enviro.moz.interleavedWriter() mono input, stereo output", function () {
         // Test with a single mono input buffer.
-        var mockLeftUGen = flock.test.makeMockUGen(mockLeft);
+        var mockLeftUGen = flock.mock.makeMockUGen(mockLeft);
         var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen, expand: stereoExpandValueUGen}, [], {
             audioSettings: {
                 buses: flock.enviro.shared.buses,
@@ -195,8 +195,8 @@ flock.test = flock.test || {};
         // Test with two input buffers.
         var out = flock.ugen.out({
             sources: [
-                flock.test.makeMockUGen(mockLeft), 
-                flock.test.makeMockUGen(mockRight)
+                flock.mock.makeMockUGen(mockLeft), 
+                flock.mock.makeMockUGen(mockRight)
             ],
             bus: bufferValueUGen
         }, [], {
@@ -287,7 +287,7 @@ flock.test = flock.test || {};
             "The buffer should not contain any values smaller than " + expected.minValue);
         ok(maxFound <= expected.maxValue, 
             "The buffer should not contain any values larger than " + expected.maxValue);
-        equal(flock.test.countKeys(uniqueValues), expected.numUniqueValues, 
+        equal(Object.keys(uniqueValues).length, expected.numUniqueValues, 
             "The buffer should contain approximately " + expected.numUniqueValues + " unique random values");
     };
     
@@ -335,8 +335,8 @@ flock.test = flock.test || {};
         lfNoise.output = new Float32Array(44100);
 
         lfNoise.gen(44100);
-        flock.test.testUnbrokenOutput(lfNoise.output, -1.0, 1.0);
-        flock.test.assertContinuous(lfNoise.output, 0.0001, "The output should be smooth and continuous when interpolated.")
+        flock.test.unbrokenInRangeSignal(lfNoise.output, -1.0, 1.0);
+        flock.test.continuousArray(lfNoise.output, 0.0001, "The output should be smooth and continuous when interpolated.")
     });
     
     
@@ -347,7 +347,7 @@ flock.test = flock.test || {};
             ugen: "flock.ugen.pinkNoise"
         });
         pink.gen(64);
-        flock.test.testUnbrokenOutput(pink.output, -1.0, 1.0);
+        flock.test.unbrokenInRangeSignal(pink.output, -1.0, 1.0);
     });
     
     
@@ -558,9 +558,9 @@ flock.test = flock.test || {};
      
     test("flock.ugen.sum()", function () {
         var addBuffer = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31],
-            one = flock.test.makeMockUGen(addBuffer),
-            two = flock.test.makeMockUGen(addBuffer),
-            three = flock.test.makeMockUGen(addBuffer);
+            one = flock.mock.makeMockUGen(addBuffer),
+            two = flock.mock.makeMockUGen(addBuffer),
+            three = flock.mock.makeMockUGen(addBuffer);
     
         var inputs = {
             sources: [one]
@@ -681,7 +681,7 @@ flock.test = flock.test || {};
     var testOsc = function (ugenType, otherTests) {
         test(ugenType, function () {
             var ug = makeAndPrimeOsc(ugenType, 44100);
-            flock.test.testUnbrokenOutput(ug.output, -0.75, 0.75);
+            flock.test.unbrokenInRangeSignal(ug.output, -0.75, 0.75);
             if (otherTests) {
                 otherTests(ug);
             }
@@ -690,7 +690,7 @@ flock.test = flock.test || {};
     
     var testContinuousWaveformOsc = function (ugenType, otherTests) {
         testOsc(ugenType, function (ug) {
-            flock.test.assertContinuous(ug.output, 0.01, 
+            flock.test.continuousArray(ug.output, 0.01, 
                 "The ugen should produce a continuously changing signal.");
             if (otherTests) {
                 otherTests(ug);
@@ -700,7 +700,7 @@ flock.test = flock.test || {};
     
     var testSineishWaveformOsc = function (ugenType) {
         testContinuousWaveformOsc(ugenType, function (sine) {
-            flock.test.assertSineish(sine.output, 0.75, 
+            flock.test.sineishArray(sine.output, 0.75, true,
                 "The " + ugenType + " ugen should continuously rise and fall between 0.75/-0.75.");
         });
     };
@@ -739,8 +739,8 @@ flock.test = flock.test || {};
     var testImpulses = function (buffer, impulseLocations, msg) {
         var i;
         
-        flock.test.assertValueCount(buffer, 1.0, impulseLocations.length, msg + " should contain the expected number of impulses.");
-        flock.test.assertOnlyValues(buffer, [0.0, 1.0], msg + " should only contain zeros and ones.");
+        flock.test.valueCount(buffer, 1.0, impulseLocations.length, msg + " should contain the expected number of impulses.");
+        flock.test.arrayContainsOnlyValues(buffer, [0.0, 1.0], msg + " should only contain zeros and ones.");
         
         for (i = 0; i < buffer.length; i++) {
             if (impulseLocations.indexOf(i) !== -1) {
@@ -905,14 +905,14 @@ flock.test = flock.test || {};
             "During the " + stageName + " stage, the starting level should be " + expectedStart + ".");
         equal(buffer[numSamps - 1], expectedEnd, 
             "At the end of the " + stageName + " stage, the expected end level should have been reached.");
-        flock.test.assertUnbroken(buffer, "The output should not contain any dropouts.");
-        flock.test.assertWithinRange(buffer, 0.0, 1.0, 
+        flock.test.arrayUnbroken(buffer, "The output should not contain any dropouts.");
+        flock.test.arrayWithinRange(buffer, 0.0, 1.0, 
             "The output should always remain within the range between " + expectedStart + " and " + expectedEnd + ".");
-        flock.test.assertContinuous(buffer, 0.02, "The buffer should move continuously within its range.");
+        flock.test.continuousArray(buffer, 0.02, "The buffer should move continuously within its range.");
         
         var isClimbing = expectedStart < expectedEnd;
         var directionText = isClimbing ? "climb" : "fall";
-        flock.test.assertRamping(buffer, isClimbing, 
+        flock.test.rampingArray(buffer, isClimbing, 
             "The buffer should " + directionText + " steadily from " + expectedStart + " to " + expectedEnd + ".");
     };
     
@@ -1005,7 +1005,7 @@ flock.test = flock.test || {};
         rate: flock.rates.AUDIO,
         inputs: {
             source: {
-                ugen: "flock.test.mockUGen",
+                ugen: "flock.mock.ugen",
                 options: {
                     buffer: flock.generate(64, 1.0)
                 }
@@ -1019,7 +1019,7 @@ flock.test = flock.test || {};
         flock.test.arrayNotNaN(ugen.output, "The unit generator's output should not contain NaN.");
         flock.test.arrayNotSilent(ugen.output, 
             "The unit generator's output should not be silent.");
-        flock.test.assertContinuous(ugen.output, 0.1,
+        flock.test.continuousArray(ugen.output, 0.1,
             "The unit generator's output should not have any major value jumps in it.");
     };
     
@@ -1055,7 +1055,7 @@ flock.test = flock.test || {};
         for (i = 0; i < controlPeriods; i++) {
             tracker.inputs.source.gen(64);
             generateAndTestContinuousSamples(tracker, 64);
-            flock.test.assertRamping(tracker.output, true, "The amplitude tracker should follow the contour of its source.");
+            flock.test.rampingArray(tracker.output, true, "The amplitude tracker should follow the contour of its source.");
         }
     });
     
@@ -1066,7 +1066,7 @@ flock.test = flock.test || {};
             bus: 3,
             expand: 1,
             sources: {
-                ugen: "flock.test.mockUGen",
+                ugen: "flock.mock.ugen",
                 options: {
                     buffer: flock.test.ascendingBuffer(64, 1)
                 }
@@ -1138,7 +1138,7 @@ flock.test = flock.test || {};
     test("flock.ugen.normalize()", function () {
         var testBuffer = flock.test.ascendingBuffer(64, -31),
             mock = {
-                ugen: "flock.test.mockUGen",
+                ugen: "flock.mock.ugen",
                 options: {
                     buffer: testBuffer
                 }
@@ -1234,7 +1234,7 @@ flock.test = flock.test || {};
             ugen: "flock.ugen.math",
             inputs: {
                 source: {
-                    ugen: "flock.test.mockUGen",
+                    ugen: "flock.mock.ugen",
                     rate: "audio",
                     options: {
                         buffer: incBuffer
@@ -1250,7 +1250,7 @@ flock.test = flock.test || {};
         testMath(krArUGenDef, flock.generate(64, 4), "Control rate source, value add");
         
         krArUGenDef.inputs.add = {
-            ugen: "flock.test.mockUGen",
+            ugen: "flock.mock.ugen",
             rate: "control",
             options: {
                 buffer: incBuffer
@@ -1374,7 +1374,7 @@ flock.test = flock.test || {};
             
             var filterSynth = flock.synth(ugen);
             filterSynth.gen(64);
-            flock.test.assertUnbrokenSignal(filterSynth.get("filter"), -1.0, 1.0);
+            flock.test.arrayUnbrokenSignal(filterSynth.get("filter"), -1.0, 1.0);
         });
     });
     */
@@ -1383,7 +1383,7 @@ flock.test = flock.test || {};
         var sourceBuffer = flock.test.ascendingBuffer(64, 1),
             sampGenCount = 0,
             incrementingMock = {
-                ugen: "flock.test.mockUGen",
+                ugen: "flock.mock.ugen",
                 options: {
                     buffer: sourceBuffer,
                     gen: function (that, numSamps) {

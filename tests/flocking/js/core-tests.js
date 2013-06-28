@@ -515,7 +515,7 @@ var fluid = fluid || require("infusion"),
         var synth1 = flock.synth({
             synthDef: {
                 id: "mock",
-                ugen: "flock.test.mockUGen",
+                ugen: "flock.mock.ugen",
                 freq: 110,
                 mul: 0.1,
                 options: {
@@ -529,7 +529,7 @@ var fluid = fluid || require("infusion"),
         var synth2 = flock.synth({
             synthDef: {
                 id: "mock",
-                ugen: "flock.test.mockUGen",
+                ugen: "flock.mock.ugen",
                 freq: 220,
                 mul: 0.2,
                 options: {
@@ -635,11 +635,11 @@ var fluid = fluid || require("infusion"),
     test("flock.synth.polyphonic", function () {
         var def = {
             id: "carrier",
-            ugen: "flock.test.mockUGen",
+            ugen: "flock.mock.ugen",
             freq: 440,
             mul: {
                 id: "env",
-                ugen: "flock.test.mockUGen",
+                ugen: "flock.mock.ugen",
                 gate: 0
             }
         };
@@ -662,7 +662,7 @@ var fluid = fluid || require("infusion"),
     module("Parsing tests");
     
     var checkRegisteredUGens = function (synth, expectedNumEvals) {
-        equal(flock.test.countKeys(synth.ugens.named), 3, "There should be three registered ugens.");
+        equal(Object.keys(synth.ugens.named).length, 3, "There should be three registered ugens.");
         ok(synth.out, 
             "The output ugen should have been stored at synth.out");
         equal(synth.ugens.active.length, expectedNumEvals, 
@@ -859,7 +859,7 @@ var fluid = fluid || require("infusion"),
             }
             equal(synth.ugens.active.length, spec.expected.active, 
                 spec.msg + ", there should be " + spec.expected.active + " active ugens.");
-            equal(flock.test.countKeys(synth.ugens.named), spec.expected.named, 
+            equal(Object.keys(synth.ugens.named).length, spec.expected.named, 
                 spec.msg + ", there should be " + spec.expected.named + " named ugens.");
         });
     };
@@ -868,11 +868,11 @@ var fluid = fluid || require("infusion"),
         ugen: "flock.ugen.out",
         inputs: {
             sources: {
-                ugen: "flock.test.mockUGen",
+                ugen: "flock.mock.ugen",
                 inputs: {
                     gerbil: {
                         id: "gerbil",
-                        ugen: "flock.test.mockUGen",
+                        ugen: "flock.mock.ugen",
                         inputs: {
                             ear: {
                                 id: "ear",
@@ -883,10 +883,10 @@ var fluid = fluid || require("infusion"),
                     },
                     cat: {
                         id: "cat",
-                        ugen: "flock.test.mockUGen"
+                        ugen: "flock.mock.ugen"
                     },
                     dog: {
-                        ugen: "flock.test.mockUGen"
+                        ugen: "flock.mock.ugen"
                     }
                 }
             }
@@ -949,7 +949,7 @@ var fluid = fluid || require("infusion"),
             expectedInput = synth.ugens.named.ear,
             newUGen = flock.parse.ugenForDef({
                 id: "gerbil",
-                ugen: "flock.test.mockUGen"
+                ugen: "flock.mock.ugen"
             });
         synth.ugens.replace(newUGen, toReplace, true);
         

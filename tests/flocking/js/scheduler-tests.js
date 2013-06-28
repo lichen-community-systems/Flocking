@@ -282,7 +282,7 @@ var flock = flock || {};
                     record[prop] = true;
                 
                     if (runs >= numRuns) {
-                        flock.test.assertSoleProperty(record, prop);
+                        flock.test.containsSoleProperty(record, prop);
                         fluid.clear(record);
                         runNextTestStage();
                         return;

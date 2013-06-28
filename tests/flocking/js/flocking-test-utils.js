@@ -17,17 +17,6 @@ var flock = flock || {};
     
     flock.test = flock.test || {};
     
-    flock.test.countKeys = function (obj) {
-        var numKeys = 0,
-            key;
-        for (key in obj) {
-            if (obj.hasOwnProperty(key)) {
-                numKeys++;
-            }
-        }
-        return numKeys;
-    };
-    
     flock.test.fillBuffer = function (start, end, skip) {
         var buf = [],
             count = 0,
@@ -41,25 +30,31 @@ var flock = flock || {};
         
         return new Float32Array(buf);
     };
+    
+    flock.test.ascendingBuffer = function (numSamps, start, step) {
+        start = start === undefined ? 0 : start;
+        step = step === undefined ? 1 : step;
         
-    flock.test.arrayEqual = function (actual, expected, msg) {
-        var i;
-        for (i = 0; i < expected.length; i++) {
-            equal(actual[i], expected[i], msg + " Index: " + i);
-        }
+        return flock.generate(numSamps, function (i) {
+            return start + (i * step);
+        });
     };
     
     flock.test.arrayNotNaN = function (buffer, msg) {
-        var i;
+        var failures = [],
+            i;
+        
         for (i = 0; i < buffer.length; i++) {
             if (isNaN(buffer[i])) {
-                ok(false, msg + " NaN value found at index " + i);
+                failures.push(i);
             }
         }
+        
+        equal(failures.length, 0, msg + (failures.length ? " NaN values found at indices: " + failures : ""));
     };
     
     flock.test.equalRounded = function (numDecimals, actual, expected, msg) {
-        var rounded = parseFloat(actual.toFixed(2));
+        var rounded = parseFloat(actual.toFixed(numDecimals));
         equal(rounded, expected, msg);
     };
     
@@ -78,11 +73,11 @@ var flock = flock || {};
     };
     
     flock.test.arraySilent = function (buffer, msg) {
-        var silentBuffer = flock.test.constantBuffer(buffer.length, 0.0);
-        deepEqual(buffer, silentBuffer, "The buffer should be silent by containing all zeros.");
+        var silentBuffer = flock.generate(buffer.length, 0.0);
+        deepEqual(buffer, silentBuffer, msg);
     };
     
-    flock.test.assertUnbroken = function (buffer, msg) {
+    flock.test.arrayUnbroken = function (buffer, msg) {
         var numZero = 0,
             isBroken = false,
             foundAt = -1,
@@ -101,45 +96,71 @@ var flock = flock || {};
         ok(!isBroken, msg + " Last silent sample found at: " + foundAt);
     };
     
-    flock.test.assertWithinRange = function (buffer, min, max, msg) {
-        var i,
+    flock.test.arrayWithinRange = function (buffer, min, max, msg) {
+        var outOfRanges = [],
+            i,
             val;
+        
         for (i = 0; i < buffer.length; i++) {
             val = buffer[i];
-            ok(val >= min && val <= max, msg + " Index: " + i + ", value: " + val);
+            if (val < min || val > max) {
+                outOfRanges.push({
+                    index: i,
+                    value: val
+                });
+            }
         }
+        
+        equal(outOfRanges.length, 0, msg + "Out of range values found at:" + outOfRanges);
     };
     
-    flock.test.assertContinuous = function (buffer, threshold, msg) {
-        var previous = buffer[0],
+    flock.test.continuousArray = function (buffer, threshold, msg) {
+        var unexpected = [],
+            previous = buffer[0],
             current,
             i;
         for (i = 1; i < buffer.length; i++) {
             current = buffer[i];
             if (Math.abs(previous - current) > threshold) {
-                ok(false, msg + " Jump is at index " + i + ". Previous value: " + previous + " current value: " + current);
-                return;
+                unexpected.push({
+                    index: i,
+                    value: current,
+                    previous: previous
+                });
             }
             previous = current;
         }
-        ok(true, msg);
+        equal(unexpected.length, 0, msg + (unexpected.length ? " Unexpected values: " + unexpected : ""));
     };
     
-    flock.test.assertRamping = function (buffer, isAscending, msg) {
-        var previous = buffer[0],
+    flock.test.rampingArray = function (buffer, isAscending, msg) {
+        var unexpected = [],
+            previous = buffer[0],
             current,
             isExpectedDirection = false,
             i;
         for (i = 1; i < buffer.length; i++) {
             current = buffer[i];
             isExpectedDirection = isAscending ? current > previous : current < previous;
-            ok(isExpectedDirection, msg + " Index " + current);
+            if (!isExpectedDirection) {
+                unexpected.push({
+                    index: i,
+                    value: current,
+                    previous: previous
+                });
+            }
         }
+        equal(unexpected.length, 0, msg + (unexpected.length ? " Unexpected values: " + unexpected : ""));
     };
     
-    flock.test.assertSineish = function (buffer, max, msg) {
-        var maxReached = false,
-            isAscending = true,
+    flock.test.sineishArray = function (buffer, max, isAscending, msg) {
+        if (typeof isAscending === "string") {
+            msg = isAscending;
+            isAscending = true;
+        }
+        
+        var unexpected = [],
+            maxReached = false,
             fail = false,
             i,
             current,
@@ -161,16 +182,14 @@ var flock = flock || {};
             
             fail = isAscending ? (next < current) : (next > current);
             if (fail) {
-                ok(false, "Signal changed direction before reaching maximum value at index: " + i + 
-                ". Current value: " + current + ", next value: " + next);
-                break;
+                unexpected.push("[index: " + i + " value: " + current + " next: " + next + "]");
             }
         }
         
-        ok(maxReached, msg);
+        equal(unexpected.length, 0, msg + (unexpected.length ? " Unexpected values: " + unexpected : ""));
     };
     
-    flock.test.assertOnlyValues = function (buffer, values, msg) {
+    flock.test.arrayContainsOnlyValues = function (buffer, values, msg) {
         var outlierVals = [],
             outlierIndices = [],
             i;
@@ -178,7 +197,7 @@ var flock = flock || {};
         for (i = 0; i < buffer.length; i++) {
             var val = buffer[i];
             if (values.indexOf(val) === -1) {
-                outliers.push(val);
+                outlierVals.push(val);
                 outlierIndices.push(i);
             }
         }
@@ -186,7 +205,7 @@ var flock = flock || {};
         equal(outlierVals.length, 0, msg);
     };
     
-    flock.test.assertValueCount = function (buffer, value, expectedNum, msg) {
+    flock.test.valueCount = function (buffer, value, expectedNum, msg) {
         var count = 0,
             i;
         
@@ -198,8 +217,35 @@ var flock = flock || {};
         
         equal(count, expectedNum, msg);
     };
+    
+    
+    flock.test.containsSoleProperty = function (obj, prop, value, msg) {
+        if (arguments.length === 2) {
+            value = true;
+        }
         
-    flock.test.mockUGen = function (inputs, output, options) {
+        equal(obj[prop], value,
+            msg + " The expected property should have the correct value.");
+        equal(Object.keys(obj).length, 1,
+            msg + " There should be no other properties in the object.");
+    };
+    
+    flock.test.unbrokenInRangeSignal = function (output, expectedMin, expectedMax, range) {
+        output = range ? output.subarray(range.start, range.end) : output;
+        flock.test.arrayNotNaN(output,
+            "The ugen should never output NaN.");
+        flock.test.arrayNotSilent(output,
+            "The output should not be completely silent");
+        flock.test.arrayUnbroken(output,
+            "The ugen should produce an unbroken audio tone.");
+        flock.test.arrayWithinRange(output, expectedMin, expectedMax,
+            "The ugen should produce output values ranging between " + expectedMin + " and " + expectedMax + ".");
+    };
+    
+        
+    flock.mock = {};
+    
+    flock.mock.ugen = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         if (that.options.buffer) {
             that.output = that.options.buffer;
@@ -212,13 +258,13 @@ var flock = flock || {};
         return that;
     };
     
-    flock.test.makeMockUGen = function (output, rate) {
+    flock.mock.makeMockUGen = function (output, rate) {
         if (typeof (output) === "function") {
             output = flock.generate(64, output);
         }
         
         return flock.parse.ugenForDef({
-            ugen: "flock.test.mockUGen",
+            ugen: "flock.mock.ugen",
             rate: rate || flock.rates.AUDIO,
             options: {
                 buffer: output
@@ -226,7 +272,7 @@ var flock = flock || {};
         });
     };
     
-    flock.test.makeRandomInputGenerator = function (inputSpec, defaultScale, round) {
+    flock.mock.makeRandomInputGenerator = function (inputSpec, defaultScale, round) {
         defaultScale = defaultScale || 500;
         var scale = typeof (inputSpec) === "string" ? defaultScale : inputSpec.scale,
             val;
@@ -236,36 +282,5 @@ var flock = flock || {};
             return round ? Math.round(val) : val;
         };
     };
-    
-    flock.test.ascendingBuffer = function (numSamps, start, step) {
-        start = start === undefined ? 0 : start;
-        step = step === undefined ? 1 : step;
-        
-        return flock.generate(numSamps, function (i) {
-            return start + (i * step);
-        });
-    };
-    
-    flock.test.assertSoleProperty = function (obj, prop, value) {
-        if (arguments.length === 2) {
-            value = true;
-        }
-        
-        equal(obj[prop], value,
-            "The expected property should have the correct value.");
-        equal(Object.keys(obj).length, 1,
-            "There should be no other properties in the object.");
-    };
-    
-    flock.test.testUnbrokenOutput = function (output, expectedMin, expectedMax, range) {
-        output = range ? output.subarray(range.start, range.end) : output;
-        flock.test.arrayNotNaN(output,
-            "The ugen should never output NaN.");
-        flock.test.arrayNotSilent(output,
-            "The output should not be completely silent");
-        flock.test.assertUnbroken(output,
-            "The ugen should produce an unbroken audio tone.");
-        flock.test.assertWithinRange(output, expectedMin, expectedMax,
-            "The ugen should produce output values ranging between " + expectedMin + " and " + expectedMax + ".");
-    };
+
 }());

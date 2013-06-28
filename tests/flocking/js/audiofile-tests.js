@@ -193,8 +193,8 @@ flock.test = flock.test || {};
             equal(format.sampleRate, 44100, "The decoded audio file's metadata should indicate a sample rate of 44100 samples per second.");
             flock.test.arrayNotNaN(buffer, "The buffer should not output an NaN values");
             flock.test.arrayNotSilent(buffer, "The buffer should not be silent.");
-            flock.test.assertUnbroken(buffer, "The buffer should not have any significant gaps in it.");
-            flock.test.assertWithinRange(buffer, -1.0, 1.0, "The buffer's amplitude should be no louder than 1.0.");
+            flock.test.arrayUnbroken(buffer, "The buffer should not have any significant gaps in it.");
+            flock.test.arrayWithinRange(buffer, -1.0, 1.0, "The buffer's amplitude should be no louder than 1.0.");
             
             equal(decoded.data.size, expectedDataSize, 
                 "The decoded audio file's metadata should indicate that there is a total of " + expectedDataSize + " samples of data in the file.");
