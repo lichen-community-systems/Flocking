@@ -718,9 +718,6 @@ var fluid = fluid || require("infusion"),
     
     fluid.defaults("flock.synth", {
         gradeNames: ["flock.node", "autoInit"],
-        mergePolicy: {
-            synthDef: "nomerge"
-        },
         components: {
             ugens: {
                 type: "flock.synth.ugenCache"
@@ -1063,9 +1060,6 @@ var fluid = fluid || require("infusion"),
     
     fluid.defaults("flock.synth.polyphonic", {
         gradeNames: ["flock.synth.group", "autoInit"],
-        mergePolicy: {
-            synthDef: "nomerge"
-        },
         noteSpecs: {
             on: {
                 "env.gate": 1
