@@ -961,15 +961,19 @@ var fluid = fluid || require("infusion"),
     });
     
     test("Typed Array Merge Preservation", function () {
+        var ta = new Float32Array([1.1, 2.2, 3.3]);
+        ok(ta instanceof Float32Array, "Sanity check: a Float32Array should be an instance of a Float32Array");
+        
         fluid.defaults("flock.test.typedArrayComponent", {
             gradeNames: ["fluid.littleComponent", "autoInit"],
             synthDef: {
-                cat: new Float32Array([1.1, 2.2, 3.3])
+                cat: ta
             }
         });
         
         var comp = flock.test.typedArrayComponent();
-        ok(comp.options.synthDef.cat instanceof Float32Array);
+        ok(comp.options.synthDef.cat instanceof Float32Array, 
+            "A typed array stored as a component default should not be corrupted.");
     });
     
 }());
