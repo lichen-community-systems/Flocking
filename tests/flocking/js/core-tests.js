@@ -960,4 +960,16 @@ var fluid = fluid || require("infusion"),
         equal(synth.out.inputs.sources.inputs.gerbil, newUGen, "The new ugen's output should be wired back up.");
     });
     
+    test("Typed Array Merge Preservation", function () {
+        fluid.defaults("flock.test.typedArrayComponent", {
+            gradeNames: ["fluid.littleComponent", "autoInit"],
+            synthDef: {
+                cat: new Float32Array([1.1, 2.2, 3.3])
+            }
+        });
+        
+        var comp = flock.test.typedArrayComponent();
+        ok(comp.options.synthDef.cat instanceof Float32Array);
+    });
+    
 }());
