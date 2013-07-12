@@ -545,7 +545,8 @@ var fluid = fluid || require("infusion"),
         },
         audioSettings: {
             rates: {
-                audio: 44100,
+                audio: 48000, // This is only a hint. Some audio backends (such as the Web Audio API) 
+                              // may define the sample rate themselves.
                 control: 64,
                 constant: 1
             },
