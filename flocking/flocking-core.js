@@ -1157,6 +1157,44 @@ var fluid = fluid || require("infusion"),
         return that;
     };
     
+    
+    /**************************************
+     * Infusion Typed Array Monkeypatches *
+     **************************************/
+    
+    /**
+     * Monkey patches fluid.mergeOneImpl until an general Infusion solution can be put in place for
+     * defining custom primitive detection logic. Currently, ArrayBufferViews are detected as objects.
+     */
+    // unsupported, NON-API function
+    fluid.mergeOneImpl = function (thisTarget, thisSource, j, sources, newPolicy, i, segs) {
+        var togo = thisTarget;
+
+        var primitiveTarget = fluid.isPrimitive(thisTarget);
+
+        if (thisSource !== undefined) {
+            if (!newPolicy.func && thisSource !== null &&
+                    !(thisSource.buffer instanceof ArrayBuffer) &&
+                    typeof (thisSource) === "object" &&
+                    !fluid.isDOMish(thisSource) && thisSource !== fluid.VALUE &&
+                    !newPolicy.preserve && !newPolicy.nomerge) {
+                if (primitiveTarget) {
+                    togo = thisTarget = fluid.freshContainer(thisSource);
+                }
+                // recursion is now external? We can't do it from here since sources are not all known
+                // options.recurse(thisTarget, i + 1, segs, sources, newPolicyHolder, options);
+            } else {
+                sources[j] = undefined;
+                if (newPolicy.func) {
+                    togo = newPolicy.func.call(null, thisTarget, thisSource, segs[i - 1], segs, i); // NB - change in this mostly unused argument
+                } else {
+                    togo = fluid.isValue(thisTarget) && newPolicy.preserve ? fluid.model.mergeModel(thisTarget, thisSource) : thisSource;
+                }
+            }
+        }
+        return togo;
+    };
+    
     /**
      * Monkey patches fluid.isPrimitive until an general Infusion solution can be put in place for
      * defining custom primitive detection logic. Currently, ArrayBufferViews are detected as objects.
@@ -1164,7 +1202,7 @@ var fluid = fluid || require("infusion"),
     fluid.isPrimitive = function (value) {
         var valueType = typeof (value);
         return !value || valueType === "string" || valueType === "boolean" || valueType === "number" || 
-            valueType === "function" || value instanceof Float32Array;
+            valueType === "function" || value.buffer instanceof ArrayBuffer;
     };
     
 }());
