@@ -699,12 +699,13 @@ var fluid = fluid || require("infusion"),
     flock.ugen.latch = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
-        that.genAr = function (numSamps) {
+        that.arGen = function (numSamps) {
             var m = that.model,
                 inputs = that.inputs,
                 source = inputs.source.output,
                 trig = inputs.trig,
-                sourceInc = m.strides.freq,
+                sourceInc = m.strides.source,
+                out = that.output,
                 i, j,
                 currTrig;
 
@@ -713,13 +714,13 @@ var fluid = fluid || require("infusion"),
             }
             
             for (i = 0, j = 0; i < numSamps; i++, j += sourceInc) {
-                currTrig = trig[i];
-                that.output[i] = (currTrig > 0.0 && m.prevTrig <= 0.0) ? m.holdVal = source[j] : m.holdVal;
+                currTrig = trig.output[i];
+                out[i] = (currTrig > 0.0 && m.prevTrig <= 0.0) ? m.holdVal = source[j] : m.holdVal;
                 m.prevTrig = currTrig;
             }
         };
         
-        that.genKr = function (numSamps) {
+        that.krGen = function (numSamps) {
             var m = that.model,
                 currTrig = that.inputs.trig.output[0],
                 i;
@@ -736,7 +737,7 @@ var fluid = fluid || require("infusion"),
         
         that.onInputChanged = function () {
             that.calculateStrides();
-            that.gen = that.inputs.trig.rate === flock.rates.AUDIO ? that.genAr : that.genKr;
+            that.gen = that.inputs.trig.rate === flock.rates.AUDIO ? that.arGen : that.krGen;
             flock.onMulAddInputChanged(that);
         };
         
@@ -751,7 +752,10 @@ var fluid = fluid || require("infusion"),
             trig: 0.0
         },
         ugenOptions: {
-            strideInputs: ["source"]
+            strideInputs: ["source"],
+            model: {
+                prevTrig: 0.0
+            }
         }
     });
     
