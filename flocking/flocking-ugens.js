@@ -695,6 +695,66 @@ var fluid = fluid || require("infusion"),
         }
     });
     
+    
+    flock.ugen.latch = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.genAr = function (numSamps) {
+            var m = that.model,
+                inputs = that.inputs,
+                source = inputs.source.output,
+                trig = inputs.trig,
+                sourceInc = m.strides.freq,
+                i, j,
+                currTrig;
+
+            if (m.holdVal === undefined) {
+                m.holdVal = source[0];
+            }
+            
+            for (i = 0, j = 0; i < numSamps; i++, j += sourceInc) {
+                currTrig = trig[i];
+                that.output[i] = (currTrig > 0.0 && m.prevTrig <= 0.0) ? m.holdVal = source[j] : m.holdVal;
+                m.prevTrig = currTrig;
+            }
+        };
+        
+        that.genKr = function (numSamps) {
+            var m = that.model,
+                currTrig = that.inputs.trig.output[0],
+                i;
+
+            if (m.holdVal === undefined || currTrig > 0.0 && m.prevTrig <= 0.0) {
+                m.holdVal = that.inputs.source.output[0];
+            }
+            m.prevTrig = currTrig;
+            
+            for (i = 0; i < numSamps; i++) {
+                that.output[i] = m.holdVal;
+            }
+        };
+        
+        that.onInputChanged = function () {
+            that.calculateStrides();
+            that.gen = that.inputs.trig.rate === flock.rates.AUDIO ? that.genAr : that.genKr;
+            flock.onMulAddInputChanged(that);
+        };
+        
+        that.onInputChanged();
+        return that;
+    };
+    
+    fluid.defaults("flock.ugen.latch", {
+        rate: "audio",
+        inputs: {
+            source: null,
+            trig: 0.0
+        },
+        ugenOptions: {
+            strideInputs: ["source"]
+        }
+    });
+    
     // TODO: Resolve with other buffer-related code and move up to core.
     // TODO: Use a real event system.
     flock.buffer = {

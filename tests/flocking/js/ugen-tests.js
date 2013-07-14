@@ -1813,4 +1813,74 @@ flock.test = flock.test || {};
         ]);
     });
     
+    module("flock.ugen.latch");
+    
+    var testLatch = function (latchSynth, trig, expectedOutput, msg) {
+        if (trig !== undefined) {
+            latchSynth.set("latcher.trig", trig);
+        }
+        
+        latchSynth.gen();
+        deepEqual(latchSynth.get("latcher").output, expectedOutput, msg);
+    };
+    
+    var runLatchTests = function (testSpec) {
+        var latchSynth = flock.synth({
+            synthDef: testSpec.synthDef
+        });
+        
+        fluid.each(testSpec.tests, function (test) {
+            testLatch(latchSynth, test.trig, test.expected, test.msg);
+        });
+    };
+    
+    
+    test("Trigger running at control rate", function () {
+        var oneBuffer = flock.generate(64, 1);
+        var twoBuffer = flock.generate(64, 2);
+        
+        var testSpec = {
+            synthDef: {
+                id: "latcher",
+                ugen: "flock.ugen.latch",
+                source: {
+                    ugen: "flock.ugen.sequence",
+                    loop: 1.0,
+                    rate: "control",
+                    buffer: [1, 2, 3, 4],
+                    freq: sampleRate / 64
+                },
+                trig: 0.0
+            },
+            
+            tests: [
+                {
+                    expected: oneBuffer, // Source is 1, latch is 1.
+                    msg: "When the trigger is closed, latch should output the first value."
+                },
+                {
+                    trig: 1.0,
+                    expected: twoBuffer, // Source is 2, latch is 2.
+                    msg: "When the trigger opens at control rate, the latch should output the next value."
+                },
+                {
+                    expected: twoBuffer, // Source is 3, latch is 2.
+                    msg: "With the trigger still open, the latch's output should not change until the trigger crosses zero into the positive again."
+                },
+                {
+                    trig: 0.0, // Source is 4, latch is 2.
+                    expected: twoBuffer,
+                    msg: "With the trigger closed again, the latch's output still shouldn't have changed."
+                },
+                {
+                    trig: 0.01, // Source is 1, latch is 1.
+                    expected: oneBuffer,
+                    msg: "Once the trigger has crossed zero again, the latch's output should sample and hold the source's output again."
+                }
+            ]
+        };
+        
+        runLatchTests(testSpec);
+    });
+
 }());
