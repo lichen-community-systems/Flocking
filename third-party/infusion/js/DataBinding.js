@@ -105,15 +105,6 @@ var fluid_1_5 = fluid_1_5 || {};
         }
     };
     
-        
-    fluid.model.defaultGetConfig = {
-        strategies: [fluid.model.funcResolverStrategy, fluid.model.defaultFetchStrategy]
-    };
-
-    fluid.model.defaultSetConfig = {
-        strategies: [fluid.model.funcResolverStrategy, fluid.model.defaultFetchStrategy, fluid.model.defaultCreatorStrategy]
-    };
-    
     // unsupported, NON-API function
     fluid.model.traverseWithStrategy = function (root, segs, initPos, config, uncess) {
         var strategies = config.strategies;
@@ -413,23 +404,48 @@ var fluid_1_5 = fluid_1_5 || {};
             }
         }
     };
-          
+        
+    fluid.model.defaultGetConfig = {
+        strategies: [fluid.model.funcResolverStrategy, fluid.model.defaultFetchStrategy]
+    };
+
+    fluid.model.defaultSetConfig = {
+        strategies: [fluid.model.funcResolverStrategy, fluid.model.defaultFetchStrategy, fluid.model.defaultCreatorStrategy]
+    };
+
+    fluid.model.escapedGetConfig = {
+        parser: {
+            parse: fluid.pathUtil.parseEL,
+            compose: fluid.pathUtil.composePath
+        },
+        strategies: [fluid.model.defaultFetchStrategy]
+    };
+
+    fluid.model.escapedSetConfig = {
+        parser: {
+            parse: fluid.pathUtil.parseEL,
+            compose: fluid.pathUtil.composePath
+        },
+        strategies: [fluid.model.defaultFetchStrategy, fluid.model.defaultCreatorStrategy]
+    };
+
     /** Add a listener to a ChangeApplier event that only acts in the case the event
      * has not come from the specified source (typically ourself)
      * @param modelEvent An model event held by a changeApplier (typically applier.modelChanged)
      * @param path The path specification to listen to
      * @param source The source value to exclude (direct equality used)
      * @param func The listener to be notified of a change
-     * @param [eventName] - optional - the event name to be listened to - defaults to "modelChanged" 
+     * @param [eventName] - optional - the event name to be listened to - defaults to "modelChanged"
+     * @param [namespace] - optional - the event namespace
      */
-    fluid.addSourceGuardedListener = function(applier, path, source, func, eventName) {
+    fluid.addSourceGuardedListener = function(applier, path, source, func, eventName, namespace) {
         eventName = eventName || "modelChanged";
         applier[eventName].addListener(path, 
             function() {
                 if (!applier.hasChangeSource(source)) {
                     func.apply(null, arguments);
                 }
-            });
+            }, namespace);
     };
 
     /** Convenience method to fire a change event to a specified applier, including

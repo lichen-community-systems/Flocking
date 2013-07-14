@@ -353,6 +353,10 @@ var fluid = fluid || fluid_1_5;
         return obj && typeof (obj.nodeType) === "number";
     };
     
+    fluid.isDOMish = function (obj) {
+        return fluid.isDOMNode(obj) || obj.jquery;
+    };
+    
     /** Return an empty container as the same type as the argument (either an
      * array or hash */
     fluid.freshContainer = function (tocopy) {
@@ -984,6 +988,11 @@ var fluid = fluid || fluid_1_5;
         return listener;
     };
     
+    /** Generate a name for a component for debugging purposes */
+    fluid.nameComponent = function (that) {
+        return that ? "component with typename " + that.typeName + " and id " + that.id : "[unknown component]";
+    };
+    
     fluid.event.nameEvent = function (that, eventName) {
         return eventName + " of " + fluid.nameComponent(that);
     };
@@ -1207,6 +1216,10 @@ var fluid = fluid || fluid_1_5;
         });
     };
     
+    fluid.arrayConcatPolicy = function (target, source) {
+        return fluid.makeArray(target).concat(fluid.makeArray(source));
+    };
+    
     fluid.uniqueArrayConcatPolicy = function (target, source) {
         target = (target || []).concat(source);
         fluid.unique(target.sort());
@@ -1215,6 +1228,9 @@ var fluid = fluid || fluid_1_5;
     
     /*** DEFAULTS AND OPTIONS MERGING SYSTEM ***/
     
+    var gradeTick = 1; // tick counter for managing grade cache invalidation    
+    var gradeTickStore = {};
+    
     var defaultsStore = {};
         
     var resolveGradesImpl = function (gs, gradeNames) {
@@ -1222,12 +1238,14 @@ var fluid = fluid || fluid_1_5;
         fluid.each(gradeNames, function (gradeName) {
             if (!gs.gradeHash[gradeName]) {
                 var options = fluid.rawDefaults(gradeName) || {};
+                var thisTick = gradeTickStore[gradeName] || (gradeTick - 1); // a nonexistent grade is recorded as previous to current
+                gs.lastTick = Math.max(gs.lastTick, thisTick);
                 gs.gradeHash[gradeName] = true;
                 gs.gradeChain.push(gradeName);
                 gs.optionsChain.push(options);
                 var oGradeNames = fluid.makeArray(options.gradeNames);
                 fluid.each(oGradeNames, function (gradeName) {
-                    if (gradeName.charAt(0) !== "{" ) {
+                    if (gradeName !== "autoInit" && gradeName.charAt(0) !== "{") {
                         resolveGradesImpl(gs, gradeName);
                     }
                 });
@@ -1237,14 +1255,17 @@ var fluid = fluid || fluid_1_5;
     };
     
     // unsupported, NON-API function
-    fluid.resolveGradeStructure = function (defaultName, gradeNames) {
+    fluid.resolveGradeStructure = function (defaultName, defaultGrades, gradeNames) {
         var gradeStruct = {
+            lastTick: 0,
             gradeChain: [defaultName],
             gradeHash: {},
             optionsChain: [] // this has already been fetched in resolveGrade
         };
         gradeStruct.gradeHash[defaultName] = true;
-        return resolveGradesImpl(gradeStruct, gradeNames);
+        // TODO: this algorithm will fail if extra grades are mutually redundant and supplied out of dependency order
+        // expectation is that stronger grades appear to the left in defaults - dynamic grades are stronger still
+        return resolveGradesImpl(gradeStruct, (gradeNames || []).concat(fluid.makeArray(defaultGrades)));
     };
         
     var mergedDefaultsCache = {};
@@ -1254,13 +1275,15 @@ var fluid = fluid || fluid_1_5;
         return defaultName + "|" + fluid.makeArray(gradeNames).sort().join("|");
     };
     
+    fluid.hasGrade = function (options, gradeName) {
+        return !options || !options.gradeNames ? false : fluid.contains(options.gradeNames, gradeName);
+    };
+    
     // unsupported, NON-API function
     fluid.resolveGrade = function (defaults, defaultName, gradeNames) {
         var mergeArgs = [defaults];
-        if (gradeNames) {
-            var gradeStruct = fluid.resolveGradeStructure(defaultName, gradeNames);
-            mergeArgs = gradeStruct.optionsChain.reverse().concat(mergeArgs).concat({gradeNames: gradeStruct.gradeChain});
-        }
+        var gradeStruct = fluid.resolveGradeStructure(defaultName, defaults && defaults.gradeNames, gradeNames);
+        mergeArgs = gradeStruct.optionsChain.reverse().concat(mergeArgs).concat({gradeNames: gradeStruct.gradeChain});
         var mergePolicy = {};
         for (var i = 0; i < mergeArgs.length; ++ i) {
             if (mergeArgs[i] && mergeArgs[i].mergePolicy) {
@@ -1269,27 +1292,35 @@ var fluid = fluid || fluid_1_5;
         }
         mergeArgs = [mergePolicy, {}].concat(mergeArgs);
         var mergedDefaults = fluid.merge.apply(null, mergeArgs);
-        return mergedDefaults;
+        if (!fluid.hasGrade(defaults, "autoInit")) {
+            fluid.remove_if(mergedDefaults.gradeNames, function (gradeName) { return gradeName === "autoInit";});
+        }
+        return {defaults: mergedDefaults, lastTick: gradeStruct && gradeStruct.lastTick};
     };
 
     // unsupported, NON-API function    
-    fluid.getGradedDefaults = function (defaults, defaultName, gradeNames) {
+    fluid.getGradedDefaults = function (defaultName, gradeNames) {
         var key = fluid.gradeNamesToKey(gradeNames, defaultName);
         var mergedDefaults = mergedDefaultsCache[key];
+        if (mergedDefaults) {
+            var lastTick = 0; // check if cache should be invalidated through real latest tick being later than the one stored
+            var searchGrades = mergedDefaults.defaults.gradeNames || [];
+            for (var i = 0; i < searchGrades.length; ++ i) {
+                lastTick = Math.max(lastTick, gradeTickStore[searchGrades[i]] || 0);  
+            }
+            if (lastTick > mergedDefaults.lastTick) {
+                fluid.log("Clearing cache for component " + defaultName + " with gradeNames ", searchGrades);
+                mergedDefaults = null;
+            }
+        }
         if (!mergedDefaults) {
+            var defaults = fluid.rawDefaults(defaultName);
+            if (!defaults) {
+                return defaults;
+            }
             mergedDefaults = mergedDefaultsCache[key] = fluid.resolveGrade(defaults, defaultName, gradeNames);
         }
-        return mergedDefaults;
-    };
-
-    // unsupported, NON-API function
-    fluid.resolveGradedOptions = function (componentName) {
-        var defaults = fluid.rawDefaults(componentName);
-        if (!defaults) {
-            return defaults;
-        } else {
-            return fluid.getGradedDefaults(defaults, componentName, defaults.gradeNames);
-        }
+        return mergedDefaults.defaults;
     };
     
     // unsupported, NON-API function
@@ -1298,15 +1329,42 @@ var fluid = fluid || fluid_1_5;
             return defaultsStore[componentName];
         } else {
             defaultsStore[componentName] = options;
+            gradeTickStore[componentName] = gradeTick++;
         }
     };
     
-        
-    fluid.hasGrade = function (options, gradeName) {
-        return !options || !options.gradeNames ? false : fluid.contains(options.gradeNames, gradeName);
+    fluid.doIndexDefaults = function (defaultName, defaults, index, indexSpec) {
+        var requiredGrades = fluid.makeArray(indexSpec.gradeNames);
+        for (var i = 0; i < requiredGrades.length; ++ i) {
+            if (!fluid.hasGrade(defaults, requiredGrades[i])) return;
+        }
+        var indexFunc = typeof(indexSpec.indexFunc) === "function" ? indexSpec.indexFunc : fluid.getGlobalValue(indexSpec.indexFunc); 
+        var keys = indexFunc(defaults) || [];
+        for (var j = 0; j < keys.length; ++ j) {
+            (index[keys[j]] = index[keys[j]] || []).push(defaultName);
+        }
     };
     
-     /**
+    /** Evaluates an index specification over all the defaults records registered into the system.
+     * @param indexName {String} The name of this index record (currently ignored)
+     * @param indexSpec {Object} Specification of the index to be performed - fields:
+     *     gradeNames: {String/Array of String} List of grades that must be matched by this indexer
+     *     indexFunc:  {String/Function} An index function which accepts a defaults record and returns a list of keys
+     * @return A structure indexing keys to lists of matched gradenames
+     */
+    // The expectation is that this function is extremely rarely used with respect to registration of defaults
+    // in the system, so currently we do not make any attempts to cache the results. The field "indexName" is
+    // supplied in case a future implementation chooses to implement caching
+    fluid.indexDefaults = function (indexName, indexSpec) {
+        var index = {};
+        for (var defaultName in defaultsStore) {
+            var defaults = fluid.getGradedDefaults(defaultName);
+            fluid.doIndexDefaults(defaultName, defaults, index, indexSpec);    
+        }
+        return index;
+    };
+    
+    /**
      * Retrieves and stores a component's default settings centrally.
      * @param {String} componentName the name of the component
      * @param {Object} (optional) an container of key/value pairs to set
@@ -1314,7 +1372,7 @@ var fluid = fluid || fluid_1_5;
      
     fluid.defaults = function (componentName, options) {
         if (options === undefined) {
-            return fluid.resolveGradedOptions(componentName);
+            return fluid.getGradedDefaults(componentName);
         }
         else {
             if (options && options.options) {
@@ -1323,7 +1381,7 @@ var fluid = fluid || fluid_1_5;
             }
             fluid.rawDefaults(componentName, options);
             if (fluid.hasGrade(options, "autoInit")) {
-                fluid.makeComponent(componentName, fluid.resolveGradedOptions(componentName));
+                fluid.makeComponent(componentName, fluid.getGradedDefaults(componentName));
             }
         }
     };
@@ -1349,68 +1407,6 @@ var fluid = fluid || fluid_1_5;
             };
             fluid.defaults(key, options);
         });
-    };
-    
-    // The base system grade definitions
-    
-    fluid.defaults("fluid.function", {});
-    
-    fluid.lifecycleFunctions = {
-        preInitFunction: true,
-        postInitFunction: true,
-        finalInitFunction: true
-    };
-    
-    fluid.rootMergePolicy = $.extend({
-            gradeNames: fluid.uniqueArrayConcatPolicy,
-            transformOptions: "replace"
-        },
-        fluid.transform(fluid.lifecycleFunctions, function () {
-            return fluid.mergeListenerPolicy;
-    }));
-    
-    fluid.defaults("fluid.littleComponent", {
-        initFunction: "fluid.initLittleComponent",
-        mergePolicy: fluid.rootMergePolicy,
-        argumentMap: {
-            options: 0
-        }
-    });
-    
-    fluid.defaults("fluid.eventedComponent", {
-        gradeNames: ["fluid.littleComponent"],
-        events: { // Four standard lifecycle points common to all components
-            onCreate:  null,
-            onAttach:  null, // events other than onCreate are only fired for IoC-configured components
-            onClear:   null,
-            onDestroy: null
-        },
-        mergePolicy: {
-            listeners: fluid.mergeListenersPolicy
-        }
-    });
-    
-    
-    fluid.preInitModelComponent = function (that) {
-        that.model = that.options.model || {};
-        that.applier = that.options.applier || (fluid.makeChangeApplier ? fluid.makeChangeApplier(that.model, that.options.changeApplierOptions) : null);
-    };
-    
-    fluid.defaults("fluid.modelComponent", {
-        gradeNames: ["fluid.littleComponent"],
-        preInitFunction: {
-            namespace: "preInitModelComponent",
-            listener: "fluid.preInitModelComponent"
-        },
-        mergePolicy: {
-            model: "preserve",
-            applier: "nomerge"
-        }
-    });
-
-    /** Generate a name for a component for debugging purposes */
-    fluid.nameComponent = function (that) {
-        return that ? "component with typename " + that.typeName + " and id " + that.id : "[unknown component]";
     };
 
     // Cheapskate implementation which avoids dependency on DataBinding.js
@@ -1478,7 +1474,7 @@ var fluid = fluid || fluid_1_5;
 
         if (thisSource !== undefined) {
             if (!newPolicy.func && thisSource !== null && typeof (thisSource) === "object" &&
-                    !fluid.isDOMNode(thisSource) && !thisSource.jquery && thisSource !== fluid.VALUE &&
+                    !fluid.isDOMish(thisSource) && thisSource !== fluid.VALUE &&
                     !newPolicy.preserve && !newPolicy.nomerge) {
                 if (primitiveTarget) {
                     togo = thisTarget = fluid.freshContainer(thisSource);
@@ -1732,6 +1728,7 @@ var fluid = fluid || fluid_1_5;
     // unsupported, NON-API function
     fluid.deliverOptionsStrategy = fluid.identity;
     fluid.computeComponentAccessor = fluid.identity;
+    fluid.computeDynamicComponents = fluid.identity;
 
     // The (extensible) types of merge record the system supports, with the weakest records first    
     fluid.mergeRecordTypes = {
@@ -1757,15 +1754,11 @@ var fluid = fluid || fluid_1_5;
      */
     // unsupported, NON-API function
     fluid.mergeComponentOptions = function (that, componentName, userOptions, localOptions) {
-        var defaults = fluid.defaults(componentName) || {};
+        var rawDefaults = fluid.rawDefaults(componentName);
+        var defaults = fluid.getGradedDefaults(componentName, rawDefaults && rawDefaults.gradeNames ? null : localOptions.gradeNames);
         var sharedMergePolicy = {};
 
         var mergeBlocks = [];
-        
-        var defaultGrades = defaults.gradeNames;
-        if (!defaultGrades) {
-            mergeBlocks.push(fluid.simpleGingerBlock(fluid.copy(fluid.getGradedDefaults(defaults, componentName, localOptions.gradeNames), "localOptions")));
-        }
 
         if (fluid.expandComponentOptions) {
             mergeBlocks = mergeBlocks.concat(fluid.expandComponentOptions(sharedMergePolicy, defaults, userOptions, that));
@@ -1835,7 +1828,66 @@ var fluid = fluid || fluid_1_5;
     };
     
     // The Fluid Component System proper
-            
+        
+    // The base system grade definitions
+    
+    fluid.defaults("fluid.function", {});
+    
+    fluid.lifecycleFunctions = {
+        preInitFunction: true,
+        postInitFunction: true,
+        finalInitFunction: true
+    };
+    
+    fluid.rootMergePolicy = $.extend({
+            gradeNames: fluid.uniqueArrayConcatPolicy,
+            distributeOptions: fluid.arrayConcatPolicy,
+            transformOptions: "replace"
+        },
+        fluid.transform(fluid.lifecycleFunctions, function () {
+            return fluid.mergeListenerPolicy;
+    }));
+    
+    fluid.defaults("fluid.littleComponent", {
+        gradeNames: ["autoInit"],
+        initFunction: "fluid.initLittleComponent",
+        mergePolicy: fluid.rootMergePolicy,
+        argumentMap: {
+            options: 0
+        }
+    });
+    
+    fluid.defaults("fluid.eventedComponent", {
+        gradeNames: ["fluid.littleComponent", "autoInit"],
+        events: { // Four standard lifecycle points common to all components
+            onCreate:  null,
+            onAttach:  null, // events other than onCreate are only fired for IoC-configured components
+            onClear:   null,
+            onDestroy: null
+        },
+        mergePolicy: {
+            listeners: fluid.mergeListenersPolicy
+        }
+    });
+    
+    
+    fluid.preInitModelComponent = function (that) {
+        that.model = that.options.model || {};
+        that.applier = that.options.applier || (fluid.makeChangeApplier ? fluid.makeChangeApplier(that.model, that.options.changeApplierOptions) : null);
+    };
+    
+    fluid.defaults("fluid.modelComponent", {
+        gradeNames: ["fluid.littleComponent", "autoInit"],
+        preInitFunction: {
+            namespace: "preInitModelComponent",
+            listener: "fluid.preInitModelComponent"
+        },
+        mergePolicy: {
+            model: "preserve",
+            applier: "nomerge"
+        }
+    });
+    
     /** A special "marker object" which is recognised as one of the arguments to
      * fluid.initSubcomponents. This object is recognised by reference equality -
      * where it is found, it is replaced in the actual argument position supplied
@@ -1913,6 +1965,7 @@ var fluid = fluid || fluid_1_5;
         }
         // deliver to a non-IoC side early receiver of the component (currently only initView)
         (receiver || fluid.identity)(that, options, mergeOptions.strategy);
+        fluid.computeDynamicComponents(that, mergeOptions);
         
         // TODO: ****THIS**** is the point we must deliver and suspend!! Construct the "component skeleton" first, and then continue
         // for as long as we can continue to find components.

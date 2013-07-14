@@ -33,6 +33,8 @@ flock.test = flock.test || {};
     ];
     
     var audioSettings = fluid.defaults("flock.enviro").audioSettings;
+    var sampleRate = flock.enviro.shared.audioSettings.rates.audio;
+    
     var bufferValueUGen = flock.ugen.value({value: 0}, new Float32Array(1), {
         audioSettings: audioSettings
     });
@@ -309,17 +311,17 @@ flock.test = flock.test || {};
                 freq: 4
             }
         });
-        lfNoise.output = new Float32Array(88200);
+        lfNoise.output = new Float32Array(sampleRate * 2);
         
         // One second worth of samples. The resulting buffer should contain 4 unique values.
-        generateAndCheckNoise(lfNoise, 44100, 4);
+        generateAndCheckNoise(lfNoise, sampleRate, 4);
         
         // Two half second chunks. 2 unique values each.
-        generateAndCheckNoise(lfNoise, 22050, 2);
-        generateAndCheckNoise(lfNoise, 22050, 2);
+        generateAndCheckNoise(lfNoise, sampleRate / 2, 2);
+        generateAndCheckNoise(lfNoise, sampleRate / 2, 2);
         
         // Two seconds worth of samples. The resulting buffer should contain double the number of unique values.
-        generateAndCheckNoise(lfNoise, 88200, 8);
+        generateAndCheckNoise(lfNoise, sampleRate * 2, 8);
     });
     
     test("flock.ugen.lfNoise() linear interpolation", function () {
@@ -332,9 +334,9 @@ flock.test = flock.test || {};
                 interpolation: "linear"
             }
         });        
-        lfNoise.output = new Float32Array(44100);
+        lfNoise.output = new Float32Array(sampleRate);
 
-        lfNoise.gen(44100);
+        lfNoise.gen(sampleRate);
         flock.test.unbrokenInRangeSignal(lfNoise.output, -1.0, 1.0);
         flock.test.continuousArray(lfNoise.output, 0.0001, "The output should be smooth and continuous when interpolated.")
     });
@@ -385,30 +387,35 @@ flock.test = flock.test || {};
         var nonZeroSum = 0,
             numRuns = 1500,
             buffer = dust.output,
+            fuzzFactor = 0.005, // The actual density should be within 0.5% of the expected value.
+            samplePadding = density * fuzzFactor,
+            highBound = density + samplePadding,
+            lowBound = density - samplePadding,
             i,
             avgNumNonZeroSamples;
     
         for (i = 0; i < numRuns; i++) {
-            dust.gen(44100);
+            dust.gen(sampleRate);
             nonZeroSum += countNonZeroSamples(buffer);
         }
         avgNumNonZeroSamples = nonZeroSum / numRuns;
-        equal(Math.round(avgNumNonZeroSamples), density, 
+        var roundedAvg = Math.round(avgNumNonZeroSamples);
+        ok(roundedAvg >= lowBound && roundedAvg <= highBound,
             "There should be roughly " + density + " non-zero samples in a one-second buffer.");
     };
     
     test("flock.ugen.dust", function () {
         var density = 1.0;
         var dust = flock.ugen.dust({
-            density: flock.ugen.value({value: density}, new Float32Array(44100))
-        }, new Float32Array(44100));
-        dust.gen(44100);
+            density: flock.ugen.value({value: density}, new Float32Array(sampleRate))
+        }, new Float32Array(sampleRate));
+        dust.gen(sampleRate);
         var buffer = dust.output;
         
         // Check basic details about the buffer: it should be the correct length,
         // and never contain values above 1.0.
         ok(buffer, "A buffer should be returned from dust.audio()");
-        equal(buffer.length, 44100, "And it should be the specified length.");
+        equal(buffer.length, sampleRate, "And it should be the specified length.");
         checkSampleBoundary(buffer, 0.0, 1.0);
     
         // Check that the buffer contains an avg. density of 1.0 non-zero samples per second.
@@ -416,7 +423,7 @@ flock.test = flock.test || {};
     
         // And now try a density of 200.
         density = 200;
-        dust.inputs.density = flock.ugen.value({value: density}, new Float32Array(44100));
+        dust.inputs.density = flock.ugen.value({value: density}, new Float32Array(sampleRate));
         checkDensity(dust, density); 
     });
     
@@ -680,7 +687,7 @@ flock.test = flock.test || {};
     
     var testOsc = function (ugenType, otherTests) {
         test(ugenType, function () {
-            var ug = makeAndPrimeOsc(ugenType, 44100);
+            var ug = makeAndPrimeOsc(ugenType, sampleRate);
             flock.test.unbrokenInRangeSignal(ug.output, -0.75, 0.75);
             if (otherTests) {
                 otherTests(ug);
@@ -728,7 +735,7 @@ flock.test = flock.test || {};
             phase: phase
         };
         var imp = flock.parse.ugenForDef(impulseDef),
-            numSamps = 44100;
+            numSamps = sampleRate;
         
         imp.output = new Float32Array(numSamps);
         imp.gen(numSamps);
@@ -762,19 +769,19 @@ flock.test = flock.test || {};
         testImpulses(actual, [0], "With a frequency of 1 Hz and phase of 1.0");
         
         actual = genOneSecondImpulse(1.0, 0.5);
-        testImpulses(actual, [22050], "With a frequency of 1 Hz and phase of 0.5");
+        testImpulses(actual, [sampleRate / 2], "With a frequency of 1 Hz and phase of 0.5");
     
         actual = genOneSecondImpulse(1.0, 0.01);
-        testImpulses(actual, [44100 - (44100 / 100) + 1], "With a frequency of 1 Hz and phase of 0.01");
+        testImpulses(actual, [sampleRate - (sampleRate / 100) + 1], "With a frequency of 1 Hz and phase of 0.01");
         
         actual = genOneSecondImpulse(2.0, 0.0);
-        testImpulses(actual, [22050], "With a frequency of 2 Hz and phase of 0");
+        testImpulses(actual, [sampleRate / 2], "With a frequency of 2 Hz and phase of 0");
     
         actual = genOneSecondImpulse(2.0, 0.5);
-        testImpulses(actual, [11025, 33075], "With a frequency of 2 Hz and phase of 0.5");
+        testImpulses(actual, [sampleRate / 4, sampleRate - sampleRate / 4], "With a frequency of 2 Hz and phase of 0.5");
     
         actual = genOneSecondImpulse(2.0, 1.0);
-        testImpulses(actual, [0, 22050], "With a frequency of 2 Hz and phase of 1");
+        testImpulses(actual, [0, sampleRate / 2], "With a frequency of 2 Hz and phase of 1");
     });
     
     
@@ -846,7 +853,7 @@ flock.test = flock.test || {};
         ugen: "flock.ugen.line",
         rate: flock.rates.AUDIO,
         inputs: {
-            duration: 0.00146, // 64 samples.
+            duration: 64 / sampleRate, // 64 samples.
             start: 0,
             end: 64
         }
@@ -894,9 +901,9 @@ flock.test = flock.test || {};
         rate: flock.rates.AUDIO,
         inputs: {
             start: 0.0,
-            attack: 1 / (44100 / 63), // 64 Samples, in seconds
+            attack: 1 / (sampleRate / 63), // 64 Samples, in seconds
             sustain: 1.0,
-            release: 1 / (44100 / 63) // 128 Samples
+            release: 1 / (sampleRate / 63) // 128 Samples
         }
     };
     
@@ -1049,7 +1056,7 @@ flock.test = flock.test || {};
     test("flock.ugen.amplitude() with changing value.", function () {
         var tracker = flock.parse.ugenForDef(ampDescendingLine);
     
-        var controlPeriods = Math.round(44100 / 64),
+        var controlPeriods = Math.round(sampleRate / 64),
             i;
         
         for (i = 0; i < controlPeriods; i++) {
@@ -1181,9 +1188,8 @@ flock.test = flock.test || {};
         var synth = flock.synth({
             synthDef: synthDef
         });
+        synth.gen();
         var math = synth.ugens.named.math;
-        
-        math.gen();
         deepEqual(math.output, expected, msg);
     };
     
@@ -1234,11 +1240,10 @@ flock.test = flock.test || {};
             ugen: "flock.ugen.math",
             inputs: {
                 source: {
-                    ugen: "flock.mock.ugen",
+                    ugen: "flock.ugen.sequence",
                     rate: "audio",
-                    options: {
-                        buffer: incBuffer
-                    }
+                    buffer: incBuffer,
+                    freq: sampleRate
                 },
                 add: 3
             }
@@ -1250,11 +1255,10 @@ flock.test = flock.test || {};
         testMath(krArUGenDef, flock.generate(64, 4), "Control rate source, value add");
         
         krArUGenDef.inputs.add = {
-            ugen: "flock.mock.ugen",
+            ugen: "flock.ugen.sequence",
             rate: "control",
-            options: {
-                buffer: incBuffer
-            }
+            buffer: incBuffer,
+            freq: sampleRate
         };
         testMath(krArUGenDef, flock.generate(64, 2), "Control rate source, control rate add.");
         
@@ -1341,7 +1345,7 @@ flock.test = flock.test || {};
                     a: new Float32Array(2),
                     b: new Float32Array(3)
                 },
-                sampleRate: 44100
+                sampleRate: sampleRate
             };
             
             fn(model, inputs.freq, inputs.q);
@@ -1400,7 +1404,7 @@ flock.test = flock.test || {};
                 ugen: "flock.ugen.delay",
                 inputs: {
                     source: incrementingMock,
-                    time: 64 / 44100
+                    time: 64 / sampleRate
                 }
             };
         
@@ -1548,7 +1552,7 @@ flock.test = flock.test || {};
                 ugen: "flock.ugen.phasor",
                 start: 0,
                 end: 1.0,
-                step: 1.0 / 44100
+                step: 1.0 / sampleRate
             },
             tests: [
                 {
@@ -1556,7 +1560,7 @@ flock.test = flock.test || {};
                     msg: "The value at the first control period should be start value."
                 },
                 {
-                    value: flock.generate(1, 1.0 / 44100),
+                    value: flock.generate(1, 1.0 / sampleRate),
                     msg: "At the second control point, the value should be the duration of 64 samples."
                 }
             ]
@@ -1568,7 +1572,7 @@ flock.test = flock.test || {};
     module("flock.ugen.bufferDuration tests", {
         setup: function () {
             flock.enviro.shared.buffers["bufferDurationTests"] = [
-                flock.test.ascendingBuffer(110250, 0) // 2.5 second buffer
+                flock.test.ascendingBuffer(sampleRate * 2.5, 0) // 2.5 second buffer
             ];
         }
     });
@@ -1636,7 +1640,7 @@ flock.test = flock.test || {};
     var seqUGenDef = {
         ugen: "flock.ugen.sequence",
         inputs: {
-            freq: (44100 / 64) * 4,
+            freq: (sampleRate / 64) * 4,
             start: 0.0,
             loop: 0.0,
             buffer: [12, 24, 48]

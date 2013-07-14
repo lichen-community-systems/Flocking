@@ -218,7 +218,6 @@ var flock = flock || {};
         equal(count, expectedNum, msg);
     };
     
-    
     flock.test.containsSoleProperty = function (obj, prop, value, msg) {
         if (arguments.length === 2) {
             value = true;
