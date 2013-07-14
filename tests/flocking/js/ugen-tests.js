@@ -387,6 +387,10 @@ flock.test = flock.test || {};
         var nonZeroSum = 0,
             numRuns = 1500,
             buffer = dust.output,
+            fuzzFactor = 0.005, // The actual density should be within 0.5% of the expected value.
+            samplePadding = density * fuzzFactor,
+            highBound = density + samplePadding,
+            lowBound = density - samplePadding,
             i,
             avgNumNonZeroSamples;
     
@@ -395,7 +399,8 @@ flock.test = flock.test || {};
             nonZeroSum += countNonZeroSamples(buffer);
         }
         avgNumNonZeroSamples = nonZeroSum / numRuns;
-        equal(Math.round(avgNumNonZeroSamples), density, 
+        var roundedAvg = Math.round(avgNumNonZeroSamples);
+        ok(roundedAvg >= lowBound && roundedAvg <= highBound,
             "There should be roughly " + density + " non-zero samples in a one-second buffer.");
     };
     
@@ -773,7 +778,7 @@ flock.test = flock.test || {};
         testImpulses(actual, [sampleRate / 2], "With a frequency of 2 Hz and phase of 0");
     
         actual = genOneSecondImpulse(2.0, 0.5);
-        testImpulses(actual, [sampleRate / 4, 33075], "With a frequency of 2 Hz and phase of 0.5");
+        testImpulses(actual, [sampleRate / 4, sampleRate - sampleRate / 4], "With a frequency of 2 Hz and phase of 0.5");
     
         actual = genOneSecondImpulse(2.0, 1.0);
         testImpulses(actual, [0, sampleRate / 2], "With a frequency of 2 Hz and phase of 1");
