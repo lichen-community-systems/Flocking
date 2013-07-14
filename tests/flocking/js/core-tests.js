@@ -960,9 +960,17 @@ var fluid = fluid || require("infusion"),
         equal(synth.out.inputs.sources.inputs.gerbil, newUGen, "The new ugen's output should be wired back up.");
     });
     
+    var checkTypedArrayProperty = function (componentType, propertyPath, componentOptions) {
+        var component = fluid.invokeGlobalFunction(componentType, [componentOptions]);
+        var property = fluid.get(component, propertyPath);
+        var isTyped = property instanceof Float32Array;
+        ok(isTyped, "A typed array stored as a component default should not be corrupted.");
+    };
+    
     test("Typed Array Merge Preservation", function () {
         var ta = new Float32Array([1.1, 2.2, 3.3]);
-        ok(ta instanceof Float32Array, "Sanity check: a Float32Array should be an instance of a Float32Array");
+        ok(ta instanceof Float32Array, "Sanity check: a Float32Array should be an instance of a Float32Array.");
+        ok(fluid.isPrimitive(ta), "fluid.isPrimitive() should recognize a typed array as a primitive.")
         
         fluid.defaults("flock.test.typedArrayComponent", {
             gradeNames: ["fluid.littleComponent", "autoInit"],
@@ -971,9 +979,20 @@ var fluid = fluid || require("infusion"),
             }
         });
         
-        var comp = flock.test.typedArrayComponent();
-        ok(comp.options.synthDef.cat instanceof Float32Array, 
-            "A typed array stored as a component default should not be corrupted.");
+        // Check the property after it has been stored in fluid.defaults().
+        var defaultProperty = fluid.defaults("flock.test.typedArrayComponent").synthDef.cat;
+        ok(defaultProperty instanceof Float32Array);
+        
+        // Instantiate the component with no options and check the typed array property.
+        checkTypedArrayProperty("flock.test.typedArrayComponent", "options.synthDef.cat");
+        
+        // Specify, in options, a typed array and check that it is not merged.
+        checkTypedArrayProperty("flock.test.typedArrayComponent", "options.synthDef.cat", {
+            synthDef: {
+                cat: new Float32Array([4.4, 5.5, 6.6])
+            }
+        });
+        
     });
     
 }());
