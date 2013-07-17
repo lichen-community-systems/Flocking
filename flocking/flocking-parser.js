@@ -223,7 +223,9 @@ var fluid = fluid || require("infusion"),
         }
     
         var ugen = flock.parse.makeUGen(ugenDef, inputs, options);
-        ugen.id = ugenDef.id;
+        if (ugenDef.id) {
+            ugen.id = ugenDef.id;
+        }
         
         if (visitors) {
             visitors = fluid.makeArray(visitors);

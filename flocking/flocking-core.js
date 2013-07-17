@@ -829,7 +829,8 @@ var fluid = fluid || require("infusion"),
 
         that.init = function () {
             if (!that.options.synthDef) {
-                fluid.log("Warning: Instantiating a flock.synth instance with an empty synth def.")
+                fluid.log(fluid.logLevel.IMPORTANT,
+                    "Warning: Instantiating a flock.synth instance with an empty synth def.")
             }
             
             // Parse the synthDef into a graph of unit generators.
@@ -972,9 +973,6 @@ var fluid = fluid || require("infusion"),
                 current;
                 
             // Note: This algorithm assumes that number of previous and current ugens is the same length.
-            previousUGens = fluid.makeArray(previousUGens);
-            ugens = fluid.makeArray(ugens);
-            
             for (i = 0; i < previousUGens.length; i++) {
                 prev = previousUGens[i];
                 current = ugens[i];
@@ -996,13 +994,43 @@ var fluid = fluid || require("infusion"),
          * @return the new unit generators
          */
         that.replace = function (ugens, previousUGens, reattachInputs) {
+            ugens = fluid.makeArray(ugens);
+            previousUGens = fluid.makeArray(previousUGens);
+            
             if (reattachInputs) {
                 reattachInputs = typeof (reattachInputs) === "object" ? reattachInputs : undefined;
                 that.swap(ugens, previousUGens, reattachInputs);
             }
-            that.remove(previousUGens, true);
-            that.add(ugens);
             
+            var i,
+                prev,
+                curr,
+                prevActiveIdx,
+                prevIdx;
+            
+            // Note: This algorithm assumes that number of previous and current ugens is the same length.
+            for (i = 0; i < previousUGens.length; i++) {
+                prev = previousUGens[i];
+                curr = ugens[i];
+                prevActiveIdx = that.active.indexOf(prev);
+                
+                // TODO: will break when swapping active for inactive ugens.
+                // TODO: this entire object needs to be rewritten!
+                if (curr.gen) {
+                    if (prevActiveIdx > -1) {
+                        that.active[prevActiveIdx] = curr;
+                        prevIdx = that.all.indexOf(prev);
+                        that.all[prevIdx] = curr;
+                        if (curr.id) {
+                            that.named[curr.id] = curr;
+                        }
+                    } else {
+                        that.remove(previousUGens, true);
+                        that.add(ugens);
+                    }
+                }
+            }
+
             return ugens;
         };
         
@@ -1174,8 +1202,8 @@ var fluid = fluid || require("infusion"),
 
         if (thisSource !== undefined) {
             if (!newPolicy.func && thisSource !== null &&
-                    !(thisSource.buffer instanceof ArrayBuffer) &&
                     typeof (thisSource) === "object" &&
+                    !(thisSource.buffer instanceof ArrayBuffer) &&
                     !fluid.isDOMish(thisSource) && thisSource !== fluid.VALUE &&
                     !newPolicy.preserve && !newPolicy.nomerge) {
                 if (primitiveTarget) {

@@ -444,6 +444,55 @@ var fluid = fluid || require("infusion"),
         testSetMultiple("input");
     });
     
+    
+    test("Synth.set(): correct node evaluation order", function () {
+        var synth = flock.synth({
+            synthDef: {
+                id: "pass",
+                ugen: "flock.ugen.passThrough",
+                rate: "audio",
+                source: {
+                    ugen: "flock.ugen.sequence",
+                    rate: "audio",
+                    freq: flock.enviro.shared.audioSettings.rates.audio,
+                    buffer: flock.test.fillBuffer(1, 64)
+                }
+            }
+        });
+        
+        var passThrough = synth.get("pass");
+        synth.gen();
+        deepEqual(passThrough.output, flock.test.fillBuffer(1, 64),
+            "When first instantiating the synth, a unit generator's inputs should be evaluated first.");
+        
+        synth.set("pass.source", {
+            ugen: "flock.ugen.sequence",
+            rate: "audio",
+            freq: flock.enviro.shared.audioSettings.rates.audio,
+            buffer: flock.test.fillBuffer(64, 127)
+        });
+        synth.gen();
+        deepEqual(passThrough.output, flock.test.fillBuffer(64, 127),
+            "After swapping one active unit generator for another, the correct order should be preserved.");
+    
+        synth.set("pass.source", 1.0);
+        synth.gen();
+        var expected = new Float32Array(64);
+        expected[0] = 1.0; // With a control rate source input, passThrough will only output the first value.
+        deepEqual(passThrough.output, expected,
+            "Replacing an active ugen with an inactive one.");
+        
+        synth.set("pass.source", {
+            ugen: "flock.ugen.sequence",
+            rate: "audio",
+            freq: flock.enviro.shared.audioSettings.rates.audio,
+            buffer: flock.test.fillBuffer(128, 191)
+        });
+        synth.gen();
+        deepEqual(passThrough.output, flock.text.fillBuffer(128, 191),
+            "Replacing an inactive ugen for an active one.");
+    });
+    
     test("flock.nodeList", function () {
         var nl = flock.nodeList();
         equal(nl.nodes.length, 0,

@@ -1970,4 +1970,112 @@ flock.test = flock.test || {};
         runLatchTests(testSpec);
     });
     
+    module("flock.ugen.passThrough");
+    
+    var passThroughDef = {
+        id: "pass",
+        ugen: "flock.ugen.passThrough",
+        source: {
+            ugen: "flock.ugen.sequence",
+            rate: "control",
+            buffer: flock.test.fillBuffer(1, 64)
+        }
+    };
+    
+    test("control rate source, audio rate output", function () {
+        var synth = flock.synth({
+            synthDef: passThroughDef
+        });
+        
+        var passThrough = synth.get("pass");
+        synth.gen();
+        
+        var expected = new Float32Array(64);
+        expected[0] = 1;
+        deepEqual(passThrough.output, expected,
+            "The control rate value of the source should be passed through to the first index of an otherwise silent buffer.");
+        
+    });
+    
+    test("audio rate source, audio rate output", function () {
+        var synth = flock.synth({
+            synthDef: $.extend(true, {}, passThroughDef, {
+                source: {
+                    rate: "audio"
+                }
+            })
+        });
+        
+        var passThrough = synth.get("pass");
+        synth.gen();
+        deepEqual(passThrough.output, passThrough.inputs.source.output,
+            "The entire source should be passed through as-is.");
+    });
+    
+    
+    test("audio rate source, control rate output", function () {
+        var synth = flock.synth({
+            synthDef: $.extend(true, {}, passThroughDef, {
+                rate: "control",
+                source: {
+                    rate: "audio"
+                }
+            })
+        });
+        
+        var passThrough = synth.get("pass");
+        synth.gen();
+        deepEqual(passThrough.output, new Float32Array([1]),
+            "The first value of the source buffer should be passed through as-is.");
+    });
+    
+    
+    module("flock.ugen.t2a");
+    
+    test("t2a Tests", function () {
+        var silence = new Float32Array(64);
+        var synthDef = {
+            id: "converter",
+            ugen: "flock.ugen.t2a",
+            source: {
+                ugen: "flock.ugen.impulse",
+                rate: "control",
+                freq: sampleRate,
+                phase: 1.0
+            }
+        };
+        var synth = flock.synth({
+            synthDef: synthDef
+        });
+        
+        var t2a = synth.get("converter");
+        ok(t2a.rate === flock.rates.AUDIO,
+            "The unit generator should be running at audio rate.");
+        
+        synth.gen();
+        var expected = new Float32Array(64);
+        expected[0] = 1.0;
+        deepEqual(t2a.output, expected,
+            "The control rate trigger value should output at the first index in audio rate output stream.");
+        
+        synth.set("converter.offset", 27);
+        synth.gen();
+        deepEqual(t2a.output, silence,
+            "If the trigger hasn't reset and fired again, the output should be silent.");
+        
+        // TODO: This test is failing due to a bug in synth.get/set causing 
+        // unit generators to be added out of sequence when a ugen is replaced with another one.
+        synth.set("converter.source", {
+            ugen: "flock.ugen.sequence",
+            buffer: new Float32Array(64),
+            freq: sampleRate
+        });
+        synth.set("converter.source", synthDef.source);
+        synth.gen();
+        expected = new Float32Array(64);
+        expected[27] = 1.0;
+        deepEqual(t2a.output, expected,
+            "The control rate trigger value should have been shifted to index 27 in the audio rate output stream.");
+    });
+    
 }());

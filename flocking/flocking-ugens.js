@@ -245,7 +245,40 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.value", {
         rate: "constant"
     });
-
+    
+    
+    flock.ugen.passThrough = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.gen = function (numSamps) {
+            var source = that.inputs.source.output,
+                out = that.output,
+                i;
+            
+            // Clear the output.
+            for (i = 0; i < numSamps; i++) {
+            }
+            
+            for (i = 0; i < source.length; i++) {
+                out[i] = source[i];
+            }
+            
+            for (; i < numSamps; i++) {
+                out[i] = 0.0;
+                
+            }
+            
+            that.mulAdd(numSamps);
+        };
+        
+        that.onInputChanged();
+        return that;
+    };
+    
+    fluid.defaults("flock.ugen.passThrough", {
+        rate: "audio"
+    });
+    
 
     flock.ugen.math = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
@@ -696,6 +729,45 @@ var fluid = fluid || require("infusion"),
     });
     
     
+    flock.ugen.t2a = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.gen = function (numSamps) {
+            var m = that.model,
+                trig = that.inputs.source.output[0],
+                offset = that.inputs.offset.output[0] | 0,
+                out = that.output;
+            
+            // Clear the output buffer.
+            for (var i = 0; i < out.length; i++) {
+                out[i] = 0.0;
+            }
+            
+            // Write the trigger value to the audio stream if it's open.
+            if (trig > 0.0 && m.prevTrig <= 0.0) {
+                out[offset] = trig;
+            }
+            
+            m.prevTrig = trig;
+        };
+        
+        return that;
+    };
+    
+    fluid.defaults("flock.ugen.t2a", {
+        rate: "audio",
+        inputs: {
+            source: null,
+            offset: 0
+        },
+        ugenOptions: {
+            model: {
+                prevTrig: 0.0
+            }
+        }
+    });
+    
+    
     flock.ugen.latch = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
@@ -718,6 +790,8 @@ var fluid = fluid || require("infusion"),
                 out[i] = (currTrig > 0.0 && m.prevTrig <= 0.0) ? m.holdVal = source[j] : m.holdVal;
                 m.prevTrig = currTrig;
             }
+            
+            that.mulAdd(numSamps);
         };
         
         that.krGen = function (numSamps) {
@@ -733,6 +807,8 @@ var fluid = fluid || require("infusion"),
             for (i = 0; i < numSamps; i++) {
                 that.output[i] = m.holdVal;
             }
+            
+            that.mulAdd(numSamps);
         };
         
         that.onInputChanged = function () {
@@ -2454,7 +2530,7 @@ var fluid = fluid || require("infusion"),
                 i;
                 
             if (trig > 0.0 && m.prevTrig <= 0.0) {
-                fluid.log(label + source);
+                fluid.log(fluid.logLevel.IMPORTANT, label + source);
             }
             
             if (m.freq !== freq) {
@@ -2465,7 +2541,7 @@ var fluid = fluid || require("infusion"),
             
             for (i = 0; i < numSamps; i++) {
                 if (m.counter >= m.sampInterval) {
-                    fluid.log(label + source[i]);
+                    fluid.log(fluid.logLevel.IMPORTANT, label + source[i]);
                     m.counter = 0;
                 }
                 m.counter++;
