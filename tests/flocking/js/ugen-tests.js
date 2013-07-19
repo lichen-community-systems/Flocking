@@ -2063,13 +2063,15 @@ flock.test = flock.test || {};
         deepEqual(t2a.output, silence,
             "If the trigger hasn't reset and fired again, the output should be silent.");
         
-        // TODO: This test is failing due to a bug in synth.get/set causing 
-        // unit generators to be added out of sequence when a ugen is replaced with another one.
         synth.set("converter.source", {
             ugen: "flock.ugen.sequence",
             buffer: new Float32Array(64),
             freq: sampleRate
         });
+        synth.gen();
+        deepEqual(t2a.output, silence,
+            "If the trigger has reset but hasn't fired again, the output should be silent.");
+        
         synth.set("converter.source", synthDef.source);
         synth.gen();
         expected = new Float32Array(64);

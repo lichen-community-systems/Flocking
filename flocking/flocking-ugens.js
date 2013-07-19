@@ -1717,6 +1717,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.out", {
         rate: "audio",
         inputs: {
+            sources: null,
             bus: 0,
             expand: 2
         }

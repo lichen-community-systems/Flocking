@@ -489,7 +489,7 @@ var fluid = fluid || require("infusion"),
             buffer: flock.test.fillBuffer(128, 191)
         });
         synth.gen();
-        deepEqual(passThrough.output, flock.text.fillBuffer(128, 191),
+        deepEqual(passThrough.output, flock.test.fillBuffer(128, 191),
             "Replacing an inactive ugen for an active one.");
     });
     
@@ -714,8 +714,8 @@ var fluid = fluid || require("infusion"),
         equal(Object.keys(synth.ugens.named).length, 3, "There should be three registered ugens.");
         ok(synth.out, 
             "The output ugen should have been stored at synth.out");
-        equal(synth.ugens.active.length, expectedNumEvals, 
-            "There should be " + expectedNumEvals + " real ugens in the 'active' list, including the output.");
+        equal(synth.ugens.all.length, expectedNumEvals, 
+            "There should be " + expectedNumEvals + " ugens in the 'all' list, including the output.");
     };
     
     var checkParsedTestSynthDef = function (synthDef, expectedNumEvalUGens) {
@@ -747,16 +747,17 @@ var fluid = fluid || require("infusion"),
         ugen: "flock.ugen.out",
         inputs: {
             sources: condensedTestSynthDef,
-            bus: 0
+            bus: 0,
+            expand: 2
         }
     };
     
     test("flock.synth(), no output specified", function () {
-        checkParsedTestSynthDef(condensedTestSynthDef, 2);
+        checkParsedTestSynthDef(condensedTestSynthDef, 7);
     });
 
     test("flock.synth(), output specified", function () {
-        checkParsedTestSynthDef(expandedTestSynthDef, 2);
+        checkParsedTestSynthDef(expandedTestSynthDef, 7);
     });
     
     test("flock.synth() with multiple channels", function () {
@@ -782,7 +783,7 @@ var fluid = fluid || require("infusion"),
         });
         var namedUGens = synth.ugens.named;
         
-        checkRegisteredUGens(synth, 3);
+        checkRegisteredUGens(synth, 9);
         ok(namedUGens.leftSine, "The left sine ugen should have been parsed correctly.");
         ok(namedUGens.rightSine, "The right sine ugen should have been parsed correctly.");
         deepEqual(synth.out.inputs.sources, 
@@ -906,8 +907,8 @@ var fluid = fluid || require("infusion"),
                 toRemove = typeof (toRemove) === "string" ? flock.get(synth, toRemove) : toRemove;
                 synth.ugens.remove(toRemove, true);
             }
-            equal(synth.ugens.active.length, spec.expected.active, 
-                spec.msg + ", there should be " + spec.expected.active + " active ugens.");
+            equal(synth.ugens.all.length, spec.expected.all, 
+                spec.msg + ", there should be " + spec.expected.all + " all ugens.");
             equal(Object.keys(synth.ugens.named).length, spec.expected.named, 
                 spec.msg + ", there should be " + spec.expected.named + " named ugens.");
         });
@@ -938,7 +939,9 @@ var fluid = fluid || require("infusion"),
                         ugen: "flock.mock.ugen"
                     }
                 }
-            }
+            },
+            bus: 0,
+            expand: 2
         }
     };
     
@@ -947,7 +950,7 @@ var fluid = fluid || require("infusion"),
             {
                 ugenToRemove: null,
                 expected: {
-                    active: 5,
+                    all: 8,
                     named: 3
                 },
                 msg: "To start"
@@ -955,7 +958,7 @@ var fluid = fluid || require("infusion"),
             {
                 ugenToRemove: "ugens.named.ear",
                 expected: {
-                    active: 5,
+                    all: 7,
                     named: 2
                 },
                 msg: "After removing a passive, named ugen"
@@ -963,7 +966,7 @@ var fluid = fluid || require("infusion"),
             {
                 ugenToRemove: "ugens.named.cat",
                 expected: {
-                    active: 4,
+                    all: 6,
                     named: 1
                 },
                 msg: "After removing an active, named ugen"
@@ -971,7 +974,7 @@ var fluid = fluid || require("infusion"),
             {
                 ugenToRemove: "out.inputs.sources.inputs.dog",
                 expected: {
-                    active: 3,
+                    all: 5,
                     named: 1
                 },
                 msg: "After removing an active, unnamed ugen"
@@ -979,7 +982,7 @@ var fluid = fluid || require("infusion"),
             {
                 ugenToRemove: "out",
                 expected: {
-                    active: 0,
+                    all: 0,
                     named: 0
                 },
                 msg: "After removing a ugen with other inputs, its inputs should be recursively removed"

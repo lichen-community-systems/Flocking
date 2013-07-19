@@ -227,6 +227,8 @@ var fluid = fluid || require("infusion"),
             ugen.id = ugenDef.id;
         }
         
+        ugen.options.ugenDef = ugenDef;
+        
         if (visitors) {
             visitors = fluid.makeArray(visitors);
             fluid.each(visitors, function (visitor) {

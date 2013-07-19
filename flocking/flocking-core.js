@@ -744,13 +744,15 @@ var fluid = fluid || require("infusion"),
          */
         that.gen = function () {
             // TODO: Copy/pasted from nodeEvaluator.
-            var nodes = that.ugens.active,
+            var nodes = that.ugens.all,
                 i,
                 node;
             
             for (i = 0; i < nodes.length; i++) {
                 node = nodes[i];
-                node.gen(node.model.blockSize);
+                if (node.gen) {
+                    node.gen(node.model.blockSize);
+                }
             }
         };
         
@@ -871,8 +873,7 @@ var fluid = fluid || require("infusion"),
     
     flock.synth.ugenCache.finalInit = function (that) {
         that.named = {};
-        that.active = [];
-        that.all = []; // TODO: Memory leak! Need to remove ugens from both all and active.
+        that.all = [];
         
         that.add = function (ugens) {
             var i,
@@ -882,9 +883,6 @@ var fluid = fluid || require("infusion"),
             for (i = 0; i < ugens.length; i++) {
                 ugen = ugens[i];
                 that.all.push(ugen);
-                if (ugen.gen) {
-                    that.active.push(ugen);
-                }
                 if (ugen.id) {
                     that.named[ugen.id] = ugen;
                 }
@@ -893,7 +891,7 @@ var fluid = fluid || require("infusion"),
         };
         
         that.remove = function (ugens, recursively) {
-            var active = that.active,
+            var all = that.all,
                 named = that.named,
                 i,
                 ugen,
@@ -904,9 +902,9 @@ var fluid = fluid || require("infusion"),
             ugens = fluid.makeArray(ugens);
             for (i = 0; i < ugens.length; i++) {
                 ugen = ugens[i];
-                idx = active.indexOf(ugen);
+                idx = all.indexOf(ugen);
                 if (idx > -1) {
-                    active.splice(idx, 1);
+                    all.splice(idx, 1);
                 }
                 if (ugen.id) {
                     delete named[ugen.id];
@@ -937,16 +935,14 @@ var fluid = fluid || require("infusion"),
             }
         };
         
-        that.replaceActiveOutput = function (currentUGen, previousUGen) {
-            // TODO: This only traverses active ugens, which is probably adequate for most real-world cases 
-            // but still not comprehensive. This should be replaced with a graph walker.
+        that.replaceOutput = function (currentUGen, previousUGen) {
             var i,
                 ugen,
                 inputName,
                 input;
                 
-            for (i = 0; i < that.active.length; i++) {
-                ugen = that.active[i];
+            for (i = 0; i < that.all.length; i++) {
+                ugen = that.all[i];
                 for (inputName in ugen.inputs) {
                     input = ugen.inputs[inputName];
                     if (input === previousUGen) {
@@ -977,7 +973,7 @@ var fluid = fluid || require("infusion"),
                 prev = previousUGens[i];
                 current = ugens[i];
                 that.reattachInputs(current, prev, inputsToReattach);
-                that.replaceActiveOutput(current, prev);
+                that.replaceOutput(current, prev);
             }
             
             return ugens;
@@ -1005,29 +1001,21 @@ var fluid = fluid || require("infusion"),
             var i,
                 prev,
                 curr,
-                prevActiveIdx,
                 prevIdx;
             
             // Note: This algorithm assumes that number of previous and current ugens is the same length.
-            for (i = 0; i < previousUGens.length; i++) {
-                prev = previousUGens[i];
+            for (i = 0; i < ugens.length; i++) {
                 curr = ugens[i];
-                prevActiveIdx = that.active.indexOf(prev);
+                prev = previousUGens[i];
+                prevIdx = that.all.indexOf(prev);
                 
-                // TODO: will break when swapping active for inactive ugens.
-                // TODO: this entire object needs to be rewritten!
-                if (curr.gen) {
-                    if (prevActiveIdx > -1) {
-                        that.active[prevActiveIdx] = curr;
-                        prevIdx = that.all.indexOf(prev);
-                        that.all[prevIdx] = curr;
-                        if (curr.id) {
-                            that.named[curr.id] = curr;
-                        }
-                    } else {
-                        that.remove(previousUGens, true);
-                        that.add(ugens);
+                if (prevIdx > -1) {
+                    that.all[prevIdx] = curr;
+                    if (curr.id) {
+                        that.named[curr.id] = curr;
                     }
+                } else {
+                    that.add(curr);
                 }
             }
 
