@@ -492,25 +492,16 @@ var fluid = fluid || require("infusion"),
         };
     };
     
+    fluid.defaults("flock.scheduler.async.tempo", {
+        gradeNames: ["flock.scheduler.async", "autoInit"],
 
-    flock.scheduler.async.beat = function (bpm, options) {
-        var that = fluid.initComponent("flock.scheduler.async.beat", options);
-        if (bpm !== undefined) {
-            that.timeConverter.options.bpm = bpm;
-        }
-        return that;
-    };
-    
-    fluid.defaults("flock.scheduler.async.beat", {
-        gradeNames: ["flock.scheduler.async"],
-        argumentMap: {
-            options: 1
-        },
+        bpm: 60,
+        
         components: {
             timeConverter: {
                 type: "flock.convert.beats",
                 options: {
-                    bpm: 60
+                    bpm: "{tempo}.options.bpm"
                 }
             }
         }
