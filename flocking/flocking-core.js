@@ -551,6 +551,7 @@ var fluid = fluid || require("infusion"),
             
             that.nodes[idx] = newNode;
             delete that.namedNodes[oldNode.nickName];
+
             if (newNode.nickName) {
                 that.namedNodes[newNode.nickName] = newNode;
             }

@@ -743,53 +743,81 @@ var fluid = fluid || require("infusion"),
         equal(nl.nodes.length, 0,
             "When a NodeList is instantiated, it should contain no nodes.");
         
-        var testNodes = [{id: "first"}, {id: "second"}, {id: "third"}];
+        var testNodes = [{nickName: "first"}, {cat: "second"}, {nickName: "third"}];
         nl.head(testNodes[0]);
         equal(nl.nodes.length, 1,
             "The node should have been added to the list.");
         equal(nl.nodes[0], testNodes[0],
             "The node should have been added at the correct index.");
+        equal(1, Object.keys(nl.namedNodes).length,
+            "The node should have also been added to the collection of namedNodes.");
         
         nl.remove(testNodes[0]);
         equal(nl.nodes.length, 0,
             "The node should have been removed from the list");
+        equal(0, Object.keys(nl.namedNodes).length,
+            "The node should have also been removed from the collection of namedNodes.");
             
         nl.remove(testNodes[0]);
         equal(nl.nodes.length, 0,
             "Removing a node that is not in the list should not cause errors, and the list should remain the same.");
+        equal(0, Object.keys(nl.namedNodes).length,
+            "The collection of namedNodes should also remain the same.");
         
         nl.head(testNodes[2]);
         nl.head(testNodes[0]);
         deepEqual(nl.nodes, [testNodes[0], testNodes[2]],
             "Adding a node to the head of the list should put it in the correct position.");
+        deepEqual(nl.namedNodes, {"first": testNodes[0], "third": testNodes[2]},
+            "The collection of namedNodes should contain all nodes with a valid nickName.")
         
         nl.tail(testNodes[0]);
         deepEqual(nl.nodes, [testNodes[0], testNodes[2], testNodes[0]],
             "Adding a node twice should include it twice, in the correct positions.");
+        deepEqual(nl.namedNodes, {"first": testNodes[0], "third": testNodes[2]},
+            "The collection of namedNodes should remain the same.")
         
         nl.remove(testNodes[0]);
         deepEqual(nl.nodes, [testNodes[2], testNodes[0]],
             "Removing a duplicate node should remove the first one.");
-        
+        deepEqual(nl.namedNodes, {"third": testNodes[2]},
+            "But the node will be removed entirely from the namedNodes collection.");
 
         nl.insert(1, testNodes[1]);
         deepEqual(nl.nodes, [testNodes[2], testNodes[1], testNodes[0]],
             "Adding a node at a specific position should work.");
+        deepEqual(nl.namedNodes, {"third": testNodes[2]},
+            "A unit generator without a nickName should not be added to namedNodes.");
         nl.remove(testNodes[1]);
+        deepEqual(nl.namedNodes, {"third": testNodes[2]},
+            "The collection of namedNodes should not change when a node without a nickname is removed.");
 
         nl.before(testNodes[0], testNodes[1]);
         deepEqual(nl.nodes, [testNodes[2], testNodes[1], testNodes[0]],
             "Adding a node before another node should work.");
-            
+        deepEqual(nl.namedNodes, {"third": testNodes[2]},
+            "namedNodes should remain the same.");
+        
         nl.after(testNodes[0], testNodes[1]);
         deepEqual(nl.nodes, [testNodes[2], testNodes[1], testNodes[0], testNodes[1]],
             "Adding a duplicate node after another node should work.");
+        deepEqual(nl.namedNodes, {"third": testNodes[2]},
+            "namedNodes should remain the same.");
         
         nl.remove(testNodes[1]);
+        deepEqual(nl.namedNodes, {"third": testNodes[2]},
+            "namedNodes should remain the same after a non-nickNamed node is removed.");
+        
         nl.remove(testNodes[0]);
+        deepEqual(nl.namedNodes, {"third": testNodes[2]},
+            "namedNodes should remain the same after a nickNamed node is removed, which a duplicated of had already been removed.");
+        
         nl.after(testNodes[2], testNodes[0]);
         deepEqual(nl.nodes, [testNodes[2], testNodes[0], testNodes[1]],
             "Adding a node after another node should work.");
+        deepEqual(nl.namedNodes, {"first": testNodes[0], "third": testNodes[2]},
+            "namedNodes should have been updated.");
+        
     });
     
     var checkValueOnNodes = function (nodes, ugenName, inputName, expected) {
