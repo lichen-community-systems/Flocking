@@ -1106,7 +1106,7 @@ flock.test = flock.test || {};
         });
         
         inSynth.enviro.gen();
-        var actual = inSynth.ugens.named["in"].output;
+        var actual = inSynth.namedNodes["in"].output;
         equal(actual, inSynth.enviro.buses[3],
             "With a single source input, the output of flock.ugen.in should be the actual bus referenced.");
         deepEqual(actual, outSynthDef.inputs.sources.options.buffer,
@@ -1134,7 +1134,7 @@ flock.test = flock.test || {};
         });
         
         inSynth.enviro.gen();
-        var actual = inSynth.ugens.named["in"].output;
+        var actual = inSynth.namedNodes["in"].output;
         var expected = flock.generate(64, function (i) {
             return (i + 1) * 2;
         });
@@ -1167,7 +1167,7 @@ flock.test = flock.test || {};
             }
         });
         
-        var normalizer = normalizerSynth.ugens.named.normalizer;
+        var normalizer = normalizerSynth.namedNodes.normalizer;
         normalizerSynth.gen();
         var expected = flock.normalize(flock.test.ascendingBuffer(64, -31), 1.0);
         deepEqual(normalizer.output, expected,
@@ -1189,7 +1189,7 @@ flock.test = flock.test || {};
             synthDef: synthDef
         });
         synth.gen();
-        var math = synth.ugens.named.math;
+        var math = synth.namedNodes.math;
         deepEqual(math.output, expected, msg);
     };
     
@@ -1411,7 +1411,7 @@ flock.test = flock.test || {};
         var delaySynth = flock.synth({
             synthDef:delayLineDef
         });
-        var delay = delaySynth.ugens.named.delay;
+        var delay = delaySynth.namedNodes.delay;
         delaySynth.gen();
         
         // First block should be silent.
@@ -1460,7 +1460,7 @@ flock.test = flock.test || {};
             var synth = flock.synth({
                 synthDef: def
             });
-            var loop = synth.ugens.named.looper;
+            var loop = synth.namedNodes.looper;
             
             test(testSpec.name, function () {
                 testTriggeredSignals(synth, loop, testSpec.tests);
@@ -1591,7 +1591,7 @@ flock.test = flock.test || {};
             var synth = flock.synth({
                 synthDef: durationDef
             });
-            var durUGen = synth.ugens.named.dur;
+            var durUGen = synth.namedNodes.dur;
         
             synth.gen();
             equal(durUGen.output[0], 2.5,

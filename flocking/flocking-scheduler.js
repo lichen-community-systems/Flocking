@@ -481,7 +481,7 @@ var fluid = fluid || require("infusion"),
             for (var path in synths) {
                 var synth = synths[path];
                 synth.gen(1);
-                var ugens = synth.ugens.all;
+                var ugens = synth.nodes;
                 staticChanges[path] = ugens[ugens.length - 1].output[0];
             }
             
