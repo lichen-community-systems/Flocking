@@ -387,7 +387,7 @@ var fluid = fluid || require("infusion"),
         ok(didOnInputChangedFire, "The onInputChanged event should fire when an input is changed.");
     });
 
-    test("Get and set array input values", function () {
+    test("Get and set values at array indices", function () {
         var def = {
             ugen: "flock.ugen.sinOsc",
             id: "carrier",
@@ -431,6 +431,125 @@ var fluid = fluid || require("infusion"),
         });
         equal(synth.namedNodes.adder.inputs.sources[0].inputs.freq.model.value, 456,
             "Setting a ugen within an array should succeed.");
+    });
+    
+    var testSetUGenArray = function (synth, path, value, expectedNumNodes, oldUGens, msgPrefix) {
+        var result = synth.set(path, value);
+        
+        equal(value.length, synth.get("out.sources").length,
+            msgPrefix + ": " + 
+            "The input should have the correct number of unit generators attached to it.");
+        equal(synth.nodes.length, expectedNumNodes, 
+            msgPrefix + ": " + 
+            "The unit generator list should have been updated with the new unit generator count (i.e. old inputs removed, new ones added).");
+        
+        var activeOldCount = 0;
+        for (var i = 0; i < oldUGens.length; i++) {
+            activeOldCount += synth.nodes.indexOf(oldUGens[i]);
+        }
+        ok(activeOldCount < 0,
+            msgPrefix + ": " + 
+            "None of the old unit generators should be in the synth's list of active nodes.");
+            
+        return result;
+    };
+    
+    var runSetArrayValueTest = function (synth, path, testSpecs) {
+        var oldUGens = synth.get(path);
+        fluid.each(testSpecs, function (testSpec) {
+            oldUGens = testSetUGenArray(
+                synth, 
+                path, 
+                testSpec.value, 
+                testSpec.expectedNumNodes, 
+                oldUGens, 
+                testSpec.msgPrefix
+            );
+        });
+    };
+    
+    test("Get and set array-valued inputs", function () {
+        var def = {
+            ugen: "flock.ugen.out",
+            id: "out",
+            bus: 0,
+            expand: 3,
+            sources: [
+                {
+                    ugen: "flock.ugen.sin",
+                    freq: 110,
+                    phase: 1.0
+                },
+                {
+                    ugen: "flock.ugen.lfNoise",
+                    freq: 220
+                },
+                {
+                    ugen: "flock.ugen.lfSaw",
+                    freq: 330,
+                    phase: 0.1
+                }
+            ]
+        };
+        
+        var synth = flock.synth({
+            synthDef: def
+        });
+        
+        equal(synth.nodes.length, 11,
+            "Sanity check: all 11 unit generators should have been added to the synth.");
+        
+        var result = synth.get("out.sources");
+        equal(result, synth.namedNodes.out.inputs.sources,
+            "Getting an array-valued input should return all values.");
+        
+        runSetArrayValueTest(synth, "out.sources", [
+            {
+                value: [
+                    {
+                        ugen: "flock.ugen.lfPulse",
+                        freq: 440,
+                        phase: 0.2,
+                        width: 0.1
+                    }
+                ],
+                expectedNumNodes: 7,
+                msgPrefix: "Set fewer unit generators than before"
+            },
+            {
+                value:[
+                    {
+                        ugen: "flock.ugen.lfNoise",
+                        freq: 550
+                    }
+                ],
+                expectedNumNodes: 5,
+                msgPrefix: "Set an equal number of unit generators"
+                
+            },
+            {
+                value: [
+                    {
+                        ugen: "flock.ugen.lfNoise",
+                        freq: 660
+                    },
+                    {
+                        ugen: "flock.ugen.lfNoise",
+                        freq: 770
+                    },
+                    {
+                        ugen: "flock.ugen.lfNoise",
+                        freq: 880
+                    },
+                    {
+                        ugen: "flock.ugen.lfNoise",
+                        freq: 990
+                    }
+                ],
+                expectedNumNodes: 11,
+                msgPrefix: "Set more unit generators than previously"
+            }
+        ]);
     });
     
     test("Get multiple input values", function () {

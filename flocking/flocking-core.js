@@ -876,7 +876,7 @@ var fluid = fluid || require("infusion"),
          */
         that.set = function (path, val, swap) {
             return flock.input.set(that.namedNodes, path, val, undefined, function (ugenDef, path, target, prev) {
-                return flock.synth.ugenValueParser(that, swap, ugenDef, prev);
+                return flock.synth.ugenValueParser(that, ugenDef, prev, swap);
             });
         };
         
@@ -946,7 +946,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
     
-    flock.synth.ugenValueParser = function (that, swap, ugenDef, prev) {
+    flock.synth.ugenValueParser = function (that, ugenDef, prev, swap) {
         if (ugenDef === null || ugenDef === undefined) {
             return prev;
         }
@@ -966,7 +966,6 @@ var fluid = fluid || require("infusion"),
             atIdx,
             j;
 
-        // TODO: Write more array-typed input swapping and replacing tests.
         // TODO: Improve performance by handling arrays inline instead of repeated function calls.
         for (i = 0; i < replaceLen; i++) {
             atIdx = replaceFn(newUGens[i], oldUGens[i]);
@@ -985,7 +984,7 @@ var fluid = fluid || require("infusion"),
     };
     
     /**
-     * Makes a new syth.
+     * Makes a new synth.
      * Deprecated. Use flock.synth instead. This is provided for semi-backwards-compatibility with
      * previous version of Flocking where flock.synth had a multi-argument signature.
      */

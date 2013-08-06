@@ -613,6 +613,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.lfSaw", {
         rate: "audio",
         inputs: {
+            freq: 440,
             phase: 0.0
         },
         ugenOptions: {
@@ -663,6 +664,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.lfPulse", {
         rate: "audio",
         inputs: {
+            freq: 440,
             phase: 0.0,
             width: 0.5
         }
