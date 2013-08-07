@@ -29,7 +29,9 @@ flock.demo.nodeTest = function () {
         weightedIntervals = baseIntervals.concat([4/3, 6/5, 7/6, 2/1]).concat(baseIntervals),
         synths = makeIntervallicSynths(fundamental, baseIntervals),
         synth = synths[0],
-        clock = flock.scheduler.async.beat(60);
+        clock = flock.scheduler.async.tempo({
+            bpm: 60
+        });
     
     // Every second, change one of the intervals by randomly choosing a synth
     // and assigning it a new frequency from the list of intervals.
