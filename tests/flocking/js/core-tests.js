@@ -737,6 +737,7 @@ var fluid = fluid || require("infusion"),
 
     });
     
+    module("nodeList and ugenNodeList")
     
     test("flock.nodeList", function () {
         var nl = flock.nodeList();
@@ -816,9 +817,245 @@ var fluid = fluid || require("infusion"),
         deepEqual(nl.nodes, [testNodes[2], testNodes[0], testNodes[1]],
             "Adding a node after another node should work.");
         deepEqual(nl.namedNodes, {"first": testNodes[0], "third": testNodes[2]},
-            "namedNodes should have been updated.");
+            "namedNodes should have been updated."); 
+    });
+    
+    test("flock.ugenNodeList", function () {
+        var testNodes = [
+            {
+                nickName: "1",
+                inputs: {
+                    cat: {
+                        nickName: "1.2",
+                        inputs: {
+                            dog: {
+                                nickName: "1.1"
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                nickName: "2"
+            },
+            {
+                nickName: "3",
+                inputs: {
+                    hamster: {
+                        nickName: 3.1
+                    }
+                }
+            }
+        ];
+        
+        var ugnl = flock.ugenNodeList();
+        equal(ugnl.nodes.length, 0,
+            "When a ugenNodeList is instantiated, it should contain no nodes.");
+        equal(Object.keys(ugnl.namedNodes).length, 0,
+            "When a ugenNodeList is instantiated, it should contain no named nodes.");
+        
+        ugnl.insertTree(0, testNodes[0]);
+        deepEqual(ugnl.nodes, [testNodes[0].inputs.cat.inputs.dog, testNodes[0].inputs.cat, testNodes[0]],
+            "The list of nodes should include the node and all its inputs and grandinputs.");
+        deepEqual(ugnl.namedNodes, {
+            "1": testNodes[0], 
+            "1.1": testNodes[0].inputs.cat.inputs.dog,
+            "1.2": testNodes[0].inputs.cat
+        }, "The named nodes collection should contain the added unit generator and all its inputs.");
+        
+        ugnl.removeTree(testNodes[0]);
+        equal(ugnl.nodes.length, 0, 
+            "After removing the unit generator and all its inputs, there should be no active nodes.");
+        deepEqual(ugnl.namedNodes, {}, "Nor any named nodes.");
+        
+        ugnl.insertTree(0, testNodes[2]);
+        equal(ugnl.nodes.length, 2, "The node list should contain the inserted node and its input.");
+        deepEqual(ugnl.namedNodes, {
+            "3": testNodes[2],
+            "3.1": testNodes[2].inputs.hamster
+        }, "The named nodes collection should also contain the inserted nodes.");
+        
+        ugnl.removeTree(testNodes[2].inputs.hamster);
+        equal(ugnl.nodes.length, 1, "The specified node should have been removed, but not its parent node.");
+        deepEqual(ugnl.namedNodes, {
+            "3": testNodes[2]
+        }, "The node should have been removed from the named nodes collection.");
+        
+        ugnl.insertTree(0, testNodes[0]);
+        equal(ugnl.nodes.length, 4, "The node and its inputs should have been added.")
+        deepEqual(ugnl.namedNodes, {
+            "1": testNodes[0], 
+            "1.1": testNodes[0].inputs.cat.inputs.dog,
+            "1.2": testNodes[0].inputs.cat,
+            "3": testNodes[2]
+        }, "The named nodes collection should contain the added unit generator and all its inputs.");
+        
+        ugnl.swapTree(testNodes[1], testNodes[0]);
+        equal(ugnl.nodes.length, 4, "The new node should have been swapped in, leaving all the previous inputs.")
+        deepEqual(ugnl.namedNodes, {
+            "1.1": testNodes[0].inputs.cat.inputs.dog,
+            "1.2": testNodes[0].inputs.cat,
+            "2": testNodes[1],
+            "3": testNodes[2]
+        }, "The new node should have been added to the named nodes, leaving the others untouched.");
+        
+        ugnl.removeTree(testNodes[1]);
+        deepEqual(ugnl.namedNodes, {
+            "3": testNodes[2]
+        }, "The node and all its swapped inputs should have been removed.");
+        
+        var multiInputNode = {
+            nickName: "4",
+            inputs: {
+                giraffe: {
+                    nickName: 4.1
+                },
+                goose: {
+                    nickName: 4.2
+                }
+            }
+        };
+        
+        ugnl.removeTree(testNodes[2]);
+        ugnl.insertTree(0, multiInputNode);
+        ugnl.swapTree(testNodes[0], multiInputNode, ["goose"]);
+        equal(ugnl.nodes.length, 4);
+        deepEqual(ugnl.namedNodes, {
+            "1": testNodes[0],
+            "1.1": testNodes[0].inputs.cat.inputs.dog,
+            "1.2": testNodes[0].inputs.cat,
+            "4.2": multiInputNode.inputs.goose,
+        }, "The new node should have been added along with its inputs, and the specified inputs should have been swapped..");
+        
+        ugnl.replaceTree(testNodes[2], testNodes[0]);
+        equal(ugnl.nodes.length, 2);
+        deepEqual(ugnl.namedNodes, {
+            "3": testNodes[2],
+            "3.1": testNodes[2].inputs.hamster
+        }, "The old node and all its inputs should be replaced by the new one and its inputs.");
         
     });
+    
+    var testRemoval = function (synthDef, testSpecs) {
+        var synth = flock.synth({
+            synthDef: synthDef
+        });
+        
+        $.each(testSpecs, function (i, spec) {
+            var toRemove = spec.ugenToRemove;
+            if (toRemove) {
+                toRemove = typeof (toRemove) === "string" ? flock.get(synth, toRemove) : toRemove;
+                synth.removeTree(toRemove, true);
+            }
+            equal(synth.nodes.length, spec.expected.all, 
+                spec.msg + ", there should be " + spec.expected.all + " all ugens.");
+            equal(Object.keys(synth.namedNodes).length, spec.expected.named, 
+                spec.msg + ", there should be " + spec.expected.named + " named ugens.");
+        });
+    };
+    
+    var nestedSynthDef = {
+        ugen: "flock.ugen.out",
+        inputs: {
+            sources: {
+                ugen: "flock.mock.ugen",
+                inputs: {
+                    gerbil: {
+                        id: "gerbil",
+                        ugen: "flock.mock.ugen",
+                        inputs: {
+                            ear: {
+                                id: "ear",
+                                ugen: "flock.ugen.value",
+                                value: 500
+                            }
+                        }
+                    },
+                    cat: {
+                        id: "cat",
+                        ugen: "flock.mock.ugen"
+                    },
+                    dog: {
+                        ugen: "flock.mock.ugen"
+                    }
+                }
+            },
+            bus: 0,
+            expand: 2
+        }
+    };
+    
+    test("flock.ugenNodeList: removing ugens", function () {
+        var removalTestSpecs = [
+            {
+                ugenToRemove: null,
+                expected: {
+                    all: 8,
+                    named: 3
+                },
+                msg: "To start"
+            },
+            {
+                ugenToRemove: "namedNodes.ear",
+                expected: {
+                    all: 7,
+                    named: 2
+                },
+                msg: "After removing a passive, named ugen"
+            },
+            {
+                ugenToRemove: "namedNodes.cat",
+                expected: {
+                    all: 6,
+                    named: 1
+                },
+                msg: "After removing an active, named ugen"
+            },
+            {
+                ugenToRemove: "out.inputs.sources.inputs.dog",
+                expected: {
+                    all: 5,
+                    named: 1
+                },
+                msg: "After removing an active, unnamed ugen"
+            },
+            {
+                ugenToRemove: "out",
+                expected: {
+                    all: 0,
+                    named: 0
+                },
+                msg: "After removing a ugen with other inputs, its inputs should be recursively removed"
+            }
+        ];
+        
+        testRemoval(nestedSynthDef, removalTestSpecs);
+    });
+    
+
+    test("flock.ugenNodeList.replace(): reattach inputs", function () {
+        var synth = flock.synth({
+            synthDef: nestedSynthDef
+        });
+        
+        var toReplace = synth.namedNodes.gerbil,
+            expectedInput = synth.namedNodes.ear,
+            newUGen = flock.parse.ugenForDef({
+                id: "gerbil",
+                ugen: "flock.mock.ugen"
+            });
+        synth.swapTree(newUGen, toReplace);
+        
+        equal(synth.namedNodes.gerbil, newUGen, 
+            "The old ugen should have been replaced by the new one.");
+        equal(synth.namedNodes.gerbil.inputs.ear, expectedInput, 
+            "The old ugen's input should have been copied over to the new one.");
+        // TODO: Why is this failing?
+        //deepEqual(synth.out.inputs.sources.inputs.gerbil, newUGen, "The new ugen's output should be wired back up.");
+    });
+    
+    
+    module("Group synths");
     
     var checkValueOnNodes = function (nodes, ugenName, inputName, expected) {
         $.each(nodes, function (i, node) {
@@ -1167,124 +1404,6 @@ var fluid = fluid || require("infusion"),
             "The frequency input should be supplied by the ugen's defaults.");
         equal(ugen.inputs.phase.model.value, 1.0,
             "The ugen's default phase input should be overridden by the ugenDef.");
-    });
-    
-    var testRemoval = function (synthDef, testSpecs) {
-        var synth = flock.synth({
-            synthDef: synthDef
-        });
-        
-        $.each(testSpecs, function (i, spec) {
-            var toRemove = spec.ugenToRemove;
-            if (toRemove) {
-                toRemove = typeof (toRemove) === "string" ? flock.get(synth, toRemove) : toRemove;
-                synth.removeTree(toRemove, true);
-            }
-            equal(synth.nodes.length, spec.expected.all, 
-                spec.msg + ", there should be " + spec.expected.all + " all ugens.");
-            equal(Object.keys(synth.namedNodes).length, spec.expected.named, 
-                spec.msg + ", there should be " + spec.expected.named + " named ugens.");
-        });
-    };
-    
-    var nestedSynthDef = {
-        ugen: "flock.ugen.out",
-        inputs: {
-            sources: {
-                ugen: "flock.mock.ugen",
-                inputs: {
-                    gerbil: {
-                        id: "gerbil",
-                        ugen: "flock.mock.ugen",
-                        inputs: {
-                            ear: {
-                                id: "ear",
-                                ugen: "flock.ugen.value",
-                                value: 500
-                            }
-                        }
-                    },
-                    cat: {
-                        id: "cat",
-                        ugen: "flock.mock.ugen"
-                    },
-                    dog: {
-                        ugen: "flock.mock.ugen"
-                    }
-                }
-            },
-            bus: 0,
-            expand: 2
-        }
-    };
-    
-    test("flock.ugenNodeList: removing ugens", function () {
-        var removalTestSpecs = [
-            {
-                ugenToRemove: null,
-                expected: {
-                    all: 8,
-                    named: 3
-                },
-                msg: "To start"
-            },
-            {
-                ugenToRemove: "namedNodes.ear",
-                expected: {
-                    all: 7,
-                    named: 2
-                },
-                msg: "After removing a passive, named ugen"
-            },
-            {
-                ugenToRemove: "namedNodes.cat",
-                expected: {
-                    all: 6,
-                    named: 1
-                },
-                msg: "After removing an active, named ugen"
-            },
-            {
-                ugenToRemove: "out.inputs.sources.inputs.dog",
-                expected: {
-                    all: 5,
-                    named: 1
-                },
-                msg: "After removing an active, unnamed ugen"
-            },
-            {
-                ugenToRemove: "out",
-                expected: {
-                    all: 0,
-                    named: 0
-                },
-                msg: "After removing a ugen with other inputs, its inputs should be recursively removed"
-            }
-        ];
-        
-        testRemoval(nestedSynthDef, removalTestSpecs);
-    });
-    
-
-    test("flock.ugenNodeList.replace(): reattach inputs", function () {
-        var synth = flock.synth({
-            synthDef: nestedSynthDef
-        });
-        
-        var toReplace = synth.namedNodes.gerbil,
-            expectedInput = synth.namedNodes.ear,
-            newUGen = flock.parse.ugenForDef({
-                id: "gerbil",
-                ugen: "flock.mock.ugen"
-            });
-        synth.swap(newUGen, toReplace);
-        
-        equal(synth.namedNodes.gerbil, newUGen, 
-            "The old ugen should have been replaced by the new one.");
-        equal(synth.namedNodes.gerbil.inputs.ear, expectedInput, 
-            "The old ugen's input should have been copied over to the new one.");
-        // TODO: Why is this failing?
-        //deepEqual(synth.out.inputs.sources.inputs.gerbil, newUGen, "The new ugen's output should be wired back up.");
     });
     
     

@@ -770,7 +770,7 @@ var fluid = fluid || require("infusion"),
             for (key in inputs) {
                 input = inputs[key];
                 if (typeof (input) !== "number") {
-                    that.insertTree(idx, input);
+                    idx = that.insertTree(idx, input);
                     idx++;
                 }
             }
@@ -805,15 +805,30 @@ var fluid = fluid || require("infusion"),
             return idx;
         };
         
-        that.swap = function (newNode, oldNode, inputsToReattach) {
+        /**
+         * Swaps one node in the list for another in place, attaching the previous unit generator's
+         * inputs to the new one. If a list of inputsToReattach is specified, only these inputs will
+         * be swapped.
+         * 
+         * Note that this function will directly modify the nodes in question.
+         *
+         * @param {UGen} newNode the node to add to the list, swapping it in place for the old one
+         * @param {UGen} oldNode the node remove from the list
+         * @param {Array} inputsToReattach a list of inputNames to attach to the new node from the old one
+         * @return the index at which the new node was inserted
+         */
+        that.swapTree = function (newNode, oldNode, inputsToReattach) {
+            var inputName;
+            
             if (!inputsToReattach) {
                 newNode.inputs = oldNode.inputs;
-                newNode.options.ugenDef.inputs = oldNode.options.ugenDef.inputs;
             } else {
-                // TODO: Faster implementation than iterating through all inputs twice?
-                for (var inputName in inputsToReattach) {
-                    newNode.inputs[inputName] = oldNode.inputs[inputName];
-                    newNode.options.ugenDef.inputs[inputName] = oldNode.options.ugenDef.inputs[inputName];
+                for (inputName in oldNode.inputs) {
+                    if (inputsToReattach.indexOf(inputName) < 0) {
+                        that.removeTree(oldNode.inputs[inputName]);
+                    } else {
+                        newNode.inputs[inputName] = oldNode.inputs[inputName];
+                    }
                 }
                 
                 for (inputName in newNode.inputs) {
@@ -962,7 +977,7 @@ var fluid = fluid || require("infusion"),
             oldUGens = flock.isIterable(prev) ? prev : (prev !== undefined ? [prev] : []);
         
         var replaceLen = Math.min(newUGens.length, oldUGens.length),
-            replaceFn = swap ? that.swap : that.replaceTree,
+            replaceFn = swap ? that.swapTree : that.replaceTree,
             i,
             atIdx,
             j;
