@@ -758,9 +758,9 @@ var fluid = fluid || require("infusion"),
          * Note that the node itself will not be insert into the list at this index--its inputs must
          * must be ahead of it in the list.
          *
-         * @param idx the index to start adding the new node and its inputs at
-         * @param node the node to add, along with its inputs
-         * @return the index at which the specified node was inserted
+         * @param {Number} idx the index to start adding the new node and its inputs at
+         * @param {UGen} node the node to add, along with its inputs
+         * @return {Number} the index at which the specified node was inserted
          */
         that.insertTree = function (idx, node) {
             var inputs = node.inputs,
@@ -778,6 +778,12 @@ var fluid = fluid || require("infusion"),
             return that.insert(idx, node);
         };
         
+        /**
+         * Removes the specified unit generator and all its inputs from the node list.
+         *
+         * @param {UGen} node the node to remove along with its inputs
+         * @return {Number} the index at which the node was removed
+         */
         that.removeTree = function (node) {
             var inputs = node.inputs,
                 key,
@@ -793,6 +799,13 @@ var fluid = fluid || require("infusion"),
             return that.remove(node);
         };
         
+        /**
+         * Replaces one node and all its inputs with a new node and its inputs.
+         *
+         * @param {UGen} newNode the node to add to the list
+         * @param {UGen} oldNode the node to remove from the list
+         * @return {Number} idx the index at which the new node was added
+         */
         that.replaceTree = function (newNode, oldNode) {
             if (!oldNode) {
                  // Can't use .tail() because it won't recursively add inputs.
