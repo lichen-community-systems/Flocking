@@ -87,7 +87,10 @@ var fluid = fluid || require("infusion"),
     fluid.registerNamespace("flock.platform");
     flock.platform.isBrowser = typeof (window) !== "undefined";
     flock.platform.os = flock.platform.isBrowser ? window.navigator.platform : fluid.require("os").platform();
-    flock.platform.isLinuxBased = flock.platform.os.indexOf("Linux") > -1 || flock.platform.os.indexOf("Android") > -1;
+    flock.platform.isLinux = flock.platform.os.indexOf("Linux") > -1;
+    flock.platform.isAndroid = flock.platform.isLinux && flock.platform.os.indexOf("arm") > -1;
+    flock.platform.isIOS = flock.platform.os === "iPhone" || flock.platform.os === "iPad" || flock.platform.os === "iPod";
+    flock.platform.isMobile = flock.platform.isAndroid || flock.platform.isIOS;
     flock.platform.browser = flock.browser();
     flock.platform.isWebAudio = (typeof (AudioContext) !== "undefined" && (new AudioContext()).createJavaScriptNode) ||
         typeof (webkitAudioContext) !== "undefined";
@@ -584,11 +587,12 @@ var fluid = fluid || require("infusion"),
             chans: 2,
             numBuses: 2,
             // This buffer size determines the overall latency of Flocking's audio output. On Firefox, it will be 2x.
+            // TODO: Replace this with IoC awesomeness.
             bufferSize: (flock.platform.os === "Win32" && flock.platform.browser.mozilla) ?
-                16384: 2048,
+                16384 : flock.platform.isMobile ? 8192 : 2048,
             
             // Hints to some audio backends.
-            genPollIntervalFactor: flock.platform.isLinuxBased ? 1 : 20 // Only used on Firefox.
+            genPollIntervalFactor: flock.platform.isLinux ? 1 : 20 // Only used on Firefox.
         },
         components: {
             asyncScheduler: {
