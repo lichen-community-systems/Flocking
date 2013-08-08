@@ -45,7 +45,7 @@ var fluid = fluid || require("infusion"),
                 return;
             }
             
-            if (flock.platform.isLinuxBased && that.audioEl.mozCurrentSampleOffset() === 0) {
+            if (flock.platform.isLinux && that.audioEl.mozCurrentSampleOffset() === 0) {
                 that.prebufferSilence();
             }
             

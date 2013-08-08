@@ -19,6 +19,7 @@ var flock = flock || {};
     
     module("flock.ugen.value tests");
     
+    // TODO: Normalize this with the real node evaluation algorithm in Synth (i.e. break it out and reuse it.)
     var gen = function (ugens, duration) {
         var kr = 64,
             periods = Math.ceil(44100 * duration / kr),
@@ -29,7 +30,9 @@ var flock = flock || {};
         for (i = 0; i < periods; i++) {
             for (j = 0; j < ugens.length; j++) {
                 ugen = ugens[j];
-                ugen.gen(kr);
+                if (ugen.gen !== undefined) {
+                    ugen.gen(kr);
+                }
             }
         }
     };
@@ -73,7 +76,7 @@ var flock = flock || {};
             }
         });
         
-        var avg = runTimingTest(synth.ugens, 50);
+        var avg = runTimingTest(synth.nodes, 50);
         assertCeiling(avg, 5, 
             "Generating and outputting 1 second of stereo signal from flock.ugen.value should take less than 5 ms.");
     });

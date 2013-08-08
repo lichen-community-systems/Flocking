@@ -1106,7 +1106,7 @@ flock.test = flock.test || {};
         });
         
         inSynth.enviro.gen();
-        var actual = inSynth.ugens.named["in"].output;
+        var actual = inSynth.namedNodes["in"].output;
         equal(actual, inSynth.enviro.buses[3],
             "With a single source input, the output of flock.ugen.in should be the actual bus referenced.");
         deepEqual(actual, outSynthDef.inputs.sources.options.buffer,
@@ -1134,7 +1134,7 @@ flock.test = flock.test || {};
         });
         
         inSynth.enviro.gen();
-        var actual = inSynth.ugens.named["in"].output;
+        var actual = inSynth.namedNodes["in"].output;
         var expected = flock.generate(64, function (i) {
             return (i + 1) * 2;
         });
@@ -1167,7 +1167,7 @@ flock.test = flock.test || {};
             }
         });
         
-        var normalizer = normalizerSynth.ugens.named.normalizer;
+        var normalizer = normalizerSynth.namedNodes.normalizer;
         normalizerSynth.gen();
         var expected = flock.normalize(flock.test.ascendingBuffer(64, -31), 1.0);
         deepEqual(normalizer.output, expected,
@@ -1189,7 +1189,7 @@ flock.test = flock.test || {};
             synthDef: synthDef
         });
         synth.gen();
-        var math = synth.ugens.named.math;
+        var math = synth.namedNodes.math;
         deepEqual(math.output, expected, msg);
     };
     
@@ -1411,7 +1411,7 @@ flock.test = flock.test || {};
         var delaySynth = flock.synth({
             synthDef:delayLineDef
         });
-        var delay = delaySynth.ugens.named.delay;
+        var delay = delaySynth.namedNodes.delay;
         delaySynth.gen();
         
         // First block should be silent.
@@ -1460,7 +1460,7 @@ flock.test = flock.test || {};
             var synth = flock.synth({
                 synthDef: def
             });
-            var loop = synth.ugens.named.looper;
+            var loop = synth.namedNodes.looper;
             
             test(testSpec.name, function () {
                 testTriggeredSignals(synth, loop, testSpec.tests);
@@ -1591,7 +1591,7 @@ flock.test = flock.test || {};
             var synth = flock.synth({
                 synthDef: durationDef
             });
-            var durUGen = synth.ugens.named.dur;
+            var durUGen = synth.namedNodes.dur;
         
             synth.gen();
             equal(durUGen.output[0], 2.5,
@@ -1968,6 +1968,116 @@ flock.test = flock.test || {};
         };
         
         runLatchTests(testSpec);
+    });
+    
+    module("flock.ugen.passThrough");
+    
+    var passThroughDef = {
+        id: "pass",
+        ugen: "flock.ugen.passThrough",
+        source: {
+            ugen: "flock.ugen.sequence",
+            rate: "control",
+            buffer: flock.test.fillBuffer(1, 64)
+        }
+    };
+    
+    test("control rate source, audio rate output", function () {
+        var synth = flock.synth({
+            synthDef: passThroughDef
+        });
+        
+        var passThrough = synth.get("pass");
+        synth.gen();
+        
+        var expected = new Float32Array(64);
+        expected[0] = 1;
+        deepEqual(passThrough.output, expected,
+            "The control rate value of the source should be passed through to the first index of an otherwise silent buffer.");
+        
+    });
+    
+    test("audio rate source, audio rate output", function () {
+        var synth = flock.synth({
+            synthDef: $.extend(true, {}, passThroughDef, {
+                source: {
+                    rate: "audio"
+                }
+            })
+        });
+        
+        var passThrough = synth.get("pass");
+        synth.gen();
+        deepEqual(passThrough.output, passThrough.inputs.source.output,
+            "The entire source should be passed through as-is.");
+    });
+    
+    
+    test("audio rate source, control rate output", function () {
+        var synth = flock.synth({
+            synthDef: $.extend(true, {}, passThroughDef, {
+                rate: "control",
+                source: {
+                    rate: "audio"
+                }
+            })
+        });
+        
+        var passThrough = synth.get("pass");
+        synth.gen();
+        deepEqual(passThrough.output, new Float32Array([1]),
+            "The first value of the source buffer should be passed through as-is.");
+    });
+    
+    
+    module("flock.ugen.t2a");
+    
+    test("t2a Tests", function () {
+        var silence = new Float32Array(64);
+        var synthDef = {
+            id: "converter",
+            ugen: "flock.ugen.t2a",
+            source: {
+                ugen: "flock.ugen.impulse",
+                rate: "control",
+                freq: sampleRate,
+                phase: 1.0
+            }
+        };
+        var synth = flock.synth({
+            synthDef: synthDef
+        });
+        
+        var t2a = synth.get("converter");
+        ok(t2a.rate === flock.rates.AUDIO,
+            "The unit generator should be running at audio rate.");
+        
+        synth.gen();
+        var expected = new Float32Array(64);
+        expected[0] = 1.0;
+        deepEqual(t2a.output, expected,
+            "The control rate trigger value should output at the first index in audio rate output stream.");
+        
+        synth.set("converter.offset", 27);
+        synth.gen();
+        deepEqual(t2a.output, silence,
+            "If the trigger hasn't reset and fired again, the output should be silent.");
+        
+        synth.set("converter.source", {
+            ugen: "flock.ugen.sequence",
+            buffer: new Float32Array(64),
+            freq: sampleRate
+        });
+        synth.gen();
+        deepEqual(t2a.output, silence,
+            "If the trigger has reset but hasn't fired again, the output should be silent.");
+        
+        synth.set("converter.source", synthDef.source);
+        synth.gen();
+        expected = new Float32Array(64);
+        expected[27] = 1.0;
+        deepEqual(t2a.output, expected,
+            "The control rate trigger value should have been shifted to index 27 in the audio rate output stream.");
     });
     
 }());

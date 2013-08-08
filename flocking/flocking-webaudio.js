@@ -98,7 +98,7 @@ var fluid = fluid || require("infusion"),
             that.jsNode = that.context.createJavaScriptNode(settings.bufferSize);
             that.source.connect(that.jsNode);
             
-            that.model.shouldInitIOS = flock.platform.os === "iPhone" || "iPad"; 
+            that.model.shouldInitIOS = flock.platform.isIOS;
         };
         
         that.init();

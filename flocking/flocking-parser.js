@@ -223,7 +223,12 @@ var fluid = fluid || require("infusion"),
         }
     
         var ugen = flock.parse.makeUGen(ugenDef, inputs, options);
-        ugen.id = ugenDef.id;
+        if (ugenDef.id) {
+            ugen.id = ugenDef.id;
+            ugen.nickName = ugenDef.id; // TODO: Normalize nicknames and ids.
+        }
+        
+        ugen.options.ugenDef = ugenDef;
         
         if (visitors) {
             visitors = fluid.makeArray(visitors);

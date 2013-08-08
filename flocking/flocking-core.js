@@ -87,7 +87,10 @@ var fluid = fluid || require("infusion"),
     fluid.registerNamespace("flock.platform");
     flock.platform.isBrowser = typeof (window) !== "undefined";
     flock.platform.os = flock.platform.isBrowser ? window.navigator.platform : fluid.require("os").platform();
-    flock.platform.isLinuxBased = flock.platform.os.indexOf("Linux") > -1 || flock.platform.os.indexOf("Android") > -1;
+    flock.platform.isLinux = flock.platform.os.indexOf("Linux") > -1;
+    flock.platform.isAndroid = flock.platform.isLinux && flock.platform.os.indexOf("arm") > -1;
+    flock.platform.isIOS = flock.platform.os === "iPhone" || flock.platform.os === "iPad" || flock.platform.os === "iPod";
+    flock.platform.isMobile = flock.platform.isAndroid || flock.platform.isIOS;
     flock.platform.browser = flock.browser();
     flock.platform.isWebAudio = (typeof (AudioContext) !== "undefined" && (new AudioContext()).createJavaScriptNode) ||
         typeof (webkitAudioContext) !== "undefined";
@@ -100,22 +103,17 @@ var fluid = fluid || require("infusion"),
      *************/
     
     flock.isIterable = function (o) {
-        return o && o.length !== undefined && typeof (o.length) === "number";
+        var type = typeof (o);
+        return o && o.length !== undefined && type !== "string" && type !== "function";
     };
 
     flock.generate = function (bufOrSize, generator) {
         var buf = typeof (bufOrSize) === "number" ? new Float32Array(bufOrSize) : bufOrSize,
+            isFunc = typeof (generator) === "function",
             i;
-
-        if (typeof (generator) === "number") {
-            var value = generator;
-            generator = function () { 
-                return value; 
-            };
-        }
         
         for (i = 0; i < buf.length; i++) {
-            buf[i] = generator(i, buf);
+            buf[i] = isFunc ? generator(i, buf) : generator;
         }
 
         return buf;
@@ -498,33 +496,69 @@ var fluid = fluid || require("infusion"),
     flock.nodeList.preInit = function (that) {
         that.head = function (node) {
             that.nodes.unshift(node);
-            that.namedNodes[node.nickName] = node;
+            if (node.nickName) {
+                that.namedNodes[node.nickName] = node;
+            }
+            return 0;
         };
         
         that.before = function (refNode, node) {
             var refIdx = that.nodes.indexOf(refNode);
-            that.at(refIdx, node);
+            that.insert(refIdx, node);
+            return refIdx;
         };
         
         that.after = function (refNode, node) {
-            var refIdx = that.nodes.indexOf(refNode);
-            that.at(refIdx + 1, node);
+            var refIdx = that.nodes.indexOf(refNode),
+                atIdx = refIdx + 1;
+            that.insert(atIdx, node);
+            return atIdx;
         };
         
-        that.at = function (idx, node) {
+        that.insert = function (idx, node) {
+            if (idx < 0) {
+                return that.head(node);
+            }
+            
             that.nodes.splice(idx, 0, node);
-            that.namedNodes[node.nickName] = node;
+            if (node.nickName) {
+                that.namedNodes[node.nickName] = node;
+            }
+            return idx;
         };
         
         that.tail = function (node) {
             that.nodes.push(node);
-            that.namedNodes[node.nickName] = node;
+            if (node.nickName) {
+                that.namedNodes[node.nickName] = node;
+            }
+            return that.nodes.length;
         };
         
         that.remove = function (node) {
             var idx = that.nodes.indexOf(node);
+            if (idx < 0) {
+                return idx;
+            }
+            
             that.nodes.splice(idx, 1);
             delete that.namedNodes[node.nickName];
+            return idx;
+        };
+        
+        that.replace = function (newNode, oldNode) {
+            var idx = that.nodes.indexOf(oldNode);
+            if (idx < 0) {
+                return that.head(node);
+            }
+            
+            that.nodes[idx] = newNode;
+            delete that.namedNodes[oldNode.nickName];
+
+            if (newNode.nickName) {
+                that.namedNodes[newNode.nickName] = newNode;
+            }
+            return idx;
         };
     };
     
@@ -553,11 +587,12 @@ var fluid = fluid || require("infusion"),
             chans: 2,
             numBuses: 2,
             // This buffer size determines the overall latency of Flocking's audio output. On Firefox, it will be 2x.
+            // TODO: Replace this with IoC awesomeness.
             bufferSize: (flock.platform.os === "Win32" && flock.platform.browser.mozilla) ?
-                16384: 2048,
+                16384 : flock.platform.isMobile ? 8192 : 2048,
             
             // Hints to some audio backends.
-            genPollIntervalFactor: flock.platform.isLinuxBased ? 1 : 20 // Only used on Firefox.
+            genPollIntervalFactor: flock.platform.isLinux ? 1 : 20 // Only used on Firefox.
         },
         components: {
             asyncScheduler: {
@@ -716,14 +751,116 @@ var fluid = fluid || require("infusion"),
         gradeNames: ["flock.autoEnviro", "fluid.modelComponent", "autoInit"]
     });
     
+    fluid.defaults("flock.ugenNodeList", {
+        gradeNames: ["flock.nodeList", "autoInit"]
+    });
+    
+    flock.ugenNodeList.finalInit = function (that) {
+
+        /**
+         * Inserts a unit generator and all its inputs into the node list, starting at the specified index.
+         * Note that the node itself will not be insert into the list at this index--its inputs must
+         * must be ahead of it in the list.
+         *
+         * @param {Number} idx the index to start adding the new node and its inputs at
+         * @param {UGen} node the node to add, along with its inputs
+         * @return {Number} the index at which the specified node was inserted
+         */
+        that.insertTree = function (idx, node) {
+            var inputs = node.inputs,
+                key,
+                input;
+            
+            for (key in inputs) {
+                input = inputs[key];
+                if (typeof (input) !== "number") {
+                    idx = that.insertTree(idx, input);
+                    idx++;
+                }
+            }
+            
+            return that.insert(idx, node);
+        };
+        
+        /**
+         * Removes the specified unit generator and all its inputs from the node list.
+         *
+         * @param {UGen} node the node to remove along with its inputs
+         * @return {Number} the index at which the node was removed
+         */
+        that.removeTree = function (node) {
+            var inputs = node.inputs,
+                key,
+                input;
+            
+            for (key in inputs) {
+                input = inputs[key];
+                if (typeof (input) !== "number") {
+                    that.removeTree(input);
+                }
+            }
+            
+            return that.remove(node);
+        };
+        
+        /**
+         * Replaces one node and all its inputs with a new node and its inputs.
+         *
+         * @param {UGen} newNode the node to add to the list
+         * @param {UGen} oldNode the node to remove from the list
+         * @return {Number} idx the index at which the new node was added
+         */
+        that.replaceTree = function (newNode, oldNode) {
+            if (!oldNode) {
+                 // Can't use .tail() because it won't recursively add inputs.
+                return that.insertTree(that.nodes.length, newNode);
+            }
+            
+            var idx = that.removeTree(oldNode);
+            that.insertTree(idx, newNode);
+            
+            return idx;
+        };
+        
+        /**
+         * Swaps one node in the list for another in place, attaching the previous unit generator's
+         * inputs to the new one. If a list of inputsToReattach is specified, only these inputs will
+         * be swapped.
+         * 
+         * Note that this function will directly modify the nodes in question.
+         *
+         * @param {UGen} newNode the node to add to the list, swapping it in place for the old one
+         * @param {UGen} oldNode the node remove from the list
+         * @param {Array} inputsToReattach a list of inputNames to attach to the new node from the old one
+         * @return the index at which the new node was inserted
+         */
+        that.swapTree = function (newNode, oldNode, inputsToReattach) {
+            var inputName;
+            
+            if (!inputsToReattach) {
+                newNode.inputs = oldNode.inputs;
+            } else {
+                for (inputName in oldNode.inputs) {
+                    if (inputsToReattach.indexOf(inputName) < 0) {
+                        that.removeTree(oldNode.inputs[inputName]);
+                    } else {
+                        newNode.inputs[inputName] = oldNode.inputs[inputName];
+                    }
+                }
+                
+                for (inputName in newNode.inputs) {
+                    if (inputsToReattach.indexOf(inputName) < 0) {
+                        that.replaceTree(newNode.inputs[inputName], oldNode.inputs[inputName]);
+                    }
+                }
+            }
+            
+            return that.replace(newNode, oldNode);
+        };
+    };
     
     fluid.defaults("flock.synth", {
-        gradeNames: ["flock.node", "autoInit"],
-        components: {
-            ugens: {
-                type: "flock.synth.ugenCache"
-            }
-        },
+        gradeNames: ["flock.node", "flock.ugenNodeList", "autoInit"],
         rate: flock.rates.AUDIO
     });
     
@@ -737,20 +874,18 @@ var fluid = fluid || require("infusion"),
         that.model.blockSize = that.enviro.audioSettings.rates.control;
         
         /**
-         * Generates an audio rate signal by evaluating this synth's unit generator graph.
-         *
-         * @param numSamps the number of samples to generate
-         * @return a buffer containing the generated audio
+         * Generates one block of audio rate signal by evaluating this synth's unit generator graph.
          */
         that.gen = function () {
-            // TODO: Copy/pasted from nodeEvaluator.
-            var nodes = that.ugens.active,
+            var nodes = that.nodes,
                 i,
                 node;
             
             for (i = 0; i < nodes.length; i++) {
                 node = nodes[i];
-                node.gen(node.model.blockSize);
+                if (node.gen !== undefined) {
+                    node.gen(node.model.blockSize);
+                }
             }
         };
         
@@ -761,9 +896,10 @@ var fluid = fluid || require("infusion"),
          * @return {Number|UGen} a scalar value in the case of a value ugen, otherwise the ugen itself
          */
         that.get = function (path) {
-            return flock.input.get(that.ugens.named, path);
+            return flock.input.get(that.namedNodes, path);
         };
         
+
         /**
          * Sets the value of the ugen at the specified path.
          *
@@ -772,18 +908,8 @@ var fluid = fluid || require("infusion"),
          * @return {UGen} the newly created UGen that was set at the specified path
          */
         that.set = function (path, val, swap) {
-            return flock.input.set(that.ugens.named, path, val, undefined, function (ugenDef, path, target, previous) {
-                if (ugenDef === null || ugenDef === undefined) {
-                    return previous;
-                }
-                
-                var ugen = flock.parse.ugenDef(ugenDef, {
-                    audioSettings: that.enviro.audioSettings,
-                    buses: that.enviro.buses,
-                    buffers: that.enviro.buffers
-                });
-                that.ugens.replace(ugen, previous, swap);
-                return ugen;
+            return flock.input.set(that.namedNodes, path, val, undefined, function (ugenDef, path, target, prev) {
+                return flock.synth.ugenValueParser(that, ugenDef, prev, swap);
             });
         };
         
@@ -829,14 +955,15 @@ var fluid = fluid || require("infusion"),
 
         that.init = function () {
             if (!that.options.synthDef) {
-                fluid.log("Warning: Instantiating a flock.synth instance with an empty synth def.")
+                fluid.log(fluid.logLevel.IMPORTANT,
+                    "Warning: Instantiating a flock.synth instance with an empty synth def.")
             }
             
             // Parse the synthDef into a graph of unit generators.
             that.out = flock.parse.synthDef(that.options.synthDef, {
                 rate: that.options.rate,
                 overrideRate: (that.options.rate === flock.rates.DEMAND), // At demand rate, override the rate of all ugens.
-                visitors: that.ugens.add,
+                visitors: that.tail,
                 buffers: that.enviro.buffers,
                 buses: that.enviro.buses,
                 audioSettings: that.enviro.audioSettings
@@ -852,8 +979,45 @@ var fluid = fluid || require("infusion"),
         return that;
     };
     
+    flock.synth.ugenValueParser = function (that, ugenDef, prev, swap) {
+        if (ugenDef === null || ugenDef === undefined) {
+            return prev;
+        }
+    
+        var parsed = flock.parse.ugenDef(ugenDef, {
+            audioSettings: that.enviro.audioSettings,
+            buses: that.enviro.buses,
+            buffers: that.enviro.buffers
+        });
+    
+        var newUGens = flock.isIterable(parsed) ? parsed : (parsed !== undefined ? [parsed] : []),
+            oldUGens = flock.isIterable(prev) ? prev : (prev !== undefined ? [prev] : []);
+        
+        var replaceLen = Math.min(newUGens.length, oldUGens.length),
+            replaceFn = swap ? that.swapTree : that.replaceTree,
+            i,
+            atIdx,
+            j;
+
+        // TODO: Improve performance by handling arrays inline instead of repeated function calls.
+        for (i = 0; i < replaceLen; i++) {
+            atIdx = replaceFn(newUGens[i], oldUGens[i]);
+        }
+        
+        for (j = i; j < newUGens.length; j++) {
+            atIdx++;
+            that.insertTree(atIdx, newUGens[j]);
+        }
+
+        for (j = i; j < oldUGens.length; j++) {
+            that.removeTree(oldUGens[j]);
+        }
+    
+        return parsed;
+    };
+    
     /**
-     * Makes a new syth.
+     * Makes a new synth.
      * Deprecated. Use flock.synth instead. This is provided for semi-backwards-compatibility with
      * previous version of Flocking where flock.synth had a multi-argument signature.
      */
@@ -861,152 +1025,6 @@ var fluid = fluid || require("infusion"),
         options = options || {};
         options.synthDef = def;
         return flock.synth(options);
-    };
-    
-    
-    fluid.defaults("flock.synth.ugenCache", {
-        gradeNames: ["fluid.littleComponent", "autoInit"]
-    });
-    
-    flock.synth.ugenCache.finalInit = function (that) {
-        that.named = {};
-        that.active = [];
-        that.all = []; // TODO: Memory leak! Need to remove ugens from both all and active.
-        
-        that.add = function (ugens) {
-            var i,
-                ugen;
-            
-            ugens = fluid.makeArray(ugens);
-            for (i = 0; i < ugens.length; i++) {
-                ugen = ugens[i];
-                that.all.push(ugen);
-                if (ugen.gen) {
-                    that.active.push(ugen);
-                }
-                if (ugen.id) {
-                    that.named[ugen.id] = ugen;
-                }
-            }
-
-        };
-        
-        that.remove = function (ugens, recursively) {
-            var active = that.active,
-                named = that.named,
-                i,
-                ugen,
-                idx,
-                inputs,
-                input;
-            
-            ugens = fluid.makeArray(ugens);
-            for (i = 0; i < ugens.length; i++) {
-                ugen = ugens[i];
-                idx = active.indexOf(ugen);
-                if (idx > -1) {
-                    active.splice(idx, 1);
-                }
-                if (ugen.id) {
-                    delete named[ugen.id];
-                }
-                if (recursively) {
-                    inputs = [];
-                    for (input in ugen.inputs) {
-                        inputs.push(ugen.inputs[input]);
-                    }
-                    that.remove(inputs, true);
-                }
-            }
-        };
-        
-        that.reattachInputs = function (currentUGen, previousUGen, inputsToReattach) {
-            var i,
-                inputName;
-                
-            if (inputsToReattach) {
-                // Replace only the specified inputs.
-                for (i = 0; i < inputsToReattach.length; i++) {
-                    inputName = inputsToReattach[i];
-                    currentUGen.inputs[inputName]  = previousUGen.inputs[inputName];
-                }
-            } else {
-                // Replace all the current ugen's inputs with the previous'.
-                currentUGen.inputs = previousUGen.inputs;
-            }
-        };
-        
-        that.replaceActiveOutput = function (currentUGen, previousUGen) {
-            // TODO: This only traverses active ugens, which is probably adequate for most real-world cases 
-            // but still not comprehensive. This should be replaced with a graph walker.
-            var i,
-                ugen,
-                inputName,
-                input;
-                
-            for (i = 0; i < that.active.length; i++) {
-                ugen = that.active[i];
-                for (inputName in ugen.inputs) {
-                    input = ugen.inputs[inputName];
-                    if (input === previousUGen) {
-                        ugen.inputs[inputName] = currentUGen;
-                        break;
-                    }
-                }
-            }
-            
-            return currentUGen;
-        };
-        
-        /**
-         * Swaps a list of unit generators with a new set, reattaching the specified inputs and replacing outputs.
-         *
-         * @param {UGen || Array of UGens} ugens the new unit generators to swap in
-         * @param {UGen || Array of UGens} previousUGens the unit generators to replace
-         * @param {Object || boolean} inputsToReattach a list of inputs to reattach to the new unit generator, or a boolean for all
-         * @return the newly-connected unit generators
-         */
-        that.swap = function (ugens, previousUGens, inputsToReattach) {
-            var i,
-                prev,
-                current;
-                
-            // Note: This algorithm assumes that number of previous and current ugens is the same length.
-            previousUGens = fluid.makeArray(previousUGens);
-            ugens = fluid.makeArray(ugens);
-            
-            for (i = 0; i < previousUGens.length; i++) {
-                prev = previousUGens[i];
-                current = ugens[i];
-                that.reattachInputs(current, prev, inputsToReattach);
-                that.replaceActiveOutput(current, prev);
-            }
-            
-            return ugens;
-        };
-        
-        /**
-         * Replaces a list of unit generators with another.
-         *
-         * If "reattachInputs" is an array, it should contain a list of inputNames to replace.
-         *
-         * @param {UGen||Array of UGens} ugens the new unit generators to add
-         * @param {UGen||Array of UGens} previousUGens the unit generators to replace with the new ones
-         * @param {boolean||Object} reattachInputs specifies if the old unit generator's inputs should be attached to the new ones
-         * @return the new unit generators
-         */
-        that.replace = function (ugens, previousUGens, reattachInputs) {
-            if (reattachInputs) {
-                reattachInputs = typeof (reattachInputs) === "object" ? reattachInputs : undefined;
-                that.swap(ugens, previousUGens, reattachInputs);
-            }
-            that.remove(previousUGens, true);
-            that.add(ugens);
-            
-            return ugens;
-        };
-        
-        return that;
     };
     
     
@@ -1174,8 +1192,8 @@ var fluid = fluid || require("infusion"),
 
         if (thisSource !== undefined) {
             if (!newPolicy.func && thisSource !== null &&
-                    !(thisSource.buffer instanceof ArrayBuffer) &&
                     typeof (thisSource) === "object" &&
+                    !(thisSource.buffer instanceof ArrayBuffer) &&
                     !fluid.isDOMish(thisSource) && thisSource !== fluid.VALUE &&
                     !newPolicy.preserve && !newPolicy.nomerge) {
                 if (primitiveTarget) {
