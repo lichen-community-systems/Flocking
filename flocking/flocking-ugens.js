@@ -946,7 +946,7 @@ var fluid = fluid || require("infusion"),
             // If the channel has changed, update the buffer we're reading from.
             if (m.channel !== chan) {
                 m.channel = chan;
-                that.buffer = source = that.options.audioSettings.buffers[m.name][chan];
+//                that.buffer = source = that.options.audioSettings.buffers[m.name][chan];
             }
             
             for (i = 0; i < numSamps; i++) {

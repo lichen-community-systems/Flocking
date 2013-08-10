@@ -10,9 +10,29 @@
 /*jslint white: true, funcinvoke: true, undef: true, newcap: true, regexp: true, browser: true, 
     forin: true, continue: true, forvar: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
-var fluid = fluid || require("infusion"),
-    flock = fluid.registerNamespace("flock");
+// Stub out fluid.registerNamespace in cases where we're in a Web Worker and Infusion is unavailable.
+var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undefined" ? require("infusion") : {
+    registerNamespace: function (path) {
+        if (!path) {
+            return;
+        }
+        var root = self,
+            tokens = path.split("."),
+            i,
+            token;
+        
+        for (i = 0; i < tokens.length; i++) {
+            token = tokens[i];
+            if (!root[token]) {
+                root[token] = {};
+            }
+            root = root[token];
+        }
+    }
+};
 
+var flock = fluid.registerNamespace("flock");
+    
 (function () {
     
     "use strict";
@@ -161,8 +181,6 @@ var fluid = fluid || require("infusion"),
      * @param {Object} src either a File, URL, data URL, or the raw audio file data as a binary string
      * @param {Function} onSuccess a callback to invoke when decoding is finished
      * @param {String} format (optional) the format of the audio data; include this ONLY if src is a binary string
-     *
-     * @return {Array} an array of Float32Arrays, each representing a single channel's worth of sample data
      */
     flock.audio.decode = function (src, onSuccess, format) {
         var isString = typeof (src) === "string",
