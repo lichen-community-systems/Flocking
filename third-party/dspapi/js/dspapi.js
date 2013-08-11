@@ -32,7 +32,7 @@
 //------------------------------------------------------------------------------
 
 (function () {
-  if (window.DSP) return;
+  if ((window || global).DSP) return;
 
   var DSP = {};
 
@@ -430,7 +430,7 @@
       }
   };
 
-  window.DSP = DSP;
+  (window || global).DSP = DSP;
 })();
 
 
@@ -439,7 +439,7 @@
 //------------------------------------------------------------------------------
 
 (function () {
-  if (window.Filter) return;
+  if ((window || global).Filter) return;
 
   var Filter = function (bSize, aSize) {
     if (isNaN(parseFloat(bSize)) || !isFinite(bSize))
@@ -543,7 +543,7 @@
       this._aHist[k] = 0;
   };
 
-  window.Filter = Filter;
+  (window || global).Filter = Filter;
 })();
 
 
@@ -560,7 +560,7 @@
 //------------------------------------------------------------------------------
 
 (function () {
-  if (window.FFT) return;
+  if ((window || global).FFT) return;
 
   var butterfly2 = function (outRe, outIm, outIdx, stride, twRe, twIm, m) {
     var scratch0Re, scratch0Im,
@@ -1037,6 +1037,6 @@
     this.inverseCplx(dst, new Float32Array(this.size), xReal, xImag);
   };
 
-  window.FFT = FFT;
+  (window || global).FFT = FFT;
 })();
 
