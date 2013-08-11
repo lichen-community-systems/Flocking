@@ -870,7 +870,7 @@ var fluid = fluid || require("infusion"),
             }
             
             // Clear all listeners.
-            flock.buffer.listeners[name] = [];
+            flock.buffer.listeners[id] = [];
         }
     };
     
@@ -941,12 +941,17 @@ var fluid = fluid || require("infusion"),
                 bufIdx = m.idx,
                 bufLen = source.length,
                 loop = that.inputs.loop.output[0],
+                buffers = that.options.audioSettings.buffers,
                 i;
             
             // If the channel has changed, update the buffer we're reading from.
+            // TODO: Support full bufferDesc objects at that.buffer so that we do this with non-environment buffers,
+            // or refactor buffer management altogether.
             if (m.channel !== chan) {
                 m.channel = chan;
-//                that.buffer = source = that.options.audioSettings.buffers[m.name][chan];
+                if (buffers[m.name]) {
+                    that.buffer = source = buffers[m.name][chan];
+                }
             }
             
             for (i = 0; i < numSamps; i++) {
@@ -974,12 +979,15 @@ var fluid = fluid || require("infusion"),
                 bufIdx = m.idx,
                 bufLen = source.length,
                 loop = that.inputs.loop.output[0],
+                buffers = that.options.audioSettings.buffers,
                 i;
             
             // If the channel has changed, update the buffer we're reading from.
             if (m.channel !== chan) {
                 m.channel = chan;
-                that.buffer = source = that.options.audioSettings.buffers[m.name][chan];
+                if (buffers[m.name]) {
+                    that.buffer = source = buffers[m.name][chan];
+                }
             }
             
             for (i = 0; i < numSamps; i++) {
