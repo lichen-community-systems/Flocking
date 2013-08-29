@@ -10,7 +10,9 @@
 /*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
-var fluid = fluid || require("infusion"),
+var fs = require("fs"),
+    url = require("url"),
+    fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
 
 (function () {
@@ -19,7 +21,10 @@ var fluid = fluid || require("infusion"),
     var Speaker = require("speaker");
     var Readable = require("stream").Readable;
     
-    // Override the default browser-based worker clocks with their same-thread equivalents.
+    /*********************************************************
+     * Override default clocks with same-thread alternatives *
+     *********************************************************/
+    
     fluid.demands("flock.scheduler.webWorkerIntervalClock", ["flock.platform.nodejs", "flock.scheduler.async"], {
         funcName: "flock.scheduler.intervalClock"
     });
@@ -29,6 +34,66 @@ var fluid = fluid || require("infusion"),
     });
 
 
+    /********************************************
+     * Override buffer loading implementations. *
+     ********************************************/
+
+    fluid.registerNamespace("flock.file");
+
+    flock.file.readFromPath = function (options) {
+        var path = options.src;
+        
+        fs.exists(path, function (exists) {
+            if (!exists && options.error) {
+                options.error(path + " doesn't exist.");
+                return;
+            }
+        
+            fs.stat(path, function (error, stats) {
+                fs.open(path, "r", function (error, fd) {
+                    var buf = new Buffer(stats.size);
+                    fs.read(fd, buf, 0, buf.length, null, function (error, bytesRead) {
+                        var type = flock.file.parseFileExtension(path);
+                        var arr = new Int8Array(buf);
+                        options.success(arr.buffer, type);
+                    });
+                });
+            });
+        })
+    };
+    
+    fluid.registerNamespace("flock.net");
+    
+    flock.net.readBufferFromUrl = function (options) {
+        throw new Error("Loading files from URLs is not currently supported in Node.js.");
+    };
+    
+    fluid.registerNamespace("flock.audio.loadBuffer");
+
+    flock.audio.loadBuffer.readerForSource = function (src) {
+        if (typeof (src) !== "string") {
+            throw new Error("Flocking error: Can't load a buffer from an unknown type of source. " + 
+                "Only paths and URLs are currently supported on Node.js.");
+        }
+        var parsed = url.parse(src);
+        return parsed.protocol === "data:" ? flock.file.readBufferFromDataUrl : 
+            !parsed.protocol ? flock.file.readFromPath : flock.net.readBufferFromUrl;
+    };
+    
+    fluid.registerNamespace("flock.audio.decode");
+    
+    // TODO: Use a stream-style interface for decoding rather than just dumping the whole job on nextTick().
+    flock.audio.decode.async = function (options) {
+        process.nextTick(function () {
+            flock.audio.decode.sync(options);
+        });
+    };
+    
+    
+    /*********************************************
+     * Node.js-based Environment implementation. *
+     *********************************************/
+    
     fluid.registerNamespace("flock.enviro");
     
     fluid.defaults("flock.enviro.nodejs", {
@@ -36,7 +101,6 @@ var fluid = fluid || require("infusion"),
     });
     
     flock.enviro.nodejs.finalInit = function (that) {
-        
         that.startGeneratingSamples = function () {
             that.outputStream._read = that.writeSamples;
             that.outputStream.pipe(that.speaker);
