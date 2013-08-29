@@ -11,6 +11,7 @@
         <script src="../../../third-party/infusion/js/DataBinding.js"></script>
         
         <script src="../../../flocking/flocking-core.js"></script>
+        <script src="../../../flocking/flocking-audiofile.js"></script>
         <script src="../../../flocking/flocking-scheduler.js"></script>
         <script src="../../../flocking/flocking-firefox.js"></script>
         <script src="../../../flocking/flocking-webaudio.js"></script>
@@ -18,32 +19,12 @@
         <script src="../../../flocking/flocking-ugens.js"></script>
     </head>
     <body>
-        <audio src="http://tts.idrc.ocadu.ca/?q=eat%20it,%20cat" controls="true" />
-        
         <script>
             flock.init();
             fluid.registerNamespace("demo");
             
-            var worker = new Worker("../js/decode-audio-worker.js");
-            worker.onmessage = function (e) {
-                if (e.data.msg === "afterDecoded") {
-                    demo.playBuffer(e.data.buffer);
-                }
-            };
-            
-            worker.postMessage({
-                msg: "decode",
-                url: "hillier-first-chord.wav"
-            });
-            
             demo.playBuffer = function (buffer) {
                 var enviro = flock.enviro.shared;
-                
-                // Dump any currently-playing nodes from the environment.
-                if (enviro.nodes > 0) {
-                    enviro.reset();
-                }
-                
                 enviro.play();
                                 
                 var s = flock.synth({
@@ -52,7 +33,18 @@
                         buffer: buffer.data.channels[0]
                     }
                 });
+                
+                var k = flock.scheduler.async();
+                k.once(buffer.format.numSampleFrames / flock.enviro.shared.audioSettings.rates.audio, enviro.reset);
             };
+            
+            flock.audio.decode({
+                src: "../audio/hillier-first-chord.wav",
+                success: demo.playBuffer,
+                error: function (msg) {
+                    throw new Error(msg);
+                }
+            });
             
         </script>
     </body>

@@ -28,6 +28,8 @@ var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undef
             }
             root = root[token];
         }
+        
+        return root;
     }
 };
 
@@ -37,19 +39,39 @@ var flock = fluid.registerNamespace("flock");
     
     "use strict";
     
+    /**
+     * Applies the specified function in the next round of the event loop.
+     */
+    // TODO: Replace this and the code that depends on it with a good Promise implementation.
+    flock.applyDeferred = function (fn, args, delay) {
+        if (!fn) {
+            return;
+        }
+        
+        delay = typeof (delay) === "undefined" ? 0 : delay;
+        setTimeout(function () {
+            fn.apply(null, args);
+        }, delay);
+    };
+    
+    
     /*********************
      * Network utilities *
      *********************/
      
     fluid.registerNamespace("flock.net");
     
-    // TODO: Componentize.
-    flock.net.load = function (options) {
-        var xhr = new XMLHttpRequest();
+    /**
+     * Loads an ArrayBuffer into memory using XMLHttpRequest.
+     */
+    flock.net.readBufferFromUrl = function (options) {
+        var src = options.src,
+            xhr = new XMLHttpRequest();
+        
         xhr.onreadystatechange = function () {
             if (xhr.readyState === 4) {
                 if (xhr.status === 200) {
-                    options.success(xhr.response);
+                    options.success(xhr.response, flock.file.parseFileExtension(src));
                 } else {
                     if (!options.error) {
                         throw new Error(xhr.statusText);
@@ -59,9 +81,9 @@ var flock = fluid.registerNamespace("flock");
                 }
             }
         };
-        // Default to array buffer response, since this code is most likely to be used for audio files.
+
+        xhr.open(options.method || "GET", src, true);
         xhr.responseType = options.responseType || "arraybuffer";
-        xhr.open(options.method || "GET", options.url, true);
         xhr.send(options.data);
     };
     
@@ -104,39 +126,22 @@ var flock = fluid.registerNamespace("flock");
      * @return {Uint8Array} the converted buffer
      */
     flock.file.stringToBuffer = function (s) {
-        var l = s.length,
-            b = new ArrayBuffer(l),
+        var len = s.length,
+            b = new ArrayBuffer(len),
             v = new Uint8Array(b),
             i;
-        for (i = 0; i < l; i++) {
+        for (i = 0; i < len; i++) {
             v[i] = s.charCodeAt(i);
         }
         return v.buffer;
     };
     
     /**
-     * Loads the contents of a URL via an AJAX GET request into an ArrayBuffer.
-     *
-     * @param {String} url the URL to load
-     * @param {Function} onSucess a callback to invoke when the file is successfully loaded
+     * Asynchronously parses the specified data URL into an ArrayBuffer.
      */
-    flock.file.readUrl = function (url, onSuccess) {
-        flock.net.load({
-            url: url, 
-            success: function (data) {
-                onSuccess(data, flock.file.parseFileExtension(url));
-            }
-        });
-    };
-    
-    /**
-     * Parses the specified data URL into an ArrayBuffer.
-     *
-     * @param {String} url the DataURL to parse, in the format "data:[mimeType][;base64],<data>"
-     * @param {Function} onSuccess a callback to invoke when the dataURL has been successfully parsed
-     */
-    flock.file.readDataUrl = function (url, onSuccess) {
-        var delim = url.indexOf(","),
+    flock.file.readBufferFromDataUrl = function (options) {
+        var url = options.src,
+            delim = url.indexOf(","),
             header = url.substring(0, delim),
             data = url.substring(delim + 1),
             base64Idx = header.indexOf(";base64"),
@@ -148,26 +153,22 @@ var flock = fluid.registerNamespace("flock");
         if (isBase64) {
             data = atob(data);
         }
-                
-        onSuccess(flock.file.stringToBuffer(data), flock.file.parseMIMEType(mimeType));
+        
+        flock.applyDeferred(function () {
+            var buffer = flock.file.stringToBuffer(data);
+            options.success(buffer, flock.file.parseMIMEType(mimeType));
+        });
     };
     
     /**
-     * Reads the specified File into an ArrayBuffer.
-     *
-     * @param {File} file the file to read
-     * @param {Function} onSuccess a callback to invoke when the File has been successfully read
+     * Asynchronously reads the specified File into an ArrayBuffer.
      */
-    flock.file.readFile = function (file, onSuccess) {
-        if (!file) {
-            return null;
-        }
-        
+    flock.file.readBufferFromFile = function (options) {
         var reader  = new FileReader();
         reader.onload = function (e) {
-            onSuccess(e.target.result, flock.file.parseFileExtension(file.name));
+            options.success(e.target.result, flock.file.parseFileExtension(options.src.name));
         };
-        reader.readAsArrayBuffer(file);
+        reader.readAsArrayBuffer(options.src);
         
         return reader;
     };
@@ -176,24 +177,138 @@ var flock = fluid.registerNamespace("flock");
     fluid.registerNamespace("flock.audio");
     
     /**
-     * Decodes audio sample data in the specified format. This decoder currently supports WAVE and AIFF file formats.
+     * Asychronously loads an ArrayBuffer into memory.
      *
-     * @param {Object} src either a File, URL, data URL, or the raw audio file data as a binary string
-     * @param {Function} onSuccess a callback to invoke when decoding is finished
-     * @param {String} format (optional) the format of the audio data; include this ONLY if src is a binary string
+     * Options:
+     *  - src: the URL to load the array buffer from
+     *  - method: the HTTP method to use (if applicable)
+     *  - data: the data to be sent as part of the request (it's your job to query string-ize this if it's an HTTP request)
+     *  - success: the success callback, which takes the ArrayBuffer response as its only argument
+     *  - error: a callback that will be invoked if an error occurs, which takes the error message as its only argument
      */
-    flock.audio.decode = function (src, onSuccess, format) {
-        var isString = typeof (src) === "string",
-            reader;
-        
-        if (format && isString) {
-            onSuccess(flock.audio.decodeArrayBuffer(flock.file.stringToBuffer(src), format));            
-        } else {
-            reader = isString ? (src.indexOf("data:") === 0 ? flock.file.readDataUrl : flock.file.readUrl) : flock.file.readFile;
-            reader(src, function (data, type) {
-                onSuccess(flock.audio.decodeArrayBuffer(data, type));
-            });
+    flock.audio.loadBuffer = function (options) {
+        var src = options.src || options.url;
+        if (!src) {
+            flock.applyDeferred(options.error, ["Error while loading a buffer: the src option was undefined."]);
         }
+        
+        if (src instanceof ArrayBuffer) {
+            flock.applyDeferred(options.success, [options.type]);
+        }
+        
+        var reader = (typeof (File) !== "undefined" && src instanceof File) ? flock.file.readBufferFromFile :
+            src.indexOf("data:") === 0 ? flock.file.readBufferFromDataUrl : flock.net.readBufferFromUrl;
+
+        reader(options);
+    };
+    
+    /**
+     * Loads and decodes an audio file. By default, this is done asynchronously in a Web Worker.
+     * This decoder currently supports WAVE and AIFF file formats.
+     */
+    flock.audio.decode = function (options) {
+        var success = options.success;
+        
+        var wrappedSuccess = function (rawData, type) {
+            var decoders = flock.audio.decode,
+                decoder;
+                
+            if (!options) {
+                decoder = decoders.async;
+            } else if (options.decoder) {
+                decoder = typeof (options.decoder) === "string" ?
+                    fluid.getGlobalValue(options.decoder) : options.decoder;
+            } else if (options.async === false) {
+                decoder = decoders.sync;
+            } else {
+                decoder = decoders.async;
+            }
+            
+            decoder({
+                rawData: rawData,
+                type: type,
+                success: success,
+                error: options.error
+            });
+        };
+    
+        options.success = wrappedSuccess;
+        flock.audio.loadBuffer(options);
+    };
+    
+    /**
+     * Synchronously decodes an audio file.
+     */
+    flock.audio.decode.sync = function (options) {
+        try {
+            var buffer = flock.audio.decodeArrayBuffer(options.rawData, options.type);
+            options.success(buffer, options.type);
+        } catch (e) {
+            if (options.error) {
+                options.error(e.msg);
+            } else {
+                throw e;
+            }
+        }
+    };
+    
+    /**
+     * Asynchronously decodes the specified rawData in a Web Worker.
+     */
+    flock.audio.decode.async = function (options) {
+        var workerUrl = flock.audio.decode.async.findWorkerUrl(options),
+            w = new Worker(workerUrl);
+        
+        w.addEventListener("message", function (e) {
+            var data = e.data,
+                msg = e.data.msg;
+            
+            if (msg === "afterDecoded") {
+                options.success(data.buffer, data.type);
+            } else if (msg === "onError") {
+                options.error(data.errorMsg);
+            }
+        }, true);
+        
+        w.postMessage({
+            msg: "decode",
+            rawData: options.rawData,
+            type: options.type
+        });
+    };
+    
+    flock.audio.decode.async.findWorkerUrl = function (options) {
+        if (options && options.workerUrl) {
+            return options.workerUrl;
+        }
+        
+        var workerFileName = "flocking-audiofile-worker.js",
+            flockingFileNames = ["flocking-all.js", "flocking-audiofile.js", "flocking-core.js"],
+            i,
+            fileName,
+            scripts,
+            src,
+            idx,
+            baseUrl;
+        
+        for (i = 0; i < flockingFileNames.length; i++) {
+            fileName = flockingFileNames[i];
+            scripts = $("script[src$='" + fileName + "']");
+            if (scripts.length > 0) {
+                break;
+            }
+        }
+        
+        if (scripts.length < 1) {
+            throw new Error("Flocking error: could not load the Audio Decoder into a worker because " + 
+                "flocking-all.js or flocking-core.js could not be found.");
+        }
+        
+        src = scripts.eq(0).attr("src");
+        idx = src.indexOf(fileName);
+        baseUrl = src.substring(0, idx);
+        
+        return baseUrl + workerFileName;
     };
     
     flock.audio.decodeArrayBuffer = function (data, type) {

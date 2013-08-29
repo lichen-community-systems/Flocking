@@ -2,8 +2,8 @@
 "use strict";
 
 importScripts(
-    "../../../third-party/polydataview/js/polydataview.js",
-    "../../../flocking/flocking-audiofile.js"
+    "../third-party/polydataview/js/polydataview.js",
+    "./flocking-audiofile.js"
 );
 
 flock.audio.workerDecoder = {};

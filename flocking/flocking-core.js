@@ -98,6 +98,10 @@ var fluid = fluid || require("infusion"),
     fluid.staticEnvironment.audioEngine = fluid.typeTag("flock.platform." + flock.platform.audioEngine);
 
     
+    flock.shim = {
+        URL: typeof (window) !== "undefined" ? window.URL || window.webkitURL || window.msURL : undefined
+    };
+    
     /*************
      * Utilities *
      *************/
@@ -106,7 +110,7 @@ var fluid = fluid || require("infusion"),
         var type = typeof (o);
         return o && o.length !== undefined && type !== "string" && type !== "function";
     };
-
+    
     flock.generate = function (bufOrSize, generator) {
         var buf = typeof (bufOrSize) === "number" ? new Float32Array(bufOrSize) : bufOrSize,
             isFunc = typeof (generator) === "function",
@@ -588,8 +592,8 @@ var fluid = fluid || require("infusion"),
             numBuses: 2,
             // This buffer size determines the overall latency of Flocking's audio output. On Firefox, it will be 2x.
             // TODO: Replace this with IoC awesomeness.
-            bufferSize: (flock.platform.os === "Win32" && flock.platform.browser.mozilla) ?
-                16384 : flock.platform.isMobile ? 8192 : 2048,
+            bufferSize: flock.platform.isWebAudio ? 1024 : 
+                flock.platform.os === "Win32" ? 16384 : flock.platform.isMobile ? 8192 : 4096,
             
             // Hints to some audio backends.
             genPollIntervalFactor: flock.platform.isLinux ? 1 : 20 // Only used on Firefox.
@@ -652,17 +656,25 @@ var fluid = fluid || require("infusion"),
         
         that.loadBuffer = function (name, src, onLoadFn) {
             // TODO: Replace with a promise.
+            // TODO: Optionize.
             if (!src && onLoadFn) {
                 // Assume the buffer has already been loaded by other means.
                 onLoadFn(that.buffers[name], name);
                 return;
             }
             
-            flock.audio.decode(src, function (decoded) {
-                var chans = decoded.data.channels;
-                that.buffers[name] = chans;
-                if (onLoadFn) {
-                    onLoadFn(chans, name); 
+            flock.audio.decode({
+                src: src,
+                success: function (decoded) {
+                    var chans = decoded.data.channels;
+                    that.buffers[name] = chans;
+                    if (onLoadFn) {
+                        onLoadFn(chans, name);
+                    }
+                },
+                error: function (errorMsg) {
+                    // TODO: Proper error handling.
+                    throw new Error(errorMsg);
                 }
             });
         };
