@@ -20,79 +20,106 @@ flock.test = flock.test || {};
         0.0, 0.1
     ];
     
-    module("flock.file.readDataUrl() tests");
+    module("flock.file.readBufferFromDataUrl() tests");
     
-    test("Read base 64 encoding in data URL", function () {
+    (function () {
         var expectedUnencoded = window.atob(flock.test.audio.b64Int16WAVData),
             expectedArrayBuffer = flock.file.stringToBuffer(expectedUnencoded),
             dataFormatCombinations = [
                 {
-                    name: "base64-encoded with a MIME type",
-                    url: flock.test.audio.triangleInt16WAV
+                    name: "Read a base64-encoded data URL with a MIME type",
+                    src: flock.test.audio.triangleInt16WAV
                 },
                 {
-                    name: "not base64 encoded with a MIME type",
-                    url: "data:audio/wav," + expectedUnencoded
+                    name: "Read a non-base64 data URL with a MIME type",
+                    src: "data:audio/wav," + expectedUnencoded
                 },
                 {
-                    name: "base64-encoded with no MIME type",
-                    url: "data:;base64," + flock.test.audio.b64Int16WAVData
+                    name: "Read a base64-encoded with no MIME type",
+                    src: "data:;base64," + flock.test.audio.b64Int16WAVData
                 },
                 {
-                    name: "not base64 encoded data URL with no MIME type",
-                    url: "data:," + expectedUnencoded
+                    name: "Read a non-base64 data URL with no MIME type",
+                    src: "data:," + expectedUnencoded
                 }
             ],
             i, formatSpec;
     
         for (i = 0; i < dataFormatCombinations.length; i++) {
             formatSpec = dataFormatCombinations[i];
-            flock.file.readDataUrl(formatSpec.url, function (data, type) {
-                deepEqual(new Int8Array(data), new Int8Array(expectedArrayBuffer), "readDataUrl() should correctly parse and decode a data URL that is " + formatSpec.name);
-            });    
-        } 
-    });
+            
+            asyncTest(formatSpec.name, function () {
+                flock.file.readBufferFromDataUrl({
+                    src: formatSpec.src,
+                    success: function (data, type) {
+                        deepEqual(
+                            new Int8Array(data), 
+                            new Int8Array(expectedArrayBuffer), 
+                            "readBufferFromDataUrl() should correctly parse and decode a data URL that is " + formatSpec.name
+                        );
+                    
+                        start();
+                    }
+                });
+            });
+        }
+    })();
+
+    (function () {
+        var mimeTypeCombinations = {
+            "wav": [
+                "data:audio/wav;base64,xyz",
+                "data:audio/wave;base64,xyz",
+                "data:audio/x-wav;base64,xyz",
+                "data:audio/wav,xyz",
+                "data:audio/wave,xyz",
+                "data:audio/x-wav,xyz"
+            ],
+            "aiff": [
+                "data:audio/aiff;base64,xyz",
+                "data:sound/aiff;base64,xyz",
+                "data:audio/x-aiff;base64,xyz",
+                "data:audio/aiff,xyz",
+                "data:sound/aiff,xyz",
+                "data:audio/x-aiff,xyz"
+            ]
+        };
+        
+        var testMimeType = function (url, expectedType) {
+            asyncTest("Parse data URL with " + expectedType + " MIME type.", function () {
+                flock.file.readBufferFromDataUrl({
+                    src: url, 
+                    success: function (data, actualType) {
+                        equal(
+                            actualType, 
+                            expectedType, 
+                            "readBufferFromDataUrl() should recognize " + url + " as a " + expectedType + " file."
+                        );
+                        start();
+                    }
+                });
+            });
+        };
     
-    var mimeTypeCombinations = {
-        "wav": [
-            "data:audio/wav;base64,xyz",
-            "data:audio/wave;base64,xyz",
-            "data:audio/x-wav;base64,xyz",
-            "data:audio/wav,xyz",
-            "data:audio/wave,xyz",
-            "data:audio/x-wav,xyz"
-        ],
-        "aiff": [
-            "data:audio/aiff;base64,xyz",
-            "data:sound/aiff;base64,xyz",
-            "data:audio/x-aiff;base64,xyz",
-            "data:audio/aiff,xyz",
-            "data:sound/aiff,xyz",
-            "data:audio/x-aiff,xyz"
-        ]
-    };
-    
-    test("Parse MIME typed data URLs", function () {
         var expectedType, urls, i, url;
         for (expectedType in mimeTypeCombinations) {
             urls = mimeTypeCombinations[expectedType];
             for (i = 0; i < urls.length; i++) {
                 url = urls[i];
-                flock.file.readDataUrl(url, function (data, actualType) {
-                    equal(actualType, expectedType, "readDataUrl() should recognize " + url + " as a " + expectedType + " file.");
-                });
+                testMimeType(url, expectedType);
             }
         }
-    });
+    })();
     
-    
+
     module("flock.audio.decode.chunked() tests");
+    
     (function () {
         var audioFormatTestSpecs = [
             {
                 name: "16 bit WAV file",
                 format: "wav",
-                url: flock.test.audio.triangleInt16WAV,
+                src: flock.test.audio.triangleInt16WAV,
                 decoded: {
                     container: {
                         id: "RIFF",
@@ -119,7 +146,7 @@ flock.test = flock.test || {};
             {
                 name: "16 bit AIFF file",
                 format: "aiff",
-                url: flock.test.audio.triangleInt16AIFF,
+                src: flock.test.audio.triangleInt16AIFF,
                 decoded: {
                     container: {
                         id: "FORM",
@@ -145,15 +172,23 @@ flock.test = flock.test || {};
         ];
 
         var testAudioFileFormat = function (config) {
-            test(config.name + ".", function () {
-                flock.file.readDataUrl(config.url, function (dataBuffer) {
-                    var expected = config.decoded,
-                        actual = flock.audio.decode.chunked(dataBuffer, flock.audio.formats[config.format]);
+            asyncTest(config.name + ".", function () {
+                flock.file.readBufferFromDataUrl({
+                    src: config.src, 
+                    success: function (dataBuffer) {
+                        var expected = config.decoded,
+                            actual = flock.audio.decode.chunked(dataBuffer, flock.audio.formats[config.format]);
                         
                         // Remove the sample data, since it's tested below.
                         delete actual.data.channels;
                         
-                    deepEqual(actual, expected, "The decoded audio file info should contain valid container, format, and data structures.");
+                        deepEqual(
+                            actual, 
+                            expected, 
+                            "The decoded audio file info should contain valid container, format, and data structures."
+                        );
+                        start();
+                    }
                 });
             });
         };
@@ -167,8 +202,8 @@ flock.test = flock.test || {};
     
     
     module("flock.audio.decode() tests");
+    
     (function () {
-        
         var roundBuffer = function (buf, digits) {
             var roundedBuf = [],
                 i;
@@ -209,51 +244,55 @@ flock.test = flock.test || {};
                 name: "int 16 WAV file",
                 bitDepth: 16,
                 dataSize: eightBitSampleSize * 2,
-                url: flock.test.audio.triangleInt16WAV
+                src: flock.test.audio.triangleInt16WAV
             },
             {
                 name: "int 16 AIFF file",
                 bitDepth: 16,
                 dataSize: (eightBitSampleSize * 2) + 4 + 4, // 42 samples in 16 bit representation plus 4 bytes for offset and 4 for blockSize
-                url: flock.test.audio.triangleInt16AIFF
+                src: flock.test.audio.triangleInt16AIFF
             },
             {
                 name: "int8 AIFF file",
                 bitDepth: 8,
                 dataSize: eightBitSampleSize + 4 + 4,
-                url: flock.test.audio.triangleInt8AIFF
+                src: flock.test.audio.triangleInt8AIFF
             },
             // No 32-bit support yet.
             {
                 name: "int32 WAV file",
                 bitDepth: 32,
                 dataSize: eightBitSampleSize * 4,
-                url: flock.test.audio.triangleInt32WAV
+                src: flock.test.audio.triangleInt32WAV
             },
             {
                 name: "int32 AIFF file",
                 bitDepth: 32,
                 dataSize: (eightBitSampleSize * 4) + 4 + 4,
-                url: flock.test.audio.triangleInt32AIFF
+                src: flock.test.audio.triangleInt32AIFF
             },
             {
                 name: "float WAV file",
                 bitDepth: 32,
                 dataSize: eightBitSampleSize * 4,
-                url: flock.test.audio.triangleFloatWAV
+                src: flock.test.audio.triangleFloatWAV
             },
             {
                 name: "float AIFF file",
                 bitDepth: 32,
                 dataSize: (eightBitSampleSize * 4) + 4 + 4,
-                url: flock.test.audio.triangleFloatAIFF
+                src: flock.test.audio.triangleFloatAIFF
             }
         ];
 
         var makeTester = function (config) {
             return function () {
-                flock.audio.decode(config.url, function (decoded) {
-                    testTriangleBuffer(decoded, config.bitDepth, config.dataSize);
+                flock.audio.decode({
+                    src: config.src, 
+                    success: function (decoded) {
+                        testTriangleBuffer(decoded, config.bitDepth, config.dataSize);
+                        start();
+                    }
                 });   
             };
         };
@@ -262,8 +301,7 @@ flock.test = flock.test || {};
         for (i = 0; i < fileConfigurations.length; i++) {
             config = fileConfigurations[i];
             tester = makeTester(config);
-            test("Decode " + config.name, tester);
+            asyncTest("Decode " + config.name, tester);
         }
-    }()); 
-
+    }());
 })();
