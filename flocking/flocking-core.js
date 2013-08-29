@@ -489,6 +489,30 @@ var fluid = fluid || require("infusion"),
     };
     
     
+    /**
+     * Creates a Buffer Description object from an array of audio buffers for each channel.
+     */
+    fluid.defaults("flock.bufferDesc", {
+        gradeNames: ["fluid.littleComponent", "autoInit"],
+        mergePolicy: {
+            channelBuffers: "nomerge"
+        },
+        container: {},
+        format: {
+            sampleRate: 44100,
+            numChannels: "{that}.options.data.channels.length",
+            numSampleFrames: "{that}.options.data.channels.0.length"
+        }
+    });
+
+    flock.bufferDesc.finalInit = function (that) {
+        that.container = that.options.container;
+        that.format = that.options.format;
+        that.data = that.options.data;
+        that.format.duration = that.format.numSampleFrames / that.format.sampleRate;
+    };
+    
+    
     fluid.defaults("flock.nodeList", {
         gradeNames: ["fluid.littleComponent", "autoInit"],
         members: {
@@ -620,6 +644,7 @@ var fluid = fluid || require("infusion"),
         that.buses = flock.enviro.createAudioBuffers(that.audioSettings.numBuses, 
                 that.audioSettings.rates.control);
         that.buffers = {};
+        that.promisedBuffers = {};
         
         /**
          * Starts generating samples from all synths.
@@ -654,29 +679,18 @@ var fluid = fluid || require("infusion"),
             }
         };
         
-        that.loadBuffer = function (name, src, onLoadFn) {
-            // TODO: Replace with a promise.
-            // TODO: Optionize.
-            if (!src && onLoadFn) {
-                // Assume the buffer has already been loaded by other means.
-                onLoadFn(that.buffers[name], name);
+        that.registerBuffer = function (bufDesc) {
+            bufDesc.id = bufDesc.id || fluid.allocateGuid();
+            that.buffers[bufDesc.id] = bufDesc;
+        };
+
+        that.releaseBuffer = function (bufDesc) {
+            if (!bufDesc) {
                 return;
             }
             
-            flock.audio.decode({
-                src: src,
-                success: function (decoded) {
-                    var chans = decoded.data.channels;
-                    that.buffers[name] = chans;
-                    if (onLoadFn) {
-                        onLoadFn(chans, name);
-                    }
-                },
-                error: function (errorMsg) {
-                    // TODO: Proper error handling.
-                    throw new Error(errorMsg);
-                }
-            });
+            var id = typeof (bufDesc) === "string" ? bufDesc : bufDesc.id;
+            delete that.buffers[id];
         };
     };
     

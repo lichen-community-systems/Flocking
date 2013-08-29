@@ -837,122 +837,25 @@ var fluid = fluid || require("infusion"),
         }
     });
     
-    // TODO: Resolve with other buffer-related code and move up to core.
-    // TODO: Use a real event system.
-    flock.buffer = {
-        listeners: {},
-        
-        addListener: function (id, ugen) {
-            if (!ugen.onBufferReady) {
-                return;
-            }
-            
-            var listeners = flock.buffer.listeners[id];
-            if (!listeners) {
-                listeners = flock.buffer.listeners[id] = [];
-            }
-            listeners.push(ugen);
-        },
-        
-        fireOnce: function (id, channelBuffer, buffer) {
-            var listeners = flock.buffer.listeners[id],
-                i,
-                ugen;
-                
-            if (!listeners || !buffer) {
-                return;
-            }
-            
-            // Fire onBufferReady() on each ugen listener.
-            for (i = 0; i < listeners.length; i++) {
-                ugen = listeners[i];
-                ugen.onBufferReady(channelBuffer, id, buffer);
-            }
-            
-            // Clear all listeners.
-            flock.buffer.listeners[id] = [];
-        }
-    };
-    
-    flock.buffer.fireReady = function (ugen, id, buffer, name, chan) {
-        ugen.buffer = buffer ? buffer[chan] : ugen.buffer;
-        ugen.model.name = name;
-        flock.buffer.fireOnce(id, ugen.buffer, buffer);
-    };
-    
-    flock.buffer.resolveBufferId = function (ugen, id, chan) {
-        var buffer = ugen.options.audioSettings.buffers[id];
-        flock.buffer.addListener(id, ugen);
-        if (buffer) {
-            // Buffer has already been loaded.
-            flock.buffer.fireReady(ugen, id, buffer, id, chan);
-        }
-    };
-    
-    flock.buffer.resolveBufferArray = function (ugen, buffer, chan) {
-        var id = fluid.allocateGuid();
-        flock.buffer.addListener(id, ugen);
-        flock.buffer.fireReady(ugen, id, [buffer], id, chan);
-    };
-    
-    flock.buffer.resolveBufferDef = function (ugen, bufDef, chan) {
-        flock.buffer.addListener(bufDef.id, ugen);
-        flock.parse.bufferForDef(bufDef, function (buffer, name) {
-            flock.buffer.fireReady(ugen, bufDef.id, buffer, name, chan)
-        });
-    };
-    
-    // TODO: Should this be done earlier (during ugen parsing)?
-    // TODO: Factor this into a ugen mixin.
-    flock.buffer.resolveBuffer = function (ugen) {
-        var m = ugen.model,
-            inputs = ugen.inputs,
-            bufDef = m.bufDef = inputs.buffer,
-            chan = inputs.channel ? inputs.channel.output[0] : 0,
-            buf;
-        
-        if (!bufDef) {
-            return;
-        } else if (typeof (bufDef) === "string") {
-            flock.buffer.resolveBufferId(ugen, bufDef, chan);
-        } else if (flock.isIterable(bufDef)) {
-            flock.buffer.resolveBufferArray(ugen, bufDef, chan);
-        } else {
-            flock.buffer.resolveBufferDef(ugen, bufDef, chan);
-        }
-    };
     
     /****************
      * Buffer UGens *
      ****************/
-     
+    
     flock.ugen.playBuffer = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
-        // Start with a zeroed buffer, since the buffer input may be loaded asynchronously.
-        that.buffer = new Float32Array(that.output.length); 
         
         // Optimized gen function for constant regular-speed playback.
         that.crRegularSpeedGen = function (numSamps) {
             var m = that.model,
                 out = that.output,
                 chan = that.inputs.channel.output[0],
-                source = that.buffer,
+                source = that.buffer.data.channels[chan],
                 bufIdx = m.idx,
                 bufLen = source.length,
                 loop = that.inputs.loop.output[0],
                 buffers = that.options.audioSettings.buffers,
                 i;
-            
-            // If the channel has changed, update the buffer we're reading from.
-            // TODO: Support full bufferDesc objects at that.buffer so that we do this with non-environment buffers,
-            // or refactor buffer management altogether.
-            if (m.channel !== chan) {
-                m.channel = chan;
-                if (buffers[m.name]) {
-                    that.buffer = source = buffers[m.name][chan];
-                }
-            }
             
             for (i = 0; i < numSamps; i++) {
                 if (bufIdx >= bufLen) {
@@ -963,7 +866,7 @@ var fluid = fluid || require("infusion"),
                         continue;
                     }
                 }
-                out[i] = source[bufIdx];
+                out[i] = source[bufIdx]; // TODO: Interpolation.
                 bufIdx++;
             }
             
@@ -975,20 +878,12 @@ var fluid = fluid || require("infusion"),
                 out = that.output,
                 chan = that.inputs.channel.output[0],
                 speedInc = that.inputs.speed.output[0],
-                source = that.buffer,
+                source = that.buffer.data.channels[chan],
                 bufIdx = m.idx,
                 bufLen = source.length,
                 loop = that.inputs.loop.output[0],
                 buffers = that.options.audioSettings.buffers,
                 i;
-            
-            // If the channel has changed, update the buffer we're reading from.
-            if (m.channel !== chan) {
-                m.channel = chan;
-                if (buffers[m.name]) {
-                    that.buffer = source = buffers[m.name][chan];
-                }
-            }
             
             for (i = 0; i < numSamps; i++) {
                 if (bufIdx >= bufLen) {
@@ -1000,7 +895,7 @@ var fluid = fluid || require("infusion"),
                     }
                 }
                 
-                out[i] = source[Math.round(bufIdx)];
+                out[i] = source[Math.round(bufIdx)]; // TODO: Interpolation.
                 bufIdx += speedInc;
             }
             
@@ -1016,7 +911,8 @@ var fluid = fluid || require("infusion"),
                 inputs = that.inputs;
             
             if (m.bufDef !== that.inputs.buffer || inputName === "buffer") {
-                flock.buffer.resolveBuffer(that);
+                m.bufDef = that.inputs.buffer;
+                flock.parse.bufferForDef(m.bufDef, that, flock.enviro.shared); // TODO: Shared enviro reference.
             }
             
             // TODO: Optimize for non-regular speed constant rate input.
@@ -1026,7 +922,27 @@ var fluid = fluid || require("infusion"),
             flock.onMulAddInputChanged(that);
         };
         
-        that.onInputChanged();
+        that.setBuffer = function (bufDesc) {
+            that.buffer = bufDesc;
+            that.model.idx = 0; // TODO: Allow for configurable start and end points.
+        };
+        
+        that.init = function () {
+            // Start with a zeroed buffer, since the buffer input may be loaded asynchronously.
+            // TODO: Move this to a ugen "grade."
+            that.buffer = that.model.bufDef = flock.bufferDesc({
+                format: {
+                    sampleRate: that.options.audioSettings.rates.audio
+                },
+                data: {
+                    channels: [new Float32Array(that.output.length)]
+                }
+            });
+            
+            that.onInputChanged();
+        };
+        
+        that.init();
         return that;
     };
     

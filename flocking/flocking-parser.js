@@ -240,19 +240,87 @@ var fluid = fluid || require("infusion"),
         return ugen;
     };
     
-    flock.parse.bufferForDef = function (bufDef, onLoad, enviro) {
-        enviro = enviro || flock.enviro.shared;
-
-        var id = bufDef.id || fluid.allocateGuid(),
-            src;
-            
-        if (bufDef.url) {
-            src = bufDef.url;
-        } else if (bufDef.selector) {
-            src = document.querySelector(bufDef.selector).files[0];
+    flock.parse.expandBufferDef = function (bufDef) {
+        if (flock.isIterable(bufDef)) {
+            // If we get a direct array reference, wrap it up in a buffer description.
+            return flock.bufferDesc({
+                data: {
+                    channels: bufDef // TODO: What about bare single-channel arrays?
+                }
+            });
         }
         
-        enviro.loadBuffer(id, src, onLoad);
+        // If we get a bare string, interpret it as an id reference.
+        return typeof (bufDef) !== "string" ? bufDef : {
+            id: bufDef
+        };
+    };
+    
+    flock.parse.bufferForDef = function (bufDef, ugen, enviro) {
+        bufDef = flock.parse.expandBufferDef(bufDef);
+        
+        if (bufDef.data && bufDef.data.channels) {
+            flock.parse.bufferForDef.resolveBuffer(bufDef, ugen, enviro);
+        } else if (bufDef.id && !bufDef.src && !bufDef.url && !bufDef.selector) {
+            flock.parse.bufferForDef.resolveIdReference(bufDef, ugen, enviro);
+        } else {
+            flock.parse.bufferForDef.resolveDef(bufDef, ugen, enviro);
+        }
+    };
+    
+    flock.parse.bufferForDef.resolveDef = function (bufDef, ugen, enviro) {
+        bufDef.src = bufDef.url || bufDef.src;
+        if (bufDef.selector && typeof(document) !== "undefined") {
+            bufDef.src = document.querySelector(bufDef.selector).files[0];
+        }
+        
+        if (!bufDef.src) {
+            return;
+        }
+
+        var p = flock.parse.bufferForDef.makeBufferPromise(bufDef, ugen, enviro);
+        flock.audio.decode({
+            src: bufDef.src,
+            success: p.resolve,
+            error: p.reject
+        });
+    };
+    
+    flock.parse.bufferForDef.resolveBuffer = function (bufDesc, ugen, enviro) {
+        var p = flock.parse.bufferForDef.makeBufferPromise(bufDesc, ugen, enviro);
+        p.resolve(bufDesc);
+    };
+    
+    flock.parse.bufferForDef.resolveIdReference = function (bufDef, ugen, enviro) {
+        flock.parse.bufferForDef.registerForBufferPromise(bufDef.id, ugen, enviro);
+    };
+    
+    flock.parse.bufferForDef.makeBufferPromise = function (bufDef, ugen, enviro) {
+        var p = new Promise();
+        if (enviro && bufDef.id) {
+            enviro.promisedBuffers[bufDef.id] = p;
+        }
+        flock.parse.bufferForDef.registerForBufferPromise(p, ugen, enviro);
+        
+        return p;
+    };
+    
+    flock.parse.bufferForDef.registerForBufferPromise = function (promise, ugen, enviro) {
+        promise = typeof (promise) === "string" ? enviro.promisedBuffers[promise] : promise;
+        
+        var success = function (bufDesc) {
+            if (enviro && bufDesc.id) {
+                enviro.registerBuffer(bufDesc);
+            }
+            
+            ugen.setBuffer(bufDesc);
+        };
+        
+        var error = function (msg) {
+            throw new Error(msg);
+        };
+        
+        promise.then(success, error);
     };
 
 }());
