@@ -193,14 +193,19 @@ var flock = fluid.registerNamespace("flock");
         }
         
         if (src instanceof ArrayBuffer) {
-            flock.applyDeferred(options.success, [options.type]);
+            flock.applyDeferred(options.success, [src, options.type]);
         }
         
-        var reader = (typeof (File) !== "undefined" && src instanceof File) ? flock.file.readBufferFromFile :
-            src.indexOf("data:") === 0 ? flock.file.readBufferFromDataUrl : flock.net.readBufferFromUrl;
+        var reader = flock.audio.loadBuffer.readerForSource(src);
 
         reader(options);
     };
+    
+    flock.audio.loadBuffer.readerForSource = function (src) {
+        return (typeof (File) !== "undefined" && src instanceof File) ? flock.file.readBufferFromFile :
+            src.indexOf("data:") === 0 ? flock.file.readBufferFromDataUrl : flock.net.readBufferFromUrl;
+    };
+    
     
     /**
      * Loads and decodes an audio file. By default, this is done asynchronously in a Web Worker.
