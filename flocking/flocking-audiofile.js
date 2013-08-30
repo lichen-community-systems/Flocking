@@ -480,12 +480,20 @@ var flock = fluid.registerNamespace("flock");
     
     flock.audio.decode.wavSampleDataType = function (chunks) {
         var t = chunks.format.audioFormatType;
-        return t === 1 ? "Int" : (t === 3 ? "Float" : null);
+        if (t !== 1 && t !== 3) {
+            throw new Error("Flocking decoder error: this file contains an unrecognized WAV format type.");
+        }
+        
+        return t === 1 ? "Int" : "Float";
     };
     
     flock.audio.decode.aiffSampleDataType = function (chunks) {
         var t = chunks.container.formatType;
-        return t === "AIFF" ? "Int" : (t === "AIFC" ? "Float" : null);
+        if (t !== "AIFF" && t !== "AIFC") {
+            throw new Error("Flocking decoder error: this file contains an unrecognized AIFF format type.");
+        }
+        
+        return t === "AIFF" ? "Int" : "Float";
     }; 
     
     flock.audio.decode.chunked = function (data, formatSpec) {

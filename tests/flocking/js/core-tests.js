@@ -632,7 +632,7 @@ var fluid = fluid || require("infusion"),
                     ugen: "flock.ugen.sequence",
                     rate: "audio",
                     freq: flock.enviro.shared.audioSettings.rates.audio,
-                    buffer: flock.test.fillBuffer(1, 64)
+                    list: flock.test.fillBuffer(1, 64)
                 }
             }
         });
@@ -646,7 +646,7 @@ var fluid = fluid || require("infusion"),
             ugen: "flock.ugen.sequence",
             rate: "audio",
             freq: flock.enviro.shared.audioSettings.rates.audio,
-            buffer: flock.test.fillBuffer(64, 127)
+            list: flock.test.fillBuffer(64, 127)
         });
         synth.gen();
         deepEqual(passThrough.output, flock.test.fillBuffer(64, 127),
@@ -663,7 +663,7 @@ var fluid = fluid || require("infusion"),
             ugen: "flock.ugen.sequence",
             rate: "audio",
             freq: flock.enviro.shared.audioSettings.rates.audio,
-            buffer: flock.test.fillBuffer(128, 191)
+            list: flock.test.fillBuffer(128, 191)
         });
         synth.gen();
         deepEqual(passThrough.output, flock.test.fillBuffer(128, 191),

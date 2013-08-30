@@ -135,6 +135,7 @@ flock.test = flock.test || {};
                         sampleRate: 44100,
                         avgBytesPerSecond: 88200,
                         blockAlign: 2,
+                        duration: 0.0009523809523809524,
                         bitRate: 16
                     },
                     data: {
@@ -159,6 +160,7 @@ flock.test = flock.test || {};
                         numChannels: 1,
                         numSampleFrames: 42,
                         bitRate: 16,
+                        duration: 0.0009523809523809524,
                         sampleRate: 44100.0
                     },
                     data: {

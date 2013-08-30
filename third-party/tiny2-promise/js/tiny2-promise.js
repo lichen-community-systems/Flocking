@@ -6,8 +6,11 @@
 // This was modified slightly from a gist by Brian Cavalier:
 // https://gist.github.com/814318
 function Promise() {
+    "use strict";
+    
 	var callbacks = [],
 		promise = {
+            state: "pending",
 			resolve: resolve,
 			reject: reject,
 			then: then,
@@ -18,8 +21,8 @@ function Promise() {
 				}
 			}
 		};
-
-	function complete(type, result) {
+	
+    function complete(type, result) {
 		promise.then = type === 'reject'
 			? function(resolve, reject) { reject(result); return this; }
 			: function(resolve)         { resolve(result); return this; };
@@ -34,9 +37,11 @@ function Promise() {
 
 	function resolve(result) {
 		complete('resolve', result);
+        promise.state = "fulfilled";
 	}
 	function reject(err) {
 		complete('reject', err);
+        promise.state = "rejected";
 	}
 	function then(resolve, reject) {
 		callbacks.push({ resolve: resolve, reject: reject });

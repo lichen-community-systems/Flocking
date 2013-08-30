@@ -208,12 +208,19 @@ var fluid = fluid || require("infusion"),
         ugenDef = flock.parse.ugenDef.mergeOptions(ugenDef, options);
         
         var inputDefs = ugenDef.inputs,
+            specialInputs = flock.parse.specialInputs,
             inputs = {},
             inputDef;
         
+        // TODO: This notion of "special inputs" should be merged into the base ugen "grade"
+        // and harmonized with Infusion's merge policies.
+        if (ugenDef.options && ugenDef.options.noExpand) {
+            specialInputs = specialInputs.concat(ugenDef.options.noExpand);
+        }
+        
         for (inputDef in inputDefs) {
             // Create ugens for all inputs except special inputs.
-            inputs[inputDef] = flock.parse.specialInputs.indexOf(inputDef) > -1 ? 
+            inputs[inputDef] = specialInputs.indexOf(inputDef) > -1 ? 
                 ugenDef.inputs[inputDef] : // Don't instantiate a ugen, just pass the def on as-is.
                 flock.parse.ugenForDef(ugenDef.inputs[inputDef], options); // parse the ugendef and create a ugen instance.
         }
@@ -296,17 +303,29 @@ var fluid = fluid || require("infusion"),
     };
     
     flock.parse.bufferForDef.makeBufferPromise = function (bufDef, ugen, enviro) {
-        var p = new Promise();
+        var prevPromise = enviro.promisedBuffers[bufDef.id],
+            p = prevPromise && prevPromise.state === "pending" ? prevPromise : new Promise();
+
         if (enviro && bufDef.id) {
             enviro.promisedBuffers[bufDef.id] = p;
         }
+        
         flock.parse.bufferForDef.registerForBufferPromise(p, ugen, enviro);
         
         return p;
     };
     
-    flock.parse.bufferForDef.registerForBufferPromise = function (promise, ugen, enviro) {
-        promise = typeof (promise) === "string" ? enviro.promisedBuffers[promise] : promise;
+    flock.parse.bufferForDef.registerForBufferPromise = function (promiseorId, ugen, enviro) {
+        var promise = typeof (promiseorId) === "string" ? enviro.promisedBuffers[promiseorId] : promiseorId,
+            bufDesc;
+        
+        if (!promise) {
+            bufDesc = enviro.buffers[promiseorId];
+            promise = enviro.promisedBuffers[promiseorId] = new Promise();
+            if (bufDesc) {
+                promise.resolve(bufDesc);
+            }
+        }
         
         var success = function (bufDesc) {
             if (enviro && bufDesc.id) {
