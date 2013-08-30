@@ -191,7 +191,7 @@ var fluid = fluid || require("infusion"),
         var o = options,
             visitors = o.visitors,
             rates = o.audioSettings.rates;
-        
+         
         // If we receive a plain scalar value, expand it into a value ugenDef.
         ugenDef = flock.parse.expandValueDef(ugenDef);
         
@@ -208,21 +208,18 @@ var fluid = fluid || require("infusion"),
         ugenDef = flock.parse.ugenDef.mergeOptions(ugenDef, options);
         
         var inputDefs = ugenDef.inputs,
-            specialInputs = flock.parse.specialInputs,
             inputs = {},
             inputDef;
         
-        // TODO: This notion of "special inputs" should be merged into the base ugen "grade"
-        // and harmonized with Infusion's merge policies.
-        if (ugenDef.options && ugenDef.options.noExpand) {
-            specialInputs = specialInputs.concat(ugenDef.options.noExpand);
-        }
-        
+        // TODO: This notion of "special inputs" should be refactored as a pluggable system of
+        // "input expanders" that are responsible for processing input definitions of various sorts.
+        // In particular, buffer management should be here so that we can initialize bufferDefs more
+        // proactively and remove this behaviour from flock.ugen.buffer.
         for (inputDef in inputDefs) {
             // Create ugens for all inputs except special inputs.
-            inputs[inputDef] = specialInputs.indexOf(inputDef) > -1 ? 
-                ugenDef.inputs[inputDef] : // Don't instantiate a ugen, just pass the def on as-is.
-                flock.parse.ugenForDef(ugenDef.inputs[inputDef], options); // parse the ugendef and create a ugen instance.
+            inputs[inputDef] = flock.input.shouldExpand(inputDef, ugenDef) ? 
+                flock.parse.ugenForDef(ugenDef.inputs[inputDef], options) : // Parse the ugendef and create a ugen instance.
+                ugenDef.inputs[inputDef]; // Don't instantiate a ugen, just pass the def on as-is.
         }
     
         if (!ugenDef.ugen) {
@@ -299,7 +296,7 @@ var fluid = fluid || require("infusion"),
     };
     
     flock.parse.bufferForDef.resolveIdReference = function (bufDef, ugen, enviro) {
-        flock.parse.bufferForDef.registerForBufferPromise(bufDef.id, ugen, enviro);
+        flock.parse.bufferForDef.registerForBufferPromise(bufDef.id, null, ugen, enviro);
     };
     
     flock.parse.bufferForDef.makeBufferPromise = function (bufDef, ugen, enviro) {
@@ -310,26 +307,29 @@ var fluid = fluid || require("infusion"),
             enviro.promisedBuffers[bufDef.id] = p;
         }
         
-        flock.parse.bufferForDef.registerForBufferPromise(p, ugen, enviro);
+        flock.parse.bufferForDef.registerForBufferPromise(bufDef.id, p, ugen, enviro);
         
         return p;
     };
     
-    flock.parse.bufferForDef.registerForBufferPromise = function (promiseorId, ugen, enviro) {
-        var promise = typeof (promiseorId) === "string" ? enviro.promisedBuffers[promiseorId] : promiseorId,
+    flock.parse.bufferForDef.registerForBufferPromise = function (id, promise, ugen, enviro) {
+        var promise = !promise ? enviro.promisedBuffers[id] : promise,
             bufDesc;
         
         if (!promise) {
-            bufDesc = enviro.buffers[promiseorId];
-            promise = enviro.promisedBuffers[promiseorId] = new Promise();
+            bufDesc = enviro.buffers[id];
+            promise = enviro.promisedBuffers[id] = new Promise();
             if (bufDesc) {
                 promise.resolve(bufDesc);
             }
         }
         
         var success = function (bufDesc) {
-            if (enviro && bufDesc.id) {
-                enviro.registerBuffer(bufDesc);
+            if (id) {
+                bufDesc.id = id;
+                if (enviro) {
+                    enviro.registerBuffer(bufDesc);
+                }
             }
             
             ugen.setBuffer(bufDesc);

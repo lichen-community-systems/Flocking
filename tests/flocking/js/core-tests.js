@@ -737,6 +737,126 @@ var fluid = fluid || require("infusion"),
 
     });
     
+    var bufferTestSynthDef = {
+        id: "play",
+        ugen: "flock.ugen.playBuffer",
+        buffer: flock.bufferDesc({
+            data: {
+                channels : [new Float32Array([1, 2, 3, 4, 5])]
+            }
+        })
+    };
+    
+    flock.test.mockBufferUGen = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        flock.ugen.buffer(that);
+        
+        that.onBufferReady = function () {
+            options.assertion(that);
+            start();
+        };
+        
+        that.onInputChanged = function (inputName) {
+            that.onBufferInputChanged(inputName);
+        };
+        
+        return that;
+    };
+    
+    asyncTest("Buffers: Setting a bufferDef", function () {
+        var s = flock.synth({
+            synthDef: {
+                id: "play",
+                ugen: "flock.test.mockBufferUGen",
+                options: {
+                    assertion: function (ugen) {
+                        deepEqual(ugen.buffer, s.enviro.buffers.hamster,
+                            "After setting a bufferDef, the buffer should have been correctly delivered to the ugen.");
+                    }
+                }
+            }
+        });
+        
+        s.set("play.buffer", {
+            id: "hamster",
+            src: flock.test.audio.triangleFloatWAV
+        });
+    });
+    
+    test("Setting a bufferDesc", function () {
+        var s = flock.synth({
+            synthDef: bufferTestSynthDef
+        });
+        var play = s.get("play");
+
+        // Set a bufferDesc.
+        var hamsterDesc = flock.bufferDesc({
+            data: {
+                channels: [new Float32Array([10, 11, 12, 13, 14, 15])]
+            }
+        });
+        s.set("play.buffer", hamsterDesc);
+        deepEqual(play.inputs.buffer, hamsterDesc,
+            "After setting a bufferDesc, the input should reflect the value actually set.");
+        deepEqual(play.buffer, hamsterDesc,
+            "And the actual buffer should be the correct bufferDesc from the environment.");
+    });
+    
+    test("Setting a buffer id reference", function () {
+        var s = flock.synth({
+            synthDef: bufferTestSynthDef
+        });
+        var play = s.get("play");
+        
+        s.enviro.buffers["cat"] = flock.bufferDesc({
+            data: {
+                channels: [new Float32Array([10, 11, 12, 13, 14, 15])]
+            }
+        });
+        
+        s.enviro.buffers["dog"] = flock.bufferDesc({
+            data: {
+                channels: [new Float32Array([22, 23, 24, 25, 26, 27])]
+            }
+        });
+        
+        // Set a full id reference.
+        s.set("play.buffer", {
+            id: "cat"
+        });
+        deepEqual(play.inputs.buffer, {id: "cat"},
+            "After setting an object id reference, the actual input should reflect the value actually set.");
+        deepEqual(play.buffer, s.enviro.buffers["cat"],
+            "And the actual buffer should be the correct bufferDesc from the environment.");
+        
+        // Set a raw id reference.
+        s.set("play.buffer", "dog");
+        equal(play.inputs.buffer, "dog",
+            "After setting a raw id reference, the actual input should reflect the value actually set.");
+        deepEqual(play.buffer, s.enviro.buffers["dog"],
+            "And the actual buffer should be the correct bufferDesc from the environment.");
+    });
+    
+    test("Getting and setting ugen-specified special inputs.", function () {
+        var s = flock.synth({
+            synthDef: {
+                id: "seq",
+                ugen: "flock.ugen.sequence",
+                list: [1, 2, 3, 5]
+            }
+        });
+        
+        var seq = s.get("seq");
+        deepEqual(seq.inputs.list, s.options.synthDef.list,
+            "Sanity check: the sequence ugen should be initialized with the same list as specified in the synthDef.");
+        
+        var newList = [9, 10, 11, 12];
+        s.set("seq.list", newList);
+        deepEqual(seq.inputs.list, newList, 
+            "After setting a 'special input' on a unit generator, it should have been set correctly.");
+    });
+    
+    
     module("nodeList and ugenNodeList")
     
     test("flock.nodeList", function () {

@@ -377,6 +377,15 @@ var fluid = fluid || require("infusion"),
     
     flock.input = {};
     
+    flock.input.shouldExpand = function (inputName, target) {
+        var specialInputs = flock.parse.specialInputs;
+        if (target && target.options && target.options.noExpand) {
+            specialInputs = specialInputs.concat(target.options.noExpand);
+        }
+        
+        return specialInputs.indexOf(inputName) < 0;
+    };
+    
     flock.input.pathExpander = function (path) {
         return path.replace(/\.(?![0-9])/g, ".inputs.");
     };
@@ -450,9 +459,11 @@ var fluid = fluid || require("infusion"),
             lastDotIdx = path.lastIndexOf("."),
             inputName = path.slice(lastDotIdx + 1),
             target = lastDotIdx > -1 ? flock.get(root, path.slice(0, path.lastIndexOf(".inputs"))) : baseTarget,
-            newInput = valueParser ? valueParser(val, path, target, previousInput) : val;
-        
+            newInput = flock.input.shouldExpand(inputName, target) && valueParser ? 
+                valueParser(val, path, target, previousInput) : val;
+
         flock.set(root, path, newInput);
+
         if (target && target.onInputChanged) {
             target.onInputChanged(inputName);
         }
