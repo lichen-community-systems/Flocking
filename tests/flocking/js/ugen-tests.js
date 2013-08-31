@@ -789,6 +789,9 @@ flock.test = flock.test || {};
         setup: function () {
             // Register the buffer ourselves. Buffers are multichannel, so need to be wrapped in an array.
             flock.enviro.shared.buffers[playbackDef.inputs.buffer.id] = flock.bufferDesc({
+                format: {
+                    sampleRate: sampleRate
+                },
                 data: {
                     channels: [flock.test.fillBuffer(1, 64)]
                 }

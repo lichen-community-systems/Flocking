@@ -891,7 +891,8 @@ var fluid = fluid || require("infusion"),
                 bufLen = source.length,
                 loop = that.inputs.loop.output[0],
                 buffers = that.options.audioSettings.buffers,
-                i;
+                i,
+                samp;
             
             for (i = 0; i < numSamps; i++) {
                 if (bufIdx >= bufLen) {
@@ -902,7 +903,9 @@ var fluid = fluid || require("infusion"),
                         continue;
                     }
                 }
-                out[i] = source[Math.round(bufIdx)]; // TODO: Interpolation.
+                
+                samp = that.interpolate ? that.interpolate(bufIdx, source) : source[bufIdx | 0];
+                out[i] = samp;
                 bufIdx += m.stepSize;
             }
             
@@ -919,7 +922,8 @@ var fluid = fluid || require("infusion"),
                 bufLen = source.length,
                 loop = that.inputs.loop.output[0],
                 buffers = that.options.audioSettings.buffers,
-                i;
+                i,
+                samp;
             
             for (i = 0; i < numSamps; i++) {
                 if (bufIdx >= bufLen) {
@@ -931,7 +935,8 @@ var fluid = fluid || require("infusion"),
                     }
                 }
                 
-                out[i] = source[Math.round(bufIdx)]; // TODO: Interpolation.
+                samp = that.interpolate ? that.interpolate(bufIdx, source) : source[bufIdx | 0];
+                out[i] = samp;
                 bufIdx += m.stepSize * speedInc;
             }
             
@@ -955,7 +960,6 @@ var fluid = fluid || require("infusion"),
             var m = that.model;
             m.idx = 0; // TODO: Allow for configurable start and end points.
             m.stepSize = that.buffer.format.sampleRate / m.sampleRate;
-            console.log(m.stepSize);
         };
         
         that.init = function () {
@@ -978,7 +982,8 @@ var fluid = fluid || require("infusion"),
             model: {
                 idx: 0,
                 channel: undefined
-            }
+            },
+            interpolation: "linear"
         }
     });
     
