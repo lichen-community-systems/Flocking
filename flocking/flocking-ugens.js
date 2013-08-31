@@ -902,8 +902,8 @@ var fluid = fluid || require("infusion"),
                         continue;
                     }
                 }
-                out[i] = source[bufIdx]; // TODO: Interpolation.
-                bufIdx++;
+                out[i] = source[Math.round(bufIdx)]; // TODO: Interpolation.
+                bufIdx += m.stepSize;
             }
             
             m.idx = bufIdx;
@@ -932,7 +932,7 @@ var fluid = fluid || require("infusion"),
                 }
                 
                 out[i] = source[Math.round(bufIdx)]; // TODO: Interpolation.
-                bufIdx += speedInc;
+                bufIdx += m.stepSize * speedInc;
             }
             
             m.idx = bufIdx;
@@ -952,7 +952,10 @@ var fluid = fluid || require("infusion"),
         };
         
         that.onBufferReady = function (bufDesc) {
-            that.model.idx = 0; // TODO: Allow for configurable start and end points.
+            var m = that.model;
+            m.idx = 0; // TODO: Allow for configurable start and end points.
+            m.stepSize = that.buffer.format.sampleRate / m.sampleRate;
+            console.log(m.stepSize);
         };
         
         that.init = function () {
