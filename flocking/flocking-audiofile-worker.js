@@ -33,6 +33,8 @@ onmessage = function (e) {
             flock.audio.workerDecoder.sendBuffer(buffer, type);
         } catch (err) {
             flock.audio.workerDecoder.sendError(err.message);
+        } finally {
+            self.close();
         }
     }
 };
