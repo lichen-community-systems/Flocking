@@ -11,6 +11,7 @@ function Promise() {
 	var callbacks = [],
 		promise = {
             state: "pending",
+            value: undefined,
 			resolve: resolve,
 			reject: reject,
 			then: then,
@@ -23,6 +24,8 @@ function Promise() {
 		};
 	
     function complete(type, result) {
+        promise.value = result;
+        
 		promise.then = type === 'reject'
 			? function(resolve, reject) { reject(result); return this; }
 			: function(resolve)         { resolve(result); return this; };
@@ -44,7 +47,14 @@ function Promise() {
         promise.state = "rejected";
 	}
 	function then(resolve, reject) {
-		callbacks.push({ resolve: resolve, reject: reject });
+        if (callbacks) {
+            callbacks.push({ resolve: resolve, reject: reject });
+        } else {
+            var fn = promise.state === "fulfilled" ? resolve : reject;
+            fn(promise.value);
+        }
+
+        return this;
 	}
 
 	return promise;

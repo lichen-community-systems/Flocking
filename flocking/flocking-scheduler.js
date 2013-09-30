@@ -458,6 +458,10 @@ var fluid = fluid || require("infusion"),
             that.intervalClock.end();
             that.scheduleClock.end();
         };
+        
+        if (that.options.score) {
+            that.schedule(that.options.score);
+        }
     };
     
     flock.scheduler.async.evaluateChangeSpec = function (changeSpec) {

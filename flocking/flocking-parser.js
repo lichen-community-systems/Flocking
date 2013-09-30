@@ -60,6 +60,8 @@ var fluid = fluid || require("infusion"),
             sampleRate = rates.audio;
         } else if (ugenDef.rate === flock.rates.CONTROL) {
             sampleRate = rates.audio / rates.control;
+        } else if (ugenDef.rate === flock.rates.FRAME) {
+            sampleRate = rates.frame;
         } else {
             sampleRate = 1;
         }
@@ -265,73 +267,30 @@ var fluid = fluid || require("infusion"),
         
         if (bufDef.data && bufDef.data.channels) {
             flock.parse.bufferForDef.resolveBuffer(bufDef, ugen, enviro);
-        } else if (bufDef.id && !bufDef.src && !bufDef.url && !bufDef.selector) {
-            flock.parse.bufferForDef.resolveIdReference(bufDef, ugen, enviro);
         } else {
             flock.parse.bufferForDef.resolveDef(bufDef, ugen, enviro);
         }
     };
-    
-    flock.parse.bufferForDef.resolveDef = function (bufDef, ugen, enviro) {
-        bufDef.src = bufDef.url || bufDef.src;
-        if (bufDef.selector && typeof(document) !== "undefined") {
-            bufDef.src = document.querySelector(bufDef.selector).files[0];
-        }
-        
-        if (!bufDef.src) {
-            return;
-        }
 
-        var p = flock.parse.bufferForDef.makeBufferPromise(bufDef, ugen, enviro);
-        flock.audio.decode({
-            src: bufDef.src,
-            success: p.resolve,
-            error: p.reject
-        });
-    };
-    
-    flock.parse.bufferForDef.resolveBuffer = function (bufDesc, ugen, enviro) {
-        var p = flock.parse.bufferForDef.makeBufferPromise(bufDesc, ugen, enviro);
-        p.resolve(bufDesc);
-    };
-    
-    flock.parse.bufferForDef.resolveIdReference = function (bufDef, ugen, enviro) {
-        flock.parse.bufferForDef.registerForBufferPromise(bufDef.id, null, ugen, enviro);
-    };
-    
-    flock.parse.bufferForDef.makeBufferPromise = function (bufDef, ugen, enviro) {
-        var prevPromise = enviro.promisedBuffers[bufDef.id],
-            p = prevPromise && prevPromise.state === "pending" ? prevPromise : new Promise();
-
-        if (enviro && bufDef.id) {
-            enviro.promisedBuffers[bufDef.id] = p;
-        }
+    flock.parse.bufferForDef.findSource = function (defOrDesc, enviro) {
+        var source;
         
-        flock.parse.bufferForDef.registerForBufferPromise(bufDef.id, p, ugen, enviro);
-        
-        return p;
-    };
-    
-    flock.parse.bufferForDef.registerForBufferPromise = function (id, promise, ugen, enviro) {
-        var promise = !promise ? enviro.promisedBuffers[id] : promise,
-            bufDesc;
-        
-        if (!promise) {
-            bufDesc = enviro.buffers[id];
-            promise = enviro.promisedBuffers[id] = new Promise();
-            if (bufDesc) {
-                promise.resolve(bufDesc);
+        if (enviro && defOrDesc.id) {
+            source = enviro.bufferSources[defOrDesc.id];
+            if (!source) {
+                source = enviro.bufferSources[defOrDesc.id] = flock.bufferSource();
             }
+        } else {
+            source = flock.bufferSource();
         }
         
+        return source;
+    };
+    
+    flock.parse.bufferForDef.bindToPromise = function (p, source, ugen) {
+        // TODO: refactor this.
         var success = function (bufDesc) {
-            if (id) {
-                bufDesc.id = id;
-                if (enviro) {
-                    enviro.registerBuffer(bufDesc);
-                }
-            }
-            
+            source.events.onBufferUpdated.addListener(success);            
             ugen.setBuffer(bufDesc);
         };
         
@@ -339,7 +298,169 @@ var fluid = fluid || require("infusion"),
             throw new Error(msg);
         };
         
-        promise.then(success, error);
+        p.then(success, error);
+    };
+    
+    flock.parse.bufferForDef.resolveDef = function (bufDef, ugen, enviro) {
+        var source = flock.parse.bufferForDef.findSource(bufDef, enviro),
+            p;
+
+        bufDef.src = bufDef.url || bufDef.src;
+        if (bufDef.selector && typeof(document) !== "undefined") {
+            bufDef.src = document.querySelector(bufDef.selector).files[0];
+        }
+        
+        p = source.get(bufDef);
+        flock.parse.bufferForDef.bindToPromise(p, source, ugen);
+    };
+    
+    
+    flock.parse.bufferForDef.resolveBuffer = function (bufDesc, ugen, enviro) {
+        var source = flock.parse.bufferForDef.findSource(bufDesc, enviro),
+            p = source.set(bufDesc);
+        
+        flock.parse.bufferForDef.bindToPromise(p, source, ugen);
+    };
+
+    fluid.defaults("flock.promise", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        
+        members: {
+            promise: {
+                expander: {
+                    funcName: "flock.promise.make"
+                }
+            }
+        }
+    });
+    
+    flock.promise.make = function () {
+        return new Promise();
+    };
+    
+    
+    fluid.defaults("flock.bufferSource", {
+        gradeNames: ["fluid.eventedComponent", "fluid.modelComponent", "autoInit"],
+        
+        model: {
+            state: "start",
+            src: null
+        },
+        
+        components: {
+            bufferPromise: {
+                createOnEvent: "onRefreshPromise",
+                type: "flock.promise",
+                options: {
+                    listeners: {
+                        onCreate: {
+                            "this": "{that}.promise",
+                            method: "then",
+                            args: ["{bufferSource}.events.afterFetch.fire", "{bufferSource}.events.onError.fire"]
+                        }
+                    }
+                }
+            }
+        },
+        
+        invokers: {
+            get: {
+                funcName: "flock.bufferSource.get",
+                args: ["{that}", "{arguments}.0"]
+            },
+            
+            set: {
+                funcName: "flock.bufferSource.set",
+                args: ["{that}", "{arguments}.0"]
+            },
+            
+            error: {
+                funcName: "flock.bufferSource.error",
+                args: ["{that}", "{arguments}.0"]
+            }
+        },
+        
+        listeners: {
+            onCreate: {
+                funcName: "{that}.events.onRefreshPromise.fire"
+            },
+            
+            onRefreshPromise: {
+                funcName: "{that}.applier.requestChange",
+                args: ["state", "start"]
+            },
+            
+            onFetch: {
+                funcName: "{that}.applier.requestChange",
+                args: ["state", "in-progress"]
+            },
+            
+            afterFetch: [
+                {
+                    funcName: "{that}.applier.requestChange",
+                    args: ["state", "fetched"]
+                },
+                {
+                    funcName: "{that}.events.onBufferUpdated.fire", // TODO: Replace with boiling?
+                    args: ["{arguments}.0"]
+                }
+            ],
+            
+            onBufferUpdated: {
+                // TODO: Hardcoded reference to shared environment.
+                funcName: "flock.enviro.shared.registerBuffer",
+                args: ["{arguments}.0"]
+            },
+            
+            onError: {
+                funcName: "{that}.applier.requestChange",
+                args: ["state", "error"]
+            }
+        },
+        
+        events: {
+            onRefreshPromise: null,
+            onError: null,
+            onFetch: null,
+            afterFetch: null,
+            onBufferUpdated: null
+        }
+    });
+    
+    flock.bufferSource.get = function (that, bufDef) {
+        if (that.model.state === "in-progress" || (bufDef.src === that.model.src && !bufDef.replace)) {
+            // We've already fetched the buffer or are in the process of doing so.
+            return that.bufferPromise.promise;
+        }
+
+        if (bufDef.src) {
+            if ((that.model.state === "fetched" || that.model.state === "errored") && 
+                (that.model.src !== bufDef.src || bufDef.replace)) {
+                that.events.onRefreshPromise.fire();
+            }
+            
+            if (that.model.state === "start") {
+                that.model.src = bufDef.src;
+                that.events.onFetch.fire(bufDef);
+                flock.audio.decode({
+                    src: bufDef.src,
+                    success: that.set,
+                    error: that.error
+                });
+            }
+        }
+                
+        return that.bufferPromise.promise;
+    };
+    
+    flock.bufferSource.set = function (that, bufDesc) {
+        that.bufferPromise.promise.resolve(bufDesc);
+        return that.bufferPromise.promise;
+    };
+    
+    flock.bufferSource.error = function (that, msg) {
+        that.bufferPromise.promise.reject(msg);
+        return that.bufferPromise.promise;
     };
 
 }());
