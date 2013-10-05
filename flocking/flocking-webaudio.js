@@ -95,7 +95,7 @@ var fluid = fluid || require("infusion"),
             that.context = flock.enviro.webAudio.audioContext;
             settings.rates.audio = that.context.sampleRate;
             that.source = that.context.createBufferSource();
-            that.jsNode = that.context.createJavaScriptNode(settings.bufferSize);
+            that.jsNode = that.context.createScriptProcessor(settings.bufferSize);
             that.source.connect(that.jsNode);
             
             that.model.shouldInitIOS = flock.platform.isIOS;

@@ -92,8 +92,7 @@ var fluid = fluid || require("infusion"),
     flock.platform.isIOS = flock.platform.os === "iPhone" || flock.platform.os === "iPad" || flock.platform.os === "iPod";
     flock.platform.isMobile = flock.platform.isAndroid || flock.platform.isIOS;
     flock.platform.browser = flock.browser();
-    flock.platform.isWebAudio = (typeof (AudioContext) !== "undefined" && (new AudioContext()).createJavaScriptNode) ||
-        typeof (webkitAudioContext) !== "undefined";
+    flock.platform.isWebAudio = typeof (AudioContext) !== "undefined" || typeof (webkitAudioContext) !== "undefined";
     flock.platform.audioEngine = flock.platform.isBrowser ? (flock.platform.isWebAudio ? "webAudio" : "moz") : "nodejs";
     fluid.staticEnvironment.audioEngine = fluid.typeTag("flock.platform." + flock.platform.audioEngine);
 
@@ -134,11 +133,6 @@ var fluid = fluid || require("infusion"),
             buf[i] = 0.0;
         }
         return buf;
-    };
-     
-    flock.minBufferSize = function (latency, audioSettings) {
-        var size = (audioSettings.rates.audio * audioSettings.chans) / (1000 / latency);
-        return Math.round(size);
     };
     
     /**
