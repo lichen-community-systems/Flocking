@@ -1537,7 +1537,8 @@ var fluid = fluid || require("infusion"),
     test("Typed Array Merge Preservation", function () {
         var ta = new Float32Array([1.1, 2.2, 3.3]);
         ok(ta instanceof Float32Array, "Sanity check: a Float32Array should be an instance of a Float32Array.");
-        ok(fluid.isPrimitive(ta), "fluid.isPrimitive() should recognize a typed array as a primitive.")
+        ok(!fluid.isPlainObject(ta), "fluid.isPlainObject() should not recognize a typed array as a primitive.");
+        ok(!fluid.isPrimitive(ta), "fluid.isPrimitive() should not recognize a typed array as a primitive.");
         
         fluid.defaults("flock.test.typedArrayComponent", {
             gradeNames: ["fluid.littleComponent", "autoInit"],
