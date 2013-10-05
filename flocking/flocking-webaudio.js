@@ -47,7 +47,7 @@ var fluid = fluid || require("infusion"),
         
         that.writeSamples = function (e) {
             var audioSettings = that.options.audioSettings,
-                kr = audioSettings.blockSize,
+                blockSize = audioSettings.blockSize,
                 playState = that.model.playState,
                 chans = audioSettings.chans,
                 outBufs = e.outputBuffer;
@@ -62,7 +62,7 @@ var fluid = fluid || require("infusion"),
 
             for (var i = 0; i < that.model.krPeriods; i++) {
                 that.nodeEvaluator.gen();
-                var offset = i * kr;
+                var offset = i * blockSize;
 
                 // Loop through each channel.
                 for (var chan = 0; chan < chans; chan++) {
@@ -70,7 +70,7 @@ var fluid = fluid || require("infusion"),
                         outBuf = outBufs.getChannelData(chan);
                     
                     // And output each sample.
-                    for (var samp = 0; samp < kr; samp++) {
+                    for (var samp = 0; samp < blockSize; samp++) {
                         outBuf[samp + offset] = sourceBuf[samp];
                     }
                 }

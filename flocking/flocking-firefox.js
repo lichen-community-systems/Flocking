@@ -120,20 +120,20 @@ var fluid = fluid || require("infusion"),
      * @param {Function} evalFn a function to invoke before writing each control block
      * @param {Array} sourceBufs the array of channel buffers to interleave and write out
      * @param {Number} krPeriods the number of control rate periods to generate
-     * @param {Number} kr the control rate
+     * @param {Number} blockSize the control rate
      * @param {Number} chans the number of channels to output
      * @param {Object} audioSettings the current audio system settings
      * @return a channel-interleaved output buffer
      */
-    flock.enviro.moz.interleavedWriter = function (outBuf, evalFn, sourceBufs, krPeriods, kr, chans) {
+    flock.enviro.moz.interleavedWriter = function (outBuf, evalFn, sourceBufs, krPeriods, blockSize, chans) {
         for (var i = 0; i < krPeriods; i++) {
             evalFn();
-            var offset = i * kr * chans;
+            var offset = i * blockSize * chans;
             
             // Interleave each output channel.
             for (var chan = 0; chan < chans; chan++) {
                 var sourceBuf = sourceBufs[chan];
-                for (var sampIdx = 0; sampIdx < kr; sampIdx++) {
+                for (var sampIdx = 0; sampIdx < blockSize; sampIdx++) {
                     var frameIdx = sampIdx * chans + offset;
                     outBuf[frameIdx + chan] = sourceBuf[sampIdx];
                 }

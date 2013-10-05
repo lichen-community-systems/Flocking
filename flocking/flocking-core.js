@@ -687,11 +687,11 @@ var fluid = fluid || require("infusion"),
         rates.control = rates.audio / audioSettings.blockSize;
     };
     
-    flock.enviro.createAudioBuffers = function (numBufs, kr) {
+    flock.enviro.createAudioBuffers = function (numBufs, blockSize) {
         var bufs = [],
             i;
         for (i = 0; i < numBufs; i++) {
-            bufs[i] = new Float32Array(kr);
+            bufs[i] = new Float32Array(blockSize);
         }
         return bufs;
     };
