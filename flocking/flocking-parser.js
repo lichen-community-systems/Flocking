@@ -60,8 +60,6 @@ var fluid = fluid || require("infusion"),
             sampleRate = rates.audio;
         } else if (ugenDef.rate === flock.rates.CONTROL) {
             sampleRate = rates.audio / rates.control;
-        } else if (ugenDef.rate === flock.rates.FRAME) {
-            sampleRate = rates.frame;
         } else {
             sampleRate = 1;
         }

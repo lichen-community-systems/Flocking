@@ -36,7 +36,6 @@ var fluid = fluid || require("infusion"),
     flock.rates = {
         AUDIO: "audio",
         CONTROL: "control",
-        FRAME: "frame",
         DEMAND: "demand",
         CONSTANT: "constant"
     };
@@ -622,7 +621,6 @@ var fluid = fluid || require("infusion"),
                 audio: 48000, // This is only a hint. Some audio backends (such as the Web Audio API) 
                               // may define the sample rate themselves.
                 control: 64,
-                frame: 60,
                 constant: 1
             },
             chans: 2,
