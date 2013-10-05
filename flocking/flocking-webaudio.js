@@ -83,7 +83,9 @@ var fluid = fluid || require("infusion"),
         };
         
         that.init = function () {
-            var settings = that.options.audioSettings;
+            var settings = that.options.audioSettings,
+                scriptNodeConstructorName;
+            
             that.model.krPeriods = settings.bufferSize / settings.blockSize;
             
             // Singleton AudioContext since the WebKit implementation
@@ -95,7 +97,9 @@ var fluid = fluid || require("infusion"),
             that.context = flock.enviro.webAudio.audioContext;
             settings.rates.audio = that.context.sampleRate;
             that.source = that.context.createBufferSource();
-            that.jsNode = that.context.createScriptProcessor(settings.bufferSize);
+            scriptNodeConstructorName = that.context.createScriptProcessor ? 
+                "createScriptProcessor" : "createJavaScriptNode";
+            that.jsNode = that.context[scriptNodeConstructorName](settings.bufferSize);
             that.source.connect(that.jsNode);
             
             that.model.shouldInitIOS = flock.platform.isIOS;
