@@ -76,7 +76,7 @@ var fluid = fluid || require("infusion"),
                 that.nodeEvaluator.gen,
                 that.nodeEvaluator.buses,
                 that.model.krPeriods,
-                audioSettings.rates.control,
+                audioSettings.blockSize,
                 audioSettings.chans
             );
             
@@ -105,7 +105,7 @@ var fluid = fluid || require("infusion"),
             
             that.model.bufferDur = (bufSize / rates.audio) * 1000;
             that.model.queuePollInterval = Math.ceil(that.model.bufferDur / audioSettings.genPollIntervalFactor);
-            that.model.krPeriods = bufSize / rates.control;
+            that.model.krPeriods = bufSize / audioSettings.blockSize;
         };
         
         that.init();

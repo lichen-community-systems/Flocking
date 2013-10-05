@@ -47,7 +47,7 @@ var fluid = fluid || require("infusion"),
         
         that.writeSamples = function (e) {
             var audioSettings = that.options.audioSettings,
-                kr = audioSettings.rates.control,
+                kr = audioSettings.blockSize,
                 playState = that.model.playState,
                 chans = audioSettings.chans,
                 outBufs = e.outputBuffer;
@@ -84,7 +84,7 @@ var fluid = fluid || require("infusion"),
         
         that.init = function () {
             var settings = that.options.audioSettings;
-            that.model.krPeriods = settings.bufferSize / settings.rates.control;
+            that.model.krPeriods = settings.bufferSize / settings.blockSize;
             
             // Singleton AudioContext since the WebKit implementation
             // freaks if we try to instantiate a new one.

@@ -43,25 +43,22 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.parse.makeUGen = function (ugenDef, parsedInputs, options) {
-        var rates = options.audioSettings.rates;
+        var rates = options.audioSettings.rates,
+            blockSize = options.audioSettings.blockSize;
         
         // Assume audio rate if no rate was specified by the user.
         if (!ugenDef.rate) {
             ugenDef.rate = flock.rates.AUDIO;
         }
     
-        var buffer = new Float32Array(ugenDef.rate === flock.rates.AUDIO ? rates.control : 1),
+        var buffer = new Float32Array(ugenDef.rate === flock.rates.AUDIO ? blockSize : 1),
             sampleRate;
     
         // Set the ugen's sample rate value according to the rate the user specified.
         if (ugenDef.options && ugenDef.options.sampleRate !== undefined) {
             sampleRate = ugenDef.options.sampleRate;
-        } else if (ugenDef.rate === flock.rates.AUDIO) {
-            sampleRate = rates.audio;
-        } else if (ugenDef.rate === flock.rates.CONTROL) {
-            sampleRate = rates.audio / rates.control;
         } else {
-            sampleRate = 1;
+            sampleRate = rates[ugenDef.rate];
         }
         
         // TODO: Infusion options merging!
@@ -69,7 +66,8 @@ var fluid = fluid || require("infusion"),
             sampleRate: sampleRate,
             rate: ugenDef.rate,
             audioSettings: {
-                rates: rates
+                rates: rates,
+                blockSize: blockSize
             }
         });
         // TODO: When we switch to Infusion options merging, these should have a mergePolicy of preserve.
