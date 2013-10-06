@@ -160,7 +160,7 @@ var fs = require("fs"),
                 m = that.model;
             
             m.numBlockBytes = rates.control * audioSettings.chans * 4; // Flocking uses Float32s, hence * 4
-            m.pushRate = (bufSize / rates.audio / 2) * 1000;
+            m.pushRate = (bufSize / rates.audio) * 1000;
             that.speaker = new Speaker();
             that.outputStream = flock.enviro.nodejs.setupOutputStream(audioSettings);
             that.silence = flock.generate.silence(new Buffer(m.numBlockBytes));
@@ -170,7 +170,9 @@ var fs = require("fs"),
     };
     
     flock.enviro.nodejs.setupOutputStream = function (audioSettings) {
-        var outputStream = new Readable();
+        var outputStream = new Readable({
+            highWaterMark: audioSettings.bufferSize * audioSettings.chans * 4
+        });
         
         outputStream.bitDepth = 32;
         outputStream.float = true
