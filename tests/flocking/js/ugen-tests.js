@@ -119,19 +119,17 @@ flock.test = flock.test || {};
     
     var checkOutput = function (numSamps, chans, outUGen, expectedBuffer, msg) {
         var audioSettings = {
-            rates: {
-                control: 20
-            },
+            blockSize: 20,
             chans: chans,
             bufferSize: 40
         };
         
-        outUGen.model.blockSize = audioSettings.rates.control;
+        outUGen.model.blockSize = audioSettings.blockSize;
         
         var env = flock.enviro.shared;
         var nodeEvaluator = flock.enviro.nodeEvaluator({
             numBuses: env.options.audioSettings.numBuses,
-            controlRate: audioSettings.rates.control
+            blockSize: audioSettings.blockSize
         });
         nodeEvaluator.buses = env.buses;
         nodeEvaluator.nodes = [outUGen];
@@ -140,8 +138,8 @@ flock.test = flock.test || {};
             new Float32Array(numSamps * chans),
             nodeEvaluator.gen,
             flock.enviro.shared.buses,
-            audioSettings.bufferSize / audioSettings.rates.control,
-            audioSettings.rates.control,
+            audioSettings.bufferSize / audioSettings.blockSize,
+            audioSettings.blockSize,
             audioSettings.chans
         );
         deepEqual(actual, expectedBuffer, msg);

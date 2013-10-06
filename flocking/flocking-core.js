@@ -92,8 +92,7 @@ var fluid = fluid || require("infusion"),
     flock.platform.isIOS = flock.platform.os === "iPhone" || flock.platform.os === "iPad" || flock.platform.os === "iPod";
     flock.platform.isMobile = flock.platform.isAndroid || flock.platform.isIOS;
     flock.platform.browser = flock.browser();
-    flock.platform.isWebAudio = (typeof (AudioContext) !== "undefined" && (new AudioContext()).createJavaScriptNode) ||
-        typeof (webkitAudioContext) !== "undefined";
+    flock.platform.isWebAudio = typeof (AudioContext) !== "undefined" || typeof (webkitAudioContext) !== "undefined";
     flock.platform.audioEngine = flock.platform.isBrowser ? (flock.platform.isWebAudio ? "webAudio" : "moz") : "nodejs";
     fluid.staticEnvironment.audioEngine = fluid.typeTag("flock.platform." + flock.platform.audioEngine);
 
@@ -134,11 +133,6 @@ var fluid = fluid || require("infusion"),
             buf[i] = 0.0;
         }
         return buf;
-    };
-     
-    flock.minBufferSize = function (latency, audioSettings) {
-        var size = (audioSettings.rates.audio * audioSettings.chans) / (1000 / latency);
-        return Math.round(size);
     };
     
     /**
@@ -620,9 +614,11 @@ var fluid = fluid || require("infusion"),
             rates: {
                 audio: 48000, // This is only a hint. Some audio backends (such as the Web Audio API) 
                               // may define the sample rate themselves.
-                control: 64,
+                control: undefined, // Control rate is calculated dynamically based on the audio rate and the block size.
+                demand: 1,
                 constant: 1
             },
+            blockSize: 64,
             chans: 2,
             numBuses: 2,
             // This buffer size determines the overall latency of Flocking's audio output. On Firefox, it will be 2x.
@@ -653,7 +649,7 @@ var fluid = fluid || require("infusion"),
     flock.enviro.preInit = function (that) {
         that.audioSettings = that.options.audioSettings;
         that.buses = flock.enviro.createAudioBuffers(that.audioSettings.numBuses, 
-                that.audioSettings.rates.control);
+                that.audioSettings.blockSize);
         that.buffers = {};
         that.bufferSources = {};
         
@@ -707,17 +703,21 @@ var fluid = fluid || require("infusion"),
     };
     
     flock.enviro.finalInit = function (that) {
+        var audioSettings = that.options.audioSettings,
+            rates = audioSettings.rates;
+        
         that.gen = that.audioStrategy.nodeEvaluator.gen;
         
         // TODO: Model-based (with ChangeApplier) sharing of audioSettings
-        that.options.audioSettings.rates.audio = that.audioStrategy.options.audioSettings.rates.audio;
+        rates.audio = that.audioStrategy.options.audioSettings.rates.audio;
+        rates.control = rates.audio / audioSettings.blockSize;
     };
     
-    flock.enviro.createAudioBuffers = function (numBufs, kr) {
+    flock.enviro.createAudioBuffers = function (numBufs, blockSize) {
         var bufs = [],
             i;
         for (i = 0; i < numBufs; i++) {
-            bufs[i] = new Float32Array(kr);
+            bufs[i] = new Float32Array(blockSize);
         }
         return bufs;
     };
@@ -730,7 +730,7 @@ var fluid = fluid || require("infusion"),
                 type: "flock.enviro.nodeEvaluator",
                 options: {
                     numBuses: "{enviro}.options.audioSettings.numBuses",
-                    controlRate: "{enviro}.options.audioSettings.rates.control",
+                    blockSize: "{enviro}.options.audioSettings.blockSize",
                     members: {
                         buses: "{enviro}.buses",
                         nodes: "{enviro}.nodes"
@@ -751,7 +751,7 @@ var fluid = fluid || require("infusion"),
     flock.enviro.nodeEvaluator.finalInit = function (that) {
         that.gen = function () {
             var numBuses = that.options.numBuses,
-                busLen = that.options.controlRate,
+                busLen = that.options.blockSize,
                 i,
                 bus,
                 j,
@@ -909,7 +909,8 @@ var fluid = fluid || require("infusion"),
     flock.synth.finalInit = function (that) {
         that.rate = that.options.rate;
         that.enviro = that.enviro || flock.enviro.shared;
-        that.model.blockSize = that.enviro.audioSettings.rates.control;
+        // TODO: Allow synths to support other block sizes (i.e. if they're running at other rates).
+        that.model.blockSize = that.enviro.audioSettings.blockSize;
         
         /**
          * Generates one block of audio rate signal by evaluating this synth's unit generator graph.

@@ -254,31 +254,7 @@ var fluid = fluid || require("infusion"),
         var negUnnormalized = [-5.0, -4.0, -3.0, -2.0, -1.0, -0.5, -0.25];
         testNormalize(1.0, negUnnormalized, [-1.0, -0.8, -0.6, -0.4, -0.2, -0.1, -0.05]);
     });
-    
-    test("flock.minBufferSize()", function () {
-        var audioSettings = {
-            rates: {
-                audio: 44100,
-                control: 64,
-                constant: 1
-            },
-            chans: 2
-        };
-        var minSize = flock.minBufferSize(500, audioSettings);
-        equal(minSize, 44100, 
-            "The mininum buffer size for a 44100 KHz stereo signal with 500ms latency should be 44100");
-            
-        audioSettings.chans = 1;
-        minSize = flock.minBufferSize(500, audioSettings);
-        equal(minSize, 22050, 
-            "The mininum buffer size for a 44100 KHz mono signal with 500ms latency should be 22050");
-        
-        audioSettings.rates.audio = 48000;
-        audioSettings.chans = 2;
-        minSize = flock.minBufferSize(250, audioSettings);
-        equal(minSize, 24000, 
-            "The mininum buffer size for a 48000 KHz stereo signal with 250ms latency should be 24000");
-    });
+
     
     module("Synth tests");
     

@@ -154,7 +154,7 @@ var fluid = fluid || require("infusion"),
         
         that.options.audioSettings = that.options.audioSettings || flock.enviro.shared.audioSettings;
         that.model.sampleRate = options.sampleRate || that.options.audioSettings.rates[that.rate];
-        that.model.blockSize = that.rate === flock.rates.AUDIO ? that.options.audioSettings.rates.control : 1;
+        that.model.blockSize = that.rate === flock.rates.AUDIO ? that.options.audioSettings.blockSize : 1;
         that.model.sampleDur = 1.0 / that.model.sampleRate;
         
         that.get = function (path) {
@@ -282,7 +282,7 @@ var fluid = fluid || require("infusion"),
 
     flock.ugen.math = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.expandedSource = new Float32Array(that.options.audioSettings.rates.control);
+        that.expandedSource = new Float32Array(that.options.audioSettings.blockSize);
 
         that.krSourceKrInputGen = function () {
             var op = that.activeInput,
@@ -2397,7 +2397,7 @@ var fluid = fluid || require("infusion"),
                     m.activeGrains.splice(j, 1);
                 } else {
                     j++;
-                    grain.writePos = grain.writePos % that.options.audioSettings.rates.control;
+                    grain.writePos = grain.writePos % that.options.audioSettings.blockSize;
                 }
             }
 
