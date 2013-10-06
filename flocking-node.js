@@ -110,7 +110,7 @@ var fs = require("fs"),
             var audioSettings = that.options.audioSettings,
                 m = that.model,
                 playState = m.playState,
-                kr = audioSettings.rates.control,
+                blockSize = audioSettings.blockSize,
                 chans = audioSettings.chans,
                 more = true,
                 out;
@@ -128,7 +128,7 @@ var fs = require("fs"),
                     // Interleave each output channel.
                     for (var chan = 0; chan < chans; chan++) {
                         var bus = that.nodeEvaluator.buses[chan];
-                        for (var sampIdx = 0; sampIdx < kr; sampIdx++) {
+                        for (var sampIdx = 0; sampIdx < blockSize; sampIdx++) {
                             var frameIdx = sampIdx * chans;
                             out.writeFloatLE(bus[sampIdx], (frameIdx + chan) * 4);
                         }
@@ -159,7 +159,7 @@ var fs = require("fs"),
                 bufSize = audioSettings.bufferSize,
                 m = that.model;
             
-            m.numBlockBytes = rates.control * audioSettings.chans * 4; // Flocking uses Float32s, hence * 4
+            m.numBlockBytes = audioSettings.blockSize * audioSettings.chans * 4; // Flocking uses Float32s, hence * 4
             m.pushRate = (bufSize / rates.audio) * 1000;
             that.speaker = new Speaker();
             that.outputStream = flock.enviro.nodejs.setupOutputStream(audioSettings);
