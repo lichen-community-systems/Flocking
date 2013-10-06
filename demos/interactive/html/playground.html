@@ -837,7 +837,7 @@ var clock = flock.enviro.shared.asyncScheduler,
         synthDef: {
             id: "carrier",
             ugen: "flock.ugen.sinOsc",
-            freq: 110,
+            freq: 220,
             mul: {
                 ugen: "flock.ugen.line",
                 start: 0,
@@ -857,7 +857,7 @@ clock.schedule([
                 "carrier.freq": {
                     synthDef: {
                         ugen: "flock.ugen.sequence",
-                        list: [110, 220, 330, 440, 550, 660, 880]
+                        list: [330, 440, 550, 660, 880, 990, 1100, 1210]
                     }
                 }
             }

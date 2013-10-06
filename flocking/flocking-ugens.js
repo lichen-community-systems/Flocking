@@ -149,13 +149,9 @@ var fluid = fluid || require("infusion"),
             inputs: inputs,
             output: output,
             options: options,
-            model: options.model || {}
+            model: options.model || {},
+            tags: ["flock.ugen"]
         };
-        
-        that.options.audioSettings = that.options.audioSettings || flock.enviro.shared.audioSettings;
-        that.model.sampleRate = options.sampleRate || that.options.audioSettings.rates[that.rate];
-        that.model.blockSize = that.rate === flock.rates.AUDIO ? that.options.audioSettings.blockSize : 1;
-        that.model.sampleDur = 1.0 / that.model.sampleRate;
         
         that.get = function (path) {
             return flock.input.get(that.inputs, path);
@@ -218,20 +214,35 @@ var fluid = fluid || require("infusion"),
                 that.calculateStrides();
             }
         };
-                
-        // Assigns an interpolator function to the UGen.
-        // This is inactive by default, but can be used in custom gen() functions.
-        // Will be undefined if no interpolation default or option has been set,
-        // or if it is set to "none"--make sure you check before invoking it.
-        that.interpolate = flock.interpolate[that.options.interpolation];
+
+        that.init = function () {
+            var tags = fluid.makeArray(that.options.tags),
+                i;
+            
+            for (i = 0; i < tags.length; i++) {
+                that.tags.push(tags[i]);
+            };
+            
+            that.options.audioSettings = that.options.audioSettings || flock.enviro.shared.audioSettings;
+            that.model.sampleRate = options.sampleRate || that.options.audioSettings.rates[that.rate];
+            that.model.blockSize = that.rate === flock.rates.AUDIO ? that.options.audioSettings.blockSize : 1;
+            that.model.sampleDur = 1.0 / that.model.sampleRate;
+            
+            // Assigns an interpolator function to the UGen.
+            // This is inactive by default, but can be used in custom gen() functions.
+            // Will be undefined if no interpolation default or option has been set,
+            // or if it is set to "none"--make sure you check before invoking it.
+            that.interpolate = flock.interpolate[that.options.interpolation];
         
-        if (that.rate === flock.rates.DEMAND && that.inputs.freq) {
-            that.inputs.freq = flock.parse.ugenDef({
-                ugen: "flock.ugen.value",
-                value: 1.0
-            });
-        }
+            if (that.rate === flock.rates.DEMAND && that.inputs.freq) {
+                that.inputs.freq = flock.parse.ugenDef({
+                    ugen: "flock.ugen.value",
+                    value: 1.0
+                });
+            }
+        };
         
+        that.init();
         return that;
     };
     
@@ -243,7 +254,11 @@ var fluid = fluid || require("infusion"),
     };
     
     fluid.defaults("flock.ugen.value", {
-        rate: "constant"
+        rate: "constant",
+        
+        ugenOptions: {
+            tags: ["flock.ugen.valueType"]
+        }
     });
     
     
@@ -1624,6 +1639,8 @@ var fluid = fluid || require("infusion"),
     flock.ugen.out = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
     
+        // TODO: Implement a "straight out" gen function for cases where the number
+        // of sources matches the number of output buses (i.e. where no expansion is necessary).
         that.gen = function (numSamps) {
             var sources = that.inputs.sources,
                 buses = that.options.audioSettings.buses,
@@ -1674,6 +1691,57 @@ var fluid = fluid || require("infusion"),
             sources: null,
             bus: 0,
             expand: 2
+        },
+        ugenOptions: {
+            tags: ["flock.ugen.outputType"]
+        }
+    });
+    
+    // Note: this unit generator currently only outputs values at control rate.
+    // TODO: Unit tests.
+    flock.ugen.valueOut = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+    
+        that.arraySourceGen = function () {
+            var sources = that.inputs.sources,
+                i;
+            
+            for (i = 0; i < sources.length; i++) {
+                that.model.value[i] = sources[i].output[0];
+            }
+        };
+        
+        that.ugenSourceGen = function () {
+            that.model.value = that.inputs.sources.output[0];
+        };
+        
+        that.onInputChanged = function (inputName) {
+            var sources = that.inputs.sources;
+            if (flock.isIterable(sources)) {
+                that.gen = that.arraySourceGen;
+                that.model.value = new Float32Array(sources.length);
+            } else {
+                that.gen = that.ugenSourceGen;
+            }
+        };
+        
+        that.onInputChanged();
+        return that;
+    };
+    
+    fluid.defaults("flock.ugen.valueOut", {
+        rate: "control",
+        
+        inputs: {
+            sources: null
+        },
+        
+        ugenOptions: {
+            model: {
+                value: null
+            },
+            
+            tags: ["flock.ugen.outputType", "flock.ugen.valueType"]
         }
     });
     
@@ -2654,6 +2722,10 @@ var fluid = fluid || require("infusion"),
             m.value = m.value === undefined ? list[start] : m.value;
             m.nextIdx = m.nextIdx === undefined ? start : m.nextIdx;
             
+            if (m.value === undefined) {
+                m.value = 0.0;
+            }
+            
             for (i = 0, j = 0; i < numSamps; i++, j += m.strides.freq) {
                 if (m.nextIdx >= end) {
                     if (loop > 0.0) {
@@ -2677,7 +2749,7 @@ var fluid = fluid || require("infusion"),
         };
          
         that.onInputChanged = function (inputName) {
-            that.model.scale = that.model.sampleDur;
+            that.model.scale = that.rate !== flock.rates.DEMAND ? that.model.sampleDur : 1;
             
             if (!that.inputs.list) {
                 that.inputs.list = [];

@@ -486,7 +486,7 @@ var fluid = fluid || require("infusion"),
                 var synth = synths[path];
                 synth.gen(1);
                 var ugens = synth.nodes;
-                staticChanges[path] = ugens[ugens.length - 1].output[0];
+                staticChanges[path] = ugens[ugens.length - 1].model.value;
             }
             
             // TODO: Hardcoded to the shared environment.
