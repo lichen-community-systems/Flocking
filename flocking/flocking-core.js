@@ -1072,9 +1072,29 @@ var fluid = fluid || require("infusion"),
         return flock.synth(options);
     };
     
-    
-    fluid.defaults("flock.frameRateValueSynth", {
+    fluid.defaults("flock.synth.value", {
         gradeNames: ["flock.synth", "autoInit"],
+        
+        rate: "demand",
+        
+        addToEnvironment: false
+    });
+    
+    flock.synth.value.finalInit = function (that) {
+        that.value = function () {
+            var nodes = that.nodes,
+                lastIdx = nodes.length - 1,
+                out = nodes[lastIdx];
+            
+            that.gen(1);
+            
+            return out.model.value;
+        };
+    };
+    
+    
+    fluid.defaults("flock.synth.frameRate", {
+        gradeNames: ["flock.synth.value", "autoInit"],
         
         rate: "scheduled",
         
@@ -1084,9 +1104,7 @@ var fluid = fluid || require("infusion"),
             rates: {
                 scheduled: "{that}.options.fps"
             }
-        },
-        
-        addToEnvironment: false
+        }
     });
     
     
