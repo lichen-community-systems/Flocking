@@ -36,6 +36,7 @@ var fluid = fluid || require("infusion"),
     flock.rates = {
         AUDIO: "audio",
         CONTROL: "control",
+        SCHEDULED: "scheduled",
         DEMAND: "demand",
         CONSTANT: "constant"
     };
@@ -397,9 +398,9 @@ var fluid = fluid || require("infusion"),
     flock.input.getValueForPath = function (root, path) {
         path = flock.input.expandPath(path);
         var input = flock.get(root, path);
-        // TODO: This algorithm needs to be made much clearer.
-        return (input && !input.gen && input.model && typeof (input.model.value) !== "undefined") ?
-            input.model.value : input;
+        
+        // If the unit generator is a valueType ugen, return its value, otherwise return the ugen itself.
+        return (input && input.tags && input.tags.indexOf("flock.ugen.valueType") > -1) ? input.model.value : input;
     };
     
     flock.input.getValuesForPathArray = function (root, paths) {
@@ -580,8 +581,9 @@ var fluid = fluid || require("infusion"),
                 audio: 48000, // This is only a hint. Some audio backends (such as the Web Audio API) 
                               // may define the sample rate themselves.
                 control: undefined, // Control rate is calculated dynamically based on the audio rate and the block size.
-                demand: 1,
-                constant: 1
+                scheduled: undefined, // The scheduled rate is a user-specified parameter.
+                demand: 0,
+                constant: 0
             },
             blockSize: 64,
             chans: 2,
@@ -883,8 +885,8 @@ var fluid = fluid || require("infusion"),
     flock.synth.finalInit = function (that) {
         that.rate = that.options.rate;
         that.enviro = that.enviro || flock.enviro.shared;
-        // TODO: Allow synths to support other block sizes (i.e. if they're running at other rates).
-        that.model.blockSize = that.enviro.audioSettings.blockSize;
+        that.audioSettings = $.extend(true, {}, that.enviro.audioSettings, that.options.audioSettings);
+        that.model.blockSize = that.rate === flock.rates.AUDIO ? that.audioSettings.blockSize : 1;
         
         /**
          * Generates one block of audio rate signal by evaluating this synth's unit generator graph.
@@ -967,23 +969,27 @@ var fluid = fluid || require("infusion"),
         };
 
         that.init = function () {
-            if (!that.options.synthDef) {
+            var o = that.options,
+                // At demand or schedule rates, override the rate of all non-constant ugens.
+                overrideRate = o.rate === flock.rates.SCHEDULED || o.rate === flock.rates.DEMAND;
+            
+            if (!o.synthDef) {
                 fluid.log(fluid.logLevel.IMPORTANT,
                     "Warning: Instantiating a flock.synth instance with an empty synth def.")
             }
             
             // Parse the synthDef into a graph of unit generators.
-            that.out = flock.parse.synthDef(that.options.synthDef, {
-                rate: that.options.rate,
-                overrideRate: (that.options.rate === flock.rates.DEMAND), // At demand rate, override the rate of all ugens.
+            that.out = flock.parse.synthDef(o.synthDef, {
+                rate: o.rate,
+                overrideRate: overrideRate,
                 visitors: that.tail,
                 buffers: that.enviro.buffers,
                 buses: that.enviro.buses,
-                audioSettings: that.enviro.audioSettings
+                audioSettings: that.audioSettings
             });
             
             // Add this synth to the tail of the synthesis environment if appropriate.
-            if (that.options.addToEnvironment !== false) {
+            if (o.addToEnvironment !== false) {
                 that.enviro.tail(that);
             }
         };
@@ -998,7 +1004,7 @@ var fluid = fluid || require("infusion"),
         }
     
         var parsed = flock.parse.ugenDef(ugenDef, {
-            audioSettings: that.enviro.audioSettings,
+            audioSettings: that.audioSettings,
             buses: that.enviro.buses,
             buffers: that.enviro.buffers
         });
@@ -1039,6 +1045,23 @@ var fluid = fluid || require("infusion"),
         options.synthDef = def;
         return flock.synth(options);
     };
+    
+    
+    fluid.defaults("flock.frameRateValueSynth", {
+        gradeNames: ["flock.synth", "autoInit"],
+        
+        rate: "scheduled",
+        
+        fps: 60,
+        
+        audioSettings: {
+            rates: {
+                scheduled: "{that}.options.fps"
+            }
+        },
+        
+        addToEnvironment: false
+    });
     
     
     fluid.defaults("flock.synth.group", {

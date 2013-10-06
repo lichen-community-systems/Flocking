@@ -24,24 +24,35 @@ var fluid = fluid || require("infusion"),
             ugenDef = [];
         }
         
-        // We didn't get an out ugen specified, so we need to make one.
-        if (options.rate === flock.rates.AUDIO && 
-            (typeof (ugenDef.length) === "number" || 
-            (ugenDef.id !== flock.OUT_UGEN_ID && ugenDef.ugen !== "flock.ugen.out"))) {
+        if (!flock.parse.synthDef.hasOutUGen(ugenDef)) {
+            // We didn't get an out ugen specified, so we need to make one.
             ugenDef = {
                 id: flock.OUT_UGEN_ID,
-                ugen: "flock.ugen.out",
+                ugen: "flock.ugen.valueOut",
                 inputs: {
-                    sources: ugenDef,
-                    bus: 0,
-                    expand: options.audioSettings.chans
+                    sources: ugenDef
                 }
             };
+
+            if (options.rate === flock.rates.AUDIO) {
+                ugenDef.ugen = "flock.ugen.out";
+                ugenDef.inputs.bus = 0;
+                ugenDef.inputs.expand = options.audioSettings.chans;
+            }
         }
         
         return flock.parse.ugenForDef(ugenDef, options);
     };
-
+    
+    flock.parse.synthDef.hasOutUGen = function (synthDef) {
+        // TODO: This is hostile to third-party extension.
+        return !flock.isIterable(synthDef) && (
+            synthDef.id === flock.OUT_UGEN_ID || 
+            synthDef.ugen === "flock.ugen.out" || 
+            synthDef.ugen === "flock.ugen.valueOut"
+        );
+    };
+    
     flock.parse.makeUGen = function (ugenDef, parsedInputs, options) {
         var rates = options.audioSettings.rates,
             blockSize = options.audioSettings.blockSize;
@@ -123,12 +134,17 @@ var fluid = fluid || require("infusion"),
     flock.parse.rateMap = {
         "ar": flock.rates.AUDIO,
         "kr": flock.rates.CONTROL,
+        "sr": flock.rates.SCHEDULED,
         "dr": flock.rates.DEMAND,
         "cr": flock.rates.CONSTANT
     };
 
     flock.parse.expandRate = function (ugenDef, options) {
-        ugenDef.rate = options.overrideRate ? options.rate : flock.parse.rateMap[ugenDef.rate] || ugenDef.rate;
+        ugenDef.rate = flock.parse.rateMap[ugenDef.rate] || ugenDef.rate;
+        if (options.overrideRate && ugenDef.rate !== flock.rates.CONSTANT) {
+            ugenDef.rate = options.rate;
+        }
+
         return ugenDef;
     };
 
