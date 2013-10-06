@@ -468,9 +468,7 @@ var fluid = fluid || require("infusion"),
         for (var path in changeSpec.values) {
             var change = changeSpec.values[path];
             if (change.synthDef) {
-                change.addToEnvironment = false;
-                change.rate = flock.rates.DEMAND;
-                synths[path] = flock.synth(change);
+                synths[path] = flock.synth.value(change);
             } else {
                 staticChanges[path] = change;
             }
@@ -480,9 +478,7 @@ var fluid = fluid || require("infusion"),
         return function () {
             for (var path in synths) {
                 var synth = synths[path];
-                synth.gen(1);
-                var ugens = synth.nodes;
-                staticChanges[path] = ugens[ugens.length - 1].model.value;
+                staticChanges[path] = synth.value();
             }
             
             // TODO: Hardcoded to the shared environment.
