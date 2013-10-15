@@ -1,5 +1,15 @@
 var fluid = require("infusion"),
-    flock = fluid.registerNamespace("flock");
+    flock = require(__dirname + "/index.js"),
+    loader = fluid.getLoader(__dirname);
+
+loader.require("./tests/test-synth.js")
+
+flock.init({
+    bufferSize: 128,
+    rates: {
+        audio: 22050
+    }
+});
 
 fluid.registerNamespace("flock.demo");
 
@@ -45,3 +55,7 @@ flock.demo.nodeTest = function () {
     
     return synth;
 };
+
+var synth = flock.demo.nodeTest();
+synth.play();
+console.log("Playing...");
