@@ -2,8 +2,6 @@ var fluid = require("infusion"),
     flock = require(__dirname + "/index.js"),
     loader = fluid.getLoader(__dirname);
 
-loader.require("./tests/test-synth.js")
-
 flock.init({
     bufferSize: 128,
     rates: {
