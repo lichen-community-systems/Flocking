@@ -902,6 +902,7 @@ var fluid = fluid || require("infusion"),
                 out = that.output,
                 chan = that.inputs.channel.output[0],
                 source = that.buffer.data.channels[chan],
+                trig = inputs.trigger.output,
                 bufIdx = m.idx,
                 bufLen = source.length,
                 loop = that.inputs.loop.output[0],
@@ -909,10 +910,13 @@ var fluid = fluid || require("infusion"),
                 end = (that.inputs.end.output[0] * bufLen) | 0,
                 buffers = that.options.audioSettings.buffers,
                 i,
+                j,
                 samp;
             
-            for (i = 0; i < numSamps; i++) {
-                if (bufIdx >= end) {
+            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.trigger) {
+                if (trig[j] > 0.0 && m.prevTrig <= 0.0) {
+                    bufIdx = start;
+                } else if (bufIdx >= end) {
                     if (loop > 0) {
                         bufIdx = start;
                     } else {
@@ -920,6 +924,7 @@ var fluid = fluid || require("infusion"),
                         continue;
                     }
                 }
+                m.prevTrig = trig[j];
                 
                 samp = that.interpolate ? that.interpolate(bufIdx, source) : source[bufIdx | 0];
                 out[i] = samp;
@@ -937,6 +942,7 @@ var fluid = fluid || require("infusion"),
                 chan = that.inputs.channel.output[0],
                 speedInc = that.inputs.speed.output[0],
                 source = that.buffer.data.channels[chan],
+                trig = inputs.trigger.output,
                 bufIdx = m.idx,
                 bufLen = source.length,
                 loop = that.inputs.loop.output[0],
@@ -944,10 +950,13 @@ var fluid = fluid || require("infusion"),
                 end = (that.inputs.end.output[0] * bufLen) | 0,
                 buffers = that.options.audioSettings.buffers,
                 i,
+                j,
                 samp;
             
-            for (i = 0; i < numSamps; i++) {
-                if (bufIdx >= end) {
+            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.trigger) {
+                if (trig[j] > 0.0 && m.prevTrig <= 0.0) {
+                    bufIdx = start;
+                } else if (bufIdx >= end) {
                     if (loop > 0) {
                         bufIdx = start;
                     } else {
@@ -955,6 +964,7 @@ var fluid = fluid || require("infusion"),
                         continue;
                     }
                 }
+                m.prevTrig = trig[j];
                 
                 samp = that.interpolate ? that.interpolate(bufIdx, source) : source[bufIdx | 0];
                 out[i] = samp;
@@ -975,16 +985,17 @@ var fluid = fluid || require("infusion"),
             that.gen = (inputs.speed.rate === flock.rates.CONSTANT && inputs.speed.output[0] === 1.0) ?
                 that.crRegularSpeedGen : that.krSpeedGen;
             
+            that.calculateStrides();
             flock.onMulAddInputChanged(that);
         };
         
         that.onBufferReady = function (bufDesc) {
             var m = that.model,
-                start = that.inputs.start.output[0],
+                end = that.inputs.end.output[0],
                 chan = that.inputs.channel.output[0],
                 buf = that.buffer.data.channels[chan];
             
-            m.idx = (start * buf.length) | 0;
+            m.idx = (end * buf.length) | 0;
             m.stepSize = that.buffer.format.sampleRate / m.sampleRate;
         };
         
@@ -1004,13 +1015,18 @@ var fluid = fluid || require("infusion"),
             loop: 0.0,
             speed: 1.0,
             start: 0.0,
-            end: 1.0
+            end: 1.0,
+            trigger: 1.0
         },
         ugenOptions: {
             model: {
                 idx: 0,
+                prevTrig: 0.0,
                 channel: undefined
             },
+            strideInputs: [
+                "trigger"
+            ],
             interpolation: "linear"
         }
     });
