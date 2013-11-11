@@ -785,8 +785,8 @@ flock.test = flock.test || {};
     
     module("flock.ugen.playBuffer() tests", {
         setup: function () {
-            // Register the buffer ourselves. Buffers are multichannel, so need to be wrapped in an array.
-            flock.enviro.shared.buffers[playbackDef.inputs.buffer.id] = flock.bufferDesc({
+            var bufDesc = flock.bufferDesc({
+                id: playbackDef.inputs.buffer.id,
                 format: {
                     sampleRate: sampleRate
                 },
@@ -794,6 +794,7 @@ flock.test = flock.test || {};
                     channels: [flock.test.fillBuffer(1, 64)]
                 }
             });
+            flock.parse.bufferForDef.resolveBuffer(bufDesc, undefined, flock.enviro.shared);            
         }
     });
     
@@ -1576,7 +1577,8 @@ flock.test = flock.test || {};
     
     module("flock.ugen.bufferDuration tests", {
         setup: function () {
-            flock.enviro.shared.buffers["bufferDurationTests"] = flock.bufferDesc({
+            var bufDesc = flock.bufferDesc({
+                id: "bufferDurationTests",
                 format: {
                     sampleRate: sampleRate
                 },
@@ -1584,6 +1586,7 @@ flock.test = flock.test || {};
                     channels: [flock.test.ascendingBuffer(sampleRate * 2.5, 0)] // 2.5 second buffer
                 }
             });
+            flock.parse.bufferForDef.resolveBuffer(bufDesc, undefined, flock.enviro.shared);            
         }
     });
     

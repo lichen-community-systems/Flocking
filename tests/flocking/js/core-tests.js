@@ -783,25 +783,32 @@ var fluid = fluid || require("infusion"),
             synthDef: bufferTestSynthDef
         });
         var play = s.get("play");
-        
-        s.enviro.buffers["cat"] = flock.bufferDesc({
+
+        // TODO: We should expose this functionality as a method on the environment.
+        var catBuffer = flock.bufferDesc({
+            id: "cat",
             data: {
                 channels: [new Float32Array([10, 11, 12, 13, 14, 15])]
             }
         });
         
-        s.enviro.buffers["dog"] = flock.bufferDesc({
+        var dogBuffer = flock.bufferDesc({
+            id: "dog",
             data: {
                 channels: [new Float32Array([22, 23, 24, 25, 26, 27])]
             }
-        });
+        })
+        
+        flock.parse.bufferForDef.resolveBuffer(catBuffer, undefined, s.enviro);
+        flock.parse.bufferForDef.resolveBuffer(dogBuffer, undefined, s.enviro);
         
         // Set a full id reference.
-        s.set("play.buffer", {
+        var catIdBufDef = {
             id: "cat"
-        });
-        deepEqual(play.inputs.buffer, {id: "cat"},
-            "After setting an object id reference, the actual input should reflect the value actually set.");
+        };
+        s.set("play.buffer", catIdBufDef);
+        deepEqual(play.inputs.buffer, catIdBufDef,
+            "After setting an object id reference, the actual input should reflect the bufDef.");
         deepEqual(play.buffer, s.enviro.buffers["cat"],
             "And the actual buffer should be the correct bufferDesc from the environment.");
         

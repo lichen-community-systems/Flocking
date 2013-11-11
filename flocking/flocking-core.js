@@ -495,30 +495,6 @@ var fluid = fluid || require("infusion"),
     };
     
     
-    /**
-     * Creates a Buffer Description object from an array of audio buffers for each channel.
-     */
-    fluid.defaults("flock.bufferDesc", {
-        gradeNames: ["fluid.littleComponent", "autoInit"],
-        mergePolicy: {
-            channelBuffers: "nomerge"
-        },
-        container: {},
-        format: {
-            sampleRate: 44100,
-            numChannels: "{that}.options.data.channels.length",
-            numSampleFrames: "{that}.options.data.channels.0.length"
-        }
-    });
-
-    flock.bufferDesc.finalInit = function (that) {
-        that.container = that.options.container;
-        that.format = that.options.format;
-        that.data = that.options.data;
-        that.format.duration = that.format.numSampleFrames / that.format.sampleRate;
-    };
-    
-    
     fluid.defaults("flock.nodeList", {
         gradeNames: ["fluid.littleComponent", "autoInit"],
         members: {
