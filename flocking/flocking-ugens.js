@@ -905,14 +905,16 @@ var fluid = fluid || require("infusion"),
                 bufIdx = m.idx,
                 bufLen = source.length,
                 loop = that.inputs.loop.output[0],
+                start = (that.inputs.start.output[0] * bufLen) | 0,
+                end = (that.inputs.end.output[0] * bufLen) | 0,
                 buffers = that.options.audioSettings.buffers,
                 i,
                 samp;
             
             for (i = 0; i < numSamps; i++) {
-                if (bufIdx >= bufLen) {
+                if (bufIdx >= end) {
                     if (loop > 0) {
-                        bufIdx = 0;
+                        bufIdx = start;
                     } else {
                         out[i] = 0.0;
                         continue;
@@ -925,6 +927,8 @@ var fluid = fluid || require("infusion"),
             }
             
             m.idx = bufIdx;
+            
+            that.mulAdd(numSamps);
         };
         
         that.krSpeedGen = function (numSamps) {
@@ -936,14 +940,16 @@ var fluid = fluid || require("infusion"),
                 bufIdx = m.idx,
                 bufLen = source.length,
                 loop = that.inputs.loop.output[0],
+                start = (that.inputs.start.output[0] * bufLen) | 0,
+                end = (that.inputs.end.output[0] * bufLen) | 0,
                 buffers = that.options.audioSettings.buffers,
                 i,
                 samp;
             
             for (i = 0; i < numSamps; i++) {
-                if (bufIdx >= bufLen) {
+                if (bufIdx >= end) {
                     if (loop > 0) {
-                        bufIdx = 0;
+                        bufIdx = start;
                     } else {
                         out[i] = 0.0;
                         continue;
@@ -956,6 +962,7 @@ var fluid = fluid || require("infusion"),
             }
             
             m.idx = bufIdx;
+            that.mulAdd(numSamps);
         };
         
         that.onInputChanged = function (inputName) {
@@ -972,8 +979,12 @@ var fluid = fluid || require("infusion"),
         };
         
         that.onBufferReady = function (bufDesc) {
-            var m = that.model;
-            m.idx = 0; // TODO: Allow for configurable start and end points.
+            var m = that.model,
+                start = that.inputs.start.output[0],
+                chan = that.inputs.channel.output[0],
+                buf = that.buffer.data.channels[chan];
+            
+            m.idx = (start * buf.length) | 0;
             m.stepSize = that.buffer.format.sampleRate / m.sampleRate;
         };
         
@@ -991,7 +1002,9 @@ var fluid = fluid || require("infusion"),
         inputs: {
             channel: 0,
             loop: 0.0,
-            speed: 1.0
+            speed: 1.0,
+            start: 0.0,
+            end: 1.0
         },
         ugenOptions: {
             model: {
