@@ -294,7 +294,53 @@ var fluid = fluid || require("infusion"),
         rate: "audio"
     });
     
-
+    flock.ugen.valueChangeTrigger = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.gen = function (numSamps) {
+            var m = that.model,
+                source = that.inputs.source.output,
+                out = that.output,
+                i,
+                j,
+                val;
+            
+            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.source) {
+                val = source[j];
+                out[i] = val !== m.prevVal ? 1.0 : 0.0;
+                m.prevVal = val;
+            }
+        };
+        
+        that.onInputChanged = function (inputName) {
+            that.calculateStrides();
+            
+            if (inputName === "source") {
+                // Force a trigger to be output whenever the input is changed, 
+                // even if it's the same value as was previously held.
+                that.model.prevVal = null;
+            }
+        };
+        
+        that.calculateStrides();
+        return that;
+    };
+    
+    fluid.defaults("flock.ugen.valueChangeTrigger", {
+        rate: "control",
+        
+        inputs: {
+            source: 0.0
+        },
+        ugenOptions: {
+            model: {
+                prevVal: 0.0
+            },
+            
+            strideInputs: ["source"]
+        }
+    });
+    
     flock.ugen.math = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         that.expandedSource = new Float32Array(that.options.audioSettings.blockSize);
