@@ -25,9 +25,6 @@ module.exports = function(grunt) {
                     // DataView Polyfill
                     "third-party/polydataview/js/polydataview.js",
                     
-                    // Tiny Promise Library
-                    "third-party/tiny2-promise/js/tiny2-promise.js",
-                    
                     // Flocking
                     "flocking/flocking-core.js",
                     "flocking/flocking-parser.js",

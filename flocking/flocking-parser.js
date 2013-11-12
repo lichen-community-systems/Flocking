@@ -335,21 +335,5 @@ var fluid = fluid || require("infusion"),
         
         flock.parse.bufferForDef.bindToPromise(p, source, ugen);
     };
-
-    fluid.defaults("flock.promise", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
-        
-        members: {
-            promise: {
-                expander: {
-                    funcName: "flock.promise.make"
-                }
-            }
-        }
-    });
-    
-    flock.promise.make = function () {
-        return new Promise();
-    };
     
 }());
