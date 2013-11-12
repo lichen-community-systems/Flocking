@@ -44,7 +44,13 @@ Flocking is in active development. It has bugs, it's growing fast, and help is w
 Getting Started
 ---------------
 
-Flocking includes a build system, which generates a single file that is easy to include in your web page. To make a build, simply run:
+Flocking includes a build system, which will generate a single file that is easy to include in your web page. Before you start, you'll need to have [Node.js](http://nodejs.org) installed, too.
+
+Install grunt and related dependencies:
+    
+    npm install
+
+To make a build, simply run:
 
     grunt
 
