@@ -319,7 +319,7 @@ var fluid = fluid || require("infusion"),
     
     
     fluid.defaults("flock.scheduler.async", {
-        gradeNames: ["fluid.littleComponent", "autoInit"],
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
         components: {
             timeConverter: {
                 type: "flock.convert.seconds"
