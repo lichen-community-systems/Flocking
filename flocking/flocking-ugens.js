@@ -16,7 +16,9 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    var $ = fluid.registerNamespace("jQuery");
+    var $ = fluid.registerNamespace("jQuery"),
+        DSP = typeof(window) !== "undefined" ? window.DSP : 
+        (typeof (require) !== "undefined" ? require("dspapi").DSP : undefined);
     
     /*************
      * Utilities *

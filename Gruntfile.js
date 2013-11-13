@@ -57,6 +57,20 @@ module.exports = function(grunt) {
             }
         },
         
+        copy: {
+          main: {
+              files: [
+                {
+                    expand: true,
+                    flatten: true,
+                    src: ["flocking/flocking-audiofile*.js"],
+                    dest: "dist/",
+                    filter: "isFile"
+                }
+            ]
+          }
+        },
+        
         clean: {
             all: {
                 src: ["dist/"]
@@ -74,6 +88,7 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks("grunt-contrib-concat");
     grunt.loadNpmTasks("grunt-contrib-uglify");
     grunt.loadNpmTasks("grunt-contrib-clean");
+    grunt.loadNpmTasks("grunt-contrib-copy");
 
-    grunt.registerTask("default", ["clean", "concat", "uglify"]);
+    grunt.registerTask("default", ["clean", "concat", "uglify", "copy"]);
 };

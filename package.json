@@ -4,6 +4,7 @@
   "description": "Creative audio synthesis for the Web",
   "homepage": "http://flockingjs.org/",
   "scripts": {
+    "preinstall" : "git submodule update --init",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -29,6 +30,8 @@
     "grunt": "~0.4.1",
     "grunt-contrib-uglify": "~0.2.0",
     "grunt-contrib-concat": "~0.3.0",
-    "grunt-contrib-clean": "~0.4.1"
+    "grunt-contrib-clean": "~0.4.1",
+    "grunt-contrib-copy": "~0.4.1",
+    "node-static": "~0.7.2"
   }
 }

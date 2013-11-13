@@ -41,7 +41,24 @@ Flocking is in active development. It has bugs, it's growing fast, and help is w
  * MediaStream-based audio input
  * The ability to record sessions and export an audio file from your browser
  
- 
+Getting Started
+---------------
+
+Flocking includes a build system, which will generate a single file that is easy to include in your web page. Before you start, you'll need to have [Node.js](http://nodejs.org) installed, too.
+
+Install grunt and related dependencies:
+    
+    npm install
+
+To make a build, simply run:
+
+    grunt
+
+And then link to the Flocking file in your HTML:
+
+    <script src="flocking/dist/flocking-all.js"></script>
+
+
 Using Flocking
 --------------
 
@@ -115,6 +132,42 @@ If you need to, you can always schedule events via plain old functions:
         });
     });
 
+Using Individual Flocking Files (for development)
+-------------------------------------------------
+
+If you'd prefer to link to the individual Flocking files during development, these are the basic required dependencies:
+
+    <!-- jQuery -->
+    <script src="flocking/third-party/jquery/js/jquery-2.0.0.js"></script>
+    
+    <!-- Infusion -->
+    <script src="flocking/third-party/infusion/js/Fluid.js"></script>
+    <script src="flocking/third-party/infusion/js/FluidIoC.js"></script>
+    <script src="flocking/third-party/infusion/js/DataBinding.js"></script>
+    
+    <!-- The DSP API Polyfill -->
+    <script src="flocking/third-party/dspapi/js/dspapi.js"></script>
+
+    <!-- Flocking -->
+    <script src="flocking/flocking/flocking-core.js"></script>
+    <script src="flocking/flocking/flocking-scheduler.js"></script>
+    <script src="flocking/flocking/flocking-webaudio.js"></script>
+    <script src="flocking/flocking/flocking-parser.js"></script>
+    <script src="flocking/flocking/flocking-ugens.js"></script>
+    <script src="flocking/flocking/flocking-ugens-browser.js"></script>
+
+In addition, if you're working with WAV or AIFF files, these files are required:
+
+    <script src="../../../third-party/polydataview/js/polydataview.js"></script>
+    <script src="../../../flocking/flocking-audiofile.js"></script>
+
+If you're using the flock.ugen.scope unit generator, you'll also need:
+
+    <script src="../../../flocking/flocking-gfx.js"></script>
+
+And if you're using an older version of Firefox (< 25), you'll need:
+    
+    <script src="../../../flocking/flocking-firefox.js"></script>
 
 Compatibility
 -------------
