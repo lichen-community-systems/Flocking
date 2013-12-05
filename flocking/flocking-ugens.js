@@ -1089,6 +1089,7 @@ var fluid = fluid || require("infusion"),
      *  - channel: the channel of the buffer to read from
      *  - phase: the phase of the buffer to read (this should be a value between 0..1)
      */
+    // TODO: This should be refactored based on the model of bufferPhaseStep below.
     flock.ugen.readBuffer = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         flock.ugen.buffer(that);
@@ -1201,9 +1202,77 @@ var fluid = fluid || require("infusion"),
         rate: "constant",
         inputs: {
             channel: 0
+        },
+        ugenOptions: {
+            model: {
+                value: 0.0
+            }
         }
     });
     
+    /**
+     * Outputs a phase step value for playing the specified buffer at its normal playback rate.
+     * This unit generator takes into account any differences betwee the sound file's sample rate and
+     * the environment's audio rate.
+     *
+     * Inputs:
+     *  buffer: a bufDef object specifying the buffer to track
+     */
+    flock.ugen.bufferPhaseStep = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        flock.ugen.buffer(that);
+        
+        that.krGen = function (numSamps) {
+            var val = that.model.value,
+                i;
+            
+            for (i = 0; i < numSamps; i++) {
+                that.output[i] = val;
+            }
+            
+            that.mulAdd(numSamps);
+        };
+        
+        that.onInputChanged = function (inputName) {
+            that.onBufferInputChanged(inputName);
+            flock.onMulAddInputChanged(that);
+        };
+        
+        that.onBufferReady = function (buffer) {
+            var m = that.model,
+                chan = that.inputs.channel.output[0],
+                source = buffer.data.channels[chan],
+                enviroRate = that.options.audioSettings.rates.audio,
+                bufferRate = that.buffer.format.sampleRate || enviroRate;
+            
+            m.scale = bufferRate / enviroRate;
+            that.output[0] = m.value = 1 / (source.length * m.scale);
+        };
+        
+        that.init = function () {
+            var r = that.rate;
+            that.gen = (r === flock.rates.CONTROL || r === flock.rates.AUDIO) ? that.krGen : undefined;
+            that.output[0] = that.model.value = 0.0;
+            that.initBuffer();
+            that.onInputChanged();
+        };
+        
+        that.init();
+        return that;
+    };
+    
+    fluid.defaults("flock.ugen.bufferPhaseStep", {
+        rate: "constant",
+        inputs: {
+            channel: 0
+        },
+        ugenOptions: {
+            model: {
+                scale: 1,
+                value: 0
+            }
+        }
+    });
     
     /**
      * Constant-rate unit generator that outputs the environment's current audio sample rate.
