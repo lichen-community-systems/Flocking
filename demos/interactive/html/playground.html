@@ -75,6 +75,10 @@
                 <optgroup label="Granular Synthesis">
                     <option value="granulator">Granulator</option>
                 </optgroup>
+                <optgroup label="Audio Buffers">
+                    <option value="playBuffer">Play Buffer</option>
+                    <option value="readBuffer">Read Buffer</option>
+                </optgroup>
                 <optgroup label="Filters">
                     <option value="lowpass">Low pass filter</option>
                     <option value="highpass">High pass filter</option>
@@ -758,6 +762,55 @@ var synth = flock.synth({
 });
         </script>
         
+        <script type="application/flocking" id="playBuffer">
+var synth = flock.synth({
+    synthDef: {
+        ugen: "flock.ugen.playBuffer",
+        buffer: {
+            id: "chord",
+            url: "../../shared/audio/hillier-first-chord.wav"
+        },
+        
+        speed: {
+            ugen: "flock.ugen.mouse.cursor",
+            options: {
+                axis: "y"
+            },
+            add: 0.5
+        },
+        
+        loop: 1,
+        
+        start: 0,
+        
+        end: {
+            ugen: "flock.ugen.mouse.cursor",
+            options: {
+                axis: "x"
+            }
+        }
+    }
+});
+        </script>
+        
+        <script type="application/flocking" id="readBuffer">
+var synth = flock.synth({
+    synthDef: {
+        ugen: "flock.ugen.readBuffer",
+        buffer: {
+            id: "chord",
+            url: "../../shared/audio/hillier-first-chord.wav"
+        },
+        phase: {
+            ugen: "flock.ugen.sin",
+            freq: 1/5,
+            mul: 0.5,
+            add: 0.5
+        }
+    }
+});
+        </script>
+        
         <script type="application/flocking" id="polyphonicSynth">
 var fundamental = 440;
 
@@ -882,6 +935,7 @@ clock.schedule([
         
         
         <script type="application/flocking" id="lowpass">
+// This example needs to be run from a web server.
 var synth = flock.synth({
     synthDef: {
         ugen: "flock.ugen.filter.biquad.lp",
@@ -908,6 +962,7 @@ var synth = flock.synth({
 });
         </script>
         <script type="application/flocking" id="highpass">
+// This example needs to be run from a web server.
 var synth = flock.synth({
     synthDef: {
         ugen: "flock.ugen.filter.biquad.hp",

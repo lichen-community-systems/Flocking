@@ -1080,6 +1080,80 @@ var fluid = fluid || require("infusion"),
     });
     
     /**
+     * Reads values out of a buffer at the specified phase index.
+     * This unit generator is typically used with flock.ugen.phasor or similar unit generator to
+     * scan through the buffer at a particular rate.
+     * 
+     * Inputs:
+     *  - buffer: a bufDef representing the buffer to read from
+     *  - channel: the channel of the buffer to read from
+     *  - phase: the phase of the buffer to read (this should be a value between 0..1)
+     */
+    flock.ugen.readBuffer = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        flock.ugen.buffer(that);
+        
+        that.gen = function (numSamps) {
+            var m = that.model,
+                phaseS = m.strides.phase,
+                out = that.output,
+                chan = that.inputs.channel.output[0],
+                phase = that.inputs.phase.output,
+                source = that.buffer.data.channels[chan],
+                sourceLen = source.length,
+                i,
+                bufIdx,
+                j,
+                val;
+            
+            for (i = j = 0; i < numSamps; i++, j += phaseS) {
+                bufIdx = phase[j] * sourceLen;
+                val = that.interpolate ? that.interpolate(bufIdx, source) : source[bufIdx | 0];
+                out[i] = val;
+            }
+            
+            that.mulAdd(numSamps);
+        };
+        
+        that.onInputChanged = function (inputName) {
+            var m = that.model,
+                inputs = that.inputs;
+            
+            that.onBufferInputChanged(inputName);
+            that.calculateStrides();
+            flock.onMulAddInputChanged(that);
+        };
+        
+        that.init = function () {
+            that.initBuffer();
+            that.onInputChanged();
+        };
+        
+        that.init();
+        return that;
+    };
+    
+    fluid.defaults("flock.ugen.readBuffer", {
+        rate: "audio",
+        
+        inputs: {
+            buffer: undefined,
+            channel: 0,
+            phase: undefined
+        },
+        
+        ugenOptions: {
+            model: {
+                channel: undefined
+            },
+            strideInputs: [
+                "phase"
+            ],
+            interpolation: "linear"
+        }
+    });
+    
+    /**
      * Outputs the duration of the specified buffer. Runs at either constant or control rate.
      * Use control rate only when the underlying buffer may change dynamically.
      *
@@ -1132,11 +1206,11 @@ var fluid = fluid || require("infusion"),
     
     
     /**
-     * Constant-rate unit generator that outputs the environment's current sample rate.
+     * Constant-rate unit generator that outputs the environment's current audio sample rate.
      */
     flock.ugen.sampleRate = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.output[0] = that.model.sampleRate;
+        that.output[0] = that.options.audioSettings.rates.audio;
         return that;
     };
     
