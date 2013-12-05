@@ -151,13 +151,9 @@ var fluid = fluid || require("infusion"),
             inputs: inputs,
             output: output,
             options: options,
-            model: options.model || {}
+            model: options.model || {},
+            tags: ["flock.ugen"]
         };
-        
-        that.options.audioSettings = that.options.audioSettings || flock.enviro.shared.audioSettings;
-        that.model.sampleRate = options.sampleRate || that.options.audioSettings.rates[that.rate];
-        that.model.blockSize = that.rate === flock.rates.AUDIO ? that.options.audioSettings.blockSize : 1;
-        that.model.sampleDur = 1.0 / that.model.sampleRate;
         
         that.get = function (path) {
             return flock.input.get(that.inputs, path);
@@ -220,20 +216,35 @@ var fluid = fluid || require("infusion"),
                 that.calculateStrides();
             }
         };
-                
-        // Assigns an interpolator function to the UGen.
-        // This is inactive by default, but can be used in custom gen() functions.
-        // Will be undefined if no interpolation default or option has been set,
-        // or if it is set to "none"--make sure you check before invoking it.
-        that.interpolate = flock.interpolate[that.options.interpolation];
+
+        that.init = function () {
+            var tags = fluid.makeArray(that.options.tags),
+                i;
+            
+            for (i = 0; i < tags.length; i++) {
+                that.tags.push(tags[i]);
+            };
+            
+            that.options.audioSettings = that.options.audioSettings || flock.enviro.shared.audioSettings;
+            that.model.sampleRate = options.sampleRate || that.options.audioSettings.rates[that.rate];
+            that.model.blockSize = that.rate === flock.rates.AUDIO ? that.options.audioSettings.blockSize : 1;
+            that.model.sampleDur = 1.0 / that.model.sampleRate;
+            
+            // Assigns an interpolator function to the UGen.
+            // This is inactive by default, but can be used in custom gen() functions.
+            // Will be undefined if no interpolation default or option has been set,
+            // or if it is set to "none"--make sure you check before invoking it.
+            that.interpolate = flock.interpolate[that.options.interpolation];
         
-        if (that.rate === flock.rates.DEMAND && that.inputs.freq) {
-            that.inputs.freq = flock.parse.ugenDef({
-                ugen: "flock.ugen.value",
-                value: 1.0
-            });
-        }
+            if (that.rate === flock.rates.DEMAND && that.inputs.freq) {
+                that.inputs.freq = flock.parse.ugenDef({
+                    ugen: "flock.ugen.value",
+                    value: 1.0
+                });
+            }
+        };
         
+        that.init();
         return that;
     };
     
@@ -245,7 +256,11 @@ var fluid = fluid || require("infusion"),
     };
     
     fluid.defaults("flock.ugen.value", {
-        rate: "constant"
+        rate: "constant",
+        
+        ugenOptions: {
+            tags: ["flock.ugen.valueType"]
+        }
     });
     
     
@@ -281,7 +296,53 @@ var fluid = fluid || require("infusion"),
         rate: "audio"
     });
     
-
+    flock.ugen.valueChangeTrigger = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.gen = function (numSamps) {
+            var m = that.model,
+                source = that.inputs.source.output,
+                out = that.output,
+                i,
+                j,
+                val;
+            
+            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.source) {
+                val = source[j];
+                out[i] = val !== m.prevVal ? 1.0 : 0.0;
+                m.prevVal = val;
+            }
+        };
+        
+        that.onInputChanged = function (inputName) {
+            that.calculateStrides();
+            
+            if (inputName === "source") {
+                // Force a trigger to be output whenever the input is changed, 
+                // even if it's the same value as was previously held.
+                that.model.prevVal = null;
+            }
+        };
+        
+        that.calculateStrides();
+        return that;
+    };
+    
+    fluid.defaults("flock.ugen.valueChangeTrigger", {
+        rate: "control",
+        
+        inputs: {
+            source: 0.0
+        },
+        ugenOptions: {
+            model: {
+                prevVal: 0.0
+            },
+            
+            strideInputs: ["source"]
+        }
+    });
+    
     flock.ugen.math = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         that.expandedSource = new Float32Array(that.options.audioSettings.blockSize);
@@ -839,137 +900,88 @@ var fluid = fluid || require("infusion"),
         }
     });
     
-    // TODO: Resolve with other buffer-related code and move up to core.
-    // TODO: Use a real event system.
-    flock.buffer = {
-        listeners: {},
-        
-        addListener: function (id, ugen) {
-            if (!ugen.onBufferReady) {
-                return;
-            }
-            
-            var listeners = flock.buffer.listeners[id];
-            if (!listeners) {
-                listeners = flock.buffer.listeners[id] = [];
-            }
-            listeners.push(ugen);
-        },
-        
-        fireOnce: function (id, channelBuffer, buffer) {
-            var listeners = flock.buffer.listeners[id],
-                i,
-                ugen;
-                
-            if (!listeners || !buffer) {
-                return;
-            }
-            
-            // Fire onBufferReady() on each ugen listener.
-            for (i = 0; i < listeners.length; i++) {
-                ugen = listeners[i];
-                ugen.onBufferReady(channelBuffer, id, buffer);
-            }
-            
-            // Clear all listeners.
-            flock.buffer.listeners[id] = [];
-        }
-    };
-    
-    flock.buffer.fireReady = function (ugen, id, buffer, name, chan) {
-        ugen.buffer = buffer ? buffer[chan] : ugen.buffer;
-        ugen.model.name = name;
-        flock.buffer.fireOnce(id, ugen.buffer, buffer);
-    };
-    
-    flock.buffer.resolveBufferId = function (ugen, id, chan) {
-        var buffer = ugen.options.audioSettings.buffers[id];
-        flock.buffer.addListener(id, ugen);
-        if (buffer) {
-            // Buffer has already been loaded.
-            flock.buffer.fireReady(ugen, id, buffer, id, chan);
-        }
-    };
-    
-    flock.buffer.resolveBufferArray = function (ugen, buffer, chan) {
-        var id = fluid.allocateGuid();
-        flock.buffer.addListener(id, ugen);
-        flock.buffer.fireReady(ugen, id, [buffer], id, chan);
-    };
-    
-    flock.buffer.resolveBufferDef = function (ugen, bufDef, chan) {
-        flock.buffer.addListener(bufDef.id, ugen);
-        flock.parse.bufferForDef(bufDef, function (buffer, name) {
-            flock.buffer.fireReady(ugen, bufDef.id, buffer, name, chan)
-        });
-    };
-    
-    // TODO: Should this be done earlier (during ugen parsing)?
-    // TODO: Factor this into a ugen mixin.
-    flock.buffer.resolveBuffer = function (ugen) {
-        var m = ugen.model,
-            inputs = ugen.inputs,
-            bufDef = m.bufDef = inputs.buffer,
-            chan = inputs.channel ? inputs.channel.output[0] : 0,
-            buf;
-        
-        if (!bufDef) {
-            return;
-        } else if (typeof (bufDef) === "string") {
-            flock.buffer.resolveBufferId(ugen, bufDef, chan);
-        } else if (flock.isIterable(bufDef)) {
-            flock.buffer.resolveBufferArray(ugen, bufDef, chan);
-        } else {
-            flock.buffer.resolveBufferDef(ugen, bufDef, chan);
-        }
-    };
     
     /****************
      * Buffer UGens *
      ****************/
-     
+    
+    /**
+     * Mixes buffer-related functionality into a unit generator.
+     */
+    flock.ugen.buffer = function (that) {
+        that.onBufferInputChanged = function (inputName) {
+            var m = that.model,
+                inputs = that.inputs;
+            
+            if (m.bufDef !== inputs.buffer || inputName === "buffer") {
+                m.bufDef = inputs.buffer;
+                flock.parse.bufferForDef(m.bufDef, that, flock.enviro.shared); // TODO: Shared enviro reference.
+            }
+        };
+        
+        that.setBuffer = function (bufDesc) {
+            that.buffer = bufDesc;
+            if (that.onBufferReady) {
+                that.onBufferReady(bufDesc);
+            }
+        };
+        
+        that.initBuffer = function () {
+            // Start with a zeroed buffer, since the buffer input may be loaded asynchronously.
+            that.buffer = that.model.bufDef = flock.bufferDesc({
+                format: {
+                    sampleRate: that.options.audioSettings.rates.audio
+                },
+                data: {
+                    channels: [new Float32Array(that.output.length)]
+                }
+            });
+        };
+    };
+    
+    
     flock.ugen.playBuffer = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
-        // Start with a zeroed buffer, since the buffer input may be loaded asynchronously.
-        that.buffer = new Float32Array(that.output.length); 
+        flock.ugen.buffer(that);
         
         // Optimized gen function for constant regular-speed playback.
         that.crRegularSpeedGen = function (numSamps) {
             var m = that.model,
                 out = that.output,
                 chan = that.inputs.channel.output[0],
-                source = that.buffer,
+                source = that.buffer.data.channels[chan],
+                trig = inputs.trigger.output,
                 bufIdx = m.idx,
                 bufLen = source.length,
                 loop = that.inputs.loop.output[0],
+                start = (that.inputs.start.output[0] * bufLen) | 0,
+                end = (that.inputs.end.output[0] * bufLen) | 0,
                 buffers = that.options.audioSettings.buffers,
-                i;
+                i,
+                j,
+                samp;
             
-            // If the channel has changed, update the buffer we're reading from.
-            // TODO: Support full bufferDesc objects at that.buffer so that we do this with non-environment buffers,
-            // or refactor buffer management altogether.
-            if (m.channel !== chan) {
-                m.channel = chan;
-                if (buffers[m.name]) {
-                    that.buffer = source = buffers[m.name][chan];
-                }
-            }
-            
-            for (i = 0; i < numSamps; i++) {
-                if (bufIdx >= bufLen) {
+            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.trigger) {
+                if (trig[j] > 0.0 && m.prevTrig <= 0.0) {
+                    bufIdx = start;
+                } else if (bufIdx >= end) {
                     if (loop > 0) {
-                        bufIdx = 0;
+                        bufIdx = start;
                     } else {
                         out[i] = 0.0;
                         continue;
                     }
                 }
-                out[i] = source[bufIdx];
-                bufIdx++;
+                m.prevTrig = trig[j];
+                
+                samp = that.interpolate ? that.interpolate(bufIdx, source) : source[bufIdx | 0];
+                out[i] = samp;
+                bufIdx += m.stepSize;
             }
             
             m.idx = bufIdx;
+            
+            that.mulAdd(numSamps);
         };
         
         that.krSpeedGen = function (numSamps) {
@@ -977,58 +989,70 @@ var fluid = fluid || require("infusion"),
                 out = that.output,
                 chan = that.inputs.channel.output[0],
                 speedInc = that.inputs.speed.output[0],
-                source = that.buffer,
+                source = that.buffer.data.channels[chan],
+                trig = inputs.trigger.output,
                 bufIdx = m.idx,
                 bufLen = source.length,
                 loop = that.inputs.loop.output[0],
+                start = (that.inputs.start.output[0] * bufLen) | 0,
+                end = (that.inputs.end.output[0] * bufLen) | 0,
                 buffers = that.options.audioSettings.buffers,
-                i;
+                i,
+                j,
+                samp;
             
-            // If the channel has changed, update the buffer we're reading from.
-            if (m.channel !== chan) {
-                m.channel = chan;
-                if (buffers[m.name]) {
-                    that.buffer = source = buffers[m.name][chan];
-                }
-            }
-            
-            for (i = 0; i < numSamps; i++) {
-                if (bufIdx >= bufLen) {
+            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.trigger) {
+                if (trig[j] > 0.0 && m.prevTrig <= 0.0) {
+                    bufIdx = start;
+                } else if (bufIdx >= end) {
                     if (loop > 0) {
-                        bufIdx = 0;
+                        bufIdx = start;
                     } else {
                         out[i] = 0.0;
                         continue;
                     }
                 }
+                m.prevTrig = trig[j];
                 
-                out[i] = source[Math.round(bufIdx)];
-                bufIdx += speedInc;
+                samp = that.interpolate ? that.interpolate(bufIdx, source) : source[bufIdx | 0];
+                out[i] = samp;
+                bufIdx += m.stepSize * speedInc;
             }
             
             m.idx = bufIdx;
-        };
-        
-        that.onBufferReady = function () {
-            that.model.idx = 0;
+            that.mulAdd(numSamps);
         };
         
         that.onInputChanged = function (inputName) {
             var m = that.model,
                 inputs = that.inputs;
             
-            if (m.bufDef !== that.inputs.buffer || inputName === "buffer") {
-                flock.buffer.resolveBuffer(that);
-            }
+            that.onBufferInputChanged(inputName);
             
             // TODO: Optimize for non-regular speed constant rate input.
             that.gen = (inputs.speed.rate === flock.rates.CONSTANT && inputs.speed.output[0] === 1.0) ?
                 that.crRegularSpeedGen : that.krSpeedGen;
             
+            that.calculateStrides();
             flock.onMulAddInputChanged(that);
         };
         
-        that.onInputChanged();
+        that.onBufferReady = function (bufDesc) {
+            var m = that.model,
+                end = that.inputs.end.output[0],
+                chan = that.inputs.channel.output[0],
+                buf = that.buffer.data.channels[chan];
+            
+            m.idx = (end * buf.length) | 0;
+            m.stepSize = that.buffer.format.sampleRate / m.sampleRate;
+        };
+        
+        that.init = function () {
+            that.initBuffer();
+            that.onInputChanged();
+        };
+        
+        that.init();
         return that;
     };
     
@@ -1037,13 +1061,95 @@ var fluid = fluid || require("infusion"),
         inputs: {
             channel: 0,
             loop: 0.0,
-            speed: 1.0
+            speed: 1.0,
+            start: 0.0,
+            end: 1.0,
+            trigger: 1.0
         },
         ugenOptions: {
             model: {
                 idx: 0,
+                prevTrig: 0.0,
                 channel: undefined
+            },
+            strideInputs: [
+                "trigger"
+            ],
+            interpolation: "linear"
+        }
+    });
+    
+    /**
+     * Reads values out of a buffer at the specified phase index.
+     * This unit generator is typically used with flock.ugen.phasor or similar unit generator to
+     * scan through the buffer at a particular rate.
+     * 
+     * Inputs:
+     *  - buffer: a bufDef representing the buffer to read from
+     *  - channel: the channel of the buffer to read from
+     *  - phase: the phase of the buffer to read (this should be a value between 0..1)
+     */
+    flock.ugen.readBuffer = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        flock.ugen.buffer(that);
+        
+        that.gen = function (numSamps) {
+            var m = that.model,
+                phaseS = m.strides.phase,
+                out = that.output,
+                chan = that.inputs.channel.output[0],
+                phase = that.inputs.phase.output,
+                source = that.buffer.data.channels[chan],
+                sourceLen = source.length,
+                i,
+                bufIdx,
+                j,
+                val;
+            
+            for (i = j = 0; i < numSamps; i++, j += phaseS) {
+                bufIdx = phase[j] * sourceLen;
+                val = that.interpolate ? that.interpolate(bufIdx, source) : source[bufIdx | 0];
+                out[i] = val;
             }
+            
+            that.mulAdd(numSamps);
+        };
+        
+        that.onInputChanged = function (inputName) {
+            var m = that.model,
+                inputs = that.inputs;
+            
+            that.onBufferInputChanged(inputName);
+            that.calculateStrides();
+            flock.onMulAddInputChanged(that);
+        };
+        
+        that.init = function () {
+            that.initBuffer();
+            that.onInputChanged();
+        };
+        
+        that.init();
+        return that;
+    };
+    
+    fluid.defaults("flock.ugen.readBuffer", {
+        rate: "audio",
+        
+        inputs: {
+            buffer: undefined,
+            channel: 0,
+            phase: undefined
+        },
+        
+        ugenOptions: {
+            model: {
+                channel: undefined
+            },
+            strideInputs: [
+                "phase"
+            ],
+            interpolation: "linear"
         }
     });
     
@@ -1056,32 +1162,34 @@ var fluid = fluid || require("infusion"),
      */
     flock.ugen.bufferDuration = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        // TODO: Buffers need to track their own sample rates, rather than assuming everything
-        // is at the environment's sample rate. This means we also need to convert buffers between rates.
-        that.model.audioSampleRate = options.audioSettings.rates.audio;
+        flock.ugen.buffer(that);
         
         that.krGen = function (numSamps) {
             var m = that.model,
+                chan = that.inputs.channel.output[0],
+                source = that.buffer.data.channels[chan],
+                rate = that.buffer.format.sampleRate,
                 i;
+            
             for (i = 0; i < numSamps; i++) {
-                that.output[i] = m.value = that.buffer.length / m.audioSampleRate;
+                that.output[i] = m.value = source.length / rate;
             }
         };
         
         that.onInputChanged = function (inputName) {
-            if (that.model.bufDef !== that.inputs.buffer || inputName === "buffer") {
-                flock.buffer.resolveBuffer(that);
-            }
+            that.onBufferInputChanged(inputName);
         };
         
         that.onBufferReady = function (buffer) {
-            that.output[0] = that.model.value = buffer.length / that.model.audioSampleRate;
+            var chan = that.inputs.channel.output[0];
+            that.output[0] = that.model.value = buffer.data.channels[chan].length / that.buffer.format.sampleRate;
         };
         
         that.init = function () {
             var r = that.rate;
             that.gen = (r === flock.rates.CONTROL || r === flock.rates.AUDIO) ? that.krGen : undefined;
             that.output[0] = that.model.value = 0.0;
+            that.initBuffer();
             that.onInputChanged();
         };
         
@@ -1098,11 +1206,11 @@ var fluid = fluid || require("infusion"),
     
     
     /**
-     * Constant-rate unit generator that outputs the environment's current sample rate.
+     * Constant-rate unit generator that outputs the environment's current audio sample rate.
      */
     flock.ugen.sampleRate = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.output[0] = that.model.sampleRate;
+        that.output[0] = that.options.audioSettings.rates.audio;
         return that;
     };
     
@@ -1682,6 +1790,8 @@ var fluid = fluid || require("infusion"),
     flock.ugen.out = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
     
+        // TODO: Implement a "straight out" gen function for cases where the number
+        // of sources matches the number of output buses (i.e. where no expansion is necessary).
         that.gen = function (numSamps) {
             var sources = that.inputs.sources,
                 buses = that.options.audioSettings.buses,
@@ -1732,6 +1842,57 @@ var fluid = fluid || require("infusion"),
             sources: null,
             bus: 0,
             expand: 2
+        },
+        ugenOptions: {
+            tags: ["flock.ugen.outputType"]
+        }
+    });
+    
+    // Note: this unit generator currently only outputs values at control rate.
+    // TODO: Unit tests.
+    flock.ugen.valueOut = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+    
+        that.arraySourceGen = function () {
+            var sources = that.inputs.sources,
+                i;
+            
+            for (i = 0; i < sources.length; i++) {
+                that.model.value[i] = sources[i].output[0];
+            }
+        };
+        
+        that.ugenSourceGen = function () {
+            that.model.value = that.inputs.sources.output[0];
+        };
+        
+        that.onInputChanged = function (inputName) {
+            var sources = that.inputs.sources;
+            if (flock.isIterable(sources)) {
+                that.gen = that.arraySourceGen;
+                that.model.value = new Float32Array(sources.length);
+            } else {
+                that.gen = that.ugenSourceGen;
+            }
+        };
+        
+        that.onInputChanged();
+        return that;
+    };
+    
+    fluid.defaults("flock.ugen.valueOut", {
+        rate: "control",
+        
+        inputs: {
+            sources: null
+        },
+        
+        ugenOptions: {
+            model: {
+                value: null
+            },
+            
+            tags: ["flock.ugen.outputType", "flock.ugen.valueType"]
         }
     });
     
@@ -2378,13 +2539,14 @@ var fluid = fluid || require("infusion"),
     // TODO: Unit tests.
     flock.ugen.triggerGrains = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.buffer = new Float32Array(that.output.length);
+        flock.ugen.buffer(that);
         
         that.gen = function (numSamps) {
             var m = that.model,
                 inputs = that.inputs,
                 out = that.output,
-                buf = that.buffer,
+                chan = inputs.channel.output[0],
+                buf = that.buffer.data.channels[chan],
                 dur = inputs.dur.output[0],
                 amp = inputs.amp.output,
                 centerPos = inputs.centerPos.output,
@@ -2462,13 +2624,7 @@ var fluid = fluid || require("infusion"),
         };
         
         that.onInputChanged = function (inputName) {
-            var m = that.model,
-                inputs = that.inputs;
-            
-            if (m.bufDef !== inputs.buffer || inputName === "buffer") {
-                flock.buffer.resolveBuffer(that);
-            }
-            
+            that.onBufferInputChanged(inputName);
             that.calculateStrides();
             flock.onMulAddInputChanged(that);
         };
@@ -2491,6 +2647,7 @@ var fluid = fluid || require("infusion"),
             
             that.model.env = new Float32Array(maxGrainLength);
             that.allocateGrains();
+            that.initBuffer();
             that.onInputChanged();
         };
         
@@ -2695,10 +2852,9 @@ var fluid = fluid || require("infusion"),
 
     flock.ugen.sequence = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.model.scale = that.model.sampleDur;
         
         that.gen = function (numSamps) {
-            var list = that.buffer,
+            var list = that.inputs.list,
                 inputs = that.inputs,
                 freq = inputs.freq.output,
                 loop = inputs.loop.output[0],
@@ -2710,20 +2866,16 @@ var fluid = fluid || require("infusion"),
                 i,
                 j,
                 val;
-
-            // TODO: Better buffer handling.
-            if (!list) {
-                for (i = 0; i < numSamps; i++) {
-                    out[i] = 0.0;
-                }
-                return;
-            }
             
             start = inputs.start ? Math.round(inputs.start.output[0]) : 0,
             end = inputs.end ? Math.round(inputs.end.output[0]) : list.length,
             
             m.value = m.value === undefined ? list[start] : m.value;
             m.nextIdx = m.nextIdx === undefined ? start : m.nextIdx;
+            
+            if (m.value === undefined) {
+                m.value = 0.0;
+            }
             
             for (i = 0, j = 0; i < numSamps; i++, j += m.strides.freq) {
                 if (m.nextIdx >= end) {
@@ -2748,12 +2900,21 @@ var fluid = fluid || require("infusion"),
         };
          
         that.onInputChanged = function (inputName) {
+            that.model.scale = that.rate !== flock.rates.DEMAND ? that.model.sampleDur : 1;
+            
+            if (!that.inputs.list) {
+                that.inputs.list = [];
+            }
+            
             that.calculateStrides();
             flock.onMulAddInputChanged(that);
-            flock.buffer.resolveBuffer(that);
         };
         
-        that.onInputChanged();
+        that.init = function () {
+            that.onInputChanged();
+        };
+        
+        that.init();
         return that;
     };
     
@@ -2763,7 +2924,8 @@ var fluid = fluid || require("infusion"),
         inputs: {
             start: 0,
             freq: 1.0,
-            loop: 0.0
+            loop: 0.0,
+            list: []
         },
         
         ugenOptions: {
@@ -2771,7 +2933,8 @@ var fluid = fluid || require("infusion"),
                 phase: 0
             },
             
-            strideInputs: ["freq"]
+            strideInputs: ["freq"],
+            noExpand: ["list"]
         }
     });
     

@@ -785,8 +785,16 @@ flock.test = flock.test || {};
     
     module("flock.ugen.playBuffer() tests", {
         setup: function () {
-            // Register the buffer ourselves. Buffers are multichannel, so need to be wrapped in an array.
-            flock.enviro.shared.buffers[playbackDef.inputs.buffer.id] = [flock.test.fillBuffer(1, 64)];
+            var bufDesc = flock.bufferDesc({
+                id: playbackDef.inputs.buffer.id,
+                format: {
+                    sampleRate: sampleRate
+                },
+                data: {
+                    channels: [flock.test.fillBuffer(1, 64)]
+                }
+            });
+            flock.parse.bufferForDef.resolveBuffer(bufDesc, undefined, flock.enviro.shared);            
         }
     });
     
@@ -805,7 +813,7 @@ flock.test = flock.test || {};
         var player = flock.parse.ugenForDef(playbackDef);
         
         player.gen(64);
-        var expected = flock.enviro.shared.buffers[playbackDef.inputs.buffer.id][0];
+        var expected = flock.enviro.shared.buffers[playbackDef.inputs.buffer.id].data.channels[0];
         deepEqual(player.output, expected, "With a playback speed of 1.0, the output buffer should be identical to the source buffer.");
         
         player.gen(64);
@@ -814,7 +822,7 @@ flock.test = flock.test || {};
         
         player.input("loop", 1.0);
         player.gen(64);
-        expected = flock.enviro.shared.buffers[playbackDef.inputs.buffer.id][0];
+        expected = flock.enviro.shared.buffers[playbackDef.inputs.buffer.id].data.channels[0];
         deepEqual(player.output, expected, "With looping turned on, the output buffer should repeat the source buffer from the beginning.");
     });
     
@@ -1240,7 +1248,7 @@ flock.test = flock.test || {};
                 source: {
                     ugen: "flock.ugen.sequence",
                     rate: "audio",
-                    buffer: incBuffer,
+                    list: incBuffer,
                     freq: sampleRate
                 },
                 add: 3
@@ -1255,7 +1263,7 @@ flock.test = flock.test || {};
         krArUGenDef.inputs.add = {
             ugen: "flock.ugen.sequence",
             rate: "control",
-            buffer: incBuffer,
+            list: incBuffer,
             freq: sampleRate
         };
         testMath(krArUGenDef, flock.generate(64, 2), "Control rate source, control rate add.");
@@ -1569,9 +1577,16 @@ flock.test = flock.test || {};
     
     module("flock.ugen.bufferDuration tests", {
         setup: function () {
-            flock.enviro.shared.buffers["bufferDurationTests"] = [
-                flock.test.ascendingBuffer(sampleRate * 2.5, 0) // 2.5 second buffer
-            ];
+            var bufDesc = flock.bufferDesc({
+                id: "bufferDurationTests",
+                format: {
+                    sampleRate: sampleRate
+                },
+                data: {
+                    channels: [flock.test.ascendingBuffer(sampleRate * 2.5, 0)] // 2.5 second buffer
+                }
+            });
+            flock.parse.bufferForDef.resolveBuffer(bufDesc, undefined, flock.enviro.shared);            
         }
     });
     
@@ -1641,7 +1656,7 @@ flock.test = flock.test || {};
             freq: (sampleRate / 64) * 4,
             start: 0.0,
             loop: 0.0,
-            buffer: [12, 24, 48]
+            list: [12, 24, 48]
         }
     };
     
@@ -1790,7 +1805,7 @@ flock.test = flock.test || {};
             source: {
                 ugen: "flock.ugen.sequence",
                 rate: "control",
-                buffer: [21, 22, 23],
+                list: [21, 22, 23],
                 freq: 10000
             }
         });
@@ -1848,7 +1863,7 @@ flock.test = flock.test || {};
                     ugen: "flock.ugen.sequence",
                     loop: 1.0,
                     rate: "control",
-                    buffer: [1, 2, 3, 4],
+                    list: [1, 2, 3, 4],
                     freq: sampleRate / 64
                 },
                 trig: 0.0
@@ -1920,7 +1935,7 @@ flock.test = flock.test || {};
                     ugen: "flock.ugen.sequence",
                     loop: 1.0,
                     rate: "audio",
-                    buffer: outputBuffer,
+                    list: outputBuffer,
                     freq: sampleRate
                 },
                 trig: {
@@ -1976,7 +1991,7 @@ flock.test = flock.test || {};
         source: {
             ugen: "flock.ugen.sequence",
             rate: "control",
-            buffer: flock.test.fillBuffer(1, 64)
+            list: flock.test.fillBuffer(1, 64)
         }
     };
     
@@ -2063,7 +2078,7 @@ flock.test = flock.test || {};
         
         synth.set("converter.source", {
             ugen: "flock.ugen.sequence",
-            buffer: new Float32Array(64),
+            list: new Float32Array(64),
             freq: sampleRate
         });
         synth.gen();

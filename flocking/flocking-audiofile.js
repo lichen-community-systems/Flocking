@@ -189,7 +189,7 @@ var flock = fluid.registerNamespace("flock");
     flock.audio.loadBuffer = function (options) {
         var src = options.src || options.url;
         if (!src) {
-            flock.applyDeferred(options.error, ["Error while loading a buffer: the src option was undefined."]);
+            return;
         }
         
         if (src instanceof ArrayBuffer) {
@@ -375,6 +375,7 @@ var flock = fluid.registerNamespace("flock");
         
         // Now that we've got the actual data size, correctly set the number of sample frames if it wasn't already present.
         format.numSampleFrames = format.numSampleFrames || (l / (format.bitRate / 8)) / format.numChannels;
+        format.duration = format.numSampleFrames / format.sampleRate;
         
         // Read the channel data.
         data.channels = flock.audio.decode.data(dv, format, dataType, isLittle);
@@ -479,12 +480,20 @@ var flock = fluid.registerNamespace("flock");
     
     flock.audio.decode.wavSampleDataType = function (chunks) {
         var t = chunks.format.audioFormatType;
-        return t === 1 ? "Int" : (t === 3 ? "Float" : null);
+        if (t !== 1 && t !== 3) {
+            throw new Error("Flocking decoder error: this file contains an unrecognized WAV format type.");
+        }
+        
+        return t === 1 ? "Int" : "Float";
     };
     
     flock.audio.decode.aiffSampleDataType = function (chunks) {
         var t = chunks.container.formatType;
-        return t === "AIFF" ? "Int" : (t === "AIFC" ? "Float" : null);
+        if (t !== "AIFF" && t !== "AIFC") {
+            throw new Error("Flocking decoder error: this file contains an unrecognized AIFF format type.");
+        }
+        
+        return t === "AIFF" ? "Int" : "Float";
     }; 
     
     flock.audio.decode.chunked = function (data, formatSpec) {

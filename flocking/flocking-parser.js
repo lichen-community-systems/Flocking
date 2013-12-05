@@ -24,24 +24,35 @@ var fluid = fluid || require("infusion"),
             ugenDef = [];
         }
         
-        // We didn't get an out ugen specified, so we need to make one.
-        if (options.rate === flock.rates.AUDIO && 
-            (typeof (ugenDef.length) === "number" || 
-            (ugenDef.id !== flock.OUT_UGEN_ID && ugenDef.ugen !== "flock.ugen.out"))) {
+        if (!flock.parse.synthDef.hasOutUGen(ugenDef)) {
+            // We didn't get an out ugen specified, so we need to make one.
             ugenDef = {
                 id: flock.OUT_UGEN_ID,
-                ugen: "flock.ugen.out",
+                ugen: "flock.ugen.valueOut",
                 inputs: {
-                    sources: ugenDef,
-                    bus: 0,
-                    expand: options.audioSettings.chans
+                    sources: ugenDef
                 }
             };
+
+            if (options.rate === flock.rates.AUDIO) {
+                ugenDef.ugen = "flock.ugen.out";
+                ugenDef.inputs.bus = 0;
+                ugenDef.inputs.expand = options.audioSettings.chans;
+            }
         }
         
         return flock.parse.ugenForDef(ugenDef, options);
     };
-
+    
+    flock.parse.synthDef.hasOutUGen = function (synthDef) {
+        // TODO: This is hostile to third-party extension.
+        return !flock.isIterable(synthDef) && (
+            synthDef.id === flock.OUT_UGEN_ID || 
+            synthDef.ugen === "flock.ugen.out" || 
+            synthDef.ugen === "flock.ugen.valueOut"
+        );
+    };
+    
     flock.parse.makeUGen = function (ugenDef, parsedInputs, options) {
         var rates = options.audioSettings.rates,
             blockSize = options.audioSettings.blockSize;
@@ -123,12 +134,17 @@ var fluid = fluid || require("infusion"),
     flock.parse.rateMap = {
         "ar": flock.rates.AUDIO,
         "kr": flock.rates.CONTROL,
+        "sr": flock.rates.SCHEDULED,
         "dr": flock.rates.DEMAND,
         "cr": flock.rates.CONSTANT
     };
 
     flock.parse.expandRate = function (ugenDef, options) {
-        ugenDef.rate = options.overrideRate ? options.rate : flock.parse.rateMap[ugenDef.rate] || ugenDef.rate;
+        ugenDef.rate = flock.parse.rateMap[ugenDef.rate] || ugenDef.rate;
+        if (options.overrideRate && ugenDef.rate !== flock.rates.CONSTANT) {
+            ugenDef.rate = options.rate;
+        }
+
         return ugenDef;
     };
 
@@ -189,7 +205,7 @@ var fluid = fluid || require("infusion"),
         var o = options,
             visitors = o.visitors,
             rates = o.audioSettings.rates;
-        
+         
         // If we receive a plain scalar value, expand it into a value ugenDef.
         ugenDef = flock.parse.expandValueDef(ugenDef);
         
@@ -209,11 +225,15 @@ var fluid = fluid || require("infusion"),
             inputs = {},
             inputDef;
         
+        // TODO: This notion of "special inputs" should be refactored as a pluggable system of
+        // "input expanders" that are responsible for processing input definitions of various sorts.
+        // In particular, buffer management should be here so that we can initialize bufferDefs more
+        // proactively and remove this behaviour from flock.ugen.buffer.
         for (inputDef in inputDefs) {
             // Create ugens for all inputs except special inputs.
-            inputs[inputDef] = flock.parse.specialInputs.indexOf(inputDef) > -1 ? 
-                ugenDef.inputs[inputDef] : // Don't instantiate a ugen, just pass the def on as-is.
-                flock.parse.ugenForDef(ugenDef.inputs[inputDef], options); // parse the ugendef and create a ugen instance.
+            inputs[inputDef] = flock.input.shouldExpand(inputDef, ugenDef) ? 
+                flock.parse.ugenForDef(ugenDef.inputs[inputDef], options) : // Parse the ugendef and create a ugen instance.
+                ugenDef.inputs[inputDef]; // Don't instantiate a ugen, just pass the def on as-is.
         }
     
         if (!ugenDef.ugen) {
@@ -238,19 +258,82 @@ var fluid = fluid || require("infusion"),
         return ugen;
     };
     
-    flock.parse.bufferForDef = function (bufDef, onLoad, enviro) {
-        enviro = enviro || flock.enviro.shared;
-
-        var id = bufDef.id || fluid.allocateGuid(),
-            src;
-            
-        if (bufDef.url) {
-            src = bufDef.url;
-        } else if (bufDef.selector) {
-            src = document.querySelector(bufDef.selector).files[0];
+    flock.parse.expandBufferDef = function (bufDef) {
+        if (flock.isIterable(bufDef)) {
+            // If we get a direct array reference, wrap it up in a buffer description.
+            return flock.bufferDesc({
+                data: {
+                    channels: bufDef // TODO: What about bare single-channel arrays?
+                }
+            });
         }
         
-        enviro.loadBuffer(id, src, onLoad);
+        // If we get a bare string, interpret it as an id reference.
+        return typeof (bufDef) !== "string" ? bufDef : {
+            id: bufDef
+        };
+    };
+    
+    flock.parse.bufferForDef = function (bufDef, ugen, enviro) {
+        bufDef = flock.parse.expandBufferDef(bufDef);
+        
+        if (bufDef.data && bufDef.data.channels) {
+            flock.parse.bufferForDef.resolveBuffer(bufDef, ugen, enviro);
+        } else {
+            flock.parse.bufferForDef.resolveDef(bufDef, ugen, enviro);
+        }
     };
 
+    flock.parse.bufferForDef.findSource = function (defOrDesc, enviro) {
+        var source;
+        
+        if (enviro && defOrDesc.id) {
+            source = enviro.bufferSources[defOrDesc.id];
+            if (!source) {
+                source = enviro.bufferSources[defOrDesc.id] = flock.bufferSource();
+            }
+        } else {
+            source = flock.bufferSource();
+        }
+        
+        return source;
+    };
+    
+    flock.parse.bufferForDef.bindToPromise = function (p, source, ugen) {
+        // TODO: refactor this.
+        var success = function (bufDesc) {
+            source.events.onBufferUpdated.addListener(success);  
+            if (ugen) {
+                ugen.setBuffer(bufDesc);
+            }
+        };
+        
+        var error = function (msg) {
+            throw new Error(msg);
+        };
+        
+        p.then(success, error);
+    };
+    
+    flock.parse.bufferForDef.resolveDef = function (bufDef, ugen, enviro) {
+        var source = flock.parse.bufferForDef.findSource(bufDef, enviro),
+            p;
+
+        bufDef.src = bufDef.url || bufDef.src;
+        if (bufDef.selector && typeof(document) !== "undefined") {
+            bufDef.src = document.querySelector(bufDef.selector).files[0];
+        }
+        
+        p = source.get(bufDef);
+        flock.parse.bufferForDef.bindToPromise(p, source, ugen);
+    };
+    
+    
+    flock.parse.bufferForDef.resolveBuffer = function (bufDesc, ugen, enviro) {
+        var source = flock.parse.bufferForDef.findSource(bufDesc, enviro),
+            p = source.set(bufDesc);
+        
+        flock.parse.bufferForDef.bindToPromise(p, source, ugen);
+    };
+    
 }());

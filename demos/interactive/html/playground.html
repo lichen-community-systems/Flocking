@@ -14,6 +14,7 @@
         <script src="../../../third-party/polydataview/js/polydataview.js"></script>
         
         <script src="../../../flocking/flocking-core.js"></script>
+        <script src="../../../flocking/flocking-buffers.js"></script>
         <script src="../../../flocking/flocking-audiofile.js"></script>
         <script src="../../../flocking/flocking-scheduler.js"></script>
         <script src="../../../flocking/flocking-firefox.js"></script>
@@ -73,6 +74,10 @@
                 </optgroup>
                 <optgroup label="Granular Synthesis">
                     <option value="granulator">Granulator</option>
+                </optgroup>
+                <optgroup label="Audio Buffers">
+                    <option value="playBuffer">Play Buffer</option>
+                    <option value="readBuffer">Read Buffer</option>
                 </optgroup>
                 <optgroup label="Filters">
                     <option value="lowpass">Low pass filter</option>
@@ -757,6 +762,55 @@ var synth = flock.synth({
 });
         </script>
         
+        <script type="application/flocking" id="playBuffer">
+var synth = flock.synth({
+    synthDef: {
+        ugen: "flock.ugen.playBuffer",
+        buffer: {
+            id: "chord",
+            url: "../../shared/audio/hillier-first-chord.wav"
+        },
+        
+        speed: {
+            ugen: "flock.ugen.mouse.cursor",
+            options: {
+                axis: "y"
+            },
+            add: 0.5
+        },
+        
+        loop: 1,
+        
+        start: 0,
+        
+        end: {
+            ugen: "flock.ugen.mouse.cursor",
+            options: {
+                axis: "x"
+            }
+        }
+    }
+});
+        </script>
+        
+        <script type="application/flocking" id="readBuffer">
+var synth = flock.synth({
+    synthDef: {
+        ugen: "flock.ugen.readBuffer",
+        buffer: {
+            id: "chord",
+            url: "../../shared/audio/hillier-first-chord.wav"
+        },
+        phase: {
+            ugen: "flock.ugen.sin",
+            freq: 1/5,
+            mul: 0.5,
+            add: 0.5
+        }
+    }
+});
+        </script>
+        
         <script type="application/flocking" id="polyphonicSynth">
 var fundamental = 440;
 
@@ -837,7 +891,7 @@ var clock = flock.enviro.shared.asyncScheduler,
         synthDef: {
             id: "carrier",
             ugen: "flock.ugen.sinOsc",
-            freq: 110,
+            freq: 220,
             mul: {
                 ugen: "flock.ugen.line",
                 start: 0,
@@ -857,7 +911,7 @@ clock.schedule([
                 "carrier.freq": {
                     synthDef: {
                         ugen: "flock.ugen.sequence",
-                        buffer: [110, 220, 330, 440, 550, 660, 880]
+                        list: [330, 440, 550, 660, 880, 990, 1100, 1210]
                     }
                 }
             }
@@ -881,6 +935,7 @@ clock.schedule([
         
         
         <script type="application/flocking" id="lowpass">
+// This example needs to be run from a web server.
 var synth = flock.synth({
     synthDef: {
         ugen: "flock.ugen.filter.biquad.lp",
@@ -907,6 +962,7 @@ var synth = flock.synth({
 });
         </script>
         <script type="application/flocking" id="highpass">
+// This example needs to be run from a web server.
 var synth = flock.synth({
     synthDef: {
         ugen: "flock.ugen.filter.biquad.hp",

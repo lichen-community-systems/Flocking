@@ -319,7 +319,7 @@ var fluid = fluid || require("infusion"),
     
     
     fluid.defaults("flock.scheduler.async", {
-        gradeNames: ["fluid.littleComponent", "autoInit"],
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
         components: {
             timeConverter: {
                 type: "flock.convert.seconds"
@@ -458,6 +458,10 @@ var fluid = fluid || require("infusion"),
             that.intervalClock.end();
             that.scheduleClock.end();
         };
+        
+        if (that.options.score) {
+            that.schedule(that.options.score);
+        }
     };
     
     flock.scheduler.async.evaluateChangeSpec = function (changeSpec) {
@@ -468,9 +472,7 @@ var fluid = fluid || require("infusion"),
         for (var path in changeSpec.values) {
             var change = changeSpec.values[path];
             if (change.synthDef) {
-                change.addToEnvironment = false;
-                change.rate = flock.rates.DEMAND;
-                synths[path] = flock.synth(change);
+                synths[path] = flock.synth.value(change);
             } else {
                 staticChanges[path] = change;
             }
@@ -480,9 +482,7 @@ var fluid = fluid || require("infusion"),
         return function () {
             for (var path in synths) {
                 var synth = synths[path];
-                synth.gen(1);
-                var ugens = synth.nodes;
-                staticChanges[path] = ugens[ugens.length - 1].output[0];
+                staticChanges[path] = synth.value();
             }
             
             // TODO: Hardcoded to the shared environment.
