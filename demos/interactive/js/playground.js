@@ -28,10 +28,15 @@ var demo = demo || {};
         
         that.editor = CodeMirror(container, {
             mode: {
-                name: "javascript"
+                name: "javascript",
+                json: true
             },
+            autoCloseBrackets: true,
+            matchBrackets: true,
+            smartIndent: true,
             theme: theme,
             indentUnit: 4,
+            tabSize: 4,
             lineNumbers: true
         });
     };
