@@ -272,10 +272,6 @@ var fluid = fluid || require("infusion"),
                 out = that.output,
                 i;
             
-            // Clear the output.
-            for (i = 0; i < numSamps; i++) {
-            }
-            
             for (i = 0; i < source.length; i++) {
                 out[i] = source[i];
             }
@@ -1223,11 +1219,12 @@ var fluid = fluid || require("infusion"),
         flock.ugen.buffer(that);
         
         that.krGen = function (numSamps) {
-            var val = that.model.value,
+            var out = that.output,
+                val = that.model.value,
                 i;
             
             for (i = 0; i < numSamps; i++) {
-                that.output[i] = val;
+                out[i] = val;
             }
             
             that.mulAdd(numSamps);
