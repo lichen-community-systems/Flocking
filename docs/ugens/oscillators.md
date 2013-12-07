@@ -1,7 +1,4 @@
-# Oscillators #
-
-
-## Table-Based Oscillators ##
+# Table-Based Oscillators ##
 
 Flocking includes a collection of oscillators that sample from a single cycle of a pre-generated waveform. These oscillators include:
 
@@ -10,7 +7,7 @@ Flocking includes a collection of oscillators that sample from a single cycle of
  * flock.ugen.sawOsc, a sawtooth oscillator
  * flock.ugen.squareOsc, a square wave oscillator
  
-### flock.ugen.osc ###
+## flock.ugen.osc ##
 
 Each of the *Osc family of unit generators have a consistent set of inputs provided by their parent unit generator, flock.ugen.osc.
 
@@ -31,35 +28,98 @@ All oscillators support the following rates:
     demand, scheduled, control, constant
 
 
-#### Inputs ####
+### Inputs ###
 
-##### freq #####
-<em>description</em>: The frequency to oscillate at.
-<em>range</em>: 0..Infinity
-<em>rates</em>: constant, control, audio
-<em>default</em>: 440.0 (constant)
+#### freq ####
+<table>
+    <tr>
+        <th>description</th>
+        <td>The frequency to oscillate at</td>
+    </tr>
+    <tr>
+        <th>range</th>
+        <td>0..Infinity</td>
+    </tr>
+    <tr>
+        <th>rates</th>
+        <td>constant, control, audio</td>
+    </tr>
+    <tr>
+        <th>default</th>
+        <td>440.0 (constant)</td>
+    </tr>
+</table>
 
-##### phase #####
-<em>description</em>: a phase increment value to add to the oscillator's current phase
-<em>range</em>: 0..1.0
-<em>rates</em>: constant, control, audio
-<em>default</em>: 0.0 (constant)
+#### phase ####
+<table>
+    <tr>
+        <th>description</th>
+        <td>a phase increment value to add to the oscillator's current phase</td>
+    </tr>
+    <tr>
+        <th>range</th>
+        <td>0..1.0</td>
+    </tr>
+    <tr>
+        <th>rates</th>
+        <td>constant, control, audio</td>
+    </tr>
+    <tr>
+        <th>default</th>
+        <td>0.0 (constant)</td>
+    </tr>
+</table>
  
-##### mul ######
-<em>description</em>: a multiplier that determines the amplitude of the oscillator
-<em>range</em>: -Infinity..Infinity
-<em>rates</em>: constant, control, audio
-<em>default</em>: 1.0 (constant)
+#### mul ####
+<table>
+    <tr>
+        <th>description</th>
+        <td>a multiplier that determines the amplitude of the oscillator</td>
+    </tr>
+    <tr>
+        <th>range</th>
+        <td>-Infinity..Infinity</td>
+    </tr>
+    <tr>
+        <th>rates</th>
+        <td>constant, control, audio</td>
+    </tr>
+    <tr>
+        <th>default</th>
+        <td>1.0 (constant)</td>
+    </tr>
+</table>
 
-##### add ######
+#### add ####
+<table>
+    <tr>
+        <th>description</th>
+        <td>a value used to scale the amplitude of the oscillator</td>
+    </tr>
+    <tr>
+        <th>range</th>
+        <td>-Infinity..Infinity</td>
+    </tr>
+    <tr>
+        <th>rates</th>
+        <td>constant, control, audio</td>
+    </tr>
+    <tr>
+        <th>default</th>
+        <td>0.0 (constant)</td>
+    </tr>
+</table>
 
-<em>description</em>: a value used to scale the amplitude of the oscillator
-<em>range</em>: -Infinity..Infinity
-<em>rates</em>: constant, control, audio
-<em>default</em>: 0.0 (constant)
+### Options ###
 
-#### Options ####
-
-##### interpolation ####
-<em>description</em>: the type of interpolation to use when selecting values from the wave table
-<em>range</em>: undefined, "none", "linear", "cubic"
+#### interpolation ####
+<table>
+    <tr>
+        <th>description</th>
+        <td> the type of interpolation to use when selecting values from the wave table</td>
+    </tr>
+    <tr>
+        <th>range</th>
+        <td>undefined, "none", "linear", "cubic"</td>
+    </tr>
+</table>
