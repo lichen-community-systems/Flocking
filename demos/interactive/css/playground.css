@@ -2,14 +2,16 @@ h1 {
     text-align: center;
 }
 
-#editor { 
-    position: absolute;
-    margin: 0;
-    top: 215px;
-    bottom: 0;
-    left: 0.5%;
-    right: 0;
+#editor {
+    position: fixed;
     font-size: 12pt;
+    height: 100%;
+    width: 98.6%;
+}
+
+#editor .CodeMirror {
+    height: 100%;
+    width: 100%;
 }
 
 #scopeArea {
@@ -18,6 +20,13 @@ h1 {
 	background-color: #ccc;
 	margin: 0.5% 0 0 0;
 	padding: 0.5%;
+}
+
+
+#navi {
+    padding: 0.5%;
+    background-color: #ddd;
+    width: 98.6%;
 }
 
 .playButton {
@@ -43,9 +52,4 @@ h1 {
     margin-left: 5px;
 }
 
-#navi {
-    padding: 0.5%;
-    background-color: #ddd;
-    width: 98.6%;
-}
 
