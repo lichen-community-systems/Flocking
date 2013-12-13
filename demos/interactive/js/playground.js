@@ -3,8 +3,8 @@
 * http://github.com/colinbdclark/flocking
 *
 * Flocking Interactive Demo Playground
-*   Copyright 2012, Vitus (https://github.com/derDoc)
-*   Copyright 2012, Colin Clark
+*   Copyright 2012, Vitus Lorenz-Meyer (https://github.com/derDoc)
+*   Copyright 2013, Colin Clark
 *
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
@@ -20,27 +20,34 @@ var demo = demo || {};
     
     flock.init();
     
-    var setupEditor = function (that, editorId, theme, mode) {
-        theme = theme || "ace/theme/twilight";
-        mode = mode || "ace/mode/javascript";
+    // TODO: Infuse.
+    
+    var setupEditor = function (that, container, theme) {
+        theme = theme || "flockingcm";
+        container = typeof (container) === "string" ? document.querySelector(container) : container;
         
-        var editor = ace.edit(editorId);
-        editor.setTheme(theme);
-        editor.setShowPrintMargin(false);
-
-        var JavaScriptMode = require(mode).Mode;
-        editor.getSession().setMode(new JavaScriptMode());
-    	
-    	that.editor = editor;
+        that.editor = CodeMirror(container, {
+            mode: {
+                name: "javascript",
+                json: true
+            },
+            autoCloseBrackets: true,
+            matchBrackets: true,
+            smartIndent: true,
+            theme: theme,
+            indentUnit: 4,
+            tabSize: 4,
+            lineNumbers: true
+        });
     };
     
     var setupPlayButton = function (that) {
         // TODO: might be able to avoid eval()'ing if we load each demo's JavaScript source via Ajax and inject it as a script block.
         that.playButton.click(function (e) {
     		if (!flock.enviro.shared.model.isPlaying) {
-    		    eval(that.editor.getSession().getValue());
+    		    eval(that.editor.getDoc().getValue());
                 
-    			that.playButton.html("Stop");
+    			that.playButton.html("Pause");
     			that.playButton.removeClass("paused");
     			that.playButton.addClass("playing");
     			flock.enviro.shared.play();
@@ -77,7 +84,7 @@ var demo = demo || {};
         that.loadSelectedDemo = function () {
             var id = $(that.selectors.demosMenu).val();
             var code = $("#" + id).html();
-            that.editor.getSession().setValue(code);
+            that.editor.getDoc().setValue(code);
             
             if (flock.enviro.shared.model.isPlaying) {
                 that.playButton.click(); // Stop the previous demo if it is playing.

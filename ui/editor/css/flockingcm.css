@@ -1,0 +1,41 @@
+/* Based on CodeMirror's Monokai theme, which is... */
+/* Based on Sublime Text's Monokai theme */
+
+.cm-s-flockingcm.CodeMirror {background: #272822; color: #f8f8f2;}
+.cm-s-flockingcm div.CodeMirror-selected {background: #49483E !important;}
+
+.cm-s-flockingcm .CodeMirror-gutters {
+    background-color: #49483e;
+    border-right: 1px solid #75715e;
+    padding-right: 0.25%;
+}
+.cm-s-flockingcm .CodeMirror-linenumber {
+    color: #75715e;
+    font-size: 75%;
+}
+
+.cm-s-flockingcm .CodeMirror-code div {
+    padding: 0.1% 0;
+}
+
+.cm-s-flockingcm .CodeMirror-cursor {border-left: 1px solid #f8f8f0 !important;}
+
+.cm-s-flockingcm span.cm-comment {color: #75715e;}
+.cm-s-flockingcm span.cm-atom {color: #ae81ff;}
+.cm-s-flockingcm span.cm-number {color: #ae81ff;}
+
+/*.cm-s-flockingcm span.cm-property, .cm-s-monokai span.cm-attribute {color: #a6e22e;}*/
+.cm-s-flockingcm span.cm-keyword {color: #f92672;}
+.cm-s-flockingcm span.cm-string {color: #e6db74;}
+
+.cm-s-flockingcm span.cm-def {color: #fd971f;}
+.cm-s-flockingcm span.cm-bracket {color: #f8f8f2;}
+.cm-s-flockingcm span.cm-tag {color: #f92672;}
+.cm-s-flockingcm span.cm-link {color: #ae81ff;}
+.cm-s-flockingcm span.cm-error {background: #f92672; color: #f8f8f0;}
+
+.cm-s-flockingcm .CodeMirror-activeline-background {background: #373831 !important;}
+.cm-s-flockingcm .CodeMirror-matchingbracket {
+  text-decoration: underline;
+  color: white !important;
+}
