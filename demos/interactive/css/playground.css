@@ -1,55 +1,85 @@
-h1 {
-    text-align: center;
+html, body {
+    height: 100%;
 }
 
-#editor {
-    position: fixed;
-    font-size: 12pt;
-    height: 100%;
-    width: 98.6%;
+select {
+    font-family: "Lucida Grande";
+    font-size: 0.8em;
 }
 
-#editor .CodeMirror {
-    height: 100%;
+label {
+    font-weight: bold;
+    font-size: 0.8em;
+}
+
+.everything {
     width: 100%;
+    height: 100%;
+    background-color: #272822;
 }
 
-#scopeArea {
-	width: 98.6%;
-	height: 75px;
-	background-color: #ccc;
-	margin: 0.5% 0 0 0;
-	padding: 0.5%;
+.toolbar {
+	background-color: #ddd;
+    padding: 0.5em;
 }
 
-
-#navi {
-    padding: 0.5%;
-    background-color: #ddd;
-    width: 98.6%;
+/* Clearfix. Get this from somewhere else or factor into a utility. */
+.toolbar:after  {
+    content: " ";
+    display: table;
+    clear: both;
 }
 
-.playButton {
-    height: 50px;
-    width:  50px;
-    float:  left;
-    margin: 13px 5% 0% 1%;
+.toolbar .left {
+    float: left;
+    padding-top: 0.4em;
+}
+
+.toolbar .right {
+    float: right;
 }
 
 #gfx {
-    margin: 3px;
-    border: 3px solid #aaa;
+    margin: 2px;
+    border: 2px solid #999;
     border-radius: 10px;
+    background-color: #fff;
 }
 
-#gfxContainer {
-    float: right;
-    margin-right: 0.4%;
+.synthSelector {
+    background-color: #aaa;
+    padding: 0.5em 0 0.5em 0.5em ;
 }
 
-#gfxContainer div {
-    font-size: 0.75em;
-    margin-left: 5px;
+.playButton {
+    height: 2em;
+    width: 2em;
+    padding: 0;
+    border: 0 none;
+    border-radius: 2em;
+    font-size: 125%;
+    background-color: #777;
+    color: #fff;
+    text-align: center;
 }
 
+.playButton.paused {
+    padding-left: 0.55em;
+}
 
+.playButton.paused {
+    padding-right: 0.55em;
+}
+
+#editorRegion {
+    font-size: 12pt;
+    width: 100%;
+}
+
+.CodeMirror {
+    height: auto;
+}
+
+.CodeMirror-scroll {
+    overflow: none;
+}

@@ -47,7 +47,7 @@ var demo = demo || {};
     		if (!flock.enviro.shared.model.isPlaying) {
     		    eval(that.editor.getDoc().getValue());
                 
-    			that.playButton.html("Stop");
+    			that.playButton.html("Pause");
     			that.playButton.removeClass("paused");
     			that.playButton.addClass("playing");
     			flock.enviro.shared.play();
