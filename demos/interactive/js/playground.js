@@ -81,8 +81,25 @@ var demo = demo || {};
             selectors: selectors
         };
         
+        that.loadDemoFromURLHash = function () {
+            var id = window.location.hash;
+            if (!id) {
+                that.loadSelectedDemo();
+                return;
+            }
+            
+            id = id.slice(1);
+            that.loadDemo(id);
+            $(that.selectors.demosMenu).val(id);
+        };
+        
         that.loadSelectedDemo = function () {
             var id = $(that.selectors.demosMenu).val();
+            that.updateURLHash(id);
+            that.loadDemo(id);
+        };
+        
+        that.loadDemo = function (id) {
             var code = $("#" + id).html();
             that.editor.getDoc().setValue(code);
             
@@ -91,10 +108,14 @@ var demo = demo || {};
             }
         };
         
+        that.updateURLHash = function (id) {
+            window.location.hash = "#" + id;
+        };
+        
         setupEditor(that, editorId);
         setupPlayButton(that);
         setupLoadControls(that);
-        $(document).ready(that.loadSelectedDemo);
+        $(document).ready(that.loadDemoFromURLHash);
         
         return that;
     };
