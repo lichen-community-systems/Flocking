@@ -112,16 +112,20 @@ var fluid = fluid || require("infusion"),
         return ugenDef;
     };
     
+    flock.parse.ugenDefForConstantValue = function (value) {
+        return {
+            ugen: "flock.ugen.value",
+            rate: flock.rates.CONSTANT,
+            inputs: {
+                value: value
+            }
+        };
+    };
+    
     flock.parse.expandValueDef = function (ugenDef) {
         var type = typeof (ugenDef);
         if (type === "number") {
-            return {
-                ugen: "flock.ugen.value",
-                rate: flock.rates.CONSTANT,
-                inputs: {
-                    value: ugenDef
-                }
-            };
+            return flock.parse.ugenDefForConstantValue(ugenDef);
         }
         
         if (type === "object") {

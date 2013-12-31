@@ -219,7 +219,8 @@ var fluid = fluid || require("infusion"),
 
         that.init = function () {
             var tags = fluid.makeArray(that.options.tags),
-                i;
+                i,
+                valueDef;
             
             for (i = 0; i < tags.length; i++) {
                 that.tags.push(tags[i]);
@@ -237,10 +238,8 @@ var fluid = fluid || require("infusion"),
             that.interpolate = flock.interpolate[that.options.interpolation];
         
             if (that.rate === flock.rates.DEMAND && that.inputs.freq) {
-                that.inputs.freq = flock.parse.ugenDef({
-                    ugen: "flock.ugen.value",
-                    value: 1.0
-                });
+                valueDef = flock.parse.ugenDefForConstantValue(1.0);
+                that.inputs.freq = flock.parse.ugenDef(valueDef);
             }
         };
         
@@ -251,12 +250,46 @@ var fluid = fluid || require("infusion"),
 
     flock.ugen.value = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.output[0] = that.model.value = inputs.value;
+        
+        that.dynamicGen = function (numSamps) {
+            var out = that.output,
+                m = that.model;
+            
+            for (var i = 0; i < numSamps; i++) {
+                out[i] = m.value;
+            }
+            
+            that.mulAdd(numSamps);
+        };
+        
+        that.onInputChanged = function (inputName) {
+            var inputs = that.inputs,
+                m = that.model;
+            
+            m.value = inputs.value;
+
+            if (that.rate !== "constant") {
+                that.gen = that.dynamicGen;
+            } else {
+                that.gen = undefined;
+            }
+            
+            flock.onMulAddInputChanged(that);
+            that.dynamicGen(1);
+        };
+        
+        that.onInputChanged();
         return that;
     };
     
     fluid.defaults("flock.ugen.value", {
-        rate: "constant",
+        rate: "control",
+        
+        inputs: {
+            value: 1.0,
+            mul: undefined,
+            add: undefined
+        },
         
         ugenOptions: {
             tags: ["flock.ugen.valueType"]
