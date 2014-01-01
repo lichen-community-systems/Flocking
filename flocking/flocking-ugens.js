@@ -46,69 +46,61 @@ var fluid = fluid || require("infusion"),
     };
     
     flock.krMul = function (numSamps, output, mulInput, addInput) {
-        var mul = mulInput.output[0],
-            i;
-        for (i = 0; i < numSamps; i++) {
+        var mul = mulInput.output[0];
+        for (var i = 0; i < numSamps; i++) {
             output[i] = output[i] * mul;
         }
     };
     
     flock.mul = function (numSamps, output, mulInput, addInput) {
-        var mul = mulInput.output,
-            i;
-        for (i = 0; i < numSamps; i++) {
+        var mul = mulInput.output;
+        for (var i = 0; i < numSamps; i++) {
             output[i] = output[i] * mul[i];
         }
     };
     
     flock.krAdd = function (numSamps, output, mulInput, addInput) {
-        var add = addInput.output[0],
-            i;
-        for (i = 0; i < numSamps; i++) {
+        var add = addInput.output[0];
+        for (var i = 0; i < numSamps; i++) {
             output[i] = output[i] + add;
         }
     };
     
     flock.add = function (numSamps, output, mulInput, addInput) {
-        var add = addInput.output,
-            i;
-        for (i = 0; i < numSamps; i++) {
+        var add = addInput.output;
+        for (var i = 0; i < numSamps; i++) {
             output[i] = output[i] + add[i];
         }
     };
     
     flock.krMulAdd = function (numSamps, output, mulInput, addInput) {
         var mul = mulInput.output[0],
-            add = addInput.output,
-            i;
-        for (i = 0; i < numSamps; i++) {
+            add = addInput.output;
+        for (var i = 0; i < numSamps; i++) {
             output[i] = output[i] * mul + add[i];
         }
     };
     
     flock.mulKrAdd = function (numSamps, output, mulInput, addInput) {
         var mul = mulInput.output,
-            add = addInput.output[0],
-            i;
-        for (i = 0; i < numSamps; i++) {
+            add = addInput.output[0];
+        for (var i = 0; i < numSamps; i++) {
             output[i] = output[i] * mul[i] + add;
         }
     };
     
     flock.krMulKrAdd = function (numSamps, output, mulInput, addInput) {
         var mul = mulInput.output[0],
-            add = addInput.output[0],
-            i;
-        for (i = 0; i < numSamps; i++) {
+            add = addInput.output[0];
+        for (var i = 0; i < numSamps; i++) {
             output[i] = output[i] * mul + add;
         }
     };
     
     flock.mulAdd = function (numSamps, output, mulInput, addInput) {
         var mul = mulInput.output,
-            add = addInput.output,
-            i;
-        for (i = 0; i < numSamps; i++) {
+            add = addInput.output;
+        for (var i = 0; i < numSamps; i++) {
             output[i] = output[i] * mul[i] + add[i];
         }
     };
@@ -198,12 +190,11 @@ var fluid = fluid || require("infusion"),
             var m = that.model,
                 strideNames = that.options.strideInputs,
                 inputs = that.inputs,
-                i,
                 name;
             
             m.strides = m.strides || {};
             
-            for (i = 0; i < strideNames.length; i++) {
+            for (var i = 0; i < strideNames.length; i++) {
                 name = strideNames[i];
                 m.strides[name] = inputs[name].rate === flock.rates.AUDIO ? 1 : 0;
             }
@@ -219,12 +210,11 @@ var fluid = fluid || require("infusion"),
 
         that.init = function () {
             var tags = fluid.makeArray(that.options.tags),
-                i,
                 valueDef;
             
-            for (i = 0; i < tags.length; i++) {
+            for (var i = 0; i < tags.length; i++) {
                 that.tags.push(tags[i]);
-            };
+            }
             
             that.options.audioSettings = that.options.audioSettings || flock.enviro.shared.audioSettings;
             that.model.sampleRate = options.sampleRate || that.options.audioSettings.rates[that.rate];
@@ -332,11 +322,9 @@ var fluid = fluid || require("infusion"),
             var m = that.model,
                 source = that.inputs.source.output,
                 out = that.output,
-                i,
-                j,
                 val;
             
-            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.source) {
+            for (var i = 0, j = 0; i < numSamps; i++, j += m.strides.source) {
                 val = source[j];
                 out[i] = val !== m.prevVal ? 1.0 : 0.0;
                 m.prevVal = val;
@@ -407,11 +395,10 @@ var fluid = fluid || require("infusion"),
             // Find the first input and use it. Multiple inputters, beware.
             // TODO: Support multiple operations.
             var inputs = Object.keys(that.inputs),
-                i,
                 input,
                 isInputAudioRate;
             
-            for (i = 0; i < inputs.length; i++) {
+            for (var i = 0; i < inputs.length; i++) {
                 input = inputs[i];
                 if (input !== "source") {
                     that.activeInput = input;
@@ -442,11 +429,10 @@ var fluid = fluid || require("infusion"),
         that.sumGen = function (numSamps) {
             var sources = that.inputs.sources,
                 out = that.output,
-                i,
                 sourceIdx,
                 sum;
                 
-            for (i = 0; i < numSamps; i++) {
+            for (var i = 0; i < numSamps; i++) {
                 sum = 0;
                 for (sourceIdx = 0; sourceIdx < sources.length; sourceIdx++) {
                     sum += sources[sourceIdx].output[i];
@@ -493,12 +479,9 @@ var fluid = fluid || require("infusion"),
                 tableIncRad = m.tableIncRad,
                 output = that.output,
                 phase = m.phase,
-                i,
-                j,
-                k,
                 idx;
 
-            for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.phase, k += m.strides.freq) {
+            for (var i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.phase, k += m.strides.freq) {
                 idx = phase + phaseOffset[j] * tableIncRad;
                 if (idx >= tableLen) {
                     idx -= tableLen;
@@ -637,12 +620,9 @@ var fluid = fluid || require("infusion"),
                 phaseOffset = that.inputs.phase.output,
                 out = that.output,
                 phase = m.phase,
-                sampleRate = m.sampleRate,
-                i,
-                j,
-                k;
+                sampleRate = m.sampleRate;
 
-            for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.phase, k += m.strides.freq) {
+            for (var i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.phase, k += m.strides.freq) {
                 out[i] = Math.sin(phase + phaseOffset[j]);
                 phase += freq[k] / sampleRate * flock.TWOPI;
             }
@@ -672,11 +652,9 @@ var fluid = fluid || require("infusion"),
                 out = that.output,
                 scale = m.scale,
                 phaseOffset = that.inputs.phase.output[0], // Phase is control rate
-                phase = m.phase, // TODO: Prime synth graph on instantiation.
-                i,
-                j;
+                phase = m.phase; // TODO: Prime synth graph on instantiation.
 
-            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.freq) {
+            for (var i = 0, j = 0; i < numSamps; i++, j += m.strides.freq) {
                 out[i] = phase + phaseOffset;
                 phase += freq[j] * scale;
                 if (phase >= 1.0) { 
@@ -726,11 +704,9 @@ var fluid = fluid || require("infusion"),
                 width = inputs.width.output[0], // TODO: Are we handling width correctly here?
                 out = that.output,
                 scale = m.scale,
-                phase = m.phase !== undefined ? m.phase : inputs.phase.output[0], // TODO: Unnecessary if we knew the synth graph had been primed.
-                i,
-                j;
+                phase = m.phase !== undefined ? m.phase : inputs.phase.output[0]; // TODO: Unnecessary if we knew the synth graph had been primed.
 
-            for (i = 0, j = 0; i < numSamps; i++, j += freqInc) {
+            for (var i = 0, j = 0; i < numSamps; i++, j += freqInc) {
                 if (phase >= 1.0) {
                     phase -= 1.0;
                     out[i] = width < 0.5 ? 1.0 : -1.0;
@@ -774,14 +750,12 @@ var fluid = fluid || require("infusion"),
                 freqInc = m.strides.freq,
                 phaseOffset = inputs.phase.output[0],
                 phase = m.phase,
-                scale = m.scale,
-                i,
-                j,
-                val;
-            
+                scale = m.scale;
+
             phase += phaseOffset;
             
-            for (i = 0, j = 0; i < numSamps; i++, j += freqInc) {
+            for (var i = 0, j = 0; i < numSamps; i++, j += freqInc) {
+                var val;
                 if (phase >= 1.0) {
                     phase -= 1.0;
                     val = 1.0;
@@ -872,14 +846,13 @@ var fluid = fluid || require("infusion"),
                 trig = inputs.trig,
                 sourceInc = m.strides.source,
                 out = that.output,
-                i, j,
                 currTrig;
 
             if (m.holdVal === undefined) {
                 m.holdVal = source[0];
             }
             
-            for (i = 0, j = 0; i < numSamps; i++, j += sourceInc) {
+            for (var i = 0, j = 0; i < numSamps; i++, j += sourceInc) {
                 currTrig = trig.output[i];
                 out[i] = (currTrig > 0.0 && m.prevTrig <= 0.0) ? m.holdVal = source[j] : m.holdVal;
                 m.prevTrig = currTrig;
@@ -890,15 +863,14 @@ var fluid = fluid || require("infusion"),
         
         that.krGen = function (numSamps) {
             var m = that.model,
-                currTrig = that.inputs.trig.output[0],
-                i;
+                currTrig = that.inputs.trig.output[0];
 
             if (m.holdVal === undefined || currTrig > 0.0 && m.prevTrig <= 0.0) {
                 m.holdVal = that.inputs.source.output[0];
             }
             m.prevTrig = currTrig;
             
-            for (i = 0; i < numSamps; i++) {
+            for (var i = 0; i < numSamps; i++) {
                 that.output[i] = m.holdVal;
             }
             
@@ -986,11 +958,9 @@ var fluid = fluid || require("infusion"),
                 start = (that.inputs.start.output[0] * bufLen) | 0,
                 end = (that.inputs.end.output[0] * bufLen) | 0,
                 buffers = that.options.audioSettings.buffers,
-                i,
-                j,
                 samp;
             
-            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.trigger) {
+            for (var i = 0, j = 0; i < numSamps; i++, j += m.strides.trigger) {
                 if (trig[j] > 0.0 && m.prevTrig <= 0.0) {
                     bufIdx = start;
                 } else if (bufIdx >= end) {
@@ -1026,11 +996,9 @@ var fluid = fluid || require("infusion"),
                 start = (that.inputs.start.output[0] * bufLen) | 0,
                 end = (that.inputs.end.output[0] * bufLen) | 0,
                 buffers = that.options.audioSettings.buffers,
-                i,
-                j,
                 samp;
             
-            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.trigger) {
+            for (var i = 0, j = 0; i < numSamps; i++, j += m.strides.trigger) {
                 if (trig[j] > 0.0 && m.prevTrig <= 0.0) {
                     bufIdx = start;
                 } else if (bufIdx >= end) {
@@ -1131,12 +1099,10 @@ var fluid = fluid || require("infusion"),
                 phase = that.inputs.phase.output,
                 source = that.buffer.data.channels[chan],
                 sourceLen = source.length,
-                i,
                 bufIdx,
-                j,
                 val;
             
-            for (i = j = 0; i < numSamps; i++, j += phaseS) {
+            for (var i = 0, j = 0; i < numSamps; i++, j += phaseS) {
                 bufIdx = phase[j] * sourceLen;
                 val = that.interpolate ? that.interpolate(bufIdx, source) : source[bufIdx | 0];
                 out[i] = val;
@@ -1198,10 +1164,9 @@ var fluid = fluid || require("infusion"),
             var m = that.model,
                 chan = that.inputs.channel.output[0],
                 source = that.buffer.data.channels[chan],
-                rate = that.buffer.format.sampleRate,
-                i;
-            
-            for (i = 0; i < numSamps; i++) {
+                rate = that.buffer.format.sampleRate;
+
+            for (var i = 0; i < numSamps; i++) {
                 that.output[i] = m.value = source.length / rate;
             }
         };
@@ -1253,10 +1218,9 @@ var fluid = fluid || require("infusion"),
         
         that.krGen = function (numSamps) {
             var out = that.output,
-                val = that.model.value,
-                i;
-            
-            for (i = 0; i < numSamps; i++) {
+                val = that.model.value;
+
+            for (var i = 0; i < numSamps; i++) {
                 out[i] = val;
             }
             
@@ -1330,10 +1294,8 @@ var fluid = fluid || require("infusion"),
             var m = that.model,
                 density = inputs.density.output[0], // Density is kr.
                 threshold, 
-                scale,
-                val,
-                i;
-            
+                scale;
+
             if (density !== m.density) {
                 m.density = density;
                 threshold = m.threshold = density * m.sampleDur;
@@ -1343,8 +1305,8 @@ var fluid = fluid || require("infusion"),
                 scale = m.scale;
             }
         
-            for (i = 0; i < numSamps; i++) {
-                val = Math.random();
+            for (var i = 0; i < numSamps; i++) {
+                var val = Math.random();
                 output[i] = (val < threshold) ? val * scale : 0.0;
             }
         
@@ -1374,10 +1336,9 @@ var fluid = fluid || require("infusion"),
         var that = flock.ugen(inputs, output, options);
         
         that.gen = function (numSamps) {
-            var out = that.output,
-                i;
-        
-            for (i = 0; i < numSamps; i++) {
+            var out = that.output;
+
+            for (var i = 0; i < numSamps; i++) {
                 out[i] = Math.random();
             }
             
@@ -1407,16 +1368,12 @@ var fluid = fluid || require("infusion"),
                 a = that.a,
                 p = that.p,
                 offset = that.model.offset,
-                out = that.output,
-                i,
-                j,
-                rand,
-                val;
-                
-            for (i = 0; i < numSamps; i++) {
-                val = 0;
-                for (j = 0; j < state.length; j++) {
-                    rand = Math.random();
+                out = that.output;
+
+            for (var i = 0; i < numSamps; i++) {
+                var val = 0;
+                for (var j = 0; j < state.length; j++) {
+                    var rand = Math.random();
                     state[j] = p[j] * (state[j] - rand) + rand;
                     val += a[j] * state[j];
                 }
@@ -1464,10 +1421,8 @@ var fluid = fluid || require("infusion"),
                 freq = inputs.freq.output[0], // Freq is kr.
                 remain = numSamps,
                 out = that.output,
-                currSamp = 0,
-                sampsForLevel,
-                i;
-            
+                currSamp = 0;
+
             freq = freq > 0.001 ? freq : 0.001;
             do {
                 if (m.counter <= 0) {
@@ -1482,10 +1437,10 @@ var fluid = fluid || require("infusion"),
                         m.ramp = 0;
                     }
                 }
-                sampsForLevel = remain < m.counter ? remain : m.counter;
+                var sampsForLevel = remain < m.counter ? remain : m.counter;
                 remain -= sampsForLevel;
                 m.counter -= sampsForLevel;
-                for (i = 0; i < sampsForLevel; i++) {
+                for (var i = 0; i < sampsForLevel; i++) {
                     out[currSamp] = m.value;
                     m.value += m.ramp;
                     currSamp++;
@@ -1528,10 +1483,9 @@ var fluid = fluid || require("infusion"),
                 numLevelVals = numSteps >= numSamps ? numSamps : numSteps,
                 numEndVals = numSamps - numLevelVals,
                 level = m.level,
-                out = that.output,
-                i;
-        
-            for (i = 0; i < numLevelVals; i++) {
+                out = that.output;
+
+            for (var i = 0; i < numLevelVals; i++) {
                 out[i] = level;
                 numSteps--;
                 level += stepSize;
@@ -1539,7 +1493,7 @@ var fluid = fluid || require("infusion"),
         
             // TODO: Implement a more efficient gen algorithm when the line has finished.
             if (numEndVals > 0) {
-                for (i = 0; i < numEndVals; i++) {
+                for (var i = 0; i < numEndVals; i++) {
                     out[i] = level;
                 }
             }
@@ -1592,10 +1546,9 @@ var fluid = fluid || require("infusion"),
                 numLevelVals = numSteps >= numSamps ? numSamps : numSteps,
                 numEndVals = numSamps - numLevelVals,
                 level = m.level,
-                out = that.output,
-                i;
-        
-            for (i = 0; i < numLevelVals; i++) {
+                out = that.output;
+
+            for (var i = 0; i < numLevelVals; i++) {
                 out[i] = level;
                 numSteps--;
                 level *= multiplier;
@@ -1603,7 +1556,7 @@ var fluid = fluid || require("infusion"),
         
             // TODO: Implement a more efficient gen algorithm when the line has finished.
             if (numEndVals > 0) {
-                for (i = 0; i < numEndVals; i++) {
+                for (var i = 0; i < numEndVals; i++) {
                     out[i] = level;
                 }
             }
@@ -1663,17 +1616,14 @@ var fluid = fluid || require("infusion"),
                 inputs = that.inputs,
                 out = that.output,
                 step = inputs.step.output,
-                trig = inputs.trigger.output,
-                i,
-                j,
-                k;
-            
+                trig = inputs.trigger.output;
+
             // TODO: Add sample priming to the ugen graph to remove this conditional.
             if (m.value === undefined) {
                 m.value = inputs.start.output[0];
             }
             
-            for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.trigger, k += m.strides.step) {
+            for (var i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.trigger, k += m.strides.step) {
                 if ((trig[j] > 0.0 && m.prevTrig <= 0.0)) {
                     m.value = inputs.reset.output[0];
                 }
@@ -1730,9 +1680,8 @@ var fluid = fluid || require("infusion"),
                 numSteps = stage.numSteps,
                 targetLevel = m.targetLevel,
                 stepsNeedRecalc = false,
-                stageTime,
-                i;
-                
+                stageTime;
+
             // Recalculate the step state if necessary.
             if (prevGate <= 0 && gate > 0) {
                 // Starting a new attack stage.
@@ -1754,7 +1703,7 @@ var fluid = fluid || require("infusion"),
             }
             
             // Output the the envelope's sample data.
-            for (i = 0; i < numSamps; i++) {
+            for (var i = 0; i < numSamps; i++) {
                 out[i] = level;
                 currentStep++;
                 // Hold the last value if the stage is complete, otherwise increment.
@@ -1818,7 +1767,6 @@ var fluid = fluid || require("infusion"),
                 prevVal = m.previousValue,
                 attCoef = m.attackCoef,
                 relCoef = m.releaseCoef,
-                i,
                 val,
                 coef;
                 
@@ -1835,7 +1783,7 @@ var fluid = fluid || require("infusion"),
                     (nextRel === 0.0) ? 0.0 : Math.exp(flock.LOG01 / (nextRel * m.sampleRate));
             }
             
-            for (i = 0; i < numSamps; i++) {
+            for (var i = 0; i < numSamps; i++) {
                 val = Math.abs(source[i]);
                 coef = val < prevVal ? relCoef : attCoef;
                 out[i] = prevVal = val + (prevVal - val) * coef;
@@ -1863,9 +1811,8 @@ var fluid = fluid || require("infusion"),
         
         that.gen = function () {
             var max = that.inputs.max.output[0], // Max is kr.
-                source = that.inputs.source.output,
-                i;
-            
+                source = that.inputs.source.output;
+
             // Note, this normalizes the source input ugen's output buffer directly in place.
             that.output = flock.normalize(source, max);
         };
@@ -1898,8 +1845,6 @@ var fluid = fluid || require("infusion"),
                 expand = that.inputs.expand.output[0],
                 numSources,
                 numOutputBuses,
-                i,
-                j,
                 source,
                 rate,
                 bus,
@@ -1917,14 +1862,14 @@ var fluid = fluid || require("infusion"),
                 return;
             }
             
-            for (i = 0; i < numOutputBuses; i++) {
+            for (var i = 0; i < numOutputBuses; i++) {
                 source = sources[i % numSources];
                 rate = source.rate;
                 bus = buses[bufStart + i];
                 inc = rate === flock.rates.AUDIO ? 1 : 0;
                 outIdx = 0;
                     
-                for (j = 0; j < numSamps; j++, outIdx += inc) {
+                for (var j = 0; j < numSamps; j++, outIdx += inc) {
                     // TODO: Support control rate interpolation.
                     bus[j] = bus[j] + source.output[outIdx];
                 }
@@ -1953,10 +1898,9 @@ var fluid = fluid || require("infusion"),
         var that = flock.ugen(inputs, output, options);
     
         that.arraySourceGen = function () {
-            var sources = that.inputs.sources,
-                i;
-            
-            for (i = 0; i < sources.length; i++) {
+            var sources = that.inputs.sources;
+
+            for (var i = 0; i < sources.length; i++) {
                 that.model.value[i] = sources[i].output[0];
             }
         };
@@ -2107,16 +2051,14 @@ var fluid = fluid || require("infusion"),
                 co = m.coeffs,
                 freq = inputs.freq.output[0],
                 q = inputs.q.output[0],
-                source = inputs.source.output,
-                i,
-                w;
-            
+                source = inputs.source.output;
+
             if (m.prevFreq !== freq || m.prevQ !== q) {
                 that.updateCoefficients(m, freq, q);
             }
 
-            for (i = 0; i < numSamps; i++) {
-                w = source[i] - co.a[0] * m.d0 - co.a[1] * m.d1;
+            for (var i = 0; i < numSamps; i++) {
+                var w = source[i] - co.a[0] * m.d0 - co.a[1] * m.d1;
                 out[i] = co.b[0] * w + co.b[1] * m.d0 + co.b[2] * m.d1;
                 m.d1 = m.d0;
                 m.d0 = w;
@@ -2364,15 +2306,14 @@ var fluid = fluid || require("infusion"),
                 out = that.output,
                 source = inputs.source.output,
                 time = inputs.time.output[0],
-                delayBuffer = that.delayBuffer,
-                i;
-            
+                delayBuffer = that.delayBuffer;
+
             if (time !== m.time) {
                 m.time = time;
                 m.delaySamps = time * that.model.sampleRate;
             }
             
-            for (i = 0; i < numSamps; i++) {
+            for (var i = 0; i < numSamps; i++) {
                 if (m.pos >= m.delaySamps) {
                     m.pos = 0;
                 }
@@ -2419,10 +2360,9 @@ var fluid = fluid || require("infusion"),
             var m = that.model,
                 inputs = that.inputs,
                 out = that.output,
-                source = inputs.source.output,
-                i;
-            
-            for (i = 0; i < numSamps; i++) {
+                source = inputs.source.output;
+
+            for (var i = 0; i < numSamps; i++) {
                 out[i] = m.prevval;
                 m.prevval = source[i];
             }
@@ -2462,22 +2402,21 @@ var fluid = fluid || require("infusion"),
                 source = inputs.source.output,
                 mix = inputs.mix.output[0], dry = 1-mix,
                 roomsize = inputs.roomsize.output[0], room_scaled = roomsize * 0.28 + 0.7,
-                damp = inputs.damp.output[0], damp1=damp*0.4, damp2=1.0-damp1,
-                i,j;
-            
-            for (i = 0; i < numSamps; i++) {
+                damp = inputs.damp.output[0], damp1=damp*0.4, damp2=1.0-damp1;
+
+            for (var i = 0; i < numSamps; i++) {
                 // read inputs
                 var inp = source[i];
                 var inp_scaled = inp * 0.015;
                 var outsamp=0.0;
                 // read samples from the allpasses
-                for(j = 0; j < that.buffers_a.length; j++) {
+                for(var j = 0; j < that.buffers_a.length; j++) {
                     if(++that.bufferindices_a[j] == allpassTunings[j]) that.bufferindices_a[j] = 0;
                     that.readsamp_a[j] = that.buffers_a[j][that.bufferindices_a[j]];
                 }
 
                 // foreach comb buffer, we perform same filtering (only bufferlen differs)
-                for(j = 0; j < that.buffers_c.length; j++) {
+                for(var j = 0; j < that.buffers_c.length; j++) {
                     if(++that.bufferindices_c[j] == tunings[j]) that.bufferindices_c[j] = 0;
                     var readsamp_c = that.buffers_c[j][that.bufferindices_c[j]];
                     that.filterx_c[j] = (damp2 * that.filtery_c[j]) + (damp1 * that.filterx_c[j]);
@@ -2515,13 +2454,12 @@ var fluid = fluid || require("infusion"),
         that.filterx_c = new Float32Array(8);
         that.filtery_c = new Float32Array(8);
         var spread = that.model.spread;
-        var i, j;
-        for(i = 0; i < that.buffers_c.length; i++) {
+        for(var i = 0; i < that.buffers_c.length; i++) {
             that.buffers_c[i] = new Float32Array(tunings[i]+spread);
             that.bufferindices_c[i] = 0;
             that.filterx_c[i] = 0;
             that.filtery_c[i] = 0;
-            for(j = 0; j < tunings[i]+spread; j++) {
+            for(var j = 0; j < tunings[i]+spread; j++) {
                 that.buffers_c[i][j] = 0;
             }
         }
@@ -2530,17 +2468,17 @@ var fluid = fluid || require("infusion"),
         that.filterx_a = new Float32Array(4);
         that.filtery_a = new Float32Array(4);
         that.readsamp_a = new Float32Array(4); // "readsamp" vars are temporary values read back from the delay lines, not stored but only used in the gen loop
-        for(i = 0; i < that.buffers_a.length; i++) {
+        for(var i = 0; i < that.buffers_a.length; i++) {
             that.bufferindices_a[i] = 0;
             that.filterx_a[i] = 0;
             that.filtery_a[i] = 0;
             that.readsamp_a[i] = 0;
             // TODO is this what the spread is meant to do?
-            for(j = 0; j < allpassTunings.length; j++) {
+            for(var j = 0; j < allpassTunings.length; j++) {
                 allpassTunings[j] += spread;
             }
             that.buffers_a[i] = new Float32Array(allpassTunings[i]);
-            for(j = 0; j < allpassTunings[i]; j++) {
+            for(var j = 0; j < allpassTunings[i]; j++) {
                 that.buffers_a[i][j] = 0;
             }
         }
@@ -2576,8 +2514,7 @@ var fluid = fluid || require("infusion"),
                 inputs = that.inputs,
                 out = that.output,
                 source = inputs.source.output,
-                time = inputs.time.output[0],
-                i;
+                time = inputs.time.output[0];
 
             if (time !== m.time) {
                 m.time = time;
@@ -2586,11 +2523,11 @@ var fluid = fluid || require("infusion"),
             
             // TODO: Optimize this conditional.
             if (m.coeff === 0.0) {
-                for (i = 0; i < numSamps; i++) {
+                for (var i = 0; i < numSamps; i++) {
                     out[i] = source[i];
                 }
             } else {
-                for (i = 0; i < numSamps; i++) {
+                for (var i = 0; i < numSamps; i++) {
                     m.lastSamp = source[i] + m.coeff * m.lastSamp;
                     out[i] = m.lastSamp;
                 }
@@ -2655,9 +2592,6 @@ var fluid = fluid || require("infusion"),
                 trigIdx = 0,
                 ampIdx = 0,
                 speedIdx = 0,
-                i,
-                j,
-                k,
                 grain,
                 start,
                 samp;
@@ -2668,7 +2602,7 @@ var fluid = fluid || require("infusion"),
                 m.dur = dur > m.maxDur ? m.maxDur : dur;
                 m.numGrainSamps = Math.round(m.sampleRate * m.dur);
                 m.grainCenter = Math.round(m.numGrainSamps / 2);
-                for (i = 0; i < m.numGrainSamps; i++) {
+                for (var i = 0; i < m.numGrainSamps; i++) {
                     m.env[i] = Math.sin(Math.PI * i / m.numGrainSamps);
                 }
             }
@@ -2676,7 +2610,7 @@ var fluid = fluid || require("infusion"),
             // Trigger new grains.
             // TODO: Why does this constantly trigger new grains with an audio rate trigger signal,
             //       rarely or never cleaning old ones up?
-            for (i = 0; i < numSamps; i++) {
+            for (var i = 0; i < numSamps; i++) {
                 if (trigger[trigIdx] > 0.0 && m.prevTrigger <= 0.0 && m.activeGrains.length < m.maxNumGrains) {
                     grain = m.freeGrains.pop();
                     grain.sampIdx = 0;
@@ -2701,9 +2635,9 @@ var fluid = fluid || require("infusion"),
             }
             
             // Output samples for all active grains.
-            for (j = 0; j < m.activeGrains.length;) {
+            for (var j = 0; j < m.activeGrains.length;) {
                 grain = m.activeGrains[j];
-                for (k = grain.writePos; k < Math.min(m.numGrainSamps - grain.sampIdx, numSamps); k++) {
+                for (var k = grain.writePos; k < Math.min(m.numGrainSamps - grain.sampIdx, numSamps); k++) {
                     samp = that.interpolate ? that.interpolate(grain.readPos, buf) : buf[grain.readPos | 0];
                     out[k] += samp * m.env[grain.envIdx] * grain.amp;
                     grain.readPos = (grain.readPos + grain.speed) % buf.length;
@@ -2795,9 +2729,8 @@ var fluid = fluid || require("infusion"),
                 source = inputs.source.output,
                 trig = inputs.trigger.output[0],
                 freq = inputs.freq.output[0],
-                freq = freq,
-                i;
-                
+                freq = freq;
+
             if (trig > 0.0 && m.prevTrig <= 0.0) {
                 fluid.log(fluid.logLevel.IMPORTANT, label + source);
             }
@@ -2808,7 +2741,7 @@ var fluid = fluid || require("infusion"),
                 m.counter = m.sampInterval;
             }
             
-            for (i = 0; i < numSamps; i++) {
+            for (var i = 0; i < numSamps; i++) {
                 if (m.counter >= m.sampInterval) {
                     fluid.log(fluid.logLevel.IMPORTANT, label + source[i]);
                     m.counter = 0;
@@ -2859,8 +2792,6 @@ var fluid = fluid || require("infusion"),
                 delayDur = inputs.delayDur.output[0],
                 numGrains = inputs.numGrains.output[0],
                 source = inputs.source.output,
-                i,
-                j,
                 grainPos,
                 windowPos,
                 amp;
@@ -2877,7 +2808,7 @@ var fluid = fluid || require("infusion"),
             if (m.grainDur !== grainDur) {
                 m.grainDur = grainDur;
                 m.grainLength = (m.sampleRate * m.grainDur) | 0;
-                for (i = 0; i < m.grainLength; i++) {
+                for (var i = 0; i < m.grainLength; i++) {
                     m.windowFunction[i] = Math.sin(Math.PI * i / m.grainLength);
                 }
             }
@@ -2887,14 +2818,14 @@ var fluid = fluid || require("infusion"),
             if (m.rawNumGrains !== numGrains) {
                 m.rawNumGrains = numGrains;
                 numGrains = Math.round(numGrains);
-                for (i = m.numGrains; i < numGrains; i++) {
+                for (var i = m.numGrains; i < numGrains; i++) {
                     m.currentGrainPosition[i] = 0;
                     m.currentGrainWindowPosition[i] = (Math.random() * m.grainLength) | 0;
                 }
                 m.numGrains = numGrains;
             }
             
-            for (i = 0; i < numSamps; i++) {
+            for (var i = 0; i < numSamps; i++) {
                 // Update the delay line's write position
                 that.delayLine[m.writePos] = source[i];
                 m.writePos = (m.writePos + 1) % m.delayLength;
@@ -2903,7 +2834,7 @@ var fluid = fluid || require("infusion"),
                 out[i] = 0;
                 
                 // Now fill with grains
-                for (j = 0; j < m.numGrains; j++) {
+                for (var j = 0; j < m.numGrains; j++) {
                     grainPos = m.currentGrainPosition[j];
                     windowPos = m.currentGrainWindowPosition[j];
                     amp = m.windowFunction[windowPos];
@@ -2962,8 +2893,6 @@ var fluid = fluid || require("infusion"),
                 out = that.output,
                 start,
                 end,
-                i,
-                j,
                 val;
             
             start = inputs.start ? Math.round(inputs.start.output[0]) : 0,
@@ -2976,7 +2905,7 @@ var fluid = fluid || require("infusion"),
                 m.value = 0.0;
             }
             
-            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.freq) {
+            for (var i = 0, j = 0; i < numSamps; i++, j += m.strides.freq) {
                 if (m.nextIdx >= end) {
                     if (loop > 0.0) {
                         m.nextIdx = start;
@@ -3044,11 +2973,9 @@ var fluid = fluid || require("infusion"),
             var m = that.model,
                 a4 = m.a4,
                 noteNum = that.inputs.source.output,
-                out = that.output,
-                i,
-                j;
-            
-            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.source) {
+                out = that.output;
+
+            for (var i = 0, j = 0; i < numSamps; i++, j += m.strides.source) {
                 out[i] = a4.freq * Math.pow(2, (noteNum[j] - a4.noteNum) * m.octaveScale);
             }
             
