@@ -1,16 +1,20 @@
-/*! Flocking 0.1, Copyright 2012 Colin Clark | flockingjs.org */
+/*! Flocking 0.1, Copyright 2011-2014 Colin Clark | flockingjs.org */
 
 /*
 * Flocking - Creative audio synthesis for the Web!
 * http://github.com/colinbdclark/flocking
 *
-* Copyright 2012, Colin Clark
+* Copyright 2011-2014, Colin Clark
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global Float32Array, window, jQuery*/
-/*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
-    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
+/*global require, Float32Array, window, AudioContext, webkitAudioContext*/
+/*jslint white: false, vars: true, newcap: true, regexp: true, browser: true,
+    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100,
+    indent: 4, plusplus: true, todo: true, culy: true, camelCase: true, eqeqeq: true,
+    freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
+    unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
+    funcscope: false*/
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
@@ -46,7 +50,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.browser = function () {
-        if (typeof (navigator) === "undefined") {
+        if (typeof navigator === "undefined") {
             return {};
         }
 
@@ -58,15 +62,15 @@ var fluid = fluid || require("infusion"),
             match,
             matched;
         
-        match = /(chrome)[ \/]([\w.]+)/.exec( ua ) ||
-            /(webkit)[ \/]([\w.]+)/.exec( ua ) ||
-            /(opera)(?:.*version|)[ \/]([\w.]+)/.exec( ua ) ||
-            /(msie) ([\w.]+)/.exec( ua ) ||
-            ua.indexOf("compatible") < 0 && /(mozilla)(?:.*? rv:([\w.]+)|)/.exec( ua ) || [];
+        match = /(chrome)[ \/]([\w.]+)/.exec(ua) ||
+            /(webkit)[ \/]([\w.]+)/.exec(ua) ||
+            /(opera)(?:.*version|)[ \/]([\w.]+)/.exec(ua) ||
+            /(msie) ([\w.]+)/.exec(ua) ||
+            ua.indexOf("compatible") < 0 && /(mozilla)(?:.*? rv:([\w.]+)|)/.exec(ua) || [];
         
         matched = {
-            browser: match[ 1 ] || "",
-            version: match[ 2 ] || "0"
+            browser: match[1] || "",
+            version: match[2] || "0"
         };
 
         if (matched.browser) {
@@ -75,9 +79,9 @@ var fluid = fluid || require("infusion"),
         }
 
         // Chrome is Webkit, but Webkit is also Safari.
-        if ( browser.chrome ) {
+        if (browser.chrome) {
             browser.webkit = true;
-        } else if ( browser.webkit ) {
+        } else if (browser.webkit) {
             browser.safari = true;
         }
         
@@ -86,20 +90,28 @@ var fluid = fluid || require("infusion"),
     
     // TODO: Move to components in the static environment and into the appropriate platform files.
     fluid.registerNamespace("flock.platform");
-    flock.platform.isBrowser = typeof (window) !== "undefined";
+    flock.platform.isBrowser = typeof window !== "undefined";
+    flock.platform.hasRequire = typeof require !== "undefined";
     flock.platform.os = flock.platform.isBrowser ? window.navigator.platform : fluid.require("os").platform();
     flock.platform.isLinux = flock.platform.os.indexOf("Linux") > -1;
     flock.platform.isAndroid = flock.platform.isLinux && flock.platform.os.indexOf("arm") > -1;
     flock.platform.isIOS = flock.platform.os === "iPhone" || flock.platform.os === "iPad" || flock.platform.os === "iPod";
     flock.platform.isMobile = flock.platform.isAndroid || flock.platform.isIOS;
     flock.platform.browser = flock.browser();
-    flock.platform.isWebAudio = typeof (AudioContext) !== "undefined" || typeof (webkitAudioContext) !== "undefined";
+    flock.platform.isWebAudio = typeof AudioContext !== "undefined" || typeof webkitAudioContext !== "undefined";
     flock.platform.audioEngine = flock.platform.isBrowser ? (flock.platform.isWebAudio ? "webAudio" : "moz") : "nodejs";
     fluid.staticEnvironment.audioEngine = fluid.typeTag("flock.platform." + flock.platform.audioEngine);
-
     
     flock.shim = {
-        URL: typeof (window) !== "undefined" ? window.URL || window.webkitURL || window.msURL : undefined
+        URL: flock.platform.isBrowser ? (window.URL || window.webkitURL || window.msURL) : undefined
+    };
+    
+    flock.requireModule = function (globalName, moduleName) {
+        if (!moduleName) {
+            moduleName = browserGlobalName;
+        }
+        return flock.platform.isBrowser ? window[globalName] :
+            (flock.platform.hasRequire ? require(moduleName)[globalName] : undefined);
     };
     
     /*************
@@ -107,13 +119,13 @@ var fluid = fluid || require("infusion"),
      *************/
     
     flock.isIterable = function (o) {
-        var type = typeof (o);
+        var type = typeof o;
         return o && o.length !== undefined && type !== "string" && type !== "function";
     };
     
     flock.generate = function (bufOrSize, generator) {
-        var buf = typeof (bufOrSize) === "number" ? new Float32Array(bufOrSize) : bufOrSize,
-            isFunc = typeof (generator) === "function",
+        var buf = typeof bufOrSize === "number" ? new Float32Array(bufOrSize) : bufOrSize,
+            isFunc = typeof generator === "function",
             i;
         
         for (i = 0; i < buf.length; i++) {
@@ -124,7 +136,7 @@ var fluid = fluid || require("infusion"),
     };
     
     flock.generate.silence = function (bufOrSize) {
-        if (typeof (bufOrSize) === "number") {
+        if (typeof bufOrSize === "number") {
             return new Float32Array(bufOrSize);
         }
         
@@ -165,13 +177,16 @@ var fluid = fluid || require("infusion"),
      * @return a randomly selected item from collection
      */
     flock.choose = function (collection, strategy) {
+        var key, val;
+        
         if (flock.isIterable(collection)) {
-            var val = flock.arrayChoose(collection, strategy);
+            val = flock.arrayChoose(collection, strategy);
             return val;
         }
 
-        var key = flock.arrayChoose(collection.keys, strategy);
-        return collection[key];
+        key = flock.arrayChoose(collection.keys, strategy);
+        val = collection[key];
+        return val;
     };
     
     /**
@@ -227,7 +242,7 @@ var fluid = fluid || require("infusion"),
         return range;
     };
     
-    flock.scale = function (buf, minVal, maxVal) {
+    flock.scale = function (buf) {
         if (!buf) {
             return;
         }
@@ -313,7 +328,9 @@ var fluid = fluid || require("infusion"),
     flock.get = function (root, path) {
         if (!root) {
             return fluid.getGlobalValue(path);
-        } else if (arguments.length == 1 && typeof (root) === "string") {
+        }
+        
+        if (arguments.length === 1 && typeof root === "string") {
             return fluid.getGlobalValue(root);
         }
 
@@ -347,7 +364,7 @@ var fluid = fluid || require("infusion"),
             
         for (i = 1; i < l; i++) {
             root = root[prop];
-            type = typeof (root);
+            type = typeof root;
             if (type !== "object") {
                 throw new Error("A non-container object was found at segment " + prop + ". Value: " + root);
             }
@@ -362,8 +379,8 @@ var fluid = fluid || require("infusion"),
     };
     
     flock.invoke = function (root, path, args) {
-        var fn = typeof (root) === "function" ? root : flock.get(root, path);
-        if (typeof (fn) !== "function") {
+        var fn = typeof root === "function" ? root : flock.get(root, path);
+        if (typeof fn !== "function") {
             throw new Error("Path '" + path + "' does not resolve to a function.");
         }
         return fn.apply(null, args);
@@ -401,7 +418,7 @@ var fluid = fluid || require("infusion"),
     };
     
     flock.input.expandPath = function (path) {
-        return (typeof (path) === "string") ? flock.input.pathExpander(path) : flock.input.expandPaths(path);
+        return (typeof path === "string") ? flock.input.pathExpander(path) : flock.input.expandPaths(path);
     };
     
     flock.input.getValueForPath = function (root, path) {
@@ -442,7 +459,7 @@ var fluid = fluid || require("infusion"),
      * @return {Number|UGen} a scalar value in the case of a value ugen, otherwise the ugen itself
      */
     flock.input.get = function (root, path) {
-        return typeof (path) === "string" ? flock.input.getValueForPath(root, path) :
+        return typeof path === "string" ? flock.input.getValueForPath(root, path) :
             flock.isIterable(path) ? flock.input.getValuesForPathArray(root, path) :
             flock.input.getValuesForPathObject(root, path);
     };
@@ -489,7 +506,7 @@ var fluid = fluid || require("infusion"),
      * @return {UGen} the newly created UGen that was set at the specified path
      */
     flock.input.set = function (root, path, val, baseTarget, valueParser) {
-        return typeof (path) === "string" ?
+        return typeof path === "string" ?
             flock.input.setValueForPath(root, path, val, baseTarget, valueParser) :
             flock.input.setValuesForPaths(root, path, baseTarget, valueParser);
     };
@@ -559,7 +576,7 @@ var fluid = fluid || require("infusion"),
         that.replace = function (newNode, oldNode) {
             var idx = that.nodes.indexOf(oldNode);
             if (idx < 0) {
-                return that.head(node);
+                return that.head(newNode);
             }
             
             that.nodes[idx] = newNode;
@@ -675,7 +692,7 @@ var fluid = fluid || require("infusion"),
                 return;
             }
             
-            var id = typeof (bufDesc) === "string" ? bufDesc : bufDesc.id;
+            var id = typeof bufDesc === "string" ? bufDesc : bufDesc.id;
             delete that.buffers[id];
         };
     };
@@ -756,7 +773,7 @@ var fluid = fluid || require("infusion"),
         gradeNames: ["fluid.littleComponent", "autoInit"]
     });
     
-    flock.autoEnviro.preInit = function (that) {
+    flock.autoEnviro.preInit = function () {
         if (!flock.enviro.shared) {
             flock.init();
         }
@@ -789,7 +806,7 @@ var fluid = fluid || require("infusion"),
             
             for (key in inputs) {
                 input = inputs[key];
-                if (typeof (input) !== "number") {
+                if (typeof input !== "number") {
                     idx = that.insertTree(idx, input);
                     idx++;
                 }
@@ -811,7 +828,7 @@ var fluid = fluid || require("infusion"),
             
             for (key in inputs) {
                 input = inputs[key];
-                if (typeof (input) !== "number") {
+                if (typeof input !== "number") {
                     that.removeTree(input);
                 }
             }
@@ -939,7 +956,7 @@ var fluid = fluid || require("infusion"),
          * @return {Number || UGenDef || Array} the value that was set or retrieved
          */
         that.input = function (path, val, swap) {
-            return !path ? undefined : typeof (path) === "string" ?
+            return !path ? undefined : typeof path === "string" ?
                 arguments.length < 2 ? that.get(path) : that.set(path, val, swap) :
                 flock.isIterable(path) ? that.get(path) : that.set(path, val, swap);
         };
@@ -977,7 +994,7 @@ var fluid = fluid || require("infusion"),
             
             if (!o.synthDef) {
                 fluid.log(fluid.logLevel.IMPORTANT,
-                    "Warning: Instantiating a flock.synth instance with an empty synth def.")
+                    "Warning: Instantiating a flock.synth instance with an empty synth def.");
             }
             
             // Parse the synthDef into a graph of unit generators.
@@ -1193,8 +1210,8 @@ var fluid = fluid || require("infusion"),
                 normValue;
                 
             if (normalizer) {
-                if (typeof(normalizer) === "function") {
-                    norm(voice, ampKey);
+                if (typeof normalizer === "function") {
+                    normalizer(voice, ampKey);
                 } else if (normalizer === "static") {
                     normValue = 1.0 / that.options.maxVoices;
                     voice.input(ampKey, normValue);
@@ -1218,7 +1235,8 @@ var fluid = fluid || require("infusion"),
         
         that.init = function () {
             if (!that.options.initVoicesLazily) {
-                for (var i = 0; i < that.options.maxVoices; i++) {
+                var i;
+                for (i = 0; i < that.options.maxVoices; i++) {
                     that.freeVoices[i] = that.createVoice();
                 }
                 that.nextFreeVoice = that.pooledVoiceAllocator;
@@ -1231,4 +1249,11 @@ var fluid = fluid || require("infusion"),
         return that;
     };
     
+    /*******************************
+     * Error Handling Conveniences *
+     *******************************/
+    
+    flock.bufferDesc = function () {
+        throw new Error("flock.bufferDesc is not defined. Did you forget to include the flocking-buffers.js file?");
+    }
 }());

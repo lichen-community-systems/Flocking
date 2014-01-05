@@ -7,8 +7,12 @@
 */
 
 /*global Float32Array, window, Mike*/
-/*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
-    forin: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
+/*jslint white: false, vars: true, newcap: true, regexp: true, browser: true,
+    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100,
+    indent: 4, plusplus: true, todo: true, culy: true, camelCase: true, eqeqeq: true,
+    freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
+    unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
+    funcscope: false*/
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
@@ -16,8 +20,9 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
     
-    fluid.registerNamespace("flock.ugen");
+    var $ = fluid.registerNamespace("jQuery");
     
+    fluid.registerNamespace("flock.ugen");
     
     /***************************
      * Browser-dependent UGens *
@@ -171,21 +176,21 @@ var fluid = fluid || require("infusion"),
             m.mousePosition = m.isWithinTarget ? pos : 0.0;
         };
         
-        that.overListener = function (e) {
+        that.overListener = function () {
             that.model.isWithinTarget = true;
         };
         
-        that.outListener = function (e) {
+        that.outListener = function () {
             var m = that.model;
             m.isWithinTarget = false;
             m.mousePosition = 0.0;
         };
         
-        that.downListener = function (e) {
+        that.downListener = function () {
             that.model.isMouseDown = true;
         };
         
-        that.upListener = function (e) {
+        that.upListener = function () {
             var m = that.model;
             m.isMouseDown = false;
             m.mousePosition = 0;
@@ -271,11 +276,11 @@ var fluid = fluid || require("infusion"),
             }
         };
         
-        that.mouseDownListener = function (e) {
+        that.mouseDownListener = function () {
             that.model.value = 1.0;
         };
         
-        that.mouseUpListener = function (e) {
+        that.mouseUpListener = function () {
             that.model.value = 0.0;
         };
         

@@ -2,13 +2,16 @@
 * Flocking - Creative audio synthesis for the Web!
 * http://github.com/colinbdclark/flocking
 *
-* Copyright 2011, Colin Clark
+* Copyright 2011-2014, Colin Clark
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global window*/
-/*jslint browser: true, white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
-    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
+/*jslint white: false, vars: true, newcap: true, regexp: true, browser: true,
+    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100,
+    indent: 4, plusplus: true, todo: true, culy: true, camelCase: true, eqeqeq: true,
+    freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
+    unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
+    funcscope: false*/
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");

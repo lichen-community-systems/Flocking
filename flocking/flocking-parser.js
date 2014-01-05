@@ -7,8 +7,12 @@
 */
 
 /*global Float32Array*/
-/*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
-    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
+/*jslint white: false, vars: true, newcap: true, regexp: true, browser: true,
+    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100,
+    indent: 4, plusplus: true, todo: true, culy: true, camelCase: true, eqeqeq: true,
+    freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
+    unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
+    funcscope: false*/
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
@@ -158,7 +162,7 @@ var fluid = fluid || require("infusion"),
         return parsed;
     };
     
-    flock.parse.ugenDef.mergeOptions = function (ugenDef, options) {
+    flock.parse.ugenDef.mergeOptions = function (ugenDef) {
         // TODO: Infusion options merging.
         var defaults = fluid.defaults(ugenDef.ugen) || {};
 

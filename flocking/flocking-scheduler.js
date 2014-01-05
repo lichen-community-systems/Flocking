@@ -6,8 +6,13 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
-    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
+/*global self*/
+/*jslint white: false, vars: true, newcap: true, regexp: true, browser: true,
+    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100,
+    indent: 4, plusplus: true, todo: true, culy: true, camelCase: true, eqeqeq: true,
+    freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
+    unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
+    funcscope: false*/
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
@@ -15,12 +20,13 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
     
+    // TODO: This duplicates code in flocking-core and should be factored differently.
     flock.shim = {
-        URL: typeof (window) !== "undefined" ? window.URL || window.webkitURL || window.msURL : undefined
+        URL: typeof window !== "undefined" ? window.URL || window.webkitURL || window.msURL : undefined
     };
     
     flock.worker = function (code) {
-        var type = typeof (code),
+        var type = typeof code,
             url,
             blob;
         
@@ -187,7 +193,7 @@ var fluid = fluid || require("infusion"),
     
     // This code is only intended to run from within a Worker, via flock.worker.
     flock.scheduler.webWorkerClock.workerImpl = function () {
-        "use strict";
+        "use strict"; // Despite JSHint's protestations, this is necessary.
         
         var flock = flock || {};
         flock.worker = flock.worker || {};
@@ -359,7 +365,7 @@ var fluid = fluid || require("infusion"),
         
         that.repeat = function (interval, changeSpec) {
             var ms = that.timeConverter.value(interval),
-                fn = typeof (changeSpec) === "function" ? changeSpec : 
+                fn = typeof changeSpec === "function" ? changeSpec :
                     flock.scheduler.async.evaluateChangeSpec(changeSpec),
                 listener = that.addIntervalListener(ms, fn);
             
@@ -369,7 +375,7 @@ var fluid = fluid || require("infusion"),
         
         that.once = function (time, changeSpec) {
             var ms = that.timeConverter.value(time),
-                fn = typeof (changeSpec) === "function" ? changeSpec : 
+                fn = typeof changeSpec === "function" ? changeSpec : 
                     flock.scheduler.async.evaluateChangeSpec(changeSpec),
                 listener = that.addScheduleListener(ms, fn);
  
@@ -486,7 +492,7 @@ var fluid = fluid || require("infusion"),
             }
             
             // TODO: Hardcoded to the shared environment.
-            var targetSynth = typeof (changeSpec.synth) === "string" ?
+            var targetSynth = typeof changeSpec.synth === "string" ?
                 flock.enviro.shared.namedNodes[changeSpec.synth] : changeSpec.synth;
             targetSynth.set(staticChanges);
         };
@@ -515,11 +521,11 @@ var fluid = fluid || require("infusion"),
     fluid.registerNamespace("flock.convert");
     
     flock.convert.makeStatelessConverter = function (convertFn) {
-        return function (options) {
+        return function () {
             return {
                 value: convertFn
             };
-        }
+        };
     };
     
     flock.convert.ms = flock.convert.makeStatelessConverter(fluid.identity);
