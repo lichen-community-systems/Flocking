@@ -6,7 +6,7 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*jslint white: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
+/*jshint white: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
 var flock = flock || {};

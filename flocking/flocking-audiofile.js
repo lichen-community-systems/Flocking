@@ -7,7 +7,7 @@
  */
 
 /*global self, Float32Array, Uint8Array, ArrayBuffer, File, FileReader, PolyDataView*/
-/*jslint white: false, vars: true, newcap: true, regexp: true, browser: true,
+/*jshint white: false, vars: true, newcap: true, regexp: true, browser: true,
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100,
     indent: 4, plusplus: true, todo: true, culy: true, camelCase: true, eqeqeq: true,
     freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,

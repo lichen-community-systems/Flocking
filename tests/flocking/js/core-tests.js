@@ -7,7 +7,7 @@
 */
 
 /*global module, test, expect, ok, equal, deepEqual, Float32Array*/
-/*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
+/*jshint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
 var fluid = fluid || require("infusion"),
