@@ -83,3 +83,25 @@ label {
 .CodeMirror-scroll {
     overflow: none;
 }
+#editorRegion, .CodeMirror {
+	height: 100%;
+}
+
+@media screen and (min-width:400px){
+	*,
+	*:before,
+	*:after {
+	  -moz-box-sizing: border-box;
+	  -webkit-box-sizing: border-box;
+	  box-sizing: border-box;
+	}
+	.CodeMirror {
+		padding-top: 6.75em;
+	}
+	.masthead {
+		position: fixed;
+		top: 0;
+		width: 100%;
+		z-index: 100;
+	}
+}
