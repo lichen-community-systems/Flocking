@@ -7,16 +7,19 @@
  */
 
 /*global self, Float32Array, Uint8Array, ArrayBuffer, File, FileReader, PolyDataView*/
-/*jshint white: false, vars: true, newcap: true, regexp: true, browser: true,
-    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100,
-    indent: 4, plusplus: true, todo: true, culy: true, camelCase: true, eqeqeq: true,
+/*jshint white: false, newcap: true, regexp: true, browser: true,
+    forin: false, nomen: true, bitwise: false, maxerr: 100,
+    indent: 4, plusplus: false, curly: true, eqeqeq: true,
     freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
     unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
     funcscope: false*/
 
+
 // Stub out fluid.registerNamespace in cases where we're in a Web Worker and Infusion is unavailable.
-var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undefined" ? require("infusion") : {
+var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undefined" ? require("infusion") : {    
     registerNamespace: function (path) {
+        "use strict";
+        
         if (!path) {
             return;
         }
@@ -40,7 +43,6 @@ var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undef
 var flock = fluid.registerNamespace("flock");
     
 (function () {
-    
     "use strict";
     
     var $ = fluid.registerNamespace("jQuery");

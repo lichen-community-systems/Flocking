@@ -6,9 +6,9 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*jshint white: false, vars: true, newcap: true, regexp: true, browser: true,
-    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100,
-    indent: 4, plusplus: true, todo: true, culy: true, camelCase: true, eqeqeq: true,
+/*jshint white: false, newcap: true, regexp: true, browser: true,
+    forin: false, nomen: true, bitwise: false, maxerr: 100,
+    indent: 4, plusplus: false, curly: true, eqeqeq: true,
     freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
     unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
     funcscope: false*/

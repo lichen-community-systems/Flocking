@@ -9,9 +9,9 @@
 */
 
 /*global require, Float32Array, window, AudioContext, webkitAudioContext*/
-/*jshint white: false, vars: true, newcap: true, regexp: true, browser: true,
-    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100,
-    indent: 4, plusplus: true, todo: true, culy: true, camelCase: true, eqeqeq: true,
+/*jshint white: false, newcap: true, regexp: true, browser: true,
+    forin: false, nomen: true, bitwise: false, maxerr: 100,
+    indent: 4, plusplus: false, curly: true, eqeqeq: true,
     freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
     unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
     funcscope: false*/
@@ -108,7 +108,7 @@ var fluid = fluid || require("infusion"),
     
     flock.requireModule = function (globalName, moduleName) {
         if (!moduleName) {
-            moduleName = browserGlobalName;
+            moduleName = globalName;
         }
         return flock.platform.isBrowser ? window[globalName] :
             (flock.platform.hasRequire ? require(moduleName)[globalName] : undefined);
@@ -1255,5 +1255,5 @@ var fluid = fluid || require("infusion"),
     
     flock.bufferDesc = function () {
         throw new Error("flock.bufferDesc is not defined. Did you forget to include the flocking-buffers.js file?");
-    }
+    };
 }());
