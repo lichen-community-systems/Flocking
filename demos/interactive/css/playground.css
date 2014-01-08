@@ -73,35 +73,44 @@ label {
 
 #editorRegion {
     font-size: 12pt;
+    height: 100%;
     width: 100%;
 }
 
 .CodeMirror {
-    height: auto;
+    height: 100%;
 }
 
 .CodeMirror-scroll {
-    overflow: none;
-}
-#editorRegion, .CodeMirror {
-	height: 100%;
+    overflow: auto;
 }
 
-@media screen and (min-width:400px){
-	*,
-	*:before,
-	*:after {
-	  -moz-box-sizing: border-box;
-	  -webkit-box-sizing: border-box;
-	  box-sizing: border-box;
+*,
+*:before,
+*:after {
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+}
+.masthead {
+     position: fixed;
+     top: 0;
+     width: 100%;
+     z-index: 100;
+}
+#editorRegion {
+     padding-top: 6.75em;
+}
+
+@media screen and (max-width:480px) {
+	.masthead {
+		position: relative;
+	}
+	#editorRegion {
+		padding-top: 0;
+		height: auto;
 	}
 	.CodeMirror {
-		padding-top: 6.75em;
-	}
-	.masthead {
-		position: fixed;
-		top: 0;
-		width: 100%;
-		z-index: 100;
+		height: auto;
 	}
 }
