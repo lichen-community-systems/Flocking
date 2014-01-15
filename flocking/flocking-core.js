@@ -957,7 +957,7 @@ var fluid = fluid || require("infusion"),
                 e.head(that);
             }
             
-            if (!e.isPlaying) {
+            if (!e.model.isPlaying) {
                 e.play();
             }
         };
