@@ -317,7 +317,7 @@ var fluid = fluid || require("infusion"),
         };
         
         var error = function (msg) {
-            throw new Error(msg);
+            throw new Error("Error while resolving buffer " + source.model.src + ": " + msg);
         };
         
         p.then(success, error);
