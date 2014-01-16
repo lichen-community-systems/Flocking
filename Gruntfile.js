@@ -4,6 +4,13 @@ module.exports = function(grunt) {
     grunt.initConfig({
         pkg: grunt.file.readJSON("package.json"),
         
+        jshint: {
+          all: ["flocking/*.js", "demos/**/*.js", "tests/**/*.js", "!**/third-party/**"],
+          options: {
+              jshintrc: true
+          }
+        },
+        
         concat: {
             options: {
                 separator: ";",
@@ -89,6 +96,7 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks("grunt-contrib-uglify");
     grunt.loadNpmTasks("grunt-contrib-clean");
     grunt.loadNpmTasks("grunt-contrib-copy");
+    grunt.loadNpmTasks('grunt-contrib-jshint');
 
-    grunt.registerTask("default", ["clean", "concat", "uglify", "copy"]);
+    grunt.registerTask("default", ["clean", "jshint", "concat", "uglify", "copy"]);
 };

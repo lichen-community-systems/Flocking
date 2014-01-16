@@ -6,6 +6,7 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
+/*global require*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,
@@ -79,14 +80,23 @@ var fluid = fluid || require("infusion"),
                 throw new Error("Promise already completed");
             };
             
-            var i = 0, cb;
-            while (cb = callbacks[i++]) {
-                cb[type] && cb[type](result); 
+            invokeCallbacks(type, result);
+        }
+
+        function invokeCallbacks (type, result) {
+            var i,
+                cb;
+            
+            for (i = 0; i < callbacks.length; i++) {
+                cb = callbacks[i];
+                
+                if (cb[type]) {
+                    cb[type](result);
+                }
             }
             
             callbacks = null;
         }
-
 
         return promise;
     }

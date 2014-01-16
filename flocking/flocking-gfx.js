@@ -6,6 +6,7 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
+/*global require*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,

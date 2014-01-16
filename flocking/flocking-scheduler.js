@@ -6,7 +6,7 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global self*/
+/*global require, self*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,
@@ -193,7 +193,7 @@ var fluid = fluid || require("infusion"),
     
     // This code is only intended to run from within a Worker, via flock.worker.
     flock.scheduler.webWorkerClock.workerImpl = function () {
-        "use strict"; // Despite JSHint's protestations, this is necessary.
+        "use strict"; // jshint ignore:line
         
         var flock = flock || {};
         flock.worker = flock.worker || {};

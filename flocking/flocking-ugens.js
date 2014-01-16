@@ -6,7 +6,7 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global Float32Array*/
+/*global require, Float32Array*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,
@@ -2473,13 +2473,17 @@ var fluid = fluid || require("infusion"),
 
                 // read samples from the allpasses
                 for (j = 0; j < that.buffers_a.length; j++) {
-                    if (++that.bufferindices_a[j] == allpassTunings[j]) that.bufferindices_a[j] = 0;
+                    if (++that.bufferindices_a[j] === allpassTunings[j]) {
+                        that.bufferindices_a[j] = 0;
+                    }
                     that.readsamp_a[j] = that.buffers_a[j][that.bufferindices_a[j]];
                 }
 
                 // foreach comb buffer, we perform same filtering (only bufferlen differs)
                 for (j = 0; j < that.buffers_c.length; j++) {
-                    if (++that.bufferindices_c[j] == tunings[j]) that.bufferindices_c[j] = 0;
+                    if (++that.bufferindices_c[j] === tunings[j]) {
+                        that.bufferindices_c[j] = 0;
+                    }
                     var readsamp_c = that.buffers_c[j][that.bufferindices_c[j]];
                     that.filterx_c[j] = (damp2 * that.filtery_c[j]) + (damp1 * that.filterx_c[j]);
                     that.buffers_c[j][that.bufferindices_c[j]] = inp_scaled + (room_scaled * that.filterx_c[j]);
