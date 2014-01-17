@@ -6,9 +6,7 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global module, test, expect, ok, equal, deepEqual, Float32Array*/
-/*jshint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
-    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
+/*global require, module, test, asyncTest, expect, ok, equal, deepEqual, start*/
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
@@ -17,6 +15,8 @@ var fluid = fluid || require("infusion"),
     "use strict";
     
     flock.init();
+    
+    var $ = fluid.registerNamespace("jQuery");
     
     var simpleSynthDef = {
         ugen: "flock.ugen.out",
@@ -797,7 +797,7 @@ var fluid = fluid || require("infusion"),
             data: {
                 channels: [new Float32Array([22, 23, 24, 25, 26, 27])]
             }
-        })
+        });
         
         flock.parse.bufferForDef.resolveBuffer(catBuffer, undefined, s.enviro);
         flock.parse.bufferForDef.resolveBuffer(dogBuffer, undefined, s.enviro);
@@ -809,14 +809,14 @@ var fluid = fluid || require("infusion"),
         s.set("play.buffer", catIdBufDef);
         deepEqual(play.inputs.buffer, catIdBufDef,
             "After setting an object id reference, the actual input should reflect the bufDef.");
-        deepEqual(play.buffer, s.enviro.buffers["cat"],
+        deepEqual(play.buffer, s.enviro.buffers.cat,
             "And the actual buffer should be the correct bufferDesc from the environment.");
         
         // Set a raw id reference.
         s.set("play.buffer", "dog");
         equal(play.inputs.buffer, "dog",
             "After setting a raw id reference, the actual input should reflect the value actually set.");
-        deepEqual(play.buffer, s.enviro.buffers["dog"],
+        deepEqual(play.buffer, s.enviro.buffers.dog,
             "And the actual buffer should be the correct bufferDesc from the environment.");
     });
     
@@ -840,7 +840,7 @@ var fluid = fluid || require("infusion"),
     });
     
     
-    module("nodeList and ugenNodeList")
+    module("nodeList and ugenNodeList");
     
     test("flock.nodeList", function () {
         var nl = flock.nodeList();
@@ -873,13 +873,13 @@ var fluid = fluid || require("infusion"),
         deepEqual(nl.nodes, [testNodes[0], testNodes[2]],
             "Adding a node to the head of the list should put it in the correct position.");
         deepEqual(nl.namedNodes, {"first": testNodes[0], "third": testNodes[2]},
-            "The collection of namedNodes should contain all nodes with a valid nickName.")
+            "The collection of namedNodes should contain all nodes with a valid nickName.");
         
         nl.tail(testNodes[0]);
         deepEqual(nl.nodes, [testNodes[0], testNodes[2], testNodes[0]],
             "Adding a node twice should include it twice, in the correct positions.");
         deepEqual(nl.namedNodes, {"first": testNodes[0], "third": testNodes[2]},
-            "The collection of namedNodes should remain the same.")
+            "The collection of namedNodes should remain the same.");
         
         nl.remove(testNodes[0]);
         deepEqual(nl.nodes, [testNodes[2], testNodes[0]],
@@ -985,7 +985,7 @@ var fluid = fluid || require("infusion"),
         }, "The node should have been removed from the named nodes collection.");
         
         ugnl.insertTree(0, testNodes[0]);
-        equal(ugnl.nodes.length, 4, "The node and its inputs should have been added.")
+        equal(ugnl.nodes.length, 4, "The node and its inputs should have been added.");
         deepEqual(ugnl.namedNodes, {
             "1": testNodes[0], 
             "1.1": testNodes[0].inputs.cat.inputs.dog,
@@ -994,7 +994,7 @@ var fluid = fluid || require("infusion"),
         }, "The named nodes collection should contain the added unit generator and all its inputs.");
         
         ugnl.swapTree(testNodes[1], testNodes[0]);
-        equal(ugnl.nodes.length, 4, "The new node should have been swapped in, leaving all the previous inputs.")
+        equal(ugnl.nodes.length, 4, "The new node should have been swapped in, leaving all the previous inputs.");
         deepEqual(ugnl.namedNodes, {
             "1.1": testNodes[0].inputs.cat.inputs.dog,
             "1.2": testNodes[0].inputs.cat,
@@ -1163,7 +1163,7 @@ var fluid = fluid || require("infusion"),
     var checkValueOnNodes = function (nodes, ugenName, inputName, expected) {
         $.each(nodes, function (i, node) {
             var actual = node.namedNodes[ugenName].input(inputName);
-            equal(expected, actual, "Node #" + i + " should have the correct value.")
+            equal(expected, actual, "Node #" + i + " should have the correct value.");
         });
     };
     

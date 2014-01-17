@@ -1,6 +1,18 @@
-var demo = demo || {};
+/*
+ * Flocking demo utilities
+ * http://github.com/colinbdclark/flocking
+ *
+ * Copyright 2011-2014, Colin Clark
+ * Dual licensed under the MIT and GPL Version 2 licenses.
+ */
+
+/*global require*/
+var fluid = fluid || require("infusion"),
+    demo = fluid.registerNamespace("demo");
 
 (function () {
+    
+    "use strict";
     
     demo.toggleButtonView = function(synth, options) {
         var that = {
@@ -39,7 +51,7 @@ var demo = demo || {};
         };
         
         // Wire it up to a button on the page.
-        that.button.addEventListener("click", function (e) {
+        that.button.addEventListener("click", function () {
             if (!that.model.isPlaying) {
                 that.play();
             } else {

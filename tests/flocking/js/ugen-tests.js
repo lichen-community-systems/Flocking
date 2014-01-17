@@ -6,15 +6,16 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global module, test, expect, ok, equal, deepEqual, Float32Array*/
-/*jshint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
-    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
+/*global require, module, test, ok, equal, deepEqual, Float32Array*/
 
-var flock = flock || {};
-flock.test = flock.test || {};
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
+    
+    var $ = fluid.registerNamespace("jQuery");
+    fluid.registerNamespace("flock.test");
     
     flock.init();
     
@@ -336,7 +337,8 @@ flock.test = flock.test || {};
 
         lfNoise.gen(sampleRate);
         flock.test.unbrokenInRangeSignal(lfNoise.output, -1.0, 1.0);
-        flock.test.continuousArray(lfNoise.output, 0.0001, "The output should be smooth and continuous when interpolated.")
+        flock.test.continuousArray(lfNoise.output, 0.0001,
+            "The output should be smooth and continuous when interpolated.");
     });
     
     
@@ -957,15 +959,15 @@ flock.test = flock.test || {};
         deepEqual(asr.output, flock.generate(64, 0.0),
             "When the gate is closed and the release stage has completed, the envelope's output should be 0.0.");
          
-         // Trigger the attack stage again.
-         asr.input("gate", 1.0);
-         asr.gen(64);
-         testEnvelopeStage(asr.output, 64, 0.0, 1.0, "second attack");
+        // Trigger the attack stage again.
+        asr.input("gate", 1.0);
+        asr.gen(64);
+        testEnvelopeStage(asr.output, 64, 0.0, 1.0, "second attack");
          
-         // And the release stage again.
-         asr.input("gate", 0.0);
-         asr.gen(64);
-         testEnvelopeStage(asr.output, 64, 1.0, 0.0, "second release");
+        // And the release stage again.
+        asr.input("gate", 0.0);
+        asr.gen(64);
+        testEnvelopeStage(asr.output, 64, 1.0, 0.0, "second release");
     });
     
     test("simpleASR release midway through attack", function () {
@@ -1080,6 +1082,7 @@ flock.test = flock.test || {};
             expand: 1,
             sources: {
                 ugen: "flock.mock.ugen",
+                id: "bufferMock",
                 options: {
                     buffer: flock.test.ascendingBuffer(64, 1)
                 }
@@ -1115,30 +1118,35 @@ flock.test = flock.test || {};
         var actual = inSynth.namedNodes["in"].output;
         equal(actual, inSynth.enviro.buses[3],
             "With a single source input, the output of flock.ugen.in should be the actual bus referenced.");
-        deepEqual(actual, outSynthDef.inputs.sources.options.buffer,
+        deepEqual(actual, outSynth.get("bufferMock").options.buffer,
             "And it should reflect exactly the output of the flock.ugen.out that is writing to the buffer.");
     });
     
     test("flock.ugen.in() multiple bus input", function () {
         flock.enviro.shared = flock.enviro(inEnviroOptions);
         
-        var bus3Synth = flock.synth({
-            synthDef: outSynthDef
-        });
+
         var bus4Def = $.extend(true, {}, outSynthDef, {
             inputs: {
                 bus: 4
             }
         });
-        var bus4Synth = flock.synth({
-            synthDef: bus4Def
-        });
+
         var multiInDef = $.extend(true, {}, inSynthDef);
         multiInDef.inputs.bus = [3, 4];
+        
+        flock.synth({
+            synthDef: outSynthDef
+        });
+        
+        flock.synth({
+            synthDef: bus4Def
+        });
+        
         var inSynth = flock.synth({
             synthDef: multiInDef
         });
-        
+
         inSynth.enviro.gen();
         var actual = inSynth.namedNodes["in"].output;
         var expected = flock.generate(64, function (i) {
@@ -1338,7 +1346,7 @@ flock.test = flock.test || {};
             $.each(filterInputValues, function (i, inputs) {
                 fn(inputs);
             });
-        })
+        });
     };
     
     // Test all coefficient recipes.

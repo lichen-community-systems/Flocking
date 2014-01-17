@@ -2,13 +2,11 @@
 * Flocking Unit Generator Benchmark Tests
 * http://github.com/colinbdclark/flocking
 *
-* Copyright 2011, Colin Clark
+* Copyright 2011-2014, Colin Clark
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
 /*global sheep*/
-/*jshint white: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
-    forin: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
 var flock = flock || {};
 

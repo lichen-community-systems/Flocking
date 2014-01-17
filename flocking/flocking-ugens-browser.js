@@ -2,7 +2,7 @@
 * Flocking Browser-Dependent Unit Generators
 * http://github.com/colinbdclark/flocking
 *
-* Copyright 2013, Colin Clark
+* Copyright 2013-2014, Colin Clark
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
