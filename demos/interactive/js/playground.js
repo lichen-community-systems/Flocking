@@ -1,22 +1,21 @@
-/*!
-* Flocking - Creative audio synthesis for the Web!
-* http://github.com/colinbdclark/flocking
-*
-* Flocking Interactive Demo Playground
-*   Copyright 2012, Vitus Lorenz-Meyer (https://github.com/derDoc)
-*   Copyright 2013, Colin Clark
-*
-* Dual licensed under the MIT and GPL Version 2 licenses.
-*/
+/*
+ * Flocking Interactive Demo Playground
+ *   Copyright 2012, Vitus Lorenz-Meyer (https://github.com/derDoc)
+ *   Copyright 2013-2014, Colin Clark
+ *
+ * Dual licensed under the MIT and GPL Version 2 licenses.
+ */
 
-/*global window*/
-/*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
-    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
+/*global require, CodeMirror, window*/
 
-var demo = demo || {};
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
+    
+    var $ = fluid.registerNamespace("jQuery"),
+        demo = fluid.registerNamespace("demo");
     
     flock.init();
     
@@ -26,7 +25,7 @@ var demo = demo || {};
         theme = theme || "flockingcm";
         container = typeof (container) === "string" ? document.querySelector(container) : container;
         
-        that.editor = CodeMirror(container, {
+        that.editor = CodeMirror(container, { // jshint ignore:line
             mode: {
                 name: "javascript",
                 json: true
@@ -43,20 +42,20 @@ var demo = demo || {};
     
     var setupPlayButton = function (that) {
         // TODO: might be able to avoid eval()'ing if we load each demo's JavaScript source via Ajax and inject it as a script block.
-        that.playButton.click(function (e) {
-    		if (!flock.enviro.shared.model.isPlaying) {
-    		    eval(that.editor.getDoc().getValue());
+        that.playButton.click(function () {
+            if (!flock.enviro.shared.model.isPlaying) {
+                eval(that.editor.getDoc().getValue()); // jshint ignore:line
                 
-    			that.playButton.html("Pause");
-    			that.playButton.removeClass("paused");
-    			that.playButton.addClass("playing");
-    			flock.enviro.shared.play();
-    		} else {
-    			that.playButton.html("Play");
-    			that.playButton.removeClass("playing");
-    			that.playButton.addClass("paused");
-    			flock.enviro.shared.reset();
-    		}
+                that.playButton.html("Pause");
+                that.playButton.removeClass("paused");
+                that.playButton.addClass("playing");
+                flock.enviro.shared.play();
+            } else {
+                that.playButton.html("Play");
+                that.playButton.removeClass("playing");
+                that.playButton.addClass("paused");
+                flock.enviro.shared.reset();
+            }
         });
     };
     

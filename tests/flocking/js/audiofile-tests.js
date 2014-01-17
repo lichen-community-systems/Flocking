@@ -6,17 +6,21 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global module, test, expect, ok, equal, deepEqual, Float32Array*/
+/*global require, module, asyncTest, equal, deepEqual, start*/
 
-var flock = flock || {};
-flock.test = flock.test || {};
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
     
+    fluid.registerNamespace("flock.test");
+    
     var expectedData = [
-    	0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 
-    	0.0, -0.1, -0.2, -0.3, -0.4, -0.5, -0.6, -0.7, -0.8, -0.9, -1.0, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 
+        0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
+        0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1,
+        0.0, -0.1, -0.2, -0.3, -0.4, -0.5, -0.6, -0.7, -0.8, -0.9, -1.0,
+        -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1,
         0.0, 0.1
     ];
     
@@ -42,16 +46,13 @@ flock.test = flock.test || {};
                     name: "Read a non-base64 data URL with no MIME type",
                     src: "data:," + expectedUnencoded
                 }
-            ],
-            i, formatSpec;
+            ];
     
-        for (i = 0; i < dataFormatCombinations.length; i++) {
-            formatSpec = dataFormatCombinations[i];
-            
+        fluid.each(dataFormatCombinations, function (formatSpec) {
             asyncTest(formatSpec.name, function () {
                 flock.file.readBufferFromDataUrl({
                     src: formatSpec.src,
-                    success: function (data, type) {
+                    success: function (data) {
                         deepEqual(
                             new Int8Array(data), 
                             new Int8Array(expectedArrayBuffer), 
@@ -62,7 +63,7 @@ flock.test = flock.test || {};
                     }
                 });
             });
-        }
+        });
     })();
 
     (function () {
@@ -210,8 +211,10 @@ flock.test = flock.test || {};
             var roundedBuf = [],
                 i;
             
+            digits = digits !== undefined ? digits : 1;
+            
             for (i = 0; i < buf.length; i++) {
-                roundedBuf[i] = parseFloat(buf[i].toFixed(1));
+                roundedBuf[i] = parseFloat(buf[i].toFixed(digits));
             }
             
             return roundedBuf;

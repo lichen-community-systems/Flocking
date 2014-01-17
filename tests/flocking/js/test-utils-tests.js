@@ -6,9 +6,7 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global module, test, expect, ok, equal, deepEqual, Float32Array*/
-/*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
-    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
+/*global module, test, Float32Array*/
 
 var flock = flock || {};
 
@@ -92,7 +90,7 @@ var flock = flock || {};
     test("sineishArray expected success.", function () {
         var buffer = new Float32Array([-1.0, -0.5, 0.0, 0.5, 1.0]);
         flock.test.sineishArray(buffer, 1.0, false,
-            "sineishArray should pass when the buffer rises and falls consistently.")
+            "sineishArray should pass when the buffer rises and falls consistently.");
     });
     
     test("arrayContainsOnlyValues expected success", function () {

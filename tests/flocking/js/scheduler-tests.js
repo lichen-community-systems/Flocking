@@ -6,11 +6,10 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global module, test, expect, ok, equal, deepEqual, Float32Array*/
-/*jslint white: true, vars: true, plusplus: true, undef: true, newcap: true, regexp: true, browser: true, 
-    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
+/*global require, module, test, asyncTest, start, expect, ok, equal, deepEqual*/
 
-var flock = flock || {};
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
@@ -38,8 +37,8 @@ var flock = flock || {};
         
         expected = 4 * oneBeatMs;
         equal(converter.value(4), expected,
-            "4 beats at 60 bpm seconds should convert to " + expected + " ms.")
-            equal(converter.value(0), 0, "0 beats at 60 bpm should convert to 0 ms.");
+            "4 beats at 60 bpm seconds should convert to " + expected + " ms.");
+        equal(converter.value(0), 0, "0 beats at 60 bpm should convert to 0 ms.");
 
         converter = flock.convert.beats({
             bpm: 0
@@ -119,7 +118,7 @@ var flock = flock || {};
         });
         
         makeRecordingListener = function (record, prop) {
-            return function (scheduledTime) {
+            return function () {
                 record[prop] = Date.now() - scheduledAt;
             };
         };
@@ -133,7 +132,7 @@ var flock = flock || {};
                 fired.listener2 <= scheduledDelays[1] + tolerance,
                 "The second callback should be scheduled at the expected time, within a tolerance of " + tolerance + "ms." +
                 " Actual: " + fired.listener2);
-                start();
+            start();
         };
         
         listener1 = sked.once(100, makeRecordingListener(fired, "listener1"));
@@ -239,9 +238,9 @@ var flock = flock || {};
             runs++;
         };
         
-        listener1 = sked.repeat(100, makeRecordingListener(fired, "listener1"));
-        listener2 = sked.repeat(100, makeRecordingListener(fired, "listener2"));
-        testingListener = sked.repeat(100, testingListenerImpl);
+        listener1 = sked.repeat(interval, makeRecordingListener(fired, "listener1"));
+        listener2 = sked.repeat(interval, makeRecordingListener(fired, "listener2"));
+        testingListener = sked.repeat(interval, testingListenerImpl);
     });
     
     
@@ -253,8 +252,6 @@ var flock = flock || {};
                 fired = {},
                 runNextTestStage,
                 makeRecordingListener,
-                listener1,
-                listener2,
                 stages;
         
             sked = flock.scheduler.async({

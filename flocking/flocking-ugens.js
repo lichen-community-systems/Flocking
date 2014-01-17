@@ -2,13 +2,17 @@
 * Flocking Unit Generators
 * http://github.com/colinbdclark/flocking
 *
-* Copyright 2011, Colin Clark
+* Copyright 2011-2014, Colin Clark
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global Float32Array*/
-/*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
-    forin: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
+/*global require, Float32Array*/
+/*jshint white: false, newcap: true, regexp: true, browser: true,
+    forin: false, nomen: true, bitwise: false, maxerr: 100,
+    indent: 4, plusplus: false, curly: true, eqeqeq: true,
+    freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
+    unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
+    funcscope: false*/
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
@@ -17,8 +21,8 @@ var fluid = fluid || require("infusion"),
     "use strict";
 
     var $ = fluid.registerNamespace("jQuery"),
-        DSP = typeof(window) !== "undefined" ? window.DSP : 
-        (typeof (require) !== "undefined" ? require("dspapi").DSP : undefined);
+        DSP = flock.requireModule("DSP", "dspapi"),
+        Filter = flock.requireModule("Filter", "dspapi");
     
     /*************
      * Utilities *
@@ -45,7 +49,7 @@ var fluid = fluid || require("infusion"),
         }
     };
     
-    flock.krMul = function (numSamps, output, mulInput, addInput) {
+    flock.krMul = function (numSamps, output, mulInput) {
         var mul = mulInput.output[0],
             i;
         for (i = 0; i < numSamps; i++) {
@@ -53,7 +57,7 @@ var fluid = fluid || require("infusion"),
         }
     };
     
-    flock.mul = function (numSamps, output, mulInput, addInput) {
+    flock.mul = function (numSamps, output, mulInput) {
         var mul = mulInput.output,
             i;
         for (i = 0; i < numSamps; i++) {
@@ -166,7 +170,7 @@ var fluid = fluid || require("infusion"),
          * @param {Number || UGenDef} val a scalar value (for Value ugens) or a UGenDef object
          * @return {UGen} the newly-created UGen that was set at the specified path
          */
-        that.set = function (path, val, swap) {
+        that.set = function (path, val) {
             return flock.input.set(that.inputs, path, val, that, function (ugenDef) {
                 if (ugenDef === null || ugenDef === undefined) {
                     return;
@@ -224,7 +228,7 @@ var fluid = fluid || require("infusion"),
             
             for (i = 0; i < tags.length; i++) {
                 that.tags.push(tags[i]);
-            };
+            }
             
             that.options.audioSettings = that.options.audioSettings || flock.enviro.shared.audioSettings;
             that.model.sampleRate = options.sampleRate || that.options.audioSettings.rates[that.rate];
@@ -262,7 +266,7 @@ var fluid = fluid || require("infusion"),
             that.mulAdd(numSamps);
         };
         
-        that.onInputChanged = function (inputName) {
+        that.onInputChanged = function () {
             var inputs = that.inputs,
                 m = that.model;
             
@@ -826,7 +830,7 @@ var fluid = fluid || require("infusion"),
     flock.ugen.t2a = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
-        that.gen = function (numSamps) {
+        that.gen = function () {
             var m = that.model,
                 trig = that.inputs.source.output[0],
                 offset = that.inputs.offset.output[0] | 0,
@@ -985,7 +989,6 @@ var fluid = fluid || require("infusion"),
                 loop = that.inputs.loop.output[0],
                 start = (that.inputs.start.output[0] * bufLen) | 0,
                 end = (that.inputs.end.output[0] * bufLen) | 0,
-                buffers = that.options.audioSettings.buffers,
                 i,
                 j,
                 samp;
@@ -1025,7 +1028,6 @@ var fluid = fluid || require("infusion"),
                 loop = that.inputs.loop.output[0],
                 start = (that.inputs.start.output[0] * bufLen) | 0,
                 end = (that.inputs.end.output[0] * bufLen) | 0,
-                buffers = that.options.audioSettings.buffers,
                 i,
                 j,
                 samp;
@@ -1053,20 +1055,20 @@ var fluid = fluid || require("infusion"),
         };
         
         that.onInputChanged = function (inputName) {
-            var m = that.model,
-                inputs = that.inputs;
+            var inputs = that.inputs,
+                speed = inputs.speed;
             
             that.onBufferInputChanged(inputName);
             
             // TODO: Optimize for non-regular speed constant rate input.
-            that.gen = (inputs.speed.rate === flock.rates.CONSTANT && inputs.speed.output[0] === 1.0) ?
+            that.gen = (speed.rate === flock.rates.CONSTANT && speed.output[0] === 1.0) ?
                 that.crRegularSpeedGen : that.krSpeedGen;
             
             that.calculateStrides();
             flock.onMulAddInputChanged(that);
         };
         
-        that.onBufferReady = function (bufDesc) {
+        that.onBufferReady = function () {
             var m = that.model,
                 end = that.inputs.end.output[0],
                 chan = that.inputs.channel.output[0],
@@ -1146,9 +1148,6 @@ var fluid = fluid || require("infusion"),
         };
         
         that.onInputChanged = function (inputName) {
-            var m = that.model,
-                inputs = that.inputs;
-            
             that.onBufferInputChanged(inputName);
             that.calculateStrides();
             flock.onMulAddInputChanged(that);
@@ -1863,8 +1862,7 @@ var fluid = fluid || require("infusion"),
         
         that.gen = function () {
             var max = that.inputs.max.output[0], // Max is kr.
-                source = that.inputs.source.output,
-                i;
+                source = that.inputs.source.output;
             
             // Note, this normalizes the source input ugen's output buffer directly in place.
             that.output = flock.normalize(source, max);
@@ -1965,7 +1963,7 @@ var fluid = fluid || require("infusion"),
             that.model.value = that.inputs.sources.output[0];
         };
         
-        that.onInputChanged = function (inputName) {
+        that.onInputChanged = function () {
             var sources = that.inputs.sources;
             if (flock.isIterable(sources)) {
                 that.gen = that.arraySourceGen;
@@ -2048,7 +2046,7 @@ var fluid = fluid || require("infusion"),
     flock.ugen.filter = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
-        that.gen = function (numSamps) {
+        that.gen = function () {
             var m = that.model,
                 inputs = that.inputs,
                 q = inputs.q.output[0],
@@ -2065,7 +2063,7 @@ var fluid = fluid || require("infusion"),
         };
         
         that.init = function () {
-            var recipeOpt = that.options.recipe
+            var recipeOpt = that.options.recipe;
             var recipe = typeof (recipeOpt) === "string" ? flock.get(recipeOpt) : recipeOpt;
             
             if (!recipe) {
@@ -2225,7 +2223,7 @@ var fluid = fluid || require("infusion"),
                 var lambda = 1 / Math.tan(Math.PI * freq / model.sampleRate);
                 var lambdaSquared = lambda * lambda;
                 var rootTwoLambda = flock.ROOT2 * lambda;
-                var b0 = 1 / (1 + rootTwoLambda + lambdaSquared)
+                var b0 = 1 / (1 + rootTwoLambda + lambdaSquared);
                 co.b[0] = b0;
                 co.b[1] = 2 * b0;
                 co.b[2] = b0;
@@ -2290,7 +2288,6 @@ var fluid = fluid || require("infusion"),
                 var w0 = flock.TWOPI * freq / model.sampleRate;
                 var cosw0 = Math.cos(w0);
                 var sinw0 = Math.sin(w0);
-                var bw = freq / q;
                 var alpha = sinw0 / (2 * q);
                 var oneLessCosw0 = 1 - cosw0;
                 var a0 = 1 + alpha;
@@ -2430,7 +2427,7 @@ var fluid = fluid || require("infusion"),
             that.mulAdd(numSamps);
         };
 
-        that.onInputChanged = function (inputName) {
+        that.onInputChanged = function () {
             flock.onMulAddInputChanged(that);
         };
         
@@ -2456,29 +2453,37 @@ var fluid = fluid || require("infusion"),
         var allpassTunings = [556, 441, 341, 225];
 
         that.gen = function (numSamps) {
-            var m = that.model,
-                inputs = that.inputs,
+            var inputs = that.inputs,
                 out = that.output,
                 source = inputs.source.output,
-                mix = inputs.mix.output[0], dry = 1-mix,
-                roomsize = inputs.roomsize.output[0], room_scaled = roomsize * 0.28 + 0.7,
-                damp = inputs.damp.output[0], damp1=damp*0.4, damp2=1.0-damp1,
-                i,j;
+                mix = inputs.mix.output[0],
+                dry = 1 - mix,
+                roomsize = inputs.roomsize.output[0],
+                room_scaled = roomsize * 0.28 + 0.7,
+                damp = inputs.damp.output[0],
+                damp1 = damp * 0.4, 
+                damp2 = 1.0 - damp1,
+                i,
+                j;
             
             for (i = 0; i < numSamps; i++) {
                 // read inputs
                 var inp = source[i];
                 var inp_scaled = inp * 0.015;
-                var outsamp=0.0;
+
                 // read samples from the allpasses
-                for(j = 0; j < that.buffers_a.length; j++) {
-                    if(++that.bufferindices_a[j] == allpassTunings[j]) that.bufferindices_a[j] = 0;
+                for (j = 0; j < that.buffers_a.length; j++) {
+                    if (++that.bufferindices_a[j] === allpassTunings[j]) {
+                        that.bufferindices_a[j] = 0;
+                    }
                     that.readsamp_a[j] = that.buffers_a[j][that.bufferindices_a[j]];
                 }
 
                 // foreach comb buffer, we perform same filtering (only bufferlen differs)
-                for(j = 0; j < that.buffers_c.length; j++) {
-                    if(++that.bufferindices_c[j] == tunings[j]) that.bufferindices_c[j] = 0;
+                for (j = 0; j < that.buffers_c.length; j++) {
+                    if (++that.bufferindices_c[j] === tunings[j]) {
+                        that.bufferindices_c[j] = 0;
+                    }
                     var readsamp_c = that.buffers_c[j][that.bufferindices_c[j]];
                     that.filterx_c[j] = (damp2 * that.filtery_c[j]) + (damp1 * that.filterx_c[j]);
                     that.buffers_c[j][that.bufferindices_c[j]] = inp_scaled + (room_scaled * that.filterx_c[j]);
@@ -2487,12 +2492,14 @@ var fluid = fluid || require("infusion"),
 
                 // each allpass is handled individually, with different calculations made and stored into the delaylines
                 var ftemp8 = (that.filtery_c[6] + that.filtery_c[7]);
-
-                that.buffers_a[3][that.bufferindices_a[3]] = ((((0.5 * that.filterx_a[3]) + that.filtery_c[0]) + (that.filtery_c[1] + that.filtery_c[2]))
-                                    + ((that.filtery_c[3] + that.filtery_c[4]) + (that.filtery_c[5] + ftemp8)));
+                
+                that.buffers_a[3][that.bufferindices_a[3]] = ((((0.5 * that.filterx_a[3]) + that.filtery_c[0]) + 
+                    (that.filtery_c[1] + that.filtery_c[2])) + 
+                    ((that.filtery_c[3] + that.filtery_c[4]) + (that.filtery_c[5] + ftemp8)));
                 that.filterx_a[3] = that.readsamp_a[3];
-                that.filtery_a[3] = (that.filterx_a[3] - (((that.filtery_c[0] + that.filtery_c[1]) + (that.filtery_c[2] + that.filtery_c[3]))
-                                    + ((that.filtery_c[4] + that.filtery_c[5]) + ftemp8)));
+                that.filtery_a[3] = (that.filterx_a[3] - 
+                    (((that.filtery_c[0] + that.filtery_c[1]) + (that.filtery_c[2] + that.filtery_c[3])) + 
+                    ((that.filtery_c[4] + that.filtery_c[5]) + ftemp8)));
                 that.buffers_a[2][that.bufferindices_a[2]] = ((0.5 * that.filterx_a[2]) + that.filtery_a[3]);
                 that.filterx_a[2] = that.readsamp_a[2];
                 that.filtery_a[2] = (that.filterx_a[2] - that.filtery_a[3]);
@@ -2506,48 +2513,52 @@ var fluid = fluid || require("infusion"),
                 that.filtery_a[0] = (that.filterx_a[0] - that.filtery_a[1]);
                 out[i] = ((dry * inp) + (mix * that.filtery_a[0]));
             }
+            
             that.mulAdd(numSamps);
         };
 
         // Initialise the delay lines
-        that.buffers_c            = new Array(8);
-        that.bufferindices_c      = new Int32Array(8);
+        that.buffers_c = [];
+        that.bufferindices_c = new Int32Array(8);
         that.filterx_c = new Float32Array(8);
         that.filtery_c = new Float32Array(8);
         var spread = that.model.spread;
         var i, j;
-        for(i = 0; i < that.buffers_c.length; i++) {
-            that.buffers_c[i] = new Float32Array(tunings[i]+spread);
+        for (i = 0; i < that.buffers_c.length; i++) {
+            that.buffers_c[i] = new Float32Array(tunings[i] + spread);
             that.bufferindices_c[i] = 0;
             that.filterx_c[i] = 0;
             that.filtery_c[i] = 0;
-            for(j = 0; j < tunings[i]+spread; j++) {
+            for (j = 0; j < tunings[i] + spread; j++) {
                 that.buffers_c[i][j] = 0;
             }
         }
-        that.buffers_a = new Array(4);
-        that.bufferindices_a      = new Int32Array(4);
+        that.buffers_a = [];
+        that.bufferindices_a = new Int32Array(4);
         that.filterx_a = new Float32Array(4);
         that.filtery_a = new Float32Array(4);
-        that.readsamp_a = new Float32Array(4); // "readsamp" vars are temporary values read back from the delay lines, not stored but only used in the gen loop
-        for(i = 0; i < that.buffers_a.length; i++) {
+        // "readsamp" vars are temporary values read back from the delay lines, 
+        // not stored but only used in the gen loop.
+        that.readsamp_a = new Float32Array(4);
+        
+        for (i = 0; i < that.buffers_a.length; i++) {
             that.bufferindices_a[i] = 0;
             that.filterx_a[i] = 0;
             that.filtery_a[i] = 0;
             that.readsamp_a[i] = 0;
             // TODO is this what the spread is meant to do?
-            for(j = 0; j < allpassTunings.length; j++) {
+            for (j = 0; j < allpassTunings.length; j++) {
                 allpassTunings[j] += spread;
             }
             that.buffers_a[i] = new Float32Array(allpassTunings[i]);
-            for(j = 0; j < allpassTunings[i]; j++) {
+            for (j = 0; j < allpassTunings[i]; j++) {
                 that.buffers_a[i][j] = 0;
             }
         }
 
-        that.onInputChanged = function (inputName) {
+        that.onInputChanged = function () {
             flock.onMulAddInputChanged(that);
-        }
+        };
 
         that.onInputChanged();
         return that;
@@ -2729,7 +2740,7 @@ var fluid = fluid || require("infusion"),
         };
         
         that.allocateGrains = function (numGrains) {
-            numGrains = numGrains || that.model.maxNumGrains
+            numGrains = numGrains || that.model.maxNumGrains;
             
             for (var i = 0; i < numGrains; i++) {
                 that.model.freeGrains.push({
@@ -2795,7 +2806,6 @@ var fluid = fluid || require("infusion"),
                 source = inputs.source.output,
                 trig = inputs.trigger.output[0],
                 freq = inputs.freq.output[0],
-                freq = freq,
                 i;
                 
             if (trig > 0.0 && m.prevTrig <= 0.0) {
@@ -2960,20 +2970,19 @@ var fluid = fluid || require("infusion"),
                 m = that.model,
                 scale = m.scale,
                 out = that.output,
-                start,
-                end,
+                start = inputs.start ? Math.round(inputs.start.output[0]) : 0,
+                end = inputs.end ? Math.round(inputs.end.output[0]) : list.length,
+                startItem,
                 i,
-                j,
-                val;
-            
-            start = inputs.start ? Math.round(inputs.start.output[0]) : 0,
-            end = inputs.end ? Math.round(inputs.end.output[0]) : list.length,
-            
-            m.value = m.value === undefined ? list[start] : m.value;
-            m.nextIdx = m.nextIdx === undefined ? start : m.nextIdx;
+                j;
             
             if (m.value === undefined) {
-                m.value = 0.0;
+                startItem = list[start];
+                m.value = (startItem === undefined) ? 0.0 : startItem;
+            }
+            
+            if (m.nextIdx === undefined) {
+                m.nextIdx = start;
             }
             
             for (i = 0, j = 0; i < numSamps; i++, j += m.strides.freq) {
@@ -2998,7 +3007,7 @@ var fluid = fluid || require("infusion"),
             that.mulAdd(numSamps);
         };
          
-        that.onInputChanged = function (inputName) {
+        that.onInputChanged = function () {
             that.model.scale = that.rate !== flock.rates.DEMAND ? that.model.sampleDur : 1;
             
             if (!that.inputs.list) {

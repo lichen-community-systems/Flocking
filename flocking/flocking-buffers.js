@@ -1,14 +1,18 @@
 /*
-* Flocking Buffer
+* Flocking Audio Buffers
 * http://github.com/colinbdclark/flocking
 *
-* Copyright 2013, Colin Clark
+* Copyright 2013-14, Colin Clark
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global Float32Array*/
-/*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
-    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
+/*global require*/
+/*jshint white: false, newcap: true, regexp: true, browser: true,
+    forin: false, nomen: true, bitwise: false, maxerr: 100,
+    indent: 4, plusplus: false, curly: true, eqeqeq: true,
+    freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
+    unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
+    funcscope: false*/
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
@@ -16,10 +20,32 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
     
-    // Brian Cavalier and John Hann's Tiny Promises library.
+    // Based on Brian Cavalier and John Hann's Tiny Promises library.
     // https://github.com/unscriptable/promises/blob/master/src/Tiny2.js
     function Promise() {
-        "use strict";
+        var resolve = function (result) {
+            complete("resolve", result);
+            promise.state = "fulfilled";
+        };
+        
+        var reject = function (err) {
+            complete("reject", err);
+            promise.state = "rejected";
+        };
+        
+        var then = function (resolve, reject) {
+            if (callbacks) {
+                callbacks.push({
+                    resolve: resolve, 
+                    reject: reject 
+                });
+            } else {
+                var fn = promise.state === "fulfilled" ? resolve : reject;
+                fn(promise.value);
+            }
+
+            return this;
+        };
         
         var callbacks = [],
             promise = {
@@ -35,39 +61,41 @@ var fluid = fluid || require("infusion"),
                     }
                 }
             };
+
         
         function complete(type, result) {
+            var rejector = function (resolve, reject) {
+                reject(result); 
+                return this;
+            };
+            
+            var resolver = function (resolve) {
+                resolve(result); 
+                return this;
+            };
+            
             promise.value = result;
+            promise.then = type === "reject" ? rejector : resolver;
+            promise.resolve = promise.reject = function () {
+                throw new Error("Promise already completed");
+            };
             
-            promise.then = type === 'reject'
-                ? function(resolve, reject) { reject(result); return this; }
-                : function(resolve)         { resolve(result); return this; };
+            invokeCallbacks(type, result);
+        }
+
+        function invokeCallbacks (type, result) {
+            var i,
+                cb;
             
-            promise.resolve = promise.reject = function() { throw new Error("Promise already completed"); };
-            
-            var i = 0, cb;
-            while(cb = callbacks[i++]) { cb[type] && cb[type](result); }
+            for (i = 0; i < callbacks.length; i++) {
+                cb = callbacks[i];
+                
+                if (cb[type]) {
+                    cb[type](result);
+                }
+            }
             
             callbacks = null;
-        }
-        
-        function resolve(result) {
-            complete('resolve', result);
-            promise.state = "fulfilled";
-        }
-        function reject(err) {
-            complete('reject', err);
-            promise.state = "rejected";
-        }
-        function then(resolve, reject) {
-            if (callbacks) {
-                callbacks.push({ resolve: resolve, reject: reject });
-            } else {
-                var fn = promise.state === "fulfilled" ? resolve : reject;
-                fn(promise.value);
-            }
-
-            return this;
         }
 
         return promise;
@@ -225,7 +253,7 @@ var fluid = fluid || require("infusion"),
     };
     
     flock.bufferSource.set = function (that, bufDesc) {
-        var state = that.model.state
+        var state = that.model.state;
         if (state === "start" || state === "in-progress") {
             that.bufferPromise.promise.resolve(bufDesc);
         }

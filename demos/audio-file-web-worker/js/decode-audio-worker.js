@@ -1,25 +1,29 @@
+/*global flock, importScripts, postMessage, self*/
 
-"use strict";
+(function () {
 
-importScripts(
-    "../third-party/polydataview/js/polydataview.js",
-    "./flocking-audiofile.js"
-);
+    "use strict";
 
-flock.audio.workerDecoder = {};
+    importScripts(
+        "../third-party/polydataview/js/polydataview.js",
+        "./flocking-audiofile.js"
+    );
 
-flock.audio.workerDecoder.sendBuffer = function (buffer) {
-    postMessage({
-        msg: "afterDecoded",
-        buffer: buffer
+    flock.audio.workerDecoder = {};
+
+    flock.audio.workerDecoder.sendBuffer = function (buffer) {
+        postMessage({
+            msg: "afterDecoded",
+            buffer: buffer
+        });
+    };
+
+    self.addEventListener("message", function (e) {
+        var url;
+        if (e.data.msg === "decode") {
+            url = e.data.url.toString();
+            flock.audio.decode(url, flock.audio.workerDecoder.sendBuffer);
+        }
     });
-};
 
-onmessage = function (e) {
-    var url;
-    if (e.data.msg === "decode") {   
-        url = new String(e.data.url).toString();
-        flock.audio.decode(url, flock.audio.workerDecoder.sendBuffer);
-    }
-};
-
+}());

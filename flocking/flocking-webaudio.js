@@ -2,13 +2,17 @@
 * Flocking WebAudio Strategy
 * http://github.com/colinbdclark/flocking
 *
-* Copyright 2013, Colin Clark
+* Copyright 2013-2014, Colin Clark
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global Float32Array, AudioContext, webkitAudioContext*/
-/*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
-    forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
+/*global require*/
+/*jshint white: false, newcap: true, regexp: true, browser: true,
+    forin: false, nomen: true, bitwise: false, maxerr: 100,
+    indent: 4, plusplus: false, curly: true, eqeqeq: true,
+    freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
+    unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
+    funcscope: false*/
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
@@ -50,7 +54,10 @@ var fluid = fluid || require("infusion"),
                 blockSize = audioSettings.blockSize,
                 playState = that.model.playState,
                 chans = audioSettings.chans,
-                outBufs = e.outputBuffer;
+                outBufs = e.outputBuffer,
+                chan,
+                i,
+                samp;
                 
             // If there are no nodes providing samples, write out silence.
             if (that.nodeEvaluator.nodes.length < 1) {
@@ -60,17 +67,17 @@ var fluid = fluid || require("infusion"),
                 return;
             }
 
-            for (var i = 0; i < that.model.krPeriods; i++) {
+            for (i = 0; i < that.model.krPeriods; i++) {
                 that.nodeEvaluator.gen();
                 var offset = i * blockSize;
 
                 // Loop through each channel.
-                for (var chan = 0; chan < chans; chan++) {
+                for (chan = 0; chan < chans; chan++) {
                     var sourceBuf = that.nodeEvaluator.buses[chan],
                         outBuf = outBufs.getChannelData(chan);
                     
                     // And output each sample.
-                    for (var samp = 0; samp < blockSize; samp++) {
+                    for (samp = 0; samp < blockSize; samp++) {
                         outBuf[samp + offset] = sourceBuf[samp];
                     }
                 }
