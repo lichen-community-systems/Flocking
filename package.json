@@ -1,16 +1,28 @@
 {
   "name": "flocking",
   "version": "0.1.0",
-  "description": "Creative audio synthesis for the Web",
+  "description": "Creative audio synthesis for the Web and Node.js",
+  "author": "Colin Clark",
   "homepage": "http://flockingjs.org/",
-  "scripts": {
-    "preinstall": "git submodule update --init",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  
   "repository": {
     "type": "git",
     "url": "git://github.com/colinbdclark/Flocking.git"
   },
+  
+  "bugs": "http://github.com/colinbdclark/Flocking/issues",
+  
+  "licenses": [
+      {
+          "type": "MIT",
+          "url": "http://opensource.org/licenses/MIT"
+      },
+      {
+          "type": "GPL",
+          "url": "http://opensource.org/licenses/GPL-3.0"
+      }
+  ],
+  
   "keywords": [
     "Flocking",
     "WebAudio",
@@ -19,13 +31,16 @@
     "music",
     "synthesis"
   ],
-  "author": "Colin Clark",
-  "license": [
-    "GPL",
-    "MIT"
-  ],
-  "bugs": "http://github.com/colinbdclark/Flocking/issues",
+  
   "readmeFilename": "README.md",
+  
+  "scripts": {
+    "preinstall": "git submodule update --init",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  
+  "main": "nodejs/index.js",
+  
   "devDependencies": {
     "grunt": "~0.4.1",
     "grunt-contrib-uglify": "~0.2.0",
@@ -36,5 +51,15 @@
     "grunt-git-revision": "~0.0.1",
     "node-static": "~0.7.2",
     "grunt-git-revision": "0.0.1"
+  },
+  
+  "dependencies": {
+      "infusion": "git://github.com/fluid-project/infusion.git",
+      "speaker": "git://github.com/TooTallNate/node-speaker.git",
+      "dspapi": "git://github.com/colinbdclark/node-dsp.git"
+  },
+
+  "engines": {
+      "node" : "0.10.x"
   }
 }

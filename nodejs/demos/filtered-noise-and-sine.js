@@ -101,7 +101,7 @@ clock.once(600, function () {
         "noiseSource.mul.start": 0.02,
         "noiseSource.mul.end": 0.0
     });
-        
+    
     // Wait ten seconds, then clean up.
     clock.once(10.0, clock.end);
 });

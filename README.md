@@ -16,6 +16,7 @@ Because it's just JSON, every instrument you build using Flocking can be easily 
 Flocking was inspired by the [SuperCollider](http://supercollider.sourceforge.net/) desktop synthesis 
 environment. If you're familiar with SuperCollider, you'll feel at home with Flocking.
 
+
 Community
 ---------
 
@@ -41,6 +42,7 @@ Flocking is in active development. It has bugs, it's growing fast, and help is w
  * MediaStream-based audio input
  * The ability to record sessions and export an audio file from your browser
  
+
 Getting Started
 ---------------
 
@@ -132,6 +134,7 @@ If you need to, you can always schedule events via plain old functions:
         });
     });
 
+
 Using Individual Flocking Files (for development)
 -------------------------------------------------
 
@@ -169,16 +172,52 @@ And if you're using an older version of Firefox (< 25), you'll need:
     
     <script src="../../../flocking/flocking-firefox.js"></script>
 
+
+Running Flocking in Node.js
+---------------------------
+
+Flocking is configured as an npm module. If you want to use it in a Node.js application, you can add it to your package.json file's dependencies block:
+
+    dependencies: {
+        "flocking": "git://github.com/colinbdclark/node-flocking.git"
+    }
+
+Then, in your application, use the Fluid Infusion global module loading system to import Flocking:
+
+    var fluid = require("infusion"),
+        flock = fluid.require("flocking");
+
+From there, you can use Flocking just as if it were running in a web browser. Keep in mind that, unless you use other third-party packages, there won't be a DOM present, and Fluid Infusion provides only a minimal version of jQuery.
+
+
+Running the Flocking Node.js Demos
+----------------------------------
+
+Just run the demo file with the "node" process. For example,
+
+    node nodejs/demos/audio-file.js
+
+or:
+
+    node nodejs/demos/fast-scheduling.js
+
+or:
+
+    node nodejs/demos/filtered-noise-and-sine.js
+
+
 Compatibility
 -------------
 
 Flocking is currently tested on the latest versions of Firefox, Chrome and Safari on Mac, Windows, Linux, iOS, and Android.
+
 
 Licensing
 ---------
 
 Flocking is distributed under the terms the MIT or GPL 2 Licenses. Choose the license that best suits your
 project. The text of the MIT and GPL licenses are at the root of the Flocking directory. 
+
 
 Credits
 -------
@@ -193,4 +232,3 @@ a composer, thinker, and early pioneer of computer music who was my composition 
  * [Myles Borins](https://github.com/thealphanerd) for pushing the limits of Flocking very early in its development
  * Alex Geddie for teaching me a ton about synthesis and computer music
  * [Antranig Basman](https://github.com/amb26) for code review and advice
- 

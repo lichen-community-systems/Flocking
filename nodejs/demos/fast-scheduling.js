@@ -1,5 +1,5 @@
 var fluid = require("infusion"),
-    flock = require(__dirname + "/index.js"),
+    flock = require(__dirname + "/../index.js"),
     loader = fluid.getLoader(__dirname);
 
 flock.init({
