@@ -1,0 +1,41 @@
+body {
+	margin: 2%;
+}
+
+table, tr, th, td {
+	border: 2px solid #666;
+}
+
+table {
+    width: 65%;
+	border-collapse: collapse;
+}
+
+.sheep-statusArea {
+    background-color: #ddd;
+}
+
+.sheep-statusArea p {
+    text-align: center;
+    font-family: Helvetica, sans-serif;
+    font-weight: bold;
+}
+
+th { 
+	background: #666;
+	color: #fff;
+	border: none;
+}
+
+th, td {
+	text-align: left;
+	padding: 2%;
+}
+
+tr:nth-child(odd) {
+	background: #eee;
+}
+
+td:nth-child(1) {
+	width: 40%;
+}
