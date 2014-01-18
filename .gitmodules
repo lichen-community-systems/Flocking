@@ -1,6 +1,0 @@
-[submodule "third-party/polydataview"]
-	path = third-party/polydataview
-	url = git://github.com/colinbdclark/PolyDataView.git
-[submodule "tests/performance/third-party/sheep"]
-	path = tests/performance/third-party/sheep
-	url = git://github.com/colinbdclark/sheep.js.git
