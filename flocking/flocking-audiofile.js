@@ -16,7 +16,7 @@
 
 
 // Stub out fluid.registerNamespace in cases where we're in a Web Worker and Infusion is unavailable.
-var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undefined" ? require("infusion") : {    
+var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undefined" ? require("infusion") : {
     registerNamespace: function (path) {
         "use strict";
         
@@ -99,7 +99,7 @@ var flock = fluid.registerNamespace("flock");
     /*****************
      * File Utilties *
      *****************/
-     
+    
     fluid.registerNamespace("flock.file");
     
     flock.file.mimeTypes = {
@@ -117,8 +117,20 @@ var flock = fluid.registerNamespace("flock");
     };
     
     flock.file.parseFileExtension = function (fileName) {
-        var ext = fileName.substring(fileName.lastIndexOf(".") + 1),
-            alias = flock.file.typeAliases[ext];
+        var lastDot = fileName.lastIndexOf("."),
+            ext,
+            alias;
+        
+        // TODO: Better error handling in cases where we've got unrecognized file extensions.
+        //       i.e. we should try to read the header instead of relying on extensions.
+        if (lastDot < 0) {
+            throw new Error("The file '" + fileName + "' does not have a valid extension.");
+        }
+        
+        ext = fileName.substring(lastDot + 1);
+        ext = ext.toLowerCase();
+        alias =  flock.file.typeAliases[ext];
+        
         return alias || ext;
     };
     
@@ -313,7 +325,7 @@ var flock = fluid.registerNamespace("flock");
         }
         
         if (scripts.length < 1) {
-            throw new Error("Flocking error: could not load the Audio Decoder into a worker because " + 
+            throw new Error("Flocking error: could not load the Audio Decoder into a worker because " +
                 "flocking-all.js or flocking-core.js could not be found.");
         }
         
@@ -342,7 +354,7 @@ var flock = fluid.registerNamespace("flock");
             frame,
             chan;
 
-        // Initialize each channel.            
+        // Initialize each channel.
         for (i = 0; i < numChans; i++) {
             chans[i] = new Float32Array(numFrames);
         }
@@ -502,7 +514,7 @@ var flock = fluid.registerNamespace("flock");
         }
         
         return t === "AIFF" ? "Int" : "Float";
-    }; 
+    };
     
     flock.audio.decode.chunked = function (data, formatSpec) {
         var dv = new PolyDataView(data, 0, data.byteLength),
@@ -600,7 +612,7 @@ var flock = fluid.registerNamespace("flock");
         chunkIDs: {
             "FORM": "container",
             "COMM": "format",
-            "SSND": "data" 
+            "SSND": "data"
         },
         
         headerLayout: {
@@ -627,7 +639,7 @@ var flock = fluid.registerNamespace("flock");
                 
                 order: ["formatType"],
                 
-                chunkLayouts: {    
+                chunkLayouts: {
                     "COMM": {
                         fields: {
                             numChannels: "getInt16",
