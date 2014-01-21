@@ -99,7 +99,7 @@ var flock = fluid.registerNamespace("flock");
     /*****************
      * File Utilties *
      *****************/
-     
+    
     fluid.registerNamespace("flock.file");
     
     flock.file.mimeTypes = {
@@ -117,8 +117,20 @@ var flock = fluid.registerNamespace("flock");
     };
     
     flock.file.parseFileExtension = function (fileName) {
-        var ext = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase(),
-            alias = flock.file.typeAliases[ext];
+        var lastDot = fileName.lastIndexOf("."),
+            ext,
+            alias;
+        
+        // TODO: Better error handling in cases where we've got unrecognized file extensions.
+        //       i.e. we should try to read the header instead of relying on extensions.
+        if (lastDot < 0) {
+            throw new Error("The file '" + fileName + "' does not have a valid extension.");
+        }
+        
+        ext = fileName.substring(lastDot + 1);
+        ext = ext.toLowerCase();
+        alias =  flock.file.typeAliases[ext];
+        
         return alias || ext;
     };
     
