@@ -234,19 +234,11 @@ var flock = fluid.registerNamespace("flock");
         
         var wrappedSuccess = function (rawData, type) {
             var decoders = flock.audio.decode,
-                decoder;
-                
-            if (!options) {
                 decoder = decoders.async;
-            } else if (options.decoder) {
+            
+            if (options.decoder) {
                 decoder = typeof (options.decoder) === "string" ?
-                    fluid.getGlobalValue(options.decoder) : options.decoder;
-            } else if (options.async === false) {
-                decoder = decoders.sync;
-            } else if (flock.platform.isWebAudio) {
-                decoder = flock.audio.decode.webAudio;
-            } else {
-                decoder = decoders.async;
+                     fluid.getGlobalValue(options.decoder) : options.decoder;
             }
             
             decoder({
@@ -277,6 +269,10 @@ var flock = fluid.registerNamespace("flock");
         }
     };
     
+    /**
+     * Asynchronously decodes the specified ArrayBuffer rawData using
+     * the browser's Web Audio Context.
+     */
     flock.audio.decode.webAudio = function (o) {
         var ctx = flock.enviro.shared.audioStrategy.context,
             success = function (audioBuffer) {
@@ -287,11 +283,8 @@ var flock = fluid.registerNamespace("flock");
         ctx.decodeAudioData(o.rawData, success, o.error);
     };
     
-    /**
-     * Asynchronously decodes the specified rawData in a Web Worker.
-     */
-    flock.audio.decode.async = function (options) {
-        var workerUrl = flock.audio.decode.async.findWorkerUrl(options),
+    flock.audio.decode.workerAsync = function (options) {
+        var workerUrl = flock.audio.decode.workerAsync.findUrl(options),
             w = new Worker(workerUrl);
         
         w.addEventListener("message", function (e) {
@@ -312,7 +305,7 @@ var flock = fluid.registerNamespace("flock");
         });
     };
     
-    flock.audio.decode.async.findWorkerUrl = function (options) {
+    flock.audio.decode.workerAsync.findUrl = function (options) {
         if (options && options.workerUrl) {
             return options.workerUrl;
         }
@@ -345,6 +338,9 @@ var flock = fluid.registerNamespace("flock");
         
         return baseUrl + workerFileName;
     };
+    
+    flock.audio.decode.async = flock.platform.isWebAudio ?
+        flock.audio.decode.webAudio : flock.audio.decode.workerAsync;
     
     flock.audio.decodeArrayBuffer = function (data, type) {
         var formatSpec = flock.audio.formats[type];
