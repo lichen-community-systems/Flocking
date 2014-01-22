@@ -121,10 +121,8 @@ var flock = fluid.registerNamespace("flock");
             ext,
             alias;
         
-        // TODO: Better error handling in cases where we've got unrecognized file extensions.
-        //       i.e. we should try to read the header instead of relying on extensions.
         if (lastDot < 0) {
-            throw new Error("The file '" + fileName + "' does not have a valid extension.");
+            return undefined;
         }
         
         ext = fileName.substring(lastDot + 1);
@@ -245,6 +243,8 @@ var flock = fluid.registerNamespace("flock");
                     fluid.getGlobalValue(options.decoder) : options.decoder;
             } else if (options.async === false) {
                 decoder = decoders.sync;
+            } else if (flock.platform.isWebAudio) {
+                decoder = flock.audio.decode.webAudio;
             } else {
                 decoder = decoders.async;
             }
@@ -275,6 +275,16 @@ var flock = fluid.registerNamespace("flock");
                 throw e;
             }
         }
+    };
+    
+    flock.audio.decode.webAudio = function (o) {
+        var ctx = flock.enviro.shared.audioStrategy.context,
+            success = function (audioBuffer) {
+                var bufDesc = flock.bufferDesc.fromAudioBuffer(audioBuffer);
+                o.success(bufDesc);
+            };
+        
+        ctx.decodeAudioData(o.rawData, success, o.error);
     };
     
     /**

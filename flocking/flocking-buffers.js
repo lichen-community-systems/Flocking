@@ -118,6 +118,13 @@ var fluid = fluid || require("infusion"),
     };
     
     flock.bufferDesc = function (data) {
+        var fn = flock.platform.isWebAudio && data instanceof AudioBuffer ?
+            flock.bufferDesc.fromAudioBuffer : flock.bufferDesc.fromRawData;
+        
+        return fn(data);
+    };
+    
+    flock.bufferDesc.fromRawData = function (data) {
         data.container = data.container || {};
         data.format = data.format || {};
 
@@ -128,6 +135,29 @@ var fluid = fluid || require("infusion"),
         
         return data;
     };
+    
+    flock.bufferDesc.fromAudioBuffer = function (audioBuffer) {
+        var desc = {
+            container: {},
+            format: {
+                sampleRate: audioBuffer.sampleRate,
+                numChannels: audioBuffer.numberOfChannels,
+                numSampleFrames: audioBuffer.length,
+                duration: audioBuffer.duration
+            },
+            data: {
+                channels: []
+            }
+        },
+        i;
+        
+        for (i = 0; i < audioBuffer.numberOfChannels; i++) {
+            desc.data.channels.push(audioBuffer.getChannelData(i));
+        }
+        
+        return desc;
+    };
+    
 
     /**
      * Represents a source for fetching buffers.
