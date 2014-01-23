@@ -64,20 +64,53 @@ And then link to the Flocking file in your HTML:
 Using Flocking
 --------------
 
-At the moment, there are a handful of key concepts in Flocking: Unit Generators (ugens), Synths, SynthDefs, Schedulers, and the Environment.
+Flocking consists of a handful of central components, along with declarative specifications for creating them. These include: Unit Generators (ugens), Synths, SynthDefs, Schedulers, and the Environment.
 
 **Unit Generators** are the basic building blocks of synthesis. They have multiple inputs and a single output buffer, and 
 they do the primary work of generating or processing audio signals in Flocking. A unit generator can be wired up as an 
 input to another unit generator, enabling the creation of sophisticated graphs of ugens. Unit generators implement one 
-primary method, _gen(numSamps)_, which is responsible for processing the audio signal.
+primary method, _gen(numSamps)_, which is responsible for processing the audio signal. Typically, you never interact directly with unit generators. Instead, you create "unit generator definitions" (ugenDefs) in JSON, and let Flocking take care of creating the actual collection of unit generators. Here's an example of a ugenDef:
+
+    {
+        ugen: "flock.ugen.sinOsc", // The fully-qualified name of the desired unit generator,
+                                   // specified as a "key path" (a dot-separated string).
+        
+        rate: "audio",             // The rate at which the unit generator should run.
+        
+        inputs: {                  // The input values for this unit generator. Each UGen has different inputs.
+            freq: 440              // For convenience, these inputs don't need to be nested inside the "inputs"
+        },                         // container, but you might want to for readability.
+        
+        options: {
+            interpolation: "linear" // Other non-signal options such as interpolation rates, etc.
+                                    // Options are also specific to the type of unit generator.
+        }
+    }
+
+So, instead of manipulating unit generators directly, you usually interact with Synths instead.
 
 **Synths** represent synthesizers or self-contained bundle of unit generators. Multiple synths can run at the same time,
 using shared buffers to create graphs of loosely-coupled signal generators and processors For example, a mixing board Synth 
 could be created to mix and process signals from several tone-generating Synths, all without any dependency or awareness 
 between them. As a convenience, Synths implement _play()_ and _pause()_ methods and expose named unit generators as inputs. 
-Inputs can be modified in real time using the _inputs()_ method. For example:
 
-    synth.input("carrier.freq", 440);
+A Synth's inputs can be modified in real time by using its _get()_ and _set()_ methods. For example:
+
+Get the value of an input:
+
+    var freq = synth.get("carrier.freq");
+
+Set the value of an input:
+
+    synth.set("carrier.freq", 440);
+
+Set the value of multiple inputs:
+
+    synth.set({
+        "carrier.freq": 440,
+        "carrier.mul": 0.5,
+        "modulator.freq": 123
+    });
 
 There are three signal rates in Flocking: control rate (kr), audio rate (ar), and constant rate (cr). The synthesis 
 engine will pull sample data from unit generators at the control rate (by default, every 64 samples). Control rate unit 
@@ -96,10 +129,39 @@ by another sine oscillator ("mod"):
         mul: {                          // Modulate the amplitude of this ugen with another ugen.
             id: "mod",                      // Name this one "mod"
             ugen: "flock.ugen.sinOsc",      // Also of type Sine Oscillator
-            rate: "control",                // This oscillator changes slowly, so it can run at control rate.
             freq: 1.0                       // Give it a frequency of 1 Hz, or one wobble per second.
         }
     }
+
+**The Environment** is the component responsible for evaluating the graph of Synths and outputting their samples to the current audio output strategy. The Environment is a singleton that is, by default, stored at the global path _flock.enviro.shared_. It manages a tree of Synth (or SynthGroup) instances and evaluates them in order, and exposes a set of methods for managing the order of the Synth graph.
+
+The environment needs to be started prior to outputting sound. This can be done by calling the _play()_ method.
+
+Starting the shared Environment:
+
+    flock.enviro.shared.play();
+
+By default, a Synth is automatically added to the tail of the synth graph, which means it will start playing immediately. If you want to defer the playing of a Synth to a later time, you can override the _addToEnvironment_ option when you instantiate it:
+
+    var mySynth = flock.synth({
+        synthDef: {
+            ugen: "flock.ugen.sin",
+            freq: 440
+        },
+        addToEnvironment: false
+    });
+
+To manage the Environment's synth graph manually, you can use the methods provided by flock.nodeList:
+
+Add a synth to the head of the graph (meaning it will be evaluated first):
+
+    flock.enviro.shared.head(mySynth);
+    
+Add a synth to the tail of the graph (meaning it will be evaluated after all other synths):
+
+    flock.enviro.shared.tail(mySynth);
+
+Synths provide two convenience methods, _play()_ and _pause()_. Under the covers, these methods simply start the Environment if necessary, and then add the synth to the tail of the environment. In the long run, these methods may be removed from the framework to make the relationship between the Environment and Synths clearer to users.
 
 **Schedulers** are components that allow you to schedule changes to Synths over time. Currently, there is one type of Scheduler, the asynchronous scheduler. It is driven by the browser's notoriously inaccurate setTimeout() and setInterval() clocks. A sample accurate scheduler will be provided in a future release of Flocking, but in the meantime the asynchronous scheduler does a decent job of keeping non-robotic time. Here's an example of the declarative powers of the Flocking scheduler:
 
@@ -133,6 +195,8 @@ If you need to, you can always schedule events via plain old functions:
             "carrier.mul.duration": 1.0
         });
     });
+    
+The Flocking scheduler is still under active development and its API will change as it evolves.
 
 
 Using Individual Flocking Files (for development)
