@@ -226,6 +226,7 @@ Flocking was written by Colin Clark. It is named after a piece by [James Tenney]
 a composer, thinker, and early pioneer of computer music who was my composition teacher and a huge influence on my work. I hope you find this library useful enough to create projects as beautiful and inspiring as Jim's _Flocking_.
 
 ### Thanks to:###
+ * [Johnny Taylor](https://github.com/abledaccess) for styling improvements to the Flocking Playground
  * [Dan Stowell](https://github.com/danstowell) for the Freeverb and Delay1 unit generators
  * [Mayank Sanganeria](http://github.com/e7mac) for his granulator unit generator
  * [Vitus](https://github.com/derDoc) for his contributions to the interactive Flocking Playground
