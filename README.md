@@ -46,19 +46,14 @@ Flocking is in active development. It has bugs, it's growing fast, and help is w
 Getting Started
 ---------------
 
-Flocking includes a build system, which will generate a single file that is easy to include in your web page. Before you start, you'll need to have [Node.js](http://nodejs.org) installed, too.
+Concatenated and minified Flocking files, suitable for development and production respectively, are included in the source code repository in the _dist_ directory. Flocking can also be built manually using Grunt. 
 
-Install grunt and related dependencies:
-    
-    npm install
+To link to Flocking's development file:
 
-To make a build, simply run:
-
-    grunt
-
-And then link to the Flocking file in your HTML:
-
+    <!-- This includes Flocking and all its dependencies, including jQuery 2.0 and Infusion 1.5 -->
     <script src="flocking/dist/flocking-all.js"></script>
+
+For more information on using Flocking in a browser, read the [Getting Started](docs/getting-started.md) tutorial. If you want to use Flocking in Node.js, read the [Flocking in Node.js](docs/nodejs.md) tutorial.
 
 
 Using Flocking
@@ -197,49 +192,6 @@ If you need to, you can always schedule events via plain old functions:
     });
     
 The Flocking scheduler is still under active development and its API will change as it evolves.
-
-Using Flocking on the Web
--------------------------
-
-Concatenated and minified Flocking files are committed to the source code repository, and can be built manually using Grunt. Here's how to link to them in your page:
-
-    <!-- This includes Flocking and all its dependencies, including jQuery 2.0 and Infusion 1.5 -->
-    <script src="flocking-all.js"></script>
-    
-For more information on using Flocking in a browser, read the [Getting Started](docs/getting-started.md) tutorial.
-
-
-Running Flocking in Node.js
----------------------------
-
-Flocking is configured as an npm module. If you want to use it in a Node.js application, you can add it to your package.json file's dependencies block:
-
-    dependencies: {
-        "flocking": "git://github.com/colinbdclark/node-flocking.git"
-    }
-
-Then, in your application, use the Fluid Infusion global module loading system to import Flocking:
-
-    var fluid = require("infusion"),
-        flock = fluid.require("flocking");
-
-From there, you can use Flocking just as if it were running in a web browser. Keep in mind that, unless you use other third-party packages, there won't be a DOM present, and Fluid Infusion provides only a minimal version of jQuery.
-
-
-Running the Flocking Node.js Demos
-----------------------------------
-
-Just run the demo file with the "node" process. For example,
-
-    node nodejs/demos/audio-file.js
-
-or:
-
-    node nodejs/demos/fast-scheduling.js
-
-or:
-
-    node nodejs/demos/filtered-noise-and-sine.js
 
 
 Compatibility
