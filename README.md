@@ -198,43 +198,15 @@ If you need to, you can always schedule events via plain old functions:
     
 The Flocking scheduler is still under active development and its API will change as it evolves.
 
+Using Flocking on the Web
+-------------------------
 
-Using Individual Flocking Files (for development)
--------------------------------------------------
+Concatenated and minified Flocking files are committed to the source code repository, and can be built manually using Grunt. Here's how to link to them in your page:
 
-If you'd prefer to link to the individual Flocking files during development, these are the basic required dependencies:
-
-    <!-- jQuery -->
-    <script src="flocking/third-party/jquery/js/jquery-2.0.0.js"></script>
+    <!-- This includes Flocking and all its dependencies, including jQuery 2.0 and Infusion 1.5 -->
+    <script src="flocking-all.js"></script>
     
-    <!-- Infusion -->
-    <script src="flocking/third-party/infusion/js/Fluid.js"></script>
-    <script src="flocking/third-party/infusion/js/FluidIoC.js"></script>
-    <script src="flocking/third-party/infusion/js/DataBinding.js"></script>
-    
-    <!-- The DSP API Polyfill -->
-    <script src="flocking/third-party/dspapi/js/dspapi.js"></script>
-
-    <!-- Flocking -->
-    <script src="flocking/flocking/flocking-core.js"></script>
-    <script src="flocking/flocking/flocking-scheduler.js"></script>
-    <script src="flocking/flocking/flocking-webaudio.js"></script>
-    <script src="flocking/flocking/flocking-parser.js"></script>
-    <script src="flocking/flocking/flocking-ugens.js"></script>
-    <script src="flocking/flocking/flocking-ugens-browser.js"></script>
-
-In addition, if you're working with WAV or AIFF files, these files are required:
-
-    <script src="../../../third-party/polydataview/js/polydataview.js"></script>
-    <script src="../../../flocking/flocking-audiofile.js"></script>
-
-If you're using the flock.ugen.scope unit generator, you'll also need:
-
-    <script src="../../../flocking/flocking-gfx.js"></script>
-
-And if you're using an older version of Firefox (< 25), you'll need:
-    
-    <script src="../../../flocking/flocking-firefox.js"></script>
+For more information on using Flocking in a browser, read the [Getting Started](docs/getting-started.md) tutorial.
 
 
 Running Flocking in Node.js

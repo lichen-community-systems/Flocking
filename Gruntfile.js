@@ -57,7 +57,10 @@ module.exports = function(grunt) {
         
         uglify: {
             options: {
-                banner: "<%= flock.banners.short %>"
+                banner: "<%= flock.banners.short %>",
+                beautify: {
+                    ascii_only: true
+                }
             },
             dist: {
                 files: [
@@ -92,6 +95,12 @@ module.exports = function(grunt) {
             }
         },
         
+        githooks: {
+            all: {
+                "pre-commit": "default",
+            }
+        },
+        
         flock: {
             banners: {
                 short: "/*! Flocking <%= pkg.version %> r<%= meta.revision %>, Copyright <%= grunt.template.today('yyyy') %> Colin Clark | flockingjs.org */\n\n"
@@ -106,6 +115,7 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks("grunt-contrib-copy");
     grunt.loadNpmTasks("grunt-contrib-jshint");
     grunt.loadNpmTasks("grunt-git-revision");
+    grunt.loadNpmTasks("grunt-githooks");
     
     grunt.registerTask("default", ["clean", "revision", "jshint", "concat", "uglify", "copy"]);
 };
