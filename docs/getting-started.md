@@ -13,9 +13,65 @@ The Flocking source code is hosted on Github, a community for sharing and contri
 Here's how:
 
     <!-- This includes Flocking and all its dependencies, including jQuery 2.0 and Infusion 1.5 -->
-    <script src="flocking-all.js"></script>
+    <script src="flocking/flocking-all.js"></script>
 
+## Example HTML Page ##
+
+Here is an example of an HTML page that uses Flocking, which you can use as a template for your own projects:
+
+    <!DOCTYPE html>
+
+    <html lang="en">
+        <head>
+            <title>A Flocking Project</title>
+
+            <script src="flocking/flocking-all.js"></script>
+            <script src="myStuff.js"></script>
     
+        </head>
+
+        <body>
+            <!-- Your markup goes here -->
+    
+            <script>
+                myStuff.play();
+            </script>
+        </body>
+    </html>
+
+
+And an example JavaScript file:
+
+    // Wrap everything in a function to keep your stuff private.
+    (function () {
+
+        // JavaScript strict mode is a good thing.
+        "use strict";
+    
+        // Define a unique global namespace for your stuff.
+        // You should change this to a namespace that is appropriate for your project.
+        fluid.registerNamespace("myStuff");
+
+        // Expose any public functions or constructors as properties on your namesapce.
+        myStuff.play = function () {
+            var mySynth = flock.synth({
+                synthDef: {
+                    ugen: "flock.ugen.sin",
+                    freq: {
+                        ugen: "flock.ugen.lfNoise",
+                        freq: 10,
+                        mul: 380,
+                        add: 60
+                    },
+                    mul: 0.1
+                }
+            });
+    
+            flock.enviro.shared.play();
+        };
+
+    }());
+
 ## For Experienced Web Developers ##
 
 Flocking is hosted on Github. Here's how to get started:
@@ -73,56 +129,6 @@ And if you're using an older version of Firefox (< 25), you'll need:
     <script src="../../../flocking/flocking-firefox.js"></script>
 
 
-## Example HTML Page ##
-
-Here is an example of an HTML page that uses Flocking, which you can use as a template for your own projects:
-
-    <!DOCTYPE html>
-
-    <html lang="en">
-        <head>
-            <title>A Flocking Project</title>
-            <link rel="stylesheet" type="text/css" href="third-party/sheep/css/sheep.css" />
-        
-            <script src="js/flocking/flocking-all.js"></script>
-            <script src="js/myStuff.js"></script>
-            
-        </head>
-    
-        <body>
-            <!-- Your markup goes here -->
-            
-            <script>
-                myStuff.play();
-            </script>
-        </body>
-    </html>
-
-And an example JavaScript file:
-    
-    // Wrap everything in a function to keep your stuff private.    
-    (function () {
-
-        // Define a unique global namespace for your stuff.
-        // You should change this to a namespace that is appropriate for your project.
-        fluid.registerNamespace("myStuff");
-        
-        // JavaScript strict mode is a good thing.
-        "use strict";
-        
-        // Expose any public functions or constructors as properties on your namesapce.
-        myStuff.play = function () {
-            var mySynth = flock.synth({
-                ugen: "flock.ugen.synth",
-                freq: 440,
-                mul: 0.5
-            });
-            
-            flock.enviro.shared.play();
-        };
-        
-    }());
-
 ## Using Flocking with Infusion ##
 
 [Infusion](http://fluidproject.org/products/infusion) is a framework for building applications in JavaScript. Flocking itself is built with Infusion, and it provides much of the core flexibility and social opportunities that Flocking aspires to.
@@ -130,49 +136,50 @@ And an example JavaScript file:
 Fluid components are created by defining JSON "component trees", which are managed by an Inversion of Control system that is responsible for wiring up dependencies between components. Here's an example of how you would use Flocking with Infusion.
 
     (function () {
-        
+    
         // Define a unique global namespace for your stuff.
         // You should change this to a namespace that is appropriate for your project.
         fluid.registerNamespace("myStuff");
-        
+    
         // Define an Infusion component that represents your instrument.
         fluid.defaults("myStuff.sinewaver", {
-            
+        
             // This instrument is a flock.synth, and ask Infusion to automatically
             // define an initialization function for it.
             gradeNames: ["flock.synth", "autoInit"],
-            
+        
             // Define the synthDef for your instrument.
             synthDef: {
+                id: "carrier",
                 ugen: "flock.ugen.sin",
-                freq: 440,
+                freq: 220,
                 mul: 0.5
             }
         });
-        
-        
+    
+    
         // Define an Infusion component that represents your composition,
         // and which will contain instruments, a scheduler, and score.
         fluid.defaults("myStuff.composition", {
-            
-            gradeNames: ["fluid.eventedComponents", "autoInit"],
-            
+        
+            gradeNames: ["fluid.eventedComponent", "autoInit"],
+        
             // This composition has two components: 
             //  1. our sinewaver instrument (defined above)
             //  2. a tempo scheduler running at 60 bpm
             components: {
                 instrument: {
-                    typeName: "myStuff.sinewaver"
+                    type: "myStuff.sinewaver"
                 },
-                    
+                
                 clock: {
-                    typeName: "flock.scheduler.async.tempo",
+                    type: "flock.scheduler.async.tempo",
                     options: {
                         bpm: 60
                     }
                 }    
             },
-            
+        
             // The score is a declarative specification that can be passed to
             // Scheduler.schedule(). In this case, the pitch will change every
             // beat until it hits 1210 Hz, and then it will fade out.
@@ -180,10 +187,10 @@ Fluid components are created by defining JSON "component trees", which are manag
                 {
                     // Schedule this event as repeating
                     interval: "repeat",
-                    
+                
                     // Every beat.
                     time: 1.0,
-                    
+                
                     change: {
                         // This specifies that we want to send the change to the "sinewaver" synth.
                         synth: "sinewaver",
@@ -204,13 +211,13 @@ Fluid components are created by defining JSON "component trees", which are manag
                 {
                     // Schedule this event only once
                     interval: "once",
-                    
+                
                     // After 8 beats.
                     time: 8,
-                    
+                
                     change: {
                         synth: "sinewaver",
-                        
+                    
                         // Inject a new "line" unit generator to fade out.
                         values: {
                             "carrier.mul": {
@@ -223,22 +230,43 @@ Fluid components are created by defining JSON "component trees", which are manag
                     }
                 }
             ],
-            
+        
             // This section registers listeners for our composition's "onCreate" event,
             // which is one of the built-in lifecycle events for Infusion.
-            // When onCreate fires, we start the environment
-            // and then schedule our score with the Scheduler.
+            // When onCreate fires, we start the environment and then schedule our score with the Scheduler.
             listeners: {
                 onCreate: [
                     {
                         funcName: "flock.enviro.shared.play"
                     },
-                        
                     {
                         funcName: "{clock}.schedule",
-                        args: ["{that}.options.score"]
+                        args: ["{composition}.options.score"]
                     }
                 ]
-            }    
+            }
         });
     }());
+    
+And here's the HTML page to go with it:
+    
+    <!DOCTYPE html>
+
+    <html lang="en">
+        <head>
+            <title>A Flocking Project</title>
+
+            <script src="flocking/flocking-all.js"></script>
+            <script src="myStuff.js"></script>
+    
+        </head>
+
+        <body>
+            <!-- Your markup goes here -->
+    
+            <script>
+                myStuff.composition();
+            </script>
+        </body>
+    </html>
+    
