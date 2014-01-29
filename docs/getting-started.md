@@ -67,6 +67,9 @@ And an example JavaScript file:
                 }
             });
     
+            // If you're on iOS, you will need to call in a listener for
+            // some kind of user input action, such a button click or touch handler.
+            // This is because iOS will only play sound if the user initiated it.
             flock.enviro.shared.play();
         };
 

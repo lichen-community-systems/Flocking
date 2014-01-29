@@ -1924,6 +1924,9 @@ var fluid = fluid || require("infusion"),
                     
                 for (j = 0; j < numSamps; j++, outIdx += inc) {
                     // TODO: Support control rate interpolation.
+                    // TODO: Don't attempt to write to buses beyond the available number.
+                    //       Provide an error at onInputChanged time if the unit generator is configured
+                    //       with more sources than available buffers.
                     bus[j] = bus[j] + source.output[outIdx];
                 }
             }

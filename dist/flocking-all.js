@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 r3ebff03595208608bf46fbc4239e5120a9866186, Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 r61dc8a4b4f1a758b45fbdd443f14dfd1f6efc51d, Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -20759,6 +20759,7 @@ var fluid = fluid || require("infusion"),
                     
                 for (j = 0; j < numSamps; j++, outIdx += inc) {
                     // TODO: Support control rate interpolation.
+                    // TODO: Provide an error when we try to write buses beyond the number available.
                     bus[j] = bus[j] + source.output[outIdx];
                 }
             }
