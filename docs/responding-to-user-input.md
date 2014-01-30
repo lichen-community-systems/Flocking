@@ -10,90 +10,91 @@ For more information about the mouse unit generators, see the [Mouse Unit Genera
 
 ### Examples ###
 
-Changing the frequency of a sine wave oscillator every time the user clicks a button:
+#### Changing the frequency of a sine wave oscillator every time the user clicks a button ####
 
-HTML:
+HTML markup:
 
-  <button id="myButton">Change it!</button>
-
-SynthDef:
-
-  {
-      ugen: "flock.ugen.sin",
-      freq: {
-          ugen: "flock.ugen.latch",
-          rate: "audio",
-          source: {
-              ugen: "flock.ugen.lfNoise",
-              freq: 10,
-              mul: 540,
-              add: 660
-          },
-          trig: {
-              ugen: "flock.ugen.mouse.click",
-              target: "#myButton"
-          }
-       }   
-  }
-  
-Triggering the playback of a sound file whenever a button is clicked:
-
-HTML:
-
-  <button id="myButton">Play it!</button>
+    <button id="myButton">Change it!</button>
 
 SynthDef:
-  
-  {
-    ugen: "flock.ugen.playBuffer",
-    buffer: {
-      url: "cat.wav"
-    },
-    trigger: {
-      ugen: "flock.ugen.mouse.click",
-      options: {
-        target: "#myButton"
-      }
+
+    {
+        ugen: "flock.ugen.sin",
+        freq: {
+            ugen: "flock.ugen.latch",
+            rate: "audio",
+            source: {
+                ugen: "flock.ugen.lfNoise",
+                freq: 10,
+                mul: 540,
+                add: 660
+            },
+            trig: {
+                ugen: "flock.ugen.mouse.click",
+                target: "#myButton"
+            }
+        }   
     }
-  }
   
-Binding the x and y position of the mouse the frequency and amplitude of a synth, like a Kaoss Pad:
+#### Triggering the playback of a sound file whenever a button is clicked ####
 
 HTML:
 
-  <div id="chaos"></div>
+    <button id="myButton">Play it!</button>
+
+SynthDef:
+  
+    {
+        ugen: "flock.ugen.playBuffer",
+        buffer: {
+            url: "cat.wav"
+        },
+        trigger: {
+            ugen: "flock.ugen.mouse.click",
+            options: {
+                target: "#myButton"
+            }
+        }
+    }
+  
+#### Binding the x and y position of the mouse the frequency and amplitude of a synth, like a Kaoss Pad ####
+
+HTML:
+
+    <div id="chaos"></div>
   
 CSS:
 
-  #chaos {
-      height: 200px;
-      width: 200px
-  }
+    #chaos {
+        height: 200px;
+        width: 200px
+    }
   
 SynthDef:
 
-  {
-      ugen: "flock.ugen.square",
-      freq: {
-          ugen: "flock.ugen.mouse.cursor",
-          // Note that we have to scale this unit generator's output
-          // to a value range that is sensible for frequency. 
-          // By default,cursor outputs values between 0.0 and 1.0.
-          mul: 1120
-          add: 60
-          options: {
-              axis: "x",
-              target: "#chaos"
-          }       
-      },
-      mul: {
-          ugen: "flock.ugen.mouse.cursor",
-          options: {
-              axis: "y",
-              target: "#chaos"
-          }
-      }
-  }
+    {
+        ugen: "flock.ugen.square",
+        freq: {
+            ugen: "flock.ugen.mouse.cursor",
+            
+            // Note that we have to scale this unit generator's output
+            // to a value range that is sensible for frequency. 
+            // By default,cursor outputs values between 0.0 and 1.0.
+            mul: 1120
+            add: 60
+            options: {
+                axis: "x",
+                target: "#chaos"
+            }
+        },
+        mul: {
+            ugen: "flock.ugen.mouse.cursor",
+            options: {
+                axis: "y",
+                target: "#chaos"
+            }
+        }
+    }
   
 ## Using  Infusion Views and Events ##
   
