@@ -102,6 +102,19 @@ var fluid = fluid || require("infusion"),
     flock.platform.audioEngine = flock.platform.isBrowser ? (flock.platform.isWebAudio ? "webAudio" : "moz") : "nodejs";
     fluid.staticEnvironment.audioEngine = fluid.typeTag("flock.platform." + flock.platform.audioEngine);
     
+    flock.defaultBufferSizeForPlatform = function () {
+        if (flock.platform.browser.mozilla) {
+            // Strangely terrible performance seems to have cropped up on Firefox in recent versions.
+            return 16384;
+        }
+        
+        if (!flock.platform.isWebAudio || flock.platform.isMobile) {
+            return 8192;
+        }
+        
+        return 1024;
+    };
+    
     flock.shim = {
         URL: flock.platform.isBrowser ? (window.URL || window.webkitURL || window.msURL) : undefined
     };
@@ -616,10 +629,9 @@ var fluid = fluid || require("infusion"),
             blockSize: 64,
             chans: 2,
             numBuses: 2,
-            // This buffer size determines the overall latency of Flocking's audio output. On Firefox, it will be 2x.
+            // This buffer size determines the overall latency of Flocking's audio output.
             // TODO: Replace this with IoC awesomeness.
-            bufferSize: flock.platform.isWebAudio ? 1024 : 
-                flock.platform.os === "Win32" ? 16384 : flock.platform.isMobile ? 8192 : 4096,
+            bufferSize: flock.defaultBufferSizeForPlatform(),
             
             // Hints to some audio backends.
             genPollIntervalFactor: flock.platform.isLinux ? 1 : 20 // Only used on Firefox.

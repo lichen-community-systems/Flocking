@@ -873,7 +873,7 @@ var fluid = fluid || require("infusion"),
             var m = that.model,
                 inputs = that.inputs,
                 source = inputs.source.output,
-                trig = inputs.trig,
+                trig = inputs.trigger,
                 sourceInc = m.strides.source,
                 out = that.output,
                 i, j,
@@ -894,7 +894,7 @@ var fluid = fluid || require("infusion"),
         
         that.krGen = function (numSamps) {
             var m = that.model,
-                currTrig = that.inputs.trig.output[0],
+                currTrig = that.inputs.trigger.output[0],
                 i;
 
             if (m.holdVal === undefined || currTrig > 0.0 && m.prevTrig <= 0.0) {
@@ -911,7 +911,7 @@ var fluid = fluid || require("infusion"),
         
         that.onInputChanged = function () {
             that.calculateStrides();
-            that.gen = that.inputs.trig.rate === flock.rates.AUDIO ? that.arGen : that.krGen;
+            that.gen = that.inputs.trigger.rate === flock.rates.AUDIO ? that.arGen : that.krGen;
             flock.onMulAddInputChanged(that);
         };
         
@@ -923,7 +923,7 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         inputs: {
             source: null,
-            trig: 0.0
+            trigger: 0.0
         },
         ugenOptions: {
             strideInputs: ["source"],

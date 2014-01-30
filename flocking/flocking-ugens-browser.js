@@ -258,6 +258,10 @@ var fluid = fluid || require("infusion"),
             lag: 0.5,
             add: 0.0,
             mul: 1.0
+        },
+        
+        ugenOptions: {
+            axis: "x"
         }
     });
     
@@ -272,8 +276,9 @@ var fluid = fluid || require("infusion"),
                 
             for (i = 0; i < numSamps; i++) {
                 out[i] = m.value;
-                that.mulAdd(numSamps);
             }
+            
+            that.mulAdd(numSamps);
         };
         
         that.mouseDownListener = function () {

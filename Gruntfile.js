@@ -33,6 +33,9 @@ module.exports = function(grunt) {
                     "third-party/infusion/js/Fluid.js",
                     "third-party/infusion/js/FluidIoC.js",
                     "third-party/infusion/js/DataBinding.js",
+                    "third-party/infusion/js/FluidDocument.js",
+                    "third-party/infusion/js/FluidDOMUtilities.js",
+                    "third-party/infusion/js/FluidView.js",
                     
                     // Marcus Geelnard's DSPI API polyfill
                     "third-party/dspapi/js/dspapi.js",

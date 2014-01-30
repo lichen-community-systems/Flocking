@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 r61dc8a4b4f1a758b45fbdd443f14dfd1f6efc51d, Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 r5237ae158e2648fdd96e9af94e1949a1b99f0e12, Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -14116,6 +14116,845 @@ var fluid_1_5 = fluid_1_5 || {};
     };
 
 })(jQuery, fluid_1_5);
+;/*
+Copyright 2007-2010 University of Cambridge
+Copyright 2007-2009 University of Toronto
+Copyright 2010-2011 Lucendo Development Ltd.
+Copyright 2010 OCAD University
+
+Licensed under the Educational Community License (ECL), Version 2.0 or the New
+BSD license. You may not use this file except in compliance with one these
+Licenses.
+
+You may obtain a copy of the ECL 2.0 License and BSD License at
+https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
+*/
+
+/** This file contains functions which depend on the presence of a DOM document
+ * but which do not depend on the contents of Fluid.js **/
+
+// Declare dependencies
+/*global fluid_1_5:true, jQuery*/
+
+// JSLint options 
+/*jslint white: true, funcinvoke: true, undef: true, newcap: true, nomen: true, regexp: true, bitwise: true, browser: true, forin: true, maxerr: 100, indent: 4 */
+
+var fluid_1_5 = fluid_1_5 || {};
+
+(function ($, fluid) {
+
+    // Private constants.
+    var NAMESPACE_KEY = "fluid-scoped-data";
+
+    /**
+     * Gets stored state from the jQuery instance's data map.
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    fluid.getScopedData = function(target, key) {
+        var data = $(target).data(NAMESPACE_KEY);
+        return data ? data[key] : undefined;
+    };
+
+    /**
+     * Stores state in the jQuery instance's data map. Unlike jQuery's version,
+     * accepts multiple-element jQueries.
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    fluid.setScopedData = function(target, key, value) {
+        $(target).each(function() {
+            var data = $.data(this, NAMESPACE_KEY) || {};
+            data[key] = value;
+
+            $.data(this, NAMESPACE_KEY, data);
+        });
+    };
+
+    /** Global focus manager - makes use of "focusin" event supported in jquery 1.4.2 or later.
+     */
+
+    var lastFocusedElement = null;
+    
+    $(document).bind("focusin", function(event){
+        lastFocusedElement = event.target;
+    });
+    
+    fluid.getLastFocusedElement = function() {
+        return lastFocusedElement;
+    }
+
+
+    var ENABLEMENT_KEY = "enablement";
+
+    /** Queries or sets the enabled status of a control. An activatable node
+     * may be "disabled" in which case its keyboard bindings will be inoperable
+     * (but still stored) until it is reenabled again.
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+     
+    fluid.enabled = function(target, state) {
+        target = $(target);
+        if (state === undefined) {
+            return fluid.getScopedData(target, ENABLEMENT_KEY) !== false;
+        }
+        else {
+            $("*", target).add(target).each(function() {
+                if (fluid.getScopedData(this, ENABLEMENT_KEY) !== undefined) {
+                    fluid.setScopedData(this, ENABLEMENT_KEY, state);
+                }
+                else if (/select|textarea|input/i.test(this.nodeName)) {
+                    $(this).prop("disabled", !state);
+                }
+            });
+            fluid.setScopedData(target, ENABLEMENT_KEY, state);
+        }
+    };
+    
+    fluid.initEnablement = function(target) {
+        fluid.setScopedData(target, ENABLEMENT_KEY, true);
+    };
+    
+    // This function is necessary since simulation of focus events by jQuery under IE
+    // is not sufficiently good to intercept the "focusin" binding. Any code which triggers
+    // focus or blur synthetically throughout the framework and client code must use this function,
+    // especially if correct cross-platform interaction is required with the "deadMansBlur" function.
+    
+    function applyOp(node, func) {
+        node = $(node);
+        node.trigger("fluid-"+func);
+        node[func]();
+    }
+    
+    $.each(["focus", "blur"], function(i, name) {
+        fluid[name] = function(elem) {
+            applyOp(elem, name);
+        }
+    });
+    
+})(jQuery, fluid_1_5);
+;/*
+Copyright 2008-2010 University of Cambridge
+Copyright 2008-2009 University of Toronto
+
+Licensed under the Educational Community License (ECL), Version 2.0 or the New
+BSD license. You may not use this file except in compliance with one these
+Licenses.
+
+You may obtain a copy of the ECL 2.0 License and BSD License at
+https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
+*/
+
+// Declare dependencies
+/*global fluid_1_5:true, jQuery */
+
+// JSLint options 
+/*jslint white: true, funcinvoke: true, undef: true, newcap: true, nomen: true, regexp: true, bitwise: true, browser: true, forin: true, maxerr: 100, indent: 4 */
+
+var fluid_1_5 = fluid_1_5 || {};
+
+(function ($, fluid) {
+    
+    fluid.dom = fluid.dom || {};
+    
+    // Node walker function for iterateDom.
+    var getNextNode = function (iterator) {
+        if (iterator.node.firstChild) {
+            iterator.node = iterator.node.firstChild;
+            iterator.depth += 1;
+            return iterator;
+        }
+        while (iterator.node) {
+            if (iterator.node.nextSibling) {
+                iterator.node = iterator.node.nextSibling;
+                return iterator;
+            }
+            iterator.node = iterator.node.parentNode;
+            iterator.depth -= 1;
+        }
+        return iterator;
+    };
+    
+    /**
+     * Walks the DOM, applying the specified acceptor function to each element.
+     * There is a special case for the acceptor, allowing for quick deletion of elements and their children.
+     * Return "delete" from your acceptor function if you want to delete the element in question.
+     * Return "stop" to terminate iteration. 
+     
+     * Implementation note - this utility exists mainly for performance reasons. It was last tested
+     * carefully some time ago (around jQuery 1.2) but at that time was around 3-4x faster at raw DOM
+     * filtration tasks than the jQuery equivalents, which was an important source of performance loss in the
+     * Reorderer component. General clients of the framework should use this method with caution if at all, and
+     * the performance issues should be reassessed when we have time. 
+     * 
+     * @param {Element} node the node to start walking from
+     * @param {Function} acceptor the function to invoke with each DOM element
+     * @param {Boolean} allnodes Use <code>true</code> to call acceptor on all nodes, 
+     * rather than just element nodes (type 1)
+     */
+    fluid.dom.iterateDom = function (node, acceptor, allNodes) {
+        var currentNode = {node: node, depth: 0};
+        var prevNode = node;
+        var condition;
+        while (currentNode.node !== null && currentNode.depth >= 0 && currentNode.depth < fluid.dom.iterateDom.DOM_BAIL_DEPTH) {
+            condition = null;
+            if (currentNode.node.nodeType === 1 || allNodes) {
+                condition = acceptor(currentNode.node, currentNode.depth);
+            }
+            if (condition) {
+                if (condition === "delete") {
+                    currentNode.node.parentNode.removeChild(currentNode.node);
+                    currentNode.node = prevNode;
+                }
+                else if (condition === "stop") {
+                    return currentNode.node;
+                }
+            }
+            prevNode = currentNode.node;
+            currentNode = getNextNode(currentNode);
+        }
+    };
+    
+    // Work around IE circular DOM issue. This is the default max DOM depth on IE.
+    // http://msdn2.microsoft.com/en-us/library/ms761392(VS.85).aspx
+    fluid.dom.iterateDom.DOM_BAIL_DEPTH = 256;
+    
+    /**
+     * Checks if the specified container is actually the parent of containee.
+     * 
+     * @param {Element} container the potential parent
+     * @param {Element} containee the child in question
+     */
+    fluid.dom.isContainer = function (container, containee) {
+        for (; containee; containee = containee.parentNode) {
+            if (container === containee) {
+                return true;
+            }
+        }
+        return false;
+    };
+       
+    /** Return the element text from the supplied DOM node as a single String.
+     * Implementation note - this is a special-purpose utility used in the framework in just one
+     * position in the Reorderer. It only performs a "shallow" traversal of the text and was intended
+     * as a quick and dirty means of extracting element labels where the user had not explicitly provided one.
+     * It should not be used by general users of the framework and its presence here needs to be 
+     * reassessed.
+     */
+    fluid.dom.getElementText = function (element) {
+        var nodes = element.childNodes;
+        var text = "";
+        for (var i = 0; i < nodes.length; ++i) {
+            var child = nodes[i];
+            if (child.nodeType === 3) {
+                text = text + child.nodeValue;
+            }
+        }
+        return text; 
+    };
+    
+})(jQuery, fluid_1_5);
+;/*
+Copyright 2010-2011 Lucendo Development Ltd.
+Copyright 2010-2011 OCAD University
+
+Licensed under the Educational Community License (ECL), Version 2.0 or the New
+BSD license. You may not use this file except in compliance with one these
+Licenses.
+
+You may obtain a copy of the ECL 2.0 License and BSD License at
+https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
+*/
+
+/** This file contains functions which depend on the presence of a DOM document
+ *  and which depend on the contents of Fluid.js **/
+
+// Declare dependencies
+/*global fluid_1_5:true, jQuery*/
+
+// JSLint options 
+/*jslint white: true, funcinvoke: true, undef: true, newcap: true, nomen: true, regexp: true, bitwise: true, browser: true, forin: true, maxerr: 100, indent: 4 */
+
+var fluid_1_5 = fluid_1_5 || {};
+
+(function ($, fluid) {
+    
+    fluid.defaults("fluid.viewComponent", {
+        gradeNames: ["fluid.littleComponent", "fluid.modelComponent", "fluid.eventedComponent", "autoInit"],
+        initFunction: "fluid.initView",
+        argumentMap: {
+            container: 0,
+            options: 1
+        },
+        members: { // Used to allow early access to DOM binder via IoC, but to also avoid triggering evaluation of selectors
+            dom: {
+                expander: {
+                    funcName: "fluid.initDomBinder",
+                    args: ["{that}", "{that}.options.selectors"]
+                }
+            }
+        }
+    });
+
+    // unsupported, NON-API function
+    fluid.dumpSelector = function (selectable) {
+        return typeof (selectable) === "string" ? selectable : 
+            selectable.selector ? selectable.selector : "";
+    };
+    
+    // unsupported, NON-API function
+    // NOTE: this function represents a temporary strategy until we have more integrated IoC debugging.
+    // It preserves the current framework behaviour for the 1.4 release, but provides a more informative
+    // diagnostic - in fact, it is perfectly acceptable for a component's creator to return no value and
+    // the failure is really in assumptions in fluid.initComponent. Revisit this issue for 1.5
+    fluid.diagnoseFailedView = function (componentName, that, options, args) {
+        if (!that && fluid.hasGrade(options, "fluid.viewComponent")) {
+            var container = fluid.wrap(args[1]);
+            var message1 = "Instantiation of autoInit component with type " + componentName + " failed, since ";
+            if (!container) {
+                fluid.fail(message1 + " container argument is empty");
+            }
+            else if (container.length === 0) {
+                fluid.fail(message1 + "selector \"", fluid.dumpSelector(args[1]), "\" did not match any markup in the document");
+            } else {
+                fluid.fail(message1 + " component creator function did not return a value");
+            }  
+        }  
+    };
+    
+    fluid.checkTryCatchParameter = function () {
+        var location = window.location || { search: "", protocol: "file:" };
+        var GETparams = location.search.slice(1).split('&');
+        return fluid.find(GETparams, function (param) {
+            if (param.indexOf("notrycatch") === 0) {
+                return true;
+            }
+        }) === true;
+    };
+    
+    fluid.notrycatch = fluid.checkTryCatchParameter();
+
+   
+    /**
+     * Wraps an object in a jQuery if it isn't already one. This function is useful since
+     * it ensures to wrap a null or otherwise falsy argument to itself, rather than the
+     * often unhelpful jQuery default of returning the overall document node.
+     * 
+     * @param {Object} obj the object to wrap in a jQuery
+     * @param {jQuery} userJQuery the jQuery object to use for the wrapping, optional - use the current jQuery if absent
+     */
+    fluid.wrap = function (obj, userJQuery) {
+        userJQuery = userJQuery || $;
+        return ((!obj || obj.jquery) ? obj : userJQuery(obj)); 
+    };
+    
+    /**
+     * If obj is a jQuery, this function will return the first DOM element within it.
+     * 
+     * @param {jQuery} obj the jQuery instance to unwrap into a pure DOM element
+     */
+    fluid.unwrap = function (obj) {
+        return obj && obj.jquery && obj.length === 1 ? obj[0] : obj; // Unwrap the element if it's a jQuery.
+    };
+    
+    /**
+     * Fetches a single container element and returns it as a jQuery.
+     * 
+     * @param {String||jQuery||element} containerSpec an id string, a single-element jQuery, or a DOM element specifying a unique container
+     * @param {Boolean} fallible <code>true</code> if an empty container is to be reported as a valid condition
+     * @return a single-element jQuery of container
+     */
+    fluid.container = function (containerSpec, fallible, userJQuery) {
+        if (userJQuery) {
+            containerSpec = fluid.unwrap(containerSpec);
+        }
+        var container = fluid.wrap(containerSpec, userJQuery);
+        if (fallible && (!container || container.length === 0)) {
+            return null;
+        }
+        
+        if (!container || !container.jquery || container.length !== 1) {
+            if (typeof (containerSpec) !== "string") {
+                containerSpec = container.selector;
+            }
+            var count = container.length !== undefined ? container.length : 0;
+            fluid.fail((count > 1 ? "More than one (" + count + ") container elements were"
+                    : "No container element was") + " found for selector " + containerSpec);
+        }
+        if (!fluid.isDOMNode(container[0])) {
+            fluid.fail("fluid.container was supplied a non-jQueryable element");  
+        }
+        
+        return container;
+    };
+    
+    /**
+     * Creates a new DOM Binder instance, used to locate elements in the DOM by name.
+     * 
+     * @param {Object} container the root element in which to locate named elements
+     * @param {Object} selectors a collection of named jQuery selectors
+     */
+    fluid.createDomBinder = function (container, selectors) {
+        // don't put on a typename to avoid confusing primitive visitComponentChildren 
+        var cache = {}, that = {id: fluid.allocateGuid()};
+        var userJQuery = container.constructor;
+        
+        function cacheKey(name, thisContainer) {
+            return fluid.allocateSimpleId(thisContainer) + "-" + name;
+        }
+
+        function record(name, thisContainer, result) {
+            cache[cacheKey(name, thisContainer)] = result;
+        }
+
+        that.locate = function (name, localContainer) {
+            var selector, thisContainer, togo;
+            
+            selector = selectors[name];
+            thisContainer = localContainer ? localContainer : container;
+            if (!thisContainer) {
+                fluid.fail("DOM binder invoked for selector " + name + " without container");
+            }
+
+            if (!selector) {
+                return thisContainer;
+            }
+
+            if (typeof (selector) === "function") {
+                togo = userJQuery(selector.call(null, fluid.unwrap(thisContainer)));
+            } else {
+                togo = userJQuery(selector, thisContainer);
+            }
+            if (togo.get(0) === document) {
+                togo = [];
+            }
+            if (!togo.selector) {
+                togo.selector = selector;
+                togo.context = thisContainer;
+            }
+            togo.selectorName = name;
+            record(name, thisContainer, togo);
+            return togo;
+        };
+        that.fastLocate = function (name, localContainer) {
+            var thisContainer = localContainer ? localContainer : container;
+            var key = cacheKey(name, thisContainer);
+            var togo = cache[key];
+            return togo ? togo : that.locate(name, localContainer);
+        };
+        that.clear = function () {
+            cache = {};
+        };
+        that.refresh = function (names, localContainer) {
+            var thisContainer = localContainer ? localContainer : container;
+            if (typeof names === "string") {
+                names = [names];
+            }
+            if (thisContainer.length === undefined) {
+                thisContainer = [thisContainer];
+            }
+            for (var i = 0; i < names.length; ++i) {
+                for (var j = 0; j < thisContainer.length; ++j) {
+                    that.locate(names[i], thisContainer[j]);
+                }
+            }
+        };
+        that.resolvePathSegment = that.locate;
+        
+        return that;
+    };
+    
+    /** Expect that jQuery selector query has resulted in a non-empty set of 
+     * results. If none are found, this function will fail with a diagnostic message, 
+     * with the supplied message prepended.
+     */
+    fluid.expectFilledSelector = function (result, message) {
+        if (result && result.length === 0 && result.jquery) {
+            fluid.fail(message + ": selector \"" + result.selector + "\" with name " + result.selectorName +
+                       " returned no results in context " + fluid.dumpEl(result.context));
+        }
+    };
+    
+    /** 
+     * The central initialiation method called as the first act of every Fluid
+     * component. This function automatically merges user options with defaults,
+     * attaches a DOM Binder to the instance, and configures events.
+     * 
+     * @param {String} componentName The unique "name" of the component, which will be used
+     * to fetch the default options from store. By recommendation, this should be the global
+     * name of the component's creator function.
+     * @param {jQueryable} container A specifier for the single root "container node" in the
+     * DOM which will house all the markup for this component.
+     * @param {Object} userOptions The configuration options for this component.
+     */
+     // 4th argument is NOT SUPPORTED, see comments for initLittleComponent
+    fluid.initView = function (componentName, containerSpec, userOptions, localOptions) {
+        var container = fluid.container(containerSpec, true);
+        fluid.expectFilledSelector(container, "Error instantiating component with name \"" + componentName);
+        if (!container) {
+            return null;
+        }
+        // Need to ensure container is set early, without relying on an IoC mechanism - rethink this with asynchrony
+        var receiver = function (that, options, strategy) { 
+            that.container = container;
+        };
+        var that = fluid.initLittleComponent(componentName, userOptions, localOptions || {gradeNames: ["fluid.viewComponent"]}, receiver);
+
+        if (!that.dom) {
+            fluid.initDomBinder(that);
+        }
+        // TODO: cannot afford a mutable container - put this into proper workflow
+        var userJQuery = that.options.jQuery; // Do it a second time to correct for jQuery injection
+        // if (userJQuery) {
+        //    container = fluid.container(containerSpec, true, userJQuery);
+        // }
+        fluid.log("Constructing view component " + componentName + " with container " + container.constructor.expando + 
+            (userJQuery ? " user jQuery " + userJQuery.expando : "") + " env: " + $.expando);
+
+        return that;
+    };
+    
+    /**
+     * Creates a new DOM Binder instance for the specified component and mixes it in.
+     * 
+     * @param {Object} that the component instance to attach the new DOM Binder to
+     */
+    fluid.initDomBinder = function (that, selectors) {
+        that.dom = fluid.createDomBinder(that.container, selectors || that.options.selectors || {});
+        that.locate = that.dom.locate;
+        return that.dom;
+    };
+
+    // DOM Utilities.
+    
+    /**
+     * Finds the nearest ancestor of the element that passes the test
+     * @param {Element} element DOM element
+     * @param {Function} test A function which takes an element as a parameter and return true or false for some test
+     */
+    fluid.findAncestor = function (element, test) {
+        element = fluid.unwrap(element);
+        while (element) {
+            if (test(element)) {
+                return element;
+            }
+            element = element.parentNode;
+        }
+    };
+    
+    fluid.findForm = function (node) {
+        return fluid.findAncestor(node, function (element) {
+            return element.nodeName.toLowerCase() === "form";
+        });
+    };
+    
+    /** A utility with the same signature as jQuery.text and jQuery.html, but without the API irregularity
+     * that treats a single argument of undefined as different to no arguments */
+    // in jQuery 1.7.1, jQuery pulled the same dumb trick with $.text() that they did with $.val() previously,
+    // see comment in fluid.value below
+    fluid.each(["text", "html"], function (method) {
+        fluid[method] = function (node, newValue) {
+            node = $(node);
+            return newValue === undefined ? node[method]() : node[method](newValue);
+        };   
+    });
+    
+    /** A generalisation of jQuery.val to correctly handle the case of acquiring and
+     * setting the value of clustered radio button/checkbox sets, potentially, given
+     * a node corresponding to just one element.
+     */
+    fluid.value = function (nodeIn, newValue) {
+        var node = fluid.unwrap(nodeIn);
+        var multiple = false;
+        if (node.nodeType === undefined && node.length > 1) {
+            node = node[0];
+            multiple = true;
+        }
+        if ("input" !== node.nodeName.toLowerCase() || !/radio|checkbox/.test(node.type)) {
+            // resist changes to contract of jQuery.val() in jQuery 1.5.1 (see FLUID-4113)
+            return newValue === undefined ? $(node).val() : $(node).val(newValue);
+        }
+        var name = node.name;
+        if (name === undefined) {
+            fluid.fail("Cannot acquire value from node " + fluid.dumpEl(node) + " which does not have name attribute set");
+        }
+        var elements;
+        if (multiple) {
+            elements = nodeIn;
+        } else {
+            elements = node.ownerDocument.getElementsByName(name);
+            var scope = fluid.findForm(node);
+            elements = $.grep(elements, function (element) {
+                if (element.name !== name) {
+                    return false;
+                }
+                return !scope || fluid.dom.isContainer(scope, element);
+            });
+        }
+        if (newValue !== undefined) {
+            if (typeof(newValue) === "boolean") {
+                newValue = (newValue ? "true" : "false");
+            }
+          // jQuery gets this partially right, but when dealing with radio button array will
+          // set all of their values to "newValue" rather than setting the checked property
+          // of the corresponding control. 
+            $.each(elements, function () {
+                this.checked = (newValue instanceof Array ? 
+                    $.inArray(this.value, newValue) !== -1 : newValue === this.value);
+            });
+        } else { // this part jQuery will not do - extracting value from <input> array
+            var checked = $.map(elements, function (element) {
+                return element.checked ? element.value : null;
+            });
+            return node.type === "radio" ? checked[0] : checked;
+        }
+    };
+    
+    /**
+     * Returns a jQuery object given the id of a DOM node. In the case the element
+     * is not found, will return an empty list.
+     */
+    fluid.jById = function (id, dokkument) {
+        dokkument = dokkument && dokkument.nodeType === 9 ? dokkument : document;
+        var element = fluid.byId(id, dokkument);
+        var togo = element ? $(element) : [];
+        togo.selector = "#" + id;
+        togo.context = dokkument;
+        return togo;
+    };
+    
+    /**
+     * Returns an DOM element quickly, given an id
+     * 
+     * @param {Object} id the id of the DOM node to find
+     * @param {Document} dokkument the document in which it is to be found (if left empty, use the current document)
+     * @return The DOM element with this id, or null, if none exists in the document.
+     */
+    fluid.byId = function (id, dokkument) {
+        dokkument = dokkument && dokkument.nodeType === 9 ? dokkument : document;
+        var el = dokkument.getElementById(id);
+        if (el) {
+        // Use element id property here rather than attribute, to work around FLUID-3953
+            if (el.id !== id) {
+                fluid.fail("Problem in document structure - picked up element " +
+                    fluid.dumpEl(el) + " for id " + id +
+                    " without this id - most likely the element has a name which conflicts with this id");
+            }
+            return el;
+        } else {
+            return null;
+        }
+    };
+    
+    /**
+     * Returns the id attribute from a jQuery or pure DOM element.
+     * 
+     * @param {jQuery||Element} element the element to return the id attribute for
+     */
+    fluid.getId = function (element) {
+        return fluid.unwrap(element).id;
+    };
+    
+    /** 
+     * Allocate an id to the supplied element if it has none already, by a simple
+     * scheme resulting in ids "fluid-id-nnnn" where nnnn is an increasing integer.
+     */
+    
+    fluid.allocateSimpleId = function (element) {
+        var simpleId = "fluid-id-" + fluid.allocateGuid();
+        if (!element) {
+            return simpleId;
+        }
+        element = fluid.unwrap(element);
+        if (!element.id) {
+            element.id = simpleId;
+        }
+        return element.id;
+    };
+
+    fluid.defaults("fluid.ariaLabeller", {
+        labelAttribute: "aria-label",
+        liveRegionMarkup: "<div class=\"liveRegion fl-offScreen-hidden\" aria-live=\"polite\"></div>",
+        liveRegionId: "fluid-ariaLabeller-liveRegion",
+        events: {
+            generateLiveElement: "unicast"
+        },
+        listeners: {
+            generateLiveElement: "fluid.ariaLabeller.generateLiveElement"
+        }
+    });
+ 
+    fluid.ariaLabeller = function (element, options) {
+        var that = fluid.initView("fluid.ariaLabeller", element, options);
+
+        that.update = function (newOptions) {
+            newOptions = newOptions || that.options;
+            that.container.attr(that.options.labelAttribute, newOptions.text);
+            if (newOptions.dynamicLabel) {
+                var live = fluid.jById(that.options.liveRegionId); 
+                if (live.length === 0) {
+                    live = that.events.generateLiveElement.fire(that);
+                }
+                live.text(newOptions.text);
+            }
+        };
+        
+        that.update();
+        return that;
+    };
+    
+    fluid.ariaLabeller.generateLiveElement = function (that) {
+        var liveEl = $(that.options.liveRegionMarkup);
+        liveEl.prop("id", that.options.liveRegionId);
+        $("body").append(liveEl);
+        return liveEl;
+    };
+    
+    var LABEL_KEY = "aria-labelling";
+    
+    fluid.getAriaLabeller = function (element) {
+        element = $(element);
+        var that = fluid.getScopedData(element, LABEL_KEY);
+        return that;      
+    };
+    
+    /** Manages an ARIA-mediated label attached to a given DOM element. An
+     * aria-labelledby attribute and target node is fabricated in the document
+     * if they do not exist already, and a "little component" is returned exposing a method
+     * "update" that allows the text to be updated. */
+    
+    fluid.updateAriaLabel = function (element, text, options) {
+        options = $.extend({}, options || {}, {text: text});
+        var that = fluid.getAriaLabeller(element);
+        if (!that) {
+            that = fluid.ariaLabeller(element, options);
+            fluid.setScopedData(element, LABEL_KEY, that);
+        } else {
+            that.update(options);
+        }
+        return that;
+    };
+    
+    /** "Global Dismissal Handler" for the entire page. Attaches a click handler to the 
+     * document root that will cause dismissal of any elements (typically dialogs) which 
+     * have registered themselves. Dismissal through this route will automatically clean up 
+     * the record - however, the dismisser themselves must take care to deregister in the case 
+     * dismissal is triggered through the dialog interface itself. This component can also be 
+     * automatically configured by fluid.deadMansBlur by means of the "cancelByDefault" option */ 
+     
+    var dismissList = {}; 
+     
+    $(document).click(function (event) { 
+        var target = event.target; 
+        while (target) { 
+            if (dismissList[target.id]) { 
+                return; 
+            } 
+            target = target.parentNode; 
+        } 
+        fluid.each(dismissList, function (dismissFunc, key) { 
+            dismissFunc(event); 
+            delete dismissList[key]; 
+        }); 
+    });
+    // TODO: extend a configurable equivalent of the above dealing with "focusin" events
+     
+    /** Accepts a free hash of nodes and an optional "dismissal function".
+     * If dismissFunc is set, this "arms" the dismissal system, such that when a click
+     * is received OUTSIDE any of the hierarchy covered by "nodes", the dismissal function
+     * will be executed.
+     */ 
+    fluid.globalDismissal = function (nodes, dismissFunc) { 
+        fluid.each(nodes, function (node) {
+          // Don't bother to use the real id if it is from a foreign document - we will never receive events
+          // from it directly in any case - and foreign documents may be under the control of malign fiends
+          // such as tinyMCE who allocate the same id to everything
+            var id = fluid.unwrap(node).ownerDocument === document? fluid.allocateSimpleId(node) : fluid.allocateGuid();
+            if (dismissFunc) { 
+                dismissList[id] = dismissFunc; 
+            } 
+            else { 
+                delete dismissList[id]; 
+            } 
+        }); 
+    }; 
+    
+    /** Provides an abstraction for determing the current time.
+     * This is to provide a fix for FLUID-4762, where IE6 - IE8 
+     * do not support Date.now().
+     */
+    fluid.now = function () {
+        return Date.now ? Date.now() : (new Date()).getTime();
+    };
+    
+    /** Sets an interation on a target control, which morally manages a "blur" for
+     * a possibly composite region.
+     * A timed blur listener is set on the control, which waits for a short period of
+     * time (options.delay, defaults to 150ms) to discover whether the reason for the 
+     * blur interaction is that either a focus or click is being serviced on a nominated
+     * set of "exclusions" (options.exclusions, a free hash of elements or jQueries). 
+     * If no such event is received within the window, options.handler will be called
+     * with the argument "control", to service whatever interaction is required of the
+     * blur.
+     */
+    
+    fluid.deadMansBlur = function (control, options) {
+        var that = fluid.initLittleComponent("fluid.deadMansBlur", options);
+        that.blurPending = false;
+        that.lastCancel = 0;
+        that.canceller = function (event) {
+            fluid.log("Cancellation through " + event.type + " on " + fluid.dumpEl(event.target)); 
+            that.lastCancel = fluid.now();
+            that.blurPending = false;
+        };
+        that.noteProceeded = function () {
+            fluid.globalDismissal(that.options.exclusions);
+        };
+        that.reArm = function () {
+            fluid.globalDismissal(that.options.exclusions, that.proceed);
+        };
+        that.addExclusion = function (exclusions) {
+            fluid.globalDismissal(exclusions, that.proceed);
+        };
+        that.proceed = function (event) {
+            fluid.log("Direct proceed through " + event.type + " on " + fluid.dumpEl(event.target));
+            that.blurPending = false;
+            that.options.handler(control);
+        };
+        fluid.each(that.options.exclusions, function (exclusion) {
+            exclusion = $(exclusion);
+            fluid.each(exclusion, function (excludeEl) {
+                $(excludeEl).bind("focusin", that.canceller).
+                    bind("fluid-focus", that.canceller).
+                    click(that.canceller).mousedown(that.canceller);
+    // Mousedown is added for FLUID-4212, as a result of Chrome bug 6759, 14204
+            });
+        });
+        if (!that.options.cancelByDefault) {
+            $(control).bind("focusout", function (event) {
+                fluid.log("Starting blur timer for element " + fluid.dumpEl(event.target));
+                var now = fluid.now();
+                fluid.log("back delay: " + (now - that.lastCancel));
+                if (now - that.lastCancel > that.options.backDelay) {
+                    that.blurPending = true;
+                }
+                setTimeout(function () {
+                    if (that.blurPending) {
+                        that.options.handler(control);
+                    }
+                }, that.options.delay);
+            });
+        }
+        else {
+            that.reArm();
+        }
+        return that;
+    };
+
+    fluid.defaults("fluid.deadMansBlur", {
+        delay: 150,
+        backDelay: 100
+    });
+    
+})(jQuery, fluid_1_5);
 ;// -*- mode: javascript; tab-width: 2; indent-tabs-mode: nil; -*-
 
 //------------------------------------------------------------------------------
@@ -15833,6 +16672,19 @@ var fluid = fluid || require("infusion"),
     flock.platform.audioEngine = flock.platform.isBrowser ? (flock.platform.isWebAudio ? "webAudio" : "moz") : "nodejs";
     fluid.staticEnvironment.audioEngine = fluid.typeTag("flock.platform." + flock.platform.audioEngine);
     
+    flock.defaultBufferSizeForPlatform = function () {
+        if (flock.platform.browser.mozilla) {
+            // Strangely terrible performance seems to have cropped up on Firefox in recent versions.
+            return 16384;
+        }
+        
+        if (!flock.platform.isWebAudio || flock.platform.isMobile) {
+            return 8192;
+        }
+        
+        return 1024;
+    };
+    
     flock.shim = {
         URL: flock.platform.isBrowser ? (window.URL || window.webkitURL || window.msURL) : undefined
     };
@@ -16347,10 +17199,9 @@ var fluid = fluid || require("infusion"),
             blockSize: 64,
             chans: 2,
             numBuses: 2,
-            // This buffer size determines the overall latency of Flocking's audio output. On Firefox, it will be 2x.
+            // This buffer size determines the overall latency of Flocking's audio output.
             // TODO: Replace this with IoC awesomeness.
-            bufferSize: flock.platform.isWebAudio ? 1024 : 
-                flock.platform.os === "Win32" ? 16384 : flock.platform.isMobile ? 8192 : 4096,
+            bufferSize: flock.defaultBufferSizeForPlatform(),
             
             // Hints to some audio backends.
             genPollIntervalFactor: flock.platform.isLinux ? 1 : 20 // Only used on Firefox.
@@ -19708,7 +20559,7 @@ var fluid = fluid || require("infusion"),
             var m = that.model,
                 inputs = that.inputs,
                 source = inputs.source.output,
-                trig = inputs.trig,
+                trig = inputs.trigger,
                 sourceInc = m.strides.source,
                 out = that.output,
                 i, j,
@@ -19729,7 +20580,7 @@ var fluid = fluid || require("infusion"),
         
         that.krGen = function (numSamps) {
             var m = that.model,
-                currTrig = that.inputs.trig.output[0],
+                currTrig = that.inputs.trigger.output[0],
                 i;
 
             if (m.holdVal === undefined || currTrig > 0.0 && m.prevTrig <= 0.0) {
@@ -19746,7 +20597,7 @@ var fluid = fluid || require("infusion"),
         
         that.onInputChanged = function () {
             that.calculateStrides();
-            that.gen = that.inputs.trig.rate === flock.rates.AUDIO ? that.arGen : that.krGen;
+            that.gen = that.inputs.trigger.rate === flock.rates.AUDIO ? that.arGen : that.krGen;
             flock.onMulAddInputChanged(that);
         };
         
@@ -19758,7 +20609,7 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         inputs: {
             source: null,
-            trig: 0.0
+            trigger: 0.0
         },
         ugenOptions: {
             strideInputs: ["source"],
@@ -20759,7 +21610,9 @@ var fluid = fluid || require("infusion"),
                     
                 for (j = 0; j < numSamps; j++, outIdx += inc) {
                     // TODO: Support control rate interpolation.
-                    // TODO: Provide an error when we try to write buses beyond the number available.
+                    // TODO: Don't attempt to write to buses beyond the available number.
+                    //       Provide an error at onInputChanged time if the unit generator is configured
+                    //       with more sources than available buffers.
                     bus[j] = bus[j] + source.output[outIdx];
                 }
             }
@@ -22184,6 +23037,10 @@ var fluid = fluid || require("infusion"),
             lag: 0.5,
             add: 0.0,
             mul: 1.0
+        },
+        
+        ugenOptions: {
+            axis: "x"
         }
     });
     
@@ -22198,8 +23055,9 @@ var fluid = fluid || require("infusion"),
                 
             for (i = 0; i < numSamps; i++) {
                 out[i] = m.value;
-                that.mulAdd(numSamps);
             }
+            
+            that.mulAdd(numSamps);
         };
         
         that.mouseDownListener = function () {
