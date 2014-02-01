@@ -1,10 +1,10 @@
 # Responding to User Input #
 
-There are a variety of ways to connect your Flocking instruments up to sources of user input such as user interface components or touch events. The simplest but perhaps least expressive way to trigger events based on user input is with the _flock.ugen.mouse_ unit generators. Alternatively, you can map browser events from user interface components (e.g. buttons, sliders, pianos, whatever) to input value changes on your synths.
+There are a variety of ways to connect your Flocking instruments up to sources of user input such as user interface components or touch events. The simplest but perhaps least expressive way to trigger events based on user input is with the `flock.ugen.mouse` unit generators. Alternatively, you can map browser events from user interface components (e.g. buttons, sliders, pianos, whatever) to value changes on your synth's inputs.
 
-## Browser Unit Generators ##
+## Using the Browser Unit Generators ##
 
-The _flocking-ugens-browser.js_ file contains unit generators that are specifically dependent on browser-based technology, such as DOM events. In particular, the _flock.ugen.mouse_ collection of unit generators provide a means to represent user input as a "signal" or stream of samples directly within your synth. The advantage of these unit generators is that they can provide a constant stream of values and can be easily smoothed. The downside is that the input modality is hard-coded in your synth design, whereas an event-based approach outside the unit generator graph will make it easier to change the source of events later.
+The _flocking-ugens-browser.js_ file contains unit generators that are specifically dependent on browser-based technology, such as DOM events. In particular, the _flock.ugen.mouse_ collection of unit generators provide a means to treat user input as a signal directly within your synth. The advantage of these unit generators is that they can provide a constant stream of values and can be easily smoothed. The downside is that the input modality is hard-coded in your synth design, whereas an event-based approach outside the unit generator graph will make it easier to change the source of events later, or to have multiple simultaneous sources of input.
 
 For more information about the mouse unit generators, see the [Mouse Unit Generators](ugens/mouse.md) documentation. 
 
@@ -96,6 +96,65 @@ SynthDef:
         }
     }
   
+## Directly Setting Values on a Synth ##
+
+Flocking synths provide two essental methods that can be used to query and update the state of the synthesis graph: `get()` and `set()`. You can call these methods in response to user input (e.g. a button click) to control a Flocking synth.
+
+For more information about the methods provided by `flock.synth` see the [Synth documentation](synths/overview.md) _coming soon_.
+
+### Tutorial: Using Synth.set() with jQuery ###
+
+First, create a button that the user can click on. We'll wire this button up using jQuery so that it randomly changes the frequency of our synthesizer every time it is clicked. Here's the HTML markup for it:
+
+    <button id="myButton">Change it!</button>
+
+For our example, let's create a noisy synth that uses frequency modulation. The carrier is a sawtooth oscillator, and the modulator is a sine wave. Since we want to be able to dynamically change the modulator whenever a user clicks the button, we'll give it an _id_ so that we can refer to it later when we're calling `Synth.set`.
+    
+    var noisy = flock.synth({
+        synthDef: {
+            ugen: "flock.ugen.lfSaw",
+            freq: {
+                id: "modulator", // An id lets us refer to this ugen in subsequent calls to set().
+                ugen: "flock.ugen.sin",
+                freq: 400,
+                mul: 540,
+                add: 600
+            },
+            mul: 0.25
+        }
+    });
+
+We want our example to work on all devices. iOS has a restrict that sounds can only be played as the result of a user action. If you try to start Flocking without the user first having tapped on something, it will be silent. So we'll need to make sure that we only start Flocking after the user has clicked the button for the first time.
+
+To do so, we will bind a one-time click handler on our button. It will start the Flocking _shared environment_ by calling its `play` method. We'll use jQuery's `one()` method to register a handler that automatically gets removed after it has fired once. Here's the code for it:
+
+    $(container).one("click", function () {
+        flock.enviro.shared.play();
+    });
+
+Next, we'll register a click handler on the button that will randomly change the frequency of the modulator every time the user clicks the button. We'll use jQuery again for this, and call `Synth.set()` to change the _modulator.freq_ input:
+
+    // Every time the button is clicked, change the synth's modulator frequency.
+    $(container).click(function () {
+        // Randomly update the frequency of the modulator.
+        var newFreq = Math.random() * 1000 + 1060;
+        noisy.set("modulator.freq", newFreq);
+    });
+    
+We don't have to set just one input at at a time using `Synth.set()`. Instead, we can specify an object of input path/value pairs whenever a user clicks the button. Try this click handler code instead:
+
+    // Every time the button is clicked, change the synth's modulator frequency and amplitude.
+    $(container).click(function () {
+        // Randomly update several of the modulator's inputs at once.
+        noisy.set({
+            "modulator.freq": Math.random() * 1000 + 1060,
+            "modulator.add": Math.random() * 1200
+        });
+    });
+
+Note that if you're not a fan of jQuery, you can use plain DOM methods like ``addEventListener`` or, if you like, use whatever toolkit you prefer. Flocking is designed to be agnostic of your presentation technology.
+
+
 ## Using  Infusion Views and Events ##
   
 [Infusion](http://fluidproject.org/products/infusion) provides a robust system for defining "views" and events. It provides a highly declarative way of binding Flocking instruments up to any source of user input, from individual buttons and sliders to larger-scale interfaces like [pianos](http://github.com/thealphanerd/Piano) and even [physical input devices](https://github.com/colinbdclark/flocking-osc-fm-synth). Here's an example of how an Infusion View can be created, which will listen for click events on an element and dynamically update a synth's inputs.

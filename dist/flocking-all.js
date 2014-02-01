@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 r5237ae158e2648fdd96e9af94e1949a1b99f0e12, Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 r32f07e7f80244ea2df2c58b5c73553c0e7697d1b, Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0

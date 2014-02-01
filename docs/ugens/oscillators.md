@@ -1,11 +1,12 @@
-# Table-Based Oscillators ##
+# Oscillators #
 
+## Table-Based
 Flocking includes a collection of oscillators that sample from a single cycle of a pre-generated waveform. These oscillators include:
 
- * flock.ugen.sinOsc, a sine wave oscillator
- * flock.ugen.triOsc, a triangle wave oscillator
- * flock.ugen.sawOsc, a sawtooth oscillator
- * flock.ugen.squareOsc, a square wave oscillator
+ * `flock.ugen.sinOsc`, a sine wave oscillator
+ * `flock.ugen.triOsc`, a triangle wave oscillator
+ * `flock.ugen.sawOsc`, a sawtooth oscillator
+ * `flock.ugen.squareOsc`, a square wave oscillator
  
 ## flock.ugen.osc ##
 
@@ -25,7 +26,7 @@ You can, if you want, fill a buffer with your own custom waveform and use it wit
 
 All oscillators support the following rates:
 
-    demand, scheduled, control, constant
+`demand`, `scheduled`, `control`, `constant`
 
 
 ### Inputs ###
@@ -38,15 +39,15 @@ All oscillators support the following rates:
     </tr>
     <tr>
         <th>range</th>
-        <td>0..Infinity</td>
+        <td>`0`..`Infinity`</td>
     </tr>
     <tr>
         <th>rates</th>
-        <td>constant, control, audio</td>
+        <td>`constant`, `control`, `audio`</td>
     </tr>
     <tr>
         <th>default</th>
-        <td>440.0 (constant)</td>
+        <td>`440.0` (constant)</td>
     </tr>
 </table>
 
@@ -58,15 +59,15 @@ All oscillators support the following rates:
     </tr>
     <tr>
         <th>range</th>
-        <td>0..1.0</td>
+        <td>`0`..`1.0`</td>
     </tr>
     <tr>
         <th>rates</th>
-        <td>constant, control, audio</td>
+        <td>`constant`, `control`, `audio`</td>
     </tr>
     <tr>
         <th>default</th>
-        <td>0.0 (constant)</td>
+        <td>`0.0` (constant)</td>
     </tr>
 </table>
  
@@ -78,15 +79,15 @@ All oscillators support the following rates:
     </tr>
     <tr>
         <th>range</th>
-        <td>-Infinity..Infinity</td>
+        <td>`-Infinity`..`Infinity`</td>
     </tr>
     <tr>
         <th>rates</th>
-        <td>constant, control, audio</td>
+        <td>`constant`, `control`, `audio`</td>
     </tr>
     <tr>
         <th>default</th>
-        <td>1.0 (constant)</td>
+        <td>`1.0` (constant)</td>
     </tr>
 </table>
 
@@ -98,15 +99,15 @@ All oscillators support the following rates:
     </tr>
     <tr>
         <th>range</th>
-        <td>-Infinity..Infinity</td>
+        <td>`-Infinity`..`Infinity`</td>
     </tr>
     <tr>
         <th>rates</th>
-        <td>constant, control, audio</td>
+        <td>`constant`, `control`, `audio`</td>
     </tr>
     <tr>
         <th>default</th>
-        <td>0.0 (constant)</td>
+        <td>`0.0` (constant)</td>
     </tr>
 </table>
 
@@ -120,6 +121,6 @@ All oscillators support the following rates:
     </tr>
     <tr>
         <th>range</th>
-        <td>undefined, "none", "linear", "cubic"</td>
+        <td>`undefined`, `"none"`, `"linear"`, `"cubic"`</td>
     </tr>
 </table>
