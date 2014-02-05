@@ -1,0 +1,8 @@
+{
+    "description": "Non-band limited saw oscillator.",
+    "synthDef": {
+        "ugen": "flock.ugen.lfSaw",
+        "freq": 440,
+        "mul": 0.1
+    }
+}

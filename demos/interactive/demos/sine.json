@@ -1,0 +1,8 @@
+{
+    "description": "Simple sine wave oscillator",
+    "synthDef": {
+        "ugen": "flock.ugen.sinOsc",
+        "freq": 440,
+        "mul": 0.25
+    }
+}
