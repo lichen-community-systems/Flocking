@@ -1,8 +1,5 @@
 {
-    "description": "Plays back a sound file in a loop.
-        The playback rate is controlled by the mouse cursor's vertical position,
-        while the end point in the sound file is determined by the mouse's horizontal position.",
-    
+    "description": "Plays back a sound file in a loop. The playback rate is controlled by the mouse cursor's vertical position, while the end point in the sound file is determined by the mouse's horizontal position.",
     "synthDef": {
         "ugen": "flock.ugen.playBuffer",
         "buffer": {

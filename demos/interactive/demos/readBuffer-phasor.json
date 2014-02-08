@@ -1,8 +1,5 @@
 {
-    "description": "Plays back a sound file while the user holds down the mouse button.
-        If the user lets go of the mouse and clicks it again, playback will resume at its previous location.
-        Uses a phasor and the bufferPhaseStep unit generator to play back the sound at its normal rate.",
-    
+    "description": "Plays back a sound file while the user holds down the mouse button. If the user lets go of the mouse and clicks it again, playback will resume at its previous location. Uses a phasor and the bufferPhaseStep unit generator to play back the sound at its normal rate.",
     "synthDef": {
         "ugen": "flock.ugen.readBuffer",
         "buffer": {

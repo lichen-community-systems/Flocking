@@ -23,21 +23,27 @@ var fluid_1_5 = fluid_1_5 || {};
 
 (function ($, fluid) {
     
-    fluid.defaults("fluid.viewComponent", {
-        gradeNames: ["fluid.littleComponent", "fluid.modelComponent", "fluid.eventedComponent", "autoInit"],
+    // The base grade for fluid.viewComponent and fluid.viewRelayComponent - will be removed again once the old ChangeApplier is eliminated
+    fluid.defaults("fluid.commonViewComponent", {
+        gradeNames: ["fluid.littleComponent", "autoInit"],
         initFunction: "fluid.initView",
         argumentMap: {
             container: 0,
             options: 1
         },
         members: { // Used to allow early access to DOM binder via IoC, but to also avoid triggering evaluation of selectors
-            dom: {
-                expander: {
-                    funcName: "fluid.initDomBinder",
-                    args: ["{that}", "{that}.options.selectors"]
-                }
-            }
+            dom: "@expand:fluid.initDomBinder({that}, {that}.options.selectors)"
         }
+    });
+    
+    fluid.defaults("fluid.viewComponent", {
+        gradeNames: ["fluid.commonViewComponent", "fluid.standardComponent", "autoInit"]
+    });
+    
+    // a version of the standard grade fluid.viewComponent that uses the new FLUID-5024 ChangeApplier and model relay system - this will be the default
+    // in Fluid 2.0 and be renamed back to fluid.viewComponent
+    fluid.defaults("fluid.viewRelayComponent", {
+        gradeNames: ["fluid.commonViewComponent", "fluid.standardRelayComponent", "autoInit"]
     });
 
     // unsupported, NON-API function
@@ -93,12 +99,12 @@ var fluid_1_5 = fluid_1_5 || {};
     };
     
     /**
-     * If obj is a jQuery, this function will return the first DOM element within it.
+     * If obj is a jQuery, this function will return the first DOM element within it. Otherwise, the object will be returned unchanged.
      * 
      * @param {jQuery} obj the jQuery instance to unwrap into a pure DOM element
      */
     fluid.unwrap = function (obj) {
-        return obj && obj.jquery && obj.length === 1 ? obj[0] : obj; // Unwrap the element if it's a jQuery.
+        return obj && obj.jquery && obj.length === 1 ? obj[0] : obj;
     };
     
     /**
@@ -354,6 +360,64 @@ var fluid_1_5 = fluid_1_5 || {};
         }
     };
     
+    
+    fluid.BINDING_ROOT_KEY = "fluid-binding-root";
+
+    /** Recursively find any data stored under a given name from a node upwards
+     * in its DOM hierarchy **/
+
+    fluid.findData = function (elem, name) {
+        while (elem) {
+            var data = $.data(elem, name);
+            if (data) {
+                return data;
+            }
+            elem = elem.parentNode;
+        }
+    };
+
+    fluid.bindFossils = function (node, data, fossils) {
+        $.data(node, fluid.BINDING_ROOT_KEY, {data: data, fossils: fossils});
+    };
+
+    fluid.boundPathForNode = function (node, fossils) {
+        node = fluid.unwrap(node);
+        var key = node.name || node.id;
+        var record = fossils[key];
+        return record ? record.EL : null;
+    };
+
+   /** "Automatically" apply to whatever part of the data model is
+     * relevant, the changed value received at the given DOM node*/
+    fluid.applyBoundChange = function (node, newValue, applier) {
+        node = fluid.unwrap(node);
+        if (newValue === undefined) {
+            newValue = fluid.value(node);
+        }
+        if (node.nodeType === undefined && node.length > 0) {
+            node = node[0];
+        } // assume here that they share name and parent
+        var root = fluid.findData(node, fluid.BINDING_ROOT_KEY);
+        if (!root) {
+            fluid.fail("Bound data could not be discovered in any node above " + fluid.dumpEl(node));
+        }
+        var name = node.name;
+        var fossil = root.fossils[name];
+        if (!fossil) {
+            fluid.fail("No fossil discovered for name " + name + " in fossil record above " + fluid.dumpEl(node));
+        }
+        if (typeof(fossil.oldvalue) === "boolean") { // deal with the case of an "isolated checkbox"
+            newValue = newValue[0] ? true : false;
+        }
+        var EL = root.fossils[name].EL;
+        if (applier) {
+            applier.fireChangeRequest({path: EL, value: newValue, source: "DOM:" + node.id});
+        } else {
+            fluid.set(root.data, EL, newValue);
+        }
+    };
+    
+    
     /**
      * Returns a jQuery object given the id of a DOM node. In the case the element
      * is not found, will return an empty list.
@@ -489,7 +553,7 @@ var fluid_1_5 = fluid_1_5 || {};
     var dismissList = {}; 
      
     $(document).click(function (event) { 
-        var target = event.target; 
+        var target = fluid.resolveEventTarget(event);
         while (target) { 
             if (dismissList[target.id]) { 
                 return; 
@@ -531,6 +595,7 @@ var fluid_1_5 = fluid_1_5 || {};
         return Date.now ? Date.now() : (new Date()).getTime();
     };
     
+    
     /** Sets an interation on a target control, which morally manages a "blur" for
      * a possibly composite region.
      * A timed blur listener is set on the control, which waits for a short period of
@@ -543,7 +608,8 @@ var fluid_1_5 = fluid_1_5 || {};
      */
     
     fluid.deadMansBlur = function (control, options) {
-        var that = fluid.initLittleComponent("fluid.deadMansBlur", options);
+        // TODO: This should be rewritten as a proper component
+        var that = {options: $.extend(true, {}, fluid.defaults("fluid.deadMansBlur"), options)};
         that.blurPending = false;
         that.lastCancel = 0;
         that.canceller = function (event) {

@@ -1,6 +1,5 @@
 {
-    "description": "Creates a new synth consisting of a sine wave, modulating 
-        its amplitude slowly with another sine wave.",
+    "description": "Creates a new synth consisting of a sine wave, modulating its amplitude slowly with another sine wave.",
     "synthDef": {
         "id": "carrier",
         "ugen": "flock.ugen.sinOsc",

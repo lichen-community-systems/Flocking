@@ -13,7 +13,15 @@ module.exports = function(grunt) {
         },
         
         jshint: {
-            all: ["flocking/*.js", "demos/**/*.js", "tests/**/*.js", "!**/third-party/**"],
+            all: [
+                "flocking/*.js",
+                "demos/**/*.js",
+                "tests/**/*.js",
+                "!**/third-party/**",
+                
+                // TODO: Temporary until all playground files are ready for linting.
+                "!demos/interactive/demos/*.js"
+            ],
             options: {
                 jshintrc: true
             }
@@ -31,10 +39,10 @@ module.exports = function(grunt) {
                     
                     // Fluid Infusion
                     "third-party/infusion/js/Fluid.js",
+                    "third-party/infusion/js/FluidDOMUtilities.js",
+                    "third-party/infusion/js/FluidDocument.js",
                     "third-party/infusion/js/FluidIoC.js",
                     "third-party/infusion/js/DataBinding.js",
-                    "third-party/infusion/js/FluidDocument.js",
-                    "third-party/infusion/js/FluidDOMUtilities.js",
                     "third-party/infusion/js/FluidView.js",
                     
                     // Marcus Geelnard's DSPI API polyfill

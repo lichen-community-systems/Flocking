@@ -65,9 +65,6 @@ label {
 
 .playButton.paused {
     padding-left: 0.55em;
-}
-
-.playButton.paused {
     padding-right: 0.55em;
 }
 
