@@ -41,7 +41,7 @@ var fluid = fluid || require("infusion"),
                     listeners: {
                         afterDemoLoaded: [
                             {
-                                funcName: "{editor}.setContent",
+                                func: "{editor}.setContent",
                                 args: ["{arguments}.0"]
                             }
                         ]
@@ -115,15 +115,16 @@ var fluid = fluid || require("infusion"),
             }
         },
         
-        defaultURLSpec: {
+        demoDefaults: {
             pathPrefix: "../demos/",
+            id: "sine",
             fileExt: "json"
         },
         
         invokers: {
             loadDemo: {
                 funcName: "flock.playground.demoSelector.load",
-                args: ["{arguments}.0", "{that}.options.defaultURLSpec", "{that}.events.afterDemoLoaded.fire"]
+                args: ["{arguments}.0", "{that}.options.demoDefaults", "{that}.events.afterDemoLoaded.fire"]
             },
             
             loadDemoFromURL: {
@@ -132,18 +133,18 @@ var fluid = fluid || require("infusion"),
             },
             
             updateURL: {
-                funcName: "flock.playground.demoSelect.updateURLHash",
+                funcName: "flock.playground.demoSelector.updateURLHash",
                 args: ["{arguments}.0.id"]
             }
         },
         
         events: {
-            onDemoSelected: null,       // Fires when the user selects a demo.
-            afterDemoLoaded: null       // Fires after a demo file has been loaded.
+            onSelect: "{selectBox}.events.onSelect",    // Fires when the user selects a demo.
+            afterDemoLoaded: null                       // Fires after a demo file has been loaded.
         },
         
         listeners: {
-            onDemoSelected: [
+            onSelect: [
                 {
                     funcName: "{that}.updateURL",
                     args: ["{arguments}.0"]
@@ -162,7 +163,7 @@ var fluid = fluid || require("infusion"),
         }
     };
     
-    flock.playground.demoSelector.loadDemoFromURLHash = function (container, selectBox, onDemoSelected) {
+    flock.playground.demoSelector.loadDemoFromURLHash = function (container, selectBox) {
         var id = window.location.hash;
         if (id) {
             id = id.slice(1);
@@ -171,11 +172,14 @@ var fluid = fluid || require("infusion"),
         }
         
         selectBox.select(id);
-        onDemoSelected(id);
     };
     
-    flock.playground.demoSelector.load = function (demo, defaultURLSpec, afterDemoLoaded) {
-        var url = demo.url || (defaultURLSpec.pathPrefix + demo + "." + defaultURLSpec.fileExt);
+    flock.playground.demoSelector.load = function (demo, demoDefaults, afterDemoLoaded) {
+        demo = demo || {
+            id: demoDefaults.id
+        };
+        
+        var url = demo.url || (demoDefaults.pathPrefix + demo.id + "." + demoDefaults.fileExt);
         
         $.ajax({
             type: "get",

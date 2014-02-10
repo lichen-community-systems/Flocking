@@ -229,12 +229,17 @@ var fluid = fluid || require("infusion"),
             
             select: {
                 funcName: "flock.ui.selectBox.select",
-                args: ["{arguments}.0", "{that}.container"]
+                args: ["{that}", "{arguments}.0", "{that}.container"]
+            },
+            
+            handleChange: {
+                funcName: "flock.ui.selectBox.handleChange",
+                args: ["{that}.container", "{that}.updateSelection"]
             },
             
             updateSelection: {
                 funcName: "flock.ui.selectBox.updateSelection",
-                args: ["{that}.container", "{that}.applier", "{that}.events.onSelect.fire"]
+                args: ["{arguments}.0", "{that}.container", "{that}.applier", "{that}.events.onSelect.fire"]
             }
         },
         
@@ -248,7 +253,7 @@ var fluid = fluid || require("infusion"),
                 {
                     "this": "{that}.container",
                     method: "change",
-                    args: ["{that}.updateSelection"]
+                    args: ["{that}.handleChange"]
                 },
                 {
                     funcName: "{that}.render"
@@ -257,20 +262,24 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    flock.ui.selectBox.updateSelection = function (container, applier, onSelect) {
-        var id = container.val(),
-            selectedEl = container.find("[value='" + id + "']").eq(0),
+    flock.ui.selectBox.handleChange = function (container, updateSelection) {
+        var id = container.val();
+        updateSelection(id);
+    };
+    
+    flock.ui.selectBox.updateSelection = function (id, container, applier, onSelect) {
+        var selectedEl = container.find("[value='" + id + "']").eq(0),
             selectedDemo = selectedEl.data("flock-selectBox-model-binding");
         
         applier.requestChange("selection", id);
         onSelect(selectedDemo);        
     };
     
-    flock.ui.selectBox.select = function (id, container) {
+    flock.ui.selectBox.select = function (that, id, container) {
         var optionToSelect = container.find("[value='" + id + "']").eq(0);
         container.find("option").removeAttr("selected");
-        optionToSelect.attr("selected", "selected");        
-        optionToSelect.change();
+        optionToSelect.attr("selected", "selected");
+        that.updateSelection(id);
     };
     
     flock.ui.selectBox.render = function (container, model, applier, markup, afterRender) {
