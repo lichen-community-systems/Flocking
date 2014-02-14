@@ -66,120 +66,161 @@ var fluid = fluid || require("infusion"),
     };
     
     
-    /***************
-     * Play Button *
-     ***************/
-    
-    fluid.defaults("flock.ui.playButton", {
+    fluid.defaults("flock.ui.toggleButton", {
         gradeNames: ["fluid.viewComponent", "autoInit"],
         
         model: {
-            isPlaying: false
+            isEnabled: false
         },
         
         invokers: {
             toggle: {
-                funcName: "flock.ui.playButton.toggleModelState",
+                funcName: "flock.ui.toggleButton.toggleModelState",
                 args: ["{that}.model", "{that}.applier"]
             },
             
-            play: {
-                func: "{that}.events.onPlay.fire"
+            enable: {
+                func: "{that}.events.onEnabled.fire"
 
             },
             
-            pause: {
-                func: "{that}.events.onPause.fire"
+            disable: {
+                func: "{that}.events.onDisabled.fire"
+            },
+            
+            refreshView: {
+                funcName: "flock.ui.toggleButton.refreshView",
+                args: ["{that}.model.isEnabled", "{that}.events.onEnabled.fire", "{that}.events.onDisabled.fire"]
             }
         },
         
         events: {
-            onPlay: null,
-            onPause: null
+            onEnabled: null,
+            onDisabled: null
         },
         
         listeners: {
-            onCreate: {
-                "this": "{that}.container",
-                method: "click",
-                args: "{that}.toggle"
-            },
-            
-            onPlay: [
+            onCreate: [
                 {
                     "this": "{that}.container",
-                    method: "addClass",
-                    args: ["{that}.options.styles.playing"]
+                    method: "click",
+                    args: "{that}.toggle"
                 },
                 {
-                    "this": "{that}.container",
-                    method: "removeClass",
-                    args: ["{that}.options.styles.paused"]
-                },
-                {
-                    "this": "{that}.container",
-                    method: "html",
-                    args: "{that}.options.strings.pause"
+                    func: "{that}.refreshView"
                 }
             ],
             
-            onPause: [
-                {
-                    "this": "{that}.container",
-                    method: "removeClass",
-                    args: ["{that}.options.styles.playing"]
-                },
+            onEnabled: [
                 {
                     "this": "{that}.container",
                     method: "addClass",
-                    args: ["{that}.options.styles.paused"]
+                    args: ["{that}.options.styles.enabled"]
+                },
+                {
+                    "this": "{that}.container",
+                    method: "removeClass",
+                    args: ["{that}.options.styles.disabled"]
                 },
                 {
                     "this": "{that}.container",
                     method: "html",
-                    args: "{that}.options.strings.play"
+                    args: "{that}.options.strings.enabled"
+                }
+            ],
+            
+            onDisabled: [
+                {
+                    "this": "{that}.container",
+                    method: "addClass",
+                    args: ["{that}.options.styles.disabled"]
+                },
+                {
+                    "this": "{that}.container",
+                    method: "removeClass",
+                    args: ["{that}.options.styles.enabled"]
+                },
+                {
+                    "this": "{that}.container",
+                    method: "html",
+                    args: "{that}.options.strings.disabled"
                 }
             ]
         },
         
         modelListeners: {
-            "isPlaying": {
-                funcName: "flock.ui.playButton.refreshView",
-                args: ["{change}.value", "{that}.events.onPlay.fire", "{that}.events.onPause.fire"]
+            "isEnabled": {
+                func: "{that}.refreshView"
             }
         },
         
         strings: {
-            pause: "Pause",
-            play: "Play",
+            enabled: "On",
+            disabled: "Off",
         },
         
         styles: {
-            playing: "playing",
-            paused: "paused"
+            enabled: "on",
+            disabled: "off"
         }
     });
+    
 
-    flock.ui.playButton.toggleModelState = function (model, applier) {
-        applier.requestChange("isPlaying", !model.isPlaying);
+    flock.ui.toggleButton.toggleModelState = function (model, applier) {
+        applier.requestChange("isEnabled", !model.isEnabled);
     };
     
-    flock.ui.playButton.refreshView = function (isPlaying, onPlay, onPause) {
-        if (isPlaying) {
-            onPlay();
+    flock.ui.toggleButton.refreshView = function (isEnabled, onEnabled, onDisabled) {
+        if (isEnabled) {
+            onEnabled();
         } else {
-            onPause();
+            onDisabled();
         }
     };
+    
+    
+    /***************
+     * Play Button *
+     ***************/
+    
+    fluid.defaults("flock.ui.playButton", {
+        gradeNames: ["flock.ui.toggleButton", "autoInit"],
+        
+        invokers: {
+            play: {
+                func: "{that}.invokers.enable"
+
+            },
+            
+            pause: {
+                func: "{that}.invokers.disable"
+            }
+        },
+        
+        events: {
+            onPlay: "{that}.events.onEnabled",
+            onPause: "{that}.events.onDisabled"
+        },
+        
+        strings: {
+            enabled: "Pause",
+            disabled: "Play"
+        },
+        
+        styles: {
+            enabled: "playing",
+            disabled: "paused"
+        }
+    });
 
     fluid.defaults("flock.ui.enviroPlayButton", {
         gradeNames: ["flock.ui.playButton", "autoInit"],
         
         listeners: {
-            onPlay: {
+            onEnabled: {
                 funcName: "flock.enviro.shared.play"
             },
-            onPause: {
+            onDisabled: {
                 funcName: "flock.enviro.shared.reset"
             }
         }

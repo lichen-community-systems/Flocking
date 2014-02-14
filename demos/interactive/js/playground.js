@@ -15,6 +15,9 @@ var fluid = fluid || require("infusion"),
     
     var $ = fluid.registerNamespace("jQuery");
     
+    // TODO: Declarativize.
+    flock.init();
+    
     /**************
      * Playground *
      **************/
@@ -52,6 +55,17 @@ var fluid = fluid || require("infusion"),
             playButton: {
                 type: "flock.ui.enviroPlayButton",
                 container: "{that}.dom.playButton"
+            },
+            
+            viewToggleButton:{
+                type: "flock.ui.toggleButton",
+                container: "{that}.dom.viewToggler",
+                options: {
+                    strings: {
+                        enabled: "Source",
+                        disabled: "Graph"
+                    }
+                }
             }
         },
         
@@ -63,10 +77,6 @@ var fluid = fluid || require("infusion"),
             onCreate: [
                 {
                     funcName: "{demoSelector}.loadDemoFromURL"
-                },
-                {
-                    funcName: "flock.init",
-                    args: "{that}.options.flockingSettings"
                 }
             ],
             
@@ -81,9 +91,11 @@ var fluid = fluid || require("infusion"),
         },
 
         selectors: {
-            editor: "#editorRegion",
+            editor: "#source-view",
+            nodes: "#visual-view",
             playButton: "#playButton",
-            demoSelector: "#demos"
+            demoSelector: "#demos",
+            viewToggler: "#viewButton"
         }
     });
     
@@ -164,12 +176,8 @@ var fluid = fluid || require("infusion"),
     };
     
     flock.playground.demoSelector.loadDemoFromURLHash = function (container, selectBox) {
-        var id = window.location.hash;
-        if (id) {
-            id = id.slice(1);
-        } else {
-            id = selectBox.model.defaultOption;
-        }
+        var hash = window.location.hash,
+            id = hash ? hash.slice(1) : selectBox.model.defaultOption;
         
         selectBox.select(id);
     };

@@ -48,7 +48,7 @@ label {
 
 .synthSelector {
     background-color: #aaa;
-    padding: 0.5em 0 0.5em 0.5em ;
+    padding: 0.5em 0 0.5em 0.5em;
 }
 
 .playButton {
@@ -68,10 +68,25 @@ label {
     padding-right: 0.55em;
 }
 
-#editorRegion {
+#viewButton {
+    float: right;
+    width: 4.5em;
+    margin-right: 1em;
+    margin-top: -0.15em;
+    padding: 0.5em;
+    border: 0 none;
+    border-radius: 0.3em;
+    font-size: 75%;
+    background-color: #777;
+    color: #fff;
+    text-align: center;
+}
+
+#source-view {
     font-size: 12pt;
     height: 100%;
     width: 100%;
+    padding-top: 6.75em;
 }
 
 .CodeMirror {
@@ -94,9 +109,6 @@ label {
      top: 0;
      width: 100%;
      z-index: 100;
-}
-#editorRegion {
-     padding-top: 6.75em;
 }
 
 @media screen and (max-width:480px) {
