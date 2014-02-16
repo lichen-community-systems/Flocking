@@ -23,9 +23,13 @@ var fluid = fluid || require("infusion"),
      **************/
     
     fluid.defaults("flock.playground", {
-        gradeNames: ["fluid.viewComponent", "autoInit"],
+        gradeNames: ["fluid.viewRelayComponent", "autoInit"],
         
         flockingSettings: {},
+        
+        model: {
+            activeSynth: {}
+        },
         
         components: {
             demos: {
@@ -35,6 +39,13 @@ var fluid = fluid || require("infusion"),
             editor: {
                 type: "flock.ui.codeEditor.cm",
                 container: "{that}.dom.editor",
+                options: {
+                    listeners: {
+                        afterContentReplaced: {
+                            func: "{playground}.evaluateSource"
+                        }
+                    }
+                }
             },
             
             demoSelector: {
@@ -57,15 +68,66 @@ var fluid = fluid || require("infusion"),
                 container: "{that}.dom.playButton"
             },
             
-            viewToggleButton:{
+            viewToggleButton: {
                 type: "flock.ui.toggleButton",
                 container: "{that}.dom.viewToggler",
                 options: {
+                    model: {
+                        isEnabled: true
+                    },
+                    
+                    listeners: {
+                        onEnabled: [
+                            {
+                                "this": "{playground}.dom.editor",
+                                method: "hide"
+                            },
+                            {
+                                "this": "{playground}.dom.visual",
+                                method: "show"
+                            },
+                            {
+                                func: "{visualView}.synthDefRenderer.refreshView"
+                            }
+                        ],
+                        
+                        onDisabled: [
+                            {
+                                "this": "{playground}.dom.visual",
+                                method: "hide"
+                            },
+                            {
+                                "this": "{playground}.dom.editor",
+                                method: "show"
+                            }
+                        ]
+                    },
+                    
                     strings: {
                         enabled: "Source",
                         disabled: "Graph"
                     }
                 }
+            },
+            
+            visualView: {
+                type: "flock.playground.visualView",
+                container: "#visual-view",
+                options: {
+                    model: "{playground}.model.activeSynthSpec"
+                }
+            }
+        },
+        
+        invokers: {
+            evaluateSource: {
+                funcName: "flock.playground.evaluateSource",
+                args: ["{that}.applier", {
+                    expander: {
+                        funcName: "{editor}.getContent"
+                    }
+                }],
+                dynamic: true
             }
         },
         
@@ -81,33 +143,37 @@ var fluid = fluid || require("infusion"),
             ],
             
             onEvaluateDemo: {
-                funcName: "flock.playground.evaluateDemo",
-                args: [{
-                    expander: {
-                        funcName: "{editor}.getContent"
-                    }
-                }]
+                funcName: "flock.playground.synthForActiveSynthSpec",
+                args: "{that}.model.activeSynthSpec"
+            }
+        },
+        
+        modelListeners: {
+            "activeSynthSpec": {
+                func: "{visualView}.synthDefRenderer.refreshView",
+                args: "{change}.value"
             }
         },
 
         selectors: {
             editor: "#source-view",
-            nodes: "#visual-view",
+            visual: "#visual-view",
             playButton: "#playButton",
             demoSelector: "#demos",
             viewToggler: "#viewButton"
         }
     });
     
-    flock.playground.evaluateDemo = function (code) {
-        var synthSpec;
-        
-        try {
-            synthSpec = JSON.parse(code);
-            return flock.synth(synthSpec);
-        } catch (e) {
-            fluid.log("Invalid JSON while parsing synthDef: " + code);
-        }
+    flock.playground.evaluateSource = function (applier, source) {
+        var synthSpec = JSON.parse(source);
+        applier.change("", {
+            activeSynthSpec: synthSpec
+        });
+    };
+    
+    // TODO: This synth needs to be a dynamic component!
+    flock.playground.synthForActiveSynthSpec = function (activeSynthSpec) {
+        return flock.synth(activeSynthSpec);
     };
     
     /*****************
@@ -200,4 +266,79 @@ var fluid = fluid || require("infusion"),
         });
     };
     
+    
+    fluid.defaults("flock.playground.jsPlumb", {
+        gradeNames: ["fluid.viewComponent", "autoInit"],
+        
+        jsPlumbSettings: {},
+        
+        members: {
+            /*plumb: {
+                expander: {
+                    funcName: "flock.playground.jsPlumb.create",
+                    args: ["{that}.container", "{that}.options.jsPlumbSettings"]
+                }
+            }*/
+        },
+        
+        events: {
+            onReady: null
+        },
+        
+        listeners: {
+            onCreate: [
+                {
+                    "this": "jsPlumb",
+                    method: "ready",
+                    args: "{that}.events.onReady.fire"
+                }
+            ]
+        }
+    });
+    
+    /*flock.playground.jsPlumb.create = function (container, jsPlumbSettings) {
+        jsPlumbSettings.Container = jsPlumbSettings.Container || container;
+        return jsPlumb.getInstance(jsPlumbSettings);
+    };*/
+    
+    
+    /***************
+     * Visual View *
+     ***************/
+    
+    fluid.defaults("flock.playground.visualView", {
+        gradeNames: ["fluid.viewRelayComponent", "autoInit"],
+        
+        model: {}, // The active synthSpec
+        
+        components: {
+            jsPlumb: {
+                type: "flock.playground.jsPlumb",
+                container: "{that}.container"
+            },
+            
+            synthDefRenderer: {
+                type: "flock.ui.nodeRenderers.synth",
+                container: "{that}.container",
+                options: {
+                    // TODO: Move this IoC reference upwards.
+                    model: "{that}.model"
+                }
+            }
+        },
+        
+        events: {
+            onReady: "{jsPlumb}.events.onReady"
+        }
+    });
+    
+    /*flock.playground.visualView.test = function () {        
+        var out = jsPlumb.addEndpoint("output"),
+            sin = jsPlumb.addEndpoint("fake-sin");
+
+        jsPlumb.connect({
+            source: sin, 
+            target: out
+        });
+    };*/
 }());

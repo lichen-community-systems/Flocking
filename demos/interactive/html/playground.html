@@ -13,6 +13,7 @@
         <link rel="stylesheet" type="text/css" href="../css/playground.css" />
     
         <script src="../../../third-party/jquery/js/jquery-2.0.0.js"></script>
+        <script src="../third-party/jsplumb/js/jquery.jsPlumb-1.5.5-min.js"></script>
         
         <script src="../../../third-party/infusion/js/Fluid.js"></script>
         <script src="../../../third-party/infusion/js/FluidDOMUtilities.js"></script>
@@ -39,6 +40,7 @@
 
         <script src="../js/playground.js"></script>
         <script src="../js/ui.js"></script>
+        <script src="../js/node-views.js"></script>
         <script src="../js/demoList.js"></script>
     </head>
     
@@ -66,8 +68,8 @@
             </header>
         
             <!-- Placeholder for the interactive editor -->
-            <div id="source-view"></div>
-            <div id="visual-view"></div>
+            <div id="source-view" class="mainPanel"></div>
+            <div id="visual-view" class="mainPanel"></div>
         </div>
         
         <script>

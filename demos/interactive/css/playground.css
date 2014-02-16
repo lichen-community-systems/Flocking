@@ -82,11 +82,18 @@ label {
     text-align: center;
 }
 
-#source-view {
-    font-size: 12pt;
+.mainPanel {
     height: 100%;
     width: 100%;
     padding-top: 6.75em;
+}
+
+#source-view {
+    font-size: 12pt;
+}
+
+#visual-view {
+    color: #fff;
 }
 
 .CodeMirror {
@@ -111,11 +118,21 @@ label {
      z-index: 100;
 }
 
+.node {
+    width: 2em;
+    height: 2em;
+    background-color: #999;
+    color: #fff;
+    border-radius: 0.5em;
+    padding: 1.5em;
+    margin: 2em;
+}
+
 @media screen and (max-width:480px) {
 	.masthead {
 		position: relative;
 	}
-	#editorRegion {
+	.mainPanel {
 		padding-top: 0;
 		height: auto;
 	}

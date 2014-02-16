@@ -1,3 +1,10 @@
+/*
+ * Flocking UI Components
+ *   Copyright 2014, Colin Clark
+ *
+ * Dual licensed under the MIT and GPL Version 2 licenses.
+ */
+
 /*global require*/
 
 var fluid = fluid || require("infusion"),
@@ -39,7 +46,7 @@ var fluid = fluid || require("infusion"),
         events: {
             afterContentReplaced: null
         },
-
+        
         cmOptions: {
             mode: {
                 name: "javascript",

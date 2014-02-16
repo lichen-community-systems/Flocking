@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 r52d0a4c471dadfddfff2637bd0594631e3208da7, Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 r84314c9d7ce35abc11befd9b96d0be224a398d93, Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -18999,19 +18999,7 @@ var fluid = fluid || require("infusion"),
         
         if (!flock.parse.synthDef.hasOutUGen(ugenDef)) {
             // We didn't get an out ugen specified, so we need to make one.
-            ugenDef = {
-                id: flock.OUT_UGEN_ID,
-                ugen: "flock.ugen.valueOut",
-                inputs: {
-                    sources: ugenDef
-                }
-            };
-
-            if (options.rate === flock.rates.AUDIO) {
-                ugenDef.ugen = "flock.ugen.out";
-                ugenDef.inputs.bus = 0;
-                ugenDef.inputs.expand = options.audioSettings.chans;
-            }
+            ugenDef = flock.parse.synthDef.makeOutUGen(ugenDef, options);
         }
         
         return flock.parse.ugenForDef(ugenDef, options);
@@ -19024,6 +19012,24 @@ var fluid = fluid || require("infusion"),
             synthDef.ugen === "flock.ugen.out" || 
             synthDef.ugen === "flock.ugen.valueOut"
         );
+    };
+    
+    flock.parse.synthDef.makeOutUGen = function (ugenDef, options) {
+        ugenDef = {
+            id: flock.OUT_UGEN_ID,
+            ugen: "flock.ugen.valueOut",
+            inputs: {
+                sources: ugenDef
+            }
+        };
+
+        if (options.rate === flock.rates.AUDIO) {
+            ugenDef.ugen = "flock.ugen.out";
+            ugenDef.inputs.bus = 0;
+            ugenDef.inputs.expand = options.audioSettings.chans;
+        }
+        
+        return ugenDef;
     };
     
     flock.parse.makeUGen = function (ugenDef, parsedInputs, options) {
@@ -19069,7 +19075,11 @@ var fluid = fluid || require("infusion"),
     flock.parse.reservedWords = ["id", "ugen", "rate", "inputs", "options"];
     flock.parse.specialInputs = ["value", "buffer", "table"];
     
-    flock.parse.expandUGenDef = function (ugenDef) {
+    flock.parse.expandInputs = function (ugenDef) {
+        if (ugenDef.inputs) {
+            return ugenDef;
+        }
+        
         var inputs = {},
             prop;
        
@@ -19190,10 +19200,8 @@ var fluid = fluid || require("infusion"),
         if (flock.isIterable(ugenDef)) {
             return flock.parse.ugensForDefs(ugenDef, options);
         }
-    
-        if (!ugenDef.inputs) {
-            ugenDef = flock.parse.expandUGenDef(ugenDef);
-        }
+        
+        ugenDef = flock.parse.expandInputs(ugenDef);
         
         flock.parse.expandRate(ugenDef, options);
         ugenDef = flock.parse.ugenDef.mergeOptions(ugenDef, options);
