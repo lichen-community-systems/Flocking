@@ -1114,7 +1114,7 @@ var fluid = fluid || require("infusion"),
     
     
     fluid.defaults("flock.synth.group", {
-        gradeNames: ["flock.node", "flock.nodeList", "autoInit"],
+        gradeNames: ["fluid.eventedComponent", "flock.node", "flock.nodeList", "autoInit"],
         rate: flock.rates.AUDIO
     });
     

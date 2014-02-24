@@ -1100,7 +1100,8 @@ var fluid = fluid || require("infusion"),
         ugenOptions: {
             model: {
                 idx: 0,
-                prevTrig: 0.0,
+                stepSize: 0,
+                prevTrig: 0,
                 channel: undefined
             },
             strideInputs: [
@@ -1227,6 +1228,61 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.ugen.bufferDuration", {
+        rate: "constant",
+        inputs: {
+            channel: 0
+        },
+        ugenOptions: {
+            model: {
+                value: 0.0
+            }
+        }
+    });
+    
+    /**
+     * Outputs the length of the specified buffer in samples. Runs at either constant or control rate.
+     * Use control rate only when the underlying buffer may change dynamically.
+     *
+     * Inputs:
+     *  buffer: a bufDef object specifying the buffer to track
+     */
+    flock.ugen.bufferLength = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        flock.ugen.buffer(that);
+        
+        that.krGen = function (numSamps) {
+            var m = that.model,
+                chan = that.inputs.channel.output[0],
+                source = that.buffer.data.channels[chan],
+                i;
+            
+            for (i = 0; i < numSamps; i++) {
+                that.output[i] = m.value = source.length;
+            }
+        };
+        
+        that.onInputChanged = function (inputName) {
+            that.onBufferInputChanged(inputName);
+        };
+        
+        that.onBufferReady = function (buffer) {
+            var chan = that.inputs.channel.output[0];
+            that.output[0] = that.model.value = buffer.data.channels[chan].length;
+        };
+        
+        that.init = function () {
+            var r = that.rate;
+            that.gen = (r === flock.rates.CONTROL || r === flock.rates.AUDIO) ? that.krGen : undefined;
+            that.output[0] = that.model.value = 0.0;
+            that.initBuffer();
+            that.onInputChanged();
+        };
+        
+        that.init();
+        return that;
+    };
+    
+    fluid.defaults("flock.ugen.bufferLength", {
         rate: "constant",
         inputs: {
             channel: 0
