@@ -136,6 +136,14 @@ var fluid = fluid || require("infusion"),
         return o && o.length !== undefined && type !== "string" && type !== "function";
     };
     
+    flock.hasTag = function (o, tag) {
+        if (!o || !tag) {
+            return false;
+        }
+        
+        return o.tags && o.tags.indexOf(tag) > -1;
+    };
+    
     flock.generate = function (bufOrSize, generator) {
         var buf = typeof bufOrSize === "number" ? new Float32Array(bufOrSize) : bufOrSize,
             isFunc = typeof generator === "function",
@@ -442,7 +450,7 @@ var fluid = fluid || require("infusion"),
         var input = flock.get(root, path);
         
         // If the unit generator is a valueType ugen, return its value, otherwise return the ugen itself.
-        return (input && input.tags && input.tags.indexOf("flock.ugen.valueType") > -1) ? input.model.value : input;
+        return flock.hasTag(input, "flock.ugen.valueType") ? input.model.value : input;
     };
     
     flock.input.getValuesForPathArray = function (root, paths) {

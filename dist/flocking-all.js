@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 r61b83a241e57db761ef64d5dce77fd8c279ad9ab, Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 rbd60ecfc320f121e081949e2e6af243e054a8298, Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -16706,6 +16706,14 @@ var fluid = fluid || require("infusion"),
         return o && o.length !== undefined && type !== "string" && type !== "function";
     };
     
+    flock.hasTag = function (o, tag) {
+        if (!o || !tag) {
+            return false;
+        }
+        
+        return o.tags && o.tags.indexOf(tag) > -1;
+    };
+    
     flock.generate = function (bufOrSize, generator) {
         var buf = typeof bufOrSize === "number" ? new Float32Array(bufOrSize) : bufOrSize,
             isFunc = typeof generator === "function",
@@ -17012,7 +17020,7 @@ var fluid = fluid || require("infusion"),
         var input = flock.get(root, path);
         
         // If the unit generator is a valueType ugen, return its value, otherwise return the ugen itself.
-        return (input && input.tags && input.tags.indexOf("flock.ugen.valueType") > -1) ? input.model.value : input;
+        return flock.hasTag(input, "flock.ugen.valueType") ? input.model.value : input;
     };
     
     flock.input.getValuesForPathArray = function (root, paths) {
@@ -21721,7 +21729,7 @@ var fluid = fluid || require("infusion"),
     };
     
     flock.ugen.out.collectBuffersForSource = function (sourceBuffers, source) {
-        var isMulti = (source.tags && source.tags.indexOf("flock.ugen.multiChannelOutput") > -1),
+        var isMulti = flock.hasTag(source, "flock.ugen.multiChannelOutput"),
             channels = isMulti ? source.output : [source.output],
             i;
         

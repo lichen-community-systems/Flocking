@@ -2030,7 +2030,7 @@ var fluid = fluid || require("infusion"),
     };
     
     flock.ugen.out.collectBuffersForSource = function (sourceBuffers, source) {
-        var isMulti = (source.tags && source.tags.indexOf("flock.ugen.multiChannelOutput") > -1),
+        var isMulti = flock.hasTag(source, "flock.ugen.multiChannelOutput"),
             channels = isMulti ? source.output : [source.output],
             i;
         
