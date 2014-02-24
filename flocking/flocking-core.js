@@ -205,11 +205,14 @@ var fluid = fluid || require("infusion"),
     /**
      * Normalizes the specified buffer in place to the specified value.
      *
-     * @param {Arrayable} buffer the buffer to normalize; it will not be copied
+     * @param {Arrayable} buffer the buffer to normalize
      * @param {Number} normal the value to normalize the buffer to
+     * @param {Arrayable} a buffer to output values into; if omitted, buffer will be modified in place
      * @return the buffer, normalized in place
      */
-    flock.normalize = function (buffer, normal) {
+    flock.normalize = function (buffer, normal, output) {
+        output = output || buffer;
+        
         var maxVal = 0.0,
             i,
             current,
@@ -228,11 +231,11 @@ var fluid = fluid || require("infusion"),
         if (maxVal > 0.0) {
             for (i = 0; i < buffer.length; i++) {
                 val = buffer[i];
-                buffer[i] = (val / maxVal) * normal;
+                output[i] = (val / maxVal) * normal;
             }
         }
         
-        return buffer;
+        return output;
     };
     
     flock.range = function (buf) {

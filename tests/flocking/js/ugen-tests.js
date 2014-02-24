@@ -1116,8 +1116,8 @@ var fluid = fluid || require("infusion"),
         
         inSynth.enviro.gen();
         var actual = inSynth.namedNodes["in"].output;
-        equal(actual, inSynth.enviro.buses[3],
-            "With a single source input, the output of flock.ugen.in should be the actual bus referenced.");
+        deepEqual(actual, inSynth.enviro.buses[3],
+            "With a single source input, the output of flock.ugen.in should a copy of the bus referenced.");
         deepEqual(actual, outSynth.get("bufferMock").options.buffer,
             "And it should reflect exactly the output of the flock.ugen.out that is writing to the buffer.");
     });

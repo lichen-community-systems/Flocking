@@ -442,6 +442,16 @@ var fluid = fluid || require("infusion"),
     
     flock.ugen.sum = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
+
+        that.copyGen = function (numSamps) {
+            var out = that.output,
+                source = that.inputs.sources.output,
+                i;
+            
+            for (i = 0; i < numSamps; i++) {
+                out[i] = source[i];
+            }
+        };
         
         that.sumGen = function (numSamps) {
             var sources = that.inputs.sources,
@@ -464,8 +474,7 @@ var fluid = fluid || require("infusion"),
                 // We have an array of sources that need to be summed.
                 that.gen = that.sumGen;
             } else {
-                that.output = that.inputs.sources.output;
-                that.gen = fluid.identity;
+                that.gen = that.copyGen;
             }
         };
         
@@ -495,7 +504,7 @@ var fluid = fluid || require("infusion"),
                 tableLen = m.tableLen,
                 tableIncHz = m.tableIncHz,
                 tableIncRad = m.tableIncRad,
-                output = that.output,
+                out = that.output,
                 phase = m.phase,
                 i,
                 j,
@@ -509,7 +518,7 @@ var fluid = fluid || require("infusion"),
                 } else if (idx < 0) {
                     idx += tableLen;
                 }
-                output[i] = that.interpolate ? that.interpolate(idx, table) : table[idx | 0];
+                out[i] = that.interpolate ? that.interpolate(idx, table) : table[idx | 0];
                 phase += freq[k] * tableIncHz;
                 if (phase >= tableLen) {
                     phase -= tableLen;
@@ -1917,11 +1926,12 @@ var fluid = fluid || require("infusion"),
         var that = flock.ugen(inputs, output, options);
         
         that.gen = function () {
-            var max = that.inputs.max.output[0], // Max is kr.
+            var out = that.output,
+                max = that.inputs.max.output[0], // Max is kr.
                 source = that.inputs.source.output;
             
             // Note, this normalizes the source input ugen's output buffer directly in place.
-            that.output = flock.normalize(source, max);
+            flock.normalize(source, max, out);
         };
         
         that.onInputChanged();
@@ -1946,7 +1956,7 @@ var fluid = fluid || require("infusion"),
         // TODO: Implement a "straight out" gen function for cases where the number
         // of sources matches the number of output buses (i.e. where no expansion is necessary).
         that.gen = function (numSamps) {
-            var sources = that.inputs.sources,
+            var sources = that.sourceBuffers,
                 buses = that.options.audioSettings.buses,
                 bufStart = that.inputs.bus.output[0],
                 expand = that.inputs.expand.output[0],
@@ -1959,10 +1969,6 @@ var fluid = fluid || require("infusion"),
                 bus,
                 inc,
                 outIdx;
-                     
-            if (typeof (sources.length) !== "number") {
-                sources = [sources];
-            }
             
             numSources = sources.length;
             numOutputBuses = Math.max(expand, numSources);
@@ -1986,10 +1992,56 @@ var fluid = fluid || require("infusion"),
                     bus[j] = bus[j] + source.output[outIdx];
                 }
             }
+            
+            that.mulAdd(numSamps);
         };
-    
-        that.onInputChanged();
+
+        
+        that.collectSourceBuffers = function () {
+            var sources = fluid.makeArray(that.inputs.sources),
+                buffers = that.sourceBuffers,
+                i,
+                source;
+            
+            // Clear the current array of source buffers.
+            buffers.length = 0;
+            
+            for (i = 0; i < sources.length; i++) {
+                source = sources[i];
+                flock.ugen.out.collectBuffersForSource(buffers, source);
+            }
+        };
+        
+        that.onInputChanged = function (inputName) {
+            if (!inputName || inputName === "sources") {
+                that.collectSourceBuffers();
+            }
+            
+            flock.onMulAddInputChanged(that);
+        };
+        
+        that.init = function () {
+            that.sourceBuffers = [];
+            that.onInputChanged();
+        };
+        
+        that.init();
         return that;
+    };
+    
+    flock.ugen.out.collectBuffersForSource = function (sourceBuffers, source) {
+        var isMulti = (source.tags && source.tags.indexOf("flock.ugen.multiChannelOutput") > -1),
+            channels = isMulti ? source.output : [source.output],
+            i;
+        
+        for (i = 0; i < channels.length; i++) {
+            sourceBuffers.push({
+                rate: source.rate,
+                output: channels[i]
+            });
+        }
+        
+        return sourceBuffers;
     };
     
     fluid.defaults("flock.ugen.out", {
@@ -2056,8 +2108,15 @@ var fluid = fluid || require("infusion"),
     flock.ugen["in"] = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
-        that.singleBusGen = function () {
-            that.output = that.options.audioSettings.buses[that.inputs.bus.output[0]];
+        that.singleBusGen = function (numSamps) {
+            var out = that.output,
+                busNum = that.inputs.bus.output[0],
+                bus = that.options.audioSettings.buses[busNum],
+                i;
+            
+            for (i = 0; i < numSamps; i++) {
+                out[i] = bus[i];
+            }
         };
         
         that.multiBusGen = function (numSamps) {
