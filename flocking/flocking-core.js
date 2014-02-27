@@ -906,8 +906,45 @@ var fluid = fluid || require("infusion"),
     
     fluid.defaults("flock.synth", {
         gradeNames: ["fluid.eventedComponent", "flock.node", "flock.ugenNodeList", "autoInit"],
+        
+        invokers: {
+            /**
+             * Plays the synth. This is a convenience method that will add the synth to the tail of the
+             * environment's node graph and then play the environmnent.
+             *
+             * @param {Number} dur optional duration to play this synth in seconds
+             */
+            play: {
+                funcName: "flock.synth.play",
+                args: ["{that}", "{that}.enviro"]
+            },
+            
+            /**
+             * Stops the synth if it is currently playing.
+             * This is a convenience method that will remove the synth from the environment's node graph.
+             */
+            pause: {
+                funcName: "flock.synth.pause",
+                args: ["{that}", "{that}.enviro"]
+            }
+        },
+        
         rate: flock.rates.AUDIO
     });
+    
+    flock.synth.play = function (that, en) {
+        if (en.nodes.indexOf(that) === -1) {
+            en.head(that);
+        }
+        
+        if (!en.model.isPlaying) {
+            en.play();
+        }
+    };
+    
+    flock.synth.pause = function (that, en) {
+        en.remove(that);
+    };
     
     /**
      * Synths represent a collection of signal-generating units, wired together to form an instrument.
@@ -971,32 +1008,6 @@ var fluid = fluid || require("infusion"),
             return !path ? undefined : typeof path === "string" ?
                 arguments.length < 2 ? that.get(path) : that.set(path, val, swap) :
                 flock.isIterable(path) ? that.get(path) : that.set(path, val, swap);
-        };
-                
-        /**
-         * Plays the synth. This is a convenience method that will add the synth to the tail of the
-         * environment's node graph and then play the environmnent.
-         *
-         * @param {Number} dur optional duration to play this synth in seconds
-         */
-        that.play = function () {
-            var e = that.enviro;
-            
-            if (e.nodes.indexOf(that) === -1) {
-                e.head(that);
-            }
-            
-            if (!e.model.isPlaying) {
-                e.play();
-            }
-        };
-        
-        /**
-         * Stops the synth if it is currently playing.
-         * This is a convenience method that will remove the synth from the environment's node graph.
-         */
-        that.pause = function () {
-            that.enviro.remove(that);
         };
 
         that.init = function () {
