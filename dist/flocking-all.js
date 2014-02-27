@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 rfc6f4797d3d035e9dea9db1a7e0885256ed012fa, Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 r561bd107f5cf30242d21df70bba9a6cf26625a31, Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -17736,6 +17736,7 @@ var fluid = fluid || require("infusion"),
     
     flock.OUT_UGEN_ID = "flocking-out";
     flock.TWOPI = 2.0 * Math.PI;
+    flock.HALFPI = Math.PI / 2.0;
     flock.LOG01 = Math.log(0.1);
     flock.LOG001 = Math.log(0.001);
     flock.ROOT2 = Math.sqrt(2);
@@ -22800,6 +22801,66 @@ var fluid = fluid || require("infusion"),
         }
     });
     
+    /**
+     * An equal power stereo panner.
+     *
+     * This unit generator scales the left and right channels
+     * with a quarter-wave sin/cos curve so that the levels at the centre
+     * are more balanced than a linear pan, reducing the impression that
+     * the sound is fading into the distance as it reaches the centrepoint.
+     *
+     * Inputs:
+     *   source: the source (mono) unit signal
+     *   pan: a value between -1 (hard left) and 1 (hard right)
+     */
+    flock.ugen.pan2 = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.gen = function (numSamps) {
+            var m = that.model,
+                outputs = that.output,
+                left = outputs[0],
+                right = outputs[1],
+                inputs = that.inputs,
+                source = inputs.source.output,
+                pan = inputs.pan.output,
+                i,
+                j,
+                sourceVal,
+                panVal;
+            
+            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.pan) {
+                sourceVal = source[i];
+                panVal = pan[j];
+
+                // TODO: Replace this with a lookup table.
+                left[i] = sourceVal * Math.sin(panVal * flock.HALFPI);
+                right[i] = sourceVal * Math.cos(panVal * flock.HALFPI);
+            }
+            
+            // TODO: Add multichannel support for mul/add.
+        };
+        
+        that.onInputChanged();
+        return that;
+    };
+    
+    fluid.defaults("flock.ugen.pan2", {
+        rate: "audio",
+        
+        inputs: {
+            source: undefined,
+            pan: 0 // -1 (hard left)..0 (centre)..1 (hard right)
+        },
+        
+        ugenOptions: {
+            tags: ["flock.ugen.multiChannelOutput"],
+            strideInputs: [
+                "pan"
+            ],
+            numOutputChannels: 2
+        }
+    });
     
     /*******************
      * Bus-Level UGens *
@@ -23776,7 +23837,10 @@ var fluid = fluid || require("infusion"),
             var inputs = that.inputs,
                 m = that.model,
                 label = m.label,
-                source = inputs.source.output,
+                chan = inputs.channel,
+                // Basic multichannel support. This should be inproved
+                // by factoring the multichannel input code out of flock.ugen.out.
+                source = chan ? inputs.source.output[chan.output[0]] : inputs.source.output,
                 trig = inputs.trigger.output[0],
                 freq = inputs.freq.output[0],
                 i;
@@ -23805,7 +23869,7 @@ var fluid = fluid || require("infusion"),
     };
     
     fluid.defaults("flock.ugen.print", {
-        rate: "control",
+        rate: "audio",
         inputs: {
             trigger: 0.0,
             freq: 1.0
