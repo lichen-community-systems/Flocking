@@ -369,21 +369,26 @@ var synth = flock.synth({
 });         
         </script>
         <script type="application/flocking" id="phase_mod">
-// Create a new synth consisting of a sine wave, 
-// modulating its phase with another sine wave.
+// Phase modulation with sine waves.
+// Demo courtesty of Adam Tindale (http://www.adamtindale.com/).
 var synth = flock.synth({
-    synthDef: {
-        id: "carrier",
-        ugen: "flock.ugen.sinOsc",
-        freq: 440,
-        phase: {
-            id: "mod",
-            ugen: "flock.ugen.sinOsc",
-            freq: 20.0,
-            mul: flock.TWOPI
-        },
-        mul: 0.25
-    }
+   synthDef: {
+       id: "carrier",
+       ugen: "flock.ugen.sinOsc",
+       freq: 440,
+       phase: {
+           id: "mod",
+           ugen: "flock.ugen.sinOsc",
+           freq: 34.0,
+           mul: {
+               ugen: "flock.ugen.sinOsc",
+               freq: 1/20,
+               mul: flock.PI
+           },
+           add: flock.PI
+       },
+       mul: 0.25
+   }
 });
         </script>
         <script type="application/flocking" id="impulse_phase">
@@ -696,7 +701,7 @@ var synth = flock.synth({
     }
 });
 
-synth.enviro.asyncScheduler.repeat(2.0, function () {
+synth.enviro.asyncScheduler.repeat(0.5, function () {
     var fundamental = (fundamentalMultiplier * Math.random()) + 60;
     synth.input("adder.sources", makeHarmonics(fundamental));
 });
