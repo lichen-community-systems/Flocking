@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 r4dcfdd33b31e369052d62462881050d5d84d2a02, Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 r8179c872f677eddf814fa0415cc27b5f95b3d1b1, Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -19223,10 +19223,16 @@ var fluid = fluid || require("infusion"),
         // In particular, buffer management should be here so that we can initialize bufferDefs more
         // proactively and remove this behaviour from flock.ugen.buffer.
         for (inputDef in inputDefs) {
+            var inputDefVal = inputDefs[inputDef];
+            
+            if (inputDefVal === null) {
+                continue; // Skip null inputs.
+            }
+            
             // Create ugens for all inputs except special inputs.
             inputs[inputDef] = flock.input.shouldExpand(inputDef, ugenDef) ? 
-                flock.parse.ugenForDef(ugenDef.inputs[inputDef], options) : // Parse the ugendef and create a ugen instance.
-                ugenDef.inputs[inputDef]; // Don't instantiate a ugen, just pass the def on as-is.
+                flock.parse.ugenForDef(inputDefVal, options) : // Parse the ugendef and create a ugen instance.
+                inputDefVal; // Don't instantiate a ugen, just pass the def on as-is.
         }
     
         if (!ugenDef.ugen) {
@@ -21123,8 +21129,8 @@ var fluid = fluid || require("infusion"),
         
         inputs: {
             value: 1.0,
-            mul: undefined,
-            add: undefined
+            mul: null,
+            add: null
         },
         
         ugenOptions: {
@@ -21158,7 +21164,13 @@ var fluid = fluid || require("infusion"),
     };
     
     fluid.defaults("flock.ugen.passThrough", {
-        rate: "audio"
+        rate: "audio",
+        
+        inputs: {
+            source: null,
+            mul: null,
+            add: null
+        }
     });
     
     flock.ugen.valueChangeTrigger = function (inputs, output, options) {
@@ -21271,6 +21283,14 @@ var fluid = fluid || require("infusion"),
         return that;
     };
     
+    fluid.defaults("flock.ugen.math", {
+        rate: "audio",
+        inputs: {
+            // Any Web Array Math operator is supported as an input.
+            source: null
+        }
+    });
+    
     
     flock.ugen.sum = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
@@ -21306,7 +21326,10 @@ var fluid = fluid || require("infusion"),
     };
     
     fluid.defaults("flock.ugen.sum", {
-        rate: "audio"
+        rate: "audio",
+        inputs: {
+            sources: null
+        }
     });
     
     
@@ -21376,7 +21399,10 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         inputs: {
             freq: 440.0,
-            phase: 0.0
+            phase: 0.0,
+            table: null,
+            mul: null,
+            add: null
         },
         ugenOptions: {
             interpolation: "linear",
@@ -21497,7 +21523,24 @@ var fluid = fluid || require("infusion"),
         return that;
     };
     
-    fluid.defaults("flock.ugen.sin", fluid.defaults("flock.ugen.osc"));
+    fluid.defaults("flock.ugen.sin", {
+        rate: "audio",
+        inputs: {
+            freq: 440.0,
+            phase: 0.0,
+            mul: null,
+            add: null
+        },
+        ugenOptions: {
+            model: {
+                phase: 0
+            },
+            strideInputs: [
+                "freq",
+                "phase"
+            ]
+        }
+    });
 
     
     flock.ugen.lfSaw = function (inputs, output, options) {
@@ -21548,7 +21591,9 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         inputs: {
             freq: 440,
-            phase: 0.0
+            phase: 0.0,
+            mul: null,
+            add: null
         },
         ugenOptions: {
             strideInputs: ["freq"]
@@ -21604,7 +21649,9 @@ var fluid = fluid || require("infusion"),
         inputs: {
             freq: 440,
             phase: 0.0,
-            width: 0.5
+            width: 0.5,
+            mul: null,
+            add: null
         }
     });
     
@@ -21660,7 +21707,9 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         inputs: {
             freq: 440,
-            phase: 0.0
+            phase: 0.0,
+            mul: null,
+            add: null
         },
         ugenOptions: {
             model: {
@@ -21767,7 +21816,9 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         inputs: {
             source: null,
-            trigger: 0.0
+            trigger: 0.0,
+            mul: null,
+            add: null
         },
         ugenOptions: {
             strideInputs: ["source"],
@@ -21939,7 +21990,10 @@ var fluid = fluid || require("infusion"),
             speed: 1.0,
             start: 0.0,
             end: 1.0,
-            trigger: 1.0
+            trigger: 1.0,
+            buffer: null,
+            mul: null,
+            add: null
         },
         ugenOptions: {
             model: {
@@ -22011,9 +22065,11 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         
         inputs: {
-            buffer: undefined,
+            buffer: null,
             channel: 0,
-            phase: undefined
+            phase: 0,
+            mul: null,
+            add: null
         },
         
         ugenOptions: {
@@ -22074,6 +22130,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.bufferDuration", {
         rate: "constant",
         inputs: {
+            buffer: null,
             channel: 0
         },
         ugenOptions: {
@@ -22129,6 +22186,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.bufferLength", {
         rate: "constant",
         inputs: {
+            buffer: null,
             channel: 0
         },
         ugenOptions: {
@@ -22193,6 +22251,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.bufferPhaseStep", {
         rate: "constant",
         inputs: {
+            buffer: null,
             channel: 0
         },
         ugenOptions: {
@@ -22257,7 +22316,9 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.dust", {
         rate: "audio",
         inputs: {
-            density: 1.0
+            density: 1.0,
+            mul: null,
+            add: null
         },
         ugenOptions: {
             model: {
@@ -22288,7 +22349,11 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.ugen.whiteNoise", {
-        rate: "audio"
+        rate: "audio",
+        inputs: {
+            mul: null,
+            add: null
+        }
     });
     
     
@@ -22343,6 +22408,10 @@ var fluid = fluid || require("infusion"),
     
     fluid.defaults("flock.ugen.pinkNoise", {
         rate: "audio",
+        inputs: {
+            mul: null,
+            add: null
+        },
         ugenOptions: {
             model: {
                 offset: 0
@@ -22406,7 +22475,9 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.lfNoise", {
         rate: "audio",
         inputs: {
-            freq: 440
+            freq: 440,
+            mul: null,
+            add: null
         },
         ugenOptions: {
             model: {
@@ -22480,7 +22551,9 @@ var fluid = fluid || require("infusion"),
         inputs: {
             start: 0.0,
             end: 1.0,
-            duration: 1.0
+            duration: 1.0,
+            mul: null,
+            add: null
         }
     });
     
@@ -22543,7 +22616,9 @@ var fluid = fluid || require("infusion"),
         inputs: {
             start: 0.0,
             end: 1.0,
-            duration: 1.0
+            duration: 1.0,
+            mul: null,
+            add: null
         }
     });
 
@@ -22605,7 +22680,9 @@ var fluid = fluid || require("infusion"),
             end: 1.0,
             reset: 0.0,
             step: 0.1,
-            trigger: 0.0
+            trigger: 0.0,
+            mul: null,
+            add: null
         },
         ugenOptions: {
             strideInputs: [
@@ -22618,6 +22695,7 @@ var fluid = fluid || require("infusion"),
     flock.ugen.env = {};
     
     // TODO: Better names for these inputs; harmonize them with flock.ugen.line
+    // TODO: Make this a mul/adder.
     flock.ugen.env.simpleASR = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
@@ -22756,7 +22834,9 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         inputs: {
             attack: 0.01,
-            release: 0.01
+            release: 0.01,
+            mul: null,
+            add: null
         },
         ugenOptions: {
             model: {
@@ -22783,7 +22863,8 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.normalize", {
         rate: "audio",
         inputs: {
-            max: 1.0
+            max: 1.0,
+            source: null
         }
     });
     
@@ -22941,7 +23022,9 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.in", {
         rate: "audio",
         inputs: {
-            bus: 0
+            bus: 0,
+            mul: null,
+            add: null
         }
     });
     
@@ -22996,9 +23079,12 @@ var fluid = fluid || require("infusion"),
     };
     
     fluid.defaults("flock.ugen.filter", {
+        rate: "audio",
+        
         inputs: {
             freq: 440,
-            q: 1.0
+            q: 1.0,
+            source: null
         }
     });
 
@@ -23058,7 +23144,8 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.filter.biquad", {
         inputs: {
             freq: 440,
-            q: 1.0
+            q: 1.0,
+            source: null
         }
     });
     
@@ -23309,7 +23396,8 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         inputs: {
             maxTime: 1.0,
-            time: 1.0
+            time: 1.0,
+            source: null
         },
         ugenOptions: {
             model: {
@@ -23349,7 +23437,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.delay1", {
         rate: "audio",
         inputs: {
-            source: undefined
+            source: null
         },
         ugenOptions: {
             model: {
@@ -23493,7 +23581,10 @@ var fluid = fluid || require("infusion"),
         inputs: {
             mix: 0.5,
             roomsize: 0.6,
-            damp: 0.1
+            damp: 0.1,
+            source: null,
+            mul: null,
+            add: null
         },
         ugenOptions: {
             model: {
@@ -23546,6 +23637,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.decay", {
         rate: "audio",
         inputs: {
+            source: null,
             time: 1.0
         },
         ugenOptions: {
@@ -23701,7 +23793,10 @@ var fluid = fluid || require("infusion"),
             channel: 0,
             amp: 1.0,
             dur: 0.1,
-            speed: 1.0
+            speed: 1.0,
+            buffer: null,
+            mul: null,
+            add: null
         },
         ugenOptions: {
             model: {
@@ -23768,6 +23863,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.print", {
         rate: "control",
         inputs: {
+            source: null,
             trigger: 0.0,
             freq: 1.0
         },
@@ -23877,9 +23973,12 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.granulator", {
         rate: "audio",
         inputs: {
+            source: null,
             grainDur: 0.1,
             delayDur: 1,
-            numGrains: 5
+            numGrains: 5,
+            mul: null,
+            add: null
         },
         ugenOptions: {
             model: {
@@ -24008,6 +24107,9 @@ var fluid = fluid || require("infusion"),
     
     fluid.defaults("flock.ugen.midiFreq", {
         rate: "control",
+        inputs: {
+            source: null
+        },
         ugenOptions: {
             model: {
                 a4: {
@@ -24055,14 +24157,6 @@ var fluid = fluid || require("infusion"),
     flock.ugen.scope = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
-        that.model.spf = Math.round(that.model.sampleRate / that.options.fps);
-        that.model.bufIdx = 0;
-        
-        // Setup the scopeView widget. 
-        that.model.scope = that.options.styles;
-        that.model.scope.values = new Float32Array(that.model.spf);
-        that.scopeView = flock.view.scope(that.options.canvas, that.model.scope);
-        
         that.gen = function (numSamps) {
             var m = that.model,
                 spf = m.spf,
@@ -24087,14 +24181,28 @@ var fluid = fluid || require("infusion"),
             that.output = that.inputs.source.output;
         };
         
-        that.onInputChanged();
-        that.scopeView.refreshView();
+        that.init = function () {
+            that.model.spf = Math.round(that.model.sampleRate / that.options.fps);
+            that.model.bufIdx = 0;
         
+            // Set up the scopeView widget.
+            that.model.scope = that.options.styles;
+            that.model.scope.values = new Float32Array(that.model.spf);
+            that.scopeView = flock.view.scope(that.options.canvas, that.model.scope);
+            
+            that.onInputChanged();
+            that.scopeView.refreshView();
+        };
+        
+        that.init();
         return that;
     };
     
     fluid.defaults("flock.ugen.scope", {
         rate: "audio",
+        inputs: {
+            source: null
+        },
         ugenOptions: {
             fps: 60,
             styles: {
@@ -24114,7 +24222,6 @@ var fluid = fluid || require("infusion"),
      */
     flock.ugen.mouse.cursor = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.options.axis = that.options && that.options.axis ? that.options.axis : "x"; // By default, track the mouse along the x axis.
         
         /**
          * Generates a control rate signal between 0.0 and 1.0 by tracking the mouse's position along the specified axis.
@@ -24375,6 +24482,8 @@ var fluid = fluid || require("infusion"),
             var m = that.model,
                 mikeOpts = that.options.mike;
 
+            that.onInputChanged();
+            
             // Flash needs the sample rate as a string?!
             mikeOpts.settings.sampleRate = String(mikeOpts.settings.sampleRate || that.options.audioSettings.rates.audio);
             
@@ -24405,9 +24514,7 @@ var fluid = fluid || require("infusion"),
             flock.onMulAddInputChanged(that);
         };
         
-        that.onInputChanged();
         that.init();
-        
         return that;
     };
     
