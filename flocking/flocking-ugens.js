@@ -2070,11 +2070,11 @@ var fluid = fluid || require("infusion"),
             
             for (i = 0, j = 0; i < numSamps; i++, j += m.strides.pan) {
                 sourceVal = source[i];
-                panVal = pan[j];
+                panVal = pan[j] * 0.5 + 0.5;
 
                 // TODO: Replace this with a lookup table.
-                left[i] = sourceVal * Math.sin(panVal * flock.HALFPI);
-                right[i] = sourceVal * Math.cos(panVal * flock.HALFPI);
+                right[i] = sourceVal * Math.sin(panVal * flock.HALFPI);
+                left[i] = sourceVal * Math.cos(panVal * flock.HALFPI);
             }
             
             // TODO: Add multichannel support for mul/add.

@@ -2101,4 +2101,113 @@ var fluid = fluid || require("infusion"),
             "The control rate trigger value should have been shifted to index 27 in the audio rate output stream.");
     });
     
+    (function () {
+        module("flock.ugen.pan2");
+    
+        var makePannerSynth = function (panVal) {
+            var ones = flock.generate(64, 1);
+            var panSynthDef = {
+                id: "panner",
+                ugen: "flock.ugen.pan2",
+                pan: panVal,
+                source: {
+                    id: "mock",
+                    ugen: "flock.mock.ugen",
+                    options: {
+                        buffer: ones
+                    }
+                } 
+            };
+        
+            return flock.synth({
+                synthDef: panSynthDef
+            });
+        };
+    
+        var testPanner = function (panTestSpec) {
+            var synth = makePannerSynth(panTestSpec.pan),
+                panner = synth.get("panner"),
+                assertionMap = {
+                    "equal": deepEqual,
+                    "silent": flock.test.arraySilent,
+                    "extremelyQuiet": flock.test.arrayExtremelyQuiet
+                },
+                i,
+                channelAssertion,
+                fn;
+        
+            synth.gen();
+        
+            for (i = 0; i < panTestSpec.channelAssertions.length; i++) {
+                channelAssertion = panTestSpec.channelAssertions[i];
+                fn = assertionMap[channelAssertion.assertion];
+            
+                if (channelAssertion.expected) {
+                    fn(panner.output[i], channelAssertion.expected, channelAssertion.msg);
+                } else {
+                    fn(panner.output[i], channelAssertion.msg);
+                }
+            }
+        };
+    
+        test("Audio rate pan2 tests", function () {
+            var fullPower = flock.generate(64, 1),
+                equalPower = flock.generate(64, Math.sqrt(0.5));
+        
+            var pannerTestSpecs = [
+                {
+                    pan: -1,
+                    channelAssertions: [
+                        {
+                            assertion: "equal",
+                            expected: fullPower,
+                            msg: "When the panner is hard left, the signal should be present at full amplitude " +
+                                "in the first output buffer."
+                        },
+                        {
+                            assertion: "silent",
+                            msg: "When the panner is hard left, the second output buffer should be silent."
+                        }
+                    ]
+                },
+                {
+                    pan: 1,
+                    channelAssertions: [
+                        {
+                            assertion: "extremelyQuiet",
+                            msg: "When the panner is hard right, the first output buffer should be silent."
+                        },
+                        {
+                            assertion: "equal",
+                            expected: fullPower,
+                            msg: "When the panner is hard right, the signal should be present at full amplitude " +
+                                "in the second output buffer."
+                        }
+                    ]
+                
+                },
+                {
+                    pan: 0,
+                    channelAssertions: [
+                        {
+                            assertion: "equal",
+                            expected: equalPower,
+                            msg: "When the panner is centred, the signal should be present at 0.707 " +
+                                "in the first output buffer."
+                        },
+                        {
+                            assertion: "equal",
+                            expected: equalPower,
+                            msg: "When the panner is centred, the signal should be present at 0.707 " +
+                                "in the second output buffer."
+                        }
+                    ]
+                }
+            ];
+        
+            for (var i = 0; i < pannerTestSpecs.length; i++) {
+                testPanner(pannerTestSpecs[i]);
+            }
+        });
+    }());
 }());

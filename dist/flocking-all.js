@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 ra6239605f2f90fccc05efbe940186338aab7a480, Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 rca18a22589b10f0e0aea41ecdb5a8ff315c8f6e7, Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -22932,11 +22932,11 @@ var fluid = fluid || require("infusion"),
             
             for (i = 0, j = 0; i < numSamps; i++, j += m.strides.pan) {
                 sourceVal = source[i];
-                panVal = pan[j];
+                panVal = pan[j] * 0.5 + 0.5;
 
                 // TODO: Replace this with a lookup table.
-                left[i] = sourceVal * Math.sin(panVal * flock.HALFPI);
-                right[i] = sourceVal * Math.cos(panVal * flock.HALFPI);
+                right[i] = sourceVal * Math.sin(panVal * flock.HALFPI);
+                left[i] = sourceVal * Math.cos(panVal * flock.HALFPI);
             }
             
             // TODO: Add multichannel support for mul/add.

@@ -56,6 +56,14 @@ var flock = flock || {};
         equal(rounded, expected, msg);
     };
     
+    flock.test.arrayEqualRounded = function (numDecimals, actual, expected, msg) {
+        var i;
+        
+        for (i = 0; i < actual.length; i++) {
+            flock.test.equalRounded(numDecimals, actual[i], expected[i], msg);
+        }
+    };
+    
     flock.test.arrayNotSilent = function (buffer, msg) {
         var numNonZero = 0,
             foundAt = -1,
@@ -73,6 +81,11 @@ var flock = flock || {};
     flock.test.arraySilent = function (buffer, msg) {
         var silentBuffer = flock.generate(buffer.length, 0.0);
         deepEqual(buffer, silentBuffer, msg);
+    };
+    
+    flock.test.arrayExtremelyQuiet = function (buffer, msg) {
+        var expected = flock.generate(buffer.length, 0);
+        flock.test.arrayEqualRounded(10, buffer, expected, msg);
     };
     
     flock.test.arrayUnbroken = function (buffer, msg) {
