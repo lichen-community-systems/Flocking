@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 r9c15cb1d13a5ed90191e72ca7790c29c05c8f9c6, Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 r490a3bbf3ece43bddd52c43285c654630596f5ec, Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -19247,10 +19247,16 @@ var fluid = fluid || require("infusion"),
         // In particular, buffer management should be here so that we can initialize bufferDefs more
         // proactively and remove this behaviour from flock.ugen.buffer.
         for (inputDef in inputDefs) {
+            var inputDefVal = inputDefs[inputDef];
+            
+            if (inputDefVal === null) {
+                continue; // Skip null inputs.
+            }
+            
             // Create ugens for all inputs except special inputs.
             inputs[inputDef] = flock.input.shouldExpand(inputDef, ugenDef) ? 
-                flock.parse.ugenForDef(ugenDef.inputs[inputDef], options) : // Parse the ugendef and create a ugen instance.
-                ugenDef.inputs[inputDef]; // Don't instantiate a ugen, just pass the def on as-is.
+                flock.parse.ugenForDef(inputDefVal, options) : // Parse the ugendef and create a ugen instance.
+                inputDefVal; // Don't instantiate a ugen, just pass the def on as-is.
         }
     
         if (!ugenDef.ugen) {
@@ -21147,8 +21153,8 @@ var fluid = fluid || require("infusion"),
         
         inputs: {
             value: 1.0,
-            mul: undefined,
-            add: undefined
+            mul: null,
+            add: null
         },
         
         ugenOptions: {
@@ -21182,7 +21188,13 @@ var fluid = fluid || require("infusion"),
     };
     
     fluid.defaults("flock.ugen.passThrough", {
-        rate: "audio"
+        rate: "audio",
+        
+        inputs: {
+            source: null,
+            mul: null,
+            add: null
+        }
     });
     
     flock.ugen.valueChangeTrigger = function (inputs, output, options) {
@@ -21295,6 +21307,14 @@ var fluid = fluid || require("infusion"),
         return that;
     };
     
+    fluid.defaults("flock.ugen.math", {
+        rate: "audio",
+        inputs: {
+            // Any Web Array Math operator is supported as an input.
+            source: null
+        }
+    });
+    
     
     flock.ugen.sum = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
@@ -21339,7 +21359,10 @@ var fluid = fluid || require("infusion"),
     };
     
     fluid.defaults("flock.ugen.sum", {
-        rate: "audio"
+        rate: "audio",
+        inputs: {
+            sources: null
+        }
     });
     
     
@@ -21349,7 +21372,6 @@ var fluid = fluid || require("infusion"),
      
     flock.ugen.osc = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.model.phase = 0.0;
 
         that.gen = function (numSamps) {
             var m = that.model,
@@ -21410,9 +21432,16 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         inputs: {
             freq: 440.0,
-            phase: 0.0
+            phase: 0.0,
+            table: null,
+            mul: null,
+            add: null
         },
         ugenOptions: {
+            interpolation: "linear",
+            model: {
+                phase: 0
+            },
             strideInputs: [
                 "freq",
                 "phase"
@@ -21498,7 +21527,6 @@ var fluid = fluid || require("infusion"),
 
     flock.ugen.sin = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.model.phase = 0.0;
     
         that.gen = function (numSamps) {
             var m = that.model,
@@ -21528,12 +21556,28 @@ var fluid = fluid || require("infusion"),
         return that;
     };
     
-    fluid.defaults("flock.ugen.sin", fluid.defaults("flock.ugen.osc"));
+    fluid.defaults("flock.ugen.sin", {
+        rate: "audio",
+        inputs: {
+            freq: 440.0,
+            phase: 0.0,
+            mul: null,
+            add: null
+        },
+        ugenOptions: {
+            model: {
+                phase: 0
+            },
+            strideInputs: [
+                "freq",
+                "phase"
+            ]
+        }
+    });
 
     
     flock.ugen.lfSaw = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.model.scale = 2 * (1 / options.sampleRate);
         
         that.gen = function (numSamps) {
             var m = that.model,
@@ -21567,7 +21611,12 @@ var fluid = fluid || require("infusion"),
             flock.onMulAddInputChanged(that);
         };
         
-        that.onInputChanged();
+        that.init = function () {
+            that.model.scale = 2 * (1 / that.options.sampleRate);
+            that.onInputChanged();
+        };
+        
+        that.init();
         return that;
     };
     
@@ -21575,7 +21624,9 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         inputs: {
             freq: 440,
-            phase: 0.0
+            phase: 0.0,
+            mul: null,
+            add: null
         },
         ugenOptions: {
             strideInputs: ["freq"]
@@ -21585,7 +21636,6 @@ var fluid = fluid || require("infusion"),
     
     flock.ugen.lfPulse = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.model.scale = 1 / options.sampleRate;
         
         that.gen = function (numSamps) {
             var inputs = that.inputs,
@@ -21618,7 +21668,12 @@ var fluid = fluid || require("infusion"),
             flock.onMulAddInputChanged(that);
         };
         
-        that.onInputChanged();
+        that.init = function () {
+            that.model.scale = 1 / that.options.sampleRate;
+            that.onInputChanged();
+        };
+        
+        that.init();
         return that;
     };
     
@@ -21627,7 +21682,9 @@ var fluid = fluid || require("infusion"),
         inputs: {
             freq: 440,
             phase: 0.0,
-            width: 0.5
+            width: 0.5,
+            mul: null,
+            add: null
         }
     });
     
@@ -21666,7 +21723,6 @@ var fluid = fluid || require("infusion"),
         };
         
         that.onInputChanged = function () {
-            that.model.phase = 0.0;
             that.calculateStrides();
             flock.onMulAddInputChanged(that);
         };
@@ -21684,9 +21740,14 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         inputs: {
             freq: 440,
-            phase: 0.0
+            phase: 0.0,
+            mul: null,
+            add: null
         },
         ugenOptions: {
+            model: {
+                phase: 0.0
+            },
             strideInputs: ["freq"]
         }
     });
@@ -21788,7 +21849,9 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         inputs: {
             source: null,
-            trigger: 0.0
+            trigger: 0.0,
+            mul: null,
+            add: null
         },
         ugenOptions: {
             strideInputs: ["source"],
@@ -21840,7 +21903,6 @@ var fluid = fluid || require("infusion"),
     
     flock.ugen.playBuffer = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        flock.ugen.buffer(that);
         
         // Optimized gen function for constant regular-speed playback.
         that.crRegularSpeedGen = function (numSamps) {
@@ -21944,6 +22006,7 @@ var fluid = fluid || require("infusion"),
         };
         
         that.init = function () {
+            flock.ugen.buffer(that);
             that.initBuffer();
             that.onInputChanged();
         };
@@ -21960,7 +22023,10 @@ var fluid = fluid || require("infusion"),
             speed: 1.0,
             start: 0.0,
             end: 1.0,
-            trigger: 1.0
+            trigger: 1.0,
+            buffer: null,
+            mul: null,
+            add: null
         },
         ugenOptions: {
             model: {
@@ -21989,7 +22055,6 @@ var fluid = fluid || require("infusion"),
     // TODO: This should be refactored based on the model of bufferPhaseStep below.
     flock.ugen.readBuffer = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        flock.ugen.buffer(that);
         
         that.gen = function (numSamps) {
             var m = that.model,
@@ -22020,6 +22085,7 @@ var fluid = fluid || require("infusion"),
         };
         
         that.init = function () {
+            flock.ugen.buffer(that);
             that.initBuffer();
             that.onInputChanged();
         };
@@ -22032,9 +22098,11 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         
         inputs: {
-            buffer: undefined,
+            buffer: null,
             channel: 0,
-            phase: undefined
+            phase: 0,
+            mul: null,
+            add: null
         },
         
         ugenOptions: {
@@ -22057,7 +22125,6 @@ var fluid = fluid || require("infusion"),
      */
     flock.ugen.bufferDuration = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        flock.ugen.buffer(that);
         
         that.krGen = function (numSamps) {
             var m = that.model,
@@ -22084,6 +22151,7 @@ var fluid = fluid || require("infusion"),
             var r = that.rate;
             that.gen = (r === flock.rates.CONTROL || r === flock.rates.AUDIO) ? that.krGen : undefined;
             that.output[0] = that.model.value = 0.0;
+            flock.ugen.buffer(that);
             that.initBuffer();
             that.onInputChanged();
         };
@@ -22095,6 +22163,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.bufferDuration", {
         rate: "constant",
         inputs: {
+            buffer: null,
             channel: 0
         },
         ugenOptions: {
@@ -22113,7 +22182,6 @@ var fluid = fluid || require("infusion"),
      */
     flock.ugen.bufferLength = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        flock.ugen.buffer(that);
         
         that.krGen = function (numSamps) {
             var m = that.model,
@@ -22139,6 +22207,7 @@ var fluid = fluid || require("infusion"),
             var r = that.rate;
             that.gen = (r === flock.rates.CONTROL || r === flock.rates.AUDIO) ? that.krGen : undefined;
             that.output[0] = that.model.value = 0.0;
+            flock.ugen.buffer(that);
             that.initBuffer();
             that.onInputChanged();
         };
@@ -22150,6 +22219,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.bufferLength", {
         rate: "constant",
         inputs: {
+            buffer: null,
             channel: 0
         },
         ugenOptions: {
@@ -22169,7 +22239,6 @@ var fluid = fluid || require("infusion"),
      */
     flock.ugen.bufferPhaseStep = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        flock.ugen.buffer(that);
         
         that.krGen = function (numSamps) {
             var out = that.output,
@@ -22203,6 +22272,7 @@ var fluid = fluid || require("infusion"),
             var r = that.rate;
             that.gen = (r === flock.rates.CONTROL || r === flock.rates.AUDIO) ? that.krGen : undefined;
             that.output[0] = that.model.value = 0.0;
+            flock.ugen.buffer(that);
             that.initBuffer();
             that.onInputChanged();
         };
@@ -22214,6 +22284,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.bufferPhaseStep", {
         rate: "constant",
         inputs: {
+            buffer: null,
             channel: 0
         },
         ugenOptions: {
@@ -22278,7 +22349,9 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.dust", {
         rate: "audio",
         inputs: {
-            density: 1.0
+            density: 1.0,
+            mul: null,
+            add: null
         },
         ugenOptions: {
             model: {
@@ -22309,7 +22382,11 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.ugen.whiteNoise", {
-        rate: "audio"
+        rate: "audio",
+        inputs: {
+            mul: null,
+            add: null
+        }
     });
     
     
@@ -22364,6 +22441,10 @@ var fluid = fluid || require("infusion"),
     
     fluid.defaults("flock.ugen.pinkNoise", {
         rate: "audio",
+        inputs: {
+            mul: null,
+            add: null
+        },
         ugenOptions: {
             model: {
                 offset: 0
@@ -22377,7 +22458,6 @@ var fluid = fluid || require("infusion"),
 
     flock.ugen.lfNoise = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.model.end = Math.random();
     
         that.gen = function (numSamps) {
             var m = that.model,
@@ -22416,14 +22496,21 @@ var fluid = fluid || require("infusion"),
             that.mulAdd(numSamps);
         };
         
-        that.onInputChanged();
+        that.input = function () {
+            that.model.end = Math.random();
+            that.onInputChanged();
+        };
+        
+        that.input();
         return that;
     };
     
     fluid.defaults("flock.ugen.lfNoise", {
         rate: "audio",
         inputs: {
-            freq: 440
+            freq: 440,
+            mul: null,
+            add: null
         },
         ugenOptions: {
             model: {
@@ -22497,7 +22584,9 @@ var fluid = fluid || require("infusion"),
         inputs: {
             start: 0.0,
             end: 1.0,
-            duration: 1.0
+            duration: 1.0,
+            mul: null,
+            add: null
         }
     });
     
@@ -22560,7 +22649,9 @@ var fluid = fluid || require("infusion"),
         inputs: {
             start: 0.0,
             end: 1.0,
-            duration: 1.0
+            duration: 1.0,
+            mul: null,
+            add: null
         }
     });
 
@@ -22622,7 +22713,9 @@ var fluid = fluid || require("infusion"),
             end: 1.0,
             reset: 0.0,
             step: 0.1,
-            trigger: 0.0
+            trigger: 0.0,
+            mul: null,
+            add: null
         },
         ugenOptions: {
             strideInputs: [
@@ -22635,6 +22728,7 @@ var fluid = fluid || require("infusion"),
     flock.ugen.env = {};
     
     // TODO: Better names for these inputs; harmonize them with flock.ugen.line
+    // TODO: Make this a mul/adder.
     flock.ugen.env.simpleASR = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
@@ -22725,7 +22819,6 @@ var fluid = fluid || require("infusion"),
     
     flock.ugen.amplitude = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.model.previousValue = 0.0;
         
         that.gen = function (numSamps) {
             var m = that.model,
@@ -22735,7 +22828,7 @@ var fluid = fluid || require("infusion"),
                 nextAtt = that.inputs.attack.output[0],
                 prevRel = m.releaseTime,
                 nextRel = that.inputs.release.output[0],
-                prevVal = m.previousValue,
+                prevVal = m.prevVal,
                 attCoef = m.attackCoef,
                 relCoef = m.releaseCoef,
                 i,
@@ -22761,7 +22854,7 @@ var fluid = fluid || require("infusion"),
                 out[i] = prevVal = val + (prevVal - val) * coef;
             }
             
-            m.previousValue = prevVal;
+            m.prevVal = prevVal;
             
             that.mulAdd(numSamps);
         };
@@ -22774,7 +22867,14 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         inputs: {
             attack: 0.01,
-            release: 0.01
+            release: 0.01,
+            mul: null,
+            add: null
+        },
+        ugenOptions: {
+            model: {
+                prevVal: 0.0
+            }
         }
     });
     
@@ -22797,7 +22897,8 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.normalize", {
         rate: "audio",
         inputs: {
-            max: 1.0
+            max: 1.0,
+            source: null
         }
     });
     
@@ -23064,7 +23165,9 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.in", {
         rate: "audio",
         inputs: {
-            bus: 0
+            bus: 0,
+            mul: null,
+            add: null
         }
     });
     
@@ -23119,9 +23222,12 @@ var fluid = fluid || require("infusion"),
     };
     
     fluid.defaults("flock.ugen.filter", {
+        rate: "audio",
+        
         inputs: {
             freq: 440,
-            q: 1.0
+            q: 1.0,
+            source: null
         }
     });
 
@@ -23181,7 +23287,8 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.filter.biquad", {
         inputs: {
             freq: 440,
-            q: 1.0
+            q: 1.0,
+            source: null
         }
     });
     
@@ -23432,7 +23539,8 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         inputs: {
             maxTime: 1.0,
-            time: 1.0
+            time: 1.0,
+            source: null
         },
         ugenOptions: {
             model: {
@@ -23454,8 +23562,8 @@ var fluid = fluid || require("infusion"),
                 i;
             
             for (i = 0; i < numSamps; i++) {
-                out[i] = m.prevval;
-                m.prevval = source[i];
+                out[i] = m.prevVal;
+                m.prevVal = source[i];
             }
             
             that.mulAdd(numSamps);
@@ -23472,10 +23580,11 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.delay1", {
         rate: "audio",
         inputs: {
+            source: null
         },
         ugenOptions: {
             model: {
-                prevval: 0
+                prevVal: 0
             }
         }
     });
@@ -23483,18 +23592,19 @@ var fluid = fluid || require("infusion"),
     
     flock.ugen.freeverb = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        var tunings = [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617];
-        var allpassTunings = [556, 441, 341, 225];
 
         that.gen = function (numSamps) {
-            var inputs = that.inputs,
+            var o = that.options,
+                inputs = that.inputs,
                 out = that.output,
+                tunings = o.tunings,
+                allPassTunings = o.allPassTunings,
                 source = inputs.source.output,
                 mix = inputs.mix.output[0],
-                dry = 1 - mix,
                 roomsize = inputs.roomsize.output[0],
-                room_scaled = roomsize * 0.28 + 0.7,
                 damp = inputs.damp.output[0],
+                dry = 1 - mix,
+                room_scaled = roomsize * 0.28 + 0.7,
                 damp1 = damp * 0.4, 
                 damp2 = 1.0 - damp1,
                 i,
@@ -23507,7 +23617,7 @@ var fluid = fluid || require("infusion"),
 
                 // read samples from the allpasses
                 for (j = 0; j < that.buffers_a.length; j++) {
-                    if (++that.bufferindices_a[j] === allpassTunings[j]) {
+                    if (++that.bufferindices_a[j] === allPassTunings[j]) {
                         that.bufferindices_a[j] = 0;
                     }
                     that.readsamp_a[j] = that.buffers_a[j][that.bufferindices_a[j]];
@@ -23551,50 +23661,61 @@ var fluid = fluid || require("infusion"),
             that.mulAdd(numSamps);
         };
 
-        // Initialise the delay lines
-        that.buffers_c = [];
-        that.bufferindices_c = new Int32Array(8);
-        that.filterx_c = new Float32Array(8);
-        that.filtery_c = new Float32Array(8);
-        var spread = that.model.spread;
-        var i, j;
-        for (i = 0; i < that.buffers_c.length; i++) {
-            that.buffers_c[i] = new Float32Array(tunings[i] + spread);
-            that.bufferindices_c[i] = 0;
-            that.filterx_c[i] = 0;
-            that.filtery_c[i] = 0;
-            for (j = 0; j < tunings[i] + spread; j++) {
-                that.buffers_c[i][j] = 0;
-            }
-        }
-        that.buffers_a = [];
-        that.bufferindices_a = new Int32Array(4);
-        that.filterx_a = new Float32Array(4);
-        that.filtery_a = new Float32Array(4);
-        // "readsamp" vars are temporary values read back from the delay lines, 
-        // not stored but only used in the gen loop.
-        that.readsamp_a = new Float32Array(4);
-        
-        for (i = 0; i < that.buffers_a.length; i++) {
-            that.bufferindices_a[i] = 0;
-            that.filterx_a[i] = 0;
-            that.filtery_a[i] = 0;
-            that.readsamp_a[i] = 0;
-            // TODO is this what the spread is meant to do?
-            for (j = 0; j < allpassTunings.length; j++) {
-                allpassTunings[j] += spread;
-            }
-            that.buffers_a[i] = new Float32Array(allpassTunings[i]);
-            for (j = 0; j < allpassTunings[i]; j++) {
-                that.buffers_a[i][j] = 0;
-            }
-        }
-
         that.onInputChanged = function () {
             flock.onMulAddInputChanged(that);
         };
 
-        that.onInputChanged();
+        that.initDelayLines = function () {
+            var o = that.options,
+                tunings = o.tunings,
+                allPassTunings = o.allPassTunings;
+            
+            // Initialise the delay lines
+            that.buffers_c = [];
+            that.bufferindices_c = new Int32Array(8);
+            that.filterx_c = new Float32Array(8);
+            that.filtery_c = new Float32Array(8);
+            var spread = that.model.spread;
+            var i, j;
+            for (i = 0; i < that.buffers_c.length; i++) {
+                that.buffers_c[i] = new Float32Array(tunings[i] + spread);
+                that.bufferindices_c[i] = 0;
+                that.filterx_c[i] = 0;
+                that.filtery_c[i] = 0;
+                for (j = 0; j < tunings[i] + spread; j++) {
+                    that.buffers_c[i][j] = 0;
+                }
+            }
+            that.buffers_a = [];
+            that.bufferindices_a = new Int32Array(4);
+            that.filterx_a = new Float32Array(4);
+            that.filtery_a = new Float32Array(4);
+            // "readsamp" vars are temporary values read back from the delay lines, 
+            // not stored but only used in the gen loop.
+            that.readsamp_a = new Float32Array(4);
+        
+            for (i = 0; i < that.buffers_a.length; i++) {
+                that.bufferindices_a[i] = 0;
+                that.filterx_a[i] = 0;
+                that.filtery_a[i] = 0;
+                that.readsamp_a[i] = 0;
+                // TODO is this what the spread is meant to do?
+                for (j = 0; j < allPassTunings.length; j++) {
+                    allPassTunings[j] += spread;
+                }
+                that.buffers_a[i] = new Float32Array(allPassTunings[i]);
+                for (j = 0; j < allPassTunings[i]; j++) {
+                    that.buffers_a[i][j] = 0;
+                }
+            }
+        };
+        
+        that.init = function () {
+            that.initDelayLines();
+            that.onInputChanged();
+        };
+        
+        that.init();
         return that;
     };
     
@@ -23603,11 +23724,19 @@ var fluid = fluid || require("infusion"),
         inputs: {
             mix: 0.5,
             roomsize: 0.6,
-            damp: 0.1
+            damp: 0.1,
+            source: null,
+            mul: null,
+            add: null
         },
         ugenOptions: {
             model: {
                 spread: 0
+            },
+            
+            options: {
+                tunings: [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617],
+                allPassTunings: [556, 441, 341, 225]
             }
         }
     });
@@ -23651,6 +23780,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.decay", {
         rate: "audio",
         inputs: {
+            source: null,
             time: 1.0
         },
         ugenOptions: {
@@ -23683,7 +23813,6 @@ var fluid = fluid || require("infusion"),
     // TODO: Unit tests.
     flock.ugen.triggerGrains = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        flock.ugen.buffer(that);
         
         that.gen = function (numSamps) {
             var m = that.model,
@@ -23789,6 +23918,7 @@ var fluid = fluid || require("infusion"),
             var m = that.model,
                 maxGrainLength = Math.round(m.maxDur * m.sampleRate);
             
+            flock.ugen.buffer(that);
             that.model.env = new Float32Array(maxGrainLength);
             that.allocateGrains();
             that.initBuffer();
@@ -23806,7 +23936,10 @@ var fluid = fluid || require("infusion"),
             channel: 0,
             amp: 1.0,
             dur: 0.1,
-            speed: 1.0
+            speed: 1.0,
+            buffer: null,
+            mul: null,
+            add: null
         },
         ugenOptions: {
             model: {
@@ -23831,7 +23964,6 @@ var fluid = fluid || require("infusion"),
     // TODO: Unit tests.
     flock.ugen.print = function (input, output, options) {
         var that = flock.ugen(input, output, options);
-        that.model.label = that.options.label ? that.options.label + ": " : "";
         
         that.gen = function (numSamps) {
             var inputs = that.inputs,
@@ -23865,12 +23997,19 @@ var fluid = fluid || require("infusion"),
             }
         };
         
+        that.init = function () {
+            var o = that.options;
+            that.model.label = o.label ? o.label + ": " : "";
+        };
+        
+        that.init();
         return that;
     };
     
     fluid.defaults("flock.ugen.print", {
         rate: "audio",
         inputs: {
+            source: null,
             trigger: 0.0,
             freq: 1.0
         },
@@ -23980,9 +24119,12 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.granulator", {
         rate: "audio",
         inputs: {
+            source: null,
             grainDur: 0.1,
             delayDur: 1,
-            numGrains: 5
+            numGrains: 5,
+            mul: null,
+            add: null
         },
         ugenOptions: {
             model: {
@@ -24111,6 +24253,9 @@ var fluid = fluid || require("infusion"),
     
     fluid.defaults("flock.ugen.midiFreq", {
         rate: "control",
+        inputs: {
+            source: null
+        },
         ugenOptions: {
             model: {
                 a4: {
@@ -24158,14 +24303,6 @@ var fluid = fluid || require("infusion"),
     flock.ugen.scope = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
-        that.model.spf = Math.round(that.model.sampleRate / that.options.fps);
-        that.model.bufIdx = 0;
-        
-        // Setup the scopeView widget. 
-        that.model.scope = that.options.styles;
-        that.model.scope.values = new Float32Array(that.model.spf);
-        that.scopeView = flock.view.scope(that.options.canvas, that.model.scope);
-        
         that.gen = function (numSamps) {
             var m = that.model,
                 spf = m.spf,
@@ -24190,14 +24327,28 @@ var fluid = fluid || require("infusion"),
             that.output = that.inputs.source.output;
         };
         
-        that.onInputChanged();
-        that.scopeView.refreshView();
+        that.init = function () {
+            that.model.spf = Math.round(that.model.sampleRate / that.options.fps);
+            that.model.bufIdx = 0;
         
+            // Set up the scopeView widget.
+            that.model.scope = that.options.styles;
+            that.model.scope.values = new Float32Array(that.model.spf);
+            that.scopeView = flock.view.scope(that.options.canvas, that.model.scope);
+            
+            that.onInputChanged();
+            that.scopeView.refreshView();
+        };
+        
+        that.init();
         return that;
     };
     
     fluid.defaults("flock.ugen.scope", {
         rate: "audio",
+        inputs: {
+            source: null
+        },
         ugenOptions: {
             fps: 60,
             styles: {
@@ -24217,7 +24368,6 @@ var fluid = fluid || require("infusion"),
      */
     flock.ugen.mouse.cursor = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.options.axis = that.options && that.options.axis ? that.options.axis : "x"; // By default, track the mouse along the x axis.
         
         /**
          * Generates a control rate signal between 0.0 and 1.0 by tracking the mouse's position along the specified axis.
@@ -24478,6 +24628,8 @@ var fluid = fluid || require("infusion"),
             var m = that.model,
                 mikeOpts = that.options.mike;
 
+            that.onInputChanged();
+            
             // Flash needs the sample rate as a string?!
             mikeOpts.settings.sampleRate = String(mikeOpts.settings.sampleRate || that.options.audioSettings.rates.audio);
             
@@ -24508,9 +24660,7 @@ var fluid = fluid || require("infusion"),
             flock.onMulAddInputChanged(that);
         };
         
-        that.onInputChanged();
         that.init();
-        
         return that;
     };
     
