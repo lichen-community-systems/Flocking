@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 r490a3bbf3ece43bddd52c43285c654630596f5ec, Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 ra6239605f2f90fccc05efbe940186338aab7a480, Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -22950,7 +22950,7 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         
         inputs: {
-            source: undefined,
+            source: null,
             pan: 0 // -1 (hard left)..0 (centre)..1 (hard right)
         },
         

@@ -2088,7 +2088,7 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         
         inputs: {
-            source: undefined,
+            source: null,
             pan: 0 // -1 (hard left)..0 (centre)..1 (hard right)
         },
         
