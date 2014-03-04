@@ -91,10 +91,10 @@ var fluid = fluid || require("infusion"),
             outputBuffers;
         
         if (flock.hasTag(ugenDef.options, "flock.ugen.multiChannelOutput")) {
-            var numOutputChannels = ugenDef.options.numOutputChannels || 1;
+            var numOutputs = ugenDef.options.numOutputs || 1;
             outputBuffers = [];
             
-            for (var i = 0; i < numOutputChannels; i++) {
+            for (var i = 0; i < numOutputs; i++) {
                 outputBuffers.push(new Float32Array(outputBufferSize));
             }
         } else {

@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (March 3, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (March 4, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -17840,12 +17840,11 @@ var fluid = fluid || require("infusion"),
         return o && o.length !== undefined && type !== "string" && type !== "function";
     };
     
-    flock.hasTag = function (o, tag) {
-        if (!o || !tag) {
+    flock.hasTag = function (obj, tag) {
+        if (!obj || !tag) {
             return false;
         }
-        
-        return o.tags && o.tags.indexOf(tag) > -1;
+        return obj.tags && obj.tags.indexOf(tag) > -1;
     };
     
     flock.generate = function (bufOrSize, generator) {
@@ -19088,10 +19087,10 @@ var fluid = fluid || require("infusion"),
             outputBuffers;
         
         if (flock.hasTag(ugenDef.options, "flock.ugen.multiChannelOutput")) {
-            var numOutputChannels = ugenDef.options.numOutputChannels || 1;
+            var numOutputs = ugenDef.options.numOutputs || 1;
             outputBuffers = [];
             
-            for (var i = 0; i < numOutputChannels; i++) {
+            for (var i = 0; i < numOutputs; i++) {
                 outputBuffers.push(new Float32Array(outputBufferSize));
             }
         } else {
@@ -21018,6 +21017,7 @@ var fluid = fluid || require("infusion"),
             output: output,
             options: options,
             model: options.model || {},
+            multiInputs: {},
             tags: ["flock.ugen"]
         };
         
@@ -21075,11 +21075,41 @@ var fluid = fluid || require("infusion"),
             }
         };
         
+        that.collectMultiInputs = function () {
+            var multiInputNames = that.options.multiInputs,
+                channels = that.multiInputs,
+                i,
+                inputName,
+                inputChannelCache,
+                input;
+            
+            for (i = 0; i < multiInputNames.length; i++) {
+                inputName = multiInputNames[i];
+                inputChannelCache = channels[inputName];
+                
+                if (!inputChannelCache) {
+                    inputChannelCache = channels[inputName] = [];
+                } else {
+                    // Clear the current array of buffers.
+                    inputChannelCache.length = 0;
+                }
+                
+                input = that.inputs[inputName];
+                flock.ugen.collectMultiInputs(input, inputChannelCache);
+            }
+        };
+        
         // Base onInputChanged() implementation.
-        that.onInputChanged = function () {
+        that.onInputChanged = function (inputName) {
+            var multiInputs = that.options.multiInputs;
+            
             flock.onMulAddInputChanged(that);
             if (that.options.strideInputs) {
                 that.calculateStrides();
+            }
+            
+            if (multiInputs && (!inputName || multiInputs.indexOf(inputName))) {
+                that.collectMultiInputs();
             }
         };
 
@@ -21111,6 +21141,35 @@ var fluid = fluid || require("infusion"),
         
         that.init();
         return that;
+    };
+    
+    flock.ugen.collectMultiInputs = function (inputs, inputChannelCache) {
+        // This supports multiple ugens bound to a single input name, too.
+        if (!flock.isIterable(inputs)) {
+            inputs = inputs = fluid.makeArray(inputs);
+        }
+  
+        for (var i = 0; i < inputs.length; i++) {
+            var input = inputs[i];
+            flock.ugen.collectChannelsForInput(input, inputChannelCache);
+        }
+        
+        return inputChannelCache;
+    };
+    
+    flock.ugen.collectChannelsForInput = function (input, inputChannelCache) {
+        var isMulti = flock.hasTag(input, "flock.ugen.multiChannelOutput"),
+            channels = isMulti ? input.output : [input.output],
+            i;
+
+        for (i = 0; i < channels.length; i++) {
+            inputChannelCache.push({
+                rate: input.rate,
+                output: channels[i]
+            });
+        }
+        
+        return inputChannelCache;
     };
     
 
@@ -22959,7 +23018,7 @@ var fluid = fluid || require("infusion"),
             strideInputs: [
                 "pan"
             ],
-            numOutputChannels: 2
+            numOutputs: 2
         }
     });
     
@@ -22973,7 +23032,7 @@ var fluid = fluid || require("infusion"),
         // TODO: Implement a "straight out" gen function for cases where the number
         // of sources matches the number of output buses (i.e. where no expansion is necessary).
         that.gen = function (numSamps) {
-            var sources = that.sourceBuffers,
+            var sources = that.multiInputs.sources,
                 buses = that.options.audioSettings.buses,
                 bufStart = that.inputs.bus.output[0],
                 expand = that.inputs.expand.output[0],
@@ -23012,30 +23071,6 @@ var fluid = fluid || require("infusion"),
             
             that.mulAdd(numSamps);
         };
-
-        
-        that.collectSourceBuffers = function () {
-            var sources = fluid.makeArray(that.inputs.sources),
-                buffers = that.sourceBuffers,
-                i,
-                source;
-            
-            // Clear the current array of source buffers.
-            buffers.length = 0;
-            
-            for (i = 0; i < sources.length; i++) {
-                source = sources[i];
-                flock.ugen.out.collectBuffersForSource(buffers, source);
-            }
-        };
-        
-        that.onInputChanged = function (inputName) {
-            if (!inputName || inputName === "sources") {
-                that.collectSourceBuffers();
-            }
-            
-            flock.onMulAddInputChanged(that);
-        };
         
         that.init = function () {
             that.sourceBuffers = [];
@@ -23046,21 +23081,6 @@ var fluid = fluid || require("infusion"),
         return that;
     };
     
-    flock.ugen.out.collectBuffersForSource = function (sourceBuffers, source) {
-        var isMulti = flock.hasTag(source, "flock.ugen.multiChannelOutput"),
-            channels = isMulti ? source.output : [source.output],
-            i;
-        
-        for (i = 0; i < channels.length; i++) {
-            sourceBuffers.push({
-                rate: source.rate,
-                output: channels[i]
-            });
-        }
-        
-        return sourceBuffers;
-    };
-    
     fluid.defaults("flock.ugen.out", {
         rate: "audio",
         inputs: {
@@ -23069,7 +23089,8 @@ var fluid = fluid || require("infusion"),
             expand: 2
         },
         ugenOptions: {
-            tags: ["flock.ugen.outputType"]
+            tags: ["flock.ugen.outputType"],
+            multiInputs: ["sources"]
         }
     });
     

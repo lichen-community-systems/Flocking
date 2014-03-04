@@ -6,7 +6,7 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, module, test, ok, equal, deepEqual, Float32Array*/
+/*global require, module, test, ok, equal, deepEqual, expect, Float32Array*/
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
@@ -153,7 +153,8 @@ var fluid = fluid || require("infusion"),
             audioSettings: {
                 buses: flock.enviro.shared.buses,
                 rates: flock.enviro.shared.audioSettings.rates
-            }
+            },
+            multiInputs: ["sources"] // TODO: why aren't we using the parser?
         });
         out.input("expand", 2);
         
@@ -178,7 +179,8 @@ var fluid = fluid || require("infusion"),
             audioSettings: {
                 buses: flock.enviro.shared.buses,
                 rates: flock.enviro.shared.audioSettings.rates
-            }
+            },
+            multiInputs: ["sources"] // TODO: why aren't we using the parser?
         });
         
         // Pull the whole buffer.
@@ -204,7 +206,8 @@ var fluid = fluid || require("infusion"),
             audioSettings: {
                 buses: flock.enviro.shared.buses,
                 rates: flock.enviro.shared.audioSettings.rates
-            }
+            },
+            multiInputs: ["sources"] // TODO: why aren't we using the parser?
         });
         out.input("expand", 2);
         
@@ -265,6 +268,48 @@ var fluid = fluid || require("infusion"),
     });
     
     
+    (function () {
+        module("Multichannel tests");
+        
+        var testMultichannelUGen = function (ugen, expectedNumOutputs, expectedBlockSize) {
+            expect(2 + (2 * expectedNumOutputs));
+            equal(ugen.options.numOutputs, expectedNumOutputs,
+                "The unit generator should declare that it has two output channels");
+            equal(ugen.output.length, expectedNumOutputs,
+                "The unit generator should actually have two output channels.");
+                
+            for (var i = 0; i < expectedNumOutputs; i++) {
+                ok(ugen.output[i] instanceof Float32Array, "Channel #" + i + " should be a Float32Array");
+                equal(ugen.output[i].length, expectedBlockSize, "Channel #" + i + " should be block sized.");
+            }
+        };
+        
+        fluid.registerNamespace("flock.tests");
+        flock.tests.mockStereoUGen = function (input, output, options) {
+            var that = flock.ugen(input, output, options);
+            return that;
+        };
+    
+        fluid.defaults("flock.tests.mockStereoUGen", {
+            ugenOptions: {
+                numOutputs: 2,
+                tags: ["flock.ugen.multiChannelOutput"]
+            }
+        });
+        
+        test("Multichannel unit generator creation", function () {
+            var synth = flock.synth({
+                synthDef: {
+                    id: "actual",
+                    ugen: "flock.tests.mockStereoUGen"
+                }
+            });
+        
+            testMultichannelUGen(synth.get("actual"), 2, synth.audioSettings.blockSize);
+        });
+    }());
+
+
     module("LFNoise tests");
     
     var checkNoise = function (buffer, numSamps, expected) {

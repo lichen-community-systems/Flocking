@@ -137,12 +137,11 @@ var fluid = fluid || require("infusion"),
         return o && o.length !== undefined && type !== "string" && type !== "function";
     };
     
-    flock.hasTag = function (o, tag) {
-        if (!o || !tag) {
+    flock.hasTag = function (obj, tag) {
+        if (!obj || !tag) {
             return false;
         }
-        
-        return o.tags && o.tags.indexOf(tag) > -1;
+        return obj.tags && obj.tags.indexOf(tag) > -1;
     };
     
     flock.generate = function (bufOrSize, generator) {
