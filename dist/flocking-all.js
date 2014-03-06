@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (March 4, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (March 6, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -21076,8 +21076,8 @@ var fluid = fluid || require("infusion"),
         };
         
         that.collectMultiInputs = function () {
-            var multiInputNames = that.options.multiInputs,
-                channels = that.multiInputs,
+            var multiInputNames = that.options.multiInputNames,
+                multiInputs = that.multiInputs,
                 i,
                 inputName,
                 inputChannelCache,
@@ -21085,10 +21085,10 @@ var fluid = fluid || require("infusion"),
             
             for (i = 0; i < multiInputNames.length; i++) {
                 inputName = multiInputNames[i];
-                inputChannelCache = channels[inputName];
+                inputChannelCache = multiInputs[inputName];
                 
                 if (!inputChannelCache) {
-                    inputChannelCache = channels[inputName] = [];
+                    inputChannelCache = multiInputs[inputName] = [];
                 } else {
                     // Clear the current array of buffers.
                     inputChannelCache.length = 0;
@@ -21101,14 +21101,14 @@ var fluid = fluid || require("infusion"),
         
         // Base onInputChanged() implementation.
         that.onInputChanged = function (inputName) {
-            var multiInputs = that.options.multiInputs;
+            var multiInputNames = that.options.multiInputNames;
             
             flock.onMulAddInputChanged(that);
             if (that.options.strideInputs) {
                 that.calculateStrides();
             }
             
-            if (multiInputs && (!inputName || multiInputs.indexOf(inputName))) {
+            if (multiInputNames && (!inputName || multiInputNames.indexOf(inputName))) {
                 that.collectMultiInputs();
             }
         };
@@ -21137,14 +21137,24 @@ var fluid = fluid || require("infusion"),
                 valueDef = flock.parse.ugenDefForConstantValue(1.0);
                 that.inputs.freq = flock.parse.ugenDef(valueDef);
             }
+            
+            that.onInputChanged();
         };
         
         that.init();
         return that;
     };
     
+    // The term "multi input" is a bit ambiguous,
+    // but it provides a very light (and possibly poor) abstraction for two different cases:
+    //   1. inputs that consist of an array of multiple unit generators
+    //   2. inputs that consist of a single unit generator that has multiple ouput channels
+    // In either case, each channel of each input unit generator will be gathered up into
+    // an array of "proxy ugen" objects and keyed by the input name, making easy to iterate
+    // over sources of input quickly.
+    // A proxy ugen consists of a simple object conforming to this contract:
+    //   {rate: <rate of parent ugen>, output: <Float32Array>}
     flock.ugen.collectMultiInputs = function (inputs, inputChannelCache) {
-        // This supports multiple ugens bound to a single input name, too.
         if (!flock.isIterable(inputs)) {
             inputs = inputs = fluid.makeArray(inputs);
         }
@@ -23090,7 +23100,7 @@ var fluid = fluid || require("infusion"),
         },
         ugenOptions: {
             tags: ["flock.ugen.outputType"],
-            multiInputs: ["sources"]
+            multiInputNames: ["sources"]
         }
     });
     

@@ -391,6 +391,40 @@ var fluid = fluid || require("infusion"),
                 }
             ]);
         });
+        
+        test("Multichannel input creation: a single unichannel ugen connected to a multi-input.", function () {
+            var s = flock.synth({
+                synthDef: {
+                    id: "multiIn",
+                    ugen: "flock.tests.mockMultiInputUGen",
+                    cats: {
+                        id: "mono",
+                        ugen: "flock.mock.ugen",
+                        rate: "audio"
+                    }
+                }
+            });
+            
+            var mono = s.get("multiIn.cats");
+            
+            testMultInputUGen(s, "multiIn", "cats", [
+                {
+                    rate: "audio",
+                    output: mono.output
+                }
+            ]);
+        });
+        
+        test("Multichannel input creation: no ugen connected to a multi-input.", function () {
+            var s = flock.synth({
+                synthDef: {
+                    id: "multiIn",
+                    ugen: "flock.tests.mockMultiInputUGen"
+                }
+            });
+            
+            testMultInputUGen(s, "multiIn", "cats", []);
+        });
     }());
 
 
