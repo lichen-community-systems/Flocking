@@ -156,6 +156,7 @@ var fluid = fluid || require("infusion"),
             output: output,
             options: options,
             model: options.model || {},
+            multiInputs: {},
             tags: ["flock.ugen"]
         };
         
@@ -213,11 +214,41 @@ var fluid = fluid || require("infusion"),
             }
         };
         
+        that.collectMultiInputs = function () {
+            var multiInputNames = that.options.multiInputNames,
+                multiInputs = that.multiInputs,
+                i,
+                inputName,
+                inputChannelCache,
+                input;
+            
+            for (i = 0; i < multiInputNames.length; i++) {
+                inputName = multiInputNames[i];
+                inputChannelCache = multiInputs[inputName];
+                
+                if (!inputChannelCache) {
+                    inputChannelCache = multiInputs[inputName] = [];
+                } else {
+                    // Clear the current array of buffers.
+                    inputChannelCache.length = 0;
+                }
+                
+                input = that.inputs[inputName];
+                flock.ugen.collectMultiInputs(input, inputChannelCache);
+            }
+        };
+        
         // Base onInputChanged() implementation.
-        that.onInputChanged = function () {
+        that.onInputChanged = function (inputName) {
+            var multiInputNames = that.options.multiInputNames;
+            
             flock.onMulAddInputChanged(that);
             if (that.options.strideInputs) {
                 that.calculateStrides();
+            }
+            
+            if (multiInputNames && (!inputName || multiInputNames.indexOf(inputName))) {
+                that.collectMultiInputs();
             }
         };
 
@@ -245,10 +276,49 @@ var fluid = fluid || require("infusion"),
                 valueDef = flock.parse.ugenDefForConstantValue(1.0);
                 that.inputs.freq = flock.parse.ugenDef(valueDef);
             }
+            
+            that.onInputChanged();
         };
         
         that.init();
         return that;
+    };
+    
+    // The term "multi input" is a bit ambiguous,
+    // but it provides a very light (and possibly poor) abstraction for two different cases:
+    //   1. inputs that consist of an array of multiple unit generators
+    //   2. inputs that consist of a single unit generator that has multiple ouput channels
+    // In either case, each channel of each input unit generator will be gathered up into
+    // an array of "proxy ugen" objects and keyed by the input name, making easy to iterate
+    // over sources of input quickly.
+    // A proxy ugen consists of a simple object conforming to this contract:
+    //   {rate: <rate of parent ugen>, output: <Float32Array>}
+    flock.ugen.collectMultiInputs = function (inputs, inputChannelCache) {
+        if (!flock.isIterable(inputs)) {
+            inputs = inputs = fluid.makeArray(inputs);
+        }
+  
+        for (var i = 0; i < inputs.length; i++) {
+            var input = inputs[i];
+            flock.ugen.collectChannelsForInput(input, inputChannelCache);
+        }
+        
+        return inputChannelCache;
+    };
+    
+    flock.ugen.collectChannelsForInput = function (input, inputChannelCache) {
+        var isMulti = flock.hasTag(input, "flock.ugen.multiChannelOutput"),
+            channels = isMulti ? input.output : [input.output],
+            i;
+
+        for (i = 0; i < channels.length; i++) {
+            inputChannelCache.push({
+                rate: input.rate,
+                output: channels[i]
+            });
+        }
+        
+        return inputChannelCache;
     };
     
 
@@ -456,6 +526,16 @@ var fluid = fluid || require("infusion"),
     
     flock.ugen.sum = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
+
+        that.copyGen = function (numSamps) {
+            var out = that.output,
+                source = that.inputs.sources.output,
+                i;
+            
+            for (i = 0; i < numSamps; i++) {
+                out[i] = source[i];
+            }
+        };
         
         that.sumGen = function (numSamps) {
             var sources = that.inputs.sources,
@@ -478,8 +558,7 @@ var fluid = fluid || require("infusion"),
                 // We have an array of sources that need to be summed.
                 that.gen = that.sumGen;
             } else {
-                that.output = that.inputs.sources.output;
-                that.gen = fluid.identity;
+                that.gen = that.copyGen;
             }
         };
         
@@ -511,7 +590,7 @@ var fluid = fluid || require("infusion"),
                 tableLen = m.tableLen,
                 tableIncHz = m.tableIncHz,
                 tableIncRad = m.tableIncRad,
-                output = that.output,
+                out = that.output,
                 phase = m.phase,
                 i,
                 j,
@@ -525,7 +604,7 @@ var fluid = fluid || require("infusion"),
                 } else if (idx < 0) {
                     idx += tableLen;
                 }
-                output[i] = that.interpolate ? that.interpolate(idx, table) : table[idx | 0];
+                out[i] = that.interpolate ? that.interpolate(idx, table) : table[idx | 0];
                 phase += freq[k] * tableIncHz;
                 if (phase >= tableLen) {
                     phase -= tableLen;
@@ -2011,11 +2090,12 @@ var fluid = fluid || require("infusion"),
         var that = flock.ugen(inputs, output, options);
         
         that.gen = function () {
-            var max = that.inputs.max.output[0], // Max is kr.
+            var out = that.output,
+                max = that.inputs.max.output[0], // Max is kr.
                 source = that.inputs.source.output;
             
             // Note, this normalizes the source input ugen's output buffer directly in place.
-            that.output = flock.normalize(source, max);
+            flock.normalize(source, max, out);
         };
         
         that.onInputChanged();
@@ -2030,6 +2110,66 @@ var fluid = fluid || require("infusion"),
         }
     });
     
+    /**
+     * An equal power stereo panner.
+     *
+     * This unit generator scales the left and right channels
+     * with a quarter-wave sin/cos curve so that the levels at the centre
+     * are more balanced than a linear pan, reducing the impression that
+     * the sound is fading into the distance as it reaches the centrepoint.
+     *
+     * Inputs:
+     *   source: the source (mono) unit signal
+     *   pan: a value between -1 (hard left) and 1 (hard right)
+     */
+    flock.ugen.pan2 = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        
+        that.gen = function (numSamps) {
+            var m = that.model,
+                outputs = that.output,
+                left = outputs[0],
+                right = outputs[1],
+                inputs = that.inputs,
+                source = inputs.source.output,
+                pan = inputs.pan.output,
+                i,
+                j,
+                sourceVal,
+                panVal;
+            
+            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.pan) {
+                sourceVal = source[i];
+                panVal = pan[j] * 0.5 + 0.5;
+
+                // TODO: Replace this with a lookup table.
+                right[i] = sourceVal * Math.sin(panVal * flock.HALFPI);
+                left[i] = sourceVal * Math.cos(panVal * flock.HALFPI);
+            }
+            
+            // TODO: Add multichannel support for mul/add.
+        };
+        
+        that.onInputChanged();
+        return that;
+    };
+    
+    fluid.defaults("flock.ugen.pan2", {
+        rate: "audio",
+        
+        inputs: {
+            source: null,
+            pan: 0 // -1 (hard left)..0 (centre)..1 (hard right)
+        },
+        
+        ugenOptions: {
+            tags: ["flock.ugen.multiChannelOutput"],
+            strideInputs: [
+                "pan"
+            ],
+            numOutputs: 2
+        }
+    });
     
     /*******************
      * Bus-Level UGens *
@@ -2041,7 +2181,7 @@ var fluid = fluid || require("infusion"),
         // TODO: Implement a "straight out" gen function for cases where the number
         // of sources matches the number of output buses (i.e. where no expansion is necessary).
         that.gen = function (numSamps) {
-            var sources = that.inputs.sources,
+            var sources = that.multiInputs.sources,
                 buses = that.options.audioSettings.buses,
                 bufStart = that.inputs.bus.output[0],
                 expand = that.inputs.expand.output[0],
@@ -2054,10 +2194,6 @@ var fluid = fluid || require("infusion"),
                 bus,
                 inc,
                 outIdx;
-                     
-            if (typeof (sources.length) !== "number") {
-                sources = [sources];
-            }
             
             numSources = sources.length;
             numOutputBuses = Math.max(expand, numSources);
@@ -2081,9 +2217,16 @@ var fluid = fluid || require("infusion"),
                     bus[j] = bus[j] + source.output[outIdx];
                 }
             }
+            
+            that.mulAdd(numSamps);
         };
-    
-        that.onInputChanged();
+        
+        that.init = function () {
+            that.sourceBuffers = [];
+            that.onInputChanged();
+        };
+        
+        that.init();
         return that;
     };
     
@@ -2095,7 +2238,8 @@ var fluid = fluid || require("infusion"),
             expand: 2
         },
         ugenOptions: {
-            tags: ["flock.ugen.outputType"]
+            tags: ["flock.ugen.outputType"],
+            multiInputNames: ["sources"]
         }
     });
     
@@ -2151,8 +2295,15 @@ var fluid = fluid || require("infusion"),
     flock.ugen["in"] = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
-        that.singleBusGen = function () {
-            that.output = that.options.audioSettings.buses[that.inputs.bus.output[0]];
+        that.singleBusGen = function (numSamps) {
+            var out = that.output,
+                busNum = that.inputs.bus.output[0],
+                bus = that.options.audioSettings.buses[busNum],
+                i;
+            
+            for (i = 0; i < numSamps; i++) {
+                out[i] = bus[i];
+            }
         };
         
         that.multiBusGen = function (numSamps) {
@@ -2988,7 +3139,10 @@ var fluid = fluid || require("infusion"),
             var inputs = that.inputs,
                 m = that.model,
                 label = m.label,
-                source = inputs.source.output,
+                chan = inputs.channel,
+                // Basic multichannel support. This should be inproved
+                // by factoring the multichannel input code out of flock.ugen.out.
+                source = chan ? inputs.source.output[chan.output[0]] : inputs.source.output,
                 trig = inputs.trigger.output[0],
                 freq = inputs.freq.output[0],
                 i;
@@ -3023,7 +3177,7 @@ var fluid = fluid || require("infusion"),
     };
     
     fluid.defaults("flock.ugen.print", {
-        rate: "control",
+        rate: "audio",
         inputs: {
             source: null,
             trigger: 0.0,

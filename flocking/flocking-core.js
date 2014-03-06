@@ -33,6 +33,7 @@ var fluid = fluid || require("infusion"),
     
     flock.OUT_UGEN_ID = "flocking-out";
     flock.TWOPI = 2.0 * Math.PI;
+    flock.HALFPI = Math.PI / 2.0;
     flock.LOG01 = Math.log(0.1);
     flock.LOG001 = Math.log(0.001);
     flock.ROOT2 = Math.sqrt(2);
@@ -136,6 +137,13 @@ var fluid = fluid || require("infusion"),
         return o && o.length !== undefined && type !== "string" && type !== "function";
     };
     
+    flock.hasTag = function (obj, tag) {
+        if (!obj || !tag) {
+            return false;
+        }
+        return obj.tags && obj.tags.indexOf(tag) > -1;
+    };
+    
     flock.generate = function (bufOrSize, generator) {
         var buf = typeof bufOrSize === "number" ? new Float32Array(bufOrSize) : bufOrSize,
             isFunc = typeof generator === "function",
@@ -205,11 +213,14 @@ var fluid = fluid || require("infusion"),
     /**
      * Normalizes the specified buffer in place to the specified value.
      *
-     * @param {Arrayable} buffer the buffer to normalize; it will not be copied
+     * @param {Arrayable} buffer the buffer to normalize
      * @param {Number} normal the value to normalize the buffer to
+     * @param {Arrayable} a buffer to output values into; if omitted, buffer will be modified in place
      * @return the buffer, normalized in place
      */
-    flock.normalize = function (buffer, normal) {
+    flock.normalize = function (buffer, normal, output) {
+        output = output || buffer;
+        
         var maxVal = 0.0,
             i,
             current,
@@ -228,11 +239,11 @@ var fluid = fluid || require("infusion"),
         if (maxVal > 0.0) {
             for (i = 0; i < buffer.length; i++) {
                 val = buffer[i];
-                buffer[i] = (val / maxVal) * normal;
+                output[i] = (val / maxVal) * normal;
             }
         }
         
-        return buffer;
+        return output;
     };
     
     flock.range = function (buf) {
@@ -439,7 +450,7 @@ var fluid = fluid || require("infusion"),
         var input = flock.get(root, path);
         
         // If the unit generator is a valueType ugen, return its value, otherwise return the ugen itself.
-        return (input && input.tags && input.tags.indexOf("flock.ugen.valueType") > -1) ? input.model.value : input;
+        return flock.hasTag(input, "flock.ugen.valueType") ? input.model.value : input;
     };
     
     flock.input.getValuesForPathArray = function (root, paths) {
