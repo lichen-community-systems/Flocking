@@ -154,7 +154,7 @@ var fluid = fluid || require("infusion"),
                 buses: flock.enviro.shared.buses,
                 rates: flock.enviro.shared.audioSettings.rates
             },
-            multiInputs: ["sources"] // TODO: why aren't we using the parser?
+            multiInputNames: ["sources"] // TODO: why aren't we using the parser?
         });
         out.input("expand", 2);
         
@@ -180,7 +180,7 @@ var fluid = fluid || require("infusion"),
                 buses: flock.enviro.shared.buses,
                 rates: flock.enviro.shared.audioSettings.rates
             },
-            multiInputs: ["sources"] // TODO: why aren't we using the parser?
+            multiInputNames: ["sources"] // TODO: why aren't we using the parser?
         });
         
         // Pull the whole buffer.
@@ -207,7 +207,7 @@ var fluid = fluid || require("infusion"),
                 buses: flock.enviro.shared.buses,
                 rates: flock.enviro.shared.audioSettings.rates
             },
-            multiInputs: ["sources"] // TODO: why aren't we using the parser?
+            multiInputNames: ["sources"] // TODO: why aren't we using the parser?
         });
         out.input("expand", 2);
         
@@ -285,10 +285,13 @@ var fluid = fluid || require("infusion"),
         };
         
         fluid.registerNamespace("flock.tests");
-        flock.tests.mockStereoUGen = function (input, output, options) {
-            var that = flock.ugen(input, output, options);
+        
+        var genericUGenCreatorFn = function (inputs, outputs, options) {
+            var that = flock.ugen(inputs, outputs, options);
             return that;
         };
+        
+        flock.tests.mockStereoUGen = genericUGenCreatorFn;
     
         fluid.defaults("flock.tests.mockStereoUGen", {
             ugenOptions: {
@@ -306,6 +309,87 @@ var fluid = fluid || require("infusion"),
             });
         
             testMultichannelUGen(synth.get("actual"), 2, synth.audioSettings.blockSize);
+        });
+        
+        flock.tests.mockMultiInputUGen = genericUGenCreatorFn;
+        
+        fluid.defaults("flock.tests.mockMultiInputUGen", {
+            ugenOptions: {
+                multiInputNames: ["cats"]
+            }
+        });
+        
+        var testMultInputUGen = function (synth, ugenName, multiInputName, expectedProxyUGens) {
+            var ugen = synth.get(ugenName);
+            equal(Object.keys(ugen.multiInputs).length, 1,
+                "The unit generator should have one multiInput configured for it.");
+            deepEqual(ugen.multiInputs[multiInputName], expectedProxyUGens,
+                "The multinput should have the correct proxy ugens with appropriate rates and buffers configured.");
+        };
+        
+        test("Multichannel input creation: multiple ugens connected to one input.", function () {
+            var s = flock.synth({
+                synthDef: {
+                    id: "multiIn",
+                    ugen: "flock.tests.mockMultiInputUGen",
+                    cats: [
+                        {
+                            ugen: "flock.mock.ugen",
+                            rate: "audio"
+                        },
+                        {
+                            ugen: "flock.mock.ugen",
+                            rate: "control"
+                        },
+                        {
+                            ugen: "flock.mock.ugen",
+                            rate: "audio"
+                        }
+                    ]
+                }
+            });
+            
+            testMultInputUGen(s, "multiIn", "cats", [
+                {
+                    rate: "audio",
+                    output: new Float32Array(64)
+                },
+                {
+                    rate: "control",
+                    output: new Float32Array(1)
+                },
+                {
+                    rate: "audio",
+                    output: new Float32Array(64)
+                }
+            ]);
+        });
+        
+        test("Multichannel input creation: a single multichannel ugen connected to one input.", function () {
+            var s = flock.synth({
+                synthDef: {
+                    id: "multiIn",
+                    ugen: "flock.tests.mockMultiInputUGen",
+                    cats: {
+                        id: "stereo",
+                        ugen: "flock.tests.mockStereoUGen",
+                        rate: "audio"
+                    }
+                }
+            });
+            
+            var stereo = s.get("multiIn.cats");
+            
+            testMultInputUGen(s, "multiIn", "cats", [
+                {
+                    rate: "audio",
+                    output: stereo.output[0]
+                },
+                {
+                    rate: "audio",
+                    output: stereo.output[1]
+                }
+            ]);
         });
     }());
 
