@@ -666,7 +666,7 @@ var fluid_1_5 = fluid_1_5 || {};
 
     fluid.filterBuiltinGrades = function (gradeNames) {
         return fluid.remove_if(fluid.makeArray(gradeNames), function (gradeName) {
-            return /autoInit|fluid.littleComponent|fluid.modelComponent|fluid.eventedComponent|fluid.viewComponent|fluid.typeFount/.test(gradeName);
+            return /^(autoInit|fluid.littleComponent|fluid.modelComponent|fluid.eventedComponent|fluid.viewComponent|fluid.typeFount)$/.test(gradeName);
         });
     };
 
@@ -719,7 +719,7 @@ var fluid_1_5 = fluid_1_5 || {};
         return foundComponent;
     };
 
-    var localRecordExpected = /arguments|options|container|source|sourcePath|change/;
+    var localRecordExpected = /^(arguments|options|container|source|sourcePath|change)$/;
 
     // unsupported, NON-API function
     fluid.makeStackFetcher = function (parentThat, localRecord) {

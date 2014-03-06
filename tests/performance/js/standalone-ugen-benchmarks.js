@@ -196,7 +196,7 @@ var flock = flock || {};
             "sources",
             {
                 name: "bus",
-                scale: 10,
+                scale: 9,
                 round: true
             }
         ], audioAndControl, ["none"]);

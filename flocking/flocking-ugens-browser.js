@@ -31,14 +31,6 @@ var fluid = fluid || require("infusion"),
     flock.ugen.scope = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         
-        that.model.spf = Math.round(that.model.sampleRate / that.options.fps);
-        that.model.bufIdx = 0;
-        
-        // Setup the scopeView widget. 
-        that.model.scope = that.options.styles;
-        that.model.scope.values = new Float32Array(that.model.spf);
-        that.scopeView = flock.view.scope(that.options.canvas, that.model.scope);
-        
         that.gen = function (numSamps) {
             var m = that.model,
                 spf = m.spf,
@@ -63,14 +55,28 @@ var fluid = fluid || require("infusion"),
             that.output = that.inputs.source.output;
         };
         
-        that.onInputChanged();
-        that.scopeView.refreshView();
+        that.init = function () {
+            that.model.spf = Math.round(that.model.sampleRate / that.options.fps);
+            that.model.bufIdx = 0;
         
+            // Set up the scopeView widget.
+            that.model.scope = that.options.styles;
+            that.model.scope.values = new Float32Array(that.model.spf);
+            that.scopeView = flock.view.scope(that.options.canvas, that.model.scope);
+            
+            that.onInputChanged();
+            that.scopeView.refreshView();
+        };
+        
+        that.init();
         return that;
     };
     
     fluid.defaults("flock.ugen.scope", {
         rate: "audio",
+        inputs: {
+            source: null
+        },
         ugenOptions: {
             fps: 60,
             styles: {
@@ -90,7 +96,6 @@ var fluid = fluid || require("infusion"),
      */
     flock.ugen.mouse.cursor = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.options.axis = that.options && that.options.axis ? that.options.axis : "x"; // By default, track the mouse along the x axis.
         
         /**
          * Generates a control rate signal between 0.0 and 1.0 by tracking the mouse's position along the specified axis.
@@ -351,6 +356,8 @@ var fluid = fluid || require("infusion"),
             var m = that.model,
                 mikeOpts = that.options.mike;
 
+            that.onInputChanged();
+            
             // Flash needs the sample rate as a string?!
             mikeOpts.settings.sampleRate = String(mikeOpts.settings.sampleRate || that.options.audioSettings.rates.audio);
             
@@ -381,9 +388,7 @@ var fluid = fluid || require("infusion"),
             flock.onMulAddInputChanged(that);
         };
         
-        that.onInputChanged();
         that.init();
-        
         return that;
     };
     

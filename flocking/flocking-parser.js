@@ -246,10 +246,16 @@ var fluid = fluid || require("infusion"),
         // In particular, buffer management should be here so that we can initialize bufferDefs more
         // proactively and remove this behaviour from flock.ugen.buffer.
         for (inputDef in inputDefs) {
+            var inputDefVal = inputDefs[inputDef];
+            
+            if (inputDefVal === null) {
+                continue; // Skip null inputs.
+            }
+            
             // Create ugens for all inputs except special inputs.
             inputs[inputDef] = flock.input.shouldExpand(inputDef, ugenDef) ? 
-                flock.parse.ugenForDef(ugenDef.inputs[inputDef], options) : // Parse the ugendef and create a ugen instance.
-                ugenDef.inputs[inputDef]; // Don't instantiate a ugen, just pass the def on as-is.
+                flock.parse.ugenForDef(inputDefVal, options) : // Parse the ugendef and create a ugen instance.
+                inputDefVal; // Don't instantiate a ugen, just pass the def on as-is.
         }
     
         if (!ugenDef.ugen) {

@@ -1836,9 +1836,9 @@ var fluid = fluid || require("infusion"),
     
     module("flock.ugen.latch");
     
-    var testLatch = function (latchSynth, trig, expectedOutput, expectedRate, msg) {
-        if (trig !== undefined) {
-            latchSynth.set("latcher.trig", trig);
+    var testLatch = function (latchSynth, trigger, expectedOutput, expectedRate, msg) {
+        if (trigger !== undefined) {
+            latchSynth.set("latcher.trigger", trigger);
         }
         
         latchSynth.gen();
@@ -1854,7 +1854,7 @@ var fluid = fluid || require("infusion"),
         });
         
         fluid.each(testSpec.tests, function (test) {
-            testLatch(latchSynth, test.trig, test.expected, test.rate, test.msg);
+            testLatch(latchSynth, test.trigger, test.expected, test.rate, test.msg);
         });
     };
     
@@ -1874,7 +1874,7 @@ var fluid = fluid || require("infusion"),
                     list: [1, 2, 3, 4],
                     freq: sampleRate / 64
                 },
-                trig: 0.0
+                trigger: 0.0
             },
             
             tests: [
@@ -1884,7 +1884,7 @@ var fluid = fluid || require("infusion"),
                     msg: "When the trigger is closed, latch should output the first value."
                 },
                 {
-                    trig: 1.0,
+                    trigger: 1.0,
                     expected: twoBuffer, // Source is 2, latch is 2.
                     rate: "control",
                     msg: "When the trigger opens at control rate, the latch should output the next value."
@@ -1895,13 +1895,13 @@ var fluid = fluid || require("infusion"),
                     msg: "With the trigger still open, the latch's output should not change until the trigger crosses zero into the positive again."
                 },
                 {
-                    trig: 0.0, // Source is 4, latch is 2.
+                    trigger: 0.0, // Source is 4, latch is 2.
                     expected: twoBuffer,
                     rate: "control",
                     msg: "With the trigger closed again, the latch's output still shouldn't have changed."
                 },
                 {
-                    trig: 0.01, // Source is 1, latch is 1.
+                    trigger: 0.01, // Source is 1, latch is 1.
                     expected: oneBuffer,
                     rate: "control",
                     msg: "Once the trigger has crossed zero again, the latch's output should sample and hold the source's output again."
@@ -1946,7 +1946,7 @@ var fluid = fluid || require("infusion"),
                     list: outputBuffer,
                     freq: sampleRate
                 },
-                trig: {
+                trigger: {
                     ugen: "flock.mock.ugen",
                     rate: "audio",
                     options: {
@@ -1962,7 +1962,7 @@ var fluid = fluid || require("infusion"),
                     msg: "When the trigger is closed for an entire control period, latch should output only the first value."
                 },
                 {
-                    trig: {
+                    trigger: {
                         ugen: "flock.mock.ugen",
                         rate: "audio",
                         options: {
@@ -1974,7 +1974,7 @@ var fluid = fluid || require("infusion"),
                     msg: "When the trigger opens for one sample the latch should output only the next value."
                 },
                 {
-                    trig: {
+                    trigger: {
                         ugen: "flock.mock.ugen",
                         rate: "audio",
                         options: {

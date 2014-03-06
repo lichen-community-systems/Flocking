@@ -4,14 +4,6 @@ module.exports = function(grunt) {
     grunt.initConfig({
         pkg: grunt.file.readJSON("package.json"),
         
-        revision: {
-            options: {
-                property: "meta.revision",
-                ref: "HEAD",
-                short: false
-            }
-        },
-        
         jshint: {
             all: [
                 "flocking/*.js",
@@ -114,7 +106,7 @@ module.exports = function(grunt) {
         
         flock: {
             banners: {
-                short: "/*! Flocking <%= pkg.version %> r<%= meta.revision %>, Copyright <%= grunt.template.today('yyyy') %> Colin Clark | flockingjs.org */\n\n"
+                short: "/*! Flocking <%= pkg.version %> (<%= grunt.template.today('mmmm d, yyyy') %>), Copyright <%= grunt.template.today('yyyy') %> Colin Clark | flockingjs.org */\n\n"
             }
         }
     });
@@ -125,8 +117,7 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks("grunt-contrib-clean");
     grunt.loadNpmTasks("grunt-contrib-copy");
     grunt.loadNpmTasks("grunt-contrib-jshint");
-    grunt.loadNpmTasks("grunt-git-revision");
     grunt.loadNpmTasks("grunt-githooks");
     
-    grunt.registerTask("default", ["clean", "revision", "jshint", "concat", "uglify", "copy"]);
+    grunt.registerTask("default", ["clean", "jshint", "concat", "uglify", "copy"]);
 };

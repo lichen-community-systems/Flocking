@@ -517,14 +517,19 @@ var fluid_1_5 = fluid_1_5 || {};
     // "options" will be transformPackage
     fluid.connectModelRelay = function (source, sourceSegs, target, targetSegs, options) {
         var linkId = fluid.allocateGuid();
-        var enlist = fluid.enlistModelComponent(target);
-
-        if (enlist.complete) {
-            var shadow = fluid.shadowForComponent(target);
-            if (shadow.modelComplete) {
-                enlist.completeOnInit = true;
-            }
+        function enlistComponent(component) {
+            var enlist = fluid.enlistModelComponent(component);
+    
+            if (enlist.complete) {
+                var shadow = fluid.shadowForComponent(component);
+                if (shadow.modelComplete) {
+                    enlist.completeOnInit = true;
+                }
+            }         
         }
+        enlistComponent(target);
+        enlistComponent(source); // role of "source" and "target" may have been swapped in a modelRelay document
+ 
         if (options.update) { // it is a call via parseImplicitRelay for a relay document
             if (options.targetApplier) {
                 // register changes from the model onto changes to the model relay document

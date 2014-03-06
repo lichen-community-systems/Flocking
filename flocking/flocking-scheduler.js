@@ -396,6 +396,8 @@ var fluid = fluid || require("infusion"),
         };
         
         that.schedule = function (schedules) {
+            schedules = flock.isIterable(schedules) ? schedules : [schedules];
+            
             var i,
                 schedule;
             

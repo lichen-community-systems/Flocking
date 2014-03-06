@@ -1,5 +1,5 @@
 {
-    "description": "Sine tone shaped by a randomly triggered attack/sustain/release envelope.",
+    "description": "Sine tone shaped by a periodically triggered attack/sustain/release envelope.",
     "synthDef": {
         "ugen": "flock.ugen.sinOsc",
         "freq": 440,
