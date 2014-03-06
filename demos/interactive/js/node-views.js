@@ -56,12 +56,26 @@ var fluid = fluid || require("infusion"),
         }
     };
     
+    flock.ui.nodeRenderers.ugen.hasTag = function (ugenName, tagName) {
+        if (!ugenName) {
+            return false;
+        }
+        
+        var defaults = fluid.defaults(ugenName),
+            defaultUGenOpts = defaults.ugenOptions;
+            
+        return defaultUGenOpts && defaultUGenOpts.tags && defaultUGenOpts.tags.indexOf(tagName) > -1;
+    };
+    
     flock.ui.nodeRenderers.ugen.prepareStrings = function (ugenDef) {
         var toTailPath = fluid.pathUtil.getToTailPath(ugenDef.ugen),
             type;
-        
-        // Hardcoded. Need to read the unit generator's defaults and look for tags.
-        if (ugenDef.ugen === "flock.ugen.value") {
+
+        // Come up with a display name for each unit generator.
+        // For value ugens, this will be its actual value. Other ugens will be
+        // displayed with their last path segment (tail).
+        // TODO: Do this more gracefully.
+        if (flock.ui.nodeRenderers.ugen.hasTag(ugenDef.ugen,"flock.ugen.valueType")) {
             type = ugenDef.inputs.value;
         } else {
             // TODO: Make configurable.
@@ -99,7 +113,6 @@ var fluid = fluid || require("infusion"),
     flock.ui.nodeRenderers.synth.expandInputs = function (ugenDef) {
         // Expand scalar values into value unit generators.
         var expanded = flock.parse.expandValueDef(ugenDef);
-        
         return flock.parse.expandInputs(expanded);
     };
     
@@ -125,6 +138,7 @@ var fluid = fluid || require("infusion"),
         // TODO: should this be sourced elsewhere in this context?
         // TODO: These are wrong!
         var options = {
+            rate: flock.rates.AUDIO, // TODO: This is hardcoded to audio rate, which is fine until we can edit value synths.
             audioSettings: flock.enviro.shared.options.audioSettings,
             buses: flock.enviro.shared.buses,
             buffers: flock.enviro.shared.buffers

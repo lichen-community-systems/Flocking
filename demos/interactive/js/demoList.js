@@ -30,6 +30,10 @@ var fluid = fluid || require("infusion");
             
             noise: {
                 type: "flock.playground.demos.noise"
+            },
+            
+            granular: {
+                type: "flock.playground.demos.granular"
             }
         }
     });
@@ -65,7 +69,6 @@ var fluid = fluid || require("infusion");
         }
     });
     
-    
     fluid.defaults("flock.playground.demos.noise", {
         gradeNames: ["fluid.littleComponent", "autoInit"],
         
@@ -99,6 +102,20 @@ var fluid = fluid || require("infusion");
                 {
                     id: "impulse-pm",
                     name: "Impulse Phase Modulation"
+                }
+            ]
+        }
+    });
+    
+    fluid.defaults("flock.playground.demos.granular", {
+        gradeNames: ["fluid.littleComponent", "autoInit"],
+        
+        demos: {
+            name: "Granular synthesis",
+            options: [
+                {
+                    id: "granulator",
+                    name: "Granulator"
                 }
             ]
         }

@@ -1,5 +1,5 @@
 {
-    "description": "A stereo pair of impulses, one being phase modulated with the mouse cursor."
+    "description": "A stereo pair of impulses, one being phase modulated with the mouse cursor.",
     "synthDef": [
         {
             "ugen": "flock.ugen.impulse",

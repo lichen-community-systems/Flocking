@@ -166,9 +166,9 @@ var fluid = fluid || require("infusion"),
     
     flock.playground.evaluateSource = function (applier, source) {
         var synthSpec = JSON.parse(source);
-        applier.change("", {
-            activeSynthSpec: synthSpec
-        });
+        
+        applier.change("activeSynthSpec", null);
+        applier.change("activeSynthSpec", synthSpec);
     };
     
     // TODO: This synth needs to be a dynamic component!
