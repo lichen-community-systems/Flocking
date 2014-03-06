@@ -72,9 +72,7 @@ var fluid = fluid || require("infusion"),
             ugenDef.rate = flock.rates.AUDIO;
         }
     
-        var buffer = new Float32Array(ugenDef.rate === flock.rates.AUDIO ? blockSize : 1),
-            sampleRate;
-    
+        var sampleRate;
         // Set the ugen's sample rate value according to the rate the user specified.
         if (ugenDef.options && ugenDef.options.sampleRate !== undefined) {
             sampleRate = ugenDef.options.sampleRate;
@@ -95,9 +93,23 @@ var fluid = fluid || require("infusion"),
         ugenDef.options.audioSettings.buffers = options.buffers;
         ugenDef.options.audioSettings.buses = options.buses;
         
+        var outputBufferSize = ugenDef.rate === flock.rates.AUDIO ? blockSize : 1,
+            outputBuffers;
+        
+        if (flock.hasTag(ugenDef.options, "flock.ugen.multiChannelOutput")) {
+            var numOutputs = ugenDef.options.numOutputs || 1;
+            outputBuffers = [];
+            
+            for (var i = 0; i < numOutputs; i++) {
+                outputBuffers.push(new Float32Array(outputBufferSize));
+            }
+        } else {
+            outputBuffers = new Float32Array(outputBufferSize);
+        }
+        
         return flock.invoke(undefined, ugenDef.ugen, [
             parsedInputs, 
-            buffer, 
+            outputBuffers,
             ugenDef.options
         ]);
     };
