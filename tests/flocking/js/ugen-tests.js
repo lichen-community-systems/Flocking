@@ -1296,6 +1296,28 @@ var fluid = fluid || require("infusion"),
                         }
                     }
                 }
+            },
+            {
+                name: "with holdLastValue enabled",
+                expectedOutput: flock.generate(64, function (i) {
+                    return i % 2 ? i + 1 : i;
+                }),
+                synthOptions: {
+                    synthDef: {
+                        threshold: 1,
+                        sideChain: {
+                            ugen: "flock.mock.ugen",
+                            options: {
+                                buffer: flock.generate(64, function (i) {
+                                    return i % 2 ? 1.0 : 0.0;
+                                })
+                            }
+                        },
+                        options: {
+                            holdLastValue: true
+                        }
+                    }
+                }
             }
         ];
 
