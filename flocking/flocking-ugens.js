@@ -2041,7 +2041,7 @@ var fluid = fluid || require("infusion"),
                 val,
                 coef;
 
-                // Convert 60 dB attack and release times to coefficients if they've changed.
+            // Convert 60 dB attack and release times to coefficients if they've changed.
             if (nextAtt !== prevAtt) {
                 m.attackTime = nextAtt;
                 attCoef = m.attackCoef =
@@ -2072,6 +2072,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.amplitude", {
         rate: "audio",
         inputs: {
+            source: null,
             attack: 0.01,
             release: 0.01,
             mul: null,
