@@ -12,87 +12,101 @@ var fluid = fluid || require("infusion"),
 
 (function () {
     "use strict";
-    
+
     var $ = fluid.registerNamespace("jQuery");
-    
+
     fluid.registerNamespace("flock.ui.nodeRenderers");
-    
+
     fluid.defaults("flock.ui.nodeRenderers.ugen", {
         gradeNames: ["fluid.viewRelayComponent", "autoInit"],
-        
-        model: {}, // A ugenDef.
-        
+
+        model: {
+            ugenDef: {}, // A ugenDef.
+            edges: {}
+        },
+
         invokers: {
             refreshView: {
                 funcName: "flock.ui.nodeRenderers.ugen.refreshView",
                 args: [
+                    "{that}",
                     "{that}.container",
                     "{that}.options.markup.node",
-                    "{that}.model",
+                    "{that}.model.ugenDef",
                     "{that}.events.afterRender.fire"
                 ],
                 dynamic: true
             }
         },
-        
+
         events: {
             afterRender: null
         },
-        
+
         markup: {
-            node: "<div class='node %type'>%type</div>"
+            node: "<div id='%id' class='node %type'>%displayName</div>"
         }
     });
-    
-    flock.ui.nodeRenderers.ugen.refreshView = function (container, nodeMarkup, ugenDef, afterRender) {
+
+    flock.ui.nodeRenderers.ugen.refreshView = function (that, container, nodeMarkup, ugenDef, afterRender) {
         var strings = flock.ui.nodeRenderers.ugen.prepareStrings(ugenDef),
             renderedMarkup = fluid.stringTemplate(nodeMarkup, strings),
             node = $(renderedMarkup);
-        
+
         container.append(node);
-        
+        that.node = node; // TODO: C'mon, seriously?
+
         if (afterRender) {
             afterRender(node, ugenDef);
         }
     };
-    
+
     flock.ui.nodeRenderers.ugen.hasTag = function (ugenName, tagName) {
         if (!ugenName) {
             return false;
         }
-        
+
         var defaults = fluid.defaults(ugenName),
             defaultUGenOpts = defaults.ugenOptions;
-            
+
         return defaultUGenOpts && defaultUGenOpts.tags && defaultUGenOpts.tags.indexOf(tagName) > -1;
     };
-    
+
     flock.ui.nodeRenderers.ugen.prepareStrings = function (ugenDef) {
         var toTailPath = fluid.pathUtil.getToTailPath(ugenDef.ugen),
-            type;
+            type = toTailPath === "flock.ugen" ? fluid.pathUtil.getTailPath(ugenDef.ugen) : ugenDef.ugen,
+            displayName;
 
         // Come up with a display name for each unit generator.
         // For value ugens, this will be its actual value. Other ugens will be
         // displayed with their last path segment (tail).
         // TODO: Do this more gracefully.
         if (flock.ui.nodeRenderers.ugen.hasTag(ugenDef.ugen,"flock.ugen.valueType")) {
-            type = ugenDef.inputs.value;
+            displayName = ugenDef.inputs.value;
         } else {
             // TODO: Make configurable.
-            type = toTailPath === "flock.ugen" ? fluid.pathUtil.getTailPath(ugenDef.ugen) : ugenDef.ugen;
+            displayName = type;
+        }
+
+        // TODO: We should have some other ID that represents the view, not the model.
+        // TODO: and this is the wrong time to do this.
+        if (!ugenDef.id) {
+            ugenDef.id = fluid.allocateGuid();
         }
 
         return {
-            type: type
+            id: ugenDef.id,
+            type: type,
+            displayName: displayName
         };
     };
-    
-    
+
+
     fluid.defaults("flock.ui.nodeRenderers.synth", {
         gradeNames: ["fluid.viewRelayComponent", "autoInit"],
-        
+
         model: {}, // A synthDef.
-        
+
         invokers: {
             refreshView: {
                 funcName: "flock.ui.nodeRenderers.synth.refreshView",
@@ -103,106 +117,158 @@ var fluid = fluid || require("infusion"),
                 ]
             }
         },
-        
+
         events: {
             afterRender: null
         },
-        
+
     });
-    
+
     flock.ui.nodeRenderers.synth.expandInputs = function (ugenDef) {
         // Expand scalar values into value unit generators.
         var expanded = flock.parse.expandValueDef(ugenDef);
         return flock.parse.expandInputs(expanded);
     };
-    
+
     flock.ui.nodeRenderers.synth.expandAllInputs = function (ugenDef, options) {
         ugenDef = flock.ui.nodeRenderers.synth.expandInputs(ugenDef);
-        
+
         var inputDefs = ugenDef.inputs,
             inputName,
             inputDef;
-        
+
         for (inputName in inputDefs) {
             // Create ugens for all inputs except special inputs.
             inputDef = inputDefs[inputName];
-            inputDefs[inputName] = flock.input.shouldExpand(inputName, ugenDef) ? 
+            inputDefs[inputName] = flock.input.shouldExpand(inputName, ugenDef) ?
                 flock.ui.nodeRenderers.synth.expandAllInputs(inputDef, options) : inputDef;
         }
-        
+
         return ugenDef;
     };
-    
+
     flock.ui.nodeRenderers.synth.expandDef = function (synthDef) {
         // TODO: Copy pasted from flock.parser.ugenForDef. It needs refactoring.
         // TODO: should this be sourced elsewhere in this context?
-        // TODO: These are wrong!
         var options = {
             rate: flock.rates.AUDIO, // TODO: This is hardcoded to audio rate, which is fine until we can edit value synths.
             audioSettings: flock.enviro.shared.options.audioSettings,
             buses: flock.enviro.shared.buses,
             buffers: flock.enviro.shared.buffers
         };
-        
+
         if (!flock.parse.synthDef.hasOutUGen(synthDef)) {
             synthDef = flock.parse.synthDef.makeOutUGen(synthDef, options);
         }
-        
+
         return flock.ui.nodeRenderers.synth.expandAllInputs(synthDef, options);
     };
-    
+
     flock.ui.nodeRenderers.synth.makeRenderers = function (synthDef, container) {
         var renderers = [];
-        
+
         flock.ui.nodeRenderers.synth.accumulateRenderers(synthDef, container, renderers);
-        
+
         return renderers;
     };
-    
+
     flock.ui.nodeRenderers.synth.accumulateRenderers = function (ugen, container, renderers) {
         var inputDefs = ugen.inputs,
+            edges = [],
             inputName,
             inputDef,
             renderer;
-            
+
         for (inputName in inputDefs) {
             inputDef = inputDefs[inputName];
-            
+
             if (flock.input.shouldExpand(inputName, inputDef)) {
                 flock.ui.nodeRenderers.synth.accumulateRenderers(inputDef, container, renderers);
             }
+
+            edges.push({
+                source: ugen.id,
+                target: inputDef.id
+            });
         }
-        
+
         renderer = flock.ui.nodeRenderers.ugen(container, {
-            model: ugen
+            model: {
+                ugenDef: ugen,
+                edges: edges
+            }
         });
-        
+
         renderers.push(renderer);
     };
-    
+
     flock.ui.nodeRenderers.synth.render = function (renderers) {
+        var graphSpec = {
+            nodes: {},
+            edges: []
+        };
+
         fluid.each(renderers, function (renderer) {
             renderer.refreshView();
+
+            graphSpec.nodes[renderer.model.ugenDef.id] = {
+                width: renderer.node.width(),
+                height: renderer.node.height()
+            };
+
+            graphSpec.edges = graphSpec.edges.concat(renderer.model.edges);
         });
+
+        return graphSpec;
     };
-    
+    /*
+    flock.ui.nodeRenderers.synth.layoutGraph = function (graph, renderers) {
+        // TODO: Wrap Dagre as a component.
+        var g = new dagre.Digraph();
+
+        fluid.each(graphSpec.nodes, function (node, id) {
+            g.addNode(id, node);
+        });
+
+        fluid.each(graphSpec.edges, function (edge) {
+            g.addEdge(null, edge.source, edge.target);
+        });
+
+        var outputGraph = dagre.layout().rankDir("LR").run(g);
+
+        // Position the nodes.
+        fluid.each(outputGraph.nodes, function (node) {
+            node.css({
+                "position": "absolute",
+                // TODO: calculate position from centre, which is what Dagre gives us.
+                "top": node.y,
+                "left": node.x
+            });
+        });
+
+        // Render the edges with JSPlumb.
+    };
+    */
+
     // TODO: use dynamic components instead.
     flock.ui.nodeRenderers.synth.refreshView = function (container, synthSpec, afterRender) {
         if (!synthSpec || $.isEmptyObject(synthSpec)) {
             return;
         }
-        
+
         container.children().remove();
-        
+
         var synthDef = synthSpec.synthDef;
         var expanded = flock.ui.nodeRenderers.synth.expandDef(synthDef);
         // TODO: Renderers leak?
         var renderers = flock.ui.nodeRenderers.synth.makeRenderers(expanded, container);
-        var ugenEls = flock.ui.nodeRenderers.synth.render(renderers);
-        
+        var graph = flock.ui.nodeRenderers.synth.render(renderers);
+        fluid.log(graph);
+        //flock.ui.nodeRenderers.synth.layoutGraph(graph);
+
         if (afterRender) {
-            afterRender(ugenEls);
+            afterRender();
         }
     };
-    
+
 }());
