@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (March 14, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (March 15, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -14099,6 +14099,10 @@ var fluid_1_5 = fluid_1_5 || {};
         }); 
     };
     
+    fluid.sortCompleteLast = function (reca, recb) {
+        return (reca.completeOnInit ? 1 : 0) - (recb.completeOnInit ? 1 : 0);
+    };
+    
     // Operate all coordinated transactions by bringing models to their respective initial values, and then commit them all
     fluid.operateInitialTransaction = function (instantiator, mrec) {
         var transId = fluid.allocateGuid();
@@ -14109,7 +14113,8 @@ var fluid_1_5 = fluid_1_5 || {};
             transRec[recel.that.applier.applierId] = {transaction: transac};
             return transac;
         });
-        fluid.each(mrec, function (recel) {
+        var recs = fluid.values(mrec).sort(fluid.sortCompleteFirst);
+        fluid.each(recs, function (recel) {
             var that = recel.that;
             var transac = transacs[that.id];
             if (recel.completeOnInit) {
@@ -14852,7 +14857,7 @@ var fluid_1_5 = fluid_1_5 || {};
     };
     
     fluid.initModelEvent = function (trans, listeners) {
-        fluid.notifyModelChanges(listeners, "ADD", trans.newHolder, fluid.emptyHolder, {transactionId: trans.id});
+        fluid.notifyModelChanges(listeners, "ADD", trans.oldHolder, fluid.emptyHolder, {transactionId: trans.id});
     };
     
     fluid.emptyHolder = { model: undefined };
@@ -14918,6 +14923,7 @@ var fluid_1_5 = fluid_1_5 || {};
                     resolverGetConfig: options.resolverGetConfig
                 },
                 reset: function () {
+                    trans.oldHolder = holder;
                     trans.newHolder = { model: fluid.copy(holder.model) };
                     trans.changeRecord.changes = 0;
                     trans.changeRecord.changeMap = {};

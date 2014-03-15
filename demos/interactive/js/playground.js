@@ -23,7 +23,7 @@ var fluid = fluid || require("infusion"),
      **************/
 
     fluid.defaults("flock.playground", {
-        gradeNames: ["fluid.viewRelayComponent", "autoInit"],
+        gradeNames: ["fluid.viewComponent", "autoInit"],
 
         flockingSettings: {},
 
@@ -291,6 +291,11 @@ var fluid = fluid || require("infusion"),
                     "this": "jsPlumb",
                     method: "ready",
                     args: "{that}.events.onReady.fire"
+                },
+                {
+                    "this": "console",
+                    method: "log",
+                    args: "JSPlumb is ready!"
                 }
             ]
         }
@@ -307,7 +312,7 @@ var fluid = fluid || require("infusion"),
      ***************/
 
     fluid.defaults("flock.playground.visualView", {
-        gradeNames: ["fluid.viewRelayComponent", "autoInit"],
+        gradeNames: ["fluid.viewComponent", "autoInit"],
 
         model: {}, // The active synthSpec
 
@@ -318,11 +323,18 @@ var fluid = fluid || require("infusion"),
             },
 
             synthDefRenderer: {
+                createOnEvent: "onReady",
                 type: "flock.ui.nodeRenderers.synth",
                 container: "{that}.container",
                 options: {
+                    components: {
+                        jsPlumb: "{visualView}.jsPlumb"
+                    },
+
                     // TODO: Move this IoC reference upwards.
-                    model: "{that}.model"
+                    model: {
+                        synthDef: "{visualView}.model"
+                    }
                 }
             }
         },
@@ -332,13 +344,4 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    /*flock.playground.visualView.test = function () {
-        var out = jsPlumb.addEndpoint("output"),
-            sin = jsPlumb.addEndpoint("fake-sin");
-
-        jsPlumb.connect({
-            source: sin,
-            target: out
-        });
-    };*/
 }());

@@ -5,7 +5,7 @@
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
 
-/*global require*/
+/*global require, dagre, jsPlumb*/
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
@@ -18,7 +18,7 @@ var fluid = fluid || require("infusion"),
     fluid.registerNamespace("flock.ui.nodeRenderers");
 
     fluid.defaults("flock.ui.nodeRenderers.ugen", {
-        gradeNames: ["fluid.viewRelayComponent", "autoInit"],
+        gradeNames: ["fluid.viewComponent", "autoInit"],
 
         model: {
             ugenDef: {}, // A ugenDef.
@@ -103,14 +103,19 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.ui.nodeRenderers.synth", {
-        gradeNames: ["fluid.viewRelayComponent", "autoInit"],
+        gradeNames: ["fluid.viewComponent", "autoInit"],
 
-        model: {}, // A synthDef.
+        model: {
+            synthDef: {},
+            nodeGraph: {}
+        },
 
         invokers: {
             refreshView: {
                 funcName: "flock.ui.nodeRenderers.synth.refreshView",
                 args: [
+                    "{that}",
+                    "{that}.applier",
                     "{that}.container",
                     "{arguments}.0",
                     "{that}.events.afterRender.fire"
@@ -122,6 +127,17 @@ var fluid = fluid || require("infusion"),
             afterRender: null
         },
 
+        modelListeners: {
+            "nodeGraph.nodes": {
+                funcName: "flock.ui.nodeRenderers.synth.layoutNodes",
+                args: ["{change}.value", "{that}.renderers"]
+            },
+
+            "nodeGraph.edges": {
+                funcName: "flock.ui.nodeRenderers.synth.renderEdges",
+                args: ["{change}.value"]
+            }
+        }
     });
 
     flock.ui.nodeRenderers.synth.expandInputs = function (ugenDef) {
@@ -221,8 +237,8 @@ var fluid = fluid || require("infusion"),
 
         return graphSpec;
     };
-    /*
-    flock.ui.nodeRenderers.synth.layoutGraph = function (graph, renderers) {
+
+    flock.ui.nodeRenderers.synth.layoutGraph = function (graphSpec) {
         // TODO: Wrap Dagre as a component.
         var g = new dagre.Digraph();
 
@@ -248,10 +264,9 @@ var fluid = fluid || require("infusion"),
 
         // Render the edges with JSPlumb.
     };
-    */
 
     // TODO: use dynamic components instead.
-    flock.ui.nodeRenderers.synth.refreshView = function (container, synthSpec, afterRender) {
+    flock.ui.nodeRenderers.synth.refreshView = function (that, applier, container, synthSpec, afterRender) {
         if (!synthSpec || $.isEmptyObject(synthSpec)) {
             return;
         }
@@ -261,14 +276,23 @@ var fluid = fluid || require("infusion"),
         var synthDef = synthSpec.synthDef;
         var expanded = flock.ui.nodeRenderers.synth.expandDef(synthDef);
         // TODO: Renderers leak?
-        var renderers = flock.ui.nodeRenderers.synth.makeRenderers(expanded, container);
-        var graph = flock.ui.nodeRenderers.synth.render(renderers);
-        fluid.log(graph);
-        //flock.ui.nodeRenderers.synth.layoutGraph(graph);
+        that.ugenRenderers = flock.ui.nodeRenderers.synth.makeRenderers(expanded, container);
+        var graph = flock.ui.nodeRenderers.synth.render(that.ugenRenderers);
+        applier.change("nodeGraph", null);
+        applier.change("nodeGraph", graph);
 
         if (afterRender) {
             afterRender();
         }
+    };
+
+    flock.ui.nodeRenderers.synth.renderEdges = function (edges) {
+        fluid.each(edges, function (edge) {
+            jsPlumb.connect({
+                source: jsPlumb.addEndpoint(edge.source),
+                target: jsPlumb.addEndpoint(edge.target)
+            });
+        });
     };
 
 }());

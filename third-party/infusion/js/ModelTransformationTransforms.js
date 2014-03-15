@@ -20,7 +20,7 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
 var fluid_1_5 = fluid_1_5 || {};
 var fluid = fluid || fluid_1_5;
 
-(function ($) {
+(function ($, fluid) {
     "use strict";
 
     fluid.registerNamespace("fluid.model.transform");
