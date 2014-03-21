@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (March 15, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (March 20, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -10291,8 +10291,24 @@ var fluid = fluid || fluid_1_5;
     };
 
     fluid.makeComponent = function (componentName, options) {
-        if (!options.initFunction || !options.gradeNames) {
-            fluid.fail("Cannot autoInit component " + componentName + " which does not have an initFunction and gradeNames defined");
+        if (!options.gradeNames || options.gradeNames.length === 0) {
+            fluid.fail("Cannot autoInit component " + componentName + " which does not have any gradeNames defined");
+        } else if (!options.initFunction) {
+            var blankGrades = [];
+            for (var i = 0; i < options.gradeNames.length; ++ i) {
+                var gradeName = options.gradeNames[i];
+                var defaults = fluid.rawDefaults(gradeName);
+                if (!defaults && gradeName !== "autoInit") {
+                    blankGrades.push(gradeName);
+                }
+            }
+            if (blankGrades.length === 0) {
+                fluid.fail("Cannot autoInit component " + componentName + " which does not have an initFunction defined");
+            } else {
+                fluid.fail("The grade hierarchy of component with typeName " + componentName + " is incomplete - it inherits from the following grade(s): " 
+                 + blankGrades.join(", ") + " for which the grade definitions are corrupt or missing. Please check the files which might include these " +
+                 " grades and ensure they are readable and have been loaded by this instance of Infusion");
+            }
         }
         var creator = function () {
             return fluid.initComponent(componentName, arguments);
@@ -11211,127 +11227,6 @@ var fluid = fluid || fluid_1_5;
 
 })(jQuery, fluid_1_5);
 ;/*
-Copyright 2008-2010 University of Cambridge
-Copyright 2008-2009 University of Toronto
-
-Licensed under the Educational Community License (ECL), Version 2.0 or the New
-BSD license. You may not use this file except in compliance with one these
-Licenses.
-
-You may obtain a copy of the ECL 2.0 License and BSD License at
-https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
-*/
-
-// Declare dependencies
-/*global fluid_1_5:true, jQuery */
-
-// JSLint options 
-/*jslint white: true, funcinvoke: true, undef: true, newcap: true, nomen: true, regexp: true, bitwise: true, browser: true, forin: true, maxerr: 100, indent: 4 */
-
-var fluid_1_5 = fluid_1_5 || {};
-
-(function ($, fluid) {
-    
-    fluid.dom = fluid.dom || {};
-    
-    // Node walker function for iterateDom.
-    var getNextNode = function (iterator) {
-        if (iterator.node.firstChild) {
-            iterator.node = iterator.node.firstChild;
-            iterator.depth += 1;
-            return iterator;
-        }
-        while (iterator.node) {
-            if (iterator.node.nextSibling) {
-                iterator.node = iterator.node.nextSibling;
-                return iterator;
-            }
-            iterator.node = iterator.node.parentNode;
-            iterator.depth -= 1;
-        }
-        return iterator;
-    };
-    
-    /**
-     * Walks the DOM, applying the specified acceptor function to each element.
-     * There is a special case for the acceptor, allowing for quick deletion of elements and their children.
-     * Return "delete" from your acceptor function if you want to delete the element in question.
-     * Return "stop" to terminate iteration. 
-     
-     * Implementation note - this utility exists mainly for performance reasons. It was last tested
-     * carefully some time ago (around jQuery 1.2) but at that time was around 3-4x faster at raw DOM
-     * filtration tasks than the jQuery equivalents, which was an important source of performance loss in the
-     * Reorderer component. General clients of the framework should use this method with caution if at all, and
-     * the performance issues should be reassessed when we have time. 
-     * 
-     * @param {Element} node the node to start walking from
-     * @param {Function} acceptor the function to invoke with each DOM element
-     * @param {Boolean} allnodes Use <code>true</code> to call acceptor on all nodes, 
-     * rather than just element nodes (type 1)
-     */
-    fluid.dom.iterateDom = function (node, acceptor, allNodes) {
-        var currentNode = {node: node, depth: 0};
-        var prevNode = node;
-        var condition;
-        while (currentNode.node !== null && currentNode.depth >= 0 && currentNode.depth < fluid.dom.iterateDom.DOM_BAIL_DEPTH) {
-            condition = null;
-            if (currentNode.node.nodeType === 1 || allNodes) {
-                condition = acceptor(currentNode.node, currentNode.depth);
-            }
-            if (condition) {
-                if (condition === "delete") {
-                    currentNode.node.parentNode.removeChild(currentNode.node);
-                    currentNode.node = prevNode;
-                }
-                else if (condition === "stop") {
-                    return currentNode.node;
-                }
-            }
-            prevNode = currentNode.node;
-            currentNode = getNextNode(currentNode);
-        }
-    };
-    
-    // Work around IE circular DOM issue. This is the default max DOM depth on IE.
-    // http://msdn2.microsoft.com/en-us/library/ms761392(VS.85).aspx
-    fluid.dom.iterateDom.DOM_BAIL_DEPTH = 256;
-    
-    /**
-     * Checks if the specified container is actually the parent of containee.
-     * 
-     * @param {Element} container the potential parent
-     * @param {Element} containee the child in question
-     */
-    fluid.dom.isContainer = function (container, containee) {
-        for (; containee; containee = containee.parentNode) {
-            if (container === containee) {
-                return true;
-            }
-        }
-        return false;
-    };
-       
-    /** Return the element text from the supplied DOM node as a single String.
-     * Implementation note - this is a special-purpose utility used in the framework in just one
-     * position in the Reorderer. It only performs a "shallow" traversal of the text and was intended
-     * as a quick and dirty means of extracting element labels where the user had not explicitly provided one.
-     * It should not be used by general users of the framework and its presence here needs to be 
-     * reassessed.
-     */
-    fluid.dom.getElementText = function (element) {
-        var nodes = element.childNodes;
-        var text = "";
-        for (var i = 0; i < nodes.length; ++i) {
-            var child = nodes[i];
-            if (child.nodeType === 3) {
-                text = text + child.nodeValue;
-            }
-        }
-        return text; 
-    };
-    
-})(jQuery, fluid_1_5);
-;/*
 Copyright 2007-2010 University of Cambridge
 Copyright 2007-2009 University of Toronto
 Copyright 2010-2011 Lucendo Development Ltd.
@@ -11513,6 +11408,354 @@ var fluid_1_5 = fluid_1_5 || {};
     
 })(jQuery, fluid_1_5);
 ;/*
+Copyright 2008-2010 University of Cambridge
+Copyright 2008-2009 University of Toronto
+
+Licensed under the Educational Community License (ECL), Version 2.0 or the New
+BSD license. You may not use this file except in compliance with one these
+Licenses.
+
+You may obtain a copy of the ECL 2.0 License and BSD License at
+https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
+*/
+
+// Declare dependencies
+/*global fluid_1_5:true, jQuery */
+
+// JSLint options 
+/*jslint white: true, funcinvoke: true, undef: true, newcap: true, nomen: true, regexp: true, bitwise: true, browser: true, forin: true, maxerr: 100, indent: 4 */
+
+var fluid_1_5 = fluid_1_5 || {};
+
+(function ($, fluid) {
+    
+    fluid.dom = fluid.dom || {};
+    
+    // Node walker function for iterateDom.
+    var getNextNode = function (iterator) {
+        if (iterator.node.firstChild) {
+            iterator.node = iterator.node.firstChild;
+            iterator.depth += 1;
+            return iterator;
+        }
+        while (iterator.node) {
+            if (iterator.node.nextSibling) {
+                iterator.node = iterator.node.nextSibling;
+                return iterator;
+            }
+            iterator.node = iterator.node.parentNode;
+            iterator.depth -= 1;
+        }
+        return iterator;
+    };
+    
+    /**
+     * Walks the DOM, applying the specified acceptor function to each element.
+     * There is a special case for the acceptor, allowing for quick deletion of elements and their children.
+     * Return "delete" from your acceptor function if you want to delete the element in question.
+     * Return "stop" to terminate iteration. 
+     
+     * Implementation note - this utility exists mainly for performance reasons. It was last tested
+     * carefully some time ago (around jQuery 1.2) but at that time was around 3-4x faster at raw DOM
+     * filtration tasks than the jQuery equivalents, which was an important source of performance loss in the
+     * Reorderer component. General clients of the framework should use this method with caution if at all, and
+     * the performance issues should be reassessed when we have time. 
+     * 
+     * @param {Element} node the node to start walking from
+     * @param {Function} acceptor the function to invoke with each DOM element
+     * @param {Boolean} allnodes Use <code>true</code> to call acceptor on all nodes, 
+     * rather than just element nodes (type 1)
+     */
+    fluid.dom.iterateDom = function (node, acceptor, allNodes) {
+        var currentNode = {node: node, depth: 0};
+        var prevNode = node;
+        var condition;
+        while (currentNode.node !== null && currentNode.depth >= 0 && currentNode.depth < fluid.dom.iterateDom.DOM_BAIL_DEPTH) {
+            condition = null;
+            if (currentNode.node.nodeType === 1 || allNodes) {
+                condition = acceptor(currentNode.node, currentNode.depth);
+            }
+            if (condition) {
+                if (condition === "delete") {
+                    currentNode.node.parentNode.removeChild(currentNode.node);
+                    currentNode.node = prevNode;
+                }
+                else if (condition === "stop") {
+                    return currentNode.node;
+                }
+            }
+            prevNode = currentNode.node;
+            currentNode = getNextNode(currentNode);
+        }
+    };
+    
+    // Work around IE circular DOM issue. This is the default max DOM depth on IE.
+    // http://msdn2.microsoft.com/en-us/library/ms761392(VS.85).aspx
+    fluid.dom.iterateDom.DOM_BAIL_DEPTH = 256;
+    
+    /**
+     * Checks if the specified container is actually the parent of containee.
+     * 
+     * @param {Element} container the potential parent
+     * @param {Element} containee the child in question
+     */
+    fluid.dom.isContainer = function (container, containee) {
+        for (; containee; containee = containee.parentNode) {
+            if (container === containee) {
+                return true;
+            }
+        }
+        return false;
+    };
+       
+    /** Return the element text from the supplied DOM node as a single String.
+     * Implementation note - this is a special-purpose utility used in the framework in just one
+     * position in the Reorderer. It only performs a "shallow" traversal of the text and was intended
+     * as a quick and dirty means of extracting element labels where the user had not explicitly provided one.
+     * It should not be used by general users of the framework and its presence here needs to be 
+     * reassessed.
+     */
+    fluid.dom.getElementText = function (element) {
+        var nodes = element.childNodes;
+        var text = "";
+        for (var i = 0; i < nodes.length; ++i) {
+            var child = nodes[i];
+            if (child.nodeType === 3) {
+                text = text + child.nodeValue;
+            }
+        }
+        return text; 
+    };
+    
+})(jQuery, fluid_1_5);
+;/*
+Copyright 2007-2010 University of Cambridge
+Copyright 2007-2009 University of Toronto
+Copyright 2007-2009 University of California, Berkeley
+Copyright 2010 OCAD University
+Copyright 2010-2011 Lucendo Development Ltd.
+
+Licensed under the Educational Community License (ECL), Version 2.0 or the New
+BSD license. You may not use this file except in compliance with one these
+Licenses.
+
+You may obtain a copy of the ECL 2.0 License and BSD License at
+https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
+*/
+
+// Declare dependencies
+/*global fluid:true, fluid_1_5:true, jQuery*/
+
+// JSLint options 
+/*jslint white: true, funcinvoke: true, undef: true, newcap: true, nomen: true, regexp: true, bitwise: true, browser: true, forin: true, maxerr: 100, indent: 4 */
+
+var fluid_1_5 = fluid_1_5 || {};
+var fluid = fluid || fluid_1_5;
+
+(function ($, fluid) {
+       
+    fluid.renderTimestamp = function (date) {
+        var zeropad = function (num, width) {
+             if (!width) width = 2;
+             var numstr = (num == undefined? "" : num.toString());
+             return "00000".substring(5 - width + numstr.length) + numstr;
+             }
+        return zeropad(date.getHours()) + ":" + zeropad(date.getMinutes()) + ":" + zeropad(date.getSeconds()) + "." + zeropad(date.getMilliseconds(), 3);
+    };
+
+    fluid.isTracing = false;
+
+    fluid.registerNamespace("fluid.tracing");
+
+    fluid.tracing.pathCount = [];
+    
+    fluid.tracing.summarisePathCount = function (pathCount) {
+        pathCount = pathCount || fluid.tracing.pathCount;
+        var togo = {};
+        for (var i = 0; i < pathCount.length; ++ i) {
+            var path = pathCount[i];
+            if (!togo[path]) {
+                togo[path] = 1;
+            }
+            else {
+                ++togo[path];
+            }
+        }
+        var toReallyGo = [];
+        fluid.each(togo, function(el, path) {
+            toReallyGo.push({path: path, count: el});
+        });
+        toReallyGo.sort(function(a, b) {return b.count - a.count});
+        return toReallyGo;
+    };
+    
+    fluid.tracing.condensePathCount = function (prefixes, pathCount) {
+        prefixes = fluid.makeArray(prefixes);
+        var prefixCount = {};
+        fluid.each(prefixes, function(prefix) {
+            prefixCount[prefix] = 0;
+        });
+        var togo = [];
+        fluid.each(pathCount, function(el) {
+            var path = el.path;
+            if (!fluid.find(prefixes, function(prefix) {
+                if (path.indexOf(prefix) === 0) {
+                    prefixCount[prefix] += el.count;
+                    return true;
+                }
+            })) {
+            togo.push(el);
+            }
+        });
+        fluid.each(prefixCount, function(count, path) {
+            togo.unshift({path: path, count: count});
+        });
+        return togo;
+    };
+
+    // Exception stripping code taken from https://github.com/emwendelin/javascript-stacktrace/blob/master/stacktrace.js
+    // BSD licence, see header
+    
+    fluid.detectStackStyle = function (e) {
+        var style = "other";
+        var stackStyle = {
+            offset: 0  
+        };
+        if (e["arguments"]) {
+            style = "chrome";
+        } else if (typeof window !== "undefined" && window.opera && e.stacktrace) {
+            style = "opera10";
+        } else if (e.stack) {
+            style = "firefox";
+            // Detect FireFox 4-style stacks which are 1 level less deep
+            stackStyle.offset = e.stack.indexOf("Trace exception") === -1? 1 : 0;
+        } else if (typeof window !== 'undefined' && window.opera && !('stacktrace' in e)) { //Opera 9-
+            style = "opera";
+        }
+        stackStyle.style = style;
+        return stackStyle;
+    };
+    
+    fluid.obtainException = function() {
+        try {
+            throw new Error("Trace exception");
+        }
+        catch (e) {
+            return e;
+        }
+    };
+    
+    var stackStyle = fluid.detectStackStyle(fluid.obtainException());
+
+    fluid.registerNamespace("fluid.exceptionDecoders");
+    
+    fluid.decodeStack = function() {
+        if (stackStyle.style !== "firefox") {
+            return null;
+        }
+        var e = fluid.obtainException();
+        return fluid.exceptionDecoders[stackStyle.style](e);
+    };
+
+    fluid.exceptionDecoders.firefox = function(e) {
+        var lines = e.stack.replace(/(?:\n@:0)?\s+$/m, '').replace(/^\(/gm, '{anonymous}(').split('\n');
+        return fluid.transform(lines, function(line) {
+            var atind = line.indexOf("@");
+            return atind === -1? [line] : [line.substring(atind + 1), line.substring(0, atind)];  
+        });
+    };
+    
+    fluid.getCallerInfo = function(atDepth) {
+        atDepth = (atDepth || 3) - stackStyle.offset;
+        var stack = fluid.decodeStack();
+        return stack? stack[atDepth][0] : null;
+    };
+    
+    function generate(c, count) {
+        var togo = "";
+        for (var i = 0; i < count; ++ i) {
+            togo += c;
+        }
+        return togo;
+    }
+    
+    function printImpl(obj, small, options) {
+        var big = small + options.indentChars;
+        if (obj === null) {
+            return "null";
+        }
+        else if (fluid.isPrimitive(obj)) {
+            return JSON.stringify(obj);
+        }
+        else {
+            var j = [];
+            if (fluid.isArrayable(obj)) {
+                if (obj.length === 0) {
+                    return "[]";
+                }
+                for (var i = 0; i < obj.length; ++ i) {
+                    j[i] = printImpl(obj[i], big, options);
+                }
+                return "[\n" + big + j.join(",\n" + big) + "\n" + small + "]";
+                }
+            else {
+                var i = 0;
+                fluid.each(obj, function(value, key) {
+                    j[i++] = JSON.stringify(key) + ": " + printImpl(value, big, options);
+                });
+                return "{\n" + big + j.join(",\n" + big) + "\n" + small + "}"; 
+            }
+        }
+    }
+    
+    fluid.prettyPrintJSON = function(obj, options) {
+        options = $.extend({indent: 4}, options);
+        options.indentChars = generate(" ", options.indent);
+        return printImpl(obj, "", options);
+    }
+        
+    /** 
+     * Dumps a DOM element into a readily recognisable form for debugging - produces a
+     * "semi-selector" summarising its tag name, class and id, whichever are set.
+     * 
+     * @param {jQueryable} element The element to be dumped
+     * @return A string representing the element.
+     */
+    fluid.dumpEl = function (element) {
+        var togo;
+        
+        if (!element) {
+            return "null";
+        }
+        if (element.nodeType === 3 || element.nodeType === 8) {
+            return "[data: " + element.data + "]";
+        } 
+        if (element.nodeType === 9) {
+            return "[document: location " + element.location + "]";
+        }
+        if (!element.nodeType && fluid.isArrayable(element)) {
+            togo = "[";
+            for (var i = 0; i < element.length; ++ i) {
+                togo += fluid.dumpEl(element[i]);
+                if (i < element.length - 1) {
+                    togo += ", ";
+                }
+            }
+            return togo + "]";
+        }
+        element = $(element);
+        togo = element.get(0).tagName;
+        if (element.id) {
+            togo += "#" + element.id;
+        }
+        if (element.attr("class")) {
+            togo += "." + element.attr("class");
+        }
+        return togo;
+    };
+        
+})(jQuery, fluid_1_5);
+    ;/*
 Copyright 2011-2013 OCAD University
 Copyright 2010-2011 Lucendo Development Ltd.
 
@@ -15426,6 +15669,1212 @@ var fluid_1_5 = fluid_1_5 || {};
 
 })(jQuery, fluid_1_5);
 ;/*
+Copyright 2010 University of Toronto
+Copyright 2010-2011 OCAD University
+
+Licensed under the Educational Community License (ECL), Version 2.0 or the New
+BSD license. You may not use this file except in compliance with one these
+Licenses.
+
+You may obtain a copy of the ECL 2.0 License and BSD License at
+https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
+*/
+
+// Declare dependencies
+
+/*global fluid:true, fluid_1_5:true, jQuery*/
+
+// JSLint options 
+/*jslint white: true, elsecatch: true, jslintok: true, funcinvoke: true, undef: true, newcap: true, nomen: true, regexp: true, bitwise: true, browser: true, forin: true, maxerr: 100, indent: 4 */
+
+var fluid_1_5 = fluid_1_5 || {};
+var fluid = fluid || fluid_1_5;
+
+(function ($, fluid) {
+    "use strict";
+
+    fluid.registerNamespace("fluid.model.transform");
+    
+    /** Grade definitions for standard transformation function hierarchy **/
+    
+    fluid.defaults("fluid.transformFunction", {
+        gradeNames: "fluid.function"
+    });
+    
+    // uses standard layout and workflow involving inputPath
+    fluid.defaults("fluid.standardInputTransformFunction", {
+        gradeNames: "fluid.transformFunction"  
+    });
+    
+    fluid.defaults("fluid.standardOutputTransformFunction", {
+        gradeNames: "fluid.transformFunction"  
+    });
+
+    fluid.defaults("fluid.multiInputTransformFunction", {
+        gradeNames: "fluid.transformFunction"
+    });
+    
+    // uses the standard layout and workflow involving inputPath and outputPath
+    fluid.defaults("fluid.standardTransformFunction", {
+        gradeNames: ["fluid.standardInputTransformFunction", "fluid.standardOutputTransformFunction"]  
+    });
+    
+    fluid.defaults("fluid.lens", {
+        gradeNames: "fluid.transformFunction",
+        invertConfiguration: null
+        // this function method returns "inverted configuration" rather than actually performing inversion
+        // TODO: harmonise with strategy used in VideoPlayer_framework.js
+    });
+    
+    /***********************************
+     * Base utilities for transformers *
+     ***********************************/
+
+    // unsupported, NON-API function
+    fluid.model.transform.pathToRule = function (inputPath) {
+        return {
+            transform: {
+                type: "fluid.transforms.value",
+                inputPath: inputPath
+            }
+        };
+    };
+    
+    // unsupported, NON-API function    
+    fluid.model.transform.literalValueToRule = function (value) {
+        return {
+            transform: {
+                type: "fluid.transforms.literalValue",
+                value: value
+            }
+        };
+    };
+        
+    /** Accepts two fully escaped paths, either of which may be empty or null **/
+    fluid.model.composePaths = function (prefix, suffix) {
+        prefix = prefix === 0 ? "0" : prefix || "";
+        suffix = suffix === 0 ? "0" : suffix || "";
+        return !prefix ? suffix : (!suffix ? prefix : prefix + "." + suffix);
+    };
+
+    fluid.model.transform.accumulateInputPath = function (inputPath, transform, paths) {
+        if (inputPath !== undefined) {
+            paths.push(fluid.model.composePaths(transform.inputPrefix, inputPath));
+        }
+    };
+
+    fluid.model.transform.accumulateStandardInputPath = function (input, transformSpec, transform, paths) {
+        fluid.model.transform.getValue(undefined, transformSpec[input], transform);    
+        fluid.model.transform.accumulateInputPath(transformSpec[input + "Path"], transform, paths);
+    };
+
+    fluid.model.transform.accumulateMultiInputPaths = function (inputVariables, transformSpec, transform, paths) {
+        fluid.each(inputVariables, function (v, k) {
+            fluid.model.transform.accumulateStandardInputPath(k, transformSpec, transform, paths);
+        });
+    };
+
+    fluid.model.transform.getValue = function (inputPath, value, transform) {
+        var togo;
+        if (inputPath !== undefined) { // NB: We may one day want to reverse the crazy jQuery-like convention that "no path means root path"
+            togo = fluid.get(transform.source, fluid.model.composePaths(transform.inputPrefix, inputPath), transform.resolverGetConfig);
+        }
+        if (togo === undefined) {
+            togo = fluid.isPrimitive(value) ? value : transform.expand(value);
+        }
+        return togo;
+    };
+    
+    // distinguished value which indicates that a transformation rule supplied a 
+    // non-default output path, and so the user should be prevented from making use of it
+    // in a compound transform definition
+    fluid.model.transform.NONDEFAULT_OUTPUT_PATH_RETURN = {};
+    
+    fluid.model.transform.setValue = function (userOutputPath, value, transform, merge) {
+        // avoid crosslinking to input object - this might be controlled by a "nocopy" option in future
+        var toset = fluid.copy(value); 
+        var outputPath = fluid.model.composePaths(transform.outputPrefix, userOutputPath);
+        // TODO: custom resolver config here to create non-hash output model structure
+        if (toset !== undefined) {
+            transform.applier.requestChange(outputPath, toset, merge ? "MERGE" : undefined);
+        }
+        return userOutputPath ? fluid.model.transform.NONDEFAULT_OUTPUT_PATH_RETURN : toset;
+    };
+    
+    /* Resolves the <key> given as parameter by looking up the path <key>Path in the object
+     * to be transformed. If not present, it resolves the <key> by using the literal value if primitive,
+     * or expanding otherwise. <def> defines the default value if unableto resolve the key. If no
+     * default value is given undefined is returned
+     */
+    fluid.model.transform.resolveParam = function (transformSpec, transform, key, def) {
+        var val = fluid.model.transform.getValue(transformSpec[key + "Path"], transformSpec[key], transform);
+        return (val !== undefined) ? val : def;
+    };
+
+    // TODO: Incomplete implementation which only checks expected paths
+    fluid.deepEquals = function (expected, actual, stats) {
+        if (fluid.isPrimitive(expected)) {
+            if (expected === actual) {
+                ++stats.matchCount;
+            } else {
+                ++stats.mismatchCount;
+                stats.messages.push("Value mismatch at path " + stats.path + ": expected " + expected + " actual " + actual);
+            }
+        }
+        else {
+            if (typeof(expected) !== typeof(actual)) {
+                ++stats.mismatchCount;
+                stats.messages.push("Type mismatch at path " + stats.path + ": expected " + typeof(expected)  + " actual " + typeof(actual)); 
+            } else {
+                fluid.each(expected, function (value, key) {
+                    stats.pathOps.push(key);
+                    fluid.deepEquals(expected[key], actual[key], stats);
+                    stats.pathOps.pop(key);
+                });
+            }
+        }
+    };
+    
+    fluid.model.transform.matchValue = function (expected, actual) {
+        if (fluid.isPrimitive(expected)) {
+            return expected === actual ? 1 : 0;
+        } else {
+            var stats = {
+                matchCount: 0,
+                mismatchCount: 0,
+                messages: []
+            };
+            fluid.model.makePathStack(stats, "path");
+            fluid.deepEquals(expected, actual, stats);
+            return stats.matchCount;
+        }
+    };
+    
+    // unsupported, NON-API function    
+    fluid.model.transform.compareMatches = function (speca, specb) {
+        return specb.matchCount - speca.matchCount;
+    };
+    
+    fluid.firstDefined = function (a, b) {
+        return a === undefined ? b : a;
+    };
+
+        
+    // TODO: prefixApplier is a transform which is currently unused and untested
+    fluid.model.transform.prefixApplier = function (transformSpec, transform) {
+        if (transformSpec.inputPrefix) {
+            transform.inputPrefixOp.push(transformSpec.inputPrefix);
+        }
+        if (transformSpec.outputPrefix) {
+            transform.outputPrefixOp.push(transformSpec.outputPrefix);
+        }
+        transform.expand(transformSpec.value);
+        if (transformSpec.inputPrefix) {
+            transform.inputPrefixOp.pop();
+        }
+        if (transformSpec.outputPrefix) {
+            transform.outputPrefixOp.pop();
+        }
+    };
+    
+    fluid.defaults("fluid.model.transform.prefixApplier", {
+        gradeNames: ["fluid.transformFunction"]
+    });
+    
+    // unsupported, NON-API function
+    fluid.model.makePathStack = function (transform, prefixName) {
+        var stack = transform[prefixName + "Stack"] = [];
+        transform[prefixName] = "";
+        return {
+            push: function (prefix) {
+                var newPath = fluid.model.composePaths(transform[prefixName], prefix);
+                stack.push(transform[prefixName]);
+                transform[prefixName] = newPath;
+            },
+            pop: function () {
+                transform[prefixName] = stack.pop();
+            }
+        };
+    };
+    
+    // unsupported, NON-API function
+    fluid.model.transform.doTransform = function (transformSpec, transform, transformOpts) {
+        var expdef = transformOpts.defaults;
+        var transformFn = fluid.getGlobalValue(transformOpts.typeName);
+        if (typeof(transformFn) !== "function") {
+            fluid.fail("Transformation record specifies transformation function with name " + 
+                transformSpec.type + " which is not a function - ", transformFn);
+        }
+        if (!fluid.hasGrade(expdef, "fluid.transformFunction")) {
+            // If no suitable grade is set up, assume that it is intended to be used as a standardTransformFunction
+            expdef = fluid.defaults("fluid.standardTransformFunction");
+        }
+        var transformArgs = [transformSpec, transform];
+        if (fluid.hasGrade(expdef, "fluid.standardInputTransformFunction")) {
+            if (transformSpec.input !== undefined) { 
+                transformSpec.value = transformSpec.input; // alias input and value
+            }
+            var expanded = fluid.model.transform.getValue(transformSpec.inputPath, transformSpec.value, transform);
+            transformArgs.unshift(expanded);
+            //if the function has no input, the result is considered undefined, and this is returned
+            if (expanded === undefined) {
+                return undefined;
+            }
+        } else if (fluid.hasGrade(expdef, "fluid.multiInputTransformFunction")) {
+            var inputs = {};
+            fluid.each(expdef.inputVariables, function (v, k) {
+                var input = fluid.model.transform.getValue(transformSpec[k + "Path"], transformSpec[k], transform);
+                inputs[k] = (input === undefined && v !== null) ? v : input; // if no match, assign default if one exists (v != null)
+            });
+            transformArgs.unshift(inputs);
+        }
+        var transformed = transformFn.apply(null, transformArgs);
+        if (fluid.hasGrade(expdef, "fluid.standardOutputTransformFunction")) {
+            // "doOutput" flag is currently set nowhere, but could be used in future
+            var outputPath = transformSpec.outputPath !== undefined ? transformSpec.outputPath : (transformOpts.doOutput ? "" : undefined);
+            if (outputPath !== undefined && transformed !== undefined) {
+                //If outputPath is given in the expander we want to: 
+                // (1) output to the document 
+                // (2) return undefined, to ensure that expanders higher up in the hierarchy doesn't attempt to output it again
+                fluid.model.transform.setValue(transformSpec.outputPath, transformed, transform, transformSpec.merge);
+                transformed = undefined;
+            }
+        }
+        return transformed;
+    };
+    
+    // unsupported, NON-API function    
+    fluid.model.transform.expandWildcards = function (transform, source) {
+        fluid.each(source, function (value, key) {
+            var q = transform.queuedTransforms;
+            transform.pathOp.push(fluid.pathUtil.escapeSegment(key.toString()));
+            for (var i = 0; i < q.length; ++i) {
+                if (fluid.pathUtil.matchPath(q[i].matchPath, transform.path, true)) {
+                    var esCopy = fluid.copy(q[i].transformSpec);
+                    if (esCopy.inputPath === undefined || fluid.model.transform.hasWildcard(esCopy.inputPath)) {
+                        esCopy.inputPath = "";
+                    }
+                    // TODO: allow some kind of interpolation for output path
+                    // TODO: Also, we now require outputPath to be specified in these cases for output to be produced as well.. Is that something we want to continue with?
+                    transform.inputPrefixOp.push(transform.path);
+                    transform.outputPrefixOp.push(transform.path);
+                    var transformOpts = fluid.model.transform.lookupType(esCopy.type);
+                    var result = fluid.model.transform.doTransform(esCopy, transform, transformOpts);
+                    if (result !== undefined) {
+                        fluid.model.transform.setValue(null, result, transform);
+                    }                    
+                    transform.outputPrefixOp.pop();
+                    transform.inputPrefixOp.pop();
+                }
+            }
+            if (!fluid.isPrimitive(value)) {
+                fluid.model.transform.expandWildcards(transform, value);
+            }
+            transform.pathOp.pop();
+        });
+    };
+    
+    // unsupported, NON-API function   
+    fluid.model.transform.hasWildcard = function (path) {
+        return typeof(path) === "string" && path.indexOf("*") !== -1;
+    };
+    
+    // unsupported, NON-API function
+    fluid.model.transform.maybePushWildcard = function (transformSpec, transform) {
+        var hw = fluid.model.transform.hasWildcard;
+        var matchPath;
+        if (hw(transformSpec.inputPath)) {
+            matchPath = fluid.model.composePaths(transform.inputPrefix, transformSpec.inputPath);
+        }
+        else if (hw(transform.outputPrefix) || hw(transformSpec.outputPath)) {
+            matchPath = fluid.model.composePaths(transform.outputPrefix, transformSpec.outputPath);
+        }
+                         
+        if (matchPath) {
+            transform.queuedTransforms.push({transformSpec: transformSpec, outputPrefix: transform.outputPrefix, inputPrefix: transform.inputPrefix, matchPath: matchPath});
+            return true;
+        }
+        return false;
+    };
+    
+    fluid.model.sortByKeyLength = function (inObject) {
+        var keys = fluid.keys(inObject);
+        return keys.sort(fluid.compareStringLength(true));
+    };
+    
+    // Three handler functions operating the (currently) three different processing modes
+    // unsupported, NON-API function
+    fluid.model.transform.handleTransformStrategy = function (transformSpec, transform, transformOpts) {
+        if (fluid.model.transform.maybePushWildcard(transformSpec, transform)) {
+            return;
+        }
+        else {
+            return fluid.model.transform.doTransform(transformSpec, transform, transformOpts);
+        }
+    };
+    // unsupported, NON-API function
+    fluid.model.transform.handleInvertStrategy = function (transformSpec, transform, transformOpts) {
+        var invertor = transformOpts.defaults.invertConfiguration;
+        if (invertor) {
+            var inverted = fluid.invokeGlobalFunction(invertor, [transformSpec, transform]);
+            transform.inverted.push(inverted);
+        }
+    };
+    
+    // unsupported, NON-API function
+    fluid.model.transform.handleCollectStrategy = function (transformSpec, transform, transformOpts) {
+        var defaults = transformOpts.defaults;
+        var standardInput = fluid.hasGrade(defaults, "fluid.standardInputTransformFunction");
+        var multiInput = fluid.hasGrade(defaults, "fluid.multiInputTransformFunction");
+
+        if (standardInput) {
+            fluid.model.transform.accumulateStandardInputPath("input", transformSpec, transform, transform.inputPaths);
+        } else if (multiInput) {
+            fluid.model.transform.accumulateMultiInputPaths(defaults.inputVariables, transformSpec, transform, transform.inputPaths);
+        } else {
+            var collector = defaults.collectInputPaths;
+            if (collector) {
+                var collected = fluid.makeArray(fluid.invokeGlobalFunction(collector, [transformSpec, transform]));
+                transform.inputPaths = transform.inputPaths.concat(collected);
+            }
+        }
+    };
+    
+    fluid.model.transform.lookupType = function (typeName) {
+        if (!typeName) {
+            fluid.fail("Transformation record is missing a type name: ", transformSpec);
+        }
+        if (typeName.indexOf(".") === -1) {
+            typeName = "fluid.transforms." + typeName;
+        }
+        var defaults = fluid.defaults(typeName);
+        return { defaults: defaults, typeName: typeName};
+    };
+    
+    // unsupported, NON-API function
+    fluid.model.transform.processRule = function (rule, transform) {
+        if (typeof(rule) === "string") {
+            rule = fluid.model.transform.pathToRule(rule);
+        }
+        // special dispensation to allow "literalValue" at top level
+        else if (rule.literalValue && transform.outputPrefix !== "") {
+            rule = fluid.model.transform.literalValueToRule(rule.literalValue);
+        }
+        var togo;
+        if (rule.transform) {
+            var transformSpec, transformOpts;
+
+            if (fluid.isArrayable(rule.transform)) {
+                // if the transform holds an array, each transformer within that is responsible for its own output
+                var transforms = rule.transform;
+                togo = undefined;
+                for (var i = 0; i < transforms.length; ++i) {
+                    transformSpec = transforms[i];
+                    transformOpts = fluid.model.transform.lookupType(transformSpec.type);
+                    transform.transformHandler(transformSpec, transform, transformOpts);
+                }
+            } else {
+                // else we just have a normal single transform which will return 'undefined' as a flag to defeat cascading output
+                transformSpec = rule.transform;
+                transformOpts = fluid.model.transform.lookupType(transformSpec.type);
+                togo = transform.transformHandler(transformSpec, transform, transformOpts);
+            }
+        }
+        // if rule is an array, save path for later use in schema strategy on final applier (so output will be interpreted as array)
+        if (fluid.isArrayable(rule)) {
+            transform.collectedFlatSchemaOpts = transform.collectedFlatSchemaOpts || {};
+            transform.collectedFlatSchemaOpts[transform.outputPrefix] = "array";
+        }
+        fluid.each(rule, function (value, key) {
+            if (key !== "transform") {
+                transform.outputPrefixOp.push(key);
+                var togo = transform.expand(value, transform);
+                // Value expanders and arrays as rules implicitly outputs, unless they have nothing (undefined) to output
+                if (togo !== undefined) {
+                    fluid.model.transform.setValue(null, togo, transform);
+                    // ensure that expanders further up does not try to output this value as well.
+                    togo = undefined;
+                }
+                transform.outputPrefixOp.pop();
+            }
+        });
+        return togo;
+    };
+    
+    // unsupported, NON-API function
+    // 3rd arg is disused by the framework and always defaults to fluid.model.transform.processRule
+    fluid.model.transform.makeStrategy = function (transform, handleFn, transformFn) {
+        transformFn = transformFn || fluid.model.transform.processRule;
+        transform.expand = function (rules) {
+            return transformFn(rules, transform);
+        };
+        transform.outputPrefixOp = fluid.model.makePathStack(transform, "outputPrefix");
+        transform.inputPrefixOp = fluid.model.makePathStack(transform, "inputPrefix");
+        transform.transformHandler = handleFn;
+    };
+    
+    fluid.model.transform.invertConfiguration = function (rules) {
+        var transform = {
+            inverted: []
+        };
+        fluid.model.transform.makeStrategy(transform, fluid.model.transform.handleInvertStrategy);
+        transform.expand(rules);
+        return {
+            transform: transform.inverted
+        };
+    };
+    
+    fluid.model.transform.collectInputPaths = function (rules) {
+        var transform = {
+            inputPaths: []
+        };
+        fluid.model.transform.makeStrategy(transform, fluid.model.transform.handleCollectStrategy);
+        transform.expand(rules);
+        return transform.inputPaths;        
+    };
+    
+    // unsupported, NON-API function
+    fluid.model.transform.flatSchemaStrategy = function (flatSchema, getConfig) {
+        var keys = fluid.model.sortByKeyLength(flatSchema);
+        return function (root, segment, index, segs) {
+            var path = getConfig.parser.compose.apply(null, segs.slice(0, index));
+          // TODO: clearly this implementation could be much more efficient
+            for (var i = 0; i < keys.length; ++i) {
+                var key = keys[i];
+                if (fluid.pathUtil.matchPath(key, path, true) !== null) {
+                    return flatSchema[key];
+                }
+            }
+        };
+    };
+    
+    // unsupported, NON-API function
+    fluid.model.transform.defaultSchemaValue = function (schemaValue) {
+        var type = fluid.isPrimitive(schemaValue) ? schemaValue : schemaValue.type;
+        return type === "array" ? [] : {};
+    };
+    
+    // unsupported, NON-API function
+    fluid.model.transform.isomorphicSchemaStrategy = function (source, getConfig) { 
+        return function (root, segment, index, segs) {
+            var existing = fluid.get(source, segs.slice(0, index), getConfig);
+            return fluid.isArrayable(existing) ? "array" : "object";
+        };
+    };
+    
+    // unsupported, NON-API function
+    fluid.model.transform.decodeStrategy = function (source, options, getConfig) {
+        if (options.isomorphic) {
+            return fluid.model.transform.isomorphicSchemaStrategy(source, getConfig);
+        }
+        else if (options.flatSchema) {
+            return fluid.model.transform.flatSchemaStrategy(options.flatSchema, getConfig);
+        }
+    };
+    
+    // unsupported, NON-API function
+    fluid.model.transform.schemaToCreatorStrategy = function (strategy) {
+        return function (root, segment, index, segs) {
+            if (root[segment] === undefined) {
+                var schemaValue = strategy(root, segment, index, segs); 
+                root[segment] = fluid.model.transform.defaultSchemaValue(schemaValue);
+                return root[segment];
+            }
+        };  
+    };
+    
+    /** Transforms a model by a sequence of rules. Parameters as for fluid.model.transform,
+     * only with an array accepted for "rules"
+     */
+    fluid.model.transform.sequence = function (source, rules, options) {
+        for (var i = 0; i < rules.length; ++i) {
+            source = fluid.model.transform(source, rules[i], options);
+        }
+        return source;
+    };
+    
+    fluid.model.compareByPathLength = function (changea, changeb) {
+        var pdiff = changea.path.length - changeb.path.length; 
+        return pdiff === 0 ? changea.sequence - changeb.sequence : pdiff;
+    };
+    
+   /** Fires an accumulated set of change requests in increasing order of target pathlength
+     */
+    fluid.model.fireSortedChanges = function (changes, applier) {
+        changes.sort(fluid.model.compareByPathLength);
+        fluid.requestChanges(applier, changes);  
+    };
+    
+    /**
+     * Transforms a model based on a specified expansion rules objects.
+     * Rules objects take the form of:
+     *   {
+     *       "target.path": "value.el.path" || {
+     *          transform: {
+     *              type: "transform.function.path",
+     *               ...
+     *           }
+     *       }
+     *   }
+     *
+     * @param {Object} source the model to transform
+     * @param {Object} rules a rules object containing instructions on how to transform the model
+     * @param {Object} options a set of rules governing the transformations. At present this may contain
+     * the values <code>isomorphic: true</code> indicating that the output model is to be governed by the
+     * same schema found in the input model, or <code>flatSchema</code> holding a flat schema object which 
+     * consists of a hash of EL path specifications with wildcards, to the values "array"/"object" defining
+     * the schema to be used to construct missing trunk values.
+     */
+    fluid.model.transformWithRules = function (source, rules, options) {
+        options = options || {};
+        
+        var getConfig = fluid.model.escapedGetConfig;
+        
+        var schemaStrategy = fluid.model.transform.decodeStrategy(source, options, getConfig);
+
+        var transform = {
+            source: source,
+            target: schemaStrategy ? fluid.model.transform.defaultSchemaValue(schemaStrategy(null, "", 0, [""])) : {},
+            resolverGetConfig: getConfig,
+            collectedFlatSchemaOpts: undefined, //to hold options for flat schema collected during transforms
+            queuedChanges: [],
+            queuedTransforms: [] // TODO: This is used only by wildcard applier - explain its operation
+        };
+        fluid.model.transform.makeStrategy(transform, fluid.model.transform.handleTransformStrategy);
+        transform.applier = {
+            fireChangeRequest: function (changeRequest) {
+                changeRequest.sequence = transform.queuedChanges.length;
+                transform.queuedChanges.push(changeRequest);
+            }
+        };
+        fluid.bindRequestChange(transform.applier);
+        
+        transform.expand(rules);
+
+        var setConfig = fluid.copy(fluid.model.escapedSetConfig);
+        // Modify schemaStrategy if we collected flat schema options for the setConfig of finalApplier
+        if (transform.collectedFlatSchemaOpts !== undefined) {
+            $.extend(transform.collectedFlatSchemaOpts, options.flatSchema);
+            schemaStrategy = fluid.model.transform.flatSchemaStrategy(transform.collectedFlatSchemaOpts, getConfig);
+        }
+        setConfig.strategies = [fluid.model.defaultFetchStrategy, schemaStrategy ? fluid.model.transform.schemaToCreatorStrategy(schemaStrategy)
+                : fluid.model.defaultCreatorStrategy];
+        transform.finalApplier = options.finalApplier || fluid.makeChangeApplier(transform.target, {resolverSetConfig: setConfig});
+        
+        if (transform.queuedTransforms.length > 0) {
+            transform.typeStack = [];
+            transform.pathOp = fluid.model.makePathStack(transform, "path");
+            fluid.model.transform.expandWildcards(transform, source);
+        }
+        fluid.model.fireSortedChanges(transform.queuedChanges, transform.finalApplier);
+        return transform.target;    
+    };
+    
+    $.extend(fluid.model.transformWithRules, fluid.model.transform);
+    fluid.model.transform = fluid.model.transformWithRules;
+
+    /** Utility function to produce a standard options transformation record for a single set of rules **/    
+    fluid.transformOne = function (rules) {
+        return {
+            transformOptions: {
+                transformer: "fluid.model.transformWithRules",
+                config: rules
+            }
+        };
+    };
+    
+    /** Utility function to produce a standard options transformation record for multiple rules to be applied in sequence **/    
+    fluid.transformMany = function (rules) {
+        return {
+            transformOptions: {
+                transformer: "fluid.model.transform.sequence",
+                config: rules
+            }
+        };
+    };
+    
+})(jQuery, fluid_1_5);
+;/*
+Copyright 2010 University of Toronto
+Copyright 2010-2011 OCAD University
+Copyright 2013 Raising the Floor - International
+
+Licensed under the Educational Community License (ECL), Version 2.0 or the New
+BSD license. You may not use this file except in compliance with one these
+Licenses.
+
+You may obtain a copy of the ECL 2.0 License and BSD License at
+https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
+*/
+
+// Declare dependencies
+/*global fluid:true, fluid_1_5:true, jQuery*/
+
+// JSLint options 
+/*jslint white: true, elsecatch: true, jslintok: true, funcinvoke: true, undef: true, newcap: true, nomen: true, regexp: true, bitwise: true, browser: true, forin: true, maxerr: 100, indent: 4 */
+
+var fluid_1_5 = fluid_1_5 || {};
+var fluid = fluid || fluid_1_5;
+
+(function ($, fluid) {
+    "use strict";
+
+    fluid.registerNamespace("fluid.model.transform");
+    fluid.registerNamespace("fluid.transforms");
+
+    /**********************************
+     * Standard transformer functions *
+     **********************************/
+        
+    fluid.defaults("fluid.transforms.value", { 
+        gradeNames: "fluid.standardTransformFunction",
+        invertConfiguration: "fluid.transforms.value.invert"
+    });
+
+    fluid.transforms.value = fluid.identity;
+    
+    fluid.transforms.value.invert = function (transformSpec, transform) {
+        var togo = fluid.copy(transformSpec);
+        // TODO: this will not behave correctly in the face of compound "value" which contains
+        // further transforms
+        togo.inputPath = fluid.model.composePaths(transform.outputPrefix, transformSpec.outputPath);
+        togo.outputPath = fluid.model.composePaths(transform.inputPrefix, transformSpec.inputPath);
+        return togo;
+    };
+
+
+    fluid.defaults("fluid.transforms.literalValue", { 
+        gradeNames: "fluid.standardOutputTransformFunction"
+    });
+
+    fluid.transforms.literalValue = function (transformSpec) {
+        return transformSpec.value;  
+    };
+    
+
+    fluid.defaults("fluid.transforms.arrayValue", { 
+        gradeNames: "fluid.standardTransformFunction"
+    });
+    
+    fluid.transforms.arrayValue = fluid.makeArray;
+
+
+    fluid.defaults("fluid.transforms.count", { 
+        gradeNames: "fluid.standardTransformFunction"
+    });
+    
+    fluid.transforms.count = function (value) {
+        return fluid.makeArray(value).length;
+    };
+    
+    
+    fluid.defaults("fluid.transforms.round", { 
+        gradeNames: "fluid.standardTransformFunction"
+    });
+    
+    fluid.transforms.round = function (value) {
+        return Math.round(value);
+    };
+    
+
+    fluid.defaults("fluid.transforms.delete", { 
+        gradeNames: "fluid.transformFunction"
+    });
+
+    fluid.transforms["delete"] = function (transformSpec, transform) {
+        var outputPath = fluid.model.composePaths(transform.outputPrefix, transformSpec.outputPath);
+        transform.applier.requestChange(outputPath, null, "DELETE");
+    };
+
+    
+    fluid.defaults("fluid.transforms.firstValue", { 
+        gradeNames: "fluid.transformFunction"
+    });
+    
+    fluid.transforms.firstValue = function (transformSpec, transform) {
+        if (!transformSpec.values || !transformSpec.values.length) {
+            fluid.fail("firstValue transformer requires an array of values at path named \"values\", supplied", transformSpec);
+        }
+        for (var i = 0; i < transformSpec.values.length; i++) {
+            var value = transformSpec.values[i];
+            // TODO: problem here - all of these transforms will have their side-effects (setValue) even if only one is chosen 
+            var expanded = transform.expand(value);
+            if (expanded !== undefined) {
+                return expanded;
+            }
+        }
+    };
+    
+    fluid.defaults("fluid.transforms.linearScale", {
+        gradeNames: [ "fluid.multiInputTransformFunction", "fluid.standardOutputTransformFunction", "fluid.lens" ],
+        invertConfiguration: "fluid.transforms.linearScale.invert",
+        inputVariables: {
+            value: null, 
+            factor: 1,
+            offset: 0
+        }
+    });
+
+    /* simple linear transformation */
+    fluid.transforms.linearScale = function (inputs) {        
+        if (typeof(inputs.value) !== "number" || typeof(inputs.factor) !== "number" || typeof(inputs.offset) !== "number") {
+            return undefined;
+        }
+        return inputs.value * inputs.factor + inputs.offset;
+    };
+
+    /* TODO: This inversion doesn't work if the value and factors are given as paths in the source model */
+    fluid.transforms.linearScale.invert = function  (transformSpec, transform) {
+        var togo = fluid.copy(transformSpec);
+        
+        if (togo.factor) {
+            togo.factor = (togo.factor === 0) ? 0 : 1 / togo.factor;
+        }
+        if (togo.offset) {
+            togo.offset = - togo.offset * (togo.factor !== undefined ? togo.factor : 1);
+        }
+        togo.valuePath = fluid.model.composePaths(transform.outputPrefix, transformSpec.outputPath);
+        togo.outputPath = fluid.model.composePaths(transform.inputPrefix, transformSpec.valuePath);
+        return togo;
+    };
+
+    fluid.defaults("fluid.transforms.binaryOp", { 
+        gradeNames: [ "fluid.multiInputTransformFunction", "fluid.standardOutputTransformFunction" ],
+        inputVariables: {
+            left: null,
+            right: null
+        }
+    });
+
+    fluid.transforms.binaryLookup = {
+        "===": function (a, b) { return a === b; },
+        "!==": function (a, b) { return a !== b; },
+        "<=": function (a, b) { return a <= b; },
+        "<": function (a, b) { return a < b; },
+        ">=": function (a, b) { return a >= b; },
+        ">": function (a, b) { return a > b; },
+        "+": function (a, b) { return a + b; },
+        "-": function (a, b) { return a - b; },
+        "*": function (a, b) { return a * b; },
+        "/": function (a, b) { return a / b; },
+        "%": function (a, b) { return a % b; },
+        "&&": function (a, b) { return a && b; },
+        "||": function (a, b) { return a || b; }
+    };
+
+    fluid.transforms.binaryOp = function (inputs, transformSpec, transform) {
+        var operator = fluid.model.transform.getValue(undefined, transformSpec.operator, transform);
+
+        var fun = fluid.transforms.binaryLookup[operator];
+        return (fun === undefined || inputs.left === undefined || inputs.right === undefined) ? undefined : fun(inputs.left, inputs.right);
+    };
+
+
+    fluid.defaults("fluid.transforms.condition", { 
+        gradeNames: [ "fluid.multiInputTransformFunction", "fluid.standardOutputTransformFunction" ],
+        inputVariables: {
+            "true": null,
+            "false": null,
+            "condition": null
+        }
+    });
+    
+    fluid.transforms.condition = function (inputs) {
+        if (inputs.condition === null) {
+            return undefined;
+        }
+
+        return inputs[inputs.condition];
+    };
+
+
+    fluid.defaults("fluid.transforms.valueMapper", { 
+        gradeNames: ["fluid.transformFunction", "fluid.lens"],
+        invertConfiguration: "fluid.transforms.valueMapper.invert",
+        collectInputPaths: "fluid.transforms.valueMapper.collect"
+    });
+
+    // unsupported, NON-API function    
+    fluid.model.transform.matchValueMapperFull = function (outerValue, transformSpec, transform) {
+        var o = transformSpec.options;
+        if (o.length === 0) {
+            fluid.fail("valueMapper supplied empty list of options: ", transformSpec);
+        }
+        if (o.length === 1) {
+            return 0;
+        }
+        var matchPower = []; 
+        for (var i = 0; i < o.length; ++i) {
+            var option = o[i];
+            var value = fluid.firstDefined(fluid.model.transform.getValue(option.inputPath, undefined, transform),
+                outerValue);
+            var matchCount = fluid.model.transform.matchValue(option.undefinedInputValue ? undefined : option.inputValue, value);
+            matchPower[i] = {index: i, matchCount: matchCount};
+        }
+        matchPower.sort(fluid.model.transform.compareMatches);
+        return matchPower[0].matchCount === matchPower[1].matchCount ? -1 : matchPower[0].index; 
+    };
+
+    fluid.transforms.valueMapper = function (transformSpec, transform) {
+        if (!transformSpec.options) {
+            fluid.fail("demultiplexValue requires a list or hash of options at path named \"options\", supplied ", transformSpec);
+        }
+        var value = fluid.model.transform.getValue(transformSpec.inputPath, undefined, transform);
+        var deref = fluid.isArrayable(transformSpec.options) ? // long form with list of records    
+            function (testVal) {
+                var index = fluid.model.transform.matchValueMapperFull(testVal, transformSpec, transform);
+                return index === -1 ? null : transformSpec.options[index];
+            } : 
+            function (testVal) {
+                return transformSpec.options[testVal];
+            };
+      
+        var indexed = deref(value);
+        if (!indexed) {
+            // if no branch matches, try again using this value - WARNING, this seriously
+            // threatens invertibility
+            indexed = deref(transformSpec.defaultInputValue);
+        }
+        if (!indexed) {
+            return;
+        }
+
+        var outputPath = indexed.outputPath === undefined ? transformSpec.defaultOutputPath : indexed.outputPath;
+        transform.outputPrefixOp.push(outputPath);
+        var outputValue;
+        if (fluid.isPrimitive(indexed)) {
+            outputValue = indexed;
+        } else {
+            // if undefinedOutputValue is set, outputValue should be undefined
+            if (indexed.undefinedOutputValue) {
+                outputValue = undefined;
+            } else {
+                // get value from outputValue or outputValuePath. If none is found set the outputValue to be that of defaultOutputValue (or undefined)
+                outputValue = fluid.model.transform.resolveParam(indexed, transform, "outputValue", undefined);
+                outputValue = (outputValue === undefined) ? transformSpec.defaultOutputValue : outputValue;
+            }
+        }
+        //output if outputPath or defaultOutputPath have been specified and the relevant child hasn't done the outputting
+        if (typeof(outputPath) === "string" && outputValue !== undefined) {
+            fluid.model.transform.setValue(undefined, outputValue, transform, transformSpec.merge);
+            outputValue = undefined;
+        }
+        transform.outputPrefixOp.pop();
+        return outputValue; 
+    };
+    
+    fluid.transforms.valueMapper.invert = function (transformSpec, transform) {
+        var options = [];
+        var togo = {
+            type: "fluid.transforms.valueMapper",
+            options: options
+        };
+        var isArray = fluid.isArrayable(transformSpec.options);
+        var findCustom = function (name) {
+            return fluid.find(transformSpec.options, function (option) {
+                if (option[name]) {
+                    return true;
+                }
+            });
+        };
+        var anyCustomOutput = findCustom("outputPath");
+        var anyCustomInput = findCustom("inputPath");
+        if (!anyCustomOutput) {
+            togo.inputPath = fluid.model.composePaths(transform.outputPrefix, transformSpec.outputPath);
+        }
+        if (!anyCustomInput) {
+            togo.defaultOutputPath = fluid.model.composePaths(transform.inputPrefix, transformSpec.inputPath);
+        }
+        var def = fluid.firstDefined;
+        fluid.each(transformSpec.options, function (option, key) {
+            var outOption = {};
+            var origInputValue = def(isArray ? option.inputValue : key, transformSpec.defaultInputValue);
+            if (origInputValue === undefined) {
+                fluid.fail("Failure inverting configuration for valueMapper - inputValue could not be resolved for record " + key + ": ", transformSpec);
+            }
+            outOption.outputValue = origInputValue;
+            var origOutputValue = def(option.outputValue, transformSpec.defaultOutputValue);
+            outOption.inputValue = fluid.model.transform.getValue(option.outputValuePath, origOutputValue, transform);
+            if (anyCustomOutput) {
+                outOption.inputPath = fluid.model.composePaths(transform.outputPrefix, def(option.outputPath, transformSpec.outputPath));
+            }
+            if (anyCustomInput) {
+                outOption.outputPath = fluid.model.composePaths(transform.inputPrefix, def(option.inputPath, transformSpec.inputPath));
+            }
+            if (option.outputValuePath) {
+                outOption.inputValuePath = option.outputValuePath;
+            }
+            options.push(outOption);
+        });
+        return togo;
+    };
+    
+    fluid.transforms.valueMapper.collect = function (transformSpec, transform) {
+        var togo = [];
+        fluid.model.transform.accumulateInputPath(transformSpec.inputPath, transform, togo);
+        fluid.each(transformSpec.options, function (option) {
+            fluid.model.transform.accumulateInputPath(option.inputPath, transform, togo);
+        });
+        return togo;
+    };
+
+    /* -------- arrayToSetMembership and setMembershipToArray ---------------- */
+    
+    fluid.defaults("fluid.transforms.arrayToSetMembership", { 
+        gradeNames: ["fluid.standardInputTransformFunction", "fluid.lens"],
+        invertConfiguration: "fluid.transforms.arrayToSetMembership.invert"
+    });
+
+ 
+    fluid.transforms.arrayToSetMembership = function (value, transformSpec, transform) {
+        var options = transformSpec.options;
+
+        if (!value || !fluid.isArrayable(value)) {
+            fluid.fail("arrayToSetMembership didn't find array at inputPath nor passed as value.", transformSpec);
+        }
+        if (!options) {
+            fluid.fail("arrayToSetMembership requires an options block set");
+        }
+
+        if (transformSpec.presentValue === undefined) {
+            transformSpec.presentValue = true;
+        }
+        
+        if (transformSpec.missingValue === undefined) {
+            transformSpec.missingValue = false;
+        }
+
+        fluid.each(options, function (outPath, key) {
+            // write to output path given in options the value <presentValue> or <missingValue> depending on whether key is found in user input
+            var outVal = ($.inArray(key, value) !== -1) ? transformSpec.presentValue : transformSpec.missingValue;
+            fluid.model.transform.setValue(outPath, outVal, transform);
+        });
+        // TODO: Why does this transform make no return?
+    };
+
+    fluid.transforms.arrayToSetMembership.invert = function (transformSpec, transform) {
+        var togo = fluid.copy(transformSpec);
+        delete togo.inputPath;
+        togo.type = "fluid.transforms.setMembershipToArray";
+        togo.outputPath = fluid.model.composePaths(transform.inputPrefix, transformSpec.inputPath);
+        var newOptions = {};
+        fluid.each(transformSpec.options, function (path, oldKey) {
+            var newKey = fluid.model.composePaths(transform.outputPrefix, path);
+            newOptions[newKey] = oldKey;
+        });
+        togo.options = newOptions;
+        return togo;
+    };
+
+    fluid.defaults("fluid.transforms.setMembershipToArray", { 
+        gradeNames: ["fluid.standardOutputTransformFunction"]
+    });
+
+    fluid.transforms.setMembershipToArray = function (transformSpec, transform) {
+        var options = transformSpec.options;
+
+        if (!options) {
+            fluid.fail("setMembershipToArray requires an options block specified");
+        }
+
+        if (transformSpec.presentValue === undefined) {
+            transformSpec.presentValue = true;
+        }
+        
+        if (transformSpec.missingValue === undefined) {
+            transformSpec.missingValue = false;
+        }
+
+        var outputArr = [];
+        fluid.each(options, function (arrVal, inPath) {
+            var val = fluid.model.transform.getValue(inPath, undefined, transform);
+            if (val === transformSpec.presentValue) {
+                outputArr.push(arrVal);
+            }
+        });
+        return outputArr;
+    };    
+
+    /* -------- objectToArray and arrayToObject -------------------- */
+    
+    /**
+     * Transforms the given array to an object.
+     * Uses the transformSpec.options.key values from each object within the array as new keys.
+     *
+     * For example, with transformSpec.key = "name" and an input object like this:
+     *
+     * {
+     *   b: [
+     *     { name: b1, v: v1 },
+     *     { name: b2, v: v2 }
+     *   ]
+     * }
+     *
+     * The output will be:
+     * {
+     *   b: {
+     *     b1: {
+     *       v: v1
+     *     }
+     *   },
+     *   {
+     *     b2: {
+     *       v: v2
+     *     }
+     *   }
+     * }
+     */
+    fluid.model.transform.applyPaths = function (operation, pathOp, paths) {
+        for (var i = 0; i < paths.length; ++i) {
+            if (operation === "push") {
+                pathOp.push(paths[i]);
+            } else {
+                pathOp.pop();   
+            }
+        }
+    };
+    
+    fluid.model.transform.expandInnerValues = function (inputPath, outputPath, transform, innerValues) {
+        var inputPrefixOp = transform.inputPrefixOp;
+        var outputPrefixOp = transform.outputPrefixOp;
+        var apply = fluid.model.transform.applyPaths;
+        
+        apply("push", inputPrefixOp, inputPath);
+        apply("push", outputPrefixOp, outputPath);
+        var expanded = {};
+        fluid.each(innerValues, function (innerValue) {
+            var expandedInner = transform.expand(innerValue);
+            if (!fluid.isPrimitive(expandedInner)) {
+                $.extend(true, expanded, expandedInner);
+            } else {
+                expanded = expandedInner;
+            }
+        });
+        apply("pop", outputPrefixOp, outputPath);
+        apply("pop", inputPrefixOp, inputPath);
+        
+        return expanded;
+    };
+
+
+    fluid.defaults("fluid.transforms.arrayToObject", {
+        gradeNames: ["fluid.standardTransformFunction", "fluid.lens" ],
+        invertConfiguration: "fluid.transforms.arrayToObject.invert"
+    });
+
+    fluid.transforms.arrayToObject = function (arr, transformSpec, transform) {
+        if (transformSpec.key === undefined) {
+            fluid.fail("arrayToObject requires a 'key' option.", transformSpec);
+        }
+        if (!fluid.isArrayable(arr)) {
+            fluid.fail("arrayToObject didn't find array at inputPath.", transformSpec);
+        }
+        var newHash = {};
+        var pivot = transformSpec.key;
+
+        fluid.each(arr, function (v, k) {
+            // check that we have a pivot entry in the object and it's a valid type:            
+            var newKey = v[pivot];
+            var keyType = typeof(newKey);
+            if (keyType !== "string" && keyType !== "boolean" && keyType !== "number") {
+                fluid.fail("arrayToObject encountered untransformable array due to missing or invalid key", v);
+            }
+            // use the value of the key element as key and use the remaining content as value
+            var content = fluid.copy(v);
+            delete content[pivot];
+            // fix sub Arrays if needed:
+            if (transformSpec.innerValue) {
+                content = fluid.model.transform.expandInnerValues([transform.inputPrefix, transformSpec.inputPath, k.toString()], 
+                    [newKey], transform, transformSpec.innerValue);
+            }
+            newHash[newKey] = content;
+        });
+        return newHash;
+    };
+
+    fluid.transforms.arrayToObject.invert = function (transformSpec, transform) {
+        var togo = fluid.copy(transformSpec);
+        togo.type = "fluid.transforms.objectToArray";
+        togo.inputPath = fluid.model.composePaths(transform.outputPrefix, transformSpec.outputPath);
+        togo.outputPath = fluid.model.composePaths(transform.inputPrefix, transformSpec.inputPath);
+        // invert transforms from innerValue as well:
+        // TODO: The Model Transformations framework should be capable of this, but right now the
+        // issue is that we use a "private contract" to operate the "innerValue" slot. We need to
+        // spend time thinking of how this should be formalised
+        if (togo.innerValue) {
+            var innerValue = togo.innerValue;
+            for (var i = 0; i < innerValue.length; ++i) {
+                innerValue[i] = fluid.model.transform.invertConfiguration(innerValue[i]);
+            }            
+        }
+        return togo;
+    };
+    
+
+    fluid.defaults("fluid.transforms.objectToArray", {
+        gradeNames: "fluid.standardTransformFunction"
+    });
+
+    /**
+     * Transforms an object into array of objects.
+     * This performs the inverse transform of fluid.transforms.arrayToObject.
+     */
+    fluid.transforms.objectToArray = function (hash, transformSpec, transform) {
+        if (transformSpec.key === undefined) {
+            fluid.fail("objectToArray requires a 'key' option.", transformSpec);
+        }
+        
+        var newArray = [];
+        var pivot = transformSpec.key;
+
+        fluid.each(hash, function (v, k) {
+            var content = {};
+            content[pivot] = k;
+            if (transformSpec.innerValue) {
+                v = fluid.model.transform.expandInnerValues([transformSpec.inputPath, k], [transformSpec.outputPath, newArray.length.toString()], 
+                    transform, transformSpec.innerValue);
+            }
+            $.extend(true, content, v);
+            newArray.push(content);
+        });
+        return newArray;
+    };
+    
+    fluid.defaults("fluid.transforms.limitRange", {
+        gradeNames: "fluid.standardTransformFunction"  
+    });
+    
+    fluid.transforms.limitRange = function (value, transformSpec, transform) {
+        var min = transformSpec.min;
+        if (min !== undefined) {
+            var excludeMin = transformSpec.excludeMin || 0;
+            min += excludeMin;
+            if (value < min) {
+                value = min;
+            }  
+        }
+        var max = transformSpec.max;
+        if (max !== undefined) {
+            var excludeMax = transformSpec.excludeMax || 0;
+            max -= excludeMax;
+            if (value > max) {
+                value = max;
+            }  
+        }
+        return value;
+    };
+    
+    fluid.defaults("fluid.transforms.free", {
+        gradeNames: "fluid.transformFunction"  
+    });
+    
+    fluid.transforms.free = function (transformSpec, transform) {
+        var args = fluid.makeArray(transformSpec.args);
+        return fluid.invokeGlobalFunction(transformSpec.func, args);
+    };
+    
+})(jQuery, fluid_1_5);
+;/*
 Copyright 2010-2011 Lucendo Development Ltd.
 Copyright 2010-2011 OCAD University
 
@@ -15485,7 +16934,7 @@ var fluid_1_5 = fluid_1_5 || {};
     // diagnostic - in fact, it is perfectly acceptable for a component's creator to return no value and
     // the failure is really in assumptions in fluid.initComponent. Revisit this issue for 1.5
     fluid.diagnoseFailedView = function (componentName, that, options, args) {
-        if (!that && fluid.hasGrade(options, "fluid.viewComponent")) {
+        if (!that && (fluid.hasGrade(options, "fluid.viewComponent") || fluid.hasGrade(options, "fluid.viewRelayComponent"))) {
             var container = fluid.wrap(args[1]);
             var message1 = "Instantiation of autoInit component with type " + componentName + " failed, since ";
             if (!container) {
@@ -16092,6 +17541,357 @@ var fluid_1_5 = fluid_1_5 || {};
         delay: 150,
         backDelay: 100
     });
+    
+})(jQuery, fluid_1_5);
+;/*
+Copyright 2010-2011 OCAD University
+Copyright 2010-2011 Lucendo Development Ltd.
+
+Licensed under the Educational Community License (ECL), Version 2.0 or the New
+BSD license. You may not use this file except in compliance with one these
+Licenses.
+
+You may obtain a copy of the ECL 2.0 License and BSD License at
+https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
+*/
+
+// Declare dependencies
+/*global fluid_1_5:true, jQuery*/
+
+// JSLint options 
+/*jslint white: true, funcinvoke: true, undef: true, newcap: true, nomen: true, regexp: true, bitwise: true, browser: true, forin: true, maxerr: 100, indent: 4 */
+
+var fluid_1_5 = fluid_1_5 || {};
+
+(function ($, fluid) {
+
+    /** Framework-global caching state for fluid.fetchResources **/
+
+    var resourceCache = {};
+  
+    var pendingClass = {};
+ 
+    /** Accepts a hash of structures with free keys, where each entry has either
+     * href/url or nodeId set - on completion, callback will be called with the populated
+     * structure with fetched resource text in the field "resourceText" for each
+     * entry. Each structure may contain "options" holding raw options to be forwarded
+     * to jQuery.ajax().
+     */
+  
+    fluid.fetchResources = function(resourceSpecs, callback, options) {
+        var that = fluid.initLittleComponent("fluid.fetchResources", options);
+        that.resourceSpecs = resourceSpecs;
+        that.callback = callback;
+        that.operate = function() {
+            fluid.fetchResources.fetchResourcesImpl(that);
+        };
+        fluid.each(resourceSpecs, function(resourceSpec, key) {
+             resourceSpec.recurseFirer = fluid.event.getEventFirer(null, null, "I/O completion for resource \"" + key + "\"");
+             resourceSpec.recurseFirer.addListener(that.operate);
+             if (resourceSpec.url && !resourceSpec.href) {
+                resourceSpec.href = resourceSpec.url;
+             }
+        });
+        if (that.options.amalgamateClasses) {
+            fluid.fetchResources.amalgamateClasses(resourceSpecs, that.options.amalgamateClasses, that.operate);
+        }
+        that.operate();
+        return that;
+    };
+  
+    /*
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    // Add "synthetic" elements of *this* resourceSpec list corresponding to any
+    // still pending elements matching the PROLEPTICK CLASS SPECIFICATION supplied 
+    fluid.fetchResources.amalgamateClasses = function(specs, classes, operator) {
+        fluid.each(classes, function(clazz) {
+            var pending = pendingClass[clazz];
+            fluid.each(pending, function(pendingrec, canon) {
+                specs[clazz+"!"+canon] = pendingrec;
+                pendingrec.recurseFirer.addListener(operator);
+            });
+        });
+    };
+  
+    /*
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    fluid.fetchResources.timeSuccessCallback = function(resourceSpec) {
+        if (resourceSpec.timeSuccess && resourceSpec.options && resourceSpec.options.success) {
+            var success = resourceSpec.options.success;
+            resourceSpec.options.success = function() {
+            var startTime = new Date();
+            var ret = success.apply(null, arguments);
+            fluid.log("External callback for URL " + resourceSpec.href + " completed - callback time: " + 
+                    (new Date().getTime() - startTime.getTime()) + "ms");
+            return ret;
+            };
+        }
+    };
+    
+    // TODO: Integrate punch-through from old Engage implementation
+    function canonUrl(url) {
+        return url;
+    }
+    
+    fluid.fetchResources.clearResourceCache = function(url) {
+        if (url) {
+            delete resourceCache[canonUrl(url)];
+        }
+        else {
+            fluid.clear(resourceCache);
+        }  
+    };
+  
+    /*
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    fluid.fetchResources.handleCachedRequest = function(resourceSpec, response) {
+         var canon = canonUrl(resourceSpec.href);
+         var cached = resourceCache[canon];
+         if (cached.$$firer$$) {
+             fluid.log("Handling request for " + canon + " from cache");
+             var fetchClass = resourceSpec.fetchClass;
+             if (fetchClass && pendingClass[fetchClass]) {
+                 fluid.log("Clearing pendingClass entry for class " + fetchClass);
+                 delete pendingClass[fetchClass][canon];
+             }
+             resourceCache[canon] = response;      
+             cached.fire(response);
+         }
+    };
+    
+    /*
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    fluid.fetchResources.completeRequest = function(thisSpec, recurseCall) {
+        thisSpec.queued = false;
+        thisSpec.completeTime = new Date();
+        fluid.log("Request to URL " + thisSpec.href + " completed - total elapsed time: " + 
+            (thisSpec.completeTime.getTime() - thisSpec.initTime.getTime()) + "ms");
+        thisSpec.recurseFirer.fire();
+    };
+  
+    /*
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    fluid.fetchResources.makeResourceCallback = function(thisSpec) {
+        return {
+            success: function(response) {
+                thisSpec.resourceText = response;
+                thisSpec.resourceKey = thisSpec.href;
+                if (thisSpec.forceCache) {
+                    fluid.fetchResources.handleCachedRequest(thisSpec, response);
+                }
+                fluid.fetchResources.completeRequest(thisSpec);
+            },
+            error: function(response, textStatus, errorThrown) {
+                thisSpec.fetchError = {
+                    status: response.status,
+                    textStatus: response.textStatus,
+                    errorThrown: errorThrown
+                };
+                fluid.fetchResources.completeRequest(thisSpec);
+            }
+            
+        };
+    };
+    
+        
+    /*
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    fluid.fetchResources.issueCachedRequest = function(resourceSpec, options) {
+         var canon = canonUrl(resourceSpec.href);
+         var cached = resourceCache[canon];
+         if (!cached) {
+             fluid.log("First request for cached resource with url " + canon);
+             cached = fluid.event.getEventFirer(null, null, "cache notifier for resource URL " + canon);
+             cached.$$firer$$ = true;
+             resourceCache[canon] = cached;
+             var fetchClass = resourceSpec.fetchClass;
+             if (fetchClass) {
+                 if (!pendingClass[fetchClass]) {
+                     pendingClass[fetchClass] = {};
+                 }
+                 pendingClass[fetchClass][canon] = resourceSpec;
+             }
+             options.cache = false; // TODO: Getting weird "not modified" issues on Firefox
+             $.ajax(options);
+         }
+         else {
+             if (!cached.$$firer$$) {
+                 options.success(cached);
+             }
+             else {
+                 fluid.log("Request for cached resource which is in flight: url " + canon);
+                 cached.addListener(function(response) {
+                     options.success(response);
+                 });
+             }
+         }
+    };
+    
+    /*
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    // Compose callbacks in such a way that the 2nd, marked "external" will be applied
+    // first if it exists, but in all cases, the first, marked internal, will be 
+    // CALLED WITHOUT FAIL
+    fluid.fetchResources.composeCallbacks = function (internal, external) {
+        return external ? (internal ? 
+        function () {
+            try {
+                external.apply(null, arguments);
+            }
+            catch (e) {
+                fluid.log("Exception applying external fetchResources callback: " + e);
+            }
+            internal.apply(null, arguments); // call the internal callback without fail
+        } : external ) : internal;
+    };
+    
+    // unsupported, NON-API function
+    fluid.fetchResources.composePolicy = function(target, source, key) {
+        return fluid.fetchResources.composeCallbacks(target, source);
+    };
+    
+    fluid.defaults("fluid.fetchResources.issueRequest", {
+        mergePolicy: {
+            success: fluid.fetchResources.composePolicy,
+            error: fluid.fetchResources.composePolicy,
+            url: "reverse"
+        }
+    });
+    
+    // unsupported, NON-API function
+    fluid.fetchResources.issueRequest = function(resourceSpec, key) {
+        var thisCallback = fluid.fetchResources.makeResourceCallback(resourceSpec);
+        var options = {  
+             url:     resourceSpec.href,
+             success: thisCallback.success, 
+             error:   thisCallback.error,
+             dataType: resourceSpec.dataType || "text"};
+        fluid.fetchResources.timeSuccessCallback(resourceSpec);
+        options = fluid.merge(fluid.defaults("fluid.fetchResources.issueRequest").mergePolicy,
+                      options, resourceSpec.options);
+        resourceSpec.queued = true;
+        resourceSpec.initTime = new Date();
+        fluid.log("Request with key " + key + " queued for " + resourceSpec.href);
+
+        if (resourceSpec.forceCache) {
+            fluid.fetchResources.issueCachedRequest(resourceSpec, options);
+        }
+        else {
+            $.ajax(options);
+        }
+    };
+    
+    fluid.fetchResources.fetchResourcesImpl = function(that) {
+        var complete = true;
+        var allSync = true;
+        var resourceSpecs = that.resourceSpecs;
+        for (var key in resourceSpecs) {
+            var resourceSpec = resourceSpecs[key];
+            if (!resourceSpec.options || resourceSpec.options.async) {
+                allSync = false;
+            }
+            if (resourceSpec.href && !resourceSpec.completeTime) {
+                 if (!resourceSpec.queued) {
+                     fluid.fetchResources.issueRequest(resourceSpec, key);  
+                 }
+                 if (resourceSpec.queued) {
+                     complete = false;
+                 }
+            }
+            else if (resourceSpec.nodeId && !resourceSpec.resourceText) {
+                var node = document.getElementById(resourceSpec.nodeId);
+                // upgrade this to somehow detect whether node is "armoured" somehow
+                // with comment or CDATA wrapping
+                resourceSpec.resourceText = fluid.dom.getElementText(node);
+                resourceSpec.resourceKey = resourceSpec.nodeId;
+            }
+        }
+        if (complete && that.callback && !that.callbackCalled) {
+            that.callbackCalled = true;
+            if ($.browser.mozilla && !allSync) {
+                // Defer this callback to avoid debugging problems on Firefox
+                setTimeout(function() {
+                    that.callback(resourceSpecs);
+                    }, 1);
+            }
+            else {
+                that.callback(resourceSpecs);
+            }
+        }
+    };
+    
+    // TODO: This framework function is a stop-gap before the "ginger world" is capable of
+    // asynchronous instantiation. It currently performs very poor fidelity expansion of a
+    // component's options to discover "resources" only held in the static environment
+    fluid.fetchResources.primeCacheFromResources = function(componentName) {
+        var resources = fluid.defaults(componentName).resources;
+        var expanded = (fluid.expandOptions ? fluid.expandOptions : fluid.identity)(fluid.copy(resources));
+        fluid.fetchResources(expanded);
+    };
+    
+    /** Utilities invoking requests for expansion **/
+    fluid.registerNamespace("fluid.expander");
+      
+    /*
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    fluid.expander.makeDefaultFetchOptions = function (successdisposer, failid, options) {
+        return $.extend(true, {dataType: "text"}, options, {
+            success: function(response, environmentdisposer) {
+                var json = JSON.parse(response);
+                environmentdisposer(successdisposer(json));
+            },
+            error: function(response, textStatus) {
+                fluid.log("Error fetching " + failid + ": " + textStatus);
+            }
+        });
+    };
+  
+    /*
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    fluid.expander.makeFetchExpander = function (options) {
+        return { expander: {
+            type: "fluid.expander.deferredFetcher",
+            href: options.url,
+            options: fluid.expander.makeDefaultFetchOptions(options.disposer, options.url, options.options),
+            resourceSpecCollector: "{resourceSpecCollector}",
+            fetchKey: options.fetchKey
+        }};
+    };
+    
+    fluid.expander.deferredFetcher = function(deliverer, source, expandOptions) {
+        var expander = source.expander;
+        var spec = fluid.copy(expander);
+        // fetch the "global" collector specified in the external environment to receive
+        // this resourceSpec
+        var collector = fluid.expand(expander.resourceSpecCollector, expandOptions);
+        delete spec.type;
+        delete spec.resourceSpecCollector;
+        delete spec.fetchKey;
+        var environmentdisposer = function(disposed) {
+            deliverer(disposed);
+        };
+        // replace the callback which is there (taking 2 arguments) with one which
+        // directly responds to the request, passing in the result and OUR "disposer" - 
+        // which once the user has processed the response (say, parsing JSON and repackaging)
+        // finally deposits it in the place of the expander in the tree to which this reference
+        // has been stored at the point this expander was evaluated.
+        spec.options.success = function(response) {
+             expander.options.success(response, environmentdisposer);
+        };
+        var key = expander.fetchKey || fluid.allocateGuid();
+        collector[key] = spec;
+        return fluid.NO_VALUE;
+    };
+    
     
 })(jQuery, fluid_1_5);
 ;// -*- mode: javascript; tab-width: 2; indent-tabs-mode: nil; -*-
@@ -20066,23 +21866,23 @@ var fluid = fluid || require("infusion"),
 
 (function () {
     "use strict";
-    
+
     // TODO: This duplicates code in flocking-core and should be factored differently.
     flock.shim = {
         URL: typeof window !== "undefined" ? window.URL || window.webkitURL || window.msURL : undefined
     };
-    
+
     flock.worker = function (code) {
         var type = typeof code,
             url,
             blob;
-        
+
         if (type === "function") {
             code = "(" + code.toString() + ")();";
         } else if (type !== "string") {
             throw new Error("A flock.worker must be initialized with a String or a Function.");
         }
-         
+
         if (window.Blob) {
             blob = new Blob([code], {
                 type: "text/javascript"
@@ -20093,25 +21893,25 @@ var fluid = fluid || require("infusion"),
         }
         return new Worker(url);
     };
-    
-    
+
+
     fluid.registerNamespace("flock.scheduler");
-    
+
 
     /**********
      * Clocks *
      **********/
-    
+
     fluid.defaults("flock.scheduler.intervalClock", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
         events: {
             tick: null
         }
     });
-    
+
     flock.scheduler.intervalClock.finalInit = function (that) {
         that.scheduled = {};
-        
+
         that.schedule = function (interval) {
             var id = setInterval(function () {
                 that.events.tick.fire(interval);
@@ -20124,27 +21924,27 @@ var fluid = fluid || require("infusion"),
             clearInterval(id);
             delete that.scheduled[interval];
         };
-        
+
         that.clearAll = function () {
             for (var interval in that.scheduled) {
                 that.clear(interval);
             }
         };
-        
+
         that.end = that.clearAll;
     };
-    
-    
+
+
     fluid.defaults("flock.scheduler.scheduleClock", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
         events: {
             tick: null
         }
     });
-    
+
     flock.scheduler.scheduleClock.finalInit = function (that) {
         that.scheduled = [];
-        
+
         that.schedule = function (timeFromNow) {
             var id;
             id = setTimeout(function () {
@@ -20153,7 +21953,7 @@ var fluid = fluid || require("infusion"),
             }, timeFromNow);
             that.scheduled.push(id);
         };
-        
+
         that.clear = function (id, idx) {
             idx = idx === undefined ? that.scheduled.indexOf(id) : idx;
             if (idx > -1) {
@@ -20161,7 +21961,7 @@ var fluid = fluid || require("infusion"),
             }
             clearTimeout(id);
         };
-        
+
         that.clearAll = function () {
             for (var i = 0; i < that.scheduled.length; i++) {
                 var id = that.scheduled[i];
@@ -20169,11 +21969,11 @@ var fluid = fluid || require("infusion"),
             }
             that.scheduled.length = 0;
         };
-        
+
         that.end = that.clearAll;
     };
-    
-    
+
+
     fluid.defaults("flock.scheduler.webWorkerClock", {
         gradeNames: ["fluid.modelComponent", "fluid.eventedComponent", "autoInit"],
         model: {
@@ -20197,16 +21997,16 @@ var fluid = fluid || require("infusion"),
         },
         clockType: "intervalClock"
     });
-    
+
     flock.scheduler.webWorkerClock.finalInit = function (that) {
         that.worker = new flock.worker(flock.scheduler.webWorkerClock.workerImpl);
-        
+
         // Start the worker-side clock.
         that.worker.postMessage({
             msg: "start",
             value: that.options.clockType
         });
-        
+
         // Listen for tick messages from the worker and fire accordingly.
         that.worker.addEventListener("message", function (e) {
             that.events.tick.fire(e.data.value);
@@ -20219,49 +22019,49 @@ var fluid = fluid || require("infusion"),
             }
             that.worker.postMessage(msg);
         };
-        
+
         that.schedule = function (time) {
             that.postToWorker("schedule", time);
         };
-        
+
         that.clear = function (time) {
             that.postToWorker("clear", time);
         };
-        
+
         that.clearAll = function () {
             that.postToWorker("clearAll");
         };
-        
+
         that.end = function () {
             that.postToWorker("end");
         };
     };
-    
-    
+
+
     // This code is only intended to run from within a Worker, via flock.worker.
     flock.scheduler.webWorkerClock.workerImpl = function () {
         "use strict"; // jshint ignore:line
-        
+
         var flock = flock || {};
         flock.worker = flock.worker || {};
-    
+
         flock.worker.clock = function () {
             var that = {};
-        
+
             that.tick = function (interval) {
                 self.postMessage({
                     msg: "tick",
                     value: interval
                 });
             };
-        
+
             return that;
         };
-    
+
         flock.worker.intervalClock = function () {
             var that = flock.worker.clock();
             that.scheduled = {};
-        
+
             // TODO: Copy-pasted from flock.scheduler.intervalClock.
             that.schedule = function (interval) {
                 var id = setInterval(function () {
@@ -20276,21 +22076,21 @@ var fluid = fluid || require("infusion"),
                 clearInterval(id);
                 delete that.scheduled[interval];
             };
-        
+
             // TODO: Copy-pasted from flock.scheduler.intervalClock.
             that.clearAll = function () {
                 for (var interval in that.scheduled) {
                     that.clear(interval);
                 }
             };
-            
+
             return that;
         };
-    
+
         flock.worker.scheduleClock = function () {
             var that = flock.worker.clock();
             that.scheduled = [];
-        
+
             // TODO: Copy-pasted from flock.scheduler.scheduleClock.
             that.schedule = function (timeFromNow) {
                 var id;
@@ -20300,7 +22100,7 @@ var fluid = fluid || require("infusion"),
                 }, timeFromNow);
                 that.scheduled.push(id);
             };
-        
+
             // TODO: Copy-pasted from flock.scheduler.scheduleClock.
             that.clear = function (id, idx) {
                 idx = idx === undefined ? that.scheduled.indexOf(id) : idx;
@@ -20309,7 +22109,7 @@ var fluid = fluid || require("infusion"),
                 }
                 clearTimeout(id);
             };
-        
+
             // TODO: Copy-pasted from flock.scheduler.scheduleClock.
             that.clearAll = function () {
                 for (var i = 0; i < that.scheduled.length; i++) {
@@ -20318,10 +22118,10 @@ var fluid = fluid || require("infusion"),
                 }
                 that.scheduled.length = 0;
             };
-        
+
             return that;
         };
-        
+
         self.addEventListener("message", function (e) {
             if (e.data.msg === "start") {
                 flock.clock = flock.worker[e.data.value]();
@@ -20335,22 +22135,22 @@ var fluid = fluid || require("infusion"),
             }
         }, false);
     };
-    
+
     fluid.defaults("flock.scheduler.webWorkerIntervalClock", {
         gradeNames: ["flock.scheduler.webWorkerClock", "autoInit"],
         clockType: "intervalClock"
     });
-    
+
     fluid.defaults("flock.scheduler.webWorkerScheduleClock", {
         gradeNames: ["flock.scheduler.webWorkerClock", "autoInit"],
         clockType: "scheduleClock"
     });
-    
-    
+
+
     /**************
      * Schedulers *
      **************/
-     
+
     flock.scheduler.makeOneShotValueListener = function (value, fn, removeFn) {
         var listener = function (time) {
             if (time === value) {
@@ -20358,10 +22158,10 @@ var fluid = fluid || require("infusion"),
                 removeFn(listener);
             }
         };
-        
+
         return listener;
     };
-    
+
     flock.scheduler.makeRepeatingValueListener = function (value, fn) {
         return function (time) {
             if (time === value) {
@@ -20369,8 +22169,8 @@ var fluid = fluid || require("infusion"),
             }
         };
     };
-    
-    
+
+
     fluid.defaults("flock.scheduler.async", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
         components: {
@@ -20385,80 +22185,77 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
-    
+
     // TODO: Duplication!
     flock.scheduler.async.finalInit = function (that) {
         that.intervalListeners = {};
         that.scheduleListeners = [];
-        
+
         that.addIntervalListener = function (interval, fn) {
             var listener = flock.scheduler.makeRepeatingValueListener(interval, fn);
             listener.wrappedListener = fn;
             that.intervalListeners[interval] = that.intervalListeners[interval] || [];
             that.intervalListeners[interval].push(listener);
             that.intervalClock.events.tick.addListener(listener);
-            
+
             return listener;
         };
-        
+
         that.addScheduleListener = function (time, fn) {
             var listener = flock.scheduler.makeOneShotValueListener(time, fn, that.clear);
             listener.wrappedListener = fn;
             that.scheduleListeners.push(listener);
             that.scheduleClock.events.tick.addListener(listener);
-            
+
             return listener;
         };
-        
-        that.repeat = function (interval, changeSpec) {
-            var ms = that.timeConverter.value(interval),
-                fn = typeof changeSpec === "function" ? changeSpec :
-                    flock.scheduler.async.evaluateChangeSpec(changeSpec),
-                listener = that.addIntervalListener(ms, fn);
-            
-            that.intervalClock.schedule(ms);
-            return listener;
-        };
-        
-        that.once = function (time, changeSpec) {
+
+        that.scheduleChange = function (time, changeSpec, addListenerFn, clock) {
             var ms = that.timeConverter.value(time),
-                fn = typeof changeSpec === "function" ? changeSpec : 
-                    flock.scheduler.async.evaluateChangeSpec(changeSpec),
-                listener = that.addScheduleListener(ms, fn);
- 
-            that.scheduleClock.schedule(ms);
+                fn = flock.scheduler.async.prepareSchedulerFn(changeSpec, that.events),
+                listener = addListenerFn(ms, fn);
+
+            clock.schedule(ms);
             return listener;
         };
-        
+
+        that.repeat = function (interval, changeSpec) {
+            return that.scheduleChange(interval, changeSpec, that.addIntervalListener, that.intervalClock);
+        };
+
+        that.once = function (time, changeSpec) {
+            return that.scheduleChange(time, changeSpec, that.addScheduleListener, that.scheduleClock);
+        };
+
         that.sequence = function (times, changeSpec) {
             var listeners = [],
                 listener;
-                
+
             for (var i = 0; i < times.length; i++) {
                 listener = that.once(times[i], changeSpec);
                 listeners.push(listener);
             }
-            
+
             return listeners;
         };
-        
+
         that.schedule = function (schedules) {
             schedules = flock.isIterable(schedules) ? schedules : [schedules];
-            
+
             var i,
                 schedule;
-            
+
             for (i = 0; i < schedules.length; i++) {
                 schedule = schedules[i];
                 flock.invoke(that, schedule.interval, [schedule.time, schedule.change]);
             }
         };
-        
+
         that.clear = function (listener) {
             if (!listener) {
                 return;
             }
-            
+
             // TODO: Rather inefficient.
             var idx = that.scheduleListeners.indexOf(listener),
                 interval;
@@ -20467,7 +22264,7 @@ var fluid = fluid || require("infusion"),
                 that.scheduleListeners.splice(idx, 1);
                 return;
             }
-            
+
             that.intervalClock.events.tick.removeListener(listener);
             for (interval in that.intervalListeners) {
                 idx = that.intervalListeners[interval].indexOf(listener);
@@ -20476,53 +22273,71 @@ var fluid = fluid || require("infusion"),
                 }
             }
         };
-        
+
         that.clearRepeat = function (interval) {
             that.intervalClock.clear(interval);
-            
+
             var listeners = that.intervalListeners[interval],
                 i,
                 listener;
-            
+
             if (!listeners) {
                 return;
             }
-            
+
             for (i = 0; i < listeners.length; i++) {
                 listener = listeners[i];
                 that.intervalClock.events.tick.removeListener(listener);
             }
             listeners.length = 0;
-            
+
             return listener;
         };
-        
+
         that.clearAll = function () {
             that.intervalClock.clearAll();
             for (var interval in that.intervalListeners) {
                 that.clearRepeat(interval);
             }
-            
+
             that.scheduleClock.clearAll();
             for (var listener in that.scheduleListeners) {
                 that.clear(listener);
             }
         };
-        
+
         that.end = function () {
             that.intervalClock.end();
             that.scheduleClock.end();
         };
-        
+
         if (that.options.score) {
             that.schedule(that.options.score);
         }
     };
-    
+
+    flock.scheduler.async.prepareSchedulerFn = function (changeSpec, events) {
+        var type = typeof changeSpec,
+            fn;
+
+        if (type === "function") {
+            // The user has scheduled a raw function pointer.
+            fn = changeSpec;
+        } else if (type === "string") {
+            // An event was scheduled by name.
+            fn = events[changeSpec].fire;
+        } else {
+            // A change spec object was scheduled.
+            fn = flock.scheduler.async.evaluateChangeSpec(changeSpec);
+        }
+
+        return fn;
+    };
+
     flock.scheduler.async.evaluateChangeSpec = function (changeSpec) {
         var synths = {},
             staticChanges = {};
-        
+
         // Find all synthDefs and create demand rate synths for them.
         for (var path in changeSpec.values) {
             var change = changeSpec.values[path];
@@ -20532,26 +22347,26 @@ var fluid = fluid || require("infusion"),
                 staticChanges[path] = change;
             }
         }
-        
+
         // Create a scheduler listener that evaluates the changeSpec and updates the synth.
         return function () {
             for (var path in synths) {
                 var synth = synths[path];
                 staticChanges[path] = synth.value();
             }
-            
+
             // TODO: Hardcoded to the shared environment.
             var targetSynth = typeof changeSpec.synth === "string" ?
                 flock.enviro.shared.namedNodes[changeSpec.synth] : changeSpec.synth;
             targetSynth.set(staticChanges);
         };
     };
-    
+
     fluid.defaults("flock.scheduler.async.tempo", {
         gradeNames: ["flock.scheduler.async", "autoInit"],
 
         bpm: 60,
-        
+
         components: {
             timeConverter: {
                 type: "flock.convert.beats",
@@ -20561,14 +22376,14 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
-    
-    
+
+
     /*******************
      * Time Conversion *
      *******************/
-    
+
     fluid.registerNamespace("flock.convert");
-    
+
     flock.convert.makeStatelessConverter = function (convertFn) {
         return function () {
             return {
@@ -20576,18 +22391,18 @@ var fluid = fluid || require("infusion"),
             };
         };
     };
-    
+
     flock.convert.ms = flock.convert.makeStatelessConverter(fluid.identity);
-    
+
     flock.convert.seconds = flock.convert.makeStatelessConverter(function (secs) {
         return secs * 1000;
     });
-    
+
     fluid.defaults("flock.convert.beats", {
         gradeNames: ["fluid.littleComponent", "autoInit"],
         bpm: 60
     });
-    
+
     flock.convert.beats.finalInit = function (that) {
         that.value = function (beats) {
             var bpm = that.options.bpm;
@@ -20898,7 +22713,7 @@ var fluid = fluid || require("infusion"),
     var $ = fluid.registerNamespace("jQuery"),
         DSP = flock.requireModule("DSP", "dspapi"),
         Filter = flock.requireModule("Filter", "dspapi");
-    
+
     /*************
      * Utilities *
      *************/
@@ -20912,18 +22727,18 @@ var fluid = fluid || require("infusion"),
         });
         fluid.defaults(sourcePath + "." + aliasName, inputDefaults);
     };
-    
+
     // TODO: Check API; write unit tests.
     flock.aliasUGens = function (sourcePath, aliasesSpec) {
         var aliasName,
             settings;
-            
+
         for (aliasName in aliasesSpec) {
             settings = aliasesSpec[aliasName];
             flock.aliasUGen(sourcePath, aliasName, {inputs: settings.inputDefaults}, settings.options);
         }
     };
-    
+
     flock.krMul = function (numSamps, output, mulInput) {
         var mul = mulInput.output[0],
             i;
@@ -20931,7 +22746,7 @@ var fluid = fluid || require("infusion"),
             output[i] = output[i] * mul;
         }
     };
-    
+
     flock.mul = function (numSamps, output, mulInput) {
         var mul = mulInput.output,
             i;
@@ -20939,7 +22754,7 @@ var fluid = fluid || require("infusion"),
             output[i] = output[i] * mul[i];
         }
     };
-    
+
     flock.krAdd = function (numSamps, output, mulInput, addInput) {
         var add = addInput.output[0],
             i;
@@ -20947,7 +22762,7 @@ var fluid = fluid || require("infusion"),
             output[i] = output[i] + add;
         }
     };
-    
+
     flock.add = function (numSamps, output, mulInput, addInput) {
         var add = addInput.output,
             i;
@@ -20955,7 +22770,7 @@ var fluid = fluid || require("infusion"),
             output[i] = output[i] + add[i];
         }
     };
-    
+
     flock.krMulAdd = function (numSamps, output, mulInput, addInput) {
         var mul = mulInput.output[0],
             add = addInput.output,
@@ -20964,7 +22779,7 @@ var fluid = fluid || require("infusion"),
             output[i] = output[i] * mul + add[i];
         }
     };
-    
+
     flock.mulKrAdd = function (numSamps, output, mulInput, addInput) {
         var mul = mulInput.output,
             add = addInput.output[0],
@@ -20973,7 +22788,7 @@ var fluid = fluid || require("infusion"),
             output[i] = output[i] * mul[i] + add;
         }
     };
-    
+
     flock.krMulKrAdd = function (numSamps, output, mulInput, addInput) {
         var mul = mulInput.output[0],
             add = addInput.output[0],
@@ -20982,7 +22797,7 @@ var fluid = fluid || require("infusion"),
             output[i] = output[i] * mul + add;
         }
     };
-    
+
     flock.mulAdd = function (numSamps, output, mulInput, addInput) {
         var mul = mulInput.output,
             add = addInput.output,
@@ -20991,40 +22806,40 @@ var fluid = fluid || require("infusion"),
             output[i] = output[i] * mul[i] + add[i];
         }
     };
-    
+
     flock.onMulAddInputChanged = function (that) {
         var mul = that.inputs.mul,
             add = that.inputs.add,
             fn;
-        
+
         // If we have no mul or add inputs, bail immediately.
         if (!mul && !add) {
             that.mulAdd = fluid.identity;
             return;
         }
-    
+
         if (!mul) { // Only add.
             fn = add.rate !== flock.rates.AUDIO ? flock.krAdd : flock.add;
         } else if (!add) { // Only mul.
             fn = mul.rate !== flock.rates.AUDIO ? flock.krMul : flock.mul;
         } else { // Both mul and add.
-            fn = mul.rate !== flock.rates.AUDIO ? 
+            fn = mul.rate !== flock.rates.AUDIO ?
                 (add.rate !== flock.rates.AUDIO ? flock.krMulKrAdd : flock.krMulAdd) :
                 (add.rate !== flock.rates.AUDIO ? flock.mulKrAdd : flock.mulAdd);
         }
-        
+
         that.mulAdd = function (numSamps) {
             fn(numSamps, that.output, mul, add);
         };
     };
-    
+
     /*******************
      * Unit Generators *
      *******************/
-     
+
     flock.ugen = function (inputs, output, options) {
         options = options || {};
-    
+
         var that = {
             rate: options.rate || flock.rates.AUDIO,
             inputs: inputs,
@@ -21034,7 +22849,7 @@ var fluid = fluid || require("infusion"),
             multiInputs: {},
             tags: ["flock.ugen"]
         };
-        
+
         that.get = function (path) {
             return flock.input.get(that.inputs, path);
         };
@@ -21051,7 +22866,7 @@ var fluid = fluid || require("infusion"),
                 if (ugenDef === null || ugenDef === undefined) {
                     return;
                 }
-                
+
                 return flock.parse.ugenDef(ugenDef, {
                     audioSettings: that.options.audioSettings,
                     buses: that.options.audioSettings.buses,
@@ -21059,7 +22874,7 @@ var fluid = fluid || require("infusion"),
                 });
             });
         };
-        
+
         /**
          * Gets or sets the named unit generator input.
          *
@@ -21072,7 +22887,7 @@ var fluid = fluid || require("infusion"),
                 arguments.length < 2 ? that.get(path) : that.set(path, val) :
                 flock.isIterable(path) ? that.get(path) : that.set(path, val);
         };
-    
+
         // TODO: Move this into a grade.
         that.calculateStrides = function () {
             var m = that.model,
@@ -21080,15 +22895,15 @@ var fluid = fluid || require("infusion"),
                 inputs = that.inputs,
                 i,
                 name;
-            
+
             m.strides = m.strides || {};
-            
+
             for (i = 0; i < strideNames.length; i++) {
                 name = strideNames[i];
                 m.strides[name] = inputs[name].rate === flock.rates.AUDIO ? 1 : 0;
             }
         };
-        
+
         that.collectMultiInputs = function () {
             var multiInputNames = that.options.multiInputNames,
                 multiInputs = that.multiInputs,
@@ -21096,32 +22911,32 @@ var fluid = fluid || require("infusion"),
                 inputName,
                 inputChannelCache,
                 input;
-            
+
             for (i = 0; i < multiInputNames.length; i++) {
                 inputName = multiInputNames[i];
                 inputChannelCache = multiInputs[inputName];
-                
+
                 if (!inputChannelCache) {
                     inputChannelCache = multiInputs[inputName] = [];
                 } else {
                     // Clear the current array of buffers.
                     inputChannelCache.length = 0;
                 }
-                
+
                 input = that.inputs[inputName];
                 flock.ugen.collectMultiInputs(input, inputChannelCache);
             }
         };
-        
+
         // Base onInputChanged() implementation.
         that.onInputChanged = function (inputName) {
             var multiInputNames = that.options.multiInputNames;
-            
+
             flock.onMulAddInputChanged(that);
             if (that.options.strideInputs) {
                 that.calculateStrides();
             }
-            
+
             if (multiInputNames && (!inputName || multiInputNames.indexOf(inputName))) {
                 that.collectMultiInputs();
             }
@@ -21131,34 +22946,32 @@ var fluid = fluid || require("infusion"),
             var tags = fluid.makeArray(that.options.tags),
                 i,
                 valueDef;
-            
+
             for (i = 0; i < tags.length; i++) {
                 that.tags.push(tags[i]);
             }
-            
+
             that.options.audioSettings = that.options.audioSettings || flock.enviro.shared.audioSettings;
             that.model.sampleRate = options.sampleRate || that.options.audioSettings.rates[that.rate];
             that.model.blockSize = that.rate === flock.rates.AUDIO ? that.options.audioSettings.blockSize : 1;
             that.model.sampleDur = 1.0 / that.model.sampleRate;
-            
+
             // Assigns an interpolator function to the UGen.
             // This is inactive by default, but can be used in custom gen() functions.
             // Will be undefined if no interpolation default or option has been set,
             // or if it is set to "none"--make sure you check before invoking it.
             that.interpolate = flock.interpolate[that.options.interpolation];
-        
+
             if (that.rate === flock.rates.DEMAND && that.inputs.freq) {
                 valueDef = flock.parse.ugenDefForConstantValue(1.0);
                 that.inputs.freq = flock.parse.ugenDef(valueDef);
             }
-            
-            that.onInputChanged();
         };
-        
+
         that.init();
         return that;
     };
-    
+
     // The term "multi input" is a bit ambiguous,
     // but it provides a very light (and possibly poor) abstraction for two different cases:
     //   1. inputs that consist of an array of multiple unit generators
@@ -21172,15 +22985,15 @@ var fluid = fluid || require("infusion"),
         if (!flock.isIterable(inputs)) {
             inputs = inputs = fluid.makeArray(inputs);
         }
-  
+
         for (var i = 0; i < inputs.length; i++) {
             var input = inputs[i];
             flock.ugen.collectChannelsForInput(input, inputChannelCache);
         }
-        
+
         return inputChannelCache;
     };
-    
+
     flock.ugen.collectChannelsForInput = function (input, inputChannelCache) {
         var isMulti = flock.hasTag(input, "flock.ugen.multiChannelOutput"),
             channels = isMulti ? input.output : [input.output],
@@ -21192,29 +23005,29 @@ var fluid = fluid || require("infusion"),
                 output: channels[i]
             });
         }
-        
+
         return inputChannelCache;
     };
-    
+
 
     flock.ugen.value = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.dynamicGen = function (numSamps) {
             var out = that.output,
                 m = that.model;
-            
+
             for (var i = 0; i < numSamps; i++) {
                 out[i] = m.value;
             }
-            
+
             that.mulAdd(numSamps);
         };
-        
+
         that.onInputChanged = function () {
             var inputs = that.inputs,
                 m = that.model;
-            
+
             m.value = inputs.value;
 
             if (that.rate !== "constant") {
@@ -21222,67 +23035,67 @@ var fluid = fluid || require("infusion"),
             } else {
                 that.gen = undefined;
             }
-            
+
             flock.onMulAddInputChanged(that);
             that.dynamicGen(1);
         };
-        
+
         that.onInputChanged();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.value", {
         rate: "control",
-        
+
         inputs: {
             value: 1.0,
             mul: null,
             add: null
         },
-        
+
         ugenOptions: {
             tags: ["flock.ugen.valueType"]
         }
     });
-    
-    
+
+
     flock.ugen.passThrough = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function (numSamps) {
             var source = that.inputs.source.output,
                 out = that.output,
                 i;
-            
+
             for (i = 0; i < source.length; i++) {
                 out[i] = source[i];
             }
-            
+
             for (; i < numSamps; i++) {
                 out[i] = 0.0;
-                
+
             }
-            
+
             that.mulAdd(numSamps);
         };
-        
+
         that.onInputChanged();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.passThrough", {
         rate: "audio",
-        
+
         inputs: {
             source: null,
             mul: null,
             add: null
         }
     });
-    
+
     flock.ugen.valueChangeTrigger = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function (numSamps) {
             var m = that.model,
                 source = that.inputs.source.output,
@@ -21290,31 +23103,31 @@ var fluid = fluid || require("infusion"),
                 i,
                 j,
                 val;
-            
+
             for (i = 0, j = 0; i < numSamps; i++, j += m.strides.source) {
                 val = source[j];
                 out[i] = val !== m.prevVal ? 1.0 : 0.0;
                 m.prevVal = val;
             }
         };
-        
+
         that.onInputChanged = function (inputName) {
             that.calculateStrides();
-            
+
             if (inputName === "source") {
-                // Force a trigger to be output whenever the input is changed, 
+                // Force a trigger to be output whenever the input is changed,
                 // even if it's the same value as was previously held.
                 that.model.prevVal = null;
             }
         };
-        
+
         that.calculateStrides();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.valueChangeTrigger", {
         rate: "control",
-        
+
         inputs: {
             source: 0.0
         },
@@ -21322,11 +23135,11 @@ var fluid = fluid || require("infusion"),
             model: {
                 prevVal: 0.0
             },
-            
+
             strideInputs: ["source"]
         }
     });
-    
+
     flock.ugen.math = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         that.expandedSource = new Float32Array(that.options.audioSettings.blockSize);
@@ -21337,27 +23150,27 @@ var fluid = fluid || require("infusion"),
                 sourceBuf = flock.generate(that.expandedSource, that.inputs.source.output[0]);
             DSP[op](that.output, sourceBuf, input.output[0]);
         };
-        
+
         that.krSourceArInputGen = function () {
             var op = that.activeInput,
                 input = that.inputs[op],
                 sourceBuf = flock.generate(that.expandedSource, that.inputs.source.output[0]);
             DSP[op](that.output, sourceBuf, input.output);
         };
-        
+
         that.arSourceKrInputGen = function () {
             var op = that.activeInput,
                 input = that.inputs[op],
                 sourceBuf = that.inputs.source.output;
             DSP[op](that.output, sourceBuf, input.output[0]);
         };
-        
+
         that.arSourceArInputGen = function () {
             var op = that.activeInput,
                 input = that.inputs[op];
             DSP[op](that.output, that.inputs.source.output, input.output);
         };
-        
+
         that.onInputChanged = function () {
             // Find the first input and use it. Multiple inputters, beware.
             // TODO: Support multiple operations.
@@ -21365,7 +23178,7 @@ var fluid = fluid || require("infusion"),
                 i,
                 input,
                 isInputAudioRate;
-            
+
             for (i = 0; i < inputs.length; i++) {
                 input = inputs[i];
                 if (input !== "source") {
@@ -21378,18 +23191,18 @@ var fluid = fluid || require("infusion"),
                 }
             }
         };
-        
+
         that.init = function () {
             if (typeof (DSP) === "undefined") {
                 throw new Error("DSP is undefined. Please include dspapi.js to use the flock.math unit generator.");
             }
             that.onInputChanged();
         };
-        
+
         that.init();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.math", {
         rate: "audio",
         inputs: {
@@ -21397,8 +23210,8 @@ var fluid = fluid || require("infusion"),
             source: null
         }
     });
-    
-    
+
+
     flock.ugen.sum = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
@@ -21406,19 +23219,19 @@ var fluid = fluid || require("infusion"),
             var out = that.output,
                 source = that.inputs.sources.output,
                 i;
-            
+
             for (i = 0; i < numSamps; i++) {
                 out[i] = source[i];
             }
         };
-        
+
         that.sumGen = function (numSamps) {
             var sources = that.inputs.sources,
                 out = that.output,
                 i,
                 sourceIdx,
                 sum;
-                
+
             for (i = 0; i < numSamps; i++) {
                 sum = 0;
                 for (sourceIdx = 0; sourceIdx < sources.length; sourceIdx++) {
@@ -21427,7 +23240,7 @@ var fluid = fluid || require("infusion"),
                 out[i] = sum;
             }
         };
-        
+
         that.onInputChanged = function () {
             if (typeof (that.inputs.sources.length) === "number") {
                 // We have an array of sources that need to be summed.
@@ -21436,23 +23249,23 @@ var fluid = fluid || require("infusion"),
                 that.gen = that.copyGen;
             }
         };
-        
+
         that.onInputChanged();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.sum", {
         rate: "audio",
         inputs: {
             sources: null
         }
     });
-    
-    
+
+
     /***************
      * Oscillators *
      ***************/
-     
+
     flock.ugen.osc = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
@@ -21494,14 +23307,14 @@ var fluid = fluid || require("infusion"),
 
         that.onInputChanged = function () {
             flock.ugen.osc.onInputChanged(that);
-            
+
             // Precalculate table-related values.
             var m = that.model;
             m.tableLen = that.inputs.table.length;
             m.tableIncHz = m.tableLen / m.sampleRate;
             m.tableIncRad =  m.tableLen / flock.TWOPI;
         };
-    
+
         that.onInputChanged();
         return that;
     };
@@ -21510,7 +23323,7 @@ var fluid = fluid || require("infusion"),
         that.calculateStrides();
         flock.onMulAddInputChanged(that);
     };
-    
+
     fluid.defaults("flock.ugen.osc", {
         rate: "audio",
         inputs: {
@@ -21538,7 +23351,7 @@ var fluid = fluid || require("infusion"),
             namespace = name.substring(0, lastSegIdx),
             oscName = name.substring(lastSegIdx + 1),
             namespaceObj = flock.get(namespace);
-        
+
         namespaceObj[oscName] = function (inputs, output, options) {
             // TODO: Awkward options pre-merging. Refactor osc API.
             var defaults = fluid.defaults("flock.ugen.osc"),
@@ -21547,11 +23360,11 @@ var fluid = fluid || require("infusion"),
             inputs.table = tableFillFn(s, flock.TWOPI / s);
             return flock.ugen.osc(inputs, output, options);
         };
-        
+
         fluid.defaults(name, fluid.defaults("flock.ugen.osc"));
     };
-    
-    
+
+
     flock.ugen.osc.define("flock.ugen.sinOsc", function (size, scale) {
         return flock.generate(size, function (i) {
             return Math.sin(i * scale);
@@ -21560,46 +23373,46 @@ var fluid = fluid || require("infusion"),
 
     flock.ugen.osc.fourierTable = function (size, scale, numHarms, phase, amps) {
         phase *= flock.TWOPI;
-        
+
         return flock.generate(size, function (i) {
             var harm,
                 amp,
                 w,
                 val = 0.0;
-                
+
             for (harm = 0; harm < numHarms; harm++) {
                 amp = amps ? amps[harm] : 1.0;
                 w = (harm + 1) * (i * scale);
                 val += amp * Math.cos(w + phase);
             }
-            
+
             return val;
         });
     };
-    
+
     flock.ugen.osc.normalizedFourierTable = function (size, scale, numHarms, phase, ampGenFn) {
         var amps = flock.generate(numHarms, function (harm) {
             return ampGenFn(harm + 1); // Indexed harmonics from 1 instead of 0.
         });
-        
+
         var table = flock.ugen.osc.fourierTable(size, scale, numHarms, phase, amps);
         return flock.normalize(table);
     };
-    
+
     flock.ugen.osc.define("flock.ugen.triOsc", function (size, scale) {
         return flock.ugen.osc.normalizedFourierTable(size, scale, 1000, 1.0, function (harm) {
             // Only odd harmonics with amplitudes decreasing by the inverse square of the harmonic number
             return harm % 2 === 0 ? 0.0 : 1.0 / (harm * harm);
         });
     });
-    
+
     flock.ugen.osc.define("flock.ugen.sawOsc", function (size, scale) {
         return flock.ugen.osc.normalizedFourierTable(size, scale, 10, -0.25, function (harm) {
             // All harmonics with amplitudes decreasing by the inverse of the harmonic number
             return 1.0 / harm;
         });
     });
-    
+
     flock.ugen.osc.define("flock.ugen.squareOsc", function (size, scale) {
         return flock.ugen.osc.normalizedFourierTable(size, scale, 10, -0.25, function (harm) {
             // Only odd harmonics with amplitudes decreasing by the inverse of the harmonic number
@@ -21610,7 +23423,7 @@ var fluid = fluid || require("infusion"),
 
     flock.ugen.sin = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-    
+
         that.gen = function (numSamps) {
             var m = that.model,
                 freq = that.inputs.freq.output,
@@ -21630,15 +23443,15 @@ var fluid = fluid || require("infusion"),
             m.phase = phase;
             that.mulAdd(numSamps);
         };
-    
+
         that.onInputChanged = function () {
             flock.ugen.osc.onInputChanged(that);
         };
-    
+
         that.onInputChanged();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.sin", {
         rate: "audio",
         inputs: {
@@ -21658,10 +23471,10 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    
+
     flock.ugen.lfSaw = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function (numSamps) {
             var m = that.model,
                 freq = that.inputs.freq.output,
@@ -21675,7 +23488,7 @@ var fluid = fluid || require("infusion"),
             for (i = 0, j = 0; i < numSamps; i++, j += m.strides.freq) {
                 out[i] = phase + phaseOffset;
                 phase += freq[j] * scale;
-                if (phase >= 1.0) { 
+                if (phase >= 1.0) {
                     phase -= 2.0;
                 } else if (phase <= -1.0) {
                     phase += 2.0;
@@ -21685,7 +23498,7 @@ var fluid = fluid || require("infusion"),
             m.phase = phase;
             that.mulAdd(numSamps);
         };
-        
+
         that.onInputChanged = function () {
             var m = that.model;
             m.freqInc = that.inputs.freq.rate === flock.rates.AUDIO ? 1 : 0;
@@ -21693,16 +23506,16 @@ var fluid = fluid || require("infusion"),
             that.calculateStrides();
             flock.onMulAddInputChanged(that);
         };
-        
+
         that.init = function () {
             that.model.scale = 2 * (1 / that.options.sampleRate);
             that.onInputChanged();
         };
-        
+
         that.init();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.lfSaw", {
         rate: "audio",
         inputs: {
@@ -21715,11 +23528,11 @@ var fluid = fluid || require("infusion"),
             strideInputs: ["freq"]
         }
     });
-    
-    
+
+
     flock.ugen.lfPulse = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function (numSamps) {
             var inputs = that.inputs,
                 m = that.model,
@@ -21745,21 +23558,21 @@ var fluid = fluid || require("infusion"),
             m.phase = phase;
             that.mulAdd(numSamps);
         };
-        
+
         that.onInputChanged = function () {
             that.model.freqInc = that.inputs.freq.rate === flock.rates.AUDIO ? 1 : 0;
             flock.onMulAddInputChanged(that);
         };
-        
+
         that.init = function () {
             that.model.scale = 1 / that.options.sampleRate;
             that.onInputChanged();
         };
-        
+
         that.init();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.lfPulse", {
         rate: "audio",
         inputs: {
@@ -21770,11 +23583,11 @@ var fluid = fluid || require("infusion"),
             add: null
         }
     });
-    
-        
+
+
     flock.ugen.impulse = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function (numSamps) {
             var inputs = that.inputs,
                 m = that.model,
@@ -21787,9 +23600,9 @@ var fluid = fluid || require("infusion"),
                 i,
                 j,
                 val;
-            
+
             phase += phaseOffset;
-            
+
             for (i = 0, j = 0; i < numSamps; i++, j += freqInc) {
                 if (phase >= 1.0) {
                     phase -= 1.0;
@@ -21800,16 +23613,16 @@ var fluid = fluid || require("infusion"),
                 out[i] = val;
                 phase += freq[j] * scale;
             }
-            
+
             m.phase = phase - phaseOffset;
             that.mulAdd(numSamps);
         };
-        
+
         that.onInputChanged = function () {
             that.calculateStrides();
             flock.onMulAddInputChanged(that);
         };
-        
+
         that.init = function () {
             that.model.scale = 1.0 / that.model.sampleRate;
             that.onInputChanged();
@@ -21818,7 +23631,7 @@ var fluid = fluid || require("infusion"),
         that.init();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.impulse", {
         rate: "audio",
         inputs: {
@@ -21834,33 +23647,33 @@ var fluid = fluid || require("infusion"),
             strideInputs: ["freq"]
         }
     });
-    
-    
+
+
     flock.ugen.t2a = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function () {
             var m = that.model,
                 trig = that.inputs.source.output[0],
                 offset = that.inputs.offset.output[0] | 0,
                 out = that.output;
-            
+
             // Clear the output buffer.
             for (var i = 0; i < out.length; i++) {
                 out[i] = 0.0;
             }
-            
+
             // Write the trigger value to the audio stream if it's open.
             if (trig > 0.0 && m.prevTrig <= 0.0) {
                 out[offset] = trig;
             }
-            
+
             m.prevTrig = trig;
         };
-        
+
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.t2a", {
         rate: "audio",
         inputs: {
@@ -21873,11 +23686,11 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
-    
-    
+
+
     flock.ugen.latch = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.arGen = function (numSamps) {
             var m = that.model,
                 inputs = that.inputs,
@@ -21891,16 +23704,16 @@ var fluid = fluid || require("infusion"),
             if (m.holdVal === undefined) {
                 m.holdVal = source[0];
             }
-            
+
             for (i = 0, j = 0; i < numSamps; i++, j += sourceInc) {
                 currTrig = trig.output[i];
                 out[i] = (currTrig > 0.0 && m.prevTrig <= 0.0) ? m.holdVal = source[j] : m.holdVal;
                 m.prevTrig = currTrig;
             }
-            
+
             that.mulAdd(numSamps);
         };
-        
+
         that.krGen = function (numSamps) {
             var m = that.model,
                 currTrig = that.inputs.trigger.output[0],
@@ -21910,24 +23723,24 @@ var fluid = fluid || require("infusion"),
                 m.holdVal = that.inputs.source.output[0];
             }
             m.prevTrig = currTrig;
-            
+
             for (i = 0; i < numSamps; i++) {
                 that.output[i] = m.holdVal;
             }
-            
+
             that.mulAdd(numSamps);
         };
-        
+
         that.onInputChanged = function () {
             that.calculateStrides();
             that.gen = that.inputs.trigger.rate === flock.rates.AUDIO ? that.arGen : that.krGen;
             flock.onMulAddInputChanged(that);
         };
-        
+
         that.onInputChanged();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.latch", {
         rate: "audio",
         inputs: {
@@ -21943,12 +23756,12 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
-    
-    
+
+
     /****************
      * Buffer UGens *
      ****************/
-    
+
     /**
      * Mixes buffer-related functionality into a unit generator.
      */
@@ -21956,20 +23769,20 @@ var fluid = fluid || require("infusion"),
         that.onBufferInputChanged = function (inputName) {
             var m = that.model,
                 inputs = that.inputs;
-            
+
             if (m.bufDef !== inputs.buffer || inputName === "buffer") {
                 m.bufDef = inputs.buffer;
                 flock.parse.bufferForDef(m.bufDef, that, flock.enviro.shared); // TODO: Shared enviro reference.
             }
         };
-        
+
         that.setBuffer = function (bufDesc) {
             that.buffer = bufDesc;
             if (that.onBufferReady) {
                 that.onBufferReady(bufDesc);
             }
         };
-        
+
         that.initBuffer = function () {
             // Start with a zeroed buffer, since the buffer input may be loaded asynchronously.
             that.buffer = that.model.bufDef = flock.bufferDesc({
@@ -21982,11 +23795,11 @@ var fluid = fluid || require("infusion"),
             });
         };
     };
-    
-    
+
+
     flock.ugen.playBuffer = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         // Optimized gen function for constant regular-speed playback.
         that.crRegularSpeedGen = function (numSamps) {
             var m = that.model,
@@ -22002,7 +23815,7 @@ var fluid = fluid || require("infusion"),
                 i,
                 j,
                 samp;
-            
+
             for (i = 0, j = 0; i < numSamps; i++, j += m.strides.trigger) {
                 if (trig[j] > 0.0 && m.prevTrig <= 0.0) {
                     bufIdx = start;
@@ -22015,17 +23828,17 @@ var fluid = fluid || require("infusion"),
                     }
                 }
                 m.prevTrig = trig[j];
-                
+
                 samp = that.interpolate ? that.interpolate(bufIdx, source) : source[bufIdx | 0];
                 out[i] = samp;
                 bufIdx += m.stepSize;
             }
-            
+
             m.idx = bufIdx;
-            
+
             that.mulAdd(numSamps);
         };
-        
+
         that.krSpeedGen = function (numSamps) {
             var m = that.model,
                 out = that.output,
@@ -22041,7 +23854,7 @@ var fluid = fluid || require("infusion"),
                 i,
                 j,
                 samp;
-            
+
             for (i = 0, j = 0; i < numSamps; i++, j += m.strides.trigger) {
                 if (trig[j] > 0.0 && m.prevTrig <= 0.0) {
                     bufIdx = start;
@@ -22054,50 +23867,50 @@ var fluid = fluid || require("infusion"),
                     }
                 }
                 m.prevTrig = trig[j];
-                
+
                 samp = that.interpolate ? that.interpolate(bufIdx, source) : source[bufIdx | 0];
                 out[i] = samp;
                 bufIdx += m.stepSize * speedInc;
             }
-            
+
             m.idx = bufIdx;
             that.mulAdd(numSamps);
         };
-        
+
         that.onInputChanged = function (inputName) {
             var inputs = that.inputs,
                 speed = inputs.speed;
-            
+
             that.onBufferInputChanged(inputName);
-            
+
             // TODO: Optimize for non-regular speed constant rate input.
             that.gen = (speed.rate === flock.rates.CONSTANT && speed.output[0] === 1.0) ?
                 that.crRegularSpeedGen : that.krSpeedGen;
-            
+
             that.calculateStrides();
             flock.onMulAddInputChanged(that);
         };
-        
+
         that.onBufferReady = function () {
             var m = that.model,
                 end = that.inputs.end.output[0],
                 chan = that.inputs.channel.output[0],
                 buf = that.buffer.data.channels[chan];
-            
+
             m.idx = (end * buf.length) | 0;
             m.stepSize = that.buffer.format.sampleRate / m.sampleRate;
         };
-        
+
         that.init = function () {
             flock.ugen.buffer(that);
             that.initBuffer();
             that.onInputChanged();
         };
-        
+
         that.init();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.playBuffer", {
         rate: "audio",
         inputs: {
@@ -22124,12 +23937,12 @@ var fluid = fluid || require("infusion"),
             interpolation: "linear"
         }
     });
-    
+
     /**
      * Reads values out of a buffer at the specified phase index.
      * This unit generator is typically used with flock.ugen.phasor or similar unit generator to
      * scan through the buffer at a particular rate.
-     * 
+     *
      * Inputs:
      *  - buffer: a bufDef representing the buffer to read from
      *  - channel: the channel of the buffer to read from
@@ -22138,7 +23951,7 @@ var fluid = fluid || require("infusion"),
     // TODO: This should be refactored based on the model of bufferPhaseStep below.
     flock.ugen.readBuffer = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function (numSamps) {
             var m = that.model,
                 phaseS = m.strides.phase,
@@ -22151,35 +23964,35 @@ var fluid = fluid || require("infusion"),
                 bufIdx,
                 j,
                 val;
-            
+
             for (i = j = 0; i < numSamps; i++, j += phaseS) {
                 bufIdx = phase[j] * sourceLen;
                 val = that.interpolate ? that.interpolate(bufIdx, source) : source[bufIdx | 0];
                 out[i] = val;
             }
-            
+
             that.mulAdd(numSamps);
         };
-        
+
         that.onInputChanged = function (inputName) {
             that.onBufferInputChanged(inputName);
             that.calculateStrides();
             flock.onMulAddInputChanged(that);
         };
-        
+
         that.init = function () {
             flock.ugen.buffer(that);
             that.initBuffer();
             that.onInputChanged();
         };
-        
+
         that.init();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.readBuffer", {
         rate: "audio",
-        
+
         inputs: {
             buffer: null,
             channel: 0,
@@ -22187,7 +24000,7 @@ var fluid = fluid || require("infusion"),
             mul: null,
             add: null
         },
-        
+
         ugenOptions: {
             model: {
                 channel: undefined
@@ -22198,7 +24011,7 @@ var fluid = fluid || require("infusion"),
             interpolation: "linear"
         }
     });
-    
+
     /**
      * Outputs the duration of the specified buffer. Runs at either constant or control rate.
      * Use control rate only when the underlying buffer may change dynamically.
@@ -22208,28 +24021,28 @@ var fluid = fluid || require("infusion"),
      */
     flock.ugen.bufferDuration = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.krGen = function (numSamps) {
             var m = that.model,
                 chan = that.inputs.channel.output[0],
                 source = that.buffer.data.channels[chan],
                 rate = that.buffer.format.sampleRate,
                 i;
-            
+
             for (i = 0; i < numSamps; i++) {
                 that.output[i] = m.value = source.length / rate;
             }
         };
-        
+
         that.onInputChanged = function (inputName) {
             that.onBufferInputChanged(inputName);
         };
-        
+
         that.onBufferReady = function (buffer) {
             var chan = that.inputs.channel.output[0];
             that.output[0] = that.model.value = buffer.data.channels[chan].length / that.buffer.format.sampleRate;
         };
-        
+
         that.init = function () {
             var r = that.rate;
             that.gen = (r === flock.rates.CONTROL || r === flock.rates.AUDIO) ? that.krGen : undefined;
@@ -22238,7 +24051,7 @@ var fluid = fluid || require("infusion"),
             that.initBuffer();
             that.onInputChanged();
         };
-        
+
         that.init();
         return that;
     };
@@ -22255,7 +24068,7 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
-    
+
     /**
      * Outputs the length of the specified buffer in samples. Runs at either constant or control rate.
      * Use control rate only when the underlying buffer may change dynamically.
@@ -22265,27 +24078,27 @@ var fluid = fluid || require("infusion"),
      */
     flock.ugen.bufferLength = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.krGen = function (numSamps) {
             var m = that.model,
                 chan = that.inputs.channel.output[0],
                 source = that.buffer.data.channels[chan],
                 i;
-            
+
             for (i = 0; i < numSamps; i++) {
                 that.output[i] = m.value = source.length;
             }
         };
-        
+
         that.onInputChanged = function (inputName) {
             that.onBufferInputChanged(inputName);
         };
-        
+
         that.onBufferReady = function (buffer) {
             var chan = that.inputs.channel.output[0];
             that.output[0] = that.model.value = buffer.data.channels[chan].length;
         };
-        
+
         that.init = function () {
             var r = that.rate;
             that.gen = (r === flock.rates.CONTROL || r === flock.rates.AUDIO) ? that.krGen : undefined;
@@ -22294,11 +24107,11 @@ var fluid = fluid || require("infusion"),
             that.initBuffer();
             that.onInputChanged();
         };
-        
+
         that.init();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.bufferLength", {
         rate: "constant",
         inputs: {
@@ -22311,7 +24124,7 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
-    
+
     /**
      * Outputs a phase step value for playing the specified buffer at its normal playback rate.
      * This unit generator takes into account any differences betwee the sound file's sample rate and
@@ -22322,35 +24135,35 @@ var fluid = fluid || require("infusion"),
      */
     flock.ugen.bufferPhaseStep = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.krGen = function (numSamps) {
             var out = that.output,
                 val = that.model.value,
                 i;
-            
+
             for (i = 0; i < numSamps; i++) {
                 out[i] = val;
             }
-            
+
             that.mulAdd(numSamps);
         };
-        
+
         that.onInputChanged = function (inputName) {
             that.onBufferInputChanged(inputName);
             flock.onMulAddInputChanged(that);
         };
-        
+
         that.onBufferReady = function (buffer) {
             var m = that.model,
                 chan = that.inputs.channel.output[0],
                 source = buffer.data.channels[chan],
                 enviroRate = that.options.audioSettings.rates.audio,
                 bufferRate = that.buffer.format.sampleRate || enviroRate;
-            
+
             m.scale = bufferRate / enviroRate;
             that.output[0] = m.value = 1 / (source.length * m.scale);
         };
-        
+
         that.init = function () {
             var r = that.rate;
             that.gen = (r === flock.rates.CONTROL || r === flock.rates.AUDIO) ? that.krGen : undefined;
@@ -22359,11 +24172,11 @@ var fluid = fluid || require("infusion"),
             that.initBuffer();
             that.onInputChanged();
         };
-        
+
         that.init();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.bufferPhaseStep", {
         rate: "constant",
         inputs: {
@@ -22377,7 +24190,7 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
-    
+
     /**
      * Constant-rate unit generator that outputs the environment's current audio sample rate.
      */
@@ -22386,28 +24199,28 @@ var fluid = fluid || require("infusion"),
         that.output[0] = that.options.audioSettings.rates.audio;
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.sampleRate", {
         rate: "constant",
         inputs: {}
     });
-    
-    
+
+
     /*********
      * Noise *
      *********/
-    
+
     flock.ugen.dust = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-    
+
         that.gen = function (numSamps) {
             var m = that.model,
                 density = inputs.density.output[0], // Density is kr.
-                threshold, 
+                threshold,
                 scale,
                 val,
                 i;
-            
+
             if (density !== m.density) {
                 m.density = density;
                 threshold = m.threshold = density * m.sampleDur;
@@ -22416,19 +24229,19 @@ var fluid = fluid || require("infusion"),
                 threshold = m.threshold;
                 scale = m.scale;
             }
-        
+
             for (i = 0; i < numSamps; i++) {
                 val = Math.random();
                 output[i] = (val < threshold) ? val * scale : 0.0;
             }
-        
+
             that.mulAdd(numSamps);
         };
-        
+
         that.onInputChanged();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.dust", {
         rate: "audio",
         inputs: {
@@ -22444,22 +24257,22 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
-    
-    
+
+
     flock.ugen.whiteNoise = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function (numSamps) {
             var out = that.output,
                 i;
-        
+
             for (i = 0; i < numSamps; i++) {
                 out[i] = Math.random();
             }
-            
+
             that.mulAdd(numSamps);
         };
-        
+
         that.onInputChanged();
         return that;
     };
@@ -22471,8 +24284,8 @@ var fluid = fluid || require("infusion"),
             add: null
         }
     });
-    
-    
+
+
     /**
      * Implements Larry Tramiel's first Pink Noise algorithm
      * described at http://home.earthlink.net/~ltrammell/tech/pinkalg.htm,
@@ -22481,7 +24294,7 @@ var fluid = fluid || require("infusion"),
      */
     flock.ugen.pinkNoise = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function (numSamps) {
             var state = that.model.state,
                 a = that.a,
@@ -22492,7 +24305,7 @@ var fluid = fluid || require("infusion"),
                 j,
                 rand,
                 val;
-                
+
             for (i = 0; i < numSamps; i++) {
                 val = 0;
                 for (j = 0; j < state.length; j++) {
@@ -22502,26 +24315,26 @@ var fluid = fluid || require("infusion"),
                 }
                 out[i] = val * 2 - offset;
             }
-            
+
             that.mulAdd(numSamps);
         };
-        
+
         that.init = function () {
             that.a = new Float32Array(that.options.coeffs.a);
             that.p = new Float32Array(that.options.coeffs.p);
             that.model.state = new Float32Array(that.a.length);
-            
+
             for (var i = 0; i < that.a.length; i++) {
                 that.model.offset += that.a[i];
             }
-            
+
             that.onInputChanged();
         };
-        
+
         that.init();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.pinkNoise", {
         rate: "audio",
         inputs: {
@@ -22541,7 +24354,7 @@ var fluid = fluid || require("infusion"),
 
     flock.ugen.lfNoise = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-    
+
         that.gen = function (numSamps) {
             var m = that.model,
                 freq = inputs.freq.output[0], // Freq is kr.
@@ -22550,7 +24363,7 @@ var fluid = fluid || require("infusion"),
                 currSamp = 0,
                 sampsForLevel,
                 i;
-            
+
             freq = freq > 0.001 ? freq : 0.001;
             do {
                 if (m.counter <= 0) {
@@ -22575,19 +24388,19 @@ var fluid = fluid || require("infusion"),
                 }
 
             } while (remain);
-        
+
             that.mulAdd(numSamps);
         };
-        
+
         that.input = function () {
             that.model.end = Math.random();
             that.onInputChanged();
         };
-        
+
         that.input();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.lfNoise", {
         rate: "audio",
         inputs: {
@@ -22607,7 +24420,7 @@ var fluid = fluid || require("infusion"),
     /**************************************
      * Envelopes and Amplitude Processors *
      **************************************/
-     
+
     flock.ugen.line = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
@@ -22620,29 +24433,29 @@ var fluid = fluid || require("infusion"),
                 level = m.level,
                 out = that.output,
                 i;
-        
+
             for (i = 0; i < numLevelVals; i++) {
                 out[i] = level;
                 numSteps--;
                 level += stepSize;
             }
-        
+
             // TODO: Implement a more efficient gen algorithm when the line has finished.
             if (numEndVals > 0) {
                 for (i = 0; i < numEndVals; i++) {
                     out[i] = level;
                 }
             }
-        
+
             m.level = level;
             m.numSteps = numSteps;
-        
+
             that.mulAdd(numSamps);
         };
-    
+
         that.onInputChanged = function () {
             var m = that.model;
-            
+
             // Any change in input value will restart the line.
             m.start = that.inputs.start.output[0];
             m.end = that.inputs.end.output[0];
@@ -22654,14 +24467,14 @@ var fluid = fluid || require("infusion"),
                 m.stepSize = (m.end - m.start) / m.numSteps;
                 m.level = m.start;
             }
-            
+
             flock.onMulAddInputChanged(that);
         };
-    
+
         that.onInputChanged();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.line", {
         rate: "control",
         inputs: {
@@ -22672,7 +24485,7 @@ var fluid = fluid || require("infusion"),
             add: null
         }
     });
-    
+
 
     flock.ugen.xLine = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
@@ -22686,47 +24499,47 @@ var fluid = fluid || require("infusion"),
                 level = m.level,
                 out = that.output,
                 i;
-        
+
             for (i = 0; i < numLevelVals; i++) {
                 out[i] = level;
                 numSteps--;
                 level *= multiplier;
             }
-        
+
             // TODO: Implement a more efficient gen algorithm when the line has finished.
             if (numEndVals > 0) {
                 for (i = 0; i < numEndVals; i++) {
                     out[i] = level;
                 }
             }
-        
+
             m.level = level;
             m.numSteps = numSteps;
-        
+
             that.mulAdd(numSamps);
         };
-    
+
         that.onInputChanged = function () {
             var m = that.model;
-            
+
             flock.onMulAddInputChanged(that);
-            
+
             // Any change in input value will restart the line.
             m.start = that.inputs.start.output[0];
             if (m.start === 0.0) {
                 m.start = Number.MIN_VALUE; // Guard against divide by zero by using the smallest possible number.
             }
-            
+
             m.end = that.inputs.end.output[0];
             m.numSteps = Math.round(that.inputs.duration.output[0] * m.sampleRate);
             m.multiplier = Math.pow(m.end / m.start, 1.0 / m.numSteps);
             m.level = m.start;
         };
-    
+
         that.onInputChanged();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.xLine", {
         rate: "control",
         inputs: {
@@ -22751,7 +24564,7 @@ var fluid = fluid || require("infusion"),
      */
     flock.ugen.phasor = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function (numSamps) {
             var m = that.model,
                 inputs = that.inputs,
@@ -22761,34 +24574,34 @@ var fluid = fluid || require("infusion"),
                 i,
                 j,
                 k;
-            
+
             // TODO: Add sample priming to the ugen graph to remove this conditional.
             if (m.value === undefined) {
                 m.value = inputs.start.output[0];
             }
-            
+
             for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.trigger, k += m.strides.step) {
                 if ((trig[j] > 0.0 && m.prevTrig <= 0.0)) {
                     m.value = inputs.reset.output[0];
                 }
                 m.prevTrig = trig[j];
-                
+
                 if (m.value >= inputs.end.output[0]) {
                     m.value = inputs.start.output[0];
                 }
-                
+
                 out[i] = m.value;
                 m.value += step[k];
             }
-            
+
             that.mulAdd(numSamps);
         };
-        
+
         that.onInputChanged();
-        
+
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.phasor", {
         rate: "control",
         inputs: {
@@ -22807,14 +24620,14 @@ var fluid = fluid || require("infusion"),
             ]
         }
     });
-    
+
     flock.ugen.env = {};
-    
+
     // TODO: Better names for these inputs; harmonize them with flock.ugen.line
     // TODO: Make this a mul/adder.
     flock.ugen.env.simpleASR = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function (numSamps) {
             var m = that.model,
                 out = that.output,
@@ -22829,7 +24642,7 @@ var fluid = fluid || require("infusion"),
                 stepsNeedRecalc = false,
                 stageTime,
                 i;
-                
+
             // Recalculate the step state if necessary.
             if (prevGate <= 0 && gate > 0) {
                 // Starting a new attack stage.
@@ -22842,24 +24655,24 @@ var fluid = fluid || require("infusion"),
                 stageTime = that.inputs.release.output[0];
                 stepsNeedRecalc = true;
             }
-            
+
             // TODO: Can we get rid of this extra branch without introducing code duplication?
             if (stepsNeedRecalc) {
                 numSteps = Math.round(stageTime * m.sampleRate);
                 stepInc = (targetLevel - level) / numSteps;
                 currentStep = 0;
             }
-            
+
             // Output the the envelope's sample data.
             for (i = 0; i < numSamps; i++) {
                 out[i] = level;
                 currentStep++;
                 // Hold the last value if the stage is complete, otherwise increment.
-                level = currentStep < numSteps ? 
-                    level + stepInc : currentStep === numSteps ? 
+                level = currentStep < numSteps ?
+                    level + stepInc : currentStep === numSteps ?
                     targetLevel : level;
             }
-            
+
             // Store instance state.
             m.level = level;
             m.targetLevel = targetLevel;
@@ -22868,7 +24681,7 @@ var fluid = fluid || require("infusion"),
             stage.stepInc = stepInc;
             stage.numSteps = numSteps;
         };
-        
+
         that.init = function () {
             var m = that.model;
             m.level = that.inputs.start.output[0];
@@ -22878,7 +24691,7 @@ var fluid = fluid || require("infusion"),
         that.init();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.env.simpleASR", {
         rate: "control",
         inputs: {
@@ -22899,10 +24712,10 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
-    
+
     flock.ugen.amplitude = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function (numSamps) {
             var m = that.model,
                 source = that.inputs.source.output,
@@ -22917,38 +24730,39 @@ var fluid = fluid || require("infusion"),
                 i,
                 val,
                 coef;
-                
-                // Convert 60 dB attack and release times to coefficients if they've changed.
+
+            // Convert 60 dB attack and release times to coefficients if they've changed.
             if (nextAtt !== prevAtt) {
                 m.attackTime = nextAtt;
                 attCoef = m.attackCoef =
                     nextAtt === 0.0 ? 0.0 : Math.exp(flock.LOG01 / (nextAtt * m.sampleRate));
             }
-                
+
             if (nextRel !== prevRel) {
                 m.releaseTime = nextRel;
                 relCoef = m.releaseCoef =
                     (nextRel === 0.0) ? 0.0 : Math.exp(flock.LOG01 / (nextRel * m.sampleRate));
             }
-            
+
             for (i = 0; i < numSamps; i++) {
                 val = Math.abs(source[i]);
                 coef = val < prevVal ? relCoef : attCoef;
                 out[i] = prevVal = val + (prevVal - val) * coef;
             }
-            
+
             m.prevVal = prevVal;
-            
+
             that.mulAdd(numSamps);
         };
-        
+
         that.onInputChanged();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.amplitude", {
         rate: "audio",
         inputs: {
+            source: null,
             attack: 0.01,
             release: 0.01,
             mul: null,
@@ -22960,23 +24774,23 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
-    
+
     flock.ugen.normalize = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function () {
             var out = that.output,
                 max = that.inputs.max.output[0], // Max is kr.
                 source = that.inputs.source.output;
-            
+
             // Note, this normalizes the source input ugen's output buffer directly in place.
             flock.normalize(source, max, out);
         };
-        
+
         that.onInputChanged();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.normalize", {
         rate: "audio",
         inputs: {
@@ -22984,7 +24798,87 @@ var fluid = fluid || require("infusion"),
             source: null
         }
     });
-    
+
+    /**
+     * A gate that allows the source input signal to pass whenever the sideChain input
+     * signal is greater than the threshold.
+     *
+     * If sideChain isn't specifed, the source signal itself is used to open the gate.
+     * By default, the gate will output 0.0 if it is closed, but setting the holdLastValue
+     * option to true enables it to hold the value of the gate when it was last open.
+     *
+     * Inputs:
+     *     source: the signal that will be outputted whenever the gate is open.
+     *     sideChain: (optional) a side chain signal that will
+     *         cause the gate to open and close
+     *     threshold: the minimum value at which the gate will open
+     * Options:
+     *      holdLastValue: determines whether the gate should hold its last open value or output silence
+     */
+    flock.ugen.gate = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                strides = m.strides,
+                out = that.output,
+                inputs = that.inputs,
+                source = inputs.source.output,
+                sideChain = inputs.sideChain.output,
+                sideChainInc = strides.sideChain,
+                threshold = inputs.threshold.output,
+                thresholdInc = strides.threshold,
+                holdLast = that.options.holdLastValue,
+                lastValue = m.lastValue,
+                i,
+                j,
+                k;
+
+            for (i = j = k = 0; i < numSamps; i++, j += sideChainInc, k += thresholdInc) {
+                if (sideChain[j] >= threshold[k]) {
+                    out[i] = lastValue = source[i];
+                } else {
+                    // TODO: Don't check holdLast on each sample.
+                    out[i] = holdLast ? lastValue : 0;
+                }
+            }
+
+            m.lastValue = lastValue;
+            that.mulAdd(numSamps);
+        };
+
+        that.onInputChanged = function () {
+            if (!that.inputs.sideChain) {
+                that.inputs.sideChain = that.inputs.source;
+            }
+
+            flock.onMulAddInputChanged(that);
+            that.calculateStrides();
+        };
+
+        that.onInputChanged();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.gate", {
+        rate: "audio",
+        inputs: {
+            source: null,
+            sideChain: null,
+            threshold: Number.MIN_VALUE,
+            mul: null,
+            add: null
+        },
+        ugenOptions: {
+            model: {
+                lastValue: 0.0
+            },
+            holdLastValue: false,
+            strideInputs: ["sideChain", "threshold"]
+        }
+    });
+
+
     /**
      * An equal power stereo panner.
      *
@@ -22999,7 +24893,7 @@ var fluid = fluid || require("infusion"),
      */
     flock.ugen.pan2 = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function (numSamps) {
             var m = that.model,
                 outputs = that.output,
@@ -23012,7 +24906,7 @@ var fluid = fluid || require("infusion"),
                 j,
                 sourceVal,
                 panVal;
-            
+
             for (i = 0, j = 0; i < numSamps; i++, j += m.strides.pan) {
                 sourceVal = source[i];
                 panVal = pan[j] * 0.5 + 0.5;
@@ -23021,22 +24915,22 @@ var fluid = fluid || require("infusion"),
                 right[i] = sourceVal * Math.sin(panVal * flock.HALFPI);
                 left[i] = sourceVal * Math.cos(panVal * flock.HALFPI);
             }
-            
+
             // TODO: Add multichannel support for mul/add.
         };
-        
+
         that.onInputChanged();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.pan2", {
         rate: "audio",
-        
+
         inputs: {
             source: null,
             pan: 0 // -1 (hard left)..0 (centre)..1 (hard right)
         },
-        
+
         ugenOptions: {
             tags: ["flock.ugen.multiChannelOutput"],
             strideInputs: [
@@ -23045,14 +24939,14 @@ var fluid = fluid || require("infusion"),
             numOutputs: 2
         }
     });
-    
+
     /*******************
      * Bus-Level UGens *
      *******************/
-     
+
     flock.ugen.out = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-    
+
         // TODO: Implement a "straight out" gen function for cases where the number
         // of sources matches the number of output buses (i.e. where no expansion is necessary).
         that.gen = function (numSamps) {
@@ -23069,21 +24963,21 @@ var fluid = fluid || require("infusion"),
                 bus,
                 inc,
                 outIdx;
-            
+
             numSources = sources.length;
             numOutputBuses = Math.max(expand, numSources);
-            
+
             if (numSources < 1) {
                 return;
             }
-            
+
             for (i = 0; i < numOutputBuses; i++) {
                 source = sources[i % numSources];
                 rate = source.rate;
                 bus = buses[bufStart + i];
                 inc = rate === flock.rates.AUDIO ? 1 : 0;
                 outIdx = 0;
-                    
+
                 for (j = 0; j < numSamps; j++, outIdx += inc) {
                     // TODO: Support control rate interpolation.
                     // TODO: Don't attempt to write to buses beyond the available number.
@@ -23092,19 +24986,19 @@ var fluid = fluid || require("infusion"),
                     bus[j] = bus[j] + source.output[outIdx];
                 }
             }
-            
+
             that.mulAdd(numSamps);
         };
-        
+
         that.init = function () {
             that.sourceBuffers = [];
             that.onInputChanged();
         };
-        
+
         that.init();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.out", {
         rate: "audio",
         inputs: {
@@ -23117,25 +25011,25 @@ var fluid = fluid || require("infusion"),
             multiInputNames: ["sources"]
         }
     });
-    
+
     // Note: this unit generator currently only outputs values at control rate.
     // TODO: Unit tests.
     flock.ugen.valueOut = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-    
+
         that.arraySourceGen = function () {
             var sources = that.inputs.sources,
                 i;
-            
+
             for (i = 0; i < sources.length; i++) {
                 that.model.value[i] = sources[i].output[0];
             }
         };
-        
+
         that.ugenSourceGen = function () {
             that.model.value = that.inputs.sources.output[0];
         };
-        
+
         that.onInputChanged = function () {
             var sources = that.inputs.sources;
             if (flock.isIterable(sources)) {
@@ -23145,42 +25039,42 @@ var fluid = fluid || require("infusion"),
                 that.gen = that.ugenSourceGen;
             }
         };
-        
+
         that.onInputChanged();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.valueOut", {
         rate: "control",
-        
+
         inputs: {
             sources: null
         },
-        
+
         ugenOptions: {
             model: {
                 value: null
             },
-            
+
             tags: ["flock.ugen.outputType", "flock.ugen.valueType"]
         }
     });
-    
+
     // TODO: fix naming.
     flock.ugen["in"] = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.singleBusGen = function (numSamps) {
             var out = that.output,
                 busNum = that.inputs.bus.output[0],
                 bus = that.options.audioSettings.buses[busNum],
                 i;
-            
+
             for (i = 0; i < numSamps; i++) {
                 out[i] = bus[i];
             }
         };
-        
+
         that.multiBusGen = function (numSamps) {
             var busesInput = that.inputs.bus,
                 enviroBuses = that.options.audioSettings.buses,
@@ -23188,7 +25082,7 @@ var fluid = fluid || require("infusion"),
                 i,
                 j,
                 busIdx;
-            
+
             for (i = 0; i < numSamps; i++) {
                 out[i] = 0; // Clear previous output values before summing a new set.
                 for (j = 0; j < busesInput.length; j++) {
@@ -23197,16 +25091,16 @@ var fluid = fluid || require("infusion"),
                 }
             }
         };
-        
+
         that.onInputChanged = function () {
             that.gen = flock.isIterable(that.inputs.bus) ? that.multiBusGen : that.singleBusGen;
             flock.onMulAddInputChanged(that);
         };
-        
+
         that.onInputChanged();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.in", {
         rate: "audio",
         inputs: {
@@ -23215,60 +25109,60 @@ var fluid = fluid || require("infusion"),
             add: null
         }
     });
-    
-    
+
+
     /***********
      * Filters *
      ***********/
-    
+
     /**
      * A generic FIR and IIR filter engine. You specify the coefficients, and this will do the rest.
      */
      // TODO: Unit tests.
     flock.ugen.filter = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function () {
             var m = that.model,
                 inputs = that.inputs,
                 q = inputs.q.output[0],
                 freq = inputs.freq.output[0];
-                
+
             if (m.prevFreq !== freq || m.prevQ !== q) {
                 that.updateCoefficients(m, freq, q);
             }
-            
+
             that.filterEngine.filter(that.output, that.inputs.source.output);
-            
+
             m.prevQ = q;
             m.prevFreq = freq;
         };
-        
+
         that.init = function () {
             var recipeOpt = that.options.recipe;
             var recipe = typeof (recipeOpt) === "string" ? flock.get(recipeOpt) : recipeOpt;
-            
+
             if (!recipe) {
                 throw new Error("Can't instantiate a flock.ugen.filter() without specifying a filter coefficient recipe.");
             }
-            
+
             that.filterEngine = new Filter(recipe.sizes.b, recipe.sizes.a);
             that.model.coeffs = {
                 a: that.filterEngine.a,
                 b: that.filterEngine.b
             };
-            
+
             that.updateCoefficients = flock.get(recipe, that.options.type);
             that.onInputChanged();
         };
-        
+
         that.init();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.filter", {
         rate: "audio",
-        
+
         inputs: {
             freq: 440,
             q: 1.0,
@@ -23282,7 +25176,7 @@ var fluid = fluid || require("infusion"),
     // TODO: Unit tests.
     flock.ugen.filter.biquad = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function (numSamps) {
             var m = that.model,
                 inputs = that.inputs,
@@ -23293,7 +25187,7 @@ var fluid = fluid || require("infusion"),
                 source = inputs.source.output,
                 i,
                 w;
-            
+
             if (m.prevFreq !== freq || m.prevQ !== q) {
                 that.updateCoefficients(m, freq, q);
             }
@@ -23304,17 +25198,17 @@ var fluid = fluid || require("infusion"),
                 m.d1 = m.d0;
                 m.d0 = w;
             }
-            
+
             m.prevQ = q;
             m.prevFreq = freq;
         };
-        
+
         that.onInputChanged = function () {
             var typeOpt = that.options.type;
             that.updateCoefficients = typeof (typeOpt) === "string" ?
                 flock.get(typeOpt) : typeOpt;
         };
-        
+
         that.init = function () {
             that.model.d0 = 0.0;
             that.model.d1 = 0.0;
@@ -23324,11 +25218,11 @@ var fluid = fluid || require("infusion"),
             };
             that.onInputChanged();
         };
-        
+
         that.init();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.filter.biquad", {
         inputs: {
             freq: 440,
@@ -23336,7 +25230,7 @@ var fluid = fluid || require("infusion"),
             source: null
         }
     });
-    
+
     flock.ugen.filter.biquad.types = {
         "hp": {
             inputDefaults: {
@@ -23393,17 +25287,17 @@ var fluid = fluid || require("infusion"),
             }
         }
     };
-    
+
     // Convenience methods for instantiating common types of biquad filters.
     flock.aliasUGens("flock.ugen.filter.biquad", flock.ugen.filter.biquad.types);
-    
+
     flock.coefficients = {
         butterworth: {
             sizes: {
                 a: 2,
                 b: 3
             },
-            
+
             lowPass: function (model, freq) {
                 var co = model.coeffs;
                 var lambda = 1 / Math.tan(Math.PI * freq / model.sampleRate);
@@ -23416,35 +25310,35 @@ var fluid = fluid || require("infusion"),
                 co.a[0] = 2 * (1 - lambdaSquared) * b0;
                 co.a[1] = (1 - rootTwoLambda + lambdaSquared) * b0;
             },
-        
+
             highPass: function (model, freq) {
                 var co = model.coeffs;
                 var lambda = Math.tan(Math.PI * freq / model.sampleRate);
                 var lambdaSquared = lambda * lambda;
                 var rootTwoLambda = flock.ROOT2 * lambda;
                 var b0 = 1 / (1 + rootTwoLambda + lambdaSquared);
-                
+
                 co.b[0] = b0;
                 co.b[1] = -2 * b0;
                 co.b[2] = b0;
                 co.a[0] = 2 * (lambdaSquared - 1) * b0;
                 co.a[1] = (1 - rootTwoLambda + lambdaSquared) * b0;
             },
-        
+
             bandPass: function (model, freq, q) {
                 var co = model.coeffs;
                 var bw = freq / q;
                 var lambda = 1 / Math.tan(Math.PI * bw / model.sampleRate);
                 var theta = 2 * Math.cos(flock.TWOPI * freq / model.sampleRate);
                 var b0 = 1 / (1 + lambda);
-                
+
                 co.b[0] = b0;
                 co.b[1] = 0;
                 co.b[2] = -b0;
                 co.a[0] = -(lambda * theta * b0);
                 co.a[1] = b0 * (lambda - 1);
             },
-        
+
             bandReject: function (model, freq, q) {
                 var co = model.coeffs;
                 var bw = freq / q;
@@ -23452,7 +25346,7 @@ var fluid = fluid || require("infusion"),
                 var theta = 2 * Math.cos(flock.TWOPI * freq / model.sampleRate);
                 var b0 = 1 / (1 + lambda);
                 var b1 = -theta * b0;
-                
+
                 co.b[0] = b0;
                 co.b[1] = b1;
                 co.b[2] = b0;
@@ -23460,7 +25354,7 @@ var fluid = fluid || require("infusion"),
                 co.a[1] = (1 - lambda) * b0;
             }
         },
-        
+
         // From Robert Brisow-Johnston's Filter Cookbook:
         // http://dspwiki.com/index.php?title=Cookbook_Formulae_for_audio_EQ_biquad_filter_coefficients
         rbj: {
@@ -23468,7 +25362,7 @@ var fluid = fluid || require("infusion"),
                 a: 2,
                 b: 3
             },
-            
+
             lowPass: function (model, freq, q) {
                 var co = model.coeffs;
                 var w0 = flock.TWOPI * freq / model.sampleRate;
@@ -23478,14 +25372,14 @@ var fluid = fluid || require("infusion"),
                 var oneLessCosw0 = 1 - cosw0;
                 var a0 = 1 + alpha;
                 var b0 = (oneLessCosw0 / 2) / a0;
-                
+
                 co.b[0] = b0;
                 co.b[1] = oneLessCosw0 / a0;
                 co.b[2] = b0;
                 co.a[0] = (-2 * cosw0) / a0;
                 co.a[1] = (1 - alpha) / a0;
             },
-            
+
             highPass: function (model, freq, q) {
                 var co = model.coeffs;
                 var w0 = flock.TWOPI * freq / model.sampleRate;
@@ -23495,14 +25389,14 @@ var fluid = fluid || require("infusion"),
                 var onePlusCosw0 = 1 + cosw0;
                 var a0 = 1 + alpha;
                 var b0 = (onePlusCosw0 / 2) / a0;
-                
+
                 co.b[0] = b0;
                 co.b[1] = (-onePlusCosw0) / a0;
                 co.b[2] = b0;
                 co.a[0] = (-2 * cosw0) / a0;
                 co.a[1] = (1 - alpha) / a0;
             },
-            
+
             bandPass: function (model, freq, q) {
                 var co = model.coeffs;
                 var w0 = flock.TWOPI * freq / model.sampleRate;
@@ -23511,14 +25405,14 @@ var fluid = fluid || require("infusion"),
                 var alpha = sinw0 / (2 * q);
                 var a0 = 1 + alpha;
                 var qByAlpha = q * alpha;
-                
+
                 co.b[0] = qByAlpha / a0;
                 co.b[1] = 0;
                 co.b[2] = -qByAlpha / a0;
                 co.a[0] = (-2 * cosw0) / a0;
                 co.a[1] = (1 - alpha) / a0;
             },
-            
+
             bandReject: function (model, freq, q) {
                 var co = model.coeffs;
                 var w0 = flock.TWOPI * freq / model.sampleRate;
@@ -23536,11 +25430,11 @@ var fluid = fluid || require("infusion"),
             }
         }
     };
-    
-    
+
+
     flock.ugen.delay = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function (numSamps) {
             var m = that.model,
                 inputs = that.inputs,
@@ -23549,12 +25443,12 @@ var fluid = fluid || require("infusion"),
                 time = inputs.time.output[0],
                 delayBuffer = that.delayBuffer,
                 i;
-            
+
             if (time !== m.time) {
                 m.time = time;
                 m.delaySamps = time * that.model.sampleRate;
             }
-            
+
             for (i = 0; i < numSamps; i++) {
                 if (m.pos >= m.delaySamps) {
                     m.pos = 0;
@@ -23563,23 +25457,23 @@ var fluid = fluid || require("infusion"),
                 delayBuffer[m.pos] = source[i];
                 m.pos++;
             }
-            
+
             that.mulAdd(numSamps);
         };
-        
+
         that.onInputChanged = function (inputName) {
             flock.onMulAddInputChanged(that);
-            
+
             if (!inputName || inputName === "maxTime") {
                 var delayBufferLength = that.model.sampleRate * that.inputs.maxTime.output[0];
                 that.delayBuffer = new Float32Array(delayBufferLength);
             }
         };
-        
+
         that.onInputChanged();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.delay", {
         rate: "audio",
         inputs: {
@@ -23593,7 +25487,7 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
-    
+
 
     // Simple optimised delay for exactly 1 sample
     flock.ugen.delay1 = function (inputs, output, options) {
@@ -23605,23 +25499,23 @@ var fluid = fluid || require("infusion"),
                 out = that.output,
                 source = inputs.source.output,
                 i;
-            
+
             for (i = 0; i < numSamps; i++) {
                 out[i] = m.prevVal;
                 m.prevVal = source[i];
             }
-            
+
             that.mulAdd(numSamps);
         };
 
         that.onInputChanged = function () {
             flock.onMulAddInputChanged(that);
         };
-        
+
         that.onInputChanged();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.delay1", {
         rate: "audio",
         inputs: {
@@ -23633,8 +25527,8 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
-    
-    
+
+
     flock.ugen.freeverb = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
@@ -23650,11 +25544,11 @@ var fluid = fluid || require("infusion"),
                 damp = inputs.damp.output[0],
                 dry = 1 - mix,
                 room_scaled = roomsize * 0.28 + 0.7,
-                damp1 = damp * 0.4, 
+                damp1 = damp * 0.4,
                 damp2 = 1.0 - damp1,
                 i,
                 j;
-            
+
             for (i = 0; i < numSamps; i++) {
                 // read inputs
                 var inp = source[i];
@@ -23681,13 +25575,13 @@ var fluid = fluid || require("infusion"),
 
                 // each allpass is handled individually, with different calculations made and stored into the delaylines
                 var ftemp8 = (that.filtery_c[6] + that.filtery_c[7]);
-                
-                that.buffers_a[3][that.bufferindices_a[3]] = ((((0.5 * that.filterx_a[3]) + that.filtery_c[0]) + 
-                    (that.filtery_c[1] + that.filtery_c[2])) + 
+
+                that.buffers_a[3][that.bufferindices_a[3]] = ((((0.5 * that.filterx_a[3]) + that.filtery_c[0]) +
+                    (that.filtery_c[1] + that.filtery_c[2])) +
                     ((that.filtery_c[3] + that.filtery_c[4]) + (that.filtery_c[5] + ftemp8)));
                 that.filterx_a[3] = that.readsamp_a[3];
-                that.filtery_a[3] = (that.filterx_a[3] - 
-                    (((that.filtery_c[0] + that.filtery_c[1]) + (that.filtery_c[2] + that.filtery_c[3])) + 
+                that.filtery_a[3] = (that.filterx_a[3] -
+                    (((that.filtery_c[0] + that.filtery_c[1]) + (that.filtery_c[2] + that.filtery_c[3])) +
                     ((that.filtery_c[4] + that.filtery_c[5]) + ftemp8)));
                 that.buffers_a[2][that.bufferindices_a[2]] = ((0.5 * that.filterx_a[2]) + that.filtery_a[3]);
                 that.filterx_a[2] = that.readsamp_a[2];
@@ -23702,7 +25596,7 @@ var fluid = fluid || require("infusion"),
                 that.filtery_a[0] = (that.filterx_a[0] - that.filtery_a[1]);
                 out[i] = ((dry * inp) + (mix * that.filtery_a[0]));
             }
-            
+
             that.mulAdd(numSamps);
         };
 
@@ -23714,7 +25608,7 @@ var fluid = fluid || require("infusion"),
             var o = that.options,
                 tunings = o.tunings,
                 allPassTunings = o.allPassTunings;
-            
+
             // Initialise the delay lines
             that.buffers_c = [];
             that.bufferindices_c = new Int32Array(8);
@@ -23735,10 +25629,10 @@ var fluid = fluid || require("infusion"),
             that.bufferindices_a = new Int32Array(4);
             that.filterx_a = new Float32Array(4);
             that.filtery_a = new Float32Array(4);
-            // "readsamp" vars are temporary values read back from the delay lines, 
+            // "readsamp" vars are temporary values read back from the delay lines,
             // not stored but only used in the gen loop.
             that.readsamp_a = new Float32Array(4);
-        
+
             for (i = 0; i < that.buffers_a.length; i++) {
                 that.bufferindices_a[i] = 0;
                 that.filterx_a[i] = 0;
@@ -23754,16 +25648,16 @@ var fluid = fluid || require("infusion"),
                 }
             }
         };
-        
+
         that.init = function () {
             that.initDelayLines();
             that.onInputChanged();
         };
-        
+
         that.init();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.freeverb", {
         rate: "audio",
         inputs: {
@@ -23778,18 +25672,18 @@ var fluid = fluid || require("infusion"),
             model: {
                 spread: 0
             },
-            
+
             options: {
                 tunings: [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617],
                 allPassTunings: [556, 441, 341, 225]
             }
         }
     });
-    
+
 
     flock.ugen.decay = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function (numSamps) {
             var m = that.model,
                 inputs = that.inputs,
@@ -23802,7 +25696,7 @@ var fluid = fluid || require("infusion"),
                 m.time = time;
                 m.coeff = time === 0.0 ? 0.0 : Math.exp(flock.LOG001 / (time * that.model.sampleRate));
             }
-            
+
             // TODO: Optimize this conditional.
             if (m.coeff === 0.0) {
                 for (i = 0; i < numSamps; i++) {
@@ -23814,14 +25708,14 @@ var fluid = fluid || require("infusion"),
                     out[i] = m.lastSamp;
                 }
             }
-            
+
             that.mulAdd(numSamps);
         };
-          
+
         that.onInputChanged();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.decay", {
         rate: "audio",
         inputs: {
@@ -23840,11 +25734,11 @@ var fluid = fluid || require("infusion"),
     /****************************
      * Granular Synthesis UGens *
      ****************************/
-     
+
     /**
      * Triggers grains from an audio buffer.
      *
-     * Inputs: 
+     * Inputs:
      *   - dur: the duration of each grain (control or constant rate only)
      *   - trigger: a trigger signal that, when it move to a positive number, will start a grain
      *   - buffer: a bufferDef object describing the buffer to granulate
@@ -23858,7 +25752,7 @@ var fluid = fluid || require("infusion"),
     // TODO: Unit tests.
     flock.ugen.triggerGrains = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function (numSamps) {
             var m = that.model,
                 inputs = that.inputs,
@@ -23880,7 +25774,7 @@ var fluid = fluid || require("infusion"),
                 grain,
                 start,
                 samp;
-        
+
             // Update the grain envelope if the grain duration input has changed.
             // TODO: What happens when this changes while older grains are still sounding?
             if (dur !== m.dur) {
@@ -23891,7 +25785,7 @@ var fluid = fluid || require("infusion"),
                     m.env[i] = Math.sin(Math.PI * i / m.numGrainSamps);
                 }
             }
-            
+
             // Trigger new grains.
             // TODO: Why does this constantly trigger new grains with an audio rate trigger signal,
             //       rarely or never cleaning old ones up?
@@ -23912,13 +25806,13 @@ var fluid = fluid || require("infusion"),
                 }
                 m.prevTrigger = trigger[trigIdx];
                 out[i] = 0.0;
-                
+
                 posIdx += m.strides.centerPos;
                 trigIdx += m.strides.trigger;
                 ampIdx += m.strides.amp;
                 speedIdx += m.strides.speed;
             }
-            
+
             // Output samples for all active grains.
             for (j = 0; j < m.activeGrains.length;) {
                 grain = m.activeGrains[j];
@@ -23940,16 +25834,16 @@ var fluid = fluid || require("infusion"),
 
             that.mulAdd(numSamps);
         };
-        
+
         that.onInputChanged = function (inputName) {
             that.onBufferInputChanged(inputName);
             that.calculateStrides();
             flock.onMulAddInputChanged(that);
         };
-        
+
         that.allocateGrains = function (numGrains) {
             numGrains = numGrains || that.model.maxNumGrains;
-            
+
             for (var i = 0; i < numGrains; i++) {
                 that.model.freeGrains.push({
                     sampIdx: 0,
@@ -23958,18 +25852,18 @@ var fluid = fluid || require("infusion"),
                 });
             }
         };
-        
+
         that.init = function () {
             var m = that.model,
                 maxGrainLength = Math.round(m.maxDur * m.sampleRate);
-            
+
             flock.ugen.buffer(that);
             that.model.env = new Float32Array(maxGrainLength);
             that.allocateGrains();
             that.initBuffer();
             that.onInputChanged();
         };
-        
+
         that.init();
         return that;
     };
@@ -24004,12 +25898,12 @@ var fluid = fluid || require("infusion"),
             interpolation: "cubic"
         }
     });
-    
-    
+
+
     // TODO: Unit tests.
     flock.ugen.print = function (input, output, options) {
         var that = flock.ugen(input, output, options);
-        
+
         that.gen = function (numSamps) {
             var inputs = that.inputs,
                 m = that.model,
@@ -24021,17 +25915,17 @@ var fluid = fluid || require("infusion"),
                 trig = inputs.trigger.output[0],
                 freq = inputs.freq.output[0],
                 i;
-                
+
             if (trig > 0.0 && m.prevTrig <= 0.0) {
                 fluid.log(fluid.logLevel.IMPORTANT, label + source);
             }
-            
+
             if (m.freq !== freq) {
                 m.sampInterval = Math.round(m.sampleRate / freq);
                 m.freq = freq;
                 m.counter = m.sampInterval;
             }
-            
+
             for (i = 0; i < numSamps; i++) {
                 if (m.counter >= m.sampInterval) {
                     fluid.log(fluid.logLevel.IMPORTANT, label + source[i]);
@@ -24041,16 +25935,16 @@ var fluid = fluid || require("infusion"),
                 that.output[i] = source[i];
             }
         };
-        
+
         that.init = function () {
             var o = that.options;
             that.model.label = o.label ? o.label + ": " : "";
         };
-        
+
         that.init();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.print", {
         rate: "audio",
         inputs: {
@@ -24064,7 +25958,7 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
-    
+
 
     /**
      * Granulates a source signal using an integral delay line.
@@ -24081,7 +25975,7 @@ var fluid = fluid || require("infusion"),
     // TODO: Unit tests.
     flock.ugen.granulator = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-           
+
         that.gen = function (numSamps) {
             var m = that.model,
                 inputs = that.inputs,
@@ -24095,7 +25989,7 @@ var fluid = fluid || require("infusion"),
                 grainPos,
                 windowPos,
                 amp;
-            
+
             // TODO: Probably too expensive to modulate delayDur at control rate.
             // Perhaps either move this into onInputChanged() and treat it as a constant input parameter
             // or introduce a maximum delay length and reuse the same array throughout (just changing indices).
@@ -24104,7 +25998,7 @@ var fluid = fluid || require("infusion"),
                 m.delayLength = (m.sampleRate * m.delayDur) | 0;
                 that.delayLine = new Float32Array(that.model.delayLength);
             }
-            
+
             if (m.grainDur !== grainDur) {
                 m.grainDur = grainDur;
                 m.grainLength = (m.sampleRate * m.grainDur) | 0;
@@ -24124,43 +26018,43 @@ var fluid = fluid || require("infusion"),
                 }
                 m.numGrains = numGrains;
             }
-            
+
             for (i = 0; i < numSamps; i++) {
                 // Update the delay line's write position
                 that.delayLine[m.writePos] = source[i];
                 m.writePos = (m.writePos + 1) % m.delayLength;
-                
+
                 // Clear the previous output.
                 out[i] = 0;
-                
+
                 // Now fill with grains
                 for (j = 0; j < m.numGrains; j++) {
                     grainPos = m.currentGrainPosition[j];
                     windowPos = m.currentGrainWindowPosition[j];
                     amp = m.windowFunction[windowPos];
                     out[i] += that.delayLine[grainPos] * amp;
-                    
+
                     // Update positions in the delay line and grain envelope arrays for next time.
                     m.currentGrainPosition[j] = (grainPos + 1) % m.delayLength;
                     m.currentGrainWindowPosition[j] = (windowPos + 1) % m.grainLength;
-                    
+
                     // Randomize the reset position of grains.
                     if (m.currentGrainWindowPosition[j] === 0) {
                         m.currentGrainPosition[j] = (Math.random() * m.delayLength) | 0;
                     }
                 }
-                
+
                 // Normalize the output amplitude.
                 out[i] /= m.numGrains;
             }
-            
+
             that.mulAdd(numSamps);
         };
-        
+
         that.onInputChanged();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.granulator", {
         rate: "audio",
         inputs: {
@@ -24185,7 +26079,7 @@ var fluid = fluid || require("infusion"),
 
     flock.ugen.sequence = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function (numSamps) {
             var list = that.inputs.list,
                 inputs = that.inputs,
@@ -24199,16 +26093,16 @@ var fluid = fluid || require("infusion"),
                 startItem,
                 i,
                 j;
-            
+
             if (m.value === undefined) {
                 startItem = list[start];
                 m.value = (startItem === undefined) ? 0.0 : startItem;
             }
-            
+
             if (m.nextIdx === undefined) {
                 m.nextIdx = start;
             }
-            
+
             for (i = 0, j = 0; i < numSamps; i++, j += m.strides.freq) {
                 if (m.nextIdx >= end) {
                     if (loop > 0.0) {
@@ -24218,61 +26112,61 @@ var fluid = fluid || require("infusion"),
                         continue;
                     }
                 }
-                
+
                 out[i] = m.value = list[m.nextIdx];
                 m.phase += freq[j] * scale;
-                
+
                 if (m.phase >= 1.0) {
                     m.phase = 0.0;
                     m.nextIdx++;
                 }
             }
-            
+
             that.mulAdd(numSamps);
         };
-         
+
         that.onInputChanged = function () {
             that.model.scale = that.rate !== flock.rates.DEMAND ? that.model.sampleDur : 1;
-            
+
             if (!that.inputs.list) {
                 that.inputs.list = [];
             }
-            
+
             that.calculateStrides();
             flock.onMulAddInputChanged(that);
         };
-        
+
         that.init = function () {
             that.onInputChanged();
         };
-        
+
         that.init();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.sequence", {
         rate: "control",
-        
+
         inputs: {
             start: 0,
             freq: 1.0,
             loop: 0.0,
             list: []
         },
-        
+
         ugenOptions: {
             model: {
                 phase: 0
             },
-            
+
             strideInputs: ["freq"],
             noExpand: ["list"]
         }
     });
-    
+
     flock.ugen.midiFreq = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function (numSamps) {
             var m = that.model,
                 a4 = m.a4,
@@ -24280,22 +26174,22 @@ var fluid = fluid || require("infusion"),
                 out = that.output,
                 i,
                 j;
-            
+
             for (i = 0, j = 0; i < numSamps; i++, j += m.strides.source) {
                 out[i] = a4.freq * Math.pow(2, (noteNum[j] - a4.noteNum) * m.octaveScale);
             }
-            
+
         };
-        
+
         that.init = function () {
             that.model.octaveScale = 1 / that.model.notesPerOctave;
             that.onInputChanged();
         };
-        
+
         that.init();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.midiFreq", {
         rate: "control",
         inputs: {

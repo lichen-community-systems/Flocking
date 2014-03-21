@@ -1534,8 +1534,24 @@ var fluid = fluid || fluid_1_5;
     };
 
     fluid.makeComponent = function (componentName, options) {
-        if (!options.initFunction || !options.gradeNames) {
-            fluid.fail("Cannot autoInit component " + componentName + " which does not have an initFunction and gradeNames defined");
+        if (!options.gradeNames || options.gradeNames.length === 0) {
+            fluid.fail("Cannot autoInit component " + componentName + " which does not have any gradeNames defined");
+        } else if (!options.initFunction) {
+            var blankGrades = [];
+            for (var i = 0; i < options.gradeNames.length; ++ i) {
+                var gradeName = options.gradeNames[i];
+                var defaults = fluid.rawDefaults(gradeName);
+                if (!defaults && gradeName !== "autoInit") {
+                    blankGrades.push(gradeName);
+                }
+            }
+            if (blankGrades.length === 0) {
+                fluid.fail("Cannot autoInit component " + componentName + " which does not have an initFunction defined");
+            } else {
+                fluid.fail("The grade hierarchy of component with typeName " + componentName + " is incomplete - it inherits from the following grade(s): " 
+                 + blankGrades.join(", ") + " for which the grade definitions are corrupt or missing. Please check the files which might include these " +
+                 " grades and ensure they are readable and have been loaded by this instance of Infusion");
+            }
         }
         var creator = function () {
             return fluid.initComponent(componentName, arguments);

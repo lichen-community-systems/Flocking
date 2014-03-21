@@ -3,14 +3,14 @@ module.exports = function(grunt) {
     // Project configuration.
     grunt.initConfig({
         pkg: grunt.file.readJSON("package.json"),
-        
+
         jshint: {
             all: [
                 "flocking/*.js",
                 "demos/**/*.js",
                 "tests/**/*.js",
                 "!**/third-party/**",
-                
+
                 // TODO: Temporary until all playground files are ready for linting.
                 "!demos/interactive/demos/*.js"
             ],
@@ -18,7 +18,7 @@ module.exports = function(grunt) {
                 jshintrc: true
             }
         },
-        
+
         concat: {
             options: {
                 separator: ";",
@@ -28,21 +28,25 @@ module.exports = function(grunt) {
                 src: [
                     // jQuery
                     "third-party/jquery/js/jquery-2.0.0.js",
-                    
+
                     // Fluid Infusion
                     "third-party/infusion/js/Fluid.js",
-                    "third-party/infusion/js/FluidDOMUtilities.js",
                     "third-party/infusion/js/FluidDocument.js",
+                    "third-party/infusion/js/FluidDOMUtilities.js",
+                    "third-party/infusion/js/FluidDebugging.js",
                     "third-party/infusion/js/FluidIoC.js",
                     "third-party/infusion/js/DataBinding.js",
+                    "third-party/infusion/js/ModelTransformation.js",
+                    "third-party/infusion/js/ModelTransformationTransforms.js",
                     "third-party/infusion/js/FluidView.js",
-                    
+                    "third-party/infusion/js/FluidRequests.js",
+
                     // Marcus Geelnard's DSPI API polyfill
                     "third-party/dspapi/js/dspapi.js",
-                    
+
                     // DataView Polyfill
                     "third-party/polydataview/js/polydataview.js",
-                    
+
                     // Flocking
                     "flocking/flocking-core.js",
                     "flocking/flocking-parser.js",
@@ -57,7 +61,7 @@ module.exports = function(grunt) {
                 dest: "dist/<%= pkg.name %>-all.js"
             }
         },
-        
+
         uglify: {
             options: {
                 banner: "<%= flock.banners.short %>",
@@ -77,7 +81,7 @@ module.exports = function(grunt) {
                 ]
             }
         },
-        
+
         copy: {
           main: {
               files: [
@@ -91,19 +95,19 @@ module.exports = function(grunt) {
             ]
           }
         },
-        
+
         clean: {
             all: {
                 src: ["dist/"]
             }
         },
-        
+
         githooks: {
             all: {
                 "pre-commit": "default",
             }
         },
-        
+
         flock: {
             banners: {
                 short: "/*! Flocking <%= pkg.version %> (<%= grunt.template.today('mmmm d, yyyy') %>), Copyright <%= grunt.template.today('yyyy') %> Colin Clark | flockingjs.org */\n\n"
@@ -118,6 +122,6 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks("grunt-contrib-copy");
     grunt.loadNpmTasks("grunt-contrib-jshint");
     grunt.loadNpmTasks("grunt-githooks");
-    
+
     grunt.registerTask("default", ["clean", "jshint", "concat", "uglify", "copy"]);
 };
