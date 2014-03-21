@@ -58,7 +58,7 @@ var fluid_1_5 = fluid_1_5 || {};
     // diagnostic - in fact, it is perfectly acceptable for a component's creator to return no value and
     // the failure is really in assumptions in fluid.initComponent. Revisit this issue for 1.5
     fluid.diagnoseFailedView = function (componentName, that, options, args) {
-        if (!that && fluid.hasGrade(options, "fluid.viewComponent")) {
+        if (!that && (fluid.hasGrade(options, "fluid.viewComponent") || fluid.hasGrade(options, "fluid.viewRelayComponent"))) {
             var container = fluid.wrap(args[1]);
             var message1 = "Instantiation of autoInit component with type " + componentName + " failed, since ";
             if (!container) {

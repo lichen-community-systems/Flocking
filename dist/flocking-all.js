@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (March 9, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (March 20, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -10291,8 +10291,24 @@ var fluid = fluid || fluid_1_5;
     };
 
     fluid.makeComponent = function (componentName, options) {
-        if (!options.initFunction || !options.gradeNames) {
-            fluid.fail("Cannot autoInit component " + componentName + " which does not have an initFunction and gradeNames defined");
+        if (!options.gradeNames || options.gradeNames.length === 0) {
+            fluid.fail("Cannot autoInit component " + componentName + " which does not have any gradeNames defined");
+        } else if (!options.initFunction) {
+            var blankGrades = [];
+            for (var i = 0; i < options.gradeNames.length; ++ i) {
+                var gradeName = options.gradeNames[i];
+                var defaults = fluid.rawDefaults(gradeName);
+                if (!defaults && gradeName !== "autoInit") {
+                    blankGrades.push(gradeName);
+                }
+            }
+            if (blankGrades.length === 0) {
+                fluid.fail("Cannot autoInit component " + componentName + " which does not have an initFunction defined");
+            } else {
+                fluid.fail("The grade hierarchy of component with typeName " + componentName + " is incomplete - it inherits from the following grade(s): " 
+                 + blankGrades.join(", ") + " for which the grade definitions are corrupt or missing. Please check the files which might include these " +
+                 " grades and ensure they are readable and have been loaded by this instance of Infusion");
+            }
         }
         var creator = function () {
             return fluid.initComponent(componentName, arguments);
@@ -11211,6 +11227,535 @@ var fluid = fluid || fluid_1_5;
 
 })(jQuery, fluid_1_5);
 ;/*
+Copyright 2007-2010 University of Cambridge
+Copyright 2007-2009 University of Toronto
+Copyright 2010-2011 Lucendo Development Ltd.
+Copyright 2010 OCAD University
+Copyright 2005-2013 jQuery Foundation, Inc. and other contributors
+
+Licensed under the Educational Community License (ECL), Version 2.0 or the New
+BSD license. You may not use this file except in compliance with one these
+Licenses.
+
+You may obtain a copy of the ECL 2.0 License and BSD License at
+https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
+*/
+
+/** This file contains functions which depend on the presence of a DOM document
+ * but which do not depend on the contents of Fluid.js **/
+
+// Declare dependencies
+/*global fluid_1_5:true, jQuery*/
+
+// JSLint options 
+/*jslint white: true, funcinvoke: true, undef: true, newcap: true, nomen: true, regexp: true, bitwise: true, browser: true, forin: true, maxerr: 100, indent: 4 */
+
+var fluid_1_5 = fluid_1_5 || {};
+
+(function ($, fluid) {
+    // polyfill for $.browser which was removed in jQuery 1.9 and later
+    // Taken from jquery-migrate-1.2.1.js, 
+    // jQuery Migrate - v1.2.1 - 2013-05-08
+    // https://github.com/jquery/jquery-migrate
+    // Copyright 2005, 2013 jQuery Foundation, Inc. and other contributors; Licensed MIT
+    
+    fluid.uaMatch = function (ua) {
+        ua = ua.toLowerCase();
+
+        var match = /(chrome)[ \/]([\w.]+)/.exec( ua ) ||
+            /(webkit)[ \/]([\w.]+)/.exec( ua ) ||
+            /(opera)(?:.*version|)[ \/]([\w.]+)/.exec( ua ) ||
+            /(msie) ([\w.]+)/.exec( ua ) ||
+        ua.indexOf("compatible") < 0 && /(mozilla)(?:.*? rv:([\w.]+)|)/.exec( ua ) || [];
+
+        return {
+            browser: match[ 1 ] || "",
+            version: match[ 2 ] || "0"
+        };
+    };
+    
+    var matched, browser;
+
+    // Don't clobber any existing jQuery.browser in case it's different
+    if (!$.browser) {
+        if (!!navigator.userAgent.match(/Trident\/7\./)) {
+            browser = { // From http://stackoverflow.com/questions/18684099/jquery-fail-to-detect-ie-11
+                msie: true,
+                version: 11
+            }
+        } else {
+            matched = fluid.uaMatch(navigator.userAgent);
+            browser = {};
+          
+            if (matched.browser) {
+                browser[matched.browser] = true;
+                browser.version = matched.version;
+            }
+            // Chrome is Webkit, but Webkit is also Safari.
+            if (browser.chrome) {
+                browser.webkit = true;
+            } else if (browser.webkit) {
+                browser.safari = true;
+            }
+        }
+        $.browser = browser;
+    }
+
+    // Private constants.
+    var NAMESPACE_KEY = "fluid-scoped-data";
+
+    /**
+     * Gets stored state from the jQuery instance's data map.
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    fluid.getScopedData = function(target, key) {
+        var data = $(target).data(NAMESPACE_KEY);
+        return data ? data[key] : undefined;
+    };
+
+    /**
+     * Stores state in the jQuery instance's data map. Unlike jQuery's version,
+     * accepts multiple-element jQueries.
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    fluid.setScopedData = function(target, key, value) {
+        $(target).each(function() {
+            var data = $.data(this, NAMESPACE_KEY) || {};
+            data[key] = value;
+
+            $.data(this, NAMESPACE_KEY, data);
+        });
+    };
+
+    /** Global focus manager - makes use of "focusin" event supported in jquery 1.4.2 or later.
+     */
+
+    var lastFocusedElement = null;
+    
+    $(document).bind("focusin", function (event){
+        lastFocusedElement = event.target;
+    });
+    
+    fluid.getLastFocusedElement = function () {
+        return lastFocusedElement;
+    };
+
+
+    var ENABLEMENT_KEY = "enablement";
+
+    /** Queries or sets the enabled status of a control. An activatable node
+     * may be "disabled" in which case its keyboard bindings will be inoperable
+     * (but still stored) until it is reenabled again.
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+     
+    fluid.enabled = function(target, state) {
+        target = $(target);
+        if (state === undefined) {
+            return fluid.getScopedData(target, ENABLEMENT_KEY) !== false;
+        }
+        else {
+            $("*", target).add(target).each(function() {
+                if (fluid.getScopedData(this, ENABLEMENT_KEY) !== undefined) {
+                    fluid.setScopedData(this, ENABLEMENT_KEY, state);
+                }
+                else if (/select|textarea|input/i.test(this.nodeName)) {
+                    $(this).prop("disabled", !state);
+                }
+            });
+            fluid.setScopedData(target, ENABLEMENT_KEY, state);
+        }
+    };
+    
+    fluid.initEnablement = function(target) {
+        fluid.setScopedData(target, ENABLEMENT_KEY, true);
+    };
+    
+    // This utility is required through the use of newer versions of jQuery which will obscure the original
+    // event responsible for interaction with a target. This is currently use in Tooltip.js and FluidView.js
+    // "dead man's blur" but would be of general utility
+    
+    fluid.resolveEventTarget = function (event) {
+        while (event.originalEvent && event.originalEvent.target) {
+            event = event.originalEvent;
+        }
+        return event.target;
+    };
+    
+    // These function (fluid.focus() and fluid.blur()) serve several functions. They should be used by
+    // all implementation both in test cases and component implementation which require to trigger a focus
+    // event. Firstly, they restore the old behaviour in jQuery versions prior to 1.10 in which a focus 
+    // trigger synchronously relays to a focus handler. In newer jQueries this defers to the real browser
+    // relay with numerous platform and timing-dependent effects. 
+    // Secondly, they are necessary since simulation of focus events by jQuery under IE
+    // is not sufficiently good to intercept the "focusin" binding. Any code which triggers
+    // focus or blur synthetically throughout the framework and client code must use this function,
+    // especially if correct cross-platform interaction is required with the "deadMansBlur" function.
+    
+    function applyOp(node, func) {
+        node = $(node);
+        node.trigger("fluid-"+func);
+        node.triggerHandler(func);
+        node[func]();
+        return node;
+    }
+    
+    $.each(["focus", "blur"], function(i, name) {
+        fluid[name] = function(elem) {
+            return applyOp(elem, name);
+        }
+    });
+    
+})(jQuery, fluid_1_5);
+;/*
+Copyright 2008-2010 University of Cambridge
+Copyright 2008-2009 University of Toronto
+
+Licensed under the Educational Community License (ECL), Version 2.0 or the New
+BSD license. You may not use this file except in compliance with one these
+Licenses.
+
+You may obtain a copy of the ECL 2.0 License and BSD License at
+https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
+*/
+
+// Declare dependencies
+/*global fluid_1_5:true, jQuery */
+
+// JSLint options 
+/*jslint white: true, funcinvoke: true, undef: true, newcap: true, nomen: true, regexp: true, bitwise: true, browser: true, forin: true, maxerr: 100, indent: 4 */
+
+var fluid_1_5 = fluid_1_5 || {};
+
+(function ($, fluid) {
+    
+    fluid.dom = fluid.dom || {};
+    
+    // Node walker function for iterateDom.
+    var getNextNode = function (iterator) {
+        if (iterator.node.firstChild) {
+            iterator.node = iterator.node.firstChild;
+            iterator.depth += 1;
+            return iterator;
+        }
+        while (iterator.node) {
+            if (iterator.node.nextSibling) {
+                iterator.node = iterator.node.nextSibling;
+                return iterator;
+            }
+            iterator.node = iterator.node.parentNode;
+            iterator.depth -= 1;
+        }
+        return iterator;
+    };
+    
+    /**
+     * Walks the DOM, applying the specified acceptor function to each element.
+     * There is a special case for the acceptor, allowing for quick deletion of elements and their children.
+     * Return "delete" from your acceptor function if you want to delete the element in question.
+     * Return "stop" to terminate iteration. 
+     
+     * Implementation note - this utility exists mainly for performance reasons. It was last tested
+     * carefully some time ago (around jQuery 1.2) but at that time was around 3-4x faster at raw DOM
+     * filtration tasks than the jQuery equivalents, which was an important source of performance loss in the
+     * Reorderer component. General clients of the framework should use this method with caution if at all, and
+     * the performance issues should be reassessed when we have time. 
+     * 
+     * @param {Element} node the node to start walking from
+     * @param {Function} acceptor the function to invoke with each DOM element
+     * @param {Boolean} allnodes Use <code>true</code> to call acceptor on all nodes, 
+     * rather than just element nodes (type 1)
+     */
+    fluid.dom.iterateDom = function (node, acceptor, allNodes) {
+        var currentNode = {node: node, depth: 0};
+        var prevNode = node;
+        var condition;
+        while (currentNode.node !== null && currentNode.depth >= 0 && currentNode.depth < fluid.dom.iterateDom.DOM_BAIL_DEPTH) {
+            condition = null;
+            if (currentNode.node.nodeType === 1 || allNodes) {
+                condition = acceptor(currentNode.node, currentNode.depth);
+            }
+            if (condition) {
+                if (condition === "delete") {
+                    currentNode.node.parentNode.removeChild(currentNode.node);
+                    currentNode.node = prevNode;
+                }
+                else if (condition === "stop") {
+                    return currentNode.node;
+                }
+            }
+            prevNode = currentNode.node;
+            currentNode = getNextNode(currentNode);
+        }
+    };
+    
+    // Work around IE circular DOM issue. This is the default max DOM depth on IE.
+    // http://msdn2.microsoft.com/en-us/library/ms761392(VS.85).aspx
+    fluid.dom.iterateDom.DOM_BAIL_DEPTH = 256;
+    
+    /**
+     * Checks if the specified container is actually the parent of containee.
+     * 
+     * @param {Element} container the potential parent
+     * @param {Element} containee the child in question
+     */
+    fluid.dom.isContainer = function (container, containee) {
+        for (; containee; containee = containee.parentNode) {
+            if (container === containee) {
+                return true;
+            }
+        }
+        return false;
+    };
+       
+    /** Return the element text from the supplied DOM node as a single String.
+     * Implementation note - this is a special-purpose utility used in the framework in just one
+     * position in the Reorderer. It only performs a "shallow" traversal of the text and was intended
+     * as a quick and dirty means of extracting element labels where the user had not explicitly provided one.
+     * It should not be used by general users of the framework and its presence here needs to be 
+     * reassessed.
+     */
+    fluid.dom.getElementText = function (element) {
+        var nodes = element.childNodes;
+        var text = "";
+        for (var i = 0; i < nodes.length; ++i) {
+            var child = nodes[i];
+            if (child.nodeType === 3) {
+                text = text + child.nodeValue;
+            }
+        }
+        return text; 
+    };
+    
+})(jQuery, fluid_1_5);
+;/*
+Copyright 2007-2010 University of Cambridge
+Copyright 2007-2009 University of Toronto
+Copyright 2007-2009 University of California, Berkeley
+Copyright 2010 OCAD University
+Copyright 2010-2011 Lucendo Development Ltd.
+
+Licensed under the Educational Community License (ECL), Version 2.0 or the New
+BSD license. You may not use this file except in compliance with one these
+Licenses.
+
+You may obtain a copy of the ECL 2.0 License and BSD License at
+https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
+*/
+
+// Declare dependencies
+/*global fluid:true, fluid_1_5:true, jQuery*/
+
+// JSLint options 
+/*jslint white: true, funcinvoke: true, undef: true, newcap: true, nomen: true, regexp: true, bitwise: true, browser: true, forin: true, maxerr: 100, indent: 4 */
+
+var fluid_1_5 = fluid_1_5 || {};
+var fluid = fluid || fluid_1_5;
+
+(function ($, fluid) {
+       
+    fluid.renderTimestamp = function (date) {
+        var zeropad = function (num, width) {
+             if (!width) width = 2;
+             var numstr = (num == undefined? "" : num.toString());
+             return "00000".substring(5 - width + numstr.length) + numstr;
+             }
+        return zeropad(date.getHours()) + ":" + zeropad(date.getMinutes()) + ":" + zeropad(date.getSeconds()) + "." + zeropad(date.getMilliseconds(), 3);
+    };
+
+    fluid.isTracing = false;
+
+    fluid.registerNamespace("fluid.tracing");
+
+    fluid.tracing.pathCount = [];
+    
+    fluid.tracing.summarisePathCount = function (pathCount) {
+        pathCount = pathCount || fluid.tracing.pathCount;
+        var togo = {};
+        for (var i = 0; i < pathCount.length; ++ i) {
+            var path = pathCount[i];
+            if (!togo[path]) {
+                togo[path] = 1;
+            }
+            else {
+                ++togo[path];
+            }
+        }
+        var toReallyGo = [];
+        fluid.each(togo, function(el, path) {
+            toReallyGo.push({path: path, count: el});
+        });
+        toReallyGo.sort(function(a, b) {return b.count - a.count});
+        return toReallyGo;
+    };
+    
+    fluid.tracing.condensePathCount = function (prefixes, pathCount) {
+        prefixes = fluid.makeArray(prefixes);
+        var prefixCount = {};
+        fluid.each(prefixes, function(prefix) {
+            prefixCount[prefix] = 0;
+        });
+        var togo = [];
+        fluid.each(pathCount, function(el) {
+            var path = el.path;
+            if (!fluid.find(prefixes, function(prefix) {
+                if (path.indexOf(prefix) === 0) {
+                    prefixCount[prefix] += el.count;
+                    return true;
+                }
+            })) {
+            togo.push(el);
+            }
+        });
+        fluid.each(prefixCount, function(count, path) {
+            togo.unshift({path: path, count: count});
+        });
+        return togo;
+    };
+
+    // Exception stripping code taken from https://github.com/emwendelin/javascript-stacktrace/blob/master/stacktrace.js
+    // BSD licence, see header
+    
+    fluid.detectStackStyle = function (e) {
+        var style = "other";
+        var stackStyle = {
+            offset: 0  
+        };
+        if (e["arguments"]) {
+            style = "chrome";
+        } else if (typeof window !== "undefined" && window.opera && e.stacktrace) {
+            style = "opera10";
+        } else if (e.stack) {
+            style = "firefox";
+            // Detect FireFox 4-style stacks which are 1 level less deep
+            stackStyle.offset = e.stack.indexOf("Trace exception") === -1? 1 : 0;
+        } else if (typeof window !== 'undefined' && window.opera && !('stacktrace' in e)) { //Opera 9-
+            style = "opera";
+        }
+        stackStyle.style = style;
+        return stackStyle;
+    };
+    
+    fluid.obtainException = function() {
+        try {
+            throw new Error("Trace exception");
+        }
+        catch (e) {
+            return e;
+        }
+    };
+    
+    var stackStyle = fluid.detectStackStyle(fluid.obtainException());
+
+    fluid.registerNamespace("fluid.exceptionDecoders");
+    
+    fluid.decodeStack = function() {
+        if (stackStyle.style !== "firefox") {
+            return null;
+        }
+        var e = fluid.obtainException();
+        return fluid.exceptionDecoders[stackStyle.style](e);
+    };
+
+    fluid.exceptionDecoders.firefox = function(e) {
+        var lines = e.stack.replace(/(?:\n@:0)?\s+$/m, '').replace(/^\(/gm, '{anonymous}(').split('\n');
+        return fluid.transform(lines, function(line) {
+            var atind = line.indexOf("@");
+            return atind === -1? [line] : [line.substring(atind + 1), line.substring(0, atind)];  
+        });
+    };
+    
+    fluid.getCallerInfo = function(atDepth) {
+        atDepth = (atDepth || 3) - stackStyle.offset;
+        var stack = fluid.decodeStack();
+        return stack? stack[atDepth][0] : null;
+    };
+    
+    function generate(c, count) {
+        var togo = "";
+        for (var i = 0; i < count; ++ i) {
+            togo += c;
+        }
+        return togo;
+    }
+    
+    function printImpl(obj, small, options) {
+        var big = small + options.indentChars;
+        if (obj === null) {
+            return "null";
+        }
+        else if (fluid.isPrimitive(obj)) {
+            return JSON.stringify(obj);
+        }
+        else {
+            var j = [];
+            if (fluid.isArrayable(obj)) {
+                if (obj.length === 0) {
+                    return "[]";
+                }
+                for (var i = 0; i < obj.length; ++ i) {
+                    j[i] = printImpl(obj[i], big, options);
+                }
+                return "[\n" + big + j.join(",\n" + big) + "\n" + small + "]";
+                }
+            else {
+                var i = 0;
+                fluid.each(obj, function(value, key) {
+                    j[i++] = JSON.stringify(key) + ": " + printImpl(value, big, options);
+                });
+                return "{\n" + big + j.join(",\n" + big) + "\n" + small + "}"; 
+            }
+        }
+    }
+    
+    fluid.prettyPrintJSON = function(obj, options) {
+        options = $.extend({indent: 4}, options);
+        options.indentChars = generate(" ", options.indent);
+        return printImpl(obj, "", options);
+    }
+        
+    /** 
+     * Dumps a DOM element into a readily recognisable form for debugging - produces a
+     * "semi-selector" summarising its tag name, class and id, whichever are set.
+     * 
+     * @param {jQueryable} element The element to be dumped
+     * @return A string representing the element.
+     */
+    fluid.dumpEl = function (element) {
+        var togo;
+        
+        if (!element) {
+            return "null";
+        }
+        if (element.nodeType === 3 || element.nodeType === 8) {
+            return "[data: " + element.data + "]";
+        } 
+        if (element.nodeType === 9) {
+            return "[document: location " + element.location + "]";
+        }
+        if (!element.nodeType && fluid.isArrayable(element)) {
+            togo = "[";
+            for (var i = 0; i < element.length; ++ i) {
+                togo += fluid.dumpEl(element[i]);
+                if (i < element.length - 1) {
+                    togo += ", ";
+                }
+            }
+            return togo + "]";
+        }
+        element = $(element);
+        togo = element.get(0).tagName;
+        if (element.id) {
+            togo += "#" + element.id;
+        }
+        if (element.attr("class")) {
+            togo += "." + element.attr("class");
+        }
+        return togo;
+    };
+        
+})(jQuery, fluid_1_5);
+    ;/*
 Copyright 2011-2013 OCAD University
 Copyright 2010-2011 Lucendo Development Ltd.
 
@@ -13797,6 +14342,10 @@ var fluid_1_5 = fluid_1_5 || {};
         }); 
     };
     
+    fluid.sortCompleteLast = function (reca, recb) {
+        return (reca.completeOnInit ? 1 : 0) - (recb.completeOnInit ? 1 : 0);
+    };
+    
     // Operate all coordinated transactions by bringing models to their respective initial values, and then commit them all
     fluid.operateInitialTransaction = function (instantiator, mrec) {
         var transId = fluid.allocateGuid();
@@ -13807,7 +14356,8 @@ var fluid_1_5 = fluid_1_5 || {};
             transRec[recel.that.applier.applierId] = {transaction: transac};
             return transac;
         });
-        fluid.each(mrec, function (recel) {
+        var recs = fluid.values(mrec).sort(fluid.sortCompleteFirst);
+        fluid.each(recs, function (recel) {
             var that = recel.that;
             var transac = transacs[that.id];
             if (recel.completeOnInit) {
@@ -14550,7 +15100,7 @@ var fluid_1_5 = fluid_1_5 || {};
     };
     
     fluid.initModelEvent = function (trans, listeners) {
-        fluid.notifyModelChanges(listeners, "ADD", trans.newHolder, fluid.emptyHolder, {transactionId: trans.id});
+        fluid.notifyModelChanges(listeners, "ADD", trans.oldHolder, fluid.emptyHolder, {transactionId: trans.id});
     };
     
     fluid.emptyHolder = { model: undefined };
@@ -14616,6 +15166,7 @@ var fluid_1_5 = fluid_1_5 || {};
                     resolverGetConfig: options.resolverGetConfig
                 },
                 reset: function () {
+                    trans.oldHolder = holder;
                     trans.newHolder = { model: fluid.copy(holder.model) };
                     trans.changeRecord.changes = 0;
                     trans.changeRecord.changeMap = {};
@@ -15118,11 +15669,8 @@ var fluid_1_5 = fluid_1_5 || {};
 
 })(jQuery, fluid_1_5);
 ;/*
-Copyright 2007-2010 University of Cambridge
-Copyright 2007-2009 University of Toronto
-Copyright 2010-2011 Lucendo Development Ltd.
-Copyright 2010 OCAD University
-Copyright 2005-2013 jQuery Foundation, Inc. and other contributors
+Copyright 2010 University of Toronto
+Copyright 2010-2011 OCAD University
 
 Licensed under the Educational Community License (ECL), Version 2.0 or the New
 BSD license. You may not use this file except in compliance with one these
@@ -15132,175 +15680,624 @@ You may obtain a copy of the ECL 2.0 License and BSD License at
 https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
 */
 
-/** This file contains functions which depend on the presence of a DOM document
- * but which do not depend on the contents of Fluid.js **/
-
 // Declare dependencies
-/*global fluid_1_5:true, jQuery*/
+
+/*global fluid:true, fluid_1_5:true, jQuery*/
 
 // JSLint options 
-/*jslint white: true, funcinvoke: true, undef: true, newcap: true, nomen: true, regexp: true, bitwise: true, browser: true, forin: true, maxerr: 100, indent: 4 */
+/*jslint white: true, elsecatch: true, jslintok: true, funcinvoke: true, undef: true, newcap: true, nomen: true, regexp: true, bitwise: true, browser: true, forin: true, maxerr: 100, indent: 4 */
 
 var fluid_1_5 = fluid_1_5 || {};
+var fluid = fluid || fluid_1_5;
 
 (function ($, fluid) {
-    // polyfill for $.browser which was removed in jQuery 1.9 and later
-    // Taken from jquery-migrate-1.2.1.js, 
-    // jQuery Migrate - v1.2.1 - 2013-05-08
-    // https://github.com/jquery/jquery-migrate
-    // Copyright 2005, 2013 jQuery Foundation, Inc. and other contributors; Licensed MIT
+    "use strict";
+
+    fluid.registerNamespace("fluid.model.transform");
     
-    fluid.uaMatch = function (ua) {
-        ua = ua.toLowerCase();
+    /** Grade definitions for standard transformation function hierarchy **/
+    
+    fluid.defaults("fluid.transformFunction", {
+        gradeNames: "fluid.function"
+    });
+    
+    // uses standard layout and workflow involving inputPath
+    fluid.defaults("fluid.standardInputTransformFunction", {
+        gradeNames: "fluid.transformFunction"  
+    });
+    
+    fluid.defaults("fluid.standardOutputTransformFunction", {
+        gradeNames: "fluid.transformFunction"  
+    });
 
-        var match = /(chrome)[ \/]([\w.]+)/.exec( ua ) ||
-            /(webkit)[ \/]([\w.]+)/.exec( ua ) ||
-            /(opera)(?:.*version|)[ \/]([\w.]+)/.exec( ua ) ||
-            /(msie) ([\w.]+)/.exec( ua ) ||
-        ua.indexOf("compatible") < 0 && /(mozilla)(?:.*? rv:([\w.]+)|)/.exec( ua ) || [];
+    fluid.defaults("fluid.multiInputTransformFunction", {
+        gradeNames: "fluid.transformFunction"
+    });
+    
+    // uses the standard layout and workflow involving inputPath and outputPath
+    fluid.defaults("fluid.standardTransformFunction", {
+        gradeNames: ["fluid.standardInputTransformFunction", "fluid.standardOutputTransformFunction"]  
+    });
+    
+    fluid.defaults("fluid.lens", {
+        gradeNames: "fluid.transformFunction",
+        invertConfiguration: null
+        // this function method returns "inverted configuration" rather than actually performing inversion
+        // TODO: harmonise with strategy used in VideoPlayer_framework.js
+    });
+    
+    /***********************************
+     * Base utilities for transformers *
+     ***********************************/
 
+    // unsupported, NON-API function
+    fluid.model.transform.pathToRule = function (inputPath) {
         return {
-            browser: match[ 1 ] || "",
-            version: match[ 2 ] || "0"
+            transform: {
+                type: "fluid.transforms.value",
+                inputPath: inputPath
+            }
         };
     };
     
-    var matched, browser;
-
-    // Don't clobber any existing jQuery.browser in case it's different
-    if (!$.browser) {
-        if (!!navigator.userAgent.match(/Trident\/7\./)) {
-            browser = { // From http://stackoverflow.com/questions/18684099/jquery-fail-to-detect-ie-11
-                msie: true,
-                version: 11
+    // unsupported, NON-API function    
+    fluid.model.transform.literalValueToRule = function (value) {
+        return {
+            transform: {
+                type: "fluid.transforms.literalValue",
+                value: value
             }
-        } else {
-            matched = fluid.uaMatch(navigator.userAgent);
-            browser = {};
-          
-            if (matched.browser) {
-                browser[matched.browser] = true;
-                browser.version = matched.version;
-            }
-            // Chrome is Webkit, but Webkit is also Safari.
-            if (browser.chrome) {
-                browser.webkit = true;
-            } else if (browser.webkit) {
-                browser.safari = true;
-            }
-        }
-        $.browser = browser;
-    }
-
-    // Private constants.
-    var NAMESPACE_KEY = "fluid-scoped-data";
-
-    /**
-     * Gets stored state from the jQuery instance's data map.
-     * This function is unsupported: It is not really intended for use by implementors.
-     */
-    fluid.getScopedData = function(target, key) {
-        var data = $(target).data(NAMESPACE_KEY);
-        return data ? data[key] : undefined;
+        };
+    };
+        
+    /** Accepts two fully escaped paths, either of which may be empty or null **/
+    fluid.model.composePaths = function (prefix, suffix) {
+        prefix = prefix === 0 ? "0" : prefix || "";
+        suffix = suffix === 0 ? "0" : suffix || "";
+        return !prefix ? suffix : (!suffix ? prefix : prefix + "." + suffix);
     };
 
-    /**
-     * Stores state in the jQuery instance's data map. Unlike jQuery's version,
-     * accepts multiple-element jQueries.
-     * This function is unsupported: It is not really intended for use by implementors.
-     */
-    fluid.setScopedData = function(target, key, value) {
-        $(target).each(function() {
-            var data = $.data(this, NAMESPACE_KEY) || {};
-            data[key] = value;
+    fluid.model.transform.accumulateInputPath = function (inputPath, transform, paths) {
+        if (inputPath !== undefined) {
+            paths.push(fluid.model.composePaths(transform.inputPrefix, inputPath));
+        }
+    };
 
-            $.data(this, NAMESPACE_KEY, data);
+    fluid.model.transform.accumulateStandardInputPath = function (input, transformSpec, transform, paths) {
+        fluid.model.transform.getValue(undefined, transformSpec[input], transform);    
+        fluid.model.transform.accumulateInputPath(transformSpec[input + "Path"], transform, paths);
+    };
+
+    fluid.model.transform.accumulateMultiInputPaths = function (inputVariables, transformSpec, transform, paths) {
+        fluid.each(inputVariables, function (v, k) {
+            fluid.model.transform.accumulateStandardInputPath(k, transformSpec, transform, paths);
         });
     };
 
-    /** Global focus manager - makes use of "focusin" event supported in jquery 1.4.2 or later.
+    fluid.model.transform.getValue = function (inputPath, value, transform) {
+        var togo;
+        if (inputPath !== undefined) { // NB: We may one day want to reverse the crazy jQuery-like convention that "no path means root path"
+            togo = fluid.get(transform.source, fluid.model.composePaths(transform.inputPrefix, inputPath), transform.resolverGetConfig);
+        }
+        if (togo === undefined) {
+            togo = fluid.isPrimitive(value) ? value : transform.expand(value);
+        }
+        return togo;
+    };
+    
+    // distinguished value which indicates that a transformation rule supplied a 
+    // non-default output path, and so the user should be prevented from making use of it
+    // in a compound transform definition
+    fluid.model.transform.NONDEFAULT_OUTPUT_PATH_RETURN = {};
+    
+    fluid.model.transform.setValue = function (userOutputPath, value, transform, merge) {
+        // avoid crosslinking to input object - this might be controlled by a "nocopy" option in future
+        var toset = fluid.copy(value); 
+        var outputPath = fluid.model.composePaths(transform.outputPrefix, userOutputPath);
+        // TODO: custom resolver config here to create non-hash output model structure
+        if (toset !== undefined) {
+            transform.applier.requestChange(outputPath, toset, merge ? "MERGE" : undefined);
+        }
+        return userOutputPath ? fluid.model.transform.NONDEFAULT_OUTPUT_PATH_RETURN : toset;
+    };
+    
+    /* Resolves the <key> given as parameter by looking up the path <key>Path in the object
+     * to be transformed. If not present, it resolves the <key> by using the literal value if primitive,
+     * or expanding otherwise. <def> defines the default value if unableto resolve the key. If no
+     * default value is given undefined is returned
      */
-
-    var lastFocusedElement = null;
-    
-    $(document).bind("focusin", function (event){
-        lastFocusedElement = event.target;
-    });
-    
-    fluid.getLastFocusedElement = function () {
-        return lastFocusedElement;
+    fluid.model.transform.resolveParam = function (transformSpec, transform, key, def) {
+        var val = fluid.model.transform.getValue(transformSpec[key + "Path"], transformSpec[key], transform);
+        return (val !== undefined) ? val : def;
     };
 
-
-    var ENABLEMENT_KEY = "enablement";
-
-    /** Queries or sets the enabled status of a control. An activatable node
-     * may be "disabled" in which case its keyboard bindings will be inoperable
-     * (but still stored) until it is reenabled again.
-     * This function is unsupported: It is not really intended for use by implementors.
-     */
-     
-    fluid.enabled = function(target, state) {
-        target = $(target);
-        if (state === undefined) {
-            return fluid.getScopedData(target, ENABLEMENT_KEY) !== false;
+    // TODO: Incomplete implementation which only checks expected paths
+    fluid.deepEquals = function (expected, actual, stats) {
+        if (fluid.isPrimitive(expected)) {
+            if (expected === actual) {
+                ++stats.matchCount;
+            } else {
+                ++stats.mismatchCount;
+                stats.messages.push("Value mismatch at path " + stats.path + ": expected " + expected + " actual " + actual);
+            }
         }
         else {
-            $("*", target).add(target).each(function() {
-                if (fluid.getScopedData(this, ENABLEMENT_KEY) !== undefined) {
-                    fluid.setScopedData(this, ENABLEMENT_KEY, state);
-                }
-                else if (/select|textarea|input/i.test(this.nodeName)) {
-                    $(this).prop("disabled", !state);
-                }
-            });
-            fluid.setScopedData(target, ENABLEMENT_KEY, state);
+            if (typeof(expected) !== typeof(actual)) {
+                ++stats.mismatchCount;
+                stats.messages.push("Type mismatch at path " + stats.path + ": expected " + typeof(expected)  + " actual " + typeof(actual)); 
+            } else {
+                fluid.each(expected, function (value, key) {
+                    stats.pathOps.push(key);
+                    fluid.deepEquals(expected[key], actual[key], stats);
+                    stats.pathOps.pop(key);
+                });
+            }
         }
     };
     
-    fluid.initEnablement = function(target) {
-        fluid.setScopedData(target, ENABLEMENT_KEY, true);
+    fluid.model.transform.matchValue = function (expected, actual) {
+        if (fluid.isPrimitive(expected)) {
+            return expected === actual ? 1 : 0;
+        } else {
+            var stats = {
+                matchCount: 0,
+                mismatchCount: 0,
+                messages: []
+            };
+            fluid.model.makePathStack(stats, "path");
+            fluid.deepEquals(expected, actual, stats);
+            return stats.matchCount;
+        }
     };
     
-    // This utility is required through the use of newer versions of jQuery which will obscure the original
-    // event responsible for interaction with a target. This is currently use in Tooltip.js and FluidView.js
-    // "dead man's blur" but would be of general utility
-    
-    fluid.resolveEventTarget = function (event) {
-        while (event.originalEvent && event.originalEvent.target) {
-            event = event.originalEvent;
-        }
-        return event.target;
+    // unsupported, NON-API function    
+    fluid.model.transform.compareMatches = function (speca, specb) {
+        return specb.matchCount - speca.matchCount;
     };
     
-    // These function (fluid.focus() and fluid.blur()) serve several functions. They should be used by
-    // all implementation both in test cases and component implementation which require to trigger a focus
-    // event. Firstly, they restore the old behaviour in jQuery versions prior to 1.10 in which a focus 
-    // trigger synchronously relays to a focus handler. In newer jQueries this defers to the real browser
-    // relay with numerous platform and timing-dependent effects. 
-    // Secondly, they are necessary since simulation of focus events by jQuery under IE
-    // is not sufficiently good to intercept the "focusin" binding. Any code which triggers
-    // focus or blur synthetically throughout the framework and client code must use this function,
-    // especially if correct cross-platform interaction is required with the "deadMansBlur" function.
-    
-    function applyOp(node, func) {
-        node = $(node);
-        node.trigger("fluid-"+func);
-        node.triggerHandler(func);
-        node[func]();
-        return node;
-    }
-    
-    $.each(["focus", "blur"], function(i, name) {
-        fluid[name] = function(elem) {
-            return applyOp(elem, name);
+    fluid.firstDefined = function (a, b) {
+        return a === undefined ? b : a;
+    };
+
+        
+    // TODO: prefixApplier is a transform which is currently unused and untested
+    fluid.model.transform.prefixApplier = function (transformSpec, transform) {
+        if (transformSpec.inputPrefix) {
+            transform.inputPrefixOp.push(transformSpec.inputPrefix);
         }
+        if (transformSpec.outputPrefix) {
+            transform.outputPrefixOp.push(transformSpec.outputPrefix);
+        }
+        transform.expand(transformSpec.value);
+        if (transformSpec.inputPrefix) {
+            transform.inputPrefixOp.pop();
+        }
+        if (transformSpec.outputPrefix) {
+            transform.outputPrefixOp.pop();
+        }
+    };
+    
+    fluid.defaults("fluid.model.transform.prefixApplier", {
+        gradeNames: ["fluid.transformFunction"]
     });
+    
+    // unsupported, NON-API function
+    fluid.model.makePathStack = function (transform, prefixName) {
+        var stack = transform[prefixName + "Stack"] = [];
+        transform[prefixName] = "";
+        return {
+            push: function (prefix) {
+                var newPath = fluid.model.composePaths(transform[prefixName], prefix);
+                stack.push(transform[prefixName]);
+                transform[prefixName] = newPath;
+            },
+            pop: function () {
+                transform[prefixName] = stack.pop();
+            }
+        };
+    };
+    
+    // unsupported, NON-API function
+    fluid.model.transform.doTransform = function (transformSpec, transform, transformOpts) {
+        var expdef = transformOpts.defaults;
+        var transformFn = fluid.getGlobalValue(transformOpts.typeName);
+        if (typeof(transformFn) !== "function") {
+            fluid.fail("Transformation record specifies transformation function with name " + 
+                transformSpec.type + " which is not a function - ", transformFn);
+        }
+        if (!fluid.hasGrade(expdef, "fluid.transformFunction")) {
+            // If no suitable grade is set up, assume that it is intended to be used as a standardTransformFunction
+            expdef = fluid.defaults("fluid.standardTransformFunction");
+        }
+        var transformArgs = [transformSpec, transform];
+        if (fluid.hasGrade(expdef, "fluid.standardInputTransformFunction")) {
+            if (transformSpec.input !== undefined) { 
+                transformSpec.value = transformSpec.input; // alias input and value
+            }
+            var expanded = fluid.model.transform.getValue(transformSpec.inputPath, transformSpec.value, transform);
+            transformArgs.unshift(expanded);
+            //if the function has no input, the result is considered undefined, and this is returned
+            if (expanded === undefined) {
+                return undefined;
+            }
+        } else if (fluid.hasGrade(expdef, "fluid.multiInputTransformFunction")) {
+            var inputs = {};
+            fluid.each(expdef.inputVariables, function (v, k) {
+                var input = fluid.model.transform.getValue(transformSpec[k + "Path"], transformSpec[k], transform);
+                inputs[k] = (input === undefined && v !== null) ? v : input; // if no match, assign default if one exists (v != null)
+            });
+            transformArgs.unshift(inputs);
+        }
+        var transformed = transformFn.apply(null, transformArgs);
+        if (fluid.hasGrade(expdef, "fluid.standardOutputTransformFunction")) {
+            // "doOutput" flag is currently set nowhere, but could be used in future
+            var outputPath = transformSpec.outputPath !== undefined ? transformSpec.outputPath : (transformOpts.doOutput ? "" : undefined);
+            if (outputPath !== undefined && transformed !== undefined) {
+                //If outputPath is given in the expander we want to: 
+                // (1) output to the document 
+                // (2) return undefined, to ensure that expanders higher up in the hierarchy doesn't attempt to output it again
+                fluid.model.transform.setValue(transformSpec.outputPath, transformed, transform, transformSpec.merge);
+                transformed = undefined;
+            }
+        }
+        return transformed;
+    };
+    
+    // unsupported, NON-API function    
+    fluid.model.transform.expandWildcards = function (transform, source) {
+        fluid.each(source, function (value, key) {
+            var q = transform.queuedTransforms;
+            transform.pathOp.push(fluid.pathUtil.escapeSegment(key.toString()));
+            for (var i = 0; i < q.length; ++i) {
+                if (fluid.pathUtil.matchPath(q[i].matchPath, transform.path, true)) {
+                    var esCopy = fluid.copy(q[i].transformSpec);
+                    if (esCopy.inputPath === undefined || fluid.model.transform.hasWildcard(esCopy.inputPath)) {
+                        esCopy.inputPath = "";
+                    }
+                    // TODO: allow some kind of interpolation for output path
+                    // TODO: Also, we now require outputPath to be specified in these cases for output to be produced as well.. Is that something we want to continue with?
+                    transform.inputPrefixOp.push(transform.path);
+                    transform.outputPrefixOp.push(transform.path);
+                    var transformOpts = fluid.model.transform.lookupType(esCopy.type);
+                    var result = fluid.model.transform.doTransform(esCopy, transform, transformOpts);
+                    if (result !== undefined) {
+                        fluid.model.transform.setValue(null, result, transform);
+                    }                    
+                    transform.outputPrefixOp.pop();
+                    transform.inputPrefixOp.pop();
+                }
+            }
+            if (!fluid.isPrimitive(value)) {
+                fluid.model.transform.expandWildcards(transform, value);
+            }
+            transform.pathOp.pop();
+        });
+    };
+    
+    // unsupported, NON-API function   
+    fluid.model.transform.hasWildcard = function (path) {
+        return typeof(path) === "string" && path.indexOf("*") !== -1;
+    };
+    
+    // unsupported, NON-API function
+    fluid.model.transform.maybePushWildcard = function (transformSpec, transform) {
+        var hw = fluid.model.transform.hasWildcard;
+        var matchPath;
+        if (hw(transformSpec.inputPath)) {
+            matchPath = fluid.model.composePaths(transform.inputPrefix, transformSpec.inputPath);
+        }
+        else if (hw(transform.outputPrefix) || hw(transformSpec.outputPath)) {
+            matchPath = fluid.model.composePaths(transform.outputPrefix, transformSpec.outputPath);
+        }
+                         
+        if (matchPath) {
+            transform.queuedTransforms.push({transformSpec: transformSpec, outputPrefix: transform.outputPrefix, inputPrefix: transform.inputPrefix, matchPath: matchPath});
+            return true;
+        }
+        return false;
+    };
+    
+    fluid.model.sortByKeyLength = function (inObject) {
+        var keys = fluid.keys(inObject);
+        return keys.sort(fluid.compareStringLength(true));
+    };
+    
+    // Three handler functions operating the (currently) three different processing modes
+    // unsupported, NON-API function
+    fluid.model.transform.handleTransformStrategy = function (transformSpec, transform, transformOpts) {
+        if (fluid.model.transform.maybePushWildcard(transformSpec, transform)) {
+            return;
+        }
+        else {
+            return fluid.model.transform.doTransform(transformSpec, transform, transformOpts);
+        }
+    };
+    // unsupported, NON-API function
+    fluid.model.transform.handleInvertStrategy = function (transformSpec, transform, transformOpts) {
+        var invertor = transformOpts.defaults.invertConfiguration;
+        if (invertor) {
+            var inverted = fluid.invokeGlobalFunction(invertor, [transformSpec, transform]);
+            transform.inverted.push(inverted);
+        }
+    };
+    
+    // unsupported, NON-API function
+    fluid.model.transform.handleCollectStrategy = function (transformSpec, transform, transformOpts) {
+        var defaults = transformOpts.defaults;
+        var standardInput = fluid.hasGrade(defaults, "fluid.standardInputTransformFunction");
+        var multiInput = fluid.hasGrade(defaults, "fluid.multiInputTransformFunction");
+
+        if (standardInput) {
+            fluid.model.transform.accumulateStandardInputPath("input", transformSpec, transform, transform.inputPaths);
+        } else if (multiInput) {
+            fluid.model.transform.accumulateMultiInputPaths(defaults.inputVariables, transformSpec, transform, transform.inputPaths);
+        } else {
+            var collector = defaults.collectInputPaths;
+            if (collector) {
+                var collected = fluid.makeArray(fluid.invokeGlobalFunction(collector, [transformSpec, transform]));
+                transform.inputPaths = transform.inputPaths.concat(collected);
+            }
+        }
+    };
+    
+    fluid.model.transform.lookupType = function (typeName) {
+        if (!typeName) {
+            fluid.fail("Transformation record is missing a type name: ", transformSpec);
+        }
+        if (typeName.indexOf(".") === -1) {
+            typeName = "fluid.transforms." + typeName;
+        }
+        var defaults = fluid.defaults(typeName);
+        return { defaults: defaults, typeName: typeName};
+    };
+    
+    // unsupported, NON-API function
+    fluid.model.transform.processRule = function (rule, transform) {
+        if (typeof(rule) === "string") {
+            rule = fluid.model.transform.pathToRule(rule);
+        }
+        // special dispensation to allow "literalValue" at top level
+        else if (rule.literalValue && transform.outputPrefix !== "") {
+            rule = fluid.model.transform.literalValueToRule(rule.literalValue);
+        }
+        var togo;
+        if (rule.transform) {
+            var transformSpec, transformOpts;
+
+            if (fluid.isArrayable(rule.transform)) {
+                // if the transform holds an array, each transformer within that is responsible for its own output
+                var transforms = rule.transform;
+                togo = undefined;
+                for (var i = 0; i < transforms.length; ++i) {
+                    transformSpec = transforms[i];
+                    transformOpts = fluid.model.transform.lookupType(transformSpec.type);
+                    transform.transformHandler(transformSpec, transform, transformOpts);
+                }
+            } else {
+                // else we just have a normal single transform which will return 'undefined' as a flag to defeat cascading output
+                transformSpec = rule.transform;
+                transformOpts = fluid.model.transform.lookupType(transformSpec.type);
+                togo = transform.transformHandler(transformSpec, transform, transformOpts);
+            }
+        }
+        // if rule is an array, save path for later use in schema strategy on final applier (so output will be interpreted as array)
+        if (fluid.isArrayable(rule)) {
+            transform.collectedFlatSchemaOpts = transform.collectedFlatSchemaOpts || {};
+            transform.collectedFlatSchemaOpts[transform.outputPrefix] = "array";
+        }
+        fluid.each(rule, function (value, key) {
+            if (key !== "transform") {
+                transform.outputPrefixOp.push(key);
+                var togo = transform.expand(value, transform);
+                // Value expanders and arrays as rules implicitly outputs, unless they have nothing (undefined) to output
+                if (togo !== undefined) {
+                    fluid.model.transform.setValue(null, togo, transform);
+                    // ensure that expanders further up does not try to output this value as well.
+                    togo = undefined;
+                }
+                transform.outputPrefixOp.pop();
+            }
+        });
+        return togo;
+    };
+    
+    // unsupported, NON-API function
+    // 3rd arg is disused by the framework and always defaults to fluid.model.transform.processRule
+    fluid.model.transform.makeStrategy = function (transform, handleFn, transformFn) {
+        transformFn = transformFn || fluid.model.transform.processRule;
+        transform.expand = function (rules) {
+            return transformFn(rules, transform);
+        };
+        transform.outputPrefixOp = fluid.model.makePathStack(transform, "outputPrefix");
+        transform.inputPrefixOp = fluid.model.makePathStack(transform, "inputPrefix");
+        transform.transformHandler = handleFn;
+    };
+    
+    fluid.model.transform.invertConfiguration = function (rules) {
+        var transform = {
+            inverted: []
+        };
+        fluid.model.transform.makeStrategy(transform, fluid.model.transform.handleInvertStrategy);
+        transform.expand(rules);
+        return {
+            transform: transform.inverted
+        };
+    };
+    
+    fluid.model.transform.collectInputPaths = function (rules) {
+        var transform = {
+            inputPaths: []
+        };
+        fluid.model.transform.makeStrategy(transform, fluid.model.transform.handleCollectStrategy);
+        transform.expand(rules);
+        return transform.inputPaths;        
+    };
+    
+    // unsupported, NON-API function
+    fluid.model.transform.flatSchemaStrategy = function (flatSchema, getConfig) {
+        var keys = fluid.model.sortByKeyLength(flatSchema);
+        return function (root, segment, index, segs) {
+            var path = getConfig.parser.compose.apply(null, segs.slice(0, index));
+          // TODO: clearly this implementation could be much more efficient
+            for (var i = 0; i < keys.length; ++i) {
+                var key = keys[i];
+                if (fluid.pathUtil.matchPath(key, path, true) !== null) {
+                    return flatSchema[key];
+                }
+            }
+        };
+    };
+    
+    // unsupported, NON-API function
+    fluid.model.transform.defaultSchemaValue = function (schemaValue) {
+        var type = fluid.isPrimitive(schemaValue) ? schemaValue : schemaValue.type;
+        return type === "array" ? [] : {};
+    };
+    
+    // unsupported, NON-API function
+    fluid.model.transform.isomorphicSchemaStrategy = function (source, getConfig) { 
+        return function (root, segment, index, segs) {
+            var existing = fluid.get(source, segs.slice(0, index), getConfig);
+            return fluid.isArrayable(existing) ? "array" : "object";
+        };
+    };
+    
+    // unsupported, NON-API function
+    fluid.model.transform.decodeStrategy = function (source, options, getConfig) {
+        if (options.isomorphic) {
+            return fluid.model.transform.isomorphicSchemaStrategy(source, getConfig);
+        }
+        else if (options.flatSchema) {
+            return fluid.model.transform.flatSchemaStrategy(options.flatSchema, getConfig);
+        }
+    };
+    
+    // unsupported, NON-API function
+    fluid.model.transform.schemaToCreatorStrategy = function (strategy) {
+        return function (root, segment, index, segs) {
+            if (root[segment] === undefined) {
+                var schemaValue = strategy(root, segment, index, segs); 
+                root[segment] = fluid.model.transform.defaultSchemaValue(schemaValue);
+                return root[segment];
+            }
+        };  
+    };
+    
+    /** Transforms a model by a sequence of rules. Parameters as for fluid.model.transform,
+     * only with an array accepted for "rules"
+     */
+    fluid.model.transform.sequence = function (source, rules, options) {
+        for (var i = 0; i < rules.length; ++i) {
+            source = fluid.model.transform(source, rules[i], options);
+        }
+        return source;
+    };
+    
+    fluid.model.compareByPathLength = function (changea, changeb) {
+        var pdiff = changea.path.length - changeb.path.length; 
+        return pdiff === 0 ? changea.sequence - changeb.sequence : pdiff;
+    };
+    
+   /** Fires an accumulated set of change requests in increasing order of target pathlength
+     */
+    fluid.model.fireSortedChanges = function (changes, applier) {
+        changes.sort(fluid.model.compareByPathLength);
+        fluid.requestChanges(applier, changes);  
+    };
+    
+    /**
+     * Transforms a model based on a specified expansion rules objects.
+     * Rules objects take the form of:
+     *   {
+     *       "target.path": "value.el.path" || {
+     *          transform: {
+     *              type: "transform.function.path",
+     *               ...
+     *           }
+     *       }
+     *   }
+     *
+     * @param {Object} source the model to transform
+     * @param {Object} rules a rules object containing instructions on how to transform the model
+     * @param {Object} options a set of rules governing the transformations. At present this may contain
+     * the values <code>isomorphic: true</code> indicating that the output model is to be governed by the
+     * same schema found in the input model, or <code>flatSchema</code> holding a flat schema object which 
+     * consists of a hash of EL path specifications with wildcards, to the values "array"/"object" defining
+     * the schema to be used to construct missing trunk values.
+     */
+    fluid.model.transformWithRules = function (source, rules, options) {
+        options = options || {};
+        
+        var getConfig = fluid.model.escapedGetConfig;
+        
+        var schemaStrategy = fluid.model.transform.decodeStrategy(source, options, getConfig);
+
+        var transform = {
+            source: source,
+            target: schemaStrategy ? fluid.model.transform.defaultSchemaValue(schemaStrategy(null, "", 0, [""])) : {},
+            resolverGetConfig: getConfig,
+            collectedFlatSchemaOpts: undefined, //to hold options for flat schema collected during transforms
+            queuedChanges: [],
+            queuedTransforms: [] // TODO: This is used only by wildcard applier - explain its operation
+        };
+        fluid.model.transform.makeStrategy(transform, fluid.model.transform.handleTransformStrategy);
+        transform.applier = {
+            fireChangeRequest: function (changeRequest) {
+                changeRequest.sequence = transform.queuedChanges.length;
+                transform.queuedChanges.push(changeRequest);
+            }
+        };
+        fluid.bindRequestChange(transform.applier);
+        
+        transform.expand(rules);
+
+        var setConfig = fluid.copy(fluid.model.escapedSetConfig);
+        // Modify schemaStrategy if we collected flat schema options for the setConfig of finalApplier
+        if (transform.collectedFlatSchemaOpts !== undefined) {
+            $.extend(transform.collectedFlatSchemaOpts, options.flatSchema);
+            schemaStrategy = fluid.model.transform.flatSchemaStrategy(transform.collectedFlatSchemaOpts, getConfig);
+        }
+        setConfig.strategies = [fluid.model.defaultFetchStrategy, schemaStrategy ? fluid.model.transform.schemaToCreatorStrategy(schemaStrategy)
+                : fluid.model.defaultCreatorStrategy];
+        transform.finalApplier = options.finalApplier || fluid.makeChangeApplier(transform.target, {resolverSetConfig: setConfig});
+        
+        if (transform.queuedTransforms.length > 0) {
+            transform.typeStack = [];
+            transform.pathOp = fluid.model.makePathStack(transform, "path");
+            fluid.model.transform.expandWildcards(transform, source);
+        }
+        fluid.model.fireSortedChanges(transform.queuedChanges, transform.finalApplier);
+        return transform.target;    
+    };
+    
+    $.extend(fluid.model.transformWithRules, fluid.model.transform);
+    fluid.model.transform = fluid.model.transformWithRules;
+
+    /** Utility function to produce a standard options transformation record for a single set of rules **/    
+    fluid.transformOne = function (rules) {
+        return {
+            transformOptions: {
+                transformer: "fluid.model.transformWithRules",
+                config: rules
+            }
+        };
+    };
+    
+    /** Utility function to produce a standard options transformation record for multiple rules to be applied in sequence **/    
+    fluid.transformMany = function (rules) {
+        return {
+            transformOptions: {
+                transformer: "fluid.model.transform.sequence",
+                config: rules
+            }
+        };
+    };
     
 })(jQuery, fluid_1_5);
 ;/*
-Copyright 2008-2010 University of Cambridge
-Copyright 2008-2009 University of Toronto
+Copyright 2010 University of Toronto
+Copyright 2010-2011 OCAD University
+Copyright 2013 Raising the Floor - International
 
 Licensed under the Educational Community License (ECL), Version 2.0 or the New
 BSD license. You may not use this file except in compliance with one these
@@ -15311,111 +16308,569 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
 */
 
 // Declare dependencies
-/*global fluid_1_5:true, jQuery */
+/*global fluid:true, fluid_1_5:true, jQuery*/
 
 // JSLint options 
-/*jslint white: true, funcinvoke: true, undef: true, newcap: true, nomen: true, regexp: true, bitwise: true, browser: true, forin: true, maxerr: 100, indent: 4 */
+/*jslint white: true, elsecatch: true, jslintok: true, funcinvoke: true, undef: true, newcap: true, nomen: true, regexp: true, bitwise: true, browser: true, forin: true, maxerr: 100, indent: 4 */
 
 var fluid_1_5 = fluid_1_5 || {};
+var fluid = fluid || fluid_1_5;
 
 (function ($, fluid) {
+    "use strict";
+
+    fluid.registerNamespace("fluid.model.transform");
+    fluid.registerNamespace("fluid.transforms");
+
+    /**********************************
+     * Standard transformer functions *
+     **********************************/
+        
+    fluid.defaults("fluid.transforms.value", { 
+        gradeNames: "fluid.standardTransformFunction",
+        invertConfiguration: "fluid.transforms.value.invert"
+    });
+
+    fluid.transforms.value = fluid.identity;
     
-    fluid.dom = fluid.dom || {};
-    
-    // Node walker function for iterateDom.
-    var getNextNode = function (iterator) {
-        if (iterator.node.firstChild) {
-            iterator.node = iterator.node.firstChild;
-            iterator.depth += 1;
-            return iterator;
-        }
-        while (iterator.node) {
-            if (iterator.node.nextSibling) {
-                iterator.node = iterator.node.nextSibling;
-                return iterator;
-            }
-            iterator.node = iterator.node.parentNode;
-            iterator.depth -= 1;
-        }
-        return iterator;
+    fluid.transforms.value.invert = function (transformSpec, transform) {
+        var togo = fluid.copy(transformSpec);
+        // TODO: this will not behave correctly in the face of compound "value" which contains
+        // further transforms
+        togo.inputPath = fluid.model.composePaths(transform.outputPrefix, transformSpec.outputPath);
+        togo.outputPath = fluid.model.composePaths(transform.inputPrefix, transformSpec.inputPath);
+        return togo;
     };
+
+
+    fluid.defaults("fluid.transforms.literalValue", { 
+        gradeNames: "fluid.standardOutputTransformFunction"
+    });
+
+    fluid.transforms.literalValue = function (transformSpec) {
+        return transformSpec.value;  
+    };
+    
+
+    fluid.defaults("fluid.transforms.arrayValue", { 
+        gradeNames: "fluid.standardTransformFunction"
+    });
+    
+    fluid.transforms.arrayValue = fluid.makeArray;
+
+
+    fluid.defaults("fluid.transforms.count", { 
+        gradeNames: "fluid.standardTransformFunction"
+    });
+    
+    fluid.transforms.count = function (value) {
+        return fluid.makeArray(value).length;
+    };
+    
+    
+    fluid.defaults("fluid.transforms.round", { 
+        gradeNames: "fluid.standardTransformFunction"
+    });
+    
+    fluid.transforms.round = function (value) {
+        return Math.round(value);
+    };
+    
+
+    fluid.defaults("fluid.transforms.delete", { 
+        gradeNames: "fluid.transformFunction"
+    });
+
+    fluid.transforms["delete"] = function (transformSpec, transform) {
+        var outputPath = fluid.model.composePaths(transform.outputPrefix, transformSpec.outputPath);
+        transform.applier.requestChange(outputPath, null, "DELETE");
+    };
+
+    
+    fluid.defaults("fluid.transforms.firstValue", { 
+        gradeNames: "fluid.transformFunction"
+    });
+    
+    fluid.transforms.firstValue = function (transformSpec, transform) {
+        if (!transformSpec.values || !transformSpec.values.length) {
+            fluid.fail("firstValue transformer requires an array of values at path named \"values\", supplied", transformSpec);
+        }
+        for (var i = 0; i < transformSpec.values.length; i++) {
+            var value = transformSpec.values[i];
+            // TODO: problem here - all of these transforms will have their side-effects (setValue) even if only one is chosen 
+            var expanded = transform.expand(value);
+            if (expanded !== undefined) {
+                return expanded;
+            }
+        }
+    };
+    
+    fluid.defaults("fluid.transforms.linearScale", {
+        gradeNames: [ "fluid.multiInputTransformFunction", "fluid.standardOutputTransformFunction", "fluid.lens" ],
+        invertConfiguration: "fluid.transforms.linearScale.invert",
+        inputVariables: {
+            value: null, 
+            factor: 1,
+            offset: 0
+        }
+    });
+
+    /* simple linear transformation */
+    fluid.transforms.linearScale = function (inputs) {        
+        if (typeof(inputs.value) !== "number" || typeof(inputs.factor) !== "number" || typeof(inputs.offset) !== "number") {
+            return undefined;
+        }
+        return inputs.value * inputs.factor + inputs.offset;
+    };
+
+    /* TODO: This inversion doesn't work if the value and factors are given as paths in the source model */
+    fluid.transforms.linearScale.invert = function  (transformSpec, transform) {
+        var togo = fluid.copy(transformSpec);
+        
+        if (togo.factor) {
+            togo.factor = (togo.factor === 0) ? 0 : 1 / togo.factor;
+        }
+        if (togo.offset) {
+            togo.offset = - togo.offset * (togo.factor !== undefined ? togo.factor : 1);
+        }
+        togo.valuePath = fluid.model.composePaths(transform.outputPrefix, transformSpec.outputPath);
+        togo.outputPath = fluid.model.composePaths(transform.inputPrefix, transformSpec.valuePath);
+        return togo;
+    };
+
+    fluid.defaults("fluid.transforms.binaryOp", { 
+        gradeNames: [ "fluid.multiInputTransformFunction", "fluid.standardOutputTransformFunction" ],
+        inputVariables: {
+            left: null,
+            right: null
+        }
+    });
+
+    fluid.transforms.binaryLookup = {
+        "===": function (a, b) { return a === b; },
+        "!==": function (a, b) { return a !== b; },
+        "<=": function (a, b) { return a <= b; },
+        "<": function (a, b) { return a < b; },
+        ">=": function (a, b) { return a >= b; },
+        ">": function (a, b) { return a > b; },
+        "+": function (a, b) { return a + b; },
+        "-": function (a, b) { return a - b; },
+        "*": function (a, b) { return a * b; },
+        "/": function (a, b) { return a / b; },
+        "%": function (a, b) { return a % b; },
+        "&&": function (a, b) { return a && b; },
+        "||": function (a, b) { return a || b; }
+    };
+
+    fluid.transforms.binaryOp = function (inputs, transformSpec, transform) {
+        var operator = fluid.model.transform.getValue(undefined, transformSpec.operator, transform);
+
+        var fun = fluid.transforms.binaryLookup[operator];
+        return (fun === undefined || inputs.left === undefined || inputs.right === undefined) ? undefined : fun(inputs.left, inputs.right);
+    };
+
+
+    fluid.defaults("fluid.transforms.condition", { 
+        gradeNames: [ "fluid.multiInputTransformFunction", "fluid.standardOutputTransformFunction" ],
+        inputVariables: {
+            "true": null,
+            "false": null,
+            "condition": null
+        }
+    });
+    
+    fluid.transforms.condition = function (inputs) {
+        if (inputs.condition === null) {
+            return undefined;
+        }
+
+        return inputs[inputs.condition];
+    };
+
+
+    fluid.defaults("fluid.transforms.valueMapper", { 
+        gradeNames: ["fluid.transformFunction", "fluid.lens"],
+        invertConfiguration: "fluid.transforms.valueMapper.invert",
+        collectInputPaths: "fluid.transforms.valueMapper.collect"
+    });
+
+    // unsupported, NON-API function    
+    fluid.model.transform.matchValueMapperFull = function (outerValue, transformSpec, transform) {
+        var o = transformSpec.options;
+        if (o.length === 0) {
+            fluid.fail("valueMapper supplied empty list of options: ", transformSpec);
+        }
+        if (o.length === 1) {
+            return 0;
+        }
+        var matchPower = []; 
+        for (var i = 0; i < o.length; ++i) {
+            var option = o[i];
+            var value = fluid.firstDefined(fluid.model.transform.getValue(option.inputPath, undefined, transform),
+                outerValue);
+            var matchCount = fluid.model.transform.matchValue(option.undefinedInputValue ? undefined : option.inputValue, value);
+            matchPower[i] = {index: i, matchCount: matchCount};
+        }
+        matchPower.sort(fluid.model.transform.compareMatches);
+        return matchPower[0].matchCount === matchPower[1].matchCount ? -1 : matchPower[0].index; 
+    };
+
+    fluid.transforms.valueMapper = function (transformSpec, transform) {
+        if (!transformSpec.options) {
+            fluid.fail("demultiplexValue requires a list or hash of options at path named \"options\", supplied ", transformSpec);
+        }
+        var value = fluid.model.transform.getValue(transformSpec.inputPath, undefined, transform);
+        var deref = fluid.isArrayable(transformSpec.options) ? // long form with list of records    
+            function (testVal) {
+                var index = fluid.model.transform.matchValueMapperFull(testVal, transformSpec, transform);
+                return index === -1 ? null : transformSpec.options[index];
+            } : 
+            function (testVal) {
+                return transformSpec.options[testVal];
+            };
+      
+        var indexed = deref(value);
+        if (!indexed) {
+            // if no branch matches, try again using this value - WARNING, this seriously
+            // threatens invertibility
+            indexed = deref(transformSpec.defaultInputValue);
+        }
+        if (!indexed) {
+            return;
+        }
+
+        var outputPath = indexed.outputPath === undefined ? transformSpec.defaultOutputPath : indexed.outputPath;
+        transform.outputPrefixOp.push(outputPath);
+        var outputValue;
+        if (fluid.isPrimitive(indexed)) {
+            outputValue = indexed;
+        } else {
+            // if undefinedOutputValue is set, outputValue should be undefined
+            if (indexed.undefinedOutputValue) {
+                outputValue = undefined;
+            } else {
+                // get value from outputValue or outputValuePath. If none is found set the outputValue to be that of defaultOutputValue (or undefined)
+                outputValue = fluid.model.transform.resolveParam(indexed, transform, "outputValue", undefined);
+                outputValue = (outputValue === undefined) ? transformSpec.defaultOutputValue : outputValue;
+            }
+        }
+        //output if outputPath or defaultOutputPath have been specified and the relevant child hasn't done the outputting
+        if (typeof(outputPath) === "string" && outputValue !== undefined) {
+            fluid.model.transform.setValue(undefined, outputValue, transform, transformSpec.merge);
+            outputValue = undefined;
+        }
+        transform.outputPrefixOp.pop();
+        return outputValue; 
+    };
+    
+    fluid.transforms.valueMapper.invert = function (transformSpec, transform) {
+        var options = [];
+        var togo = {
+            type: "fluid.transforms.valueMapper",
+            options: options
+        };
+        var isArray = fluid.isArrayable(transformSpec.options);
+        var findCustom = function (name) {
+            return fluid.find(transformSpec.options, function (option) {
+                if (option[name]) {
+                    return true;
+                }
+            });
+        };
+        var anyCustomOutput = findCustom("outputPath");
+        var anyCustomInput = findCustom("inputPath");
+        if (!anyCustomOutput) {
+            togo.inputPath = fluid.model.composePaths(transform.outputPrefix, transformSpec.outputPath);
+        }
+        if (!anyCustomInput) {
+            togo.defaultOutputPath = fluid.model.composePaths(transform.inputPrefix, transformSpec.inputPath);
+        }
+        var def = fluid.firstDefined;
+        fluid.each(transformSpec.options, function (option, key) {
+            var outOption = {};
+            var origInputValue = def(isArray ? option.inputValue : key, transformSpec.defaultInputValue);
+            if (origInputValue === undefined) {
+                fluid.fail("Failure inverting configuration for valueMapper - inputValue could not be resolved for record " + key + ": ", transformSpec);
+            }
+            outOption.outputValue = origInputValue;
+            var origOutputValue = def(option.outputValue, transformSpec.defaultOutputValue);
+            outOption.inputValue = fluid.model.transform.getValue(option.outputValuePath, origOutputValue, transform);
+            if (anyCustomOutput) {
+                outOption.inputPath = fluid.model.composePaths(transform.outputPrefix, def(option.outputPath, transformSpec.outputPath));
+            }
+            if (anyCustomInput) {
+                outOption.outputPath = fluid.model.composePaths(transform.inputPrefix, def(option.inputPath, transformSpec.inputPath));
+            }
+            if (option.outputValuePath) {
+                outOption.inputValuePath = option.outputValuePath;
+            }
+            options.push(outOption);
+        });
+        return togo;
+    };
+    
+    fluid.transforms.valueMapper.collect = function (transformSpec, transform) {
+        var togo = [];
+        fluid.model.transform.accumulateInputPath(transformSpec.inputPath, transform, togo);
+        fluid.each(transformSpec.options, function (option) {
+            fluid.model.transform.accumulateInputPath(option.inputPath, transform, togo);
+        });
+        return togo;
+    };
+
+    /* -------- arrayToSetMembership and setMembershipToArray ---------------- */
+    
+    fluid.defaults("fluid.transforms.arrayToSetMembership", { 
+        gradeNames: ["fluid.standardInputTransformFunction", "fluid.lens"],
+        invertConfiguration: "fluid.transforms.arrayToSetMembership.invert"
+    });
+
+ 
+    fluid.transforms.arrayToSetMembership = function (value, transformSpec, transform) {
+        var options = transformSpec.options;
+
+        if (!value || !fluid.isArrayable(value)) {
+            fluid.fail("arrayToSetMembership didn't find array at inputPath nor passed as value.", transformSpec);
+        }
+        if (!options) {
+            fluid.fail("arrayToSetMembership requires an options block set");
+        }
+
+        if (transformSpec.presentValue === undefined) {
+            transformSpec.presentValue = true;
+        }
+        
+        if (transformSpec.missingValue === undefined) {
+            transformSpec.missingValue = false;
+        }
+
+        fluid.each(options, function (outPath, key) {
+            // write to output path given in options the value <presentValue> or <missingValue> depending on whether key is found in user input
+            var outVal = ($.inArray(key, value) !== -1) ? transformSpec.presentValue : transformSpec.missingValue;
+            fluid.model.transform.setValue(outPath, outVal, transform);
+        });
+        // TODO: Why does this transform make no return?
+    };
+
+    fluid.transforms.arrayToSetMembership.invert = function (transformSpec, transform) {
+        var togo = fluid.copy(transformSpec);
+        delete togo.inputPath;
+        togo.type = "fluid.transforms.setMembershipToArray";
+        togo.outputPath = fluid.model.composePaths(transform.inputPrefix, transformSpec.inputPath);
+        var newOptions = {};
+        fluid.each(transformSpec.options, function (path, oldKey) {
+            var newKey = fluid.model.composePaths(transform.outputPrefix, path);
+            newOptions[newKey] = oldKey;
+        });
+        togo.options = newOptions;
+        return togo;
+    };
+
+    fluid.defaults("fluid.transforms.setMembershipToArray", { 
+        gradeNames: ["fluid.standardOutputTransformFunction"]
+    });
+
+    fluid.transforms.setMembershipToArray = function (transformSpec, transform) {
+        var options = transformSpec.options;
+
+        if (!options) {
+            fluid.fail("setMembershipToArray requires an options block specified");
+        }
+
+        if (transformSpec.presentValue === undefined) {
+            transformSpec.presentValue = true;
+        }
+        
+        if (transformSpec.missingValue === undefined) {
+            transformSpec.missingValue = false;
+        }
+
+        var outputArr = [];
+        fluid.each(options, function (arrVal, inPath) {
+            var val = fluid.model.transform.getValue(inPath, undefined, transform);
+            if (val === transformSpec.presentValue) {
+                outputArr.push(arrVal);
+            }
+        });
+        return outputArr;
+    };    
+
+    /* -------- objectToArray and arrayToObject -------------------- */
     
     /**
-     * Walks the DOM, applying the specified acceptor function to each element.
-     * There is a special case for the acceptor, allowing for quick deletion of elements and their children.
-     * Return "delete" from your acceptor function if you want to delete the element in question.
-     * Return "stop" to terminate iteration. 
-     
-     * Implementation note - this utility exists mainly for performance reasons. It was last tested
-     * carefully some time ago (around jQuery 1.2) but at that time was around 3-4x faster at raw DOM
-     * filtration tasks than the jQuery equivalents, which was an important source of performance loss in the
-     * Reorderer component. General clients of the framework should use this method with caution if at all, and
-     * the performance issues should be reassessed when we have time. 
-     * 
-     * @param {Element} node the node to start walking from
-     * @param {Function} acceptor the function to invoke with each DOM element
-     * @param {Boolean} allnodes Use <code>true</code> to call acceptor on all nodes, 
-     * rather than just element nodes (type 1)
+     * Transforms the given array to an object.
+     * Uses the transformSpec.options.key values from each object within the array as new keys.
+     *
+     * For example, with transformSpec.key = "name" and an input object like this:
+     *
+     * {
+     *   b: [
+     *     { name: b1, v: v1 },
+     *     { name: b2, v: v2 }
+     *   ]
+     * }
+     *
+     * The output will be:
+     * {
+     *   b: {
+     *     b1: {
+     *       v: v1
+     *     }
+     *   },
+     *   {
+     *     b2: {
+     *       v: v2
+     *     }
+     *   }
+     * }
      */
-    fluid.dom.iterateDom = function (node, acceptor, allNodes) {
-        var currentNode = {node: node, depth: 0};
-        var prevNode = node;
-        var condition;
-        while (currentNode.node !== null && currentNode.depth >= 0 && currentNode.depth < fluid.dom.iterateDom.DOM_BAIL_DEPTH) {
-            condition = null;
-            if (currentNode.node.nodeType === 1 || allNodes) {
-                condition = acceptor(currentNode.node, currentNode.depth);
+    fluid.model.transform.applyPaths = function (operation, pathOp, paths) {
+        for (var i = 0; i < paths.length; ++i) {
+            if (operation === "push") {
+                pathOp.push(paths[i]);
+            } else {
+                pathOp.pop();   
             }
-            if (condition) {
-                if (condition === "delete") {
-                    currentNode.node.parentNode.removeChild(currentNode.node);
-                    currentNode.node = prevNode;
-                }
-                else if (condition === "stop") {
-                    return currentNode.node;
-                }
-            }
-            prevNode = currentNode.node;
-            currentNode = getNextNode(currentNode);
         }
     };
     
-    // Work around IE circular DOM issue. This is the default max DOM depth on IE.
-    // http://msdn2.microsoft.com/en-us/library/ms761392(VS.85).aspx
-    fluid.dom.iterateDom.DOM_BAIL_DEPTH = 256;
+    fluid.model.transform.expandInnerValues = function (inputPath, outputPath, transform, innerValues) {
+        var inputPrefixOp = transform.inputPrefixOp;
+        var outputPrefixOp = transform.outputPrefixOp;
+        var apply = fluid.model.transform.applyPaths;
+        
+        apply("push", inputPrefixOp, inputPath);
+        apply("push", outputPrefixOp, outputPath);
+        var expanded = {};
+        fluid.each(innerValues, function (innerValue) {
+            var expandedInner = transform.expand(innerValue);
+            if (!fluid.isPrimitive(expandedInner)) {
+                $.extend(true, expanded, expandedInner);
+            } else {
+                expanded = expandedInner;
+            }
+        });
+        apply("pop", outputPrefixOp, outputPath);
+        apply("pop", inputPrefixOp, inputPath);
+        
+        return expanded;
+    };
+
+
+    fluid.defaults("fluid.transforms.arrayToObject", {
+        gradeNames: ["fluid.standardTransformFunction", "fluid.lens" ],
+        invertConfiguration: "fluid.transforms.arrayToObject.invert"
+    });
+
+    fluid.transforms.arrayToObject = function (arr, transformSpec, transform) {
+        if (transformSpec.key === undefined) {
+            fluid.fail("arrayToObject requires a 'key' option.", transformSpec);
+        }
+        if (!fluid.isArrayable(arr)) {
+            fluid.fail("arrayToObject didn't find array at inputPath.", transformSpec);
+        }
+        var newHash = {};
+        var pivot = transformSpec.key;
+
+        fluid.each(arr, function (v, k) {
+            // check that we have a pivot entry in the object and it's a valid type:            
+            var newKey = v[pivot];
+            var keyType = typeof(newKey);
+            if (keyType !== "string" && keyType !== "boolean" && keyType !== "number") {
+                fluid.fail("arrayToObject encountered untransformable array due to missing or invalid key", v);
+            }
+            // use the value of the key element as key and use the remaining content as value
+            var content = fluid.copy(v);
+            delete content[pivot];
+            // fix sub Arrays if needed:
+            if (transformSpec.innerValue) {
+                content = fluid.model.transform.expandInnerValues([transform.inputPrefix, transformSpec.inputPath, k.toString()], 
+                    [newKey], transform, transformSpec.innerValue);
+            }
+            newHash[newKey] = content;
+        });
+        return newHash;
+    };
+
+    fluid.transforms.arrayToObject.invert = function (transformSpec, transform) {
+        var togo = fluid.copy(transformSpec);
+        togo.type = "fluid.transforms.objectToArray";
+        togo.inputPath = fluid.model.composePaths(transform.outputPrefix, transformSpec.outputPath);
+        togo.outputPath = fluid.model.composePaths(transform.inputPrefix, transformSpec.inputPath);
+        // invert transforms from innerValue as well:
+        // TODO: The Model Transformations framework should be capable of this, but right now the
+        // issue is that we use a "private contract" to operate the "innerValue" slot. We need to
+        // spend time thinking of how this should be formalised
+        if (togo.innerValue) {
+            var innerValue = togo.innerValue;
+            for (var i = 0; i < innerValue.length; ++i) {
+                innerValue[i] = fluid.model.transform.invertConfiguration(innerValue[i]);
+            }            
+        }
+        return togo;
+    };
     
+
+    fluid.defaults("fluid.transforms.objectToArray", {
+        gradeNames: "fluid.standardTransformFunction"
+    });
+
     /**
-     * Checks if the specified container is actually the parent of containee.
-     * 
-     * @param {Element} container the potential parent
-     * @param {Element} containee the child in question
+     * Transforms an object into array of objects.
+     * This performs the inverse transform of fluid.transforms.arrayToObject.
      */
-    fluid.dom.isContainer = function (container, containee) {
-        for (; containee; containee = containee.parentNode) {
-            if (container === containee) {
-                return true;
-            }
+    fluid.transforms.objectToArray = function (hash, transformSpec, transform) {
+        if (transformSpec.key === undefined) {
+            fluid.fail("objectToArray requires a 'key' option.", transformSpec);
         }
-        return false;
+        
+        var newArray = [];
+        var pivot = transformSpec.key;
+
+        fluid.each(hash, function (v, k) {
+            var content = {};
+            content[pivot] = k;
+            if (transformSpec.innerValue) {
+                v = fluid.model.transform.expandInnerValues([transformSpec.inputPath, k], [transformSpec.outputPath, newArray.length.toString()], 
+                    transform, transformSpec.innerValue);
+            }
+            $.extend(true, content, v);
+            newArray.push(content);
+        });
+        return newArray;
     };
-       
-    /** Return the element text from the supplied DOM node as a single String.
-     * Implementation note - this is a special-purpose utility used in the framework in just one
-     * position in the Reorderer. It only performs a "shallow" traversal of the text and was intended
-     * as a quick and dirty means of extracting element labels where the user had not explicitly provided one.
-     * It should not be used by general users of the framework and its presence here needs to be 
-     * reassessed.
-     */
-    fluid.dom.getElementText = function (element) {
-        var nodes = element.childNodes;
-        var text = "";
-        for (var i = 0; i < nodes.length; ++i) {
-            var child = nodes[i];
-            if (child.nodeType === 3) {
-                text = text + child.nodeValue;
-            }
+    
+    fluid.defaults("fluid.transforms.limitRange", {
+        gradeNames: "fluid.standardTransformFunction"  
+    });
+    
+    fluid.transforms.limitRange = function (value, transformSpec, transform) {
+        var min = transformSpec.min;
+        if (min !== undefined) {
+            var excludeMin = transformSpec.excludeMin || 0;
+            min += excludeMin;
+            if (value < min) {
+                value = min;
+            }  
         }
-        return text; 
+        var max = transformSpec.max;
+        if (max !== undefined) {
+            var excludeMax = transformSpec.excludeMax || 0;
+            max -= excludeMax;
+            if (value > max) {
+                value = max;
+            }  
+        }
+        return value;
+    };
+    
+    fluid.defaults("fluid.transforms.free", {
+        gradeNames: "fluid.transformFunction"  
+    });
+    
+    fluid.transforms.free = function (transformSpec, transform) {
+        var args = fluid.makeArray(transformSpec.args);
+        return fluid.invokeGlobalFunction(transformSpec.func, args);
     };
     
 })(jQuery, fluid_1_5);
@@ -15479,7 +16934,7 @@ var fluid_1_5 = fluid_1_5 || {};
     // diagnostic - in fact, it is perfectly acceptable for a component's creator to return no value and
     // the failure is really in assumptions in fluid.initComponent. Revisit this issue for 1.5
     fluid.diagnoseFailedView = function (componentName, that, options, args) {
-        if (!that && fluid.hasGrade(options, "fluid.viewComponent")) {
+        if (!that && (fluid.hasGrade(options, "fluid.viewComponent") || fluid.hasGrade(options, "fluid.viewRelayComponent"))) {
             var container = fluid.wrap(args[1]);
             var message1 = "Instantiation of autoInit component with type " + componentName + " failed, since ";
             if (!container) {
@@ -16086,6 +17541,357 @@ var fluid_1_5 = fluid_1_5 || {};
         delay: 150,
         backDelay: 100
     });
+    
+})(jQuery, fluid_1_5);
+;/*
+Copyright 2010-2011 OCAD University
+Copyright 2010-2011 Lucendo Development Ltd.
+
+Licensed under the Educational Community License (ECL), Version 2.0 or the New
+BSD license. You may not use this file except in compliance with one these
+Licenses.
+
+You may obtain a copy of the ECL 2.0 License and BSD License at
+https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
+*/
+
+// Declare dependencies
+/*global fluid_1_5:true, jQuery*/
+
+// JSLint options 
+/*jslint white: true, funcinvoke: true, undef: true, newcap: true, nomen: true, regexp: true, bitwise: true, browser: true, forin: true, maxerr: 100, indent: 4 */
+
+var fluid_1_5 = fluid_1_5 || {};
+
+(function ($, fluid) {
+
+    /** Framework-global caching state for fluid.fetchResources **/
+
+    var resourceCache = {};
+  
+    var pendingClass = {};
+ 
+    /** Accepts a hash of structures with free keys, where each entry has either
+     * href/url or nodeId set - on completion, callback will be called with the populated
+     * structure with fetched resource text in the field "resourceText" for each
+     * entry. Each structure may contain "options" holding raw options to be forwarded
+     * to jQuery.ajax().
+     */
+  
+    fluid.fetchResources = function(resourceSpecs, callback, options) {
+        var that = fluid.initLittleComponent("fluid.fetchResources", options);
+        that.resourceSpecs = resourceSpecs;
+        that.callback = callback;
+        that.operate = function() {
+            fluid.fetchResources.fetchResourcesImpl(that);
+        };
+        fluid.each(resourceSpecs, function(resourceSpec, key) {
+             resourceSpec.recurseFirer = fluid.event.getEventFirer(null, null, "I/O completion for resource \"" + key + "\"");
+             resourceSpec.recurseFirer.addListener(that.operate);
+             if (resourceSpec.url && !resourceSpec.href) {
+                resourceSpec.href = resourceSpec.url;
+             }
+        });
+        if (that.options.amalgamateClasses) {
+            fluid.fetchResources.amalgamateClasses(resourceSpecs, that.options.amalgamateClasses, that.operate);
+        }
+        that.operate();
+        return that;
+    };
+  
+    /*
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    // Add "synthetic" elements of *this* resourceSpec list corresponding to any
+    // still pending elements matching the PROLEPTICK CLASS SPECIFICATION supplied 
+    fluid.fetchResources.amalgamateClasses = function(specs, classes, operator) {
+        fluid.each(classes, function(clazz) {
+            var pending = pendingClass[clazz];
+            fluid.each(pending, function(pendingrec, canon) {
+                specs[clazz+"!"+canon] = pendingrec;
+                pendingrec.recurseFirer.addListener(operator);
+            });
+        });
+    };
+  
+    /*
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    fluid.fetchResources.timeSuccessCallback = function(resourceSpec) {
+        if (resourceSpec.timeSuccess && resourceSpec.options && resourceSpec.options.success) {
+            var success = resourceSpec.options.success;
+            resourceSpec.options.success = function() {
+            var startTime = new Date();
+            var ret = success.apply(null, arguments);
+            fluid.log("External callback for URL " + resourceSpec.href + " completed - callback time: " + 
+                    (new Date().getTime() - startTime.getTime()) + "ms");
+            return ret;
+            };
+        }
+    };
+    
+    // TODO: Integrate punch-through from old Engage implementation
+    function canonUrl(url) {
+        return url;
+    }
+    
+    fluid.fetchResources.clearResourceCache = function(url) {
+        if (url) {
+            delete resourceCache[canonUrl(url)];
+        }
+        else {
+            fluid.clear(resourceCache);
+        }  
+    };
+  
+    /*
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    fluid.fetchResources.handleCachedRequest = function(resourceSpec, response) {
+         var canon = canonUrl(resourceSpec.href);
+         var cached = resourceCache[canon];
+         if (cached.$$firer$$) {
+             fluid.log("Handling request for " + canon + " from cache");
+             var fetchClass = resourceSpec.fetchClass;
+             if (fetchClass && pendingClass[fetchClass]) {
+                 fluid.log("Clearing pendingClass entry for class " + fetchClass);
+                 delete pendingClass[fetchClass][canon];
+             }
+             resourceCache[canon] = response;      
+             cached.fire(response);
+         }
+    };
+    
+    /*
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    fluid.fetchResources.completeRequest = function(thisSpec, recurseCall) {
+        thisSpec.queued = false;
+        thisSpec.completeTime = new Date();
+        fluid.log("Request to URL " + thisSpec.href + " completed - total elapsed time: " + 
+            (thisSpec.completeTime.getTime() - thisSpec.initTime.getTime()) + "ms");
+        thisSpec.recurseFirer.fire();
+    };
+  
+    /*
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    fluid.fetchResources.makeResourceCallback = function(thisSpec) {
+        return {
+            success: function(response) {
+                thisSpec.resourceText = response;
+                thisSpec.resourceKey = thisSpec.href;
+                if (thisSpec.forceCache) {
+                    fluid.fetchResources.handleCachedRequest(thisSpec, response);
+                }
+                fluid.fetchResources.completeRequest(thisSpec);
+            },
+            error: function(response, textStatus, errorThrown) {
+                thisSpec.fetchError = {
+                    status: response.status,
+                    textStatus: response.textStatus,
+                    errorThrown: errorThrown
+                };
+                fluid.fetchResources.completeRequest(thisSpec);
+            }
+            
+        };
+    };
+    
+        
+    /*
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    fluid.fetchResources.issueCachedRequest = function(resourceSpec, options) {
+         var canon = canonUrl(resourceSpec.href);
+         var cached = resourceCache[canon];
+         if (!cached) {
+             fluid.log("First request for cached resource with url " + canon);
+             cached = fluid.event.getEventFirer(null, null, "cache notifier for resource URL " + canon);
+             cached.$$firer$$ = true;
+             resourceCache[canon] = cached;
+             var fetchClass = resourceSpec.fetchClass;
+             if (fetchClass) {
+                 if (!pendingClass[fetchClass]) {
+                     pendingClass[fetchClass] = {};
+                 }
+                 pendingClass[fetchClass][canon] = resourceSpec;
+             }
+             options.cache = false; // TODO: Getting weird "not modified" issues on Firefox
+             $.ajax(options);
+         }
+         else {
+             if (!cached.$$firer$$) {
+                 options.success(cached);
+             }
+             else {
+                 fluid.log("Request for cached resource which is in flight: url " + canon);
+                 cached.addListener(function(response) {
+                     options.success(response);
+                 });
+             }
+         }
+    };
+    
+    /*
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    // Compose callbacks in such a way that the 2nd, marked "external" will be applied
+    // first if it exists, but in all cases, the first, marked internal, will be 
+    // CALLED WITHOUT FAIL
+    fluid.fetchResources.composeCallbacks = function (internal, external) {
+        return external ? (internal ? 
+        function () {
+            try {
+                external.apply(null, arguments);
+            }
+            catch (e) {
+                fluid.log("Exception applying external fetchResources callback: " + e);
+            }
+            internal.apply(null, arguments); // call the internal callback without fail
+        } : external ) : internal;
+    };
+    
+    // unsupported, NON-API function
+    fluid.fetchResources.composePolicy = function(target, source, key) {
+        return fluid.fetchResources.composeCallbacks(target, source);
+    };
+    
+    fluid.defaults("fluid.fetchResources.issueRequest", {
+        mergePolicy: {
+            success: fluid.fetchResources.composePolicy,
+            error: fluid.fetchResources.composePolicy,
+            url: "reverse"
+        }
+    });
+    
+    // unsupported, NON-API function
+    fluid.fetchResources.issueRequest = function(resourceSpec, key) {
+        var thisCallback = fluid.fetchResources.makeResourceCallback(resourceSpec);
+        var options = {  
+             url:     resourceSpec.href,
+             success: thisCallback.success, 
+             error:   thisCallback.error,
+             dataType: resourceSpec.dataType || "text"};
+        fluid.fetchResources.timeSuccessCallback(resourceSpec);
+        options = fluid.merge(fluid.defaults("fluid.fetchResources.issueRequest").mergePolicy,
+                      options, resourceSpec.options);
+        resourceSpec.queued = true;
+        resourceSpec.initTime = new Date();
+        fluid.log("Request with key " + key + " queued for " + resourceSpec.href);
+
+        if (resourceSpec.forceCache) {
+            fluid.fetchResources.issueCachedRequest(resourceSpec, options);
+        }
+        else {
+            $.ajax(options);
+        }
+    };
+    
+    fluid.fetchResources.fetchResourcesImpl = function(that) {
+        var complete = true;
+        var allSync = true;
+        var resourceSpecs = that.resourceSpecs;
+        for (var key in resourceSpecs) {
+            var resourceSpec = resourceSpecs[key];
+            if (!resourceSpec.options || resourceSpec.options.async) {
+                allSync = false;
+            }
+            if (resourceSpec.href && !resourceSpec.completeTime) {
+                 if (!resourceSpec.queued) {
+                     fluid.fetchResources.issueRequest(resourceSpec, key);  
+                 }
+                 if (resourceSpec.queued) {
+                     complete = false;
+                 }
+            }
+            else if (resourceSpec.nodeId && !resourceSpec.resourceText) {
+                var node = document.getElementById(resourceSpec.nodeId);
+                // upgrade this to somehow detect whether node is "armoured" somehow
+                // with comment or CDATA wrapping
+                resourceSpec.resourceText = fluid.dom.getElementText(node);
+                resourceSpec.resourceKey = resourceSpec.nodeId;
+            }
+        }
+        if (complete && that.callback && !that.callbackCalled) {
+            that.callbackCalled = true;
+            if ($.browser.mozilla && !allSync) {
+                // Defer this callback to avoid debugging problems on Firefox
+                setTimeout(function() {
+                    that.callback(resourceSpecs);
+                    }, 1);
+            }
+            else {
+                that.callback(resourceSpecs);
+            }
+        }
+    };
+    
+    // TODO: This framework function is a stop-gap before the "ginger world" is capable of
+    // asynchronous instantiation. It currently performs very poor fidelity expansion of a
+    // component's options to discover "resources" only held in the static environment
+    fluid.fetchResources.primeCacheFromResources = function(componentName) {
+        var resources = fluid.defaults(componentName).resources;
+        var expanded = (fluid.expandOptions ? fluid.expandOptions : fluid.identity)(fluid.copy(resources));
+        fluid.fetchResources(expanded);
+    };
+    
+    /** Utilities invoking requests for expansion **/
+    fluid.registerNamespace("fluid.expander");
+      
+    /*
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    fluid.expander.makeDefaultFetchOptions = function (successdisposer, failid, options) {
+        return $.extend(true, {dataType: "text"}, options, {
+            success: function(response, environmentdisposer) {
+                var json = JSON.parse(response);
+                environmentdisposer(successdisposer(json));
+            },
+            error: function(response, textStatus) {
+                fluid.log("Error fetching " + failid + ": " + textStatus);
+            }
+        });
+    };
+  
+    /*
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    fluid.expander.makeFetchExpander = function (options) {
+        return { expander: {
+            type: "fluid.expander.deferredFetcher",
+            href: options.url,
+            options: fluid.expander.makeDefaultFetchOptions(options.disposer, options.url, options.options),
+            resourceSpecCollector: "{resourceSpecCollector}",
+            fetchKey: options.fetchKey
+        }};
+    };
+    
+    fluid.expander.deferredFetcher = function(deliverer, source, expandOptions) {
+        var expander = source.expander;
+        var spec = fluid.copy(expander);
+        // fetch the "global" collector specified in the external environment to receive
+        // this resourceSpec
+        var collector = fluid.expand(expander.resourceSpecCollector, expandOptions);
+        delete spec.type;
+        delete spec.resourceSpecCollector;
+        delete spec.fetchKey;
+        var environmentdisposer = function(disposed) {
+            deliverer(disposed);
+        };
+        // replace the callback which is there (taking 2 arguments) with one which
+        // directly responds to the request, passing in the result and OUR "disposer" - 
+        // which once the user has processed the response (say, parsing JSON and repackaging)
+        // finally deposits it in the place of the expander in the tree to which this reference
+        // has been stored at the point this expander was evaluated.
+        spec.options.success = function(response) {
+             expander.options.success(response, environmentdisposer);
+        };
+        var key = expander.fetchKey || fluid.allocateGuid();
+        collector[key] = spec;
+        return fluid.NO_VALUE;
+    };
+    
     
 })(jQuery, fluid_1_5);
 ;// -*- mode: javascript; tab-width: 2; indent-tabs-mode: nil; -*-
@@ -22917,7 +24723,7 @@ var fluid = fluid || require("infusion"),
                 val,
                 coef;
 
-                // Convert 60 dB attack and release times to coefficients if they've changed.
+            // Convert 60 dB attack and release times to coefficients if they've changed.
             if (nextAtt !== prevAtt) {
                 m.attackTime = nextAtt;
                 attCoef = m.attackCoef =
@@ -22948,6 +24754,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.amplitude", {
         rate: "audio",
         inputs: {
+            source: null,
             attack: 0.01,
             release: 0.01,
             mul: null,
