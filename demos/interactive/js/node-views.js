@@ -125,18 +125,6 @@ var fluid = fluid || require("infusion"),
 
         events: {
             afterRender: null
-        },
-
-        modelListeners: {
-            "nodeGraph.nodes": {
-                funcName: "flock.ui.nodeRenderers.synth.layoutNodes",
-                args: ["{change}.value", "{that}.renderers"]
-            },
-
-            "nodeGraph.edges": {
-                funcName: "flock.ui.nodeRenderers.synth.renderEdges",
-                args: ["{change}.value"]
-            }
         }
     });
 
@@ -202,10 +190,14 @@ var fluid = fluid || require("infusion"),
                 flock.ui.nodeRenderers.synth.accumulateRenderers(inputDef, container, renderers);
             }
 
-            edges.push({
-                source: ugen.id,
-                target: inputDef.id
-            });
+            ugen.id = ugen.id || fluid.allocateGuid(); // TODO: This is already elsewhere.
+            if (inputName !== "value") {
+                inputDef.id = inputDef.id || fluid.allocateGuid();
+                edges.push({
+                    source: ugen.id,
+                    target: inputDef.id
+                });
+            }
         }
 
         renderer = flock.ui.nodeRenderers.ugen(container, {
@@ -228,8 +220,8 @@ var fluid = fluid || require("infusion"),
             renderer.refreshView();
 
             graphSpec.nodes[renderer.model.ugenDef.id] = {
-                width: renderer.node.width(),
-                height: renderer.node.height()
+                width: renderer.node.innerWidth(),
+                height: renderer.node.innerHeight()
             };
 
             graphSpec.edges = graphSpec.edges.concat(renderer.model.edges);
@@ -238,7 +230,7 @@ var fluid = fluid || require("infusion"),
         return graphSpec;
     };
 
-    flock.ui.nodeRenderers.synth.layoutGraph = function (graphSpec) {
+    flock.ui.nodeRenderers.synth.layoutGraph = function (container, graphSpec) {
         // TODO: Wrap Dagre as a component.
         var g = new dagre.Digraph();
 
@@ -253,16 +245,16 @@ var fluid = fluid || require("infusion"),
         var outputGraph = dagre.layout().rankDir("LR").run(g);
 
         // Position the nodes.
-        fluid.each(outputGraph.nodes, function (node) {
-            node.css({
+        outputGraph.eachNode(function (id, graphNode) {
+            var nodeEl = $("#" + id);
+            nodeEl.css({
                 "position": "absolute",
                 // TODO: calculate position from centre, which is what Dagre gives us.
-                "top": node.y,
-                "left": node.x
+                // TODO: Offset based on the container's position on screen.
+                "top": graphNode.y + 75,
+                "left": graphNode.x + 50
             });
         });
-
-        // Render the edges with JSPlumb.
     };
 
     // TODO: use dynamic components instead.
@@ -278,8 +270,9 @@ var fluid = fluid || require("infusion"),
         // TODO: Renderers leak?
         that.ugenRenderers = flock.ui.nodeRenderers.synth.makeRenderers(expanded, container);
         var graph = flock.ui.nodeRenderers.synth.render(that.ugenRenderers);
-        applier.change("nodeGraph", null);
-        applier.change("nodeGraph", graph);
+
+        flock.ui.nodeRenderers.synth.layoutGraph(container, graph);
+        flock.ui.nodeRenderers.synth.renderEdges(graph.edges);
 
         if (afterRender) {
             afterRender();

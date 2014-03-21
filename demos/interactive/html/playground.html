@@ -3,28 +3,32 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        
+
         <title>Flocking Playground</title>
-        
+
         <link rel="stylesheet" href="../../../ui/third-party/normalize/css/normalize.css" />
         <link rel="stylesheet" href="../../../ui/third-party/codemirror/css/codemirror.css" />
         <link rel="stylesheet" type="text/css" href="../../../ui/editor/css/flockingcm.css" />
         <link rel="stylesheet" type="text/css" href="../../../ui/shared/css/flocking-icon-font.css" />
         <link rel="stylesheet" type="text/css" href="../css/playground.css" />
-    
+
         <script src="../../../third-party/jquery/js/jquery-2.0.0.js"></script>
+        <script src="../third-party/dagre/js/dagre.min.js"></script>
         <script src="../third-party/jsplumb/js/jquery.jsPlumb-1.5.5-min.js"></script>
-        
+
         <script src="../../../third-party/infusion/js/Fluid.js"></script>
-        <script src="../../../third-party/infusion/js/FluidDOMUtilities.js"></script>
         <script src="../../../third-party/infusion/js/FluidDocument.js"></script>
+        <script src="../../../third-party/infusion/js/FluidDOMUtilities.js"></script>
+        <script src="../../../third-party/infusion/js/FluidDebugging.js"></script>
         <script src="../../../third-party/infusion/js/FluidIoC.js"></script>
         <script src="../../../third-party/infusion/js/DataBinding.js"></script>
+        <script src="../../../third-party/infusion/js/ModelTransformation.js"></script>
+        <script src="../../../third-party/infusion/js/ModelTransformationTransforms.js"></script>
         <script src="../../../third-party/infusion/js/FluidView.js"></script>
-        
+
         <script src="../../../third-party/dspapi/js/dspapi.js"></script>
         <script src="../../../third-party/polydataview/js/polydataview.js"></script>
-        
+
         <script src="../../../flocking/flocking-core.js"></script>
         <script src="../../../flocking/flocking-buffers.js"></script>
         <script src="../../../flocking/flocking-audiofile.js"></script>
@@ -35,7 +39,7 @@
         <script src="../../../flocking/flocking-ugens.js"></script>
         <script src="../../../flocking/flocking-ugens-browser.js"></script>
         <script src="../../../flocking/flocking-gfx.js"></script>
-        
+
         <script src="../../../ui/third-party/codemirror/js/codemirror-compressed.js"></script>
 
         <script src="../js/playground.js"></script>
@@ -43,7 +47,7 @@
         <script src="../js/node-views.js"></script>
         <script src="../js/demoList.js"></script>
     </head>
-    
+
     <body>
         <!-- Scope View area for visualizing the demos -->
         <div class="everything">
@@ -54,7 +58,7 @@
                         <!-- Play Button -->
                         <button id="playButton" class="playButton paused icon-">Play</button>
                     </div>
-                
+
                     <!-- Waveform View -->
                     <div id="gfxContainer" class="right">
                         <canvas id="gfx" height="45" width="240"></canvas>
@@ -66,12 +70,12 @@
                     <button id="viewButton">Graph</button>
                 </div>
             </header>
-        
+
             <!-- Placeholder for the interactive editor -->
             <div id="source-view" class="mainPanel"></div>
             <div id="visual-view" class="mainPanel"></div>
         </div>
-        
+
         <script>
             flock.playground(".everything");
         </script>
