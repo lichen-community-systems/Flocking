@@ -19,22 +19,22 @@ var fluid = fluid || require("infusion"),
 
 (function () {
     "use strict";
-    
+
     /**
      * Web Audio API Audio Strategy
      */
     fluid.defaults("flock.enviro.webAudio", {
         gradeNames: ["flock.enviro.audioStrategy", "autoInit"]
     });
-    
+
     flock.enviro.webAudio.finalInit = function (that) {
-        
+
         that.startGeneratingSamples = function () {
             that.jsNode.onaudioprocess = that.writeSamples; // TODO: When Firefox ships, is this still necessary?
             that.jsNode.connect(that.context.destination);
-            
-            // Work around a bug in iOS Safari where it now requires a noteOn() 
-            // message to be invoked before sound will work at all. Just connecting a 
+
+            // Work around a bug in iOS Safari where it now requires a noteOn()
+            // message to be invoked before sound will work at all. Just connecting a
             // ScriptProcessorNode inside a user event handler isn't sufficient.
             if (that.model.shouldInitIOS) {
                 var s = that.source;
@@ -43,80 +43,85 @@ var fluid = fluid || require("infusion"),
                 that.model.shouldInitIOS = false;
             }
         };
-        
+
         that.stopGeneratingSamples = function () {
             that.jsNode.disconnect(0);
             that.jsNode.onaudioprocess = undefined;
         };
-        
+
         that.writeSamples = function (e) {
-            var audioSettings = that.options.audioSettings,
+            var m = that.model,
+                audioSettings = that.options.audioSettings,
                 blockSize = audioSettings.blockSize,
-                playState = that.model.playState,
+                nodeEvaluator = that.nodeEvaluator,
+                buses = nodeEvaluator.buses,
+                nodes = nodeEvaluator.nodes,
+                gen = nodeEvaluator.gen,
+                playState = m.playState,
                 chans = audioSettings.chans,
                 outBufs = e.outputBuffer,
                 chan,
                 i,
                 samp;
-                
+
             // If there are no nodes providing samples, write out silence.
-            if (that.nodeEvaluator.nodes.length < 1) {
+            if (nodes.length < 1) {
                 for (chan = 0; chan < chans; chan++) {
                     flock.generate.silence(outBufs.getChannelData(chan));
                 }
                 return;
             }
 
-            for (i = 0; i < that.model.krPeriods; i++) {
-                that.nodeEvaluator.gen();
+            for (i = 0; i < m.krPeriods; i++) {
+                gen();
                 var offset = i * blockSize;
 
                 // Loop through each channel.
                 for (chan = 0; chan < chans; chan++) {
-                    var sourceBuf = that.nodeEvaluator.buses[chan],
+                    var sourceBuf = buses[chan],
                         outBuf = outBufs.getChannelData(chan);
-                    
+
                     // And output each sample.
                     for (samp = 0; samp < blockSize; samp++) {
                         outBuf[samp + offset] = sourceBuf[samp];
                     }
                 }
             }
-            
+
             playState.written += audioSettings.bufferSize * chans;
             if (playState.written >= playState.total) {
                 that.stop();
             }
         };
-        
+
         that.init = function () {
             var settings = that.options.audioSettings,
                 scriptNodeConstructorName;
-            
+
             that.model.krPeriods = settings.bufferSize / settings.blockSize;
-            
+
             // Singleton AudioContext since the WebKit implementation
             // freaks if we try to instantiate a new one.
             if (!flock.enviro.webAudio.audioContext) {
                 flock.enviro.webAudio.audioContext = new flock.enviro.webAudio.contextConstructor();
             }
-            
+
             that.context = flock.enviro.webAudio.audioContext;
             settings.rates.audio = that.context.sampleRate;
             that.source = that.context.createBufferSource();
-            scriptNodeConstructorName = that.context.createScriptProcessor ? 
+            scriptNodeConstructorName = that.context.createScriptProcessor ?
                 "createScriptProcessor" : "createJavaScriptNode";
             that.jsNode = that.context[scriptNodeConstructorName](settings.bufferSize);
             that.source.connect(that.jsNode);
-            
+
             that.model.shouldInitIOS = flock.platform.isIOS;
         };
-        
+
         that.init();
     };
-    
+
     flock.enviro.webAudio.contextConstructor = window.AudioContext || window.webkitAudioContext;
-    
+
     fluid.demands("flock.enviro.audioStrategy", "flock.platform.webAudio", {
         funcName: "flock.enviro.webAudio"
     });

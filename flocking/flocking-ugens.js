@@ -2371,6 +2371,7 @@ var fluid = fluid || require("infusion"),
     });
 
     // TODO: fix naming.
+    // TODO: Make this a proper multiinput ugen.
     flock.ugen["in"] = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
@@ -2383,6 +2384,8 @@ var fluid = fluid || require("infusion"),
             for (i = 0; i < numSamps; i++) {
                 out[i] = bus[i];
             }
+
+            that.mulAdd(numSamps);
         };
 
         that.multiBusGen = function (numSamps) {
@@ -2400,6 +2403,8 @@ var fluid = fluid || require("infusion"),
                     out[i] += enviroBuses[busIdx][i];
                 }
             }
+
+            that.mulAdd(numSamps);
         };
 
         that.onInputChanged = function () {

@@ -23,21 +23,21 @@ var fluid = fluid || require("infusion"),
     "use strict";
 
     var $ = fluid.registerNamespace("jQuery");
-    
+
     flock.init = function (options) {
         var enviroOpts = !options ? undefined : {
             audioSettings: options
         };
         flock.enviro.shared = flock.enviro(enviroOpts);
     };
-    
+
     flock.OUT_UGEN_ID = "flocking-out";
     flock.TWOPI = 2.0 * Math.PI;
     flock.HALFPI = Math.PI / 2.0;
     flock.LOG01 = Math.log(0.1);
     flock.LOG001 = Math.log(0.001);
     flock.ROOT2 = Math.sqrt(2);
-    
+
     flock.rates = {
         AUDIO: "audio",
         CONTROL: "control",
@@ -45,7 +45,7 @@ var fluid = fluid || require("infusion"),
         DEMAND: "demand",
         CONSTANT: "constant"
     };
-    
+
     flock.sampleFormats = {
         FLOAT32NE: "float32NE"
     };
@@ -62,13 +62,13 @@ var fluid = fluid || require("infusion"),
             browser = {},
             match,
             matched;
-        
+
         match = /(chrome)[ \/]([\w.]+)/.exec(ua) ||
             /(webkit)[ \/]([\w.]+)/.exec(ua) ||
             /(opera)(?:.*version|)[ \/]([\w.]+)/.exec(ua) ||
             /(msie) ([\w.]+)/.exec(ua) ||
             ua.indexOf("compatible") < 0 && /(mozilla)(?:.*? rv:([\w.]+)|)/.exec(ua) || [];
-        
+
         matched = {
             browser: match[1] || "",
             version: match[2] || "0"
@@ -85,10 +85,10 @@ var fluid = fluid || require("infusion"),
         } else if (browser.webkit) {
             browser.safari = true;
         }
-        
+
         return browser;
     };
-    
+
     // TODO: Move to components in the static environment and into the appropriate platform files.
     fluid.registerNamespace("flock.platform");
     flock.platform.isBrowser = typeof window !== "undefined";
@@ -102,24 +102,24 @@ var fluid = fluid || require("infusion"),
     flock.platform.isWebAudio = typeof AudioContext !== "undefined" || typeof webkitAudioContext !== "undefined";
     flock.platform.audioEngine = flock.platform.isBrowser ? (flock.platform.isWebAudio ? "webAudio" : "moz") : "nodejs";
     fluid.staticEnvironment.audioEngine = fluid.typeTag("flock.platform." + flock.platform.audioEngine);
-    
+
     flock.defaultBufferSizeForPlatform = function () {
         if (flock.platform.browser.mozilla) {
             // Strangely terrible performance seems to have cropped up on Firefox in recent versions.
             return 16384;
         }
-        
+
         if (!flock.platform.isWebAudio || flock.platform.isMobile) {
             return 8192;
         }
-        
+
         return 1024;
     };
-    
+
     flock.shim = {
         URL: flock.platform.isBrowser ? (window.URL || window.webkitURL || window.msURL) : undefined
     };
-    
+
     flock.requireModule = function (globalName, moduleName) {
         if (!moduleName) {
             moduleName = globalName;
@@ -127,40 +127,40 @@ var fluid = fluid || require("infusion"),
         return flock.platform.isBrowser ? window[globalName] :
             (flock.platform.hasRequire ? require(moduleName)[globalName] : undefined);
     };
-    
+
     /*************
      * Utilities *
      *************/
-    
+
     flock.isIterable = function (o) {
         var type = typeof o;
         return o && o.length !== undefined && type !== "string" && type !== "function";
     };
-    
+
     flock.hasTag = function (obj, tag) {
         if (!obj || !tag) {
             return false;
         }
         return obj.tags && obj.tags.indexOf(tag) > -1;
     };
-    
+
     flock.generate = function (bufOrSize, generator) {
         var buf = typeof bufOrSize === "number" ? new Float32Array(bufOrSize) : bufOrSize,
             isFunc = typeof generator === "function",
             i;
-        
+
         for (i = 0; i < buf.length; i++) {
             buf[i] = isFunc ? generator(i, buf) : generator;
         }
 
         return buf;
     };
-    
+
     flock.generate.silence = function (bufOrSize) {
         if (typeof bufOrSize === "number") {
             return new Float32Array(bufOrSize);
         }
-        
+
         var buf = bufOrSize,
             i;
         for (i = 0; i < buf.length; i++) {
@@ -168,7 +168,7 @@ var fluid = fluid || require("infusion"),
         }
         return buf;
     };
-    
+
     /**
      * Randomly selects an index from the specified array.
      */
@@ -199,7 +199,7 @@ var fluid = fluid || require("infusion"),
      */
     flock.choose = function (collection, strategy) {
         var key, val;
-        
+
         if (flock.isIterable(collection)) {
             val = flock.arrayChoose(collection, strategy);
             return val;
@@ -209,7 +209,7 @@ var fluid = fluid || require("infusion"),
         val = collection[key];
         return val;
     };
-    
+
     /**
      * Normalizes the specified buffer in place to the specified value.
      *
@@ -220,12 +220,12 @@ var fluid = fluid || require("infusion"),
      */
     flock.normalize = function (buffer, normal, output) {
         output = output || buffer;
-        
+
         var maxVal = 0.0,
             i,
             current,
             val;
-        
+
         normal = normal === undefined ? 1.0 : normal;
         // Find the maximum value in the buffer.
         for (i = 0; i < buffer.length; i++) {
@@ -234,7 +234,7 @@ var fluid = fluid || require("infusion"),
                 maxVal = current;
             }
         }
-        
+
         // And then normalize the buffer in place.
         if (maxVal > 0.0) {
             for (i = 0; i < buffer.length; i++) {
@@ -242,17 +242,17 @@ var fluid = fluid || require("infusion"),
                 output[i] = (val / maxVal) * normal;
             }
         }
-        
+
         return output;
     };
-    
+
     flock.range = function (buf) {
         var range = {
             max: Number.NEGATIVE_INFINITY,
             min: Infinity
         };
         var i, val;
-        
+
         for (i = 0; i < buf.length; i++) {
             val = buf[i];
             if (val > range.max) {
@@ -262,68 +262,68 @@ var fluid = fluid || require("infusion"),
                 range.min = val;
             }
         }
-        
+
         return range;
     };
-    
+
     flock.scale = function (buf) {
         if (!buf) {
             return;
         }
-        
+
         var range = flock.range(buf),
             mul = (range.max - range.min) / 2,
             sub = (range.max + range.min) / 2,
             i;
-        
+
         for (i = 0; i < buf.length; i++) {
             buf[i] = (buf[i] - sub) / mul;
         }
-        
+
         return buf;
     };
-    
+
     flock.copyBuffer = function (buffer, start, end) {
         if (end === undefined) {
             end = buffer.length;
         }
-        
+
         var len = end - start,
             target = new Float32Array(len),
             i,
             j;
-        
+
         for (i = start, j = 0; i < end; i++, j++) {
             target[j] = buffer[i];
         }
-        
+
         return target;
     };
-    
-    
+
+
     flock.interpolate = {};
-    
+
     /**
      * Performs linear interpretation.
      */
     flock.interpolate.linear = function (idx, table) {
         idx = idx % table.length;
-        
+
         var i1 = idx | 0,
             i2 = (i1 + 1) % table.length,
             frac = idx - i1,
             y1 = table[i1],
             y2 = table[i2];
-        
+
         return y1 + frac * (y2 - y1);
     };
-    
+
     /**
      * Performs cubic interpretation.
      */
     flock.interpolate.cubic = function (idx, table) {
         idx = idx % table.length;
-        
+
         var len = table.length,
             i1 = idx | 0,
             i0 = i1 > 0 ? i1 - 1 : len - 1,
@@ -339,21 +339,21 @@ var fluid = fluid || require("infusion"),
             a = 0.5 * (y1 - y2) + (y3 - y0),
             b = (y0 + y2) * 0.5 - y1,
             c = y2 - (0.3333333333333333 * y0) - (0.5 * y1) - (0.16666666666666667 * y3);
-        
+
         return (a * fracCub) + (b * fracSq) + (c * frac) + y1;
     };
-    
-    
+
+
     flock.pathParseError = function (path, token) {
-        throw new Error("Error parsing path: " + path + ". Segment '" + token + 
+        throw new Error("Error parsing path: " + path + ". Segment '" + token +
             "' could not be resolved.");
     };
-    
+
     flock.get = function (root, path) {
         if (!root) {
             return fluid.getGlobalValue(path);
         }
-        
+
         if (arguments.length === 1 && typeof root === "string") {
             return fluid.getGlobalValue(root);
         }
@@ -361,11 +361,11 @@ var fluid = fluid || require("infusion"),
         if (!path || path === "") {
             return;
         }
-        
+
         var tokenized = path === "" ? [] : String(path).split("."),
             valForSeg = root[tokenized[0]],
             i;
-        
+
         for (i = 1; i < tokenized.length; i++) {
             if (valForSeg === null || valForSeg === undefined) {
                 flock.pathParseError(path, tokenized[i - 1]);
@@ -374,18 +374,18 @@ var fluid = fluid || require("infusion"),
         }
         return valForSeg;
     };
-    
+
     flock.set = function (root, path, value) {
         if (!root || !path || path === "") {
             return;
         }
-        
+
         var tokenized = String(path).split("."),
             l = tokenized.length,
             prop = tokenized[0],
             i,
             type;
-            
+
         for (i = 1; i < l; i++) {
             root = root[prop];
             type = typeof root;
@@ -398,10 +398,10 @@ var fluid = fluid || require("infusion"),
             }
         }
         root[prop] = value;
-        
+
         return value;
     };
-    
+
     flock.invoke = function (root, path, args) {
         var fn = typeof root === "function" ? root : flock.get(root, path);
         if (typeof fn !== "function") {
@@ -410,28 +410,28 @@ var fluid = fluid || require("infusion"),
         return fn.apply(null, args);
     };
 
-    
+
     flock.input = {};
-    
+
     flock.input.shouldExpand = function (inputName, target) {
         var specialInputs = flock.parse.specialInputs;
         if (target && target.options && target.options.noExpand) {
             specialInputs = specialInputs.concat(target.options.noExpand);
         }
-        
+
         return specialInputs.indexOf(inputName) < 0;
     };
-    
+
     flock.input.pathExpander = function (path) {
         return path.replace(/\.(?![0-9])/g, ".inputs.");
     };
-    
+
     flock.input.expandPaths = function (paths) {
         var expanded = {},
             path,
             expandedPath,
             value;
-        
+
         for (path in paths) {
             expandedPath = flock.input.pathExpander(path);
             value = paths[path];
@@ -440,42 +440,42 @@ var fluid = fluid || require("infusion"),
 
         return expanded;
     };
-    
+
     flock.input.expandPath = function (path) {
         return (typeof path === "string") ? flock.input.pathExpander(path) : flock.input.expandPaths(path);
     };
-    
+
     flock.input.getValueForPath = function (root, path) {
         path = flock.input.expandPath(path);
         var input = flock.get(root, path);
-        
+
         // If the unit generator is a valueType ugen, return its value, otherwise return the ugen itself.
         return flock.hasTag(input, "flock.ugen.valueType") ? input.model.value : input;
     };
-    
+
     flock.input.getValuesForPathArray = function (root, paths) {
         var values = {},
             i,
             path;
-        
+
         for (i = 0; i < paths.length; i++) {
             path = paths[i];
             values[path] = flock.input.get(root, path);
         }
-        
+
         return values;
     };
-    
+
     flock.input.getValuesForPathObject = function (root, pathObj) {
         var key;
-        
+
         for (key in pathObj) {
             pathObj[key] = flock.input.get(root, key);
         }
-        
+
         return pathObj;
     };
-    
+
     /**
      * Gets the value of the ugen at the specified path.
      *
@@ -487,15 +487,15 @@ var fluid = fluid || require("infusion"),
             flock.isIterable(path) ? flock.input.getValuesForPathArray(root, path) :
             flock.input.getValuesForPathObject(root, path);
     };
-    
+
     flock.input.setValueForPath = function (root, path, val, baseTarget, valueParser) {
         path = flock.input.expandPath(path);
-        
+
         var previousInput = flock.get(root, path),
             lastDotIdx = path.lastIndexOf("."),
             inputName = path.slice(lastDotIdx + 1),
             target = lastDotIdx > -1 ? flock.get(root, path.slice(0, path.lastIndexOf(".inputs"))) : baseTarget,
-            newInput = flock.input.shouldExpand(inputName, target) && valueParser ? 
+            newInput = flock.input.shouldExpand(inputName, target) && valueParser ?
                 valueParser(val, path, target, previousInput) : val;
 
         flock.set(root, path, newInput);
@@ -503,25 +503,25 @@ var fluid = fluid || require("infusion"),
         if (target && target.onInputChanged) {
             target.onInputChanged(inputName);
         }
-        
+
         return newInput;
     };
-    
+
     flock.input.setValuesForPaths = function (root, valueMap, baseTarget, valueParser) {
         var resultMap = {},
             path,
             val,
             result;
-        
+
         for (path in valueMap) {
             val = valueMap[path];
             result = flock.input.set(root, path, val, baseTarget, valueParser);
             resultMap[path] = result;
         }
-        
+
         return resultMap;
     };
-    
+
     /**
      * Sets the value of the ugen at the specified path.
      *
@@ -534,8 +534,8 @@ var fluid = fluid || require("infusion"),
             flock.input.setValueForPath(root, path, val, baseTarget, valueParser) :
             flock.input.setValuesForPaths(root, path, baseTarget, valueParser);
     };
-    
-    
+
+
     fluid.defaults("flock.nodeList", {
         gradeNames: ["fluid.littleComponent", "autoInit"],
         members: {
@@ -543,7 +543,7 @@ var fluid = fluid || require("infusion"),
             namedNodes: {}
         }
     });
-    
+
     flock.nodeList.preInit = function (that) {
         that.head = function (node) {
             that.nodes.unshift(node);
@@ -552,32 +552,32 @@ var fluid = fluid || require("infusion"),
             }
             return 0;
         };
-        
+
         that.before = function (refNode, node) {
             var refIdx = that.nodes.indexOf(refNode);
             that.insert(refIdx, node);
             return refIdx;
         };
-        
+
         that.after = function (refNode, node) {
             var refIdx = that.nodes.indexOf(refNode),
                 atIdx = refIdx + 1;
             that.insert(atIdx, node);
             return atIdx;
         };
-        
+
         that.insert = function (idx, node) {
             if (idx < 0) {
                 return that.head(node);
             }
-            
+
             that.nodes.splice(idx, 0, node);
             if (node.nickName) {
                 that.namedNodes[node.nickName] = node;
             }
             return idx;
         };
-        
+
         that.tail = function (node) {
             that.nodes.push(node);
             if (node.nickName) {
@@ -585,24 +585,24 @@ var fluid = fluid || require("infusion"),
             }
             return that.nodes.length;
         };
-        
+
         that.remove = function (node) {
             var idx = that.nodes.indexOf(node);
             if (idx < 0) {
                 return idx;
             }
-            
+
             that.nodes.splice(idx, 1);
             delete that.namedNodes[node.nickName];
             return idx;
         };
-        
+
         that.replace = function (newNode, oldNode) {
             var idx = that.nodes.indexOf(oldNode);
             if (idx < 0) {
                 return that.head(newNode);
             }
-            
+
             that.nodes[idx] = newNode;
             delete that.namedNodes[oldNode.nickName];
 
@@ -611,13 +611,27 @@ var fluid = fluid || require("infusion"),
             }
             return idx;
         };
+
+        that.clear = function () {
+            // Clear the environment's node list.
+            that.nodes.length = 0;
+
+            // And clear out all named nodes.
+            var nodeNames = Object.keys(that.namedNodes),
+                i,
+                nodeName;
+            for (i = 0; i < nodeNames.length; i++) {
+                nodeName = nodeNames[i];
+                delete that.namedNodes[nodeName];
+            }
+        };
     };
-    
-    
+
+
     /***********************
      * Synths and Playback *
      ***********************/
-    
+
     fluid.defaults("flock.enviro", {
         gradeNames: ["fluid.modelComponent", "flock.nodeList", "autoInit"],
         model: {
@@ -625,12 +639,12 @@ var fluid = fluid || require("infusion"),
                 written: 0,
                 total: null
             },
-            
+
             isPlaying: false
         },
         audioSettings: {
             rates: {
-                audio: 48000, // This is only a hint. Some audio backends (such as the Web Audio API) 
+                audio: 48000, // This is only a hint. Some audio backends (such as the Web Audio API)
                               // may define the sample rate themselves.
                 control: undefined, // Control rate is calculated dynamically based on the audio rate and the block size.
                 scheduled: undefined, // The scheduled rate is a user-specified parameter.
@@ -643,7 +657,7 @@ var fluid = fluid || require("infusion"),
             // This buffer size determines the overall latency of Flocking's audio output.
             // TODO: Replace this with IoC awesomeness.
             bufferSize: flock.defaultBufferSizeForPlatform(),
-            
+
             // Hints to some audio backends.
             genPollIntervalFactor: flock.platform.isLinux ? 1 : 20 // Only used on Firefox.
         },
@@ -651,7 +665,7 @@ var fluid = fluid || require("infusion"),
             asyncScheduler: {
                 type: "flock.scheduler.async"
             },
-            
+
             audioStrategy: {
                 type: "flock.enviro.audioStrategy",
                 options: {
@@ -663,14 +677,14 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
-    
+
     flock.enviro.preInit = function (that) {
         that.audioSettings = that.options.audioSettings;
-        that.buses = flock.enviro.createAudioBuffers(that.audioSettings.numBuses, 
+        that.buses = flock.enviro.createAudioBuffers(that.audioSettings.numBuses,
                 that.audioSettings.blockSize);
         that.buffers = {};
         that.bufferSources = {};
-        
+
         /**
          * Starts generating samples from all synths.
          *
@@ -678,15 +692,15 @@ var fluid = fluid || require("infusion"),
          */
         that.play = function (dur) {
             dur = dur === undefined ? Infinity : dur;
-            
+
             var playState = that.model.playState,
                 sps = dur * that.audioSettings.rates.audio * that.audioSettings.chans;
-                
+
             playState.total = playState.written + sps;
             that.audioStrategy.startGeneratingSamples();
             that.model.isPlaying = true;
         };
-        
+
         /**
          * Stops generating samples from all synths.
          */
@@ -694,16 +708,13 @@ var fluid = fluid || require("infusion"),
             that.audioStrategy.stopGeneratingSamples();
             that.model.isPlaying = false;
         };
-        
+
         that.reset = function () {
             that.stop();
             that.asyncScheduler.clearAll();
-            // Clear the environment's node list.
-            while (that.nodes.length > 0) {
-                that.nodes.pop();
-            }
+            that.clear();
         };
-        
+
         that.registerBuffer = function (bufDesc) {
             if (bufDesc.id) {
                 that.buffers[bufDesc.id] = bufDesc;
@@ -714,23 +725,23 @@ var fluid = fluid || require("infusion"),
             if (!bufDesc) {
                 return;
             }
-            
+
             var id = typeof bufDesc === "string" ? bufDesc : bufDesc.id;
             delete that.buffers[id];
         };
     };
-    
+
     flock.enviro.finalInit = function (that) {
         var audioSettings = that.options.audioSettings,
             rates = audioSettings.rates;
-        
+
         that.gen = that.audioStrategy.nodeEvaluator.gen;
-        
+
         // TODO: Model-based (with ChangeApplier) sharing of audioSettings
         rates.audio = that.audioStrategy.options.audioSettings.rates.audio;
         rates.control = rates.audio / audioSettings.blockSize;
     };
-    
+
     flock.enviro.createAudioBuffers = function (numBufs, blockSize) {
         var bufs = [],
             i;
@@ -739,78 +750,83 @@ var fluid = fluid || require("infusion"),
         }
         return bufs;
     };
-    
+
     fluid.defaults("flock.enviro.audioStrategy", {
         gradeNames: ["fluid.modelComponent"],
-        
+
         components: {
             nodeEvaluator: {
-                type: "flock.enviro.nodeEvaluator",
-                options: {
-                    numBuses: "{enviro}.options.audioSettings.numBuses",
-                    blockSize: "{enviro}.options.audioSettings.blockSize",
-                    members: {
-                        buses: "{enviro}.buses",
-                        nodes: "{enviro}.nodes"
-                    }
-                }
+                type: "flock.enviro.nodeEvaluator"
             }
         }
     });
-    
+
     /*****************
      * Node Evalutor *
      *****************/
-    
+
     fluid.defaults("flock.enviro.nodeEvaluator", {
-        gradeNames: ["fluid.littleComponent", "autoInit"]
+        gradeNames: ["fluid.littleComponent", "autoInit"],
+
+        members: {
+            nodes: "{enviro}.nodes",
+            buses: "{enviro}.buses"
+        },
+
+        invokers: {
+            gen: {
+                funcName: "flock.enviro.nodeEvaluator.gen",
+                args: [
+                    "{enviro}.options.audioSettings.numBuses",
+                    "{enviro}.options.audioSettings.blockSize",
+                    "{that}.nodes",
+                    "{that}.buses"
+                ]
+            }
+        }
     });
-    
-    flock.enviro.nodeEvaluator.finalInit = function (that) {
-        that.gen = function () {
-            var numBuses = that.options.numBuses,
-                busLen = that.options.blockSize,
-                i,
-                bus,
-                j,
-                node;
-            
-            // Clear all buses before evaluating the synth graph.
-            for (i = 0; i < numBuses; i++) {
-                bus = that.buses[i];
-                for (j = 0; j < busLen; j++) {
-                    bus[j] = 0;
-                }
+
+    flock.enviro.nodeEvaluator.gen = function (numBuses, busLen, nodes, buses) {
+        var i,
+            bus,
+            j,
+            node;
+
+        // Clear all buses before evaluating the synth graph.
+        for (i = 0; i < numBuses; i++) {
+            bus = buses[i];
+            for (j = 0; j < busLen; j++) {
+                bus[j] = 0;
             }
-            
-            // Now evaluate each node.
-            for (i = 0; i < that.nodes.length; i++) {
-                node = that.nodes[i];
-                node.gen(node.model.blockSize);
-            }
-        };
+        }
+
+        // Now evaluate each node.
+        for (i = 0; i < nodes.length; i++) {
+            node = nodes[i];
+            node.gen(node.model.blockSize);
+        }
     };
-    
-    
+
+
     fluid.defaults("flock.autoEnviro", {
         gradeNames: ["fluid.littleComponent", "autoInit"]
     });
-    
+
     flock.autoEnviro.preInit = function () {
         if (!flock.enviro.shared) {
             flock.init();
         }
     };
-    
-    
+
+
     fluid.defaults("flock.node", {
         gradeNames: ["flock.autoEnviro", "fluid.modelComponent", "autoInit"]
     });
-    
+
     fluid.defaults("flock.ugenNodeList", {
         gradeNames: ["flock.nodeList", "autoInit"]
     });
-    
+
     flock.ugenNodeList.finalInit = function (that) {
 
         /**
@@ -826,7 +842,7 @@ var fluid = fluid || require("infusion"),
             var inputs = node.inputs,
                 key,
                 input;
-            
+
             for (key in inputs) {
                 input = inputs[key];
                 if (typeof input !== "number") {
@@ -834,10 +850,10 @@ var fluid = fluid || require("infusion"),
                     idx++;
                 }
             }
-            
+
             return that.insert(idx, node);
         };
-        
+
         /**
          * Removes the specified unit generator and all its inputs from the node list.
          *
@@ -848,17 +864,17 @@ var fluid = fluid || require("infusion"),
             var inputs = node.inputs,
                 key,
                 input;
-            
+
             for (key in inputs) {
                 input = inputs[key];
                 if (typeof input !== "number") {
                     that.removeTree(input);
                 }
             }
-            
+
             return that.remove(node);
         };
-        
+
         /**
          * Replaces one node and all its inputs with a new node and its inputs.
          *
@@ -871,18 +887,18 @@ var fluid = fluid || require("infusion"),
                  // Can't use .tail() because it won't recursively add inputs.
                 return that.insertTree(that.nodes.length, newNode);
             }
-            
+
             var idx = that.removeTree(oldNode);
             that.insertTree(idx, newNode);
-            
+
             return idx;
         };
-        
+
         /**
          * Swaps one node in the list for another in place, attaching the previous unit generator's
          * inputs to the new one. If a list of inputsToReattach is specified, only these inputs will
          * be swapped.
-         * 
+         *
          * Note that this function will directly modify the nodes in question.
          *
          * @param {UGen} newNode the node to add to the list, swapping it in place for the old one
@@ -892,7 +908,7 @@ var fluid = fluid || require("infusion"),
          */
         that.swapTree = function (newNode, oldNode, inputsToReattach) {
             var inputName;
-            
+
             if (!inputsToReattach) {
                 newNode.inputs = oldNode.inputs;
             } else {
@@ -903,21 +919,21 @@ var fluid = fluid || require("infusion"),
                         newNode.inputs[inputName] = oldNode.inputs[inputName];
                     }
                 }
-                
+
                 for (inputName in newNode.inputs) {
                     if (inputsToReattach.indexOf(inputName) < 0) {
                         that.replaceTree(newNode.inputs[inputName], oldNode.inputs[inputName]);
                     }
                 }
             }
-            
+
             return that.replace(newNode, oldNode);
         };
     };
-    
+
     fluid.defaults("flock.synth", {
         gradeNames: ["fluid.eventedComponent", "flock.node", "flock.ugenNodeList", "autoInit"],
-        
+
         invokers: {
             /**
              * Plays the synth. This is a convenience method that will add the synth to the tail of the
@@ -927,36 +943,71 @@ var fluid = fluid || require("infusion"),
              */
             play: {
                 funcName: "flock.synth.play",
-                args: ["{that}", "{that}.enviro"]
+                args: ["{that}"]
             },
-            
+
             /**
              * Stops the synth if it is currently playing.
              * This is a convenience method that will remove the synth from the environment's node graph.
              */
             pause: {
                 funcName: "flock.synth.pause",
-                args: ["{that}", "{that}.enviro"]
+                args: ["{that}"]
+            },
+
+            /**
+             * Sets the value of the ugen at the specified path.
+             *
+             * @param {String} path the ugen's path within the synth graph
+             * @param {Number || UGenDef} val a scalar value (for Value ugens) or a UGenDef object
+             * @param {Boolean} swap ??
+             * @return {UGen} the newly created UGen that was set at the specified path
+             */
+            set: {
+                funcName: "flock.synth.set",
+                args: ["{that}", "{that}.namedNodes", "{arguments}.0", "{arguments}.1", "{arguments}.2"]
+            },
+
+            /**
+             * Gets the value of the ugen at the specified path.
+             *
+             * @param {String} path the ugen's path within the synth graph
+             * @return {Number|UGen} a scalar value in the case of a value ugen, otherwise the ugen itself
+             */
+            get: {
+                funcName: "flock.input.get",
+                args: ["{that}.namedNodes", "{arguments}.0"]
             }
         },
-        
-        rate: flock.rates.AUDIO
+
+        rate: flock.rates.AUDIO,
+
+        addToEnvironment: "tail"
     });
-    
-    flock.synth.play = function (that, en) {
-        if (en.nodes.indexOf(that) === -1) {
-            en.head(that);
+
+    flock.synth.play = function (that) {
+        var enviro = that.enviro;
+
+        if (enviro.nodes.indexOf(that) === -1) {
+            that.addToEnvironment();
         }
-        
-        if (!en.model.isPlaying) {
-            en.play();
+
+        if (!enviro.model.isPlaying) {
+            enviro.play();
         }
     };
-    
-    flock.synth.pause = function (that, en) {
-        en.remove(that);
+
+    flock.synth.pause = function (that) {
+        var enviro = that.enviro;
+        enviro.remove(that);
     };
-    
+
+    flock.synth.set = function (that, namedNodes, path, val, swap) {
+        return flock.input.set(namedNodes, path, val, undefined, function (ugenDef, path, target, prev) {
+            return flock.synth.ugenValueParser(that, ugenDef, prev, swap);
+        });
+    };
+
     /**
      * Synths represent a collection of signal-generating units, wired together to form an instrument.
      * They are created with a synthDef object, a declarative structure describing the synth's unit generator graph.
@@ -966,7 +1017,7 @@ var fluid = fluid || require("infusion"),
         that.enviro = that.enviro || flock.enviro.shared;
         that.audioSettings = $.extend(true, {}, that.enviro.audioSettings, that.options.audioSettings);
         that.model.blockSize = that.rate === flock.rates.AUDIO ? that.audioSettings.blockSize : 1;
-        
+
         /**
          * Generates one block of audio rate signal by evaluating this synth's unit generator graph.
          */
@@ -974,7 +1025,7 @@ var fluid = fluid || require("infusion"),
             var nodes = that.nodes,
                 i,
                 node;
-            
+
             for (i = 0; i < nodes.length; i++) {
                 node = nodes[i];
                 if (node.gen !== undefined) {
@@ -982,32 +1033,11 @@ var fluid = fluid || require("infusion"),
                 }
             }
         };
-        
-        /**
-         * Gets the value of the ugen at the specified path.
-         *
-         * @param {String} path the ugen's path within the synth graph
-         * @return {Number|UGen} a scalar value in the case of a value ugen, otherwise the ugen itself
-         */
-        that.get = function (path) {
-            return flock.input.get(that.namedNodes, path);
-        };
-        
+
 
         /**
-         * Sets the value of the ugen at the specified path.
+         * Deprecated.
          *
-         * @param {String} path the ugen's path within the synth graph
-         * @param {Number || UGenDef} val a scalar value (for Value ugens) or a UGenDef object
-         * @return {UGen} the newly created UGen that was set at the specified path
-         */
-        that.set = function (path, val, swap) {
-            return flock.input.set(that.namedNodes, path, val, undefined, function (ugenDef, path, target, prev) {
-                return flock.synth.ugenValueParser(that, ugenDef, prev, swap);
-            });
-        };
-        
-        /**
          * Gets or sets the value of a ugen at the specified path
          *
          * @param {String} path the ugen's path within the synth graph
@@ -1021,16 +1051,42 @@ var fluid = fluid || require("infusion"),
                 flock.isIterable(path) ? that.get(path) : that.set(path, val, swap);
         };
 
+        /**
+         * Adds the synth to its environment's list of active nodes.
+         *
+         * @param {String || Boolean || Number} position the place to insert the node at;
+         *     if undefined, the synth's addToEnvironment option will be used.
+         */
+        that.addToEnvironment = function (position) {
+            if (position === undefined) {
+                position = that.options.addToEnvironment;
+            }
+
+            // Add this synth to the tail of the synthesis environment if appropriate.
+            if (position === undefined || position === null || position === false) {
+                return;
+            }
+
+            var type = typeof (position);
+            if (type === "string" && position === "head" || position === "tail") {
+                that.enviro[position](that);
+            } else if (type === "number") {
+                that.enviro.insert(position, that);
+            } else {
+                that.enviro.tail(that);
+            }
+        };
+
         that.init = function () {
             var o = that.options,
                 // At demand or schedule rates, override the rate of all non-constant ugens.
                 overrideRate = o.rate === flock.rates.SCHEDULED || o.rate === flock.rates.DEMAND;
-            
+
             if (!o.synthDef) {
                 fluid.log(fluid.logLevel.IMPORTANT,
                     "Warning: Instantiating a flock.synth instance with an empty synth def.");
             }
-            
+
             // Parse the synthDef into a graph of unit generators.
             that.out = flock.parse.synthDef(o.synthDef, {
                 rate: o.rate,
@@ -1040,31 +1096,29 @@ var fluid = fluid || require("infusion"),
                 buses: that.enviro.buses,
                 audioSettings: that.audioSettings
             });
-            
-            // Add this synth to the tail of the synthesis environment if appropriate.
-            if (o.addToEnvironment !== false) {
-                that.enviro.tail(that);
-            }
+
+            that.addToEnvironment();
         };
-        
+
         that.init();
         return that;
     };
-    
+
+    // TODO: Reduce all these dependencies on "that" (i.e. a synth instance).
     flock.synth.ugenValueParser = function (that, ugenDef, prev, swap) {
         if (ugenDef === null || ugenDef === undefined) {
             return prev;
         }
-    
+
         var parsed = flock.parse.ugenDef(ugenDef, {
             audioSettings: that.audioSettings,
             buses: that.enviro.buses,
             buffers: that.enviro.buffers
         });
-    
+
         var newUGens = flock.isIterable(parsed) ? parsed : (parsed !== undefined ? [parsed] : []),
             oldUGens = flock.isIterable(prev) ? prev : (prev !== undefined ? [prev] : []);
-        
+
         var replaceLen = Math.min(newUGens.length, oldUGens.length),
             replaceFn = swap ? that.swapTree : that.replaceTree,
             i,
@@ -1075,7 +1129,7 @@ var fluid = fluid || require("infusion"),
         for (i = 0; i < replaceLen; i++) {
             atIdx = replaceFn(newUGens[i], oldUGens[i]);
         }
-        
+
         for (j = i; j < newUGens.length; j++) {
             atIdx++;
             that.insertTree(atIdx, newUGens[j]);
@@ -1084,10 +1138,10 @@ var fluid = fluid || require("infusion"),
         for (j = i; j < oldUGens.length; j++) {
             that.removeTree(oldUGens[j]);
         }
-    
+
         return parsed;
     };
-    
+
     /**
      * Makes a new synth.
      * Deprecated. Use flock.synth instead. This is provided for semi-backwards-compatibility with
@@ -1098,65 +1152,75 @@ var fluid = fluid || require("infusion"),
         options.synthDef = def;
         return flock.synth(options);
     };
-    
+
     fluid.defaults("flock.synth.value", {
         gradeNames: ["flock.synth", "autoInit"],
-        
+
         rate: "demand",
-        
+
         addToEnvironment: false
     });
-    
+
     flock.synth.value.finalInit = function (that) {
         that.value = function () {
             var nodes = that.nodes,
                 lastIdx = nodes.length - 1,
                 out = nodes[lastIdx];
-            
+
             that.gen(1);
-            
+
             return out.model.value;
         };
     };
-    
-    
+
+
     fluid.defaults("flock.synth.frameRate", {
         gradeNames: ["flock.synth.value", "autoInit"],
-        
+
         rate: "scheduled",
-        
+
         fps: 60,
-        
+
         audioSettings: {
             rates: {
                 scheduled: "{that}.options.fps"
             }
         }
     });
-    
-    
+
+
+    // TODO: At the moment, flock.synth.group attempts to act as a proxy for
+    // a collection of synths, allowing users to address it as if it were
+    // a single synth. However, it does nothing to ensure that its contained synths
+    // are managed properly with the environment. As a result, it will double-generate
+    // output from each synth unless the user has manually specified their synths with the
+    // "addToEnvironment: false" option.
+    // It's also not IoC-enabled, which makes it very diffult to use it in IoC-based
+    // contexts.
+    // At very least, it should override the essential flock.nodeList methods and ensure
+    // that synths added to the group are actively removed from the environment's node list.
     fluid.defaults("flock.synth.group", {
         gradeNames: ["fluid.eventedComponent", "flock.node", "flock.nodeList", "autoInit"],
         rate: flock.rates.AUDIO
     });
-    
+
     flock.synth.group.finalInit = function (that) {
         that.rate = that.options.rate;
         that.enviro = that.enviro || flock.enviro.shared;
-        
+
         flock.synth.group.makeDispatchedMethods(that, [
             "input", "get", "set", "gen", "play", "pause"
         ]);
-        
+
         that.init = function () {
             if (that.options.addToEnvironment !== false) {
                 that.enviro.tail(that);
-            }    
+            }
         };
-        
+
         that.init();
     };
-    
+
     flock.synth.group.makeDispatcher = function (nodes, msg) {
         return function () {
             var i,
@@ -1166,24 +1230,23 @@ var fluid = fluid || require("infusion"),
                 node = nodes[i];
                 val = node[msg].apply(node, arguments);
             }
-            
+
             return val;
         };
     };
-    
+
     flock.synth.group.makeDispatchedMethods = function (that, methodNames) {
         var name,
             i;
-            
+
         for (i = 0; i < methodNames.length; i++) {
             name = methodNames[i];
             that[name] = flock.synth.group.makeDispatcher(that.nodes, name, flock.synth.group.dispatch);
         }
-        
+
         return that;
     };
-    
-    
+
     fluid.defaults("flock.synth.polyphonic", {
         gradeNames: ["flock.synth.group", "autoInit"],
         noteSpecs: {
@@ -1199,17 +1262,17 @@ var fluid = fluid || require("infusion"),
         amplitudeKey: "env.sustain",
         amplitudeNormalizer: "static" // "dynamic", "static", Function, falsey
     });
-    
+
     flock.synth.polyphonic.finalInit = function (that) {
         that.activeVoices = {};
         that.freeVoices = [];
-        
+
         that.noteChange = function (voice, eventName, changeSpec) {
             var noteEventSpec = that.options.noteSpecs[eventName];
             changeSpec = $.extend({}, noteEventSpec, changeSpec);
             voice.input(changeSpec);
         };
-        
+
         that.noteOn = function (noteName, changeSpec) {
             var voice = that.nextFreeVoice();
             if (that.activeVoices[noteName]) {
@@ -1217,10 +1280,10 @@ var fluid = fluid || require("infusion"),
             }
             that.activeVoices[noteName] = voice;
             that.noteChange(voice, "on", changeSpec);
-            
+
             return voice;
         };
-        
+
         that.noteOff = function (noteName, changeSpec) {
             var voice = that.activeVoices[noteName];
             if (!voice) {
@@ -1229,20 +1292,20 @@ var fluid = fluid || require("infusion"),
             that.noteChange(voice, "off", changeSpec);
             delete that.activeVoices[noteName];
             that.freeVoices.push(voice);
-            
+
             return voice;
         };
-        
+
         that.createVoice = function () {
             var voice = flock.synth({
                 synthDef: that.options.synthDef,
                 addToEnvironment: false
             });
-            
+
             var normalizer = that.options.amplitudeNormalizer,
                 ampKey = that.options.amplitudeKey,
                 normValue;
-                
+
             if (normalizer) {
                 if (typeof normalizer === "function") {
                     normalizer(voice, ampKey);
@@ -1253,20 +1316,20 @@ var fluid = fluid || require("infusion"),
                 // TODO: Implement dynamic voice normalization.
             }
             that.nodes.push(voice);
-            
+
             return voice;
         };
-        
+
         that.pooledVoiceAllocator = function () {
             return that.freeVoices.pop();
         };
-        
+
         that.lazyVoiceAllocator = function () {
             return that.freeVoices.length > 1 ?
                 that.freeVoices.pop() : Object.keys(that.activeVoices).length > that.options.maxVoices ?
                 null : that.createVoice();
         };
-        
+
         that.init = function () {
             if (!that.options.initVoicesLazily) {
                 var i;
@@ -1278,15 +1341,63 @@ var fluid = fluid || require("infusion"),
                 that.nextFreeVoice = that.lazyVoiceAllocator;
             }
         };
-        
+
         that.init();
         return that;
     };
-    
+
+    /**
+     * flock.band provides an IoC-friendly interface for a collection of named synths.
+     */
+    // TODO: Unit tests.
+    fluid.defaults("flock.band", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        invokers: {
+            play: {
+                func: "{that}.events.onPlay.fire"
+            },
+
+            pause: {
+                func: "{that}.events.onPause.fire"
+            },
+
+            set: {
+                func: "{that}.events.onSet.fire"
+            }
+        },
+
+        events: {
+            onPlay: null,
+            onPause: null,
+            onSet: null
+        },
+
+        distributeOptions: {
+            source: "{that}.options.synthListeners",
+            removeSource: true,
+            target: "{that flock.synth}.options.listeners"
+        },
+
+        synthListeners: {
+            "{band}.events.onPlay": {
+                func: "{that}.play"
+            },
+
+            "{band}.events.onPause": {
+                func: "{that}.pause"
+            },
+
+            "{band}.events.onSet": {
+                func: "{that}.set"
+            }
+        }
+    });
+
     /*******************************
      * Error Handling Conveniences *
      *******************************/
-    
+
     flock.bufferDesc = function () {
         throw new Error("flock.bufferDesc is not defined. Did you forget to include the flocking-buffers.js file?");
     };
