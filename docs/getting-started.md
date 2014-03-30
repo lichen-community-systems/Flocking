@@ -27,12 +27,12 @@ Here is an example of an HTML page that uses Flocking, which you can use as a te
 
             <script src="flocking/flocking-all.js"></script>
             <script src="myStuff.js"></script>
-    
+
         </head>
 
         <body>
             <!-- Your markup goes here -->
-    
+
             <script>
                 myStuff.play();
             </script>
@@ -47,7 +47,7 @@ And an example JavaScript file:
 
         // JavaScript strict mode is a good thing.
         "use strict";
-    
+
         // Define a unique global namespace for your stuff.
         // You should change this to a namespace that is appropriate for your project.
         fluid.registerNamespace("myStuff");
@@ -66,7 +66,7 @@ And an example JavaScript file:
                     mul: 0.1
                 }
             });
-    
+
             // If you're on iOS, you will need to call in a listener for
             // some kind of user input action, such a button click or touch handler.
             // This is because iOS will only play sound if the user initiated it.
@@ -93,7 +93,7 @@ Concatenated and minified Flocking files are committed to the source code reposi
 
     <!-- This includes Flocking and all its dependencies, including jQuery 2.0 and Infusion 1.5 -->
     <script src="flocking-all.js"></script>
-    
+
 
 ### Linking to Individual Flocking Files (for development) ###
 
@@ -101,12 +101,12 @@ If you'd prefer to link to the individual Flocking files during development, the
 
     <!-- jQuery -->
     <script src="flocking/third-party/jquery/js/jquery-2.0.0.js"></script>
-    
+
     <!-- Infusion -->
     <script src="flocking/third-party/infusion/js/Fluid.js"></script>
     <script src="flocking/third-party/infusion/js/FluidIoC.js"></script>
     <script src="flocking/third-party/infusion/js/DataBinding.js"></script>
-    
+
     <!-- The DSP API Polyfill -->
     <script src="flocking/third-party/dspapi/js/dspapi.js"></script>
 
@@ -120,7 +120,7 @@ If you'd prefer to link to the individual Flocking files during development, the
 
 In addition, if you're working with WAV or AIFF files, these files are required:
 
-    <script src="../../../third-party/polydataview/js/polydataview.js"></script>
+    <script src="../../../flocking/flocking-buffers.js"></script>
     <script src="../../../flocking/flocking-audiofile.js"></script>
 
 If you're using the flock.ugen.scope unit generator, you'll also need:
@@ -128,7 +128,7 @@ If you're using the flock.ugen.scope unit generator, you'll also need:
     <script src="../../../flocking/flocking-gfx.js"></script>
 
 And if you're using an older version of Firefox (< 25), you'll need:
-    
+
     <script src="../../../flocking/flocking-firefox.js"></script>
 
 
@@ -139,18 +139,18 @@ And if you're using an older version of Firefox (< 25), you'll need:
 Fluid components are created by defining JSON "component trees", which are managed by an Inversion of Control system that is responsible for wiring up dependencies between components. Here's an example of how you would use Flocking with Infusion.
 
     (function () {
-    
+
         // Define a unique global namespace for your stuff.
         // You should change this to a namespace that is appropriate for your project.
         fluid.registerNamespace("myStuff");
-    
+
         // Define an Infusion component that represents your instrument.
         fluid.defaults("myStuff.sinewaver", {
-        
+
             // This instrument is a flock.synth, and ask Infusion to automatically
             // define an initialization function for it.
             gradeNames: ["flock.synth", "autoInit"],
-        
+
             // Define the synthDef for your instrument.
             synthDef: {
                 id: "carrier",
@@ -159,30 +159,30 @@ Fluid components are created by defining JSON "component trees", which are manag
                 mul: 0.5
             }
         });
-    
-    
+
+
         // Define an Infusion component that represents your composition,
         // and which will contain instruments, a scheduler, and score.
         fluid.defaults("myStuff.composition", {
-        
+
             gradeNames: ["fluid.eventedComponent", "autoInit"],
-        
-            // This composition has two components: 
+
+            // This composition has two components:
             //  1. our sinewaver instrument (defined above)
             //  2. a tempo scheduler running at 60 bpm
             components: {
                 instrument: {
                     type: "myStuff.sinewaver"
                 },
-                
+
                 clock: {
                     type: "flock.scheduler.async.tempo",
                     options: {
                         bpm: 60
                     }
-                }    
+                }
             },
-        
+
             // The score is a declarative specification that can be passed to
             // Scheduler.schedule(). In this case, the pitch will change every
             // beat until it hits 1210 Hz, and then it will fade out.
@@ -190,10 +190,10 @@ Fluid components are created by defining JSON "component trees", which are manag
                 {
                     // Schedule this event as repeating
                     interval: "repeat",
-                
+
                     // Every beat.
                     time: 1.0,
-                
+
                     change: {
                         // This specifies that we want to send the change to the "sinewaver" synth.
                         synth: "sinewaver",
@@ -214,13 +214,13 @@ Fluid components are created by defining JSON "component trees", which are manag
                 {
                     // Schedule this event only once
                     interval: "once",
-                
+
                     // After 8 beats.
                     time: 8,
-                
+
                     change: {
                         synth: "sinewaver",
-                    
+
                         // Inject a new "line" unit generator to fade out.
                         values: {
                             "carrier.mul": {
@@ -233,7 +233,7 @@ Fluid components are created by defining JSON "component trees", which are manag
                     }
                 }
             ],
-        
+
             // This section registers listeners for our composition's "onCreate" event,
             // which is one of the built-in lifecycle events for Infusion.
             // When onCreate fires, we start the environment and then schedule our score with the Scheduler.
@@ -250,9 +250,9 @@ Fluid components are created by defining JSON "component trees", which are manag
             }
         });
     }());
-    
+
 And here's the HTML page to go with it:
-    
+
     <!DOCTYPE html>
 
     <html lang="en">
@@ -261,15 +261,14 @@ And here's the HTML page to go with it:
 
             <script src="flocking/flocking-all.js"></script>
             <script src="myStuff.js"></script>
-    
+
         </head>
 
         <body>
             <!-- Your markup goes here -->
-    
+
             <script>
                 myStuff.composition();
             </script>
         </body>
     </html>
-    

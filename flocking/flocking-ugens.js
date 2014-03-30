@@ -450,6 +450,71 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+
+    flock.ugen.inputTrigger = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                source = that.inputs.source.output,
+                sourceInc = m.strides.source,
+                duration = that.inputs.duration.output,
+                durationInc = m.strides.duration,
+                prevDur = m.prevDur,
+                out = that.output,
+                i,
+                j,
+                k,
+                val,
+                dur;
+
+            for (i = j = k = 0; i < numSamps; i++, j += sourceInc, k += durationInc) {
+                val = source[j];
+                dur = duration[k];
+
+                if (dur !== prevDur) {
+                    m.prevDur = dur;
+                    m.remainingOpenSamples = val > 0 ? (dur > 0 ? m.sampleRate * dur : 1) : 0;
+                }
+
+                if (m.remainingOpenSamples > 0) {
+                    out[i] = val;
+                    m.remainingOpenSamples--;
+                } else {
+                    out[i] = 0.0;
+                }
+            }
+        };
+
+        that.onInputChanged = function (inputName) {
+            that.calculateStrides();
+
+            if (inputName === "source") {
+                that.model.prevDur = null;
+            }
+        };
+
+        that.calculateStrides();
+        return that;
+    };
+    fluid.defaults("flock.ugen.inputTrigger", {
+        rate: "control",
+
+        inputs: {
+            source: 0,
+            duration: 0
+        },
+
+        ugenOptions: {
+            model: {
+                prevDuration: 0,
+                remainingOpenSamples: 0
+            },
+
+            strideInputs: ["source", "duration"]
+        }
+    });
+
     flock.ugen.math = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         that.expandedSource = new Float32Array(that.options.audioSettings.blockSize);

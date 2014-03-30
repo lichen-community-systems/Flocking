@@ -9,12 +9,11 @@
     funcscope: false*/
 
 (function () {
-    
+
     "use strict";
 
     // TODO: Allow toggling of these files with a production concatenated build.
     importScripts(
-        "../third-party/polydataview/js/polydataview.js",
         "./flocking-audiofile.js"
     );
 

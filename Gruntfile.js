@@ -36,11 +36,9 @@ module.exports = function(grunt) {
                     // Marcus Geelnard's DSPI API polyfill
                     "third-party/dspapi/js/dspapi.js",
 
-                    // DataView Polyfill
-                    "third-party/polydataview/js/polydataview.js",
-
                     // Flocking
                     "flocking/flocking-core.js",
+                    "flocking/flocking-buffers.js",
                     "flocking/flocking-parser.js",
                     "flocking/flocking-audiofile.js",
                     "flocking/flocking-scheduler.js",
