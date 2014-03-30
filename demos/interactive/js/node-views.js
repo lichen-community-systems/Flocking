@@ -5,7 +5,7 @@
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
 
-/*global require, dagre, jsPlumb*/
+/*global require, dagre*/
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
@@ -44,7 +44,7 @@ var fluid = fluid || require("infusion"),
         },
 
         markup: {
-            node: "<div id='%id' class='node %type'>%displayName</div>"
+            node: "<div id='%id' class='node %type'><div class='label'>%displayName</div></div>"
         }
     });
 
@@ -251,8 +251,8 @@ var fluid = fluid || require("infusion"),
                 "position": "absolute",
                 // TODO: calculate position from centre, which is what Dagre gives us.
                 // TODO: Offset based on the container's position on screen.
-                "top": graphNode.y + 75,
-                "left": graphNode.x + 50
+                "top": graphNode.y + 125,
+                "left": graphNode.x + 25
             });
         });
     };
@@ -272,18 +272,18 @@ var fluid = fluid || require("infusion"),
         var graph = flock.ui.nodeRenderers.synth.render(that.ugenRenderers);
 
         flock.ui.nodeRenderers.synth.layoutGraph(container, graph);
-        flock.ui.nodeRenderers.synth.renderEdges(graph.edges);
+        flock.ui.nodeRenderers.synth.renderEdges(that.jsPlumb.plumb, graph.edges);
 
         if (afterRender) {
             afterRender();
         }
     };
 
-    flock.ui.nodeRenderers.synth.renderEdges = function (edges) {
+    flock.ui.nodeRenderers.synth.renderEdges = function (plumb, edges) {
         fluid.each(edges, function (edge) {
-            jsPlumb.connect({
-                source: jsPlumb.addEndpoint(edge.source),
-                target: jsPlumb.addEndpoint(edge.target)
+            plumb.connect({
+                source: plumb.addEndpoint(edge.source),
+                target: plumb.addEndpoint(edge.target)
             });
         });
     };

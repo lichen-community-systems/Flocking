@@ -5,7 +5,7 @@
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
 
-/*global require, window*/
+/*global jsPlumb, require, window*/
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
@@ -273,12 +273,12 @@ var fluid = fluid || require("infusion"),
         jsPlumbSettings: {},
 
         members: {
-            /*plumb: {
+            plumb: {
                 expander: {
                     funcName: "flock.playground.jsPlumb.create",
                     args: ["{that}.container", "{that}.options.jsPlumbSettings"]
                 }
-            }*/
+            }
         },
 
         events: {
@@ -288,7 +288,7 @@ var fluid = fluid || require("infusion"),
         listeners: {
             onCreate: [
                 {
-                    "this": "jsPlumb",
+                    "this": "{that}.plumb",
                     method: "ready",
                     args: "{that}.events.onReady.fire"
                 },
@@ -301,10 +301,11 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    /*flock.playground.jsPlumb.create = function (container, jsPlumbSettings) {
-        jsPlumbSettings.Container = jsPlumbSettings.Container || container;
-        return jsPlumb.getInstance(jsPlumbSettings);
-    };*/
+    flock.playground.jsPlumb.create = function (/*container, jsPlumbSettings*/) {
+        // jsPlumbSettings.Container = jsPlumbSettings.Container || container;
+        // return jsPlumb.getInstance(jsPlumbSettings);
+        return jsPlumb;
+    };
 
 
     /***************
@@ -328,7 +329,7 @@ var fluid = fluid || require("infusion"),
                 container: "{that}.container",
                 options: {
                     components: {
-                        jsPlumb: "{visualView}.jsPlumb"
+                        jsPlumb: "{jsPlumb}"
                     },
 
                     // TODO: Move this IoC reference upwards.
