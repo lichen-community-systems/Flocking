@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (March 30, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (April 5, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -18976,6 +18976,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.OUT_UGEN_ID = "flocking-out";
+    flock.PI = Math.PI;
     flock.TWOPI = 2.0 * Math.PI;
     flock.HALFPI = Math.PI / 2.0;
     flock.LOG01 = Math.log(0.1);
@@ -20931,7 +20932,7 @@ var fluid = fluid || require("infusion"),
  */
 
 /*global global, self, require, window, ArrayBuffer, Uint8Array, Uint32Array, Float32Array,
-File, FileReader, PolyDataView*/
+  File, FileReader, PolyDataView*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,

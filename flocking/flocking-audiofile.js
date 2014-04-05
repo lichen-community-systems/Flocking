@@ -15,7 +15,7 @@
  */
 
 /*global global, self, require, window, ArrayBuffer, Uint8Array, Uint32Array, Float32Array,
-File, FileReader, PolyDataView*/
+  File, FileReader, PolyDataView*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,
