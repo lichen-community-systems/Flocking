@@ -2441,13 +2441,15 @@ var fluid = fluid || require("infusion"),
 
         that.singleBusGen = function (numSamps) {
             var out = that.output,
-                busNum = that.inputs.bus.output[0],
+                busNum = that.inputs.bus.output[0] | 0,
                 bus = that.options.audioSettings.buses[busNum],
                 i;
 
             for (i = 0; i < numSamps; i++) {
                 out[i] = bus[i];
             }
+
+            that.mulAdd(numSamps);
         };
 
         that.multiBusGen = function (numSamps) {
@@ -2461,10 +2463,12 @@ var fluid = fluid || require("infusion"),
             for (i = 0; i < numSamps; i++) {
                 out[i] = 0; // Clear previous output values before summing a new set.
                 for (j = 0; j < busesInput.length; j++) {
-                    busIdx = busesInput[j].output[0];
+                    busIdx = busesInput[j].output[0] | 0;
                     out[i] += enviroBuses[busIdx][i];
                 }
             }
+
+            that.mulAdd(numSamps);
         };
 
         that.onInputChanged = function () {
@@ -2480,6 +2484,46 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         inputs: {
             bus: 0,
+            mul: null,
+            add: null
+        }
+    });
+
+    flock.ugen.audioIn = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        // TODO: Complete cut and paste of flock.ugen.in.singleBusGen().
+        that.gen = function (numSamps) {
+            var out = that.output,
+                busNum = that.inputs.bus.output[0] | 0,
+                bus = that.options.audioSettings.buses[busNum],
+                i;
+
+            for (i = 0; i < numSamps; i++) {
+                out[i] = bus[i];
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        that.onInputChanged = function () {
+            flock.onMulAddInputChanged(that);
+        };
+
+        that.init = function () {
+            // TODO: Direct reference to the shared environment.
+            flock.enviro.shared.audioStrategy.startReadingAudioInput();
+            that.onInputChanged();
+        };
+
+        that.init();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.audioIn", {
+        rate: "audio",
+        inputs: {
+            bus: 2,
             mul: null,
             add: null
         }
@@ -2915,10 +2959,10 @@ var fluid = fluid || require("infusion"),
                 allPassTunings = o.allPassTunings,
                 source = inputs.source.output,
                 mix = inputs.mix.output[0],
-                roomsize = inputs.roomsize.output[0],
+                roomSize = inputs.roomSize.output[0],
                 damp = inputs.damp.output[0],
                 dry = 1 - mix,
-                room_scaled = roomsize * 0.28 + 0.7,
+                room_scaled = roomSize * 0.28 + 0.7,
                 damp1 = damp * 0.4,
                 damp2 = 1.0 - damp1,
                 i,
@@ -3008,7 +3052,7 @@ var fluid = fluid || require("infusion"),
             // not stored but only used in the gen loop.
             that.readsamp_a = new Float32Array(4);
 
-            for (i = 0; i < that.buffers_a.length; i++) {
+            for (i = 0; i < 4; i++) {
                 that.bufferindices_a[i] = 0;
                 that.filterx_a[i] = 0;
                 that.filtery_a[i] = 0;
@@ -3037,7 +3081,7 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         inputs: {
             mix: 0.5,
-            roomsize: 0.6,
+            roomSize: 0.6,
             damp: 0.1,
             source: null,
             mul: null,
@@ -3048,10 +3092,8 @@ var fluid = fluid || require("infusion"),
                 spread: 0
             },
 
-            options: {
-                tunings: [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617],
-                allPassTunings: [556, 441, 341, 225]
-            }
+            tunings: [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617],
+            allPassTunings: [556, 441, 341, 225]
         }
     });
 

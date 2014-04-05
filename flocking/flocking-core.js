@@ -768,25 +768,28 @@ var fluid = fluid || require("infusion"),
     });
 
     flock.enviro.nodeEvaluator.finalInit = function (that) {
-        that.gen = function () {
+        that.clearBuses = function () {
             var numBuses = that.options.numBuses,
                 busLen = that.options.blockSize,
                 i,
                 bus,
-                j,
-                node;
+                j;
 
-            // Clear all buses before evaluating the synth graph.
             for (i = 0; i < numBuses; i++) {
                 bus = that.buses[i];
                 for (j = 0; j < busLen; j++) {
                     bus[j] = 0;
                 }
             }
+        };
 
-            // Now evaluate each node.
-            for (i = 0; i < that.nodes.length; i++) {
-                node = that.nodes[i];
+        that.gen = function () {
+            var nodes = that.nodes,
+                i,
+                node;
+            
+            for (i = 0; i < nodes.length; i++) {
+                node = nodes[i];
                 node.gen(node.model.blockSize);
             }
         };

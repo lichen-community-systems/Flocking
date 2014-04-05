@@ -20,6 +20,9 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
+    flock.shim.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia ||
+        navigator.mozGetUserMedia || navigator.msGetUserMedia;
+
     /**
      * Web Audio API Audio Strategy
      */
@@ -36,6 +39,8 @@ var fluid = fluid || require("infusion"),
     flock.enviro.webAudio.finalInit = function (that) {
 
         that.startGeneratingSamples = function () {
+            var m = that.model;
+
             if (that.preNode) {
                 that.preNode.connect(that.jsNode);
             }
@@ -48,14 +53,16 @@ var fluid = fluid || require("infusion"),
             // Work around a bug in iOS Safari where it now requires a noteOn()
             // message to be invoked before sound will work at all. Just connecting a
             // ScriptProcessorNode inside a user event handler isn't sufficient.
-            if (that.model.shouldInitIOS) {
+            if (m.shouldInitIOS) {
                 var s = that.context.createBufferSource();
                 s.connect(that.jsNode);
                 s.start(0);
                 s.stop(0);
                 s.disconnect(0);
-                that.model.shouldInitIOS = false;
+                m.shouldInitIOS = false;
             }
+
+            m.isGenerating = true;
         };
 
         that.stopGeneratingSamples = function () {
@@ -64,12 +71,18 @@ var fluid = fluid || require("infusion"),
             if (that.preNode) {
                 that.preNode.disconnect(0);
             }
+
+            that.model.isGenerating = false;
         };
 
         that.writeSamples = function (e) {
-            var audioSettings = that.options.audioSettings,
+            var m = that.model,
+                krPeriods = m.krPeriods,
+                evaluator = that.nodeEvaluator,
+                buses = evaluator.buses,
+                audioSettings = that.options.audioSettings,
                 blockSize = audioSettings.blockSize,
-                playState = that.model.playState,
+                playState = m.playState,
                 chans = audioSettings.chans,
                 inBufs = e.inputBuffer,
                 inChans = e.inputBuffer.numberOfChannels,
@@ -79,7 +92,7 @@ var fluid = fluid || require("infusion"),
                 samp;
 
             // If there are no nodes providing samples, write out silence.
-            if (that.nodeEvaluator.nodes.length < 1) {
+            if (evaluator.nodes.length < 1) {
                 for (chan = 0; chan < chans; chan++) {
                     flock.generate.silence(outBufs.getChannelData(chan));
                 }
@@ -88,27 +101,29 @@ var fluid = fluid || require("infusion"),
 
             // TODO: Make a formal distinction between input buses,
             // output buses, and interconnect buses in the environment!
-            for (i = 0; i < that.model.krPeriods; i++) {
+            for (i = 0; i < krPeriods; i++) {
                 var offset = i * blockSize;
+
+                evaluator.clearBuses();
 
                 // Read this ScriptProcessorNode's input buffers
                 // into the environment.
                 for (chan = 0; chan < inChans; chan++) {
                     var inBuf = inBufs.getChannelData(chan),
                         inBusNumber = chans + chan, // Input buses are located after output buses.
-                        targetBuf = that.nodeEvaluator.buses[inBusNumber];
+                        targetBuf = buses[inBusNumber];
 
                     for (samp = 0; samp < blockSize; samp++) {
                         targetBuf[samp] = inBuf[samp + offset];
                     }
                 }
 
-                that.nodeEvaluator.gen();
+                evaluator.gen();
 
                 // Output the environment's signal
                 // to this ScriptProcessorNode's output channels.
                 for (chan = 0; chan < chans; chan++) {
-                    var sourceBuf = that.nodeEvaluator.buses[chan],
+                    var sourceBuf = buses[chan],
                         outBuf = outBufs.getChannelData(chan);
 
                     // And output each sample.
@@ -130,6 +145,10 @@ var fluid = fluid || require("infusion"),
             }
 
             that.preNode = node;
+
+            if (that.model.isGenerating) {
+                that.preNode.connect(that.jsNode);
+            }
         };
 
         that.insertOutputNode = function (node) {
@@ -148,6 +167,25 @@ var fluid = fluid || require("infusion"),
         that.removeOutputNode = function () {
             flock.enviro.webAudio.removeNode(that.postNode);
             that.postNode = that.jsNode;
+        };
+
+        that.startReadingAudioInput = function () {
+            flock.shim.getUserMedia.call(navigator, {
+                audio: true
+            },
+            function success (mediaStream) {
+                var mic = that.context.createMediaStreamSource(mediaStream);
+                that.insertInputNode(mic);
+            },
+            function error (err) {
+                fluid.log(fluid.logLevel.IMPORTANT,
+                    "An error occurred while trying to access the user's microphone. " +
+                    err);
+            });
+        };
+
+        that.stopReadingAudioInput = function () {
+            that.removeInputNode();
         };
 
         that.init = function () {
