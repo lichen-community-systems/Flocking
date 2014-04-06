@@ -19584,7 +19584,7 @@ var fluid = fluid || require("infusion"),
             },
             blockSize: 64,
             chans: 2,
-            numBuses: 2,
+            numBuses: 4,
             // This buffer size determines the overall latency of Flocking's audio output.
             // TODO: Replace this with IoC awesomeness.
             bufferSize: flock.defaultBufferSizeForPlatform(),
@@ -19712,25 +19712,28 @@ var fluid = fluid || require("infusion"),
     });
 
     flock.enviro.nodeEvaluator.finalInit = function (that) {
-        that.gen = function () {
+        that.clearBuses = function () {
             var numBuses = that.options.numBuses,
                 busLen = that.options.blockSize,
                 i,
                 bus,
-                j,
-                node;
+                j;
 
-            // Clear all buses before evaluating the synth graph.
             for (i = 0; i < numBuses; i++) {
                 bus = that.buses[i];
                 for (j = 0; j < busLen; j++) {
                     bus[j] = 0;
                 }
             }
+        };
 
-            // Now evaluate each node.
-            for (i = 0; i < that.nodes.length; i++) {
-                node = that.nodes[i];
+        that.gen = function () {
+            var nodes = that.nodes,
+                i,
+                node;
+            
+            for (i = 0; i < nodes.length; i++) {
+                node = nodes[i];
                 node.gen(node.model.blockSize);
             }
         };
@@ -22900,104 +22903,220 @@ var fluid = fluid || require("infusion"),
 
 (function () {
     "use strict";
-    
+
+    flock.shim.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia ||
+        navigator.mozGetUserMedia || navigator.msGetUserMedia;
+
     /**
      * Web Audio API Audio Strategy
      */
     fluid.defaults("flock.enviro.webAudio", {
-        gradeNames: ["flock.enviro.audioStrategy", "autoInit"]
+        gradeNames: ["flock.enviro.audioStrategy", "autoInit"],
+
+        members: {
+            preNode: null,
+            jsNode: null,
+            postNode: null
+        },
+
+        model: {
+            isGenerating: false,
+            hasInput: false
+        }
     });
-    
+
     flock.enviro.webAudio.finalInit = function (that) {
-        
+
         that.startGeneratingSamples = function () {
-            that.jsNode.onaudioprocess = that.writeSamples; // TODO: When Firefox ships, is this still necessary?
-            that.jsNode.connect(that.context.destination);
-            
-            // Work around a bug in iOS Safari where it now requires a noteOn() 
-            // message to be invoked before sound will work at all. Just connecting a 
-            // ScriptProcessorNode inside a user event handler isn't sufficient.
-            if (that.model.shouldInitIOS) {
-                var s = that.source;
-                (s.start || s.noteOn).call(that.source, 0);
-                (s.stop || s.noteOff).call(that.source, 0);
-                that.model.shouldInitIOS = false;
+            var m = that.model;
+
+            if (that.preNode) {
+                that.preNode.connect(that.jsNode);
             }
+
+            that.postNode.connect(that.context.destination);
+            if (that.postNode !== that.jsNode) {
+                that.jsNode.connect(that.postNode);
+            }
+
+            // Work around a bug in iOS Safari where it now requires a noteOn()
+            // message to be invoked before sound will work at all. Just connecting a
+            // ScriptProcessorNode inside a user event handler isn't sufficient.
+            if (m.shouldInitIOS) {
+                var s = that.context.createBufferSource();
+                s.connect(that.jsNode);
+                s.start(0);
+                s.stop(0);
+                s.disconnect(0);
+                m.shouldInitIOS = false;
+            }
+
+            m.isGenerating = true;
         };
-        
+
         that.stopGeneratingSamples = function () {
             that.jsNode.disconnect(0);
-            that.jsNode.onaudioprocess = undefined;
+            that.postNode.disconnect(0);
+            if (that.preNode) {
+                that.preNode.disconnect(0);
+            }
+
+            that.model.isGenerating = false;
         };
-        
+
         that.writeSamples = function (e) {
-            var audioSettings = that.options.audioSettings,
+            var m = that.model,
+                hasInput = m.hasInput,
+                krPeriods = m.krPeriods,
+                evaluator = that.nodeEvaluator,
+                buses = evaluator.buses,
+                audioSettings = that.options.audioSettings,
                 blockSize = audioSettings.blockSize,
-                playState = that.model.playState,
+                playState = m.playState,
                 chans = audioSettings.chans,
+                inBufs = e.inputBuffer,
+                inChans = e.inputBuffer.numberOfChannels,
                 outBufs = e.outputBuffer,
                 chan,
                 i,
                 samp;
-                
+
             // If there are no nodes providing samples, write out silence.
-            if (that.nodeEvaluator.nodes.length < 1) {
+            if (evaluator.nodes.length < 1) {
                 for (chan = 0; chan < chans; chan++) {
                     flock.generate.silence(outBufs.getChannelData(chan));
                 }
                 return;
             }
 
-            for (i = 0; i < that.model.krPeriods; i++) {
-                that.nodeEvaluator.gen();
+            // TODO: Make a formal distinction between input buses,
+            // output buses, and interconnect buses in the environment!
+            for (i = 0; i < krPeriods; i++) {
                 var offset = i * blockSize;
 
-                // Loop through each channel.
+                evaluator.clearBuses();
+
+                // Read this ScriptProcessorNode's input buffers
+                // into the environment.
+                if (hasInput) {
+                    for (chan = 0; chan < inChans; chan++) {
+                        var inBuf = inBufs.getChannelData(chan),
+                            inBusNumber = chans + chan, // Input buses are located after output buses.
+                            targetBuf = buses[inBusNumber];
+
+                        for (samp = 0; samp < blockSize; samp++) {
+                            targetBuf[samp] = inBuf[samp + offset];
+                        }
+                    }
+                }
+
+                evaluator.gen();
+
+                // Output the environment's signal
+                // to this ScriptProcessorNode's output channels.
                 for (chan = 0; chan < chans; chan++) {
-                    var sourceBuf = that.nodeEvaluator.buses[chan],
+                    var sourceBuf = buses[chan],
                         outBuf = outBufs.getChannelData(chan);
-                    
+
                     // And output each sample.
                     for (samp = 0; samp < blockSize; samp++) {
                         outBuf[samp + offset] = sourceBuf[samp];
                     }
                 }
             }
-            
+
             playState.written += audioSettings.bufferSize * chans;
             if (playState.written >= playState.total) {
                 that.stop();
             }
         };
-        
+
+        that.insertInputNode = function (node) {
+            var m = that.model;
+
+            if (that.preNode) {
+                that.removeInputNode(that.preNode);
+            }
+
+            that.preNode = node;
+            m.hasInput = true;
+
+            if (m.isGenerating) {
+                that.preNode.connect(that.jsNode);
+            }
+        };
+
+        that.insertOutputNode = function (node) {
+            if (that.postNode) {
+                that.removeOutputNode(that.postNode);
+            }
+
+            that.postNode = node;
+        };
+
+        that.removeInputNode = function () {
+            flock.enviro.webAudio.removeNode(that.preNode);
+            that.preNode = null;
+            that.model.hasInput = false;
+        };
+
+        that.removeOutputNode = function () {
+            flock.enviro.webAudio.removeNode(that.postNode);
+            that.postNode = that.jsNode;
+        };
+
+        that.startReadingAudioInput = function () {
+            flock.shim.getUserMedia.call(navigator, {
+                audio: true
+            },
+            function success (mediaStream) {
+                var mic = that.context.createMediaStreamSource(mediaStream);
+                that.insertInputNode(mic);
+            },
+            function error (err) {
+                fluid.log(fluid.logLevel.IMPORTANT,
+                    "An error occurred while trying to access the user's microphone. " +
+                    err);
+            });
+        };
+
+        that.stopReadingAudioInput = function () {
+            that.removeInputNode();
+        };
+
         that.init = function () {
-            var settings = that.options.audioSettings,
+            var m = that.model,
+                settings = that.options.audioSettings,
                 scriptNodeConstructorName;
-            
-            that.model.krPeriods = settings.bufferSize / settings.blockSize;
-            
+
+            m.krPeriods = settings.bufferSize / settings.blockSize;
+
             // Singleton AudioContext since the WebKit implementation
             // freaks if we try to instantiate a new one.
             if (!flock.enviro.webAudio.audioContext) {
                 flock.enviro.webAudio.audioContext = new flock.enviro.webAudio.contextConstructor();
             }
-            
+
             that.context = flock.enviro.webAudio.audioContext;
             settings.rates.audio = that.context.sampleRate;
-            that.source = that.context.createBufferSource();
-            scriptNodeConstructorName = that.context.createScriptProcessor ? 
+            scriptNodeConstructorName = that.context.createScriptProcessor ?
                 "createScriptProcessor" : "createJavaScriptNode";
             that.jsNode = that.context[scriptNodeConstructorName](settings.bufferSize);
-            that.source.connect(that.jsNode);
-            
-            that.model.shouldInitIOS = flock.platform.isIOS;
+            that.insertOutputNode(that.jsNode);
+            that.jsNode.onaudioprocess = that.writeSamples;
+
+            m.shouldInitIOS = flock.platform.isIOS;
         };
-        
+
         that.init();
     };
-    
+
+    flock.enviro.webAudio.removeNode = function (node) {
+        node.disconnect(0);
+    };
+
     flock.enviro.webAudio.contextConstructor = window.AudioContext || window.webkitAudioContext;
-    
+
     fluid.demands("flock.enviro.audioStrategy", "flock.platform.webAudio", {
         funcName: "flock.enviro.webAudio"
     });
@@ -25446,13 +25565,15 @@ var fluid = fluid || require("infusion"),
 
         that.singleBusGen = function (numSamps) {
             var out = that.output,
-                busNum = that.inputs.bus.output[0],
+                busNum = that.inputs.bus.output[0] | 0,
                 bus = that.options.audioSettings.buses[busNum],
                 i;
 
             for (i = 0; i < numSamps; i++) {
                 out[i] = bus[i];
             }
+
+            that.mulAdd(numSamps);
         };
 
         that.multiBusGen = function (numSamps) {
@@ -25466,10 +25587,12 @@ var fluid = fluid || require("infusion"),
             for (i = 0; i < numSamps; i++) {
                 out[i] = 0; // Clear previous output values before summing a new set.
                 for (j = 0; j < busesInput.length; j++) {
-                    busIdx = busesInput[j].output[0];
+                    busIdx = busesInput[j].output[0] | 0;
                     out[i] += enviroBuses[busIdx][i];
                 }
             }
+
+            that.mulAdd(numSamps);
         };
 
         that.onInputChanged = function () {
@@ -25485,6 +25608,46 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         inputs: {
             bus: 0,
+            mul: null,
+            add: null
+        }
+    });
+
+    flock.ugen.audioIn = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        // TODO: Complete cut and paste of flock.ugen.in.singleBusGen().
+        that.gen = function (numSamps) {
+            var out = that.output,
+                busNum = that.inputs.bus.output[0] | 0,
+                bus = that.options.audioSettings.buses[busNum],
+                i;
+
+            for (i = 0; i < numSamps; i++) {
+                out[i] = bus[i];
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        that.onInputChanged = function () {
+            flock.onMulAddInputChanged(that);
+        };
+
+        that.init = function () {
+            // TODO: Direct reference to the shared environment.
+            flock.enviro.shared.audioStrategy.startReadingAudioInput();
+            that.onInputChanged();
+        };
+
+        that.init();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.audioIn", {
+        rate: "audio",
+        inputs: {
+            bus: 2,
             mul: null,
             add: null
         }
@@ -25920,10 +26083,10 @@ var fluid = fluid || require("infusion"),
                 allPassTunings = o.allPassTunings,
                 source = inputs.source.output,
                 mix = inputs.mix.output[0],
-                roomsize = inputs.roomsize.output[0],
+                roomSize = inputs.roomSize.output[0],
                 damp = inputs.damp.output[0],
                 dry = 1 - mix,
-                room_scaled = roomsize * 0.28 + 0.7,
+                room_scaled = roomSize * 0.28 + 0.7,
                 damp1 = damp * 0.4,
                 damp2 = 1.0 - damp1,
                 i,
@@ -26013,7 +26176,7 @@ var fluid = fluid || require("infusion"),
             // not stored but only used in the gen loop.
             that.readsamp_a = new Float32Array(4);
 
-            for (i = 0; i < that.buffers_a.length; i++) {
+            for (i = 0; i < 4; i++) {
                 that.bufferindices_a[i] = 0;
                 that.filterx_a[i] = 0;
                 that.filtery_a[i] = 0;
@@ -26042,7 +26205,7 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         inputs: {
             mix: 0.5,
-            roomsize: 0.6,
+            roomSize: 0.6,
             damp: 0.1,
             source: null,
             mul: null,
@@ -26053,10 +26216,8 @@ var fluid = fluid || require("infusion"),
                 spread: 0
             },
 
-            options: {
-                tunings: [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617],
-                allPassTunings: [556, 441, 341, 225]
-            }
+            tunings: [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617],
+            allPassTunings: [556, 441, 341, 225]
         }
     });
 
@@ -26597,7 +26758,7 @@ var fluid = fluid || require("infusion"),
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global require, Float32Array, window, Mike*/
+/*global require, Float32Array, window*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,
@@ -26607,28 +26768,28 @@ var fluid = fluid || require("infusion"),
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
-    
+
 (function () {
     "use strict";
-    
+
     var $ = fluid.registerNamespace("jQuery");
-    
+
     fluid.registerNamespace("flock.ugen");
-    
+
     /***************************
      * Browser-dependent UGens *
      ***************************/
-     
+
     flock.ugen.scope = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function (numSamps) {
             var m = that.model,
                 spf = m.spf,
                 bufIdx = m.bufIdx,
                 buf = m.scope.values,
                 i;
-            
+
             for (i = 0; i < numSamps; i++) {
                 buf[bufIdx] = that.inputs.source.output[i];
                 if (bufIdx < spf) {
@@ -26640,29 +26801,29 @@ var fluid = fluid || require("infusion"),
             }
             m.bufIdx = bufIdx;
         };
-        
+
         that.onInputChanged = function () {
             // Pass the "source" input directly back as the output from this ugen.
             that.output = that.inputs.source.output;
         };
-        
+
         that.init = function () {
             that.model.spf = Math.round(that.model.sampleRate / that.options.fps);
             that.model.bufIdx = 0;
-        
+
             // Set up the scopeView widget.
             that.model.scope = that.options.styles;
             that.model.scope.values = new Float32Array(that.model.spf);
             that.scopeView = flock.view.scope(that.options.canvas, that.model.scope);
-            
+
             that.onInputChanged();
             that.scopeView.refreshView();
         };
-        
+
         that.init();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.scope", {
         rate: "audio",
         inputs: {
@@ -26676,10 +26837,10 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
-    
-    
+
+
     flock.ugen.mouse = {};
-    
+
     /**
      * Tracks the mouse's position along the specified axis within the boundaries the whole screen.
      * This unit generator will generate a signal between 0.0 and 1.0 based on the position of the mouse;
@@ -26687,7 +26848,7 @@ var fluid = fluid || require("infusion"),
      */
     flock.ugen.mouse.cursor = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         /**
          * Generates a control rate signal between 0.0 and 1.0 by tracking the mouse's position along the specified axis.
          *
@@ -26705,22 +26866,22 @@ var fluid = fluid || require("infusion"),
                 pow = Math.pow,
                 i,
                 max;
-            
+
             if (lag !== lagCoef) {
                 lagCoef = lag === 0 ? 0.0 : Math.exp(flock.LOG001 / (lag * m.sampleRate));
                 m.lagCoef = lagCoef;
             }
-            
+
             for (i = 0; i < numSamps; i++) {
                 max = mul + add;
                 scaledMouse = pow(max  / add, scaledMouse) * add;
                 movingAvg = scaledMouse + lagCoef * (movingAvg - scaledMouse); // 1-pole filter averages mouse values.
                 out[i] = movingAvg;
             }
-            
+
             m.movingAvg = movingAvg;
         };
-        
+
         that.linearGen = function (numSamps) {
             var m = that.model,
                 scaledMouse = m.mousePosition / m.size,
@@ -26731,20 +26892,20 @@ var fluid = fluid || require("infusion"),
                 lagCoef = m.lagCoef,
                 out = that.output,
                 i;
-            
+
             if (lag !== lagCoef) {
                 lagCoef = lag === 0 ? 0.0 : Math.exp(flock.LOG001 / (lag * m.sampleRate));
                 m.lagCoef = lagCoef;
             }
-            
+
             for (i = 0; i < numSamps; i++) {
                 movingAvg = scaledMouse + lagCoef * (movingAvg - scaledMouse);
                 out[i] = movingAvg * mul + add;
             }
-            
+
             m.movingAvg = movingAvg;
         };
-        
+
         that.noInterpolationGen = function (numSamps) {
             var m = that.model,
                 scaledMouse = m.mousePosition / m.size,
@@ -26752,17 +26913,17 @@ var fluid = fluid || require("infusion"),
                 mul = that.inputs.mul.output[0],
                 out = that.output,
                 i;
-                
+
             for (i = 0; i < numSamps; i++) {
                 out[i] = scaledMouse * mul + add;
             }
         };
-        
+
         that.moveListener = function (e) {
             var m = that.model,
                 pos = e[m.eventProp],
                 off;
-            
+
             if (pos === undefined) {
                 off = $(e.target).offset();
                 e.offsetX = e.clientX - off.left;
@@ -26771,57 +26932,57 @@ var fluid = fluid || require("infusion"),
             }
             m.mousePosition = m.isWithinTarget ? pos : 0.0;
         };
-        
+
         that.overListener = function () {
             that.model.isWithinTarget = true;
         };
-        
+
         that.outListener = function () {
             var m = that.model;
             m.isWithinTarget = false;
             m.mousePosition = 0.0;
         };
-        
+
         that.downListener = function () {
             that.model.isMouseDown = true;
         };
-        
+
         that.upListener = function () {
             var m = that.model;
             m.isMouseDown = false;
             m.mousePosition = 0;
         };
-        
+
         that.moveWhileDownListener = function (e) {
             if (that.model.isMouseDown) {
                 that.moveListener(e);
             }
         };
-        
+
         that.bindEvents = function () {
             var m = that.model,
                 target = m.target,
                 moveListener = that.moveListener;
-                
+
             if (that.options.onlyOnMouseDown) {
                 target.mousedown(that.downListener);
                 target.mouseup(that.upListener);
                 moveListener = that.moveWhileDownListener;
             }
-            
+
             target.mouseover(that.overListener);
             target.mouseout(that.outListener);
             target.mousemove(moveListener);
         };
-        
+
         that.onInputChanged = function () {
             flock.onMulAddInputChanged(that);
-            
+
             var interp = that.options.interpolation;
             that.gen = interp === "none" ? that.noInterpolationGen : interp === "exponential" ? that.exponentialGen : that.linearGen;
             that.model.exponential = interp === "exponential";
         };
-        
+
         that.init = function () {
             var m = that.model,
                 options = that.options,
@@ -26835,19 +26996,19 @@ var fluid = fluid || require("infusion"),
                 m.eventProp = "offsetY";
                 m.size = target.height();
             }
-            
+
             m.mousePosition = 0;
             m.movingAvg = 0;
             m.target = target;
-            
+
             that.bindEvents();
             that.onInputChanged();
         };
-        
+
         that.init();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.mouse.cursor", {
         rate: "control",
         inputs: {
@@ -26855,146 +27016,59 @@ var fluid = fluid || require("infusion"),
             add: 0.0,
             mul: 1.0
         },
-        
+
         ugenOptions: {
             axis: "x"
         }
     });
-    
-    
+
+
     flock.ugen.mouse.click = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function (numSamps) {
             var out = that.output,
                 m = that.model,
                 i;
-                
+
             for (i = 0; i < numSamps; i++) {
                 out[i] = m.value;
             }
-            
+
             that.mulAdd(numSamps);
         };
-        
+
         that.mouseDownListener = function () {
             that.model.value = 1.0;
         };
-        
+
         that.mouseUpListener = function () {
             that.model.value = 0.0;
         };
-        
+
         that.init = function () {
             var m = that.model;
-            m.target = typeof (that.options.target) === "string" ? 
+            m.target = typeof (that.options.target) === "string" ?
                 document.querySelector(that.options.target) : that.options.target || window;
             m.value = 0.0;
             m.target.addEventListener("mousedown", that.mouseDownListener, false);
             m.target.addEventListener("mouseup", that.mouseUpListener, false);
-            
+
             that.onInputChanged();
         };
-        
+
         that.onInputChanged = function () {
             flock.onMulAddInputChanged(that);
         };
-        
+
         that.init();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.mouse.click", {
         rate: "control"
     });
-    
-    
-    flock.ugen.audioIn = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
-        
-        that.gen = function (numSamps) {
-            var out = that.output,
-                m = that.model,
-                idx = m.idx,
-                inputBuffer = m.inputBuffer,
-                i;
-            
-            for (i = 0; i < numSamps; i++) {
-                if (idx >= inputBuffer.length) {
-                    inputBuffer = m.inputBuffers.shift() || [];
-                    idx = 0;
-                }
-                
-                out[i] = idx < inputBuffer.length ? inputBuffer[idx++] : 0.0;
-            }
-            
-            m.idx = idx;
-            m.inputBuffer = inputBuffer;
-            
-            that.mulAdd(numSamps);
-        };
-        
-        that.onAudioData = function (data) {
-            that.model.inputBuffers.push(data);
-        };
-        
-        that.setDevice = function (deviceIdx) {
-            deviceIdx = deviceIdx !== undefined ? deviceIdx : that.inputs.device.output[0];
-            that.mike.setMicrophone(deviceIdx);
-        };
-        
-        that.init = function () {
-            var m = that.model,
-                mikeOpts = that.options.mike;
 
-            that.onInputChanged();
-            
-            // Flash needs the sample rate as a string?!
-            mikeOpts.settings.sampleRate = String(mikeOpts.settings.sampleRate || that.options.audioSettings.rates.audio);
-            
-            // Setup and listen to Mike.js.
-            that.mike = new Mike(mikeOpts);
-            
-            that.mike.on("ready", function () {
-                that.setDevice();
-            });
-            
-            that.mike.on("microphonechange", function () {
-                this.start();
-            });
-            
-            that.mike.on("data", that.onAudioData);
-            
-            // Initialize the model before audio has started flowing from the device.
-            m.inputBuffers = [];
-            m.inputBuffer = [];
-            m.idx = 0;
-        };
-        
-        that.onInputChanged = function (inputName) {
-            if (inputName === "device") {
-                that.setDevice();
-                return;
-            }
-            flock.onMulAddInputChanged(that);
-        };
-        
-        that.init();
-        return that;
-    };
-    
-    fluid.defaults("flock.ugen.audioIn", {
-        rate: "audio",
-        inputs: {
-            device: 0
-        },
-        ugenOptions: {
-            mike: {
-                settings: {}
-            }
-        }
-    });
-    
 }());
 ;/*!
 * Flocking - Creative audio synthesis for the Web!

@@ -17,7 +17,7 @@
         <script src="../../../third-party/infusion/js/FluidIoC.js"></script>
         <script src="../../../third-party/infusion/js/DataBinding.js"></script>
         <script src="../../../third-party/dspapi/js/dspapi.js"></script>
-        
+
         <script src="../../../flocking/flocking-core.js"></script>
         <script src="../../../flocking/flocking-buffers.js"></script>
         <script src="../../../flocking/flocking-audiofile.js"></script>
@@ -85,6 +85,7 @@
 		                        <option value="playBufferTrigger">Trigger buffer playback</option>
 		                        <option value="readBuffer">Read buffer</option>
 		                        <option value="readBufferPhasor">Read buffer with phasor</option>
+                                <option value="audioIn">Live audio input</option>
 		                    </optgroup>
 		                    <optgroup label="Filters">
 		                        <option value="lowpass">Low pass filter</option>
@@ -898,6 +899,29 @@ var synth = flock.synth({
     }
 });
         </script>
+        <script type="application/flocking" id="audioIn">
+// Granulates live audio from the microphone.
+// Wear headphones to prevent feedback.
+var synth = flock.synth({
+    synthDef: {
+        ugen: "flock.ugen.granulator",
+        delayDur: 0.25,
+        numGrains: {
+            ugen: "flock.ugen.lfNoise",
+            freq: 0.5,
+            mul: 75,
+            add: 75,
+            options: {
+                interpolation: "linear"
+            }
+        },
+        source: {
+            ugen: "flock.ugen.audioIn"
+        }
+    }
+});
+        </script>
+
         <script type="application/flocking" id="polyphonicSynth">
 var fundamental = 440;
 
