@@ -86,6 +86,7 @@
 		                        <option value="readBuffer">Read buffer</option>
 		                        <option value="readBufferPhasor">Read buffer with phasor</option>
                                 <option value="audioIn">Live audio input</option>
+                                <option value="granulatedAudioIn">Granulated live audio</option>
 		                    </optgroup>
 		                    <optgroup label="Filters">
 		                        <option value="lowpass">Low pass filter</option>
@@ -899,7 +900,18 @@ var synth = flock.synth({
     }
 });
         </script>
+
         <script type="application/flocking" id="audioIn">
+// Plays back live audio from the microphone.
+// Wear headphones to prevent feedback.
+var synth = flock.synth({
+    synthDef: {
+        ugen: "flock.ugen.audioIn"
+    }
+});
+        </script>
+
+        <script type="application/flocking" id="granulatedAudioIn">
 // Granulates live audio from the microphone.
 // Wear headphones to prevent feedback.
 var synth = flock.synth({
