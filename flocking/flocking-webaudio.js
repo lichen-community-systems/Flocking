@@ -33,6 +33,11 @@ var fluid = fluid || require("infusion"),
             preNode: null,
             jsNode: null,
             postNode: null
+        },
+
+        model: {
+            isGenerating: false,
+            hasInput: false
         }
     });
 
@@ -77,6 +82,7 @@ var fluid = fluid || require("infusion"),
 
         that.writeSamples = function (e) {
             var m = that.model,
+                hasInput = m.hasInput,
                 krPeriods = m.krPeriods,
                 evaluator = that.nodeEvaluator,
                 buses = evaluator.buses,
@@ -108,13 +114,15 @@ var fluid = fluid || require("infusion"),
 
                 // Read this ScriptProcessorNode's input buffers
                 // into the environment.
-                for (chan = 0; chan < inChans; chan++) {
-                    var inBuf = inBufs.getChannelData(chan),
-                        inBusNumber = chans + chan, // Input buses are located after output buses.
-                        targetBuf = buses[inBusNumber];
+                if (hasInput) {
+                    for (chan = 0; chan < inChans; chan++) {
+                        var inBuf = inBufs.getChannelData(chan),
+                            inBusNumber = chans + chan, // Input buses are located after output buses.
+                            targetBuf = buses[inBusNumber];
 
-                    for (samp = 0; samp < blockSize; samp++) {
-                        targetBuf[samp] = inBuf[samp + offset];
+                        for (samp = 0; samp < blockSize; samp++) {
+                            targetBuf[samp] = inBuf[samp + offset];
+                        }
                     }
                 }
 
@@ -140,13 +148,16 @@ var fluid = fluid || require("infusion"),
         };
 
         that.insertInputNode = function (node) {
+            var m = that.model;
+
             if (that.preNode) {
                 that.removeInputNode(that.preNode);
             }
 
             that.preNode = node;
+            m.hasInput = true;
 
-            if (that.model.isGenerating) {
+            if (m.isGenerating) {
                 that.preNode.connect(that.jsNode);
             }
         };
@@ -162,6 +173,7 @@ var fluid = fluid || require("infusion"),
         that.removeInputNode = function () {
             flock.enviro.webAudio.removeNode(that.preNode);
             that.preNode = null;
+            that.model.hasInput = false;
         };
 
         that.removeOutputNode = function () {
@@ -189,10 +201,11 @@ var fluid = fluid || require("infusion"),
         };
 
         that.init = function () {
-            var settings = that.options.audioSettings,
+            var m = that.model,
+                settings = that.options.audioSettings,
                 scriptNodeConstructorName;
 
-            that.model.krPeriods = settings.bufferSize / settings.blockSize;
+            m.krPeriods = settings.bufferSize / settings.blockSize;
 
             // Singleton AudioContext since the WebKit implementation
             // freaks if we try to instantiate a new one.
@@ -208,7 +221,7 @@ var fluid = fluid || require("infusion"),
             that.insertOutputNode(that.jsNode);
             that.jsNode.onaudioprocess = that.writeSamples;
 
-            that.model.shouldInitIOS = flock.platform.isIOS;
+            m.shouldInitIOS = flock.platform.isIOS;
         };
 
         that.init();
