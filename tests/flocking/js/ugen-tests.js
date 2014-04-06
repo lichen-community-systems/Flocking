@@ -19,29 +19,7 @@ var fluid = fluid || require("infusion"),
 
     flock.init();
 
-    var mockLeft = [
-        1, 2, 3, 4, 5,
-        6, 7, 8, 9, 10,
-        11, 12, 13, 14, 15,
-        16, 17, 18, 19, 20
-    ];
-
-    var mockRight = [
-        20, 19, 18, 17, 16,
-        15, 14, 13, 12, 11,
-        10, 9, 8, 7, 6,
-        5, 4, 3, 2, 1
-    ];
-
-    var audioSettings = fluid.defaults("flock.enviro").audioSettings;
     var sampleRate = flock.enviro.shared.audioSettings.rates.audio;
-
-    var bufferValueUGen = flock.ugen.value({value: 0}, new Float32Array(1), {
-        audioSettings: audioSettings
-    });
-    var stereoExpandValueUGen = flock.ugen.value({value: 2}, new Float32Array(1), {
-        audioSettings: audioSettings
-    });
 
     module("ugen.input() tests");
 
@@ -116,110 +94,6 @@ var fluid = fluid || require("infusion"),
         setup: function () {
             flock.enviro.shared = flock.enviro();
         }
-    });
-
-    var checkOutput = function (numSamps, chans, outUGen, expectedBuffer, msg) {
-        var audioSettings = {
-            blockSize: 20,
-            chans: chans,
-            bufferSize: 40
-        };
-
-        outUGen.model.blockSize = audioSettings.blockSize;
-
-        var env = flock.enviro.shared;
-        var nodeEvaluator = flock.enviro.nodeEvaluator({
-            numBuses: env.options.audioSettings.numBuses,
-            blockSize: audioSettings.blockSize
-        });
-        nodeEvaluator.buses = env.buses;
-        nodeEvaluator.nodes = [outUGen];
-
-        var actual = flock.enviro.moz.interleavedWriter(
-            new Float32Array(numSamps * chans),
-            nodeEvaluator.gen,
-            flock.enviro.shared.buses,
-            audioSettings.bufferSize / audioSettings.blockSize,
-            audioSettings.blockSize,
-            audioSettings.chans
-        );
-        deepEqual(actual, expectedBuffer, msg);
-    };
-
-    test("flock.enviro.moz.interleavedWriter() mono input, mono output", function () {
-        // Test with a single input buffer being multiplexed by ugen.out.
-        var mockLeftUGen = flock.mock.makeMockUGen(mockLeft);
-        var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen}, [], {
-            audioSettings: {
-                buses: flock.enviro.shared.buses,
-                rates: flock.enviro.shared.audioSettings.rates
-            },
-            multiInputNames: ["sources"] // TODO: why aren't we using the parser?
-        });
-        out.input("expand", 2);
-
-        // Pull the whole buffer.
-        var expected = new Float32Array([
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
-        ]);
-        checkOutput(40, 1, out, expected,
-            "We should receive a mono buffer containing two copies of the original input buffer.");
-
-        // Pull a partial buffer.
-        expected = new Float32Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
-        checkOutput(20, 1, out, expected,
-            "We should receive a mono buffer containing the input buffer unmodified.");
-    });
-
-    test("flock.enviro.moz.interleavedWriter() mono input, stereo output", function () {
-        // Test with a single mono input buffer.
-        var mockLeftUGen = flock.mock.makeMockUGen(mockLeft);
-        var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen, expand: stereoExpandValueUGen}, [], {
-            audioSettings: {
-                buses: flock.enviro.shared.buses,
-                rates: flock.enviro.shared.audioSettings.rates
-            },
-            multiInputNames: ["sources"] // TODO: why aren't we using the parser?
-        });
-
-        // Pull the whole buffer.
-        var expected = new Float32Array([
-            1, 1, 2, 2, 3, 3, 4, 4, 5, 5,
-            6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11,
-            12, 12, 13, 13, 14, 14, 15, 15, 16, 16,
-            17, 17, 18, 18, 19, 19, 20, 20
-        ]);
-        checkOutput(20, 2, out, expected,
-            "We should receive a stereo buffer containing two copies of the original input buffer.");
-    });
-
-    test("flock.enviro.moz.interleavedWriter() stereo input", function () {
-        // Test with two input buffers.
-        var out = flock.ugen.out({
-            sources: [
-                flock.mock.makeMockUGen(mockLeft),
-                flock.mock.makeMockUGen(mockRight)
-            ],
-            bus: bufferValueUGen
-        }, [], {
-            audioSettings: {
-                buses: flock.enviro.shared.buses,
-                rates: flock.enviro.shared.audioSettings.rates
-            },
-            multiInputNames: ["sources"] // TODO: why aren't we using the parser?
-        });
-        out.input("expand", 2);
-
-        // Pull the whole buffer. Expect a stereo interleaved buffer as the result,
-        // containing two copies of the original input buffer.
-        var expected = new Float32Array([
-            1, 20, 2, 19, 3, 18, 4, 17, 5, 16,
-            6, 15, 7, 14, 8, 13, 9, 12, 10, 11, 11, 10,
-            12, 9, 13, 8, 14, 7, 15, 6, 16, 5,
-            17, 4, 18, 3, 19, 2, 20, 1
-        ]);
-        checkOutput(20, 2, out, expected, "We should receive a stereo buffer, with each buffer interleaved.");
     });
 
     var simpleOutDef = {

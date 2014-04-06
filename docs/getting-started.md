@@ -127,11 +127,6 @@ If you're using the flock.ugen.scope unit generator, you'll also need:
 
     <script src="../../../flocking/flocking-gfx.js"></script>
 
-And if you're using an older version of Firefox (< 25), you'll need:
-
-    <script src="../../../flocking/flocking-firefox.js"></script>
-
-
 ## Using Flocking with Infusion ##
 
 [Infusion](http://fluidproject.org/products/infusion) is a framework for building applications in JavaScript. Flocking itself is built with Infusion, and it provides much of the core flexibility and social opportunities that Flocking aspires to.

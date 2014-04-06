@@ -725,7 +725,11 @@ var fluid = fluid || require("infusion"),
         var audioSettings = that.options.audioSettings,
             rates = audioSettings.rates;
 
-        that.gen = that.audioStrategy.nodeEvaluator.gen;
+        that.gen = function () {
+            var evaluator = that.audioStrategy.nodeEvaluator;
+            evaluator.clearBuses();
+            evaluator.gen();
+        };
 
         // TODO: Model-based (with ChangeApplier) sharing of audioSettings
         rates.audio = that.audioStrategy.options.audioSettings.rates.audio;
@@ -787,7 +791,7 @@ var fluid = fluid || require("infusion"),
             var nodes = that.nodes,
                 i,
                 node;
-            
+
             for (i = 0; i < nodes.length; i++) {
                 node = nodes[i];
                 node.gen(node.model.blockSize);
