@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (April 6, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (April 14, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -22740,7 +22740,7 @@ var fluid = fluid || require("infusion"),
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global require*/
+/*global require, MediaStreamTrack, jQuery*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,
@@ -22754,8 +22754,34 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    flock.shim.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia ||
-        navigator.mozGetUserMedia || navigator.msGetUserMedia;
+    // TODO: Remove this when Chrome implements navigator.getMediaDevices().
+    var getSources = function (callback) {
+        return MediaStreamTrack.getSources(function (infoSpecs) {
+            var normalized = fluid.transform(infoSpecs, function (infoSpec) {
+                infoSpec.deviceId = infoSpec.id;
+                return infoSpec;
+            });
+
+            callback(normalized);
+        });
+    };
+
+    // TODO: Implement these in a way that doesn't require checking every time.
+    var webRTCShims = {
+        getUserMedia: function (options, success, error) {
+            var gumFn = navigator.getUserMedia || navigator.webkitGetUserMedia ||
+                navigator.mozGetUserMedia || navigator.msGetUserMedia;
+
+            return gumFn.call(navigator, options, success, error);
+        },
+
+        getMediaDevices: function (callback) {
+            return navigator.getMediaDevices ? navigator.getMediaDevices(callback) :
+                MediaStreamTrack.getSources ? getSources(callback) : undefined;
+        }
+    };
+    jQuery.extend(flock.shim, webRTCShims);
+
 
     /**
      * Web Audio API Audio Strategy
@@ -22764,7 +22790,7 @@ var fluid = fluid || require("infusion"),
         gradeNames: ["flock.enviro.audioStrategy", "autoInit"],
 
         members: {
-            preNode: null,
+            preNodes: [],
             jsNode: null,
             postNode: null
         },
@@ -22777,13 +22803,34 @@ var fluid = fluid || require("infusion"),
 
     flock.enviro.webAudio.finalInit = function (that) {
 
+        that.connectInputNodes = function () {
+            var nodes = that.preNodes;
+            if (!nodes) {
+                return;
+            }
+
+            for (var i = 0; i < nodes.length; i++) {
+                var node = nodes[i];
+                node.connect(that.jsNode);
+            }
+        };
+
+        that.disconnectInputNodes = function () {
+            var nodes = that.preNodes;
+            if (!nodes) {
+                return;
+            }
+
+            for (var i = 0; i < nodes.length; i++) {
+                var node = nodes[i];
+                node.disconnect(0);
+            }
+        };
+
         that.startGeneratingSamples = function () {
             var m = that.model;
 
-            if (that.preNode) {
-                that.preNode.connect(that.jsNode);
-            }
-
+            that.connectInputNodes();
             that.postNode.connect(that.context.destination);
             if (that.postNode !== that.jsNode) {
                 that.jsNode.connect(that.postNode);
@@ -22807,10 +22854,7 @@ var fluid = fluid || require("infusion"),
         that.stopGeneratingSamples = function () {
             that.jsNode.disconnect(0);
             that.postNode.disconnect(0);
-            if (that.preNode) {
-                that.preNode.disconnect(0);
-            }
-
+            that.disconnectInputNodes();
             that.model.isGenerating = false;
         };
 
@@ -22884,15 +22928,11 @@ var fluid = fluid || require("infusion"),
         that.insertInputNode = function (node) {
             var m = that.model;
 
-            if (that.preNode) {
-                that.removeInputNode(that.preNode);
-            }
-
-            that.preNode = node;
+            that.preNodes.push(node);
             m.hasInput = true;
 
             if (m.isGenerating) {
-                that.preNode.connect(that.jsNode);
+                node.connect(that.jsNode);
             }
         };
 
@@ -22904,10 +22944,16 @@ var fluid = fluid || require("infusion"),
             that.postNode = node;
         };
 
-        that.removeInputNode = function () {
-            flock.enviro.webAudio.removeNode(that.preNode);
-            that.preNode = null;
-            that.model.hasInput = false;
+        that.removeInputNode = function (node) {
+            var idx = that.preNodes.indexOf(node);
+            if (idx > -1) {
+                that.preNodes.splice(idx, 1);
+            }
+            flock.enviro.webAudio.removeNode(node);
+
+            if (that.preNodes.length === 0) {
+                that.model.hasInput = false;
+            }
         };
 
         that.removeOutputNode = function () {
@@ -22915,23 +22961,71 @@ var fluid = fluid || require("infusion"),
             that.postNode = that.jsNode;
         };
 
-        that.startReadingAudioInput = function () {
-            flock.shim.getUserMedia.call(navigator, {
-                audio: true
-            },
-            function success (mediaStream) {
-                var mic = that.context.createMediaStreamSource(mediaStream);
-                that.insertInputNode(mic);
-            },
-            function error (err) {
-                fluid.log(fluid.logLevel.IMPORTANT,
-                    "An error occurred while trying to access the user's microphone. " +
-                    err);
+        that.startReadingAudioInput = function (sourceSpec) {
+            if (!sourceSpec) {
+                return;
+            }
+
+            if (sourceSpec.id) {
+                that.openAudioDeviceWithId(sourceSpec.id);
+            } else if (sourceSpec.label) {
+                that.openFirstAudioDeviceWithLabel(sourceSpec.label);
+            } else {
+                that.openAudioDevice();
+            }
+        };
+
+        that.openFirstAudioDeviceWithLabel = function (label) {
+            // TODO: Can't access device labels until the user agrees
+            // to allow access to the current device.
+            flock.shim.getMediaDevices(function (deviceInfoSpecs) {
+                var matches = deviceInfoSpecs.filter(function (device) {
+                    if (device.label === label) {
+                        return true;
+                    }
+                });
+
+                if (matches.length > 0) {
+                    that.openAudioDeviceWithId(matches[0].deviceId);
+                }
             });
         };
 
+        that.openAudioDeviceWithId = function (id) {
+            var options = {
+                audio: {
+                    optional: [
+                        {
+                            sourceId: id
+                        }
+                    ]
+                }
+            };
+
+            that.openAudioDevice(options);
+        };
+
+        that.openAudioDevice = function (options) {
+            options = options || {
+                audio: true
+            };
+
+            function errback (err) {
+                fluid.log(fluid.logLevel.IMPORTANT,
+                    "An error occurred while trying to access the user's microphone. " +
+                    err);
+            }
+
+            flock.shim.getUserMedia(options, that.createMediaStreamSourceNode, errback);
+        };
+
+        that.createMediaStreamSourceNode = function (mediaStream) {
+            var mic = that.context.createMediaStreamSource(mediaStream);
+            that.insertInputNode(mic);
+        };
+
         that.stopReadingAudioInput = function () {
-            that.removeInputNode();
+            that.removeInputNode(); // TODO: How?
         };
 
         that.init = function () {
@@ -22951,7 +23045,7 @@ var fluid = fluid || require("infusion"),
             settings.rates.audio = that.context.sampleRate;
             scriptNodeConstructorName = that.context.createScriptProcessor ?
                 "createScriptProcessor" : "createJavaScriptNode";
-            that.jsNode = that.context[scriptNodeConstructorName](settings.bufferSize);
+            that.jsNode = that.context[scriptNodeConstructorName](settings.bufferSize, 32, settings.chans);
             that.insertOutputNode(that.jsNode);
             that.jsNode.onaudioprocess = that.writeSamples;
 
@@ -25486,7 +25580,7 @@ var fluid = fluid || require("infusion"),
 
         that.init = function () {
             // TODO: Direct reference to the shared environment.
-            flock.enviro.shared.audioStrategy.startReadingAudioInput();
+            flock.enviro.shared.audioStrategy.startReadingAudioInput(options);
             that.onInputChanged();
         };
 

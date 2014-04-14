@@ -2512,7 +2512,7 @@ var fluid = fluid || require("infusion"),
 
         that.init = function () {
             // TODO: Direct reference to the shared environment.
-            flock.enviro.shared.audioStrategy.startReadingAudioInput();
+            flock.enviro.shared.audioStrategy.startReadingAudioInput(options);
             that.onInputChanged();
         };
 
