@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (April 6, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (April 15, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -23471,6 +23471,7 @@ var fluid = fluid || require("infusion"),
         that.calculateStrides();
         return that;
     };
+
     fluid.defaults("flock.ugen.inputTrigger", {
         rate: "control",
 
@@ -23486,6 +23487,91 @@ var fluid = fluid || require("infusion"),
             },
 
             strideInputs: ["source", "duration"]
+        }
+    });
+
+    flock.ugen.triggerCallback = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                o = that.options,
+                out = that.output,
+                inputs = that.inputs,
+                triggerInc = m.strides.trigger,
+                sourceInc = m.strides.source,
+                trig = inputs.trigger.output,
+                source = inputs.source.output,
+                cbSpec = o.callback,
+                fn = cbSpec.func,
+                args = cbSpec.args,
+                cbThis = cbSpec.this,
+                lastArgIdx = m.lastArgIdx,
+                prevTrig = m.prevTrig,
+                i,
+                j,
+                k,
+                currTrig,
+                sourceVal;
+
+            for (i = j = k = 0; i < numSamps; i++, j += triggerInc, k += sourceInc) {
+                currTrig = trig[j];
+                sourceVal = source[k];
+
+                if (currTrig > 0.0 && prevTrig <= 0.0) {
+                    // Insert the current source value into the arguments list
+                    // and then invoke the specified callback function.
+                    args[lastArgIdx] = sourceVal;
+                    fn.apply(cbThis, args);
+                }
+
+                out[i] = sourceVal;
+                prevTrig = currTrig;
+            }
+
+            m.prevTrig = prevTrig;
+        };
+
+        that.onInputChanged = function () {
+            var o = that.options,
+                m = that.model,
+                cbSpec = o.callback,
+                funcName = cbSpec.funcName;
+
+            if (funcName && funcName !== m.funcName) {
+                cbSpec.func = fluid.getGlobalValue(funcName);
+            } else if (cbSpec.this && cbSpec.method) {
+                cbSpec.this = typeof cbSpec.this === "string" ? fluid.getGlobalValue(cbSpec.this) : cbSpec.this;
+                cbSpec.func = fluid.get(cbSpec.this, cbSpec.method);
+            }
+
+            m.lastArgIdx = cbSpec.args.length;
+            that.calculateStrides();
+        };
+
+        that.onInputChanged();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.triggerCallback", {
+        rate: "audio",
+        inputs: {
+            source: undefined,
+            trigger: 0
+        },
+        ugenOptions: {
+            model: {
+                funcName: undefined,
+                lastArgIdx: 0
+            },
+            callback: {
+                funcName: undefined,
+                "this": undefined,
+                method: undefined,
+                func: undefined,
+                args: []
+            },
+            strideInputs: ["source", "trigger"]
         }
     });
 
