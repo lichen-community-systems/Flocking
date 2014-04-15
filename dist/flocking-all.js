@@ -22803,8 +22803,7 @@ var fluid = fluid || require("infusion"),
                     funcName: "flock.webAudio.strategy.createScriptProcessor",
                     args: [
                         "{contextWrapper}.context",
-                        "{that}.options.audioSettings",
-                        "{that}.writeSamples"
+                        "{that}.options.audioSettings"
                     ]
                 }
             }
@@ -22880,17 +22879,22 @@ var fluid = fluid || require("infusion"),
         },
 
         events: {
-            onJSNodeCreated: null,
             onStart: null,
             onStop: null,
             onReset: null
         },
 
         listeners: {
-            onCreate: {
-                funcName: "flock.webAudio.strategy.setSampleRate",
-                args: ["{that}.options.audioSettings", "{contextWrapper}.context.sampleRate"]
-            },
+            onCreate: [
+                {
+                    funcName: "flock.webAudio.strategy.setSampleRate",
+                    args: ["{that}.options.audioSettings", "{contextWrapper}.context.sampleRate"]
+                },
+                {
+                    funcName: "flock.webAudio.strategy.bindSampleWriter",
+                    args: ["{that}.jsNode", "{that}.writeSamples"]
+                }
+            ],
 
             onStart: [
                 {
@@ -22942,42 +22946,34 @@ var fluid = fluid || require("infusion"),
         return s.bufferSize / s.blockSize;
     };
 
-    flock.webAudio.strategy.createScriptProcessor = function (ctx, s, sampleWriter) {
+    flock.webAudio.strategy.createScriptProcessor = function (ctx, s) {
         var jsNodeName = ctx.createScriptProcessor ? "createScriptProcessor" : "createJavaScriptNode",
             jsNode = ctx[jsNodeName](s.bufferSize, s.numInputBuses, s.chans);
-        jsNode.onaudioprocess = sampleWriter;
 
         return jsNode;
     };
 
-    flock.webAudio.strategy.iOSStart = function (model, applier, ctx, jsNode) {
-        // Work around a bug in iOS Safari where it now requires a noteOn()
-        // message to be invoked before sound will work at all. Just connecting a
-        // ScriptProcessorNode inside a user event handler isn't sufficient.
-        if (model.shouldInitIOS) {
-            var s = ctx.createBufferSource();
-            s.connect(jsNode);
-            s.start(0);
-            s.stop(0);
-            s.disconnect(0);
-            applier.change("shouldInitIOS", false);
-        }
+    flock.webAudio.strategy.bindSampleWriter = function (jsNode, sampleWriter) {
+        jsNode.onaudioprocess = sampleWriter;
     };
 
-    flock.webAudio.strategy.preInit = function (that) {
+    flock.webAudio.strategy.finalInit = function (that) {
+        var m = that.model,
+            inputNodes = that.nativeNodeManager.inputNodes,
+            evaluator = that.nodeEvaluator,
+            s = that.options.audioSettings,
+            stop = that.stop;
+
         that.writeSamples = function (e) {
-            var m = that.model,
-                numInputNodes = that.nativeNodeManager.inputNodes.length,
+            var inBufs = e.inputBuffer,
+                outBufs = e.outputBuffer,
+                numInputNodes = inputNodes.length,
                 krPeriods = m.krPeriods,
                 playState = m.playState,
-                evaluator = that.nodeEvaluator,
                 buses = evaluator.buses,
-                audioSettings = that.options.audioSettings,
-                blockSize = audioSettings.blockSize,
-                chans = audioSettings.chans,
-                inBufs = e.inputBuffer,
-                inChans = e.inputBuffer.numberOfChannels,
-                outBufs = e.outputBuffer,
+                blockSize = s.blockSize,
+                chans = s.chans,
+                inChans = inBufs.numberOfChannels,
                 chan,
                 i,
                 samp;
@@ -23026,11 +23022,25 @@ var fluid = fluid || require("infusion"),
                 }
             }
 
-            playState.written += audioSettings.bufferSize * chans;
+            playState.written += s.bufferSize * chans;
             if (playState.written >= playState.total) {
-                that.stopGeneratingSamples();
+                stop();
             }
         };
+    };
+
+    flock.webAudio.strategy.iOSStart = function (model, applier, ctx, jsNode) {
+        // Work around a bug in iOS Safari where it now requires a noteOn()
+        // message to be invoked before sound will work at all. Just connecting a
+        // ScriptProcessorNode inside a user event handler isn't sufficient.
+        if (model.shouldInitIOS) {
+            var s = ctx.createBufferSource();
+            s.connect(jsNode);
+            s.start(0);
+            s.stop(0);
+            s.disconnect(0);
+            applier.change("shouldInitIOS", false);
+        }
     };
 
 
