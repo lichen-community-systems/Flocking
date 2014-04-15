@@ -19629,7 +19629,7 @@ var fluid = fluid || require("infusion"),
                 sps = dur * that.audioSettings.rates.audio * that.audioSettings.chans;
 
             playState.total = playState.written + sps;
-            that.audioStrategy.startGeneratingSamples();
+            that.audioStrategy.start();
             that.model.isPlaying = true;
         };
 
@@ -19637,7 +19637,7 @@ var fluid = fluid || require("infusion"),
          * Stops generating samples from all synths.
          */
         that.stop = function () {
-            that.audioStrategy.stopGeneratingSamples();
+            that.audioStrategy.stop();
             that.model.isPlaying = false;
         };
 
@@ -22891,8 +22891,15 @@ var fluid = fluid || require("infusion"),
                     args: ["{that}.options.audioSettings", "{contextWrapper}.context.sampleRate"]
                 },
                 {
-                    funcName: "flock.webAudio.strategy.bindSampleWriter",
-                    args: ["{that}.jsNode", "{that}.writeSamples"]
+                    funcName: "flock.webAudio.strategy.bindWriter",
+                    args: [
+                        "{that}.jsNode",
+                        "{that}.model",
+                        "{nodeEvaluator}",
+                        "{that}.options.audioSettings",
+                        "{nativeNodeManager}.inputNodes",
+                        "{that}.stop"
+                    ]
                 }
             ],
 
@@ -22953,80 +22960,94 @@ var fluid = fluid || require("infusion"),
         return jsNode;
     };
 
-    flock.webAudio.strategy.bindSampleWriter = function (jsNode, sampleWriter) {
-        jsNode.onaudioprocess = sampleWriter;
+    flock.webAudio.strategy.bindWriter = function (jsNode, model, evaluator, audioSettings, inputNodes, stopFn) {
+        jsNode.model = model;
+        jsNode.evaluator = evaluator;
+        jsNode.audioSettings = audioSettings;
+        jsNode.inputNodes = inputNodes;
+        jsNode.stopFn = stopFn;
+
+        jsNode.onaudioprocess = flock.webAudio.strategy.writeSamples;
     };
 
-    flock.webAudio.strategy.finalInit = function (that) {
-        var m = that.model,
-            inputNodes = that.nativeNodeManager.inputNodes,
-            evaluator = that.nodeEvaluator,
-            s = that.options.audioSettings,
-            stop = that.stop;
+    /**
+     * Writes samples to the audio strategy's ScriptProcessorNode.
+     *
+     * This function should be bound as the callback to the node, and
+     * expects to be called in the context of a "this" instance
+     * containing the following properties:
+     *  - model: the strategy's model object
+     *  - inputNodes: a list of native input nodes to be read into input buses
+     *  - nodeEvaluator: a nodeEvaluator instance
+     *  - audioSettings: the enviornment's audio settings
+     *  - stopFn: a function to call when stopping the strategy.
+     */
+    flock.webAudio.strategy.writeSamples = function (e) {
+        var m = this.model,
+            numInputNodes = this.inputNodes.length,
+            evaluator = this.evaluator,
+            s = this.audioSettings,
+            stopFn = this.stopFn,
+            inBufs = e.inputBuffer,
+            outBufs = e.outputBuffer,
+            krPeriods = m.krPeriods,
+            playState = m.playState,
+            buses = evaluator.buses,
+            blockSize = s.blockSize,
+            chans = s.chans,
+            inChans = inBufs.numberOfChannels,
+            chan,
+            i,
+            samp;
 
-        that.writeSamples = function (e) {
-            var inBufs = e.inputBuffer,
-                outBufs = e.outputBuffer,
-                numInputNodes = inputNodes.length,
-                krPeriods = m.krPeriods,
-                playState = m.playState,
-                buses = evaluator.buses,
-                blockSize = s.blockSize,
-                chans = s.chans,
-                inChans = inBufs.numberOfChannels,
-                chan,
-                i,
-                samp;
-
-            // If there are no nodes providing samples, write out silence.
-            if (evaluator.nodes.length < 1) {
-                for (chan = 0; chan < chans; chan++) {
-                    flock.generate.silence(outBufs.getChannelData(chan));
-                }
-                return;
+        // If there are no nodes providing samples, write out silence.
+        if (evaluator.nodes.length < 1) {
+            for (chan = 0; chan < chans; chan++) {
+                flock.generate.silence(outBufs.getChannelData(chan));
             }
+            return;
+        }
 
-            // TODO: Make a formal distinction between input buses,
-            // output buses, and interconnect buses in the environment!
-            for (i = 0; i < krPeriods; i++) {
-                var offset = i * blockSize;
+        // TODO: Make a formal distinction between input buses,
+        // output buses, and interconnect buses in the environment!
+        for (i = 0; i < krPeriods; i++) {
+            var offset = i * blockSize;
 
-                evaluator.clearBuses();
+            evaluator.clearBuses();
 
-                // Read this ScriptProcessorNode's input buffers
-                // into the environment.
-                if (numInputNodes > 0) {
-                    for (chan = 0; chan < inChans; chan++) {
-                        var inBuf = inBufs.getChannelData(chan),
-                            inBusNumber = chans + chan, // Input buses are located after output buses.
-                            targetBuf = buses[inBusNumber];
+            // Read this ScriptProcessorNode's input buffers
+            // into the environment.
+            if (numInputNodes > 0) {
+                for (chan = 0; chan < inChans; chan++) {
+                    var inBuf = inBufs.getChannelData(chan),
+                        inBusNumber = chans + chan, // Input buses are located after output buses.
+                        targetBuf = buses[inBusNumber];
 
-                        for (samp = 0; samp < blockSize; samp++) {
-                            targetBuf[samp] = inBuf[samp + offset];
-                        }
-                    }
-                }
-
-                evaluator.gen();
-
-                // Output the environment's signal
-                // to this ScriptProcessorNode's output channels.
-                for (chan = 0; chan < chans; chan++) {
-                    var sourceBuf = buses[chan],
-                        outBuf = outBufs.getChannelData(chan);
-
-                    // And output each sample.
                     for (samp = 0; samp < blockSize; samp++) {
-                        outBuf[samp + offset] = sourceBuf[samp];
+                        targetBuf[samp] = inBuf[samp + offset];
                     }
                 }
             }
 
-            playState.written += s.bufferSize * chans;
-            if (playState.written >= playState.total) {
-                stop();
+            evaluator.gen();
+
+            // Output the environment's signal
+            // to this ScriptProcessorNode's output channels.
+            for (chan = 0; chan < chans; chan++) {
+                var sourceBuf = buses[chan],
+                    outBuf = outBufs.getChannelData(chan);
+
+                // And output each sample.
+                for (samp = 0; samp < blockSize; samp++) {
+                    outBuf[samp + offset] = sourceBuf[samp];
+                }
             }
-        };
+        }
+
+        playState.written += s.bufferSize * chans;
+        if (playState.written >= playState.total) {
+            stopFn();
+        }
     };
 
     flock.webAudio.strategy.iOSStart = function (model, applier, ctx, jsNode) {
@@ -23060,18 +23081,19 @@ var fluid = fluid || require("infusion"),
 
         listeners: {
             onCreate: {
-                funcName: "flock.webAudio.contextWrapper.register",
+                funcName: "flock.webAudio.contextWrapper.registerSingleton",
                 args: ["{that}"]
             }
         }
     });
 
     flock.webAudio.contextWrapper.create = function () {
-        return new flock.shim.AudioContext();
+        var singleton = fluid.staticEnvironment.webAudioContextWrapper;
+        return singleton ? singleton.context : new flock.shim.AudioContext();
     };
 
-    flock.webAudio.contextWrapper.register = function (that) {
-        fluid.staticEnvironment.webAudioContext = that;
+    flock.webAudio.contextWrapper.registerSingleton = function (that) {
+        fluid.staticEnvironment.webAudioContextWrapper = that;
     };
 
     /**

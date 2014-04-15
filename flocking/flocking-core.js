@@ -685,7 +685,7 @@ var fluid = fluid || require("infusion"),
                 sps = dur * that.audioSettings.rates.audio * that.audioSettings.chans;
 
             playState.total = playState.written + sps;
-            that.audioStrategy.startGeneratingSamples();
+            that.audioStrategy.start();
             that.model.isPlaying = true;
         };
 
@@ -693,7 +693,7 @@ var fluid = fluid || require("infusion"),
          * Stops generating samples from all synths.
          */
         that.stop = function () {
-            that.audioStrategy.stopGeneratingSamples();
+            that.audioStrategy.stop();
             that.model.isPlaying = false;
         };
 
