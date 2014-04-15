@@ -629,6 +629,7 @@ var fluid = fluid || require("infusion"),
 
             isPlaying: false
         },
+
         audioSettings: {
             rates: {
                 audio: 48000, // This is only a hint. Some audio backends (such as the Web Audio API)
@@ -646,10 +647,8 @@ var fluid = fluid || require("infusion"),
             // This buffer size determines the overall latency of Flocking's audio output.
             // TODO: Replace this with IoC awesomeness.
             bufferSize: flock.defaultBufferSizeForPlatform(),
-
-            // Hints to some audio backends.
-            genPollIntervalFactor: flock.platform.isLinux ? 1 : 20 // Only used on Firefox.
         },
+
         components: {
             asyncScheduler: {
                 type: "flock.scheduler.async"
@@ -701,6 +700,7 @@ var fluid = fluid || require("infusion"),
         that.reset = function () {
             that.stop();
             that.asyncScheduler.clearAll();
+            that.audioStrategy.reset();
             // Clear the environment's node list.
             while (that.nodes.length > 0) {
                 that.nodes.pop();
@@ -748,7 +748,7 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.enviro.audioStrategy", {
-        gradeNames: ["fluid.modelComponent"],
+        gradeNames: ["fluid.eventedComponent", "fluid.modelComponent"],
 
         components: {
             nodeEvaluator: {

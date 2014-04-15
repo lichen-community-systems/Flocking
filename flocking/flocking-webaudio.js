@@ -62,19 +62,68 @@ var fluid = fluid || require("infusion"),
         members: {
             context: "{contextWrapper}.context",
             preNodes: [],
-            jsNode: null,
-            merger: null,
-            postNode: null
+            jsNode: {
+                expander: {
+                    funcName: "flock.webAudio.strategy.createScriptProcessor",
+                    args: [
+                        "{contextWrapper}.context",
+                        "{that}.options.audioSettings",
+                        "{that}.writeSamples"
+                    ]
+                }
+            }
         },
 
         model: {
             isGenerating: false,
-            hasInput: false
+            shouldInitIOS: flock.platform.isIOS,
+            krPeriods: {
+                expander: {
+                    funcName: "flock.webAudio.strategy.calcNumKrPeriods",
+                    args: "{that}.options.audioSettings"
+                }
+            }
+        },
+
+        invokers: {
+            start: {
+                func: "{that}.events.onStart.fire"
+            },
+
+            stop: {
+                func: "{that}.events.onStop.fire"
+            },
+
+            reset: {
+                func: "{that}.events.onReset.fire"
+            },
+
+            // Deprecated. Use start() instead.
+            startGeneratingSamples: {
+                func: "{that}.events.onStart.fire"
+            },
+
+            // Deprecated. Use stop() instead.
+            stopGeneratingSamples: {
+                func: "{that}.events.onStop.fire"
+            }
         },
 
         components: {
             contextWrapper: {
                 type: "flock.webAudio.contextWrapper"
+            },
+
+            nativeNodeManager: {
+                type: "flock.webAudio.nativeNodeManager",
+                options: {
+                    members: {
+                        context: "{contextWrapper}.context",
+                        jsNode: "{strategy}.jsNode"
+                    },
+
+                    audioSettings: "{strategy}.options.audioSettings"
+                }
             },
 
             deviceManager: {
@@ -86,80 +135,109 @@ var fluid = fluid || require("infusion"),
 
                     listeners: {
                         onMediaStreamOpened: {
-                            func: "{strategy}.insertInputNode",
+                            func: "{nativeNodeManager}.insertInput",
                             args: ["{arguments}.0"]
                         }
                     }
                 }
             }
+        },
+
+        events: {
+            onJSNodeCreated: null,
+            onStart: null,
+            onStop: null,
+            onReset: null
+        },
+
+        listeners: {
+            onCreate: {
+                funcName: "flock.webAudio.strategy.setSampleRate",
+                args: ["{that}.options.audioSettings", "{contextWrapper}.context.sampleRate"]
+            },
+
+            onStart: [
+                {
+                    func: "{that}.applier.change",
+                    args: ["isGenerating", true]
+                },
+                {
+                    // TODO: Replace this with some progressive enhancement action.
+                    funcName: "flock.webAudio.strategy.iOSStart",
+                    args: ["{that}.model", "{that}.applier", "{contextWrapper}.context", "{that}.jsNode"]
+                },
+                {
+                    func: "{nativeNodeManager}.connect"
+                }
+            ],
+
+            onStop: [
+                {
+                    func: "{that}.applier.change",
+                    args: ["isGenerating", false]
+                },
+                {
+                    func: "{nativeNodeManager}.disconnect"
+                }
+            ],
+
+            onReset: [
+                {
+                    func: "{that}.stop"
+                },
+                {
+                    func: "{nativeNodeManager}.removeAllInputs"
+                },
+                {
+                    func: "{that}.applier.change",
+                    args: ["playState.written", 0]
+                }
+            ]
         }
     });
 
+    // TODO: This is shady. Does it even work?
+    // TODO: Refactor into a shared environment-level model property.
+    flock.webAudio.strategy.setSampleRate = function (audioSettings, sampleRate) {
+        audioSettings.sampleRate = sampleRate;
+    };
+
+    flock.webAudio.strategy.calcNumKrPeriods = function (s) {
+        return s.bufferSize / s.blockSize;
+    };
+
+    flock.webAudio.strategy.createScriptProcessor = function (ctx, s, sampleWriter) {
+        var jsNodeName = ctx.createScriptProcessor ? "createScriptProcessor" : "createJavaScriptNode",
+            jsNode = ctx[jsNodeName](s.bufferSize, s.numInputBuses, s.chans);
+        jsNode.onaudioprocess = sampleWriter;
+
+        return jsNode;
+    };
+
+    flock.webAudio.strategy.iOSStart = function (model, applier, ctx, jsNode) {
+        // Work around a bug in iOS Safari where it now requires a noteOn()
+        // message to be invoked before sound will work at all. Just connecting a
+        // ScriptProcessorNode inside a user event handler isn't sufficient.
+        if (model.shouldInitIOS) {
+            var s = ctx.createBufferSource();
+            s.connect(jsNode);
+            s.start(0);
+            s.stop(0);
+            s.disconnect(0);
+            applier.change("shouldInitIOS", false);
+        }
+    };
+
     flock.webAudio.strategy.preInit = function (that) {
-        that.connectInputNodes = function () {
-            var nodes = that.preNodes;
-            if (!nodes) {
-                return;
-            }
-
-            for (var i = 0; i < nodes.length; i++) {
-                var node = nodes[i];
-                node.connect(that.jsNode);
-            }
-        };
-
-        that.disconnectInputNodes = function () {
-            var nodes = that.preNodes;
-            if (!nodes) {
-                return;
-            }
-
-            for (var i = 0; i < nodes.length; i++) {
-                var node = nodes[i];
-                node.disconnect(0);
-            }
-        };
-
-        that.startGeneratingSamples = function () {
-            var m = that.model;
-
-            that.connectInputNodes();
-            that.postNode.connect(that.context.destination);
-            if (that.postNode !== that.jsNode) {
-                that.jsNode.connect(that.postNode);
-            }
-
-            // Work around a bug in iOS Safari where it now requires a noteOn()
-            // message to be invoked before sound will work at all. Just connecting a
-            // ScriptProcessorNode inside a user event handler isn't sufficient.
-            if (m.shouldInitIOS) {
-                var s = that.context.createBufferSource();
-                s.connect(that.jsNode);
-                s.start(0);
-                s.stop(0);
-                s.disconnect(0);
-                m.shouldInitIOS = false;
-            }
-
-            m.isGenerating = true;
-        };
-
-        that.stopGeneratingSamples = function () {
-            that.jsNode.disconnect(0);
-            that.postNode.disconnect(0);
-            that.disconnectInputNodes();
-            that.model.isGenerating = false;
-        };
-
         that.writeSamples = function (e) {
             var m = that.model,
-                hasInput = m.hasInput,
+                numInputNodes = that.nativeNodeManager.inputNodes.length,
                 krPeriods = m.krPeriods,
+                playState = m.playState,
                 evaluator = that.nodeEvaluator,
                 buses = evaluator.buses,
                 audioSettings = that.options.audioSettings,
                 blockSize = audioSettings.blockSize,
-                playState = m.playState,
                 chans = audioSettings.chans,
                 inBufs = e.inputBuffer,
                 inChans = e.inputBuffer.numberOfChannels,
@@ -185,7 +263,7 @@ var fluid = fluid || require("infusion"),
 
                 // Read this ScriptProcessorNode's input buffers
                 // into the environment.
-                if (hasInput) {
+                if (numInputNodes > 0) {
                     for (chan = 0; chan < inChans; chan++) {
                         var inBuf = inBufs.getChannelData(chan),
                             inBusNumber = chans + chan, // Input buses are located after output buses.
@@ -217,73 +295,12 @@ var fluid = fluid || require("infusion"),
                 that.stopGeneratingSamples();
             }
         };
-
-        that.insertInputNode = function (node) {
-            var m = that.model;
-
-            that.preNodes.push(node);
-            m.hasInput = true;
-
-            if (m.isGenerating) {
-                node.connect(that.jsNode);
-            }
-        };
-
-        that.insertOutputNode = function (node) {
-            if (that.postNode) {
-                that.removeOutputNode(that.postNode);
-            }
-
-            that.postNode = node;
-        };
-
-        that.removeInputNode = function (node) {
-            var idx = that.preNodes.indexOf(node);
-            if (idx > -1) {
-                that.preNodes.splice(idx, 1);
-            }
-            flock.enviro.webAudio.removeNode(node);
-
-            if (that.preNodes.length === 0) {
-                that.model.hasInput = false;
-            }
-        };
-
-        that.removeOutputNode = function () {
-            flock.enviro.webAudio.removeNode(that.postNode);
-            that.postNode = that.jsNode;
-        };
-
-        that.stopReadingAudioInput = function () {
-            that.removeInputNode(); // TODO: How?
-        };
-
-        that.createScriptProcessor = function (s) {
-            var ctx = that.context,
-                jsNodeName = ctx.createScriptProcessor ? "createScriptProcessor" : "createJavaScriptNode";
-
-            that.jsNode = ctx[jsNodeName](s.bufferSize, s.numInputBuses, s.chans);
-            that.merger = that.context.createChannelMerger(s.numInputBuses);
-            that.merger.connect(that.jsNode);
-            that.insertOutputNode(that.jsNode);
-            that.jsNode.onaudioprocess = that.writeSamples;
-        };
     };
 
-    flock.webAudio.strategy.finalInit = function (that) {
-        var m = that.model,
-            settings = that.options.audioSettings;
 
-        m.krPeriods = settings.bufferSize / settings.blockSize;
-        settings.rates.audio = that.context.sampleRate;
-        that.createScriptProcessor(settings);
-        m.shouldInitIOS = flock.platform.isIOS;
-    };
-
-    flock.webAudio.strategy.removeNode = function (node) {
-        node.disconnect(0); // TODO: Is this still accurate?
-    };
-
+    /**
+     * An Infusion component wrapper for a Web Audio API AudioContext instance.
+     */
     fluid.defaults("flock.webAudio.contextWrapper", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
 
@@ -303,7 +320,6 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-
     flock.webAudio.contextWrapper.create = function () {
         return new flock.shim.AudioContext();
     };
@@ -312,6 +328,139 @@ var fluid = fluid || require("infusion"),
         fluid.staticEnvironment.webAudioContext = that;
     };
 
+    /**
+     * Manages a collection of input nodes and an output node,
+     * with a JS node in between.
+     *
+     * Note: this component is slated for removal when Web Audio
+     * "islands" are implemented.
+     */
+    fluid.defaults("flock.webAudio.nativeNodeManager", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        members: {
+            context: undefined,
+            jsNode: undefined,
+            outputNode: undefined,
+            inputNodes: [],
+            merger: {
+                expander: {
+                    funcName: "flock.webAudio.nativeNodeManager.createMerger",
+                    args: [
+                        "{contextWrapper}.context",
+                        "{that}.options.audioSettings.numInputBuses",
+                        "{that}.jsNode"
+                    ]
+                }
+            }
+        },
+
+        invokers: {
+            connect: {
+                funcName: "flock.webAudio.nativeNodeManager.connect",
+                args: ["{that}.merger", "{that}.jsNode", "{that}.outputNode", "{that}.context.destination"]
+            },
+
+            disconnect: {
+                funcName: "flock.webAudio.nativeNodeManager.disconnect",
+                args: ["{that}.merger", "{that}.jsNode", "{that}.outputNode"]
+            },
+
+            insertInput: {
+                funcName: "flock.webAudio.nativeNodeManager.insertInput",
+                args: ["{arguments}.0", "{that}.inputNodes", "{that}.merger"]
+            },
+
+            removeInput: {
+                funcName: "flock.webAudio.nativeNodeManager.removeInput",
+                args: ["{arguments}.0", "{that}.inputNodes"]
+            },
+
+            removeAllInputs: {
+                funcName: "flock.webAudio.nativeNodeManager.removeAllInputs",
+                args: "{that}.inputNodes"
+            },
+
+            insertOutput: {
+                funcName: "flock.webAudio.nativeNodeManager.insertOutput",
+                args: ["{that}", "{arguments}.0"]
+            },
+
+            removeOutput: {
+                funcName: "flock.webAudio.nativeNodeManager.removeOutput",
+                args: ["{that}.jsNode"]
+            }
+        },
+
+        listeners: {
+            onCreate: {
+                func: "{that}.insertOutput",
+                args: "{that}.jsNode"
+            }
+        }
+    });
+
+    flock.webAudio.nativeNodeManager.createMerger = function (ctx, numInputBuses, jsNode) {
+        var merger = ctx.createChannelMerger(numInputBuses);
+        merger.connect(jsNode);
+
+        return merger;
+    };
+
+    flock.webAudio.nativeNodeManager.connect = function (merger, jsNode, outputNode, destination) {
+        merger.connect(jsNode);
+        outputNode.connect(destination);
+        if (jsNode !== outputNode) {
+            jsNode.connect(outputNode);
+        }
+    };
+
+    flock.webAudio.nativeNodeManager.disconnect = function (merger, jsNode, outputNode) {
+        merger.disconnect(0);
+        jsNode.disconnect(0);
+        outputNode.disconnect(0);
+    };
+
+    flock.webAudio.nativeNodeManager.removeAllInputs = function (inputNodes) {
+        for (var i = 0; i < inputNodes.length; i++) {
+            var node = inputNodes[i];
+            node.disconnect(0);
+        }
+        inputNodes.length = 0;
+    };
+
+    flock.webAudio.nativeNodeManager.insertInput = function (node, inputNodes, merger) {
+        inputNodes.push(node);
+        node.connect(merger, 0, inputNodes.indexOf(node));
+    };
+
+    flock.webAudio.nativeNodeManager.removeInput = function (node, inputNodes) {
+        var idx = inputNodes.indexOf(node);
+        if (idx > -1) {
+            inputNodes.splice(idx, 1);
+        }
+
+        node.disconnect(0);
+    };
+
+    flock.webAudio.nativeNodeManager.insertOutput = function (that, node) {
+        if (that.outputNode) {
+            that.outputNode.disconnect(0);
+        }
+
+        that.outputNode = node;
+    };
+
+    flock.webAudio.nativeNodeManager.removeOutput = function (jsNode) {
+        // Replace the current output node with the jsNode.
+        flock.webAudio.nativeNodeManager.insertOutput(jsNode);
+    };
+
+
+    /**
+     * Manages audio input devices using the Web Audio API.
+     */
+    // Add a means for disconnecting audio input nodes.
     fluid.defaults("flock.webAudio.deviceManager", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
 
