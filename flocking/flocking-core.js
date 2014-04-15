@@ -640,7 +640,9 @@ var fluid = fluid || require("infusion"),
             },
             blockSize: 64,
             chans: 2,
-            numBuses: 4,
+            numInputBuses: 2,
+            numBuses: 6, // By default, two output buses, two input buses, and two interconnect buses.
+
             // This buffer size determines the overall latency of Flocking's audio output.
             // TODO: Replace this with IoC awesomeness.
             bufferSize: flock.defaultBufferSizeForPlatform(),

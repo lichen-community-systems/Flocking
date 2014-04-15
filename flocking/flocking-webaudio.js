@@ -20,6 +20,8 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
+    fluid.registerNamespace("flock.webAudio");
+
     // TODO: Remove this when Chrome implements navigator.getMediaDevices().
     var getSources = function (callback) {
         return MediaStreamTrack.getSources(function (infoSpecs) {
@@ -33,7 +35,9 @@ var fluid = fluid || require("infusion"),
     };
 
     // TODO: Implement these in a way that doesn't require checking every time.
-    var webRTCShims = {
+    var webAudioShims = {
+        AudioContext: window.AudioContext || window.webkitAudioContext,
+
         getUserMedia: function (options, success, error) {
             var gumFn = navigator.getUserMedia || navigator.webkitGetUserMedia ||
                 navigator.mozGetUserMedia || navigator.msGetUserMedia;
@@ -46,29 +50,52 @@ var fluid = fluid || require("infusion"),
                 MediaStreamTrack.getSources ? getSources(callback) : undefined;
         }
     };
-    jQuery.extend(flock.shim, webRTCShims);
+    jQuery.extend(flock.shim, webAudioShims);
 
 
     /**
      * Web Audio API Audio Strategy
      */
-    fluid.defaults("flock.enviro.webAudio", {
+    fluid.defaults("flock.webAudio.strategy", {
         gradeNames: ["flock.enviro.audioStrategy", "autoInit"],
 
         members: {
+            context: "{contextWrapper}.context",
             preNodes: [],
             jsNode: null,
+            merger: null,
             postNode: null
         },
 
         model: {
             isGenerating: false,
             hasInput: false
+        },
+
+        components: {
+            contextWrapper: {
+                type: "flock.webAudio.contextWrapper"
+            },
+
+            deviceManager: {
+                type: "flock.webAudio.deviceManager",
+                options: {
+                    members: {
+                        context: "{contextWrapper}.context"
+                    },
+
+                    listeners: {
+                        onMediaStreamOpened: {
+                            func: "{strategy}.insertInputNode",
+                            args: ["{arguments}.0"]
+                        }
+                    }
+                }
+            }
         }
     });
 
-    flock.enviro.webAudio.finalInit = function (that) {
-
+    flock.webAudio.strategy.preInit = function (that) {
         that.connectInputNodes = function () {
             var nodes = that.preNodes;
             if (!nodes) {
@@ -187,7 +214,7 @@ var fluid = fluid || require("infusion"),
 
             playState.written += audioSettings.bufferSize * chans;
             if (playState.written >= playState.total) {
-                that.stop();
+                that.stopGeneratingSamples();
             }
         };
 
@@ -227,108 +254,206 @@ var fluid = fluid || require("infusion"),
             that.postNode = that.jsNode;
         };
 
-        that.startReadingAudioInput = function (sourceSpec) {
-            if (!sourceSpec) {
-                return;
-            }
-
-            if (sourceSpec.id) {
-                that.openAudioDeviceWithId(sourceSpec.id);
-            } else if (sourceSpec.label) {
-                that.openFirstAudioDeviceWithLabel(sourceSpec.label);
-            } else {
-                that.openAudioDevice();
-            }
-        };
-
-        that.openFirstAudioDeviceWithLabel = function (label) {
-            // TODO: Can't access device labels until the user agrees
-            // to allow access to the current device.
-            flock.shim.getMediaDevices(function (deviceInfoSpecs) {
-                var matches = deviceInfoSpecs.filter(function (device) {
-                    if (device.label === label) {
-                        return true;
-                    }
-                });
-
-                if (matches.length > 0) {
-                    that.openAudioDeviceWithId(matches[0].deviceId);
-                }
-            });
-        };
-
-        that.openAudioDeviceWithId = function (id) {
-            var options = {
-                audio: {
-                    optional: [
-                        {
-                            sourceId: id
-                        }
-                    ]
-                }
-            };
-
-            that.openAudioDevice(options);
-        };
-
-        that.openAudioDevice = function (options) {
-            options = options || {
-                audio: true
-            };
-
-            function errback (err) {
-                fluid.log(fluid.logLevel.IMPORTANT,
-                    "An error occurred while trying to access the user's microphone. " +
-                    err);
-            }
-
-            flock.shim.getUserMedia(options, that.createMediaStreamSourceNode, errback);
-        };
-
-        that.createMediaStreamSourceNode = function (mediaStream) {
-            var mic = that.context.createMediaStreamSource(mediaStream);
-            that.insertInputNode(mic);
-        };
-
         that.stopReadingAudioInput = function () {
             that.removeInputNode(); // TODO: How?
         };
 
-        that.init = function () {
-            var m = that.model,
-                settings = that.options.audioSettings,
-                scriptNodeConstructorName;
+        that.createScriptProcessor = function (s) {
+            var ctx = that.context,
+                jsNodeName = ctx.createScriptProcessor ? "createScriptProcessor" : "createJavaScriptNode";
 
-            m.krPeriods = settings.bufferSize / settings.blockSize;
-
-            // Singleton AudioContext since the WebKit implementation
-            // freaks if we try to instantiate a new one.
-            if (!flock.enviro.webAudio.audioContext) {
-                flock.enviro.webAudio.audioContext = new flock.enviro.webAudio.contextConstructor();
-            }
-
-            that.context = flock.enviro.webAudio.audioContext;
-            settings.rates.audio = that.context.sampleRate;
-            scriptNodeConstructorName = that.context.createScriptProcessor ?
-                "createScriptProcessor" : "createJavaScriptNode";
-            that.jsNode = that.context[scriptNodeConstructorName](settings.bufferSize, 32, settings.chans);
+            that.jsNode = ctx[jsNodeName](s.bufferSize, s.numInputBuses, s.chans);
+            that.merger = that.context.createChannelMerger(s.numInputBuses);
+            that.merger.connect(that.jsNode);
             that.insertOutputNode(that.jsNode);
             that.jsNode.onaudioprocess = that.writeSamples;
+        };
+    };
 
-            m.shouldInitIOS = flock.platform.isIOS;
+    flock.webAudio.strategy.finalInit = function (that) {
+        var m = that.model,
+            settings = that.options.audioSettings;
+
+        m.krPeriods = settings.bufferSize / settings.blockSize;
+        settings.rates.audio = that.context.sampleRate;
+        that.createScriptProcessor(settings);
+        m.shouldInitIOS = flock.platform.isIOS;
+    };
+
+    flock.webAudio.strategy.removeNode = function (node) {
+        node.disconnect(0); // TODO: Is this still accurate?
+    };
+
+    fluid.defaults("flock.webAudio.contextWrapper", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        members: {
+            context: {
+                expander: {
+                    funcName: "flock.webAudio.contextWrapper.create"
+                }
+            }
+        },
+
+        listeners: {
+            onCreate: {
+                funcName: "flock.webAudio.contextWrapper.register",
+                args: ["{that}"]
+            }
+        }
+    });
+
+
+    flock.webAudio.contextWrapper.create = function () {
+        return new flock.shim.AudioContext();
+    };
+
+    flock.webAudio.contextWrapper.register = function (that) {
+        fluid.staticEnvironment.webAudioContext = that;
+    };
+
+    fluid.defaults("flock.webAudio.deviceManager", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        members: {
+            context: null
+        },
+
+        invokers: {
+            /**
+             * Opens the specified audio device.
+             * If no device is specified, the default device is opened.
+             *
+             * @param {Object} deviceSpec a device spec containing, optionally, an 'id' or 'label' parameter
+             */
+            openAudioDevice: {
+                funcName: "flock.webAudio.deviceManager.openAudioDevice",
+                args: [
+                    "{arguments}.0",
+                    "{that}.openAudioDeviceWithId",
+                    "{that}.openFirstAudioDeviceWithLabel",
+                    "{that}.openAudioDeviceWithConstraints"
+                ]
+            },
+
+            /**
+             * Opens an audio device with the specified WebRTC constraints.
+             * If no constraints are specified, the default audio device is opened.
+             *
+             * @param {Object} constraints a WebRTC-compatible constraints object
+             */
+            openAudioDeviceWithConstraints: {
+                funcName: "flock.webAudio.deviceManager.openAudioDeviceWithConstraints",
+                args: ["{arguments}.0", "{that}.context", "{that}.events.onMediaStreamOpened.fire"]
+            },
+
+            /**
+             * Opens an audio device with the specified WebRTC device id.
+             *
+             * @param {string} id a device identifier
+             */
+            openAudioDeviceWithId: {
+                funcName: "flock.webAudio.deviceManager.openAudioDeviceWithId",
+                args: ["{arguments}.0", "{that}.openAudioDeviceWithConstraints"]
+            },
+
+            /**
+             * Opens the first audio device found with the specified label.
+             * The label must be an exact, case-insensitive match.
+             *
+             * @param {string} label a device label
+             */
+            openFirstAudioDeviceWithLabel: {
+                funcName: "flock.webAudio.deviceManager.openFirstAudioDeviceWithLabel",
+                args: ["{arguments}.0", "{that}.openAudioDeviceWithId"]
+            }
+        },
+
+        events: {
+            /**
+             * Fires whenever a new media stream has been opened up.
+             *
+             * @param {MediaStreamSourceNode} node the MediaStreamSourceNode created from the open stream
+             */
+            onMediaStreamOpened: null
+        }
+    });
+
+
+    flock.webAudio.deviceManager.openAudioDevice = function (sourceSpec, idOpener, labelOpener, specOpener) {
+        if (sourceSpec) {
+            if (sourceSpec.id) {
+                return idOpener(sourceSpec.id);
+            } else if (sourceSpec.label) {
+                return labelOpener(sourceSpec.label);
+            }
+        }
+
+        return specOpener();
+    };
+
+    flock.webAudio.deviceManager.openAudioDeviceWithId = function (id, deviceOpener) {
+        var options = {
+            audio: {
+                optional: [
+                    {
+                        sourceId: id
+                    }
+                ]
+            }
         };
 
-        that.init();
+        deviceOpener(options);
     };
 
-    flock.enviro.webAudio.removeNode = function (node) {
-        node.disconnect(0);
+    flock.webAudio.deviceManager.openFirstAudioDeviceWithLabel = function (label, deviceOpener) {
+        if (!label) {
+            return;
+        }
+
+        // TODO: Can't access device labels until the user agrees
+        // to allow access to the current device.
+        flock.shim.getMediaDevices(function (deviceInfoSpecs) {
+            var matches = deviceInfoSpecs.filter(function (device) {
+                if (device.label.toLowerCase() === label.toLowerCase()) {
+                    return true;
+                }
+            });
+
+            if (matches.length > 0) {
+                deviceOpener(matches[0].deviceId);
+            } else {
+                fluid.log(fluid.logLevel.IMPORTANT,
+                    "An audio device named '" + label + "' could not be found.");
+            }
+        });
     };
 
-    flock.enviro.webAudio.contextConstructor = window.AudioContext || window.webkitAudioContext;
+    flock.webAudio.deviceManager.openAudioDeviceWithConstraints = function (options, context, onMediaStreamOpened) {
+        options = options || {
+            audio: true
+        };
+
+        function callback (mediaStream) {
+            flock.webAudio.deviceManager.nodeForStream(context, mediaStream, onMediaStreamOpened);
+        }
+
+        function errback (err) {
+            fluid.log(fluid.logLevel.IMPORTANT,
+                "An error occurred while trying to access the user's microphone. " +
+                err);
+        }
+
+        flock.shim.getUserMedia(options, callback, errback);
+    };
+
+    flock.webAudio.deviceManager.nodeForStream = function (context, mediaStream, onMediaStreamOpened) {
+        var mic = context.createMediaStreamSource(mediaStream);
+        onMediaStreamOpened(mic);
+    };
 
     fluid.demands("flock.enviro.audioStrategy", "flock.platform.webAudio", {
-        funcName: "flock.enviro.webAudio"
+        funcName: "flock.webAudio.strategy"
     });
 
 }());
