@@ -32,6 +32,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.OUT_UGEN_ID = "flocking-out";
+    flock.PI = Math.PI;
     flock.TWOPI = 2.0 * Math.PI;
     flock.HALFPI = Math.PI / 2.0;
     flock.LOG01 = Math.log(0.1);
@@ -653,7 +654,7 @@ var fluid = fluid || require("infusion"),
             },
             blockSize: 64,
             chans: 2,
-            numBuses: 2,
+            numBuses: 4,
             // This buffer size determines the overall latency of Flocking's audio output.
             // TODO: Replace this with IoC awesomeness.
             bufferSize: flock.defaultBufferSizeForPlatform(),
@@ -735,7 +736,11 @@ var fluid = fluid || require("infusion"),
         var audioSettings = that.options.audioSettings,
             rates = audioSettings.rates;
 
-        that.gen = that.audioStrategy.nodeEvaluator.gen;
+        that.gen = function () {
+            var evaluator = that.audioStrategy.nodeEvaluator;
+            evaluator.clearBuses();
+            evaluator.gen();
+        };
 
         // TODO: Model-based (with ChangeApplier) sharing of audioSettings
         rates.audio = that.audioStrategy.options.audioSettings.rates.audio;
@@ -782,6 +787,15 @@ var fluid = fluid || require("infusion"),
                     "{that}.nodes",
                     "{that}.buses"
                 ]
+            },
+
+            clearBuses: {
+                funcName: "flock.enviro.nodeEvaluator.clearBuses",
+                args: [
+                    "{enviro}.options.audioSettings.numBuses",
+                    "{enviro}.options.audioSettings.blockSize",
+                    "{that}.buses"
+                ]
             }
         }
     });
@@ -807,6 +821,15 @@ var fluid = fluid || require("infusion"),
         }
     };
 
+
+    flock.enviro.nodeEvaluator.clearBuses = function (numBuses, busLen, buses) {
+        for (var i = 0; i < numBuses; i++) {
+            var bus = buses[i];
+            for (var j = 0; j < busLen; j++) {
+                bus[j] = 0;
+            }
+        }
+    };
 
     fluid.defaults("flock.autoEnviro", {
         gradeNames: ["fluid.littleComponent", "autoInit"]

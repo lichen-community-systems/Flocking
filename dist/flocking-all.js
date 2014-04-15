@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (March 28, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (April 15, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -18942,571 +18942,6 @@ var fluid_1_5 = fluid_1_5 || {};
 
     
 })();
-;/*!
-* PolyDataView, a better polyfill for DataView.
-* http://github.com/colinbdclark/PolyDataView
-*
-* Copyright 2012, Colin Clark
-* Dual licensed under the MIT and GPL Version 2 licenses.
-*
-* Contributions:
-*   - getFloat32 and getFloat64, Copyright 2011 Christopher Chedeau
-*   - getFloat80, Copyright 2011 Joe Turner
-*/
-
-/*global window, ArrayBuffer, Uint8Array, Uint32Array*/
-/*jslint white: true, funcinvoke: true, undef: true, newcap: false, regexp: true, browser: true,
-    forin: true, continue: true, forvar: true, nomen: true, maxerr: 100, indent: 4 */
-
-/*
- * To Do:
- *  - Finish unit tests for getFloat80() and the various array getters.
- */
- 
-
-(function () {
-    "use strict";
-    
-    var g = typeof (window) !== "undefined" ? window : typeof (self) !== "undefined" ? self : global;
-    
-    var nativeDataView = typeof (g.DataView) !== "undefined" ? g.DataView : undefined; 
-    
-    var isHostLittleEndian = (function () {
-        var endianTest = new ArrayBuffer(4),
-            u8View = new Uint8Array(endianTest),
-            u32View = new Uint32Array(endianTest);
-            
-        u8View[0] = 0x01;
-        u8View[1] = 0x02;
-        u8View[2] = 0x03;
-        u8View[3] = 0x04;
-
-        return u32View[0] === 0x04030201;
-    }());
-    
-    
-    var addSharedMethods = function (that) {
-        
-        /**
-         * Non-standard
-         */
-        that.getString = function (len, w, o, isL) {
-            o = typeof (o) === "number" ? o : that.offsetState;
-            
-            var s = "",
-                i,
-                c;
-            
-            for (i = 0; i < len; i++) {
-                c = that.getUint(w, o, isL);
-                if (c > 0xFFFF) {
-                    c -= 0x10000;
-                    s += String.fromCharCode(0xD800 + (c >> 10), 0xDC00 + (c & 0x3FF));
-                } else {
-                    s += String.fromCharCode(c);
-                }
-                o = o + w;
-            }
-            
-            return s;
-        };
-
-        /**
-         * Non-standard
-         */
-        that.getFloat80 = function (o, isL) {
-            o = typeof (o) === "number" ? o : that.offsetState;
-            
-            // This method is a modified version of Joe Turner's implementation of an "extended" float decoder,
-            // originally licensed under the WTF license.
-            // https://github.com/oampo/audiofile.js/blob/master/audiofile.js
-            var expon = that.getUint(2, o, isL),
-                hi = that.getUint(4, o + 2),
-                lo = that.getUint(4, o + 6),
-                rng = 1 << (16 - 1), 
-                sign = 1,
-                value;
-                
-            if (expon >= rng) {
-                expon |= ~(rng - 1);
-            }
-
-            if (expon < 0) {
-                sign = -1;
-                expon += rng;
-            }
-
-            if (expon === hi === lo === 0) {
-                value = 0;
-            } else if (expon === 0x7FFF) {
-                value = Number.MAX_VALUE;
-            } else {
-                expon -= 16383;
-                value = (hi * 0x100000000 + lo) * Math.pow(2, expon - 63);
-            }
-            
-            that.offsetState = o + 10;
-            
-            return sign * value;
-        }; 
-    };
-    
-    var PolyDataView = function (buffer, byteOffset, byteLength) {
-        var cachedArray = [];
-        
-        var that = {
-            buffer: buffer,
-            byteOffset: typeof (byteOffset) === "number" ? byteOffset : 0
-        };
-        that.byteLength = typeof (byteLength) === "number" ? byteLength : buffer.byteLength - that.byteOffset;
-        
-        // Bail if we're trying to read off the end of the buffer.
-        if (that.byteOffset > buffer.byteLength || that.byteOffset + that.byteLength > buffer.byteLength) {
-            throw new Error("INDEX_SIZE_ERR: DOM Exception 1");
-        }
-        
-        /**
-         * Non-standard
-         */
-        that.u8Buf = new Uint8Array(buffer, that.byteOffset, that.byteLength);
-        
-        /**
-         * Non-standard
-         */
-        that.offsetState = that.byteOffset;
-        
-        /**
-         * Non-standard
-         */
-        that.getUints = function (len, w, o, isL, array) {
-            // TODO: Complete cut and paste job from getInts()!
-            o = typeof (o) === "number" ? o : that.offsetState;
-            if (o + (len * w) > that.u8Buf.length) {
-                throw new Error("INDEX_SIZE_ERR: DOM Exception 1");
-            }
-            
-            that.offsetState = o + (len * w);
-            var arrayType = g["Uint" + (w * 8) + "Array"];
-            
-            if (len > 1 && isHostLittleEndian === isL) {
-                return new arrayType(that.buffer, o, len);
-            }
-            
-            array = array || new arrayType(len);
-            var startByte, 
-                idxInc,
-                i,
-                idx,
-                n,
-                j,
-                scale,
-                v;
-
-            if (isL) {
-                startByte = 0;
-                idxInc = 1;
-            } else {
-                startByte = w - 1;
-                idxInc = -1;
-            }
-            
-            for (i = 0; i < len; i++) {
-                idx = o + (i * w) + startByte;
-                n = 0;
-                for (j = 0, scale = 1; j < w; j++, scale *= 256) {
-                    v = that.u8Buf[idx];
-                    n += v * scale;
-                    idx += idxInc;
-                }
-                array[i] = n;
-            }
-            
-            return array;
-        };
-        
-        /**
-         * Non-standard
-         */
-        that.getInts = function (len, w, o, isL, array) {
-            o = typeof (o) === "number" ? o : that.offsetState;
-            if (o + (len * w) > that.u8Buf.length) {
-                throw new Error("INDEX_SIZE_ERR: DOM Exception 1");
-            }
-            
-            that.offsetState = o + (len * w);
-            var arrayType = g["Int" + (w * 8) + "Array"];
-                        
-            // If the host's endianness matches the file's, just use a typed array view directly.
-            if (len > 1 && isHostLittleEndian === isL) {
-                return new arrayType(that.buffer, o, len);
-            }
-            
-            array = array || new arrayType(len);
-            var mask = Math.pow(256, w),
-                halfMask = (mask / 2) - 1,
-                startByte, 
-                idxInc,
-                i,
-                idx,
-                n,
-                j,
-                scale,
-                v;
-
-            if (isL) {
-                startByte = 0;
-                idxInc = 1;
-            } else {
-                startByte = w - 1;
-                idxInc = -1;
-            }
-            
-            for (i = 0; i < len; i++) {
-                idx = o + (i * w) + startByte;
-                n = 0;
-                for (j = 0, scale = 1; j < w; j++, scale *= 256) {
-                    v = that.u8Buf[idx];
-                    n += v * scale;
-                    idx += idxInc;
-                }
-                array[i] = n > halfMask ? n - mask : n;
-            }
-            
-            return array;
-        };
-        
-        /**
-         * Non-standard
-         */
-        that.getFloats = function (len, w, o, isL, array) {
-            var bits = w * 8,
-                getterName = "getFloat" + bits,
-                arrayType = g["Float" + bits + "Array"],
-                i;
-            
-            // If the host's endianness matches the file's, just use a typed array view directly.
-            if (len > 1 && isHostLittleEndian === isL) {
-                o = typeof (o) === "number" ? o : that.offsetState;
-                if (o + (len * w) > that.u8Buf.length) {
-                    throw new Error("INDEX_SIZE_ERR: DOM Exception 1");
-                }
-                that.offsetState = o + (len * w);
-                return new arrayType(that.buffer, o, len);
-            }
-            
-            array = array || new arrayType(len);
-            
-            for (i = 0; i < len; i++) {
-                array[i] = that[getterName](o, isL);
-            }
-            
-            return array;
-        };
-        
-        /**
-         * Non-standard
-         */
-        that.getUint = function (w, o, isL) {
-            return w === 1 ? that.getUint8(o, isL) : that.getUints(1, w, o, isL, cachedArray)[0];
-        };
-        
-        /**
-         * Non-standard
-         */
-        that.getInt = function (w, o, isL) {
-            return that.getInts(1, w, o, isL, cachedArray)[0];
-        };
-         
-        that.getUint8 = function (o) {
-            o = typeof (o) === "number" ? o : that.offsetState;
-            
-            var n = that.u8Buf[o];
-            that.offsetState = o + 1;
-            
-            return n;
-        };
-        
-        that.getInt8 = function (o, isL) {
-            return that.getInts(1, 1, o, isL, cachedArray)[0];
-        };
-        
-        that.getUint16 = function (o, isL) {
-            return that.getUints(1, 2, o, isL, cachedArray)[0];
-        };
-        
-        that.getInt16 = function (o, isL) {
-            return that.getInts(1, 2, o, isL, cachedArray)[0];
-        };
-        
-        that.getUint32 = function (o, isL) {
-            return that.getUints(1, 4, o, isL, cachedArray)[0];
-        };
-        
-        that.getInt32 = function (o, isL) {
-            return that.getInts(1, 4, o, isL, cachedArray)[0];
-        };
-        
-        that.getFloat32 = function (o, isL) {
-            // This method is a modified version of Christopher Chedeau's Float32 decoding
-            // implementation from jDataView, originally distributed under the WTF license.
-            // https://github.com/vjeux/jDataView
-            var bytes = that.getUints(4, 1, o, isL),
-                b0,
-                b1,
-                b2,
-                b3,
-                sign,
-                exp,
-                mant;
-            
-            if (isL) {
-                b0 = bytes[3];
-                b1 = bytes[2];
-                b2 = bytes[1];
-                b3 = bytes[0];
-            } else {
-                b0 = bytes[0];
-                b1 = bytes[1];
-                b2 = bytes[2];
-                b3 = bytes[3];
-            }
-                
-            sign = 1 - (2 * (b0 >> 7));
-            exp = (((b0 << 1) & 255) | (b1 >> 7)) - 127;
-            mant = ((b1 & 127) * 65536) | (b2 * 256) | b3;
-            
-            if (exp === 128) {
-                return mant !== 0 ? NaN : sign * Infinity;
-            }
-            
-            if (exp === -127) {
-                return sign * mant * 1.401298464324817e-45;
-            }
-            
-            return sign * (1 + mant * 1.1920928955078125e-7) * Math.pow(2, exp);
-        };
-        
-        that.getFloat64 = function (o, isL) {
-            // This method is a modified version of Christopher Chedeau's Float64 decoding
-            // implementation from jDataView, originally distributed under the WTF license.
-            // https://github.com/vjeux/jDataView
-            var bytes = that.getUints(8, 1, o, isL),
-                b0,
-                b1,
-                b2,
-                b3,
-                b4,
-                b5,
-                b6,
-                b7,
-                sign,
-                exp,
-                mant;
-            
-            if (isL) {
-                b0 = bytes[7];
-                b1 = bytes[6];
-                b2 = bytes[5];
-                b3 = bytes[4];
-                b4 = bytes[3];
-                b5 = bytes[2];
-                b6 = bytes[1];
-                b7 = bytes[0];
-            } else {
-                b0 = bytes[0];
-                b1 = bytes[1];
-                b2 = bytes[2];
-                b3 = bytes[3];
-                b4 = bytes[4];
-                b5 = bytes[5];
-                b6 = bytes[6];
-                b7 = bytes[7];
-            }
-            
-            sign = 1 - (2 * (b0 >> 7));
-            exp = ((((b0 << 1) & 255) << 3) | (b1 >> 4)) - 1023;
-            mant = ((b1 & 15) * 281474976710656) + (b2 * 1099511627776) + (b3 * 4294967296) + 
-                (b4 * 16777216) + (b5 * 65536) + (b6 * 256) + b7;
-                                
-            if (exp === 1024) {
-                return mant !== 0 ? NaN : sign * Infinity;
-            }
-
-            if (exp === -1023) {
-                return sign * mant * 5e-324;
-            }
-
-            return sign * (1 + mant * 2.220446049250313e-16) * Math.pow(2, exp);
-        };
-        
-        addSharedMethods(that);
-        return that;
-    };
-    
-    var wrappedDataView = function (buffer, byteOffset, byteLength) {
-        var that = {
-            buffer: buffer,
-            byteOffset: typeof (byteOffset) === "number" ? byteOffset : 0
-        };
-        that.byteLength = typeof (byteLength) === "number" ? byteLength : buffer.byteLength - that.byteOffset;
-        
-        /**
-         * Non-standard
-         */
-        that.dv = new nativeDataView(buffer, that.byteOffset, that.byteLength);
-        
-        /**
-         * Non-standard
-         */
-        that.offsetState = that.byteOffset;
-        
-        /**
-         * Non-standard
-         */
-        that.getUint = function (w, o, isL) {
-            o = typeof (o) === "number" ? o : that.offsetState;
-            
-            var n = that.dv["getUint" + (w * 8)](o, isL);
-            that.offsetState = o + w;
-            
-            return n;
-        };
-        
-        /**
-         * Non-standard
-         */
-        that.getInt = function (w, o, isL) {
-            o = typeof (o) === "number" ? o : that.offsetState;
-
-            var n = that.dv["getInt" + (w * 8)](o, isL);
-            that.offsetState = o + w;
-            
-            return n;  
-        };
-        
-        /**
-         * Non-standard
-         */
-        var getBytes = function (type, len, w, o, isL, array) {
-            var bits = w * 8,
-                typeSize = type + bits,
-                dv = that.dv,
-                getterName = "get" + typeSize,
-                i;
-                
-            array = array || new g[typeSize + "Array"](len);
-            o = typeof (o) === "number" ? o : that.offsetState;
-            
-            for (i = 0; i < len; i++) {
-                array[i] = dv[getterName](o, isL);
-                o += w;
-            }
-            
-            that.offsetState = o;
-
-            return array;
-        };
-        
-        /**
-         * Non-standard
-         */
-        that.getUints = function (len, w, o, isL, array) {
-            return getBytes("Uint", len, w, o, isL, array);
-        };
-        
-        /**
-         * Non-standard
-         */
-        that.getInts = function (len, w, o, isL, array) {
-            return getBytes("Int", len, w, o, isL, array);
-        };
-        
-        /**
-         * Non-standard
-         */
-        that.getFloats = function (len, w, o, isL, array) {
-            return getBytes("Float", len, w, o, isL, array);
-        };
-        
-        that.getUint8 = function (o) {
-            o = typeof (o) === "number" ? o : that.offsetState;
-            
-            var n = that.dv.getUint8(o);
-            that.offsetState = o + 1;
-            
-            return n;
-        };
-        
-        that.getInt8 = function (o) {
-            o = typeof (o) === "number" ? o : that.offsetState;
-            
-            var n = that.dv.getInt8(o);
-            that.offsetState = o + 1;
-            
-            return n;
-        };
-        
-        that.getUint16 = function (o, isL) {
-            o = typeof (o) === "number" ? o : that.offsetState;
-            
-            var n = that.dv.getUint16(o, isL);
-            that.offsetState = o + 2;
-            
-            return n;            
-        };
-        
-        that.getInt16 = function (o, isL) {
-            o = typeof (o) === "number" ? o : that.offsetState;
-            
-            var n = that.dv.getInt16(o, isL);
-            that.offsetState = o + 2;
-            
-            return n;
-        };
-        
-        that.getUint32 = function (o, isL) {
-            o = typeof (o) === "number" ? o : that.offsetState;
-            
-            var n = that.dv.getUint32(o, isL);
-            that.offsetState = o + 4;
-            
-            return n;
-        };
-        
-        that.getInt32 = function (o, isL) {
-            o = typeof (o) === "number" ? o : that.offsetState;
-            
-            var n = that.dv.getInt32(o, isL);
-            that.offsetState = o + 4;
-            
-            return n;            
-        };
-        
-        that.getFloat32 = function (o, isL) {
-            o = typeof (o) === "number" ? o : that.offsetState;
-            
-            var n = that.dv.getFloat32(o, isL);
-            that.offsetState = o + 4;
-            
-            return n;
-        };
-        
-        that.getFloat64 = function (o, isL) {
-            o = typeof (o) === "number" ? o : that.offsetState;
-            
-            var n = that.dv.getFloat64(o, isL);
-            that.offsetState = o + 8;
-            
-            return n;
-        };
-        
-        addSharedMethods(that);
-        return that;
-    };
-    
-    g.PolyDataView = nativeDataView ? wrappedDataView : PolyDataView;
-
-}());
 ;/*! Flocking 0.1, Copyright 2011-2014 Colin Clark | flockingjs.org */
 
 /*
@@ -19541,6 +18976,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.OUT_UGEN_ID = "flocking-out";
+    flock.PI = Math.PI;
     flock.TWOPI = 2.0 * Math.PI;
     flock.HALFPI = Math.PI / 2.0;
     flock.LOG01 = Math.log(0.1);
@@ -20162,7 +19598,7 @@ var fluid = fluid || require("infusion"),
             },
             blockSize: 64,
             chans: 2,
-            numBuses: 2,
+            numBuses: 4,
             // This buffer size determines the overall latency of Flocking's audio output.
             // TODO: Replace this with IoC awesomeness.
             bufferSize: flock.defaultBufferSizeForPlatform(),
@@ -20244,7 +19680,11 @@ var fluid = fluid || require("infusion"),
         var audioSettings = that.options.audioSettings,
             rates = audioSettings.rates;
 
-        that.gen = that.audioStrategy.nodeEvaluator.gen;
+        that.gen = function () {
+            var evaluator = that.audioStrategy.nodeEvaluator;
+            evaluator.clearBuses();
+            evaluator.gen();
+        };
 
         // TODO: Model-based (with ChangeApplier) sharing of audioSettings
         rates.audio = that.audioStrategy.options.audioSettings.rates.audio;
@@ -20291,6 +19731,15 @@ var fluid = fluid || require("infusion"),
                     "{that}.nodes",
                     "{that}.buses"
                 ]
+            },
+
+            clearBuses: {
+                funcName: "flock.enviro.nodeEvaluator.clearBuses",
+                args: [
+                    "{enviro}.options.audioSettings.numBuses",
+                    "{enviro}.options.audioSettings.blockSize",
+                    "{that}.buses"
+                ]
             }
         }
     });
@@ -20316,6 +19765,15 @@ var fluid = fluid || require("infusion"),
         }
     };
 
+
+    flock.enviro.nodeEvaluator.clearBuses = function (numBuses, busLen, buses) {
+        for (var i = 0; i < numBuses; i++) {
+            var bus = buses[i];
+            for (var j = 0; j < busLen; j++) {
+                bus[j] = 0;
+            }
+        }
+    };
 
     fluid.defaults("flock.autoEnviro", {
         gradeNames: ["fluid.littleComponent", "autoInit"]
@@ -20911,6 +20369,276 @@ var fluid = fluid || require("infusion"),
     };
 }());
 ;/*
+* Flocking Audio Buffers
+* http://github.com/colinbdclark/flocking
+*
+* Copyright 2013-14, Colin Clark
+* Dual licensed under the MIT and GPL Version 2 licenses.
+*/
+
+/*global require*/
+/*jshint white: false, newcap: true, regexp: true, browser: true,
+    forin: false, nomen: true, bitwise: false, maxerr: 100,
+    indent: 4, plusplus: false, curly: true, eqeqeq: true,
+    freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
+    unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
+    funcscope: false*/
+
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
+    
+(function () {
+    "use strict";
+    
+    // Based on Brian Cavalier and John Hann's Tiny Promises library.
+    // https://github.com/unscriptable/promises/blob/master/src/Tiny2.js
+    function Promise() {
+        var resolve = function (result) {
+            complete("resolve", result);
+            promise.state = "fulfilled";
+        };
+        
+        var reject = function (err) {
+            complete("reject", err);
+            promise.state = "rejected";
+        };
+        
+        var then = function (resolve, reject) {
+            if (callbacks) {
+                callbacks.push({
+                    resolve: resolve, 
+                    reject: reject 
+                });
+            } else {
+                var fn = promise.state === "fulfilled" ? resolve : reject;
+                fn(promise.value);
+            }
+
+            return this;
+        };
+        
+        var callbacks = [],
+            promise = {
+                state: "pending",
+                value: undefined,
+                resolve: resolve,
+                reject: reject,
+                then: then,
+                safe: {
+                    then: function safeThen(resolve, reject) {
+                        promise.then(resolve, reject);
+                        return this;
+                    }
+                }
+            };
+
+        
+        function complete(type, result) {
+            var rejector = function (resolve, reject) {
+                reject(result); 
+                return this;
+            };
+            
+            var resolver = function (resolve) {
+                resolve(result); 
+                return this;
+            };
+            
+            promise.value = result;
+            promise.then = type === "reject" ? rejector : resolver;
+            promise.resolve = promise.reject = function () {
+                throw new Error("Promise already completed");
+            };
+            
+            invokeCallbacks(type, result);
+        }
+
+        function invokeCallbacks (type, result) {
+            var i,
+                cb;
+            
+            for (i = 0; i < callbacks.length; i++) {
+                cb = callbacks[i];
+                
+                if (cb[type]) {
+                    cb[type](result);
+                }
+            }
+            
+            callbacks = null;
+        }
+
+        return promise;
+    }
+    
+    fluid.defaults("flock.promise", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        
+        members: {
+            promise: {
+                expander: {
+                    funcName: "flock.promise.make"
+                }
+            }
+        }
+    });
+    
+    flock.promise.make = function () {
+        return new Promise();
+    };
+    
+    flock.bufferDesc = function (data) {
+        data.container = data.container || {};
+        data.format = data.format || {};
+
+        data.format.sampleRate = data.format.sampleRate || 44100;
+        data.format.numChannels = data.format.numChannels || data.data.channels.length;
+        data.format.numSampleFrames = data.format.numSampleFrames || data.data.channels[0].length;
+        data.format.duration = data.format.numSampleFrames / data.format.sampleRate;
+        
+        return data;
+    };
+
+    /**
+     * Represents a source for fetching buffers.
+     */
+    fluid.defaults("flock.bufferSource", {
+        gradeNames: ["fluid.eventedComponent", "fluid.modelComponent", "autoInit"],
+        
+        model: {
+            state: "start",
+            src: null
+        },
+        
+        components: {
+            bufferPromise: {
+                createOnEvent: "onRefreshPromise",
+                type: "flock.promise",
+                options: {
+                    listeners: {
+                        onCreate: {
+                            "this": "{that}.promise",
+                            method: "then",
+                            args: ["{bufferSource}.events.afterFetch.fire", "{bufferSource}.events.onError.fire"]
+                        }
+                    }
+                }
+            }
+        },
+        
+        invokers: {
+            get: {
+                funcName: "flock.bufferSource.get",
+                args: ["{that}", "{arguments}.0"]
+            },
+            
+            set: {
+                funcName: "flock.bufferSource.set",
+                args: ["{that}", "{arguments}.0"]
+            },
+            
+            error: {
+                funcName: "flock.bufferSource.error",
+                args: ["{that}", "{arguments}.0"]
+            }
+        },
+        
+        listeners: {
+            onCreate: {
+                funcName: "{that}.events.onRefreshPromise.fire"
+            },
+            
+            onRefreshPromise: {
+                funcName: "{that}.applier.requestChange",
+                args: ["state", "start"]
+            },
+            
+            onFetch: {
+                funcName: "{that}.applier.requestChange",
+                args: ["state", "in-progress"]
+            },
+            
+            afterFetch: [
+                {
+                    funcName: "{that}.applier.requestChange",
+                    args: ["state", "fetched"]
+                },
+                {
+                    funcName: "{that}.events.onBufferUpdated.fire", // TODO: Replace with boiling?
+                    args: ["{arguments}.0"]
+                }
+            ],
+            
+            onBufferUpdated: {
+                // TODO: Hardcoded reference to shared environment.
+                funcName: "flock.enviro.shared.registerBuffer",
+                args: ["{arguments}.0"]
+            },
+            
+            onError: {
+                funcName: "{that}.applier.requestChange",
+                args: ["state", "error"]
+            }
+        },
+        
+        events: {
+            onRefreshPromise: null,
+            onError: null,
+            onFetch: null,
+            afterFetch: null,
+            onBufferUpdated: null
+        }
+    });
+    
+    flock.bufferSource.get = function (that, bufDef) {
+        if (that.model.state === "in-progress" || (bufDef.src === that.model.src && !bufDef.replace)) {
+            // We've already fetched the buffer or are in the process of doing so.
+            return that.bufferPromise.promise;
+        }
+
+        if (bufDef.src) {
+            if ((that.model.state === "fetched" || that.model.state === "errored") && 
+                (that.model.src !== bufDef.src || bufDef.replace)) {
+                that.events.onRefreshPromise.fire();
+            }
+            
+            if (that.model.state === "start") {
+                that.model.src = bufDef.src;
+                that.events.onFetch.fire(bufDef);
+                flock.audio.decode({
+                    src: bufDef.src,
+                    success: function (bufDesc) {
+                        if (bufDef.id) {
+                            bufDesc.id = bufDef.id;
+                        }
+                        
+                        that.set(bufDesc);
+                    },
+                    error: that.error
+                });
+            }
+        }
+                
+        return that.bufferPromise.promise;
+    };
+    
+    flock.bufferSource.set = function (that, bufDesc) {
+        var state = that.model.state;
+        if (state === "start" || state === "in-progress") {
+            that.bufferPromise.promise.resolve(bufDesc);
+        }
+        
+        return that.bufferPromise.promise;
+    };
+    
+    flock.bufferSource.error = function (that, msg) {
+        that.bufferPromise.promise.reject(msg);
+        
+        return that.bufferPromise.promise;
+    };
+
+}());
+;/*
 * Flocking Parser
 * http://github.com/colinbdclark/flocking
 *
@@ -21275,15 +21003,24 @@ var fluid = fluid || require("infusion"),
     };
     
 }());
-;/*
- * Flocking Audio File Decoder Library
- * http://github.com/colinbdclark/flocking
+;// TODO: This is a copy of polydataview.js, now inlined here to avoid script loading
+// issues related to web workers. Ultimately, Flocking should shed its dependency on
+// PolyDataView now that DataView ships in all major browsers.
+
+/*
+ * PolyDataView, a better polyfill for DataView.
+ * http://github.com/colinbdclark/PolyDataView
  *
- * Copyright 2011-2014, Colin Clark
+ * Copyright 2012, Colin Clark
  * Dual licensed under the MIT and GPL Version 2 licenses.
+ *
+ * Contributions:
+ *   - getFloat32 and getFloat64, Copyright 2011 Christopher Chedeau
+ *   - getFloat80, Copyright 2011 Joe Turner
  */
 
-/*global self, require, Float32Array, Uint8Array, ArrayBuffer, File, FileReader, PolyDataView*/
+/*global global, self, require, window, ArrayBuffer, Uint8Array, Uint32Array, Float32Array,
+  File, FileReader, PolyDataView*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,
@@ -21291,12 +21028,569 @@ var fluid = fluid || require("infusion"),
     unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
     funcscope: false*/
 
+/*
+ * To Do:
+ *  - Finish unit tests for getFloat80() and the various array getters.
+ */
+
+(function () {
+    "use strict";
+
+    var g = typeof (window) !== "undefined" ? window : typeof (self) !== "undefined" ? self : global;
+
+    var nativeDataView = typeof (g.DataView) !== "undefined" ? g.DataView : undefined;
+
+    var isHostLittleEndian = (function () {
+        var endianTest = new ArrayBuffer(4),
+            u8View = new Uint8Array(endianTest),
+            u32View = new Uint32Array(endianTest);
+
+        u8View[0] = 0x01;
+        u8View[1] = 0x02;
+        u8View[2] = 0x03;
+        u8View[3] = 0x04;
+
+        return u32View[0] === 0x04030201;
+    }());
+
+
+    var addSharedMethods = function (that) {
+
+        /**
+         * Non-standard
+         */
+        that.getString = function (len, w, o, isL) {
+            o = typeof (o) === "number" ? o : that.offsetState;
+
+            var s = "",
+                i,
+                c;
+
+            for (i = 0; i < len; i++) {
+                c = that.getUint(w, o, isL);
+                if (c > 0xFFFF) {
+                    c -= 0x10000;
+                    s += String.fromCharCode(0xD800 + (c >> 10), 0xDC00 + (c & 0x3FF));
+                } else {
+                    s += String.fromCharCode(c);
+                }
+                o = o + w;
+            }
+
+            return s;
+        };
+
+        /**
+         * Non-standard
+         */
+        that.getFloat80 = function (o, isL) {
+            o = typeof (o) === "number" ? o : that.offsetState;
+
+            // This method is a modified version of Joe Turner's implementation of an "extended" float decoder,
+            // originally licensed under the WTF license.
+            // https://github.com/oampo/audiofile.js/blob/master/audiofile.js
+            var expon = that.getUint(2, o, isL),
+                hi = that.getUint(4, o + 2),
+                lo = that.getUint(4, o + 6),
+                rng = 1 << (16 - 1),
+                sign = 1,
+                value;
+
+            if (expon >= rng) {
+                expon |= ~(rng - 1);
+            }
+
+            if (expon < 0) {
+                sign = -1;
+                expon += rng;
+            }
+
+            if (expon === hi === lo === 0) {
+                value = 0;
+            } else if (expon === 0x7FFF) {
+                value = Number.MAX_VALUE;
+            } else {
+                expon -= 16383;
+                value = (hi * 0x100000000 + lo) * Math.pow(2, expon - 63);
+            }
+
+            that.offsetState = o + 10;
+
+            return sign * value;
+        };
+    };
+
+    var PolyDataView = function (buffer, byteOffset, byteLength) {
+        var cachedArray = [];
+
+        var that = {
+            buffer: buffer,
+            byteOffset: typeof (byteOffset) === "number" ? byteOffset : 0
+        };
+        that.byteLength = typeof (byteLength) === "number" ? byteLength : buffer.byteLength - that.byteOffset;
+
+        // Bail if we're trying to read off the end of the buffer.
+        if (that.byteOffset > buffer.byteLength || that.byteOffset + that.byteLength > buffer.byteLength) {
+            throw new Error("INDEX_SIZE_ERR: DOM Exception 1");
+        }
+
+        /**
+         * Non-standard
+         */
+        that.u8Buf = new Uint8Array(buffer, that.byteOffset, that.byteLength);
+
+        /**
+         * Non-standard
+         */
+        that.offsetState = that.byteOffset;
+
+        /**
+         * Non-standard
+         */
+        that.getUints = function (len, w, o, isL, array) {
+            // TODO: Complete cut and paste job from getInts()!
+            o = typeof (o) === "number" ? o : that.offsetState;
+            if (o + (len * w) > that.u8Buf.length) {
+                throw new Error("INDEX_SIZE_ERR: DOM Exception 1");
+            }
+
+            that.offsetState = o + (len * w);
+            var arrayType = g["Uint" + (w * 8) + "Array"];
+
+            if (len > 1 && isHostLittleEndian === isL) {
+                return new arrayType(that.buffer, o, len); // jshint ignore:line
+            }
+
+            array = array || new arrayType(len); // jshint ignore:line
+            var startByte,
+                idxInc,
+                i,
+                idx,
+                n,
+                j,
+                scale,
+                v;
+
+            if (isL) {
+                startByte = 0;
+                idxInc = 1;
+            } else {
+                startByte = w - 1;
+                idxInc = -1;
+            }
+
+            for (i = 0; i < len; i++) {
+                idx = o + (i * w) + startByte;
+                n = 0;
+                for (j = 0, scale = 1; j < w; j++, scale *= 256) {
+                    v = that.u8Buf[idx];
+                    n += v * scale;
+                    idx += idxInc;
+                }
+                array[i] = n;
+            }
+
+            return array;
+        };
+
+        /**
+         * Non-standard
+         */
+        that.getInts = function (len, w, o, isL, array) {
+            o = typeof (o) === "number" ? o : that.offsetState;
+            if (o + (len * w) > that.u8Buf.length) {
+                throw new Error("INDEX_SIZE_ERR: DOM Exception 1");
+            }
+
+            that.offsetState = o + (len * w);
+            var arrayType = g["Int" + (w * 8) + "Array"];
+
+            // If the host's endianness matches the file's, just use a typed array view directly.
+            if (len > 1 && isHostLittleEndian === isL) {
+                return new arrayType(that.buffer, o, len); // jshint ignore:line
+            }
+
+            array = array || new arrayType(len); // jshint ignore:line
+            var mask = Math.pow(256, w),
+                halfMask = (mask / 2) - 1,
+                startByte,
+                idxInc,
+                i,
+                idx,
+                n,
+                j,
+                scale,
+                v;
+
+            if (isL) {
+                startByte = 0;
+                idxInc = 1;
+            } else {
+                startByte = w - 1;
+                idxInc = -1;
+            }
+
+            for (i = 0; i < len; i++) {
+                idx = o + (i * w) + startByte;
+                n = 0;
+                for (j = 0, scale = 1; j < w; j++, scale *= 256) {
+                    v = that.u8Buf[idx];
+                    n += v * scale;
+                    idx += idxInc;
+                }
+                array[i] = n > halfMask ? n - mask : n;
+            }
+
+            return array;
+        };
+
+        /**
+         * Non-standard
+         */
+        that.getFloats = function (len, w, o, isL, array) {
+            var bits = w * 8,
+                getterName = "getFloat" + bits,
+                arrayType = g["Float" + bits + "Array"],
+                i;
+
+            // If the host's endianness matches the file's, just use a typed array view directly.
+            if (len > 1 && isHostLittleEndian === isL) {
+                o = typeof (o) === "number" ? o : that.offsetState;
+                if (o + (len * w) > that.u8Buf.length) {
+                    throw new Error("INDEX_SIZE_ERR: DOM Exception 1");
+                }
+                that.offsetState = o + (len * w);
+                return new arrayType(that.buffer, o, len); // jshint ignore:line
+            }
+
+            array = array || new arrayType(len); // jshint ignore:line
+
+            for (i = 0; i < len; i++) {
+                array[i] = that[getterName](o, isL);
+            }
+
+            return array;
+        };
+
+        /**
+         * Non-standard
+         */
+        that.getUint = function (w, o, isL) {
+            return w === 1 ? that.getUint8(o, isL) : that.getUints(1, w, o, isL, cachedArray)[0];
+        };
+
+        /**
+         * Non-standard
+         */
+        that.getInt = function (w, o, isL) {
+            return that.getInts(1, w, o, isL, cachedArray)[0];
+        };
+
+        that.getUint8 = function (o) {
+            o = typeof (o) === "number" ? o : that.offsetState;
+
+            var n = that.u8Buf[o];
+            that.offsetState = o + 1;
+
+            return n;
+        };
+
+        that.getInt8 = function (o, isL) {
+            return that.getInts(1, 1, o, isL, cachedArray)[0];
+        };
+
+        that.getUint16 = function (o, isL) {
+            return that.getUints(1, 2, o, isL, cachedArray)[0];
+        };
+
+        that.getInt16 = function (o, isL) {
+            return that.getInts(1, 2, o, isL, cachedArray)[0];
+        };
+
+        that.getUint32 = function (o, isL) {
+            return that.getUints(1, 4, o, isL, cachedArray)[0];
+        };
+
+        that.getInt32 = function (o, isL) {
+            return that.getInts(1, 4, o, isL, cachedArray)[0];
+        };
+
+        that.getFloat32 = function (o, isL) {
+            // This method is a modified version of Christopher Chedeau's Float32 decoding
+            // implementation from jDataView, originally distributed under the WTF license.
+            // https://github.com/vjeux/jDataView
+            var bytes = that.getUints(4, 1, o, isL),
+                b0,
+                b1,
+                b2,
+                b3,
+                sign,
+                exp,
+                mant;
+
+            if (isL) {
+                b0 = bytes[3];
+                b1 = bytes[2];
+                b2 = bytes[1];
+                b3 = bytes[0];
+            } else {
+                b0 = bytes[0];
+                b1 = bytes[1];
+                b2 = bytes[2];
+                b3 = bytes[3];
+            }
+
+            sign = 1 - (2 * (b0 >> 7));
+            exp = (((b0 << 1) & 255) | (b1 >> 7)) - 127;
+            mant = ((b1 & 127) * 65536) | (b2 * 256) | b3;
+
+            if (exp === 128) {
+                return mant !== 0 ? NaN : sign * Infinity;
+            }
+
+            if (exp === -127) {
+                return sign * mant * 1.401298464324817e-45;
+            }
+
+            return sign * (1 + mant * 1.1920928955078125e-7) * Math.pow(2, exp);
+        };
+
+        that.getFloat64 = function (o, isL) {
+            // This method is a modified version of Christopher Chedeau's Float64 decoding
+            // implementation from jDataView, originally distributed under the WTF license.
+            // https://github.com/vjeux/jDataView
+            var bytes = that.getUints(8, 1, o, isL),
+                b0,
+                b1,
+                b2,
+                b3,
+                b4,
+                b5,
+                b6,
+                b7,
+                sign,
+                exp,
+                mant;
+
+            if (isL) {
+                b0 = bytes[7];
+                b1 = bytes[6];
+                b2 = bytes[5];
+                b3 = bytes[4];
+                b4 = bytes[3];
+                b5 = bytes[2];
+                b6 = bytes[1];
+                b7 = bytes[0];
+            } else {
+                b0 = bytes[0];
+                b1 = bytes[1];
+                b2 = bytes[2];
+                b3 = bytes[3];
+                b4 = bytes[4];
+                b5 = bytes[5];
+                b6 = bytes[6];
+                b7 = bytes[7];
+            }
+
+            sign = 1 - (2 * (b0 >> 7));
+            exp = ((((b0 << 1) & 255) << 3) | (b1 >> 4)) - 1023;
+            mant = ((b1 & 15) * 281474976710656) + (b2 * 1099511627776) + (b3 * 4294967296) +
+                (b4 * 16777216) + (b5 * 65536) + (b6 * 256) + b7;
+
+            if (exp === 1024) {
+                return mant !== 0 ? NaN : sign * Infinity;
+            }
+
+            if (exp === -1023) {
+                return sign * mant * 5e-324;
+            }
+
+            return sign * (1 + mant * 2.220446049250313e-16) * Math.pow(2, exp);
+        };
+
+        addSharedMethods(that);
+        return that;
+    };
+
+    var wrappedDataView = function (buffer, byteOffset, byteLength) {
+        var that = {
+            buffer: buffer,
+            byteOffset: typeof (byteOffset) === "number" ? byteOffset : 0
+        };
+        that.byteLength = typeof (byteLength) === "number" ? byteLength : buffer.byteLength - that.byteOffset;
+
+        /**
+         * Non-standard
+         */
+        that.dv = new nativeDataView(buffer, that.byteOffset, that.byteLength); // jshint ignore:line
+
+        /**
+         * Non-standard
+         */
+        that.offsetState = that.byteOffset;
+
+        /**
+         * Non-standard
+         */
+        that.getUint = function (w, o, isL) {
+            o = typeof (o) === "number" ? o : that.offsetState;
+
+            var n = that.dv["getUint" + (w * 8)](o, isL);
+            that.offsetState = o + w;
+
+            return n;
+        };
+
+        /**
+         * Non-standard
+         */
+        that.getInt = function (w, o, isL) {
+            o = typeof (o) === "number" ? o : that.offsetState;
+
+            var n = that.dv["getInt" + (w * 8)](o, isL);
+            that.offsetState = o + w;
+
+            return n;
+        };
+
+        /**
+         * Non-standard
+         */
+        var getBytes = function (type, len, w, o, isL, array) {
+            var bits = w * 8,
+                typeSize = type + bits,
+                dv = that.dv,
+                getterName = "get" + typeSize,
+                i;
+
+            array = array || new g[typeSize + "Array"](len);
+            o = typeof (o) === "number" ? o : that.offsetState;
+
+            for (i = 0; i < len; i++) {
+                array[i] = dv[getterName](o, isL);
+                o += w;
+            }
+
+            that.offsetState = o;
+
+            return array;
+        };
+
+        /**
+         * Non-standard
+         */
+        that.getUints = function (len, w, o, isL, array) {
+            return getBytes("Uint", len, w, o, isL, array);
+        };
+
+        /**
+         * Non-standard
+         */
+        that.getInts = function (len, w, o, isL, array) {
+            return getBytes("Int", len, w, o, isL, array);
+        };
+
+        /**
+         * Non-standard
+         */
+        that.getFloats = function (len, w, o, isL, array) {
+            return getBytes("Float", len, w, o, isL, array);
+        };
+
+        that.getUint8 = function (o) {
+            o = typeof (o) === "number" ? o : that.offsetState;
+
+            var n = that.dv.getUint8(o);
+            that.offsetState = o + 1;
+
+            return n;
+        };
+
+        that.getInt8 = function (o) {
+            o = typeof (o) === "number" ? o : that.offsetState;
+
+            var n = that.dv.getInt8(o);
+            that.offsetState = o + 1;
+
+            return n;
+        };
+
+        that.getUint16 = function (o, isL) {
+            o = typeof (o) === "number" ? o : that.offsetState;
+
+            var n = that.dv.getUint16(o, isL);
+            that.offsetState = o + 2;
+
+            return n;
+        };
+
+        that.getInt16 = function (o, isL) {
+            o = typeof (o) === "number" ? o : that.offsetState;
+
+            var n = that.dv.getInt16(o, isL);
+            that.offsetState = o + 2;
+
+            return n;
+        };
+
+        that.getUint32 = function (o, isL) {
+            o = typeof (o) === "number" ? o : that.offsetState;
+
+            var n = that.dv.getUint32(o, isL);
+            that.offsetState = o + 4;
+
+            return n;
+        };
+
+        that.getInt32 = function (o, isL) {
+            o = typeof (o) === "number" ? o : that.offsetState;
+
+            var n = that.dv.getInt32(o, isL);
+            that.offsetState = o + 4;
+
+            return n;
+        };
+
+        that.getFloat32 = function (o, isL) {
+            o = typeof (o) === "number" ? o : that.offsetState;
+
+            var n = that.dv.getFloat32(o, isL);
+            that.offsetState = o + 4;
+
+            return n;
+        };
+
+        that.getFloat64 = function (o, isL) {
+            o = typeof (o) === "number" ? o : that.offsetState;
+
+            var n = that.dv.getFloat64(o, isL);
+            that.offsetState = o + 8;
+
+            return n;
+        };
+
+        addSharedMethods(that);
+        return that;
+    };
+
+    g.PolyDataView = nativeDataView ? wrappedDataView : PolyDataView;
+
+}());
+
+
+/*
+ * Flocking Audio File Decoder Library
+ * http://github.com/colinbdclark/flocking
+ *
+ * Copyright 2011-2014, Colin Clark
+ * Dual licensed under the MIT and GPL Version 2 licenses.
+ */
 
 // Stub out fluid.registerNamespace in cases where we're in a Web Worker and Infusion is unavailable.
 var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undefined" ? require("infusion") : {
     registerNamespace: function (path) {
         "use strict";
-        
+
         if (!path) {
             return;
         }
@@ -21304,7 +21598,7 @@ var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undef
             tokens = path.split("."),
             i,
             token;
-        
+
         for (i = 0; i < tokens.length; i++) {
             token = tokens[i];
             if (!root[token]) {
@@ -21312,18 +21606,18 @@ var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undef
             }
             root = root[token];
         }
-        
+
         return root;
     }
 };
 
 var flock = fluid.registerNamespace("flock");
-    
+
 (function () {
     "use strict";
-    
+
     var $ = fluid.registerNamespace("jQuery");
-    
+
     /**
      * Applies the specified function in the next round of the event loop.
      */
@@ -21332,27 +21626,27 @@ var flock = fluid.registerNamespace("flock");
         if (!fn) {
             return;
         }
-        
+
         delay = typeof (delay) === "undefined" ? 0 : delay;
         setTimeout(function () {
             fn.apply(null, args);
         }, delay);
     };
-    
-    
+
+
     /*********************
      * Network utilities *
      *********************/
-     
+
     fluid.registerNamespace("flock.net");
-    
+
     /**
      * Loads an ArrayBuffer into memory using XMLHttpRequest.
      */
     flock.net.readBufferFromUrl = function (options) {
         var src = options.src,
             xhr = new XMLHttpRequest();
-        
+
         xhr.onreadystatechange = function () {
             if (xhr.readyState === 4) {
                 if (xhr.status === 200) {
@@ -21361,7 +21655,7 @@ var flock = fluid.registerNamespace("flock");
                     if (!options.error) {
                         throw new Error(xhr.statusText);
                     }
-                    
+
                     options.error(xhr.statusText);
                 }
             }
@@ -21371,14 +21665,14 @@ var flock = fluid.registerNamespace("flock");
         xhr.responseType = options.responseType || "arraybuffer";
         xhr.send(options.data);
     };
-    
-    
+
+
     /*****************
      * File Utilties *
      *****************/
-    
+
     fluid.registerNamespace("flock.file");
-    
+
     flock.file.mimeTypes = {
         "audio/wav": "wav",
         "audio/x-wav": "wav",
@@ -21387,34 +21681,34 @@ var flock = fluid.registerNamespace("flock");
         "audio/aiff": "aiff",
         "sound/aiff": "aiff"
     };
-    
+
     flock.file.typeAliases = {
         "aif": "aiff",
         "wave": "wav"
     };
-    
+
     flock.file.parseFileExtension = function (fileName) {
         var lastDot = fileName.lastIndexOf("."),
             ext,
             alias;
-        
+
         // TODO: Better error handling in cases where we've got unrecognized file extensions.
         //       i.e. we should try to read the header instead of relying on extensions.
         if (lastDot < 0) {
             throw new Error("The file '" + fileName + "' does not have a valid extension.");
         }
-        
+
         ext = fileName.substring(lastDot + 1);
         ext = ext.toLowerCase();
         alias =  flock.file.typeAliases[ext];
-        
+
         return alias || ext;
     };
-    
+
     flock.file.parseMIMEType = function (mimeType) {
         return flock.file.mimeTypes[mimeType];
     };
-    
+
     /**
      * Converts a binary string to an ArrayBuffer, suitable for use with a DataView.
      *
@@ -21432,7 +21726,7 @@ var flock = fluid.registerNamespace("flock");
         }
         return v.buffer;
     };
-    
+
     /**
      * Asynchronously parses the specified data URL into an ArrayBuffer.
      */
@@ -21446,17 +21740,17 @@ var flock = fluid.registerNamespace("flock");
             mimeTypeStartIdx = url.indexOf("data:") + 5,
             mimeTypeEndIdx = isBase64 ? base64Idx : delim,
             mimeType = url.substring(mimeTypeStartIdx, mimeTypeEndIdx);
-            
+
         if (isBase64) {
             data = atob(data);
         }
-        
+
         flock.applyDeferred(function () {
             var buffer = flock.file.stringToBuffer(data);
             options.success(buffer, flock.file.parseMIMEType(mimeType));
         });
     };
-    
+
     /**
      * Asynchronously reads the specified File into an ArrayBuffer.
      */
@@ -21466,13 +21760,13 @@ var flock = fluid.registerNamespace("flock");
             options.success(e.target.result, flock.file.parseFileExtension(options.src.name));
         };
         reader.readAsArrayBuffer(options.src);
-        
+
         return reader;
     };
-    
-    
+
+
     fluid.registerNamespace("flock.audio");
-    
+
     /**
      * Asychronously loads an ArrayBuffer into memory.
      *
@@ -21488,33 +21782,33 @@ var flock = fluid.registerNamespace("flock");
         if (!src) {
             return;
         }
-        
+
         if (src instanceof ArrayBuffer) {
             flock.applyDeferred(options.success, [src, options.type]);
         }
-        
+
         var reader = flock.audio.loadBuffer.readerForSource(src);
 
         reader(options);
     };
-    
+
     flock.audio.loadBuffer.readerForSource = function (src) {
         return (typeof (File) !== "undefined" && src instanceof File) ? flock.file.readBufferFromFile :
             src.indexOf("data:") === 0 ? flock.file.readBufferFromDataUrl : flock.net.readBufferFromUrl;
     };
-    
-    
+
+
     /**
      * Loads and decodes an audio file. By default, this is done asynchronously in a Web Worker.
      * This decoder currently supports WAVE and AIFF file formats.
      */
     flock.audio.decode = function (options) {
         var success = options.success;
-        
+
         var wrappedSuccess = function (rawData, type) {
             var decoders = flock.audio.decode,
                 decoder;
-                
+
             if (!options) {
                 decoder = decoders.async;
             } else if (options.decoder) {
@@ -21525,7 +21819,7 @@ var flock = fluid.registerNamespace("flock");
             } else {
                 decoder = decoders.async;
             }
-            
+
             decoder({
                 rawData: rawData,
                 type: type,
@@ -21533,11 +21827,11 @@ var flock = fluid.registerNamespace("flock");
                 error: options.error
             });
         };
-    
+
         options.success = wrappedSuccess;
         flock.audio.loadBuffer(options);
     };
-    
+
     /**
      * Synchronously decodes an audio file.
      */
@@ -21553,46 +21847,46 @@ var flock = fluid.registerNamespace("flock");
             }
         }
     };
-    
+
     /**
      * Asynchronously decodes the specified rawData in a Web Worker.
      */
     flock.audio.decode.async = function (options) {
         var workerUrl = flock.audio.decode.async.findWorkerUrl(options),
             w = new Worker(workerUrl);
-        
+
         w.addEventListener("message", function (e) {
             var data = e.data,
                 msg = e.data.msg;
-            
+
             if (msg === "afterDecoded") {
                 options.success(data.buffer, data.type);
             } else if (msg === "onError") {
                 options.error(data.errorMsg);
             }
         }, true);
-        
+
         w.postMessage({
             msg: "decode",
             rawData: options.rawData,
             type: options.type
         });
     };
-    
+
     flock.audio.decode.async.findWorkerUrl = function (options) {
         if (options && options.workerUrl) {
             return options.workerUrl;
         }
-        
+
         var workerFileName = "flocking-audiofile-worker.js",
-            flockingFileNames = ["flocking-all.js", "flocking-audiofile.js", "flocking-core.js"],
+            flockingFileNames = flock.audio.decode.async.findWorkerUrl.flockingFileNames,
             i,
             fileName,
             scripts,
             src,
             idx,
             baseUrl;
-        
+
         for (i = 0; i < flockingFileNames.length; i++) {
             fileName = flockingFileNames[i];
             scripts = $("script[src$='" + fileName + "']");
@@ -21600,28 +21894,35 @@ var flock = fluid.registerNamespace("flock");
                 break;
             }
         }
-        
+
         if (scripts.length < 1) {
             throw new Error("Flocking error: could not load the Audio Decoder into a worker because " +
                 "flocking-all.js or flocking-core.js could not be found.");
         }
-        
+
         src = scripts.eq(0).attr("src");
         idx = src.indexOf(fileName);
         baseUrl = src.substring(0, idx);
-        
+
         return baseUrl + workerFileName;
     };
-    
+
+    flock.audio.decode.async.findWorkerUrl.flockingFileNames = [
+        "flocking-all.js",
+        "flocking-all.min.js",
+        "flocking-audiofile.js",
+        "flocking-core.js"
+    ];
+
     flock.audio.decodeArrayBuffer = function (data, type) {
         var formatSpec = flock.audio.formats[type];
         if (!formatSpec) {
             throw new Error("There is no decoder available for " + type + " files.");
         }
-        
+
         return formatSpec.reader(data, formatSpec);
     };
-    
+
     flock.audio.decode.deinterleaveSampleData = function (dataType, bits, numChans, interleaved) {
         var numFrames = interleaved.length / numChans,
             chans = [],
@@ -21635,7 +21936,7 @@ var flock = fluid.registerNamespace("flock");
         for (i = 0; i < numChans; i++) {
             chans[i] = new Float32Array(numFrames);
         }
-        
+
         if (dataType === "Int") {
             max = Math.pow(2, bits - 1);
             for (frame = 0; frame < numFrames; frame++) {
@@ -21651,35 +21952,35 @@ var flock = fluid.registerNamespace("flock");
                     samp++;
                 }
             }
-            
+
         }
-        
+
         return chans;
     };
-    
+
     flock.audio.decode.data = function (dv, format, dataType, isLittle) {
         var numChans = format.numChannels,
             numFrames = format.numSampleFrames,
             l = numFrames * numChans,
             bits = format.bitRate,
             interleaved = dv["get" + dataType + "s"](l, bits / 8, undefined, isLittle);
-        
+
         return flock.audio.decode.deinterleaveSampleData(dataType, bits, numChans, interleaved);
     };
-    
+
     flock.audio.decode.dataChunk = function (dv, format, dataType, data, isLittle) {
         var l = data.size;
-        
+
         // Now that we've got the actual data size, correctly set the number of sample frames if it wasn't already present.
         format.numSampleFrames = format.numSampleFrames || (l / (format.bitRate / 8)) / format.numChannels;
         format.duration = format.numSampleFrames / format.sampleRate;
-        
+
         // Read the channel data.
         data.channels = flock.audio.decode.data(dv, format, dataType, isLittle);
-        
+
         return data;
     };
-        
+
     flock.audio.decode.chunk = function (dv, id, type, headerLayout, layout, chunkIDs, metadata, isLittle, chunks) {
         var chunkMetadata = metadata[id],
             offsets = chunkMetadata.offsets,
@@ -21687,112 +21988,112 @@ var flock = fluid.registerNamespace("flock");
             chunk,
             prop,
             subchunksLength;
-            
+
         chunk = flock.audio.decode.chunkFields(dv, layout, isLittle, offsets.fields);
-        
+
         for (prop in header) {
             chunk[prop] = header[prop];
         }
-        
+
         if (offsets.fields + header.size > dv.offsetState) {
             offsets.data = dv.offsetState;
         }
-        
+
         // Read subchunks if there are any.
         if (layout.chunkLayouts) {
             subchunksLength = dv.byteLength - offsets.data;
             flock.audio.decode.scanChunks(dv, subchunksLength, headerLayout, isLittle, metadata);
             flock.audio.decode.chunks(dv, headerLayout, layout.chunkLayouts, chunkIDs, metadata, isLittle, chunks);
         }
-        
+
         return chunk;
     };
-    
+
     flock.audio.decode.scanChunks = function (dv, l, headerLayout, isLittle, allMetadata) {
         allMetadata = allMetadata || {};
-        
+
         var metadata;
-                        
+
         while (dv.offsetState < l) {
             metadata = flock.audio.decode.chunkHeader(dv, headerLayout, isLittle);
             allMetadata[metadata.header.id] = metadata;
             dv.offsetState += metadata.header.size;
         }
-        
+
         return allMetadata;
     };
-    
+
     flock.audio.decode.chunks = function (dv, headerLayout, layouts, chunkIDs, metadata, isLittle, chunks) {
         chunks = chunks || {};
-        
+
         var order = layouts.order,
             i,
             id,
             type,
             layout;
-                    
+
         for (i = 0; i < order.length; i++) {
             id = order[i];
             type = chunkIDs[id];
             layout = layouts[id];
             chunks[type] = flock.audio.decode.chunk(dv, id, type, headerLayout, layout, chunkIDs, metadata, isLittle, chunks);
         }
-        
+
         return chunks;
     };
-    
+
     flock.audio.decode.chunkFields = function (dv, layout, isLittle, offset) {
         var decoded = {};
-        
+
         var order = layout.order,
             fields = layout.fields,
             i,
             name,
             spec;
-        
+
         dv.offsetState = typeof (offset) === "number" ? offset : dv.offsetState;
-        
+
         for (i = 0; i < order.length; i++) {
             name = order[i];
             spec = fields[name];
-            
+
             decoded[name] = typeof spec === "string" ? dv[spec](undefined, isLittle) :
                 dv[spec.getter](spec.length, spec.width, undefined, isLittle);
         }
-        
+
         return decoded;
     };
-    
+
     flock.audio.decode.chunkHeader = function (dv, headerLayout, isLittle) {
         var metadata = {
             offsets: {}
         };
-        
+
         metadata.offsets.start = dv.offsetState;
         metadata.header = flock.audio.decode.chunkFields(dv, headerLayout, isLittle);
         metadata.offsets.fields = dv.offsetState;
-        
+
         return metadata;
     };
-    
+
     flock.audio.decode.wavSampleDataType = function (chunks) {
         var t = chunks.format.audioFormatType;
         if (t !== 1 && t !== 3) {
             throw new Error("Flocking decoder error: this file contains an unrecognized WAV format type.");
         }
-        
+
         return t === 1 ? "Int" : "Float";
     };
-    
+
     flock.audio.decode.aiffSampleDataType = function (chunks) {
         var t = chunks.container.formatType;
         if (t !== "AIFF" && t !== "AIFC") {
             throw new Error("Flocking decoder error: this file contains an unrecognized AIFF format type.");
         }
-        
+
         return t === "AIFF" ? "Int" : "Float";
     };
-    
+
     flock.audio.decode.chunked = function (data, formatSpec) {
         var dv = new PolyDataView(data, 0, data.byteLength),
             isLittle = formatSpec.littleEndian,
@@ -21803,33 +22104,33 @@ var flock = fluid.registerNamespace("flock");
 
         metadata = flock.audio.decode.scanChunks(dv, dv.byteLength, headerLayout, isLittle);
         chunks = flock.audio.decode.chunks(dv, headerLayout, formatSpec.chunkLayouts, formatSpec.chunkIDs, metadata, isLittle);
-        
+
         // Calculate the data type for the sample data.
         dataType = formatSpec.findSampleDataType(chunks, metadata, dv);
 
         // Once all the chunks have been read, decode the channel data.
         flock.audio.decode.dataChunk(dv, chunks.format, dataType, chunks.data, isLittle);
-        
+
         return chunks;
     };
 
-    
+
     /************************************
      * Audio Format Decoding Strategies *
      ************************************/
-     
+
     flock.audio.formats = {};
-    
+
     flock.audio.formats.wav = {
         reader: flock.audio.decode.chunked,
         littleEndian: true,
-                 
+
         chunkIDs: {
             "RIFF": "container",
             "fmt ": "format",
             "data": "data"
         },
-        
+
         headerLayout: {
             fields: {
                 id: {
@@ -21841,7 +22142,7 @@ var flock = fluid.registerNamespace("flock");
             },
             order: ["id", "size"]
         },
-        
+
         chunkLayouts: {
             "RIFF": {
                 fields: {
@@ -21851,9 +22152,9 @@ var flock = fluid.registerNamespace("flock");
                         width: 1
                     }
                 },
-                
+
                 order: ["formatType"],
-                
+
                 chunkLayouts: {
                     "fmt ": {
                         fields: {
@@ -21870,28 +22171,28 @@ var flock = fluid.registerNamespace("flock");
                         fields: {},
                         order: []
                     },
-                    
+
                     order: ["fmt ", "data"]
                 }
             },
-            
+
             order: ["RIFF"]
         },
-        
+
         findSampleDataType: flock.audio.decode.wavSampleDataType
     };
-    
+
 
     flock.audio.formats.aiff = {
         reader: flock.audio.decode.chunked,
         littleEndian: false,
-                
+
         chunkIDs: {
             "FORM": "container",
             "COMM": "format",
             "SSND": "data"
         },
-        
+
         headerLayout: {
             fields: {
                 id: {
@@ -21903,7 +22204,7 @@ var flock = fluid.registerNamespace("flock");
             },
             order: ["id", "size"]
         },
-        
+
         chunkLayouts: {
             "FORM": {
                 fields: {
@@ -21913,9 +22214,9 @@ var flock = fluid.registerNamespace("flock");
                         width: 1
                     }
                 },
-                
+
                 order: ["formatType"],
-                
+
                 chunkLayouts: {
                     "COMM": {
                         fields: {
@@ -21927,7 +22228,7 @@ var flock = fluid.registerNamespace("flock");
                         },
                         order: ["numChannels", "numSampleFrames", "bitRate", "sampleRate"]
                     },
-                    
+
                     "SSND": {
                         fields: {
                             offset: "getUint32",
@@ -21935,17 +22236,17 @@ var flock = fluid.registerNamespace("flock");
                         },
                         order: ["offset", "blockSize"]
                     },
-                    
+
                     order: ["COMM", "SSND"]
                 }
             },
-            
+
             order: ["FORM"]
         },
-        
+
         findSampleDataType: flock.audio.decode.aiffSampleDataType
     };
-    
+
 }());
 ;/*
 * Flocking Scheduler
@@ -22534,63 +22835,116 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
+    flock.shim.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia ||
+        navigator.mozGetUserMedia || navigator.msGetUserMedia;
+
     /**
      * Web Audio API Audio Strategy
      */
     fluid.defaults("flock.enviro.webAudio", {
-        gradeNames: ["flock.enviro.audioStrategy", "autoInit"]
+        gradeNames: ["flock.enviro.audioStrategy", "autoInit"],
+
+        members: {
+            preNode: null,
+            jsNode: null,
+            postNode: null
+        },
+
+        model: {
+            isGenerating: false,
+            hasInput: false
+        }
     });
 
     flock.enviro.webAudio.finalInit = function (that) {
 
         that.startGeneratingSamples = function () {
-            that.jsNode.onaudioprocess = that.writeSamples; // TODO: When Firefox ships, is this still necessary?
-            that.jsNode.connect(that.context.destination);
+            var m = that.model;
+
+            if (that.preNode) {
+                that.preNode.connect(that.jsNode);
+            }
+
+            that.postNode.connect(that.context.destination);
+            if (that.postNode !== that.jsNode) {
+                that.jsNode.connect(that.postNode);
+            }
 
             // Work around a bug in iOS Safari where it now requires a noteOn()
             // message to be invoked before sound will work at all. Just connecting a
             // ScriptProcessorNode inside a user event handler isn't sufficient.
-            if (that.model.shouldInitIOS) {
-                var s = that.source;
-                (s.start || s.noteOn).call(that.source, 0);
-                (s.stop || s.noteOff).call(that.source, 0);
-                that.model.shouldInitIOS = false;
+            if (m.shouldInitIOS) {
+                var s = that.context.createBufferSource();
+                s.connect(that.jsNode);
+                s.start(0);
+                s.stop(0);
+                s.disconnect(0);
+                m.shouldInitIOS = false;
             }
+
+            m.isGenerating = true;
         };
 
         that.stopGeneratingSamples = function () {
             that.jsNode.disconnect(0);
-            that.jsNode.onaudioprocess = undefined;
+            that.postNode.disconnect(0);
+            if (that.preNode) {
+                that.preNode.disconnect(0);
+            }
+
+            that.model.isGenerating = false;
         };
 
         that.writeSamples = function (e) {
             var m = that.model,
+                hasInput = m.hasInput,
+                krPeriods = m.krPeriods,
+                evaluator = that.nodeEvaluator,
+                buses = evaluator.buses,
                 audioSettings = that.options.audioSettings,
                 blockSize = audioSettings.blockSize,
-                nodeEvaluator = that.nodeEvaluator,
-                buses = nodeEvaluator.buses,
-                nodes = nodeEvaluator.nodes,
-                gen = nodeEvaluator.gen,
                 playState = m.playState,
                 chans = audioSettings.chans,
+                inBufs = e.inputBuffer,
+                inChans = e.inputBuffer.numberOfChannels,
                 outBufs = e.outputBuffer,
                 chan,
                 i,
                 samp;
 
             // If there are no nodes providing samples, write out silence.
-            if (nodes.length < 1) {
+            if (evaluator.nodes.length < 1) {
                 for (chan = 0; chan < chans; chan++) {
                     flock.generate.silence(outBufs.getChannelData(chan));
                 }
                 return;
             }
 
-            for (i = 0; i < m.krPeriods; i++) {
-                gen();
+            // TODO: Make a formal distinction between input buses,
+            // output buses, and interconnect buses in the environment!
+            for (i = 0; i < krPeriods; i++) {
                 var offset = i * blockSize;
 
-                // Loop through each channel.
+                evaluator.clearBuses();
+
+                // Read this ScriptProcessorNode's input buffers
+                // into the environment.
+                if (hasInput) {
+                    for (chan = 0; chan < inChans; chan++) {
+                        var inBuf = inBufs.getChannelData(chan),
+                            inBusNumber = chans + chan, // Input buses are located after output buses.
+                            targetBuf = buses[inBusNumber];
+
+                        for (samp = 0; samp < blockSize; samp++) {
+                            targetBuf[samp] = inBuf[samp + offset];
+                        }
+                    }
+                }
+
+                evaluator.gen();
+
+                // Output the environment's signal
+                // to this ScriptProcessorNode's output channels.
                 for (chan = 0; chan < chans; chan++) {
                     var sourceBuf = buses[chan],
                         outBuf = outBufs.getChannelData(chan);
@@ -22608,11 +22962,65 @@ var fluid = fluid || require("infusion"),
             }
         };
 
+        that.insertInputNode = function (node) {
+            var m = that.model;
+
+            if (that.preNode) {
+                that.removeInputNode(that.preNode);
+            }
+
+            that.preNode = node;
+            m.hasInput = true;
+
+            if (m.isGenerating) {
+                that.preNode.connect(that.jsNode);
+            }
+        };
+
+        that.insertOutputNode = function (node) {
+            if (that.postNode) {
+                that.removeOutputNode(that.postNode);
+            }
+
+            that.postNode = node;
+        };
+
+        that.removeInputNode = function () {
+            flock.enviro.webAudio.removeNode(that.preNode);
+            that.preNode = null;
+            that.model.hasInput = false;
+        };
+
+        that.removeOutputNode = function () {
+            flock.enviro.webAudio.removeNode(that.postNode);
+            that.postNode = that.jsNode;
+        };
+
+        that.startReadingAudioInput = function () {
+            flock.shim.getUserMedia.call(navigator, {
+                audio: true
+            },
+            function success (mediaStream) {
+                var mic = that.context.createMediaStreamSource(mediaStream);
+                that.insertInputNode(mic);
+            },
+            function error (err) {
+                fluid.log(fluid.logLevel.IMPORTANT,
+                    "An error occurred while trying to access the user's microphone. " +
+                    err);
+            });
+        };
+
+        that.stopReadingAudioInput = function () {
+            that.removeInputNode();
+        };
+
         that.init = function () {
-            var settings = that.options.audioSettings,
+            var m = that.model,
+                settings = that.options.audioSettings,
                 scriptNodeConstructorName;
 
-            that.model.krPeriods = settings.bufferSize / settings.blockSize;
+            m.krPeriods = settings.bufferSize / settings.blockSize;
 
             // Singleton AudioContext since the WebKit implementation
             // freaks if we try to instantiate a new one.
@@ -22622,16 +23030,20 @@ var fluid = fluid || require("infusion"),
 
             that.context = flock.enviro.webAudio.audioContext;
             settings.rates.audio = that.context.sampleRate;
-            that.source = that.context.createBufferSource();
             scriptNodeConstructorName = that.context.createScriptProcessor ?
                 "createScriptProcessor" : "createJavaScriptNode";
             that.jsNode = that.context[scriptNodeConstructorName](settings.bufferSize);
-            that.source.connect(that.jsNode);
+            that.insertOutputNode(that.jsNode);
+            that.jsNode.onaudioprocess = that.writeSamples;
 
-            that.model.shouldInitIOS = flock.platform.isIOS;
+            m.shouldInitIOS = flock.platform.isIOS;
         };
 
         that.init();
+    };
+
+    flock.enviro.webAudio.removeNode = function (node) {
+        node.disconnect(0);
     };
 
     flock.enviro.webAudio.contextConstructor = window.AudioContext || window.webkitAudioContext;
@@ -23090,6 +23502,71 @@ var fluid = fluid || require("infusion"),
             },
 
             strideInputs: ["source"]
+        }
+    });
+
+
+    flock.ugen.inputTrigger = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                source = that.inputs.source.output,
+                sourceInc = m.strides.source,
+                duration = that.inputs.duration.output,
+                durationInc = m.strides.duration,
+                prevDur = m.prevDur,
+                out = that.output,
+                i,
+                j,
+                k,
+                val,
+                dur;
+
+            for (i = j = k = 0; i < numSamps; i++, j += sourceInc, k += durationInc) {
+                val = source[j];
+                dur = duration[k];
+
+                if (dur !== prevDur) {
+                    m.prevDur = dur;
+                    m.remainingOpenSamples = val > 0 ? (dur > 0 ? m.sampleRate * dur : 1) : 0;
+                }
+
+                if (m.remainingOpenSamples > 0) {
+                    out[i] = val;
+                    m.remainingOpenSamples--;
+                } else {
+                    out[i] = 0.0;
+                }
+            }
+        };
+
+        that.onInputChanged = function (inputName) {
+            that.calculateStrides();
+
+            if (inputName === "source") {
+                that.model.prevDur = null;
+            }
+        };
+
+        that.calculateStrides();
+        return that;
+    };
+    fluid.defaults("flock.ugen.inputTrigger", {
+        rate: "control",
+
+        inputs: {
+            source: 0,
+            duration: 0
+        },
+
+        ugenOptions: {
+            model: {
+                prevDuration: 0,
+                remainingOpenSamples: 0
+            },
+
+            strideInputs: ["source", "duration"]
         }
     });
 
@@ -25020,7 +25497,7 @@ var fluid = fluid || require("infusion"),
 
         that.singleBusGen = function (numSamps) {
             var out = that.output,
-                busNum = that.inputs.bus.output[0],
+                busNum = that.inputs.bus.output[0] | 0,
                 bus = that.options.audioSettings.buses[busNum],
                 i;
 
@@ -25042,7 +25519,7 @@ var fluid = fluid || require("infusion"),
             for (i = 0; i < numSamps; i++) {
                 out[i] = 0; // Clear previous output values before summing a new set.
                 for (j = 0; j < busesInput.length; j++) {
-                    busIdx = busesInput[j].output[0];
+                    busIdx = busesInput[j].output[0] | 0;
                     out[i] += enviroBuses[busIdx][i];
                 }
             }
@@ -25063,6 +25540,46 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         inputs: {
             bus: 0,
+            mul: null,
+            add: null
+        }
+    });
+
+    flock.ugen.audioIn = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        // TODO: Complete cut and paste of flock.ugen.in.singleBusGen().
+        that.gen = function (numSamps) {
+            var out = that.output,
+                busNum = that.inputs.bus.output[0] | 0,
+                bus = that.options.audioSettings.buses[busNum],
+                i;
+
+            for (i = 0; i < numSamps; i++) {
+                out[i] = bus[i];
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        that.onInputChanged = function () {
+            flock.onMulAddInputChanged(that);
+        };
+
+        that.init = function () {
+            // TODO: Direct reference to the shared environment.
+            flock.enviro.shared.audioStrategy.startReadingAudioInput();
+            that.onInputChanged();
+        };
+
+        that.init();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.audioIn", {
+        rate: "audio",
+        inputs: {
+            bus: 2,
             mul: null,
             add: null
         }
@@ -25498,10 +26015,10 @@ var fluid = fluid || require("infusion"),
                 allPassTunings = o.allPassTunings,
                 source = inputs.source.output,
                 mix = inputs.mix.output[0],
-                roomsize = inputs.roomsize.output[0],
+                roomSize = inputs.roomSize.output[0],
                 damp = inputs.damp.output[0],
                 dry = 1 - mix,
-                room_scaled = roomsize * 0.28 + 0.7,
+                room_scaled = roomSize * 0.28 + 0.7,
                 damp1 = damp * 0.4,
                 damp2 = 1.0 - damp1,
                 i,
@@ -25591,7 +26108,7 @@ var fluid = fluid || require("infusion"),
             // not stored but only used in the gen loop.
             that.readsamp_a = new Float32Array(4);
 
-            for (i = 0; i < that.buffers_a.length; i++) {
+            for (i = 0; i < 4; i++) {
                 that.bufferindices_a[i] = 0;
                 that.filterx_a[i] = 0;
                 that.filtery_a[i] = 0;
@@ -25620,7 +26137,7 @@ var fluid = fluid || require("infusion"),
         rate: "audio",
         inputs: {
             mix: 0.5,
-            roomsize: 0.6,
+            roomSize: 0.6,
             damp: 0.1,
             source: null,
             mul: null,
@@ -25631,10 +26148,8 @@ var fluid = fluid || require("infusion"),
                 spread: 0
             },
 
-            options: {
-                tunings: [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617],
-                allPassTunings: [556, 441, 341, 225]
-            }
+            tunings: [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617],
+            allPassTunings: [556, 441, 341, 225]
         }
     });
 
@@ -26175,7 +26690,7 @@ var fluid = fluid || require("infusion"),
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global require, Float32Array, window, Mike*/
+/*global require, Float32Array, window*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,
@@ -26185,28 +26700,28 @@ var fluid = fluid || require("infusion"),
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
-    
+
 (function () {
     "use strict";
-    
+
     var $ = fluid.registerNamespace("jQuery");
-    
+
     fluid.registerNamespace("flock.ugen");
-    
+
     /***************************
      * Browser-dependent UGens *
      ***************************/
-     
+
     flock.ugen.scope = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function (numSamps) {
             var m = that.model,
                 spf = m.spf,
                 bufIdx = m.bufIdx,
                 buf = m.scope.values,
                 i;
-            
+
             for (i = 0; i < numSamps; i++) {
                 buf[bufIdx] = that.inputs.source.output[i];
                 if (bufIdx < spf) {
@@ -26218,29 +26733,29 @@ var fluid = fluid || require("infusion"),
             }
             m.bufIdx = bufIdx;
         };
-        
+
         that.onInputChanged = function () {
             // Pass the "source" input directly back as the output from this ugen.
             that.output = that.inputs.source.output;
         };
-        
+
         that.init = function () {
             that.model.spf = Math.round(that.model.sampleRate / that.options.fps);
             that.model.bufIdx = 0;
-        
+
             // Set up the scopeView widget.
             that.model.scope = that.options.styles;
             that.model.scope.values = new Float32Array(that.model.spf);
             that.scopeView = flock.view.scope(that.options.canvas, that.model.scope);
-            
+
             that.onInputChanged();
             that.scopeView.refreshView();
         };
-        
+
         that.init();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.scope", {
         rate: "audio",
         inputs: {
@@ -26254,10 +26769,10 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
-    
-    
+
+
     flock.ugen.mouse = {};
-    
+
     /**
      * Tracks the mouse's position along the specified axis within the boundaries the whole screen.
      * This unit generator will generate a signal between 0.0 and 1.0 based on the position of the mouse;
@@ -26265,7 +26780,7 @@ var fluid = fluid || require("infusion"),
      */
     flock.ugen.mouse.cursor = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         /**
          * Generates a control rate signal between 0.0 and 1.0 by tracking the mouse's position along the specified axis.
          *
@@ -26283,22 +26798,22 @@ var fluid = fluid || require("infusion"),
                 pow = Math.pow,
                 i,
                 max;
-            
+
             if (lag !== lagCoef) {
                 lagCoef = lag === 0 ? 0.0 : Math.exp(flock.LOG001 / (lag * m.sampleRate));
                 m.lagCoef = lagCoef;
             }
-            
+
             for (i = 0; i < numSamps; i++) {
                 max = mul + add;
                 scaledMouse = pow(max  / add, scaledMouse) * add;
                 movingAvg = scaledMouse + lagCoef * (movingAvg - scaledMouse); // 1-pole filter averages mouse values.
                 out[i] = movingAvg;
             }
-            
+
             m.movingAvg = movingAvg;
         };
-        
+
         that.linearGen = function (numSamps) {
             var m = that.model,
                 scaledMouse = m.mousePosition / m.size,
@@ -26309,20 +26824,20 @@ var fluid = fluid || require("infusion"),
                 lagCoef = m.lagCoef,
                 out = that.output,
                 i;
-            
+
             if (lag !== lagCoef) {
                 lagCoef = lag === 0 ? 0.0 : Math.exp(flock.LOG001 / (lag * m.sampleRate));
                 m.lagCoef = lagCoef;
             }
-            
+
             for (i = 0; i < numSamps; i++) {
                 movingAvg = scaledMouse + lagCoef * (movingAvg - scaledMouse);
                 out[i] = movingAvg * mul + add;
             }
-            
+
             m.movingAvg = movingAvg;
         };
-        
+
         that.noInterpolationGen = function (numSamps) {
             var m = that.model,
                 scaledMouse = m.mousePosition / m.size,
@@ -26330,17 +26845,17 @@ var fluid = fluid || require("infusion"),
                 mul = that.inputs.mul.output[0],
                 out = that.output,
                 i;
-                
+
             for (i = 0; i < numSamps; i++) {
                 out[i] = scaledMouse * mul + add;
             }
         };
-        
+
         that.moveListener = function (e) {
             var m = that.model,
                 pos = e[m.eventProp],
                 off;
-            
+
             if (pos === undefined) {
                 off = $(e.target).offset();
                 e.offsetX = e.clientX - off.left;
@@ -26349,57 +26864,57 @@ var fluid = fluid || require("infusion"),
             }
             m.mousePosition = m.isWithinTarget ? pos : 0.0;
         };
-        
+
         that.overListener = function () {
             that.model.isWithinTarget = true;
         };
-        
+
         that.outListener = function () {
             var m = that.model;
             m.isWithinTarget = false;
             m.mousePosition = 0.0;
         };
-        
+
         that.downListener = function () {
             that.model.isMouseDown = true;
         };
-        
+
         that.upListener = function () {
             var m = that.model;
             m.isMouseDown = false;
             m.mousePosition = 0;
         };
-        
+
         that.moveWhileDownListener = function (e) {
             if (that.model.isMouseDown) {
                 that.moveListener(e);
             }
         };
-        
+
         that.bindEvents = function () {
             var m = that.model,
                 target = m.target,
                 moveListener = that.moveListener;
-                
+
             if (that.options.onlyOnMouseDown) {
                 target.mousedown(that.downListener);
                 target.mouseup(that.upListener);
                 moveListener = that.moveWhileDownListener;
             }
-            
+
             target.mouseover(that.overListener);
             target.mouseout(that.outListener);
             target.mousemove(moveListener);
         };
-        
+
         that.onInputChanged = function () {
             flock.onMulAddInputChanged(that);
-            
+
             var interp = that.options.interpolation;
             that.gen = interp === "none" ? that.noInterpolationGen : interp === "exponential" ? that.exponentialGen : that.linearGen;
             that.model.exponential = interp === "exponential";
         };
-        
+
         that.init = function () {
             var m = that.model,
                 options = that.options,
@@ -26413,19 +26928,19 @@ var fluid = fluid || require("infusion"),
                 m.eventProp = "offsetY";
                 m.size = target.height();
             }
-            
+
             m.mousePosition = 0;
             m.movingAvg = 0;
             m.target = target;
-            
+
             that.bindEvents();
             that.onInputChanged();
         };
-        
+
         that.init();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.mouse.cursor", {
         rate: "control",
         inputs: {
@@ -26433,146 +26948,59 @@ var fluid = fluid || require("infusion"),
             add: 0.0,
             mul: 1.0
         },
-        
+
         ugenOptions: {
             axis: "x"
         }
     });
-    
-    
+
+
     flock.ugen.mouse.click = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        
+
         that.gen = function (numSamps) {
             var out = that.output,
                 m = that.model,
                 i;
-                
+
             for (i = 0; i < numSamps; i++) {
                 out[i] = m.value;
             }
-            
+
             that.mulAdd(numSamps);
         };
-        
+
         that.mouseDownListener = function () {
             that.model.value = 1.0;
         };
-        
+
         that.mouseUpListener = function () {
             that.model.value = 0.0;
         };
-        
+
         that.init = function () {
             var m = that.model;
-            m.target = typeof (that.options.target) === "string" ? 
+            m.target = typeof (that.options.target) === "string" ?
                 document.querySelector(that.options.target) : that.options.target || window;
             m.value = 0.0;
             m.target.addEventListener("mousedown", that.mouseDownListener, false);
             m.target.addEventListener("mouseup", that.mouseUpListener, false);
-            
+
             that.onInputChanged();
         };
-        
+
         that.onInputChanged = function () {
             flock.onMulAddInputChanged(that);
         };
-        
+
         that.init();
         return that;
     };
-    
+
     fluid.defaults("flock.ugen.mouse.click", {
         rate: "control"
     });
-    
-    
-    flock.ugen.audioIn = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
-        
-        that.gen = function (numSamps) {
-            var out = that.output,
-                m = that.model,
-                idx = m.idx,
-                inputBuffer = m.inputBuffer,
-                i;
-            
-            for (i = 0; i < numSamps; i++) {
-                if (idx >= inputBuffer.length) {
-                    inputBuffer = m.inputBuffers.shift() || [];
-                    idx = 0;
-                }
-                
-                out[i] = idx < inputBuffer.length ? inputBuffer[idx++] : 0.0;
-            }
-            
-            m.idx = idx;
-            m.inputBuffer = inputBuffer;
-            
-            that.mulAdd(numSamps);
-        };
-        
-        that.onAudioData = function (data) {
-            that.model.inputBuffers.push(data);
-        };
-        
-        that.setDevice = function (deviceIdx) {
-            deviceIdx = deviceIdx !== undefined ? deviceIdx : that.inputs.device.output[0];
-            that.mike.setMicrophone(deviceIdx);
-        };
-        
-        that.init = function () {
-            var m = that.model,
-                mikeOpts = that.options.mike;
 
-            that.onInputChanged();
-            
-            // Flash needs the sample rate as a string?!
-            mikeOpts.settings.sampleRate = String(mikeOpts.settings.sampleRate || that.options.audioSettings.rates.audio);
-            
-            // Setup and listen to Mike.js.
-            that.mike = new Mike(mikeOpts);
-            
-            that.mike.on("ready", function () {
-                that.setDevice();
-            });
-            
-            that.mike.on("microphonechange", function () {
-                this.start();
-            });
-            
-            that.mike.on("data", that.onAudioData);
-            
-            // Initialize the model before audio has started flowing from the device.
-            m.inputBuffers = [];
-            m.inputBuffer = [];
-            m.idx = 0;
-        };
-        
-        that.onInputChanged = function (inputName) {
-            if (inputName === "device") {
-                that.setDevice();
-                return;
-            }
-            flock.onMulAddInputChanged(that);
-        };
-        
-        that.init();
-        return that;
-    };
-    
-    fluid.defaults("flock.ugen.audioIn", {
-        rate: "audio",
-        inputs: {
-            device: 0
-        },
-        ugenOptions: {
-            mike: {
-                settings: {}
-            }
-        }
-    });
-    
 }());
 ;/*!
 * Flocking - Creative audio synthesis for the Web!
