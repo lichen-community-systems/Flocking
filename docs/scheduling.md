@@ -66,7 +66,7 @@ Here's an example of using the Infusion style to create a very simple drum machi
                             },
                             trigger: {
                                 id: "trig",
-                                ugen: "flock.ugen.inputTrigger",
+                                ugen: "flock.ugen.inputChangeTrigger",
                                 source: 0,
                                 duration: 0.01
                             }
