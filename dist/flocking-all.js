@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (April 6, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (April 16, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -25707,6 +25707,12 @@ var fluid = fluid || require("infusion"),
             highPass: function (model, freq) {
                 var co = model.coeffs;
                 var lambda = Math.tan(Math.PI * freq / model.sampleRate);
+                // Works around NaN values in cases where the frequency
+                // is precisely half the sampling rate, and thus lambda
+                // is Infinite.
+                if (lambda === Infinity) {
+                    lambda = 0;
+                }
                 var lambdaSquared = lambda * lambda;
                 var rootTwoLambda = flock.ROOT2 * lambda;
                 var b0 = 1 / (1 + rootTwoLambda + lambdaSquared);
