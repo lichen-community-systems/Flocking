@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (April 15, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (April 16, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -23827,7 +23827,7 @@ var fluid = fluid || require("infusion"),
     });
 
 
-    flock.ugen.inputTrigger = function (inputs, output, options) {
+    flock.ugen.inputChangeTrigger = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
         that.gen = function (numSamps) {
@@ -23873,7 +23873,8 @@ var fluid = fluid || require("infusion"),
         that.calculateStrides();
         return that;
     };
-    fluid.defaults("flock.ugen.inputTrigger", {
+
+    fluid.defaults("flock.ugen.inputChangeTrigger", {
         rate: "control",
 
         inputs: {
@@ -23888,6 +23889,95 @@ var fluid = fluid || require("infusion"),
             },
 
             strideInputs: ["source", "duration"]
+        }
+    });
+
+    flock.ugen.triggerCallback = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                o = that.options,
+                out = that.output,
+                inputs = that.inputs,
+                triggerInc = m.strides.trigger,
+                sourceInc = m.strides.source,
+                trig = inputs.trigger.output,
+                source = inputs.source.output,
+                cbSpec = o.callback,
+                fn = cbSpec.func,
+                args = cbSpec.args,
+                cbThis = cbSpec.this,
+                lastArgIdx = m.lastArgIdx,
+                prevTrig = m.prevTrig,
+                i,
+                j,
+                k,
+                currTrig,
+                sourceVal;
+
+            for (i = j = k = 0; i < numSamps; i++, j += triggerInc, k += sourceInc) {
+                currTrig = trig[j];
+                sourceVal = source[k];
+
+                if (currTrig > 0.0 && prevTrig <= 0.0 && fn) {
+                    // Insert the current source value into the arguments list
+                    // and then invoke the specified callback function.
+                    args[lastArgIdx] = sourceVal;
+                    fn.apply(cbThis, args);
+                }
+
+                out[i] = sourceVal;
+                prevTrig = currTrig;
+            }
+
+            m.prevTrig = prevTrig;
+        };
+
+        that.onInputChanged = function () {
+            var o = that.options,
+                m = that.model,
+                cbSpec = o.callback,
+                funcName = cbSpec.funcName;
+
+            if (funcName) {
+                cbSpec.func = fluid.getGlobalValue(funcName);
+            } else if (cbSpec.this && cbSpec.method) {
+                if (typeof cbSpec.this !== "string") {
+                    throw new Error("flock.ugen.triggerCallback doesn't support raw 'this' objects." +
+                        "Use a global key path instead.");
+                }
+                cbSpec.this = typeof cbSpec.this === "string" ?
+                    fluid.getGlobalValue(cbSpec.this) : cbSpec.this;
+                cbSpec.func = fluid.get(cbSpec.this, cbSpec.method);
+            }
+
+            m.lastArgIdx = cbSpec.args.length;
+            that.calculateStrides();
+        };
+
+        that.onInputChanged();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.triggerCallback", {
+        rate: "audio",
+        inputs: {
+            source: 0,
+            trigger: 0
+        },
+        ugenOptions: {
+            model: {
+                funcName: undefined,
+                lastArgIdx: 0
+            },
+            callback: {
+                "this": undefined,
+                method: undefined,
+                func: undefined,
+                args: []
+            },
+            strideInputs: ["source", "trigger"]
         }
     });
 
@@ -26109,6 +26199,12 @@ var fluid = fluid || require("infusion"),
             highPass: function (model, freq) {
                 var co = model.coeffs;
                 var lambda = Math.tan(Math.PI * freq / model.sampleRate);
+                // Works around NaN values in cases where the frequency
+                // is precisely half the sampling rate, and thus lambda
+                // is Infinite.
+                if (lambda === Infinity) {
+                    lambda = 0;
+                }
                 var lambdaSquared = lambda * lambda;
                 var rootTwoLambda = flock.ROOT2 * lambda;
                 var b0 = 1 / (1 + rootTwoLambda + lambdaSquared);

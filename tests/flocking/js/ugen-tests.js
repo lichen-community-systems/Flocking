@@ -1411,117 +1411,119 @@ var fluid = fluid || require("infusion"),
     });
 
 
-    module("flock.ugen.filter tests");
+    (function () {
+        module("flock.ugen.filter tests");
 
-    var filterInputValues = [
-        {
-            freq: 440,
-            q: 1.0
-        },
-        {
-            freq: 880,
-            q: 0.5
-        },
-        {
-            freq: 22050,
-            q: 0.1
-        },
-        {
-            freq: 440,
-            q: 10
-        },
-        {
-            freq: 880,
-            q: 20
-        },
-        {
-            freq: 22050,
-            q: 100
-        }
-    ];
+        var filterInputValues = [
+            {
+                freq: 440,
+                q: 1.0
+            },
+            {
+                freq: 880,
+                q: 0.5
+            },
+            {
+                freq: 22050,
+                q: 0.1
+            },
+            {
+                freq: 440,
+                q: 10
+            },
+            {
+                freq: 880,
+                q: 20
+            },
+            {
+                freq: 22050,
+                q: 100
+            }
+        ];
 
-    var checkCoefficient = function (coefficient) {
-        ok(!isNaN(coefficient), "The coefficient should never be NaN");
-        ok(coefficient !== Infinity, "The coefficient should never be Infinity");
-        ok(coefficient !== Number.NEGATIVE_INFINITY, "The coefficient should never be negative Infinity");
-        //ok(coefficient >= -1.0 && coefficient <= 1.0, "The coefficient should be in the range of -1.0 to 1.0");
-    };
+        var checkCoefficient = function (coefficient) {
+            ok(!isNaN(coefficient), "The coefficient should never be NaN");
+            ok(coefficient !== Infinity, "The coefficient should never be Infinity");
+            ok(coefficient !== Number.NEGATIVE_INFINITY, "The coefficient should never be negative Infinity");
+            //ok(coefficient >= -1.0 && coefficient <= 1.0, "The coefficient should be in the range of -1.0 to 1.0");
+        };
 
-    var checkCoefficients = function (model) {
-        $.each(model.coeffs, function (i, coefficientArray) {
-            $.each(coefficientArray, function (i, coefficient) {
-                checkCoefficient(coefficient);
+        var checkCoefficients = function (model) {
+            $.each(model.coeffs, function (i, coefficientArray) {
+                $.each(coefficientArray, function (i, coefficient) {
+                    checkCoefficient(coefficient);
+                });
+            });
+        };
+
+        var forEachFilterType = function (fn) {
+            $.each(flock.coefficients, function (recipeName, recipe) {
+                $.each(recipe, function (filterType, calculator) {
+                    // TODO: This suggests that the payload for filter recipes isn't quite right.
+                    if (filterType === "sizes") {
+                        return;
+                    }
+                    fn(recipeName, recipe, filterType, calculator);
+                });
+            });
+        };
+
+        var testEachFilterInputValue = function (name, fn) {
+            test(name, function () {
+                $.each(filterInputValues, function (i, inputs) {
+                    fn(inputs);
+                });
+            });
+        };
+
+        // Test all coefficient recipes.
+        forEachFilterType(function (recipeName, receipe, filterType, fn) {
+            var name = "flock.coefficients." + recipeName + "." + filterType;
+
+            testEachFilterInputValue(name, function (inputs) {
+                var model = {
+                    coeffs: {
+                        a: new Float32Array(2),
+                        b: new Float32Array(3)
+                    },
+                    sampleRate: sampleRate
+                };
+
+                fn(model, inputs.freq, inputs.q);
+                checkCoefficients(model);
             });
         });
-    };
 
-    var forEachFilterType = function (fn) {
-        $.each(flock.coefficients, function (recipeName, recipe) {
-            $.each(recipe, function (filterType, calculator) {
-                // TODO: This suggests that the payload for filter recipes isn't quite right.
-                if (filterType === "sizes") {
-                    return;
-                }
-                fn(recipeName, recipe, filterType, calculator);
+        // Test the flock.ugen.filter unit generator with all filter types and a set of generic input values.
+        /*
+        forEachFilterType(function (recipeName, recipe, filterType) {
+            var name = "flock.ugen.filter() " + recipeName + "." + filterType;
+            testEachFilterInputValue(name, function (inputs) {
+                var ugen = {
+                    id: "filter",
+                    ugen: "flock.ugen.filter",
+                    inputs: inputs,
+                    options: {
+                        // TODO: API bug. I should just be able to specify a type (as a key path) without a recipe if I want.
+                        recipe: recipe,
+                        type: filterType
+                    }
+                };
+                ugen.inputs.source = {
+                    ugen: "flock.ugen.lfNoise",
+                    inputs: {
+                        freq: 440,
+                        mul: 0.95
+                    }
+                };
+
+                var filterSynth = flock.synth(ugen);
+                filterSynth.gen(64);
+                flock.test.arrayUnbrokenSignal(filterSynth.get("filter"), -1.0, 1.0);
             });
         });
-    };
-
-    var testEachFilterInputValue = function (name, fn) {
-        test(name, function () {
-            $.each(filterInputValues, function (i, inputs) {
-                fn(inputs);
-            });
-        });
-    };
-
-    // Test all coefficient recipes.
-    forEachFilterType(function (recipeName, receipe, filterType, fn) {
-        var name = "flock.coefficients." + recipeName + "." + filterType;
-
-        testEachFilterInputValue(name, function (inputs) {
-            var model = {
-                coeffs: {
-                    a: new Float32Array(2),
-                    b: new Float32Array(3)
-                },
-                sampleRate: sampleRate
-            };
-
-            fn(model, inputs.freq, inputs.q);
-            checkCoefficients(model);
-        });
-    });
-
-    // Test the flock.ugen.filter unit generator with all filter types and a set of generic input values.
-    /*
-    forEachFilterType(function (recipeName, recipe, filterType) {
-        var name = "flock.ugen.filter() " + recipeName + "." + filterType;
-        testEachFilterInputValue(name, function (inputs) {
-            var ugen = {
-                id: "filter",
-                ugen: "flock.ugen.filter",
-                inputs: inputs,
-                options: {
-                    // TODO: API bug. I should just be able to specify a type (as a key path) without a recipe if I want.
-                    recipe: recipe,
-                    type: filterType
-                }
-            };
-            ugen.inputs.source = {
-                ugen: "flock.ugen.lfNoise",
-                inputs: {
-                    freq: 440,
-                    mul: 0.95
-                }
-            };
-
-            var filterSynth = flock.synth(ugen);
-            filterSynth.gen(64);
-            flock.test.arrayUnbrokenSignal(filterSynth.get("filter"), -1.0, 1.0);
-        });
-    });
-    */
+        */
+    }());
 
     test("flock.ugen.delay", function () {
         var sourceBuffer = flock.test.ascendingBuffer(64, 1),
@@ -2226,6 +2228,167 @@ var fluid = fluid || require("infusion"),
         deepEqual(t2a.output, expected,
             "The control rate trigger value should have been shifted to index 27 in the audio rate output stream.");
     });
+
+    (function () {
+        module("flock.ugen.triggerCallback");
+        flock.test.CallbackCounter = function () {
+            this.callbackRecords = [];
+        };
+
+        flock.test.CallbackCounter.prototype.callback = function () {
+            this.callbackRecords.push(arguments);
+        };
+
+        flock.test.CallbackCounter.prototype.clear = function () {
+            this.callbackRecords = [];
+        };
+
+        var makeCallbackCounter = function () {
+            var counter = new flock.test.CallbackCounter();
+            counter.boundCallback = counter.callback.bind(counter);
+            flock.test.CallbackCounter.singleton = counter;
+            return counter;
+        };
+
+        fluid.defaults("flock.test.triggerCallbackSynth", {
+            gradeNames: ["flock.synth", "autoInit"],
+            synthDef: {
+                ugen: "flock.ugen.triggerCallback",
+                source: {
+                    ugen: "flock.mock.ugen",
+                    options: {
+                        buffer: flock.generate(64, function (i) {
+                            return i;
+                        })
+                    }
+                },
+                trigger: {
+                    ugen: "flock.mock.ugen",
+                    options: {
+                        buffer: flock.generate(64, function (i) {
+                            return i === 31 ? 1.0 : 0.0;
+                        })
+                    }
+                },
+                options: {}
+            }
+        });
+
+        var testTriggerCallback = function (testSpec) {
+            var counter = makeCallbackCounter();
+            var synthDefSpec = {
+                options: {
+                    callback: {}
+                }
+            };
+
+            if (testSpec.type === "func" || testSpec.type === "funcName") {
+                synthDefSpec.options.callback[testSpec.type] = counter.boundCallback;
+            }
+
+            var synth = flock.test.triggerCallbackSynth({
+                synthDef: $.extend(true, synthDefSpec, testSpec.synthDefOverrides)
+            });
+            synth.gen();
+
+            var expectedNumCalls = testSpec.expectedCallbackArgs.length;
+            equal(counter.callbackRecords.length, expectedNumCalls, "The callback should have been invoked " +
+                expectedNumCalls + " times.");
+
+            for (var i = 0; i < expectedNumCalls; i++) {
+                var expectedCallbackRecord = fluid.makeArray(testSpec.expectedCallbackArgs[i]);
+                var actualCallbackRecord = counter.callbackRecords[i];
+                equal(actualCallbackRecord.length, expectedCallbackRecord.length,
+                    expectedCallbackRecord.length + " arguments should have been passed to the callback.");
+                for (var j = 0; j < expectedCallbackRecord.length; j++) {
+                    equal(actualCallbackRecord[j], expectedCallbackRecord[j],
+                        "The expected argument at position " + j + " should have been passed to the callback.");
+                }
+            }
+        };
+
+        var runTriggerCallbackTests = function (testSpecs) {
+            fluid.each(testSpecs, function (testSpec) {
+                test(testSpec.name, function () {
+                    testTriggerCallback(testSpec);
+                });
+            });
+        };
+
+        var triggerCallbackTestSpecs = [
+            {
+                name: "Raw function",
+                type: "func",
+                expectedCallbackArgs: [
+                    [31]
+                ]
+            },
+            {
+                name: "Raw function, multiple triggers",
+                type: "func",
+                synthDefOverrides: {
+                    trigger: {
+                        options: {
+                            buffer: flock.generate(64, function (i) {
+                                return (i === 31 || i === 62) ? 1.0 : 0.0;
+                            })
+                        }
+                    }
+                },
+
+                expectedCallbackArgs: [
+                    [31],
+                    [62]
+                ]
+            },
+            {
+                name: "Raw function with arguments",
+                type: "func",
+                synthDefOverrides: {
+                    options: {
+                        callback: {
+                            args: ["cat"]
+                        }
+                    }
+                },
+                expectedCallbackArgs: [
+                    ["cat", 31]
+                ]
+            },
+            {
+                name: "Function EL path",
+                type: "funcName",
+                synthDefOverrides: {
+                    options: {
+                        callback: {
+                            funcName: "flock.test.CallbackCounter.singleton.boundCallback"
+                        }
+                    }
+                },
+                expectedCallbackArgs: [
+                    [31]
+                ]
+            },
+            {
+                name: "this/method pair",
+                synthDefOverrides: {
+                    options: {
+                        callback: {
+                            "this": "flock.test.CallbackCounter.singleton",
+                            method: "callback"
+                        }
+                    }
+                },
+                expectedCallbackArgs: [
+                    [31]
+                ]
+            }
+        ];
+
+        runTriggerCallbackTests(triggerCallbackTestSpecs);
+
+    }());
+
 
     (function () {
         module("flock.ugen.pan2");
