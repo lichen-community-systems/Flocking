@@ -23425,7 +23425,7 @@ var fluid = fluid || require("infusion"),
     });
 
 
-    flock.ugen.inputTrigger = function (inputs, output, options) {
+    flock.ugen.inputChangeTrigger = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
         that.gen = function (numSamps) {
@@ -23472,7 +23472,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.inputTrigger", {
+    fluid.defaults("flock.ugen.inputChangeTrigger", {
         rate: "control",
 
         inputs: {
@@ -23541,6 +23541,10 @@ var fluid = fluid || require("infusion"),
             if (funcName) {
                 cbSpec.func = fluid.getGlobalValue(funcName);
             } else if (cbSpec.this && cbSpec.method) {
+                if (typeof cbSpec.this !== "string") {
+                    throw new Error("flock.ugen.triggerCallback doesn't support raw 'this' objects." +
+                        "Use a global key path instead.");
+                }
                 cbSpec.this = typeof cbSpec.this === "string" ?
                     fluid.getGlobalValue(cbSpec.this) : cbSpec.this;
                 cbSpec.func = fluid.get(cbSpec.this, cbSpec.method);
@@ -23557,7 +23561,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.triggerCallback", {
         rate: "audio",
         inputs: {
-            source: undefined,
+            source: 0,
             trigger: 0
         },
         ugenOptions: {

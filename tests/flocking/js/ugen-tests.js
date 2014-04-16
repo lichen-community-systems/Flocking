@@ -2371,7 +2371,6 @@ var fluid = fluid || require("infusion"),
             },
             {
                 name: "this/method pair",
-                type: "this",
                 synthDefOverrides: {
                     options: {
                         callback: {
