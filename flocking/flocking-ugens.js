@@ -544,7 +544,7 @@ var fluid = fluid || require("infusion"),
                 currTrig = trig[j];
                 sourceVal = source[k];
 
-                if (currTrig > 0.0 && prevTrig <= 0.0) {
+                if (currTrig > 0.0 && prevTrig <= 0.0 && fn) {
                     // Insert the current source value into the arguments list
                     // and then invoke the specified callback function.
                     args[lastArgIdx] = sourceVal;
@@ -564,10 +564,11 @@ var fluid = fluid || require("infusion"),
                 cbSpec = o.callback,
                 funcName = cbSpec.funcName;
 
-            if (funcName && funcName !== m.funcName) {
+            if (funcName) {
                 cbSpec.func = fluid.getGlobalValue(funcName);
             } else if (cbSpec.this && cbSpec.method) {
-                cbSpec.this = typeof cbSpec.this === "string" ? fluid.getGlobalValue(cbSpec.this) : cbSpec.this;
+                cbSpec.this = typeof cbSpec.this === "string" ?
+                    fluid.getGlobalValue(cbSpec.this) : cbSpec.this;
                 cbSpec.func = fluid.get(cbSpec.this, cbSpec.method);
             }
 
@@ -591,7 +592,6 @@ var fluid = fluid || require("infusion"),
                 lastArgIdx: 0
             },
             callback: {
-                funcName: undefined,
                 "this": undefined,
                 method: undefined,
                 func: undefined,
