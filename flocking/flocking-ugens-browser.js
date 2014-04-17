@@ -317,4 +317,49 @@ var fluid = fluid || require("infusion"),
         rate: "control"
     });
 
+
+    flock.ugen.mediaIn = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        // TODO: Complete cut and paste of flock.ugen.audioIn,
+        // which is a cut and paste job of flock.ugen.in.singleBusGen().
+        that.gen = function (numSamps) {
+            var out = that.output,
+                busNum = that.inputs.bus.output[0] | 0,
+                bus = that.options.audioSettings.buses[busNum],
+                i;
+
+            for (i = 0; i < numSamps; i++) {
+                out[i] = bus[i];
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        that.onInputChanged = function () {
+            flock.onMulAddInputChanged(that);
+        };
+
+        that.init = function () {
+            var mediaEl = $(that.options.selector)[0];
+            // TODO: Direct reference to the shared environment.
+            flock.enviro.shared.audioStrategy.inputManager.openMediaElement(mediaEl);
+            that.onInputChanged();
+        };
+
+        that.init();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.mediaIn", {
+        rate: "audio",
+        inputs: {
+            bus: 2,
+            mul: null,
+            add: null
+        },
+        ugenOptions: {
+            selector: "audio"
+        }
+    });
 }());

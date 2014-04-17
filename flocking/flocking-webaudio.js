@@ -61,7 +61,6 @@ var fluid = fluid || require("infusion"),
 
         members: {
             context: "{contextWrapper}.context",
-            preNodes: [],
             jsNode: {
                 expander: {
                     funcName: "flock.webAudio.strategy.createScriptProcessor",
@@ -95,16 +94,6 @@ var fluid = fluid || require("infusion"),
 
             reset: {
                 func: "{that}.events.onReset.fire"
-            },
-
-            // Deprecated. Use start() instead.
-            startGeneratingSamples: {
-                func: "{that}.events.onStart.fire"
-            },
-
-            // Deprecated. Use stop() instead.
-            stopGeneratingSamples: {
-                func: "{that}.events.onStop.fire"
             }
         },
 
@@ -125,8 +114,8 @@ var fluid = fluid || require("infusion"),
                 }
             },
 
-            deviceManager: {
-                type: "flock.webAudio.deviceManager",
+            inputManager: {
+                type: "flock.webAudio.inputManager",
                 options: {
                     members: {
                         context: "{contextWrapper}.context"
@@ -493,7 +482,7 @@ var fluid = fluid || require("infusion"),
      * Manages audio input devices using the Web Audio API.
      */
     // Add a means for disconnecting audio input nodes.
-    fluid.defaults("flock.webAudio.deviceManager", {
+    fluid.defaults("flock.webAudio.inputManager", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
 
         members: {
@@ -508,7 +497,7 @@ var fluid = fluid || require("infusion"),
              * @param {Object} deviceSpec a device spec containing, optionally, an 'id' or 'label' parameter
              */
             openAudioDevice: {
-                funcName: "flock.webAudio.deviceManager.openAudioDevice",
+                funcName: "flock.webAudio.inputManager.openAudioDevice",
                 args: [
                     "{arguments}.0",
                     "{that}.openAudioDeviceWithId",
@@ -524,8 +513,12 @@ var fluid = fluid || require("infusion"),
              * @param {Object} constraints a WebRTC-compatible constraints object
              */
             openAudioDeviceWithConstraints: {
-                funcName: "flock.webAudio.deviceManager.openAudioDeviceWithConstraints",
-                args: ["{arguments}.0", "{that}.context", "{that}.events.onMediaStreamOpened.fire"]
+                funcName: "flock.webAudio.inputManager.openAudioDeviceWithConstraints",
+                args: [
+                    "{arguments}.0",
+                    "{that}.context",
+                    "{that}.openMediaStream"
+                ]
             },
 
             /**
@@ -534,7 +527,7 @@ var fluid = fluid || require("infusion"),
              * @param {string} id a device identifier
              */
             openAudioDeviceWithId: {
-                funcName: "flock.webAudio.deviceManager.openAudioDeviceWithId",
+                funcName: "flock.webAudio.inputManager.openAudioDeviceWithId",
                 args: ["{arguments}.0", "{that}.openAudioDeviceWithConstraints"]
             },
 
@@ -545,8 +538,32 @@ var fluid = fluid || require("infusion"),
              * @param {string} label a device label
              */
             openFirstAudioDeviceWithLabel: {
-                funcName: "flock.webAudio.deviceManager.openFirstAudioDeviceWithLabel",
+                funcName: "flock.webAudio.inputManager.openFirstAudioDeviceWithLabel",
                 args: ["{arguments}.0", "{that}.openAudioDeviceWithId"]
+            },
+
+            openMediaStream: {
+                funcName: "flock.webAudio.inputManager.createNode",
+                args: [
+                    {
+                        node: "MediaStreamSource",
+                        args: ["{arguments}.0"]
+                    },
+                    "{that}.context",
+                    "{that}.events.onMediaStreamOpened.fire"
+                ]
+            },
+
+            openMediaElement: {
+                funcName: "flock.webAudio.inputManager.createNode",
+                args: [
+                    {
+                        node: "MediaElementSource",
+                        args: ["{arguments}.0"]
+                    },
+                    "{that}.context",
+                    "{that}.events.onMediaStreamOpened.fire"
+                ]
             }
         },
 
@@ -561,7 +578,7 @@ var fluid = fluid || require("infusion"),
     });
 
 
-    flock.webAudio.deviceManager.openAudioDevice = function (sourceSpec, idOpener, labelOpener, specOpener) {
+    flock.webAudio.inputManager.openAudioDevice = function (sourceSpec, idOpener, labelOpener, specOpener) {
         if (sourceSpec) {
             if (sourceSpec.id) {
                 return idOpener(sourceSpec.id);
@@ -573,7 +590,7 @@ var fluid = fluid || require("infusion"),
         return specOpener();
     };
 
-    flock.webAudio.deviceManager.openAudioDeviceWithId = function (id, deviceOpener) {
+    flock.webAudio.inputManager.openAudioDeviceWithId = function (id, deviceOpener) {
         var options = {
             audio: {
                 optional: [
@@ -587,7 +604,7 @@ var fluid = fluid || require("infusion"),
         deviceOpener(options);
     };
 
-    flock.webAudio.deviceManager.openFirstAudioDeviceWithLabel = function (label, deviceOpener) {
+    flock.webAudio.inputManager.openFirstAudioDeviceWithLabel = function (label, deviceOpener) {
         if (!label) {
             return;
         }
@@ -610,14 +627,10 @@ var fluid = fluid || require("infusion"),
         });
     };
 
-    flock.webAudio.deviceManager.openAudioDeviceWithConstraints = function (options, context, onMediaStreamOpened) {
+    flock.webAudio.inputManager.openAudioDeviceWithConstraints = function (options, context, openMediaStream) {
         options = options || {
             audio: true
         };
-
-        function callback (mediaStream) {
-            flock.webAudio.deviceManager.nodeForStream(context, mediaStream, onMediaStreamOpened);
-        }
 
         function errback (err) {
             fluid.log(fluid.logLevel.IMPORTANT,
@@ -625,12 +638,40 @@ var fluid = fluid || require("infusion"),
                 err);
         }
 
-        flock.shim.getUserMedia(options, callback, errback);
+        flock.shim.getUserMedia(options, openMediaStream, errback);
     };
 
-    flock.webAudio.deviceManager.nodeForStream = function (context, mediaStream, onMediaStreamOpened) {
-        var mic = context.createMediaStreamSource(mediaStream);
-        onMediaStreamOpened(mic);
+    flock.webAudio.inputManager.createNode = function (nodeSpec, context, onNodeCreated) {
+        var nodeName = nodeSpec.node,
+            creatorName = "create" + nodeName,
+            nodeStrIdx = creatorName.indexOf("Node");
+
+        // Trim off "Node" if it is present.
+        if (nodeStrIdx > -1) {
+            creatorName = creatorName.substring(0, nodeStrIdx);
+        }
+
+        var node = context[creatorName].apply(context, nodeSpec.args);
+        flock.webAudio.inputManager.initializeNodeInputs(node, nodeSpec.params);
+
+        if (onNodeCreated) {
+            onNodeCreated(node);
+        }
+
+        return node;
+    };
+
+    // TODO: Add support for other types of AudioParams.
+    flock.webAudio.inputManager.initializeNodeInputs = function (node, inputSpec) {
+        if (!node || !inputSpec) {
+            return;
+        }
+
+        for (var inputName in inputSpec) {
+            node[inputName].value = inputSpec[inputName];
+        }
+
+        return node;
     };
 
     fluid.demands("flock.enviro.audioStrategy", "flock.platform.webAudio", {

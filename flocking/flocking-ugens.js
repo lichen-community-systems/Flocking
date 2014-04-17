@@ -2602,7 +2602,7 @@ var fluid = fluid || require("infusion"),
 
         that.init = function () {
             // TODO: Direct reference to the shared environment.
-            flock.enviro.shared.audioStrategy.deviceManager.openAudioDevice(options);
+            flock.enviro.shared.audioStrategy.inputManager.openAudioDevice(options);
             that.onInputChanged();
         };
 
@@ -2618,7 +2618,7 @@ var fluid = fluid || require("infusion"),
             add: null
         }
     });
-
+    
 
     /***********
      * Filters *
