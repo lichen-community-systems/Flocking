@@ -254,23 +254,27 @@ var fluid = fluid || require("infusion"),
 
         that.init = function () {
             var tags = fluid.makeArray(that.options.tags),
+                m = that.model,
+                o = that.options,
                 i,
+                s,
                 valueDef;
 
             for (i = 0; i < tags.length; i++) {
                 that.tags.push(tags[i]);
             }
 
-            that.options.audioSettings = that.options.audioSettings || flock.enviro.shared.audioSettings;
-            that.model.sampleRate = options.sampleRate || that.options.audioSettings.rates[that.rate];
-            that.model.blockSize = that.rate === flock.rates.AUDIO ? that.options.audioSettings.blockSize : 1;
-            that.model.sampleDur = 1.0 / that.model.sampleRate;
+            s = o.audioSettings = o.audioSettings || flock.enviro.shared.audioSettings;
+            m.sampleRate = o.sampleRate || s.rates[that.rate];
+            m.nyquistRate = m.sampleRate;
+            m.blockSize = that.rate === flock.rates.AUDIO ? s.blockSize : 1;
+            m.sampleDur = 1.0 / m.sampleRate;
 
             // Assigns an interpolator function to the UGen.
             // This is inactive by default, but can be used in custom gen() functions.
             // Will be undefined if no interpolation default or option has been set,
             // or if it is set to "none"--make sure you check before invoking it.
-            that.interpolate = flock.interpolate[that.options.interpolation];
+            that.interpolate = flock.interpolate[o.interpolation];
 
             if (that.rate === flock.rates.DEMAND && that.inputs.freq) {
                 valueDef = flock.parse.ugenDefForConstantValue(1.0);
@@ -2946,6 +2950,118 @@ var fluid = fluid || require("infusion"),
         }
     };
 
+    /**
+     * A Moog-style 24db resonant low-pass filter.
+     *
+     * This unit generator is based on the following musicdsp snippet:
+     * http://www.musicdsp.org/showArchiveComment.php?ArchiveID=26
+     *
+     * Inputs:
+     *   - source: the source signal to process
+     *   - cutoff: the cutoff frequency
+     *   - resonance: the filter resonance [between 0 and 4, where 4 is self-oscillation]
+     */
+    // TODO: Unit tests.
+    flock.ugen.filter.moog = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                inputs = that.inputs,
+                out = that.output,
+                source = inputs.source.output,
+                sourceInc = m.strides.source,
+                res = inputs.resonance.output,
+                resInc = m.strides.resonance,
+                cutoff = inputs.cutoff.output,
+                cutoffInc = m.strides.cutoff,
+                f = m.f,
+                fSq = m.fSq,
+                fSqSq = m.fSqSq,
+                oneMinusF = m.oneMinusF,
+                fb = m.fb,
+                i,
+                j,
+                k,
+                l,
+                currCutoff,
+                currRes,
+                val;
+
+            for (i = j = k = l = 0; i < numSamps; i++, j += sourceInc, k += resInc, l += cutoffInc) {
+                currCutoff = cutoff[l];
+                currRes = res[k];
+
+                if (currCutoff !== m.prevCutoff) {
+                    if (currCutoff > m.nyquistRate) {
+                        currCutoff = m.nyquistRate;
+                    }
+
+                    f = m.f = (currCutoff / m.nyquistRate) * 1.16;
+                    fSq = m.fSq = f * f;
+                    fSqSq = m.fSqSq = fSq * fSq;
+                    oneMinusF = m.oneMinusF = 1 - f;
+                    m.prevRes = undefined; // Flag the need to update fb.
+                }
+
+                if (currRes !== m.prevRes) {
+                    if (currRes > 4) {
+                        currRes = 4;
+                    } else if (currRes < 0) {
+                        currRes = 0;
+                    }
+
+                    fb = m.fb = currRes * (1.0 - 0.15 * fSq);
+                }
+
+                val = source[j] - (m.out4 * fb);
+                val *= 0.35013 * fSqSq;
+                m.out1 = val + 0.3 * m.in1 + oneMinusF * m.out1;
+                m.in1 = val;
+                m.out2 = m.out1 + 0.3 * m.in2 + oneMinusF * m.out2;
+                m.in2 = m.out1;
+                m.out3 = m.out2 + 0.3 * m.in3 + oneMinusF * m.out3;
+                m.in3 = m.out2;
+                m.out4 = m.out3 + 0.3 * m.in4 + oneMinusF * m.out4;
+                m.in4 = m.out3;
+                out[i] = m.out4;
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        that.onInputChanged();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.filter.moog", {
+        rate: "audio",
+        inputs: {
+            cutoff: 3000,
+            resonance: 3.99,
+            source: null
+        },
+        ugenOptions: {
+            model: {
+                in1: 0,
+                in2: 0,
+                in3: 0,
+                in4: 0,
+                out1: 0,
+                out2: 0,
+                out3: 0,
+                out4: 0,
+                prevCutoff: undefined,
+                prevResonance: undefined,
+                f: undefined,
+                fSq: undefined,
+                fSqSq: undefined,
+                oneMinusF: undefined,
+                fb: undefined
+            },
+            strideInputs: ["source", "cutoff", "resonance"]
+        }
+    });
 
     flock.ugen.delay = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
