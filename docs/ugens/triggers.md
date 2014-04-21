@@ -39,7 +39,7 @@ For example, this synth will print out the current value of a sine wave oscillat
     {
         ugen: "flock.ugen.triggerCallback",
         source: {
-            ugen: "flock.ugen.sin"
+            ugen: "flock.ugen.sin",
             freq: 440
         },
         trigger: {
