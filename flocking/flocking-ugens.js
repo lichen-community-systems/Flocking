@@ -3799,15 +3799,17 @@ var fluid = fluid || require("infusion"),
         that.gen = function (numSamps) {
             var m = that.model,
                 a4 = m.a4,
+                a4Freq = a4.freq,
+                a4NoteNum = a4.noteNum,
+                notesPerOctave = m.notesPerOctave,
                 noteNum = that.inputs.source.output,
                 out = that.output,
                 i,
                 j;
 
             for (i = 0, j = 0; i < numSamps; i++, j += m.strides.source) {
-                out[i] = a4.freq * Math.pow(2, (noteNum[j] - a4.noteNum) * m.octaveScale);
+                out[i] = flock.midiFreq(noteNum[j], a4Freq, a4NoteNum, notesPerOctave);
             }
-
         };
 
         that.init = function () {

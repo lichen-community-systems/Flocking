@@ -301,6 +301,57 @@ var fluid = fluid || require("infusion"),
         return target;
     };
 
+    flock.parseMidiString = function (midiStr) {
+        if (!midiStr || midiStr.length < 2) {
+            return NaN;
+        }
+
+        midiStr = midiStr.toLowerCase();
+
+        var secondChar = midiStr.charAt(1),
+            splitIdx = secondChar === "#" || secondChar === "b" ? 2 : 1,
+            note = midiStr.substring(0, splitIdx),
+            octave = Number(midiStr.substring(splitIdx)),
+            pitchClass = flock.midiFreq.noteNames[note],
+            midiNum = octave * 12 + pitchClass;
+
+        return midiNum;
+    };
+
+    flock.midiFreq = function (midi, a4Freq, a4NoteNum, notesPerOctave) {
+        a4Freq = a4Freq === "undefined" ? 440 : a4Freq;
+        a4NoteNum = a4NoteNum === "undefined" ? 69 : a4NoteNum;
+        notesPerOctave = notesPerOctave || 12;
+
+        if (typeof midi === "string") {
+            midi = flock.parseMidiString(midi);
+        }
+
+        return a4Freq * Math.pow(2, (midi - a4NoteNum) * 1 / notesPerOctave);
+    };
+
+    flock.midiFreq.noteNames = {
+        "b#": 0,
+        "c": 0,
+        "c#": 1,
+        "db": 1,
+        "d": 2,
+        "d#": 3,
+        "eb": 3,
+        "e": 4,
+        "e#": 5,
+        "f": 5,
+        "f#": 6,
+        "gb": 6,
+        "g": 7,
+        "g#": 8,
+        "ab": 8,
+        "a": 9,
+        "a#": 10,
+        "bb": 10,
+        "b": 11,
+        "cb": 11
+    };
 
     flock.interpolate = {};
 
@@ -321,27 +372,33 @@ var fluid = fluid || require("infusion"),
 
     /**
      * Performs cubic interpretation.
+     *
+     * Based on Laurent De Soras' implementation at:
+     * http://www.musicdsp.org/showArchiveComment.php?ArchiveID=93
+     *
+     * @param idx {Number} an index into the table
+     * @param table {Arrayable} the table from which values around idx should be drawn and interpolated
+     * @return {Number} an interpolated value
      */
     flock.interpolate.cubic = function (idx, table) {
-        idx = idx % table.length;
-
         var len = table.length,
-            i1 = idx | 0,
-            i0 = i1 > 0 ? i1 - 1 : len - 1,
-            i2 = (i1 + 1) % len,
-            i3 = (i1 + 2) % len,
-            frac = idx - i1,
-            fracSq = frac * frac,
-            fracCub = frac * fracSq,
-            y0 = table[i0],
-            y1 = table[i1],
-            y2 = table[i2],
-            y3 = table[i3],
-            a = 0.5 * (y1 - y2) + (y3 - y0),
-            b = (y0 + y2) * 0.5 - y1,
-            c = y2 - (0.3333333333333333 * y0) - (0.5 * y1) - (0.16666666666666667 * y3);
+            intPortion = (idx | 0),
+            i0 = intPortion % len,
+            frac = idx - intPortion,
+            im1 = i0 > 0 ? i0 - 1 : len - 1,
+            i1 = (i0 + 1) % len,
+            i2 = (i0 + 2) % len,
+            xm1 = table[im1],
+            x0 = table[i0],
+            x1 = table[i1],
+            x2 = table[i2],
+            c = (x1 - xm1) * 0.5,
+            v = x0 - x1,
+            w = c + v,
+            a = w + v + (x2 - x0) * 0.5,
+            bNeg = w + a;
 
-        return (a * fracCub) + (b * fracSq) + (c * frac) + y1;
+        return (((a * frac) - bNeg) * frac + c) * frac + x0;
     };
 
 
