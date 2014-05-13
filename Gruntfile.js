@@ -36,6 +36,9 @@ module.exports = function(grunt) {
                     // Marcus Geelnard's DSPI API polyfill
                     "third-party/dspapi/js/dspapi.js",
 
+                    // Sim.js' random distribution library.
+                    "third-party/simjs/js/random-0.26.js",
+
                     // Flocking
                     "flocking/flocking-core.js",
                     "flocking/flocking-buffers.js",

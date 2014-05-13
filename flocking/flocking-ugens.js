@@ -6,7 +6,7 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global require, Float32Array*/
+/*global require, Float32Array, Random*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,
@@ -1882,6 +1882,291 @@ var fluid = fluid || require("infusion"),
                 counter: 0,
                 level: 0
             }
+        }
+    });
+
+    /*****************************************************
+     * Random distributions using Sim.js' Random library *
+     *****************************************************/
+
+    // TODO: Unit tests.
+    flock.ugen.random = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var generator = that.generator,
+                out = that.output,
+                i;
+
+            for (i = 0; i < numSamps; i++) {
+                out[i] = generator.uniform(-1, 1);
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        that.onInputChanged = function (inputName) {
+            if (inputName === "seed") {
+                that.initGenerator();
+            }
+            flock.onMulAddInputChanged(that);
+        };
+
+        that.initGenerator = function () {
+            var seed = that.inputs.seed;
+            that.generator = seed ? new Random(seed) : new Random();
+        };
+
+        that.init = function () {
+            that.initGenerator();
+            that.calculateStrides();
+            that.onInputChanged();
+        };
+
+        that.init();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.random", {
+        rate: "audio",
+        inputs: {
+            seed: null,
+            mul: null,
+            add: null
+        }
+    });
+
+    // TODO: Unit tests.
+    flock.ugen.random.exponential = function (inputs, output, options) {
+        var that = flock.ugen.random(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var generator = that.generator,
+                out = that.output,
+                lambda = that.inputs.lambda.output,
+                lambdaInc = that.model.strides.lambda,
+                i,
+                j;
+
+            for (i = j = 0; i < numSamps; i++, j += lambdaInc) {
+                out[i] = generator.exponential(lambda[j]);
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.random.exponential", {
+        rate: "audio",
+        inputs: {
+            seed: null,
+            lambda: 1,
+            mul: null,
+            add: null
+        },
+
+        ugenOptions: {
+            strideInputs: ["lambda"]
+        }
+    });
+
+    // TODO: Unit tests.
+    flock.ugen.random.gamma = function (inputs, output, options) {
+        var that = flock.ugen.random(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                inputs = that.inputs,
+                generator = that.generator,
+                out = that.output,
+                alphaInc = m.strides.alpha,
+                alpha = inputs.alpha.output,
+                betaInc = m.strides.beta,
+                beta = inputs.beta.output,
+                i,
+                j,
+                k;
+
+            for (i = j = k = 0; i < numSamps; i++, j += alphaInc, k += betaInc) {
+                out[i] = generator.gamma(alpha[j], beta[k]);
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.random.gamma", {
+        rate: "audio",
+        inputs: {
+            seed: null,
+            alpha: 1,
+            beta: 2,
+            mul: null,
+            add: null
+        },
+
+        ugenOptions: {
+            strideInputs: ["alpha", "beta"]
+        }
+    });
+
+    // TODO: Unit tests.
+    flock.ugen.random.normal = function (inputs, output, options) {
+        var that = flock.ugen.random(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                out = that.output,
+                inputs = that.inputs,
+                generator = that.generator,
+                muInc = m.strides.mu,
+                mu = inputs.mu.output,
+                sigmaInc = m.strides.sigma,
+                sigma = inputs.sigma.output,
+                i,
+                j,
+                k;
+
+            for (i = j = k = 0; i < numSamps; i++, j += muInc, k += sigmaInc) {
+                out[i] = generator.normal(mu[j], sigma[k]);
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.random.normal", {
+        rate: "audio",
+        inputs: {
+            seed: null,
+            mu: 0,
+            sigma: 1,
+            mul: null,
+            add: null
+        },
+
+        ugenOptions: {
+            strideInputs: ["mu", "sigma"]
+        }
+    });
+
+    // TODO: Unit tests.
+    flock.ugen.random.pareto = function (inputs, output, options) {
+        var that = flock.ugen.random(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var generator = that.generator,
+                out = that.output,
+                alphaInc = that.model.strides.alpha,
+                alpha = that.inputs.alpha.output,
+                i,
+                j;
+
+            for (i = j = 0; i < numSamps; i++, j += alphaInc) {
+                out[i] = generator.pareto(alpha[j]);
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.random.pareto", {
+        rate: "audio",
+        inputs: {
+            seed: null,
+            alpha: 5,
+            mul: null,
+            add: null
+        },
+
+        ugenOptions: {
+            strideInputs: ["alpha"]
+        }
+    });
+
+    // TODO: Unit tests.
+    flock.ugen.random.triangular = function (inputs, output, options) {
+        var that = flock.ugen.random(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var generator = that.generator,
+                out = that.output,
+                modeInc = that.model.strides.mode,
+                mode = that.inputs.mode.output,
+                i,
+                j;
+
+            for (i = j = 0; i < numSamps; i++, j += modeInc) {
+                out[i] = generator.triangular(-1, 1, mode[j]);
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.random.triangular", {
+        rate: "audio",
+        inputs: {
+            seed: null,
+            mode: 0.5,
+            mul: null,
+            add: null
+        },
+
+        ugenOptions: {
+            strideInputs: ["mode"]
+        }
+    });
+
+    // TODO: Unit tests.
+    flock.ugen.random.weibull = function (inputs, output, options) {
+        var that = flock.ugen.random(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                inputs = that.inputs,
+                generator = that.generator,
+                out = that.output,
+                alphaInc = m.strides.alpha,
+                alpha = inputs.alpha.output,
+                betaInc = m.strides.beta,
+                beta = inputs.beta.output,
+                i,
+                j,
+                k;
+
+            for (i = j = k = 0; i < numSamps; i++, j += alphaInc, k += betaInc) {
+                out[i] = generator.weibull(alpha[j], beta[k]);
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.random.weibull", {
+        rate: "audio",
+        inputs: {
+            seed: null,
+            alpha: 1,
+            beta: 1,
+            mul: null,
+            add: null
+        },
+
+        ugenOptions: {
+            strideInputs: ["alpha", "beta"]
         }
     });
 
