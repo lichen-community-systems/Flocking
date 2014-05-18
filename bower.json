@@ -1,0 +1,17 @@
+{
+    "name": "flocking",
+    "version": "0.1.0",
+    "main": "dist/flocking-all.min.js",
+    "ignore": [
+        ".jshintrc",
+        "package.json",
+        "favicon.ico",
+        "index.html",
+        "bower.json",
+        "Gruntfile.js",
+        "node_modules",
+        "tests"
+    ],
+    "dependencies": {},
+    "devDependencies": {}
+}

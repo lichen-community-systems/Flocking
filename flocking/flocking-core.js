@@ -402,9 +402,9 @@ var fluid = fluid || require("infusion"),
     };
 
 
-    flock.pathParseError = function (path, token) {
+    flock.pathParseError = function (root, path, token) {
         throw new Error("Error parsing path: " + path + ". Segment '" + token +
-            "' could not be resolved.");
+            "' could not be resolved. Root object was: " + fluid.prettyPrintJSON(root));
     };
 
     flock.get = function (root, path) {
@@ -426,7 +426,7 @@ var fluid = fluid || require("infusion"),
 
         for (i = 1; i < tokenized.length; i++) {
             if (valForSeg === null || valForSeg === undefined) {
-                flock.pathParseError(path, tokenized[i - 1]);
+                flock.pathParseError(root, path, tokenized[i - 1]);
             }
             valForSeg = valForSeg[tokenized[i]];
         }
