@@ -217,6 +217,14 @@ var fluid = fluid || require("infusion"),
             // Override audio settings based on the capabilities of the environment.
             // These values are "pulled" by the enviro in a hacky sort of way.
             settings.rates.audio = that.context.sampleRate;
+
+            // TODO: This reduces the user's ability to easily control how many
+            // channels of their device are actually used. They can control
+            // how many non-silent channels there are by using the "expand"
+            // input of flock.ugen.output, but there will still be some extra
+            // overhead. The best way to solve this is to not override settings.chans,
+            // but to instead offer some kind of controls in the playground for adjusting this,
+            // or by providing some kind of "max channels" flag as a parameter to chans.
             settings.chans = that.context.destination.maxChannelCount;
 
             // Create the script processor and setup the audio context's

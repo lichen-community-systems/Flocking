@@ -19966,7 +19966,7 @@ var fluid = fluid || require("infusion"),
             },
             blockSize: 64,
             chans: 2,
-            numBuses: 4,
+            numBuses: 8,
             // This buffer size determines the overall latency of Flocking's audio output.
             // TODO: Replace this with IoC awesomeness.
             bufferSize: flock.defaultBufferSizeForPlatform(),
@@ -20060,6 +20060,7 @@ var fluid = fluid || require("infusion"),
         // TODO: Model-based (with ChangeApplier) sharing of audioSettings
         rates.audio = that.audioStrategy.options.audioSettings.rates.audio;
         rates.control = rates.audio / audioSettings.blockSize;
+        audioSettings.chans = that.audioStrategy.options.audioSettings.chans;
     };
 
     flock.enviro.createAudioBuffers = function (numBufs, blockSize) {
@@ -23332,10 +23333,29 @@ var fluid = fluid || require("infusion"),
             }
 
             that.context = flock.enviro.webAudio.audioContext;
+            // Override audio settings based on the capabilities of the environment.
+            // These values are "pulled" by the enviro in a hacky sort of way.
             settings.rates.audio = that.context.sampleRate;
+
+            // TODO: This reduces the user's ability to easily control how many
+            // channels of their device are actually used. They can control
+            // how many non-silent channels there are by using the "expand"
+            // input of flock.ugen.output, but there will still be some extra
+            // overhead. The best way to solve this is to not override settings.chans,
+            // but to instead offer some kind of controls in the playground for adjusting this,
+            // or by providing some kind of "max channels" flag as a parameter to chans.
+            settings.chans = that.context.destination.maxChannelCount;
+
+            // Create the script processor and setup the audio context's
+            // destination to the appropriate number of channels.
             scriptNodeConstructorName = that.context.createScriptProcessor ?
                 "createScriptProcessor" : "createJavaScriptNode";
-            that.jsNode = that.context[scriptNodeConstructorName](settings.bufferSize);
+            that.context.destination.channelCount = settings.chans;
+            that.jsNode = that.context[scriptNodeConstructorName](settings.bufferSize,
+                settings.chans, settings.chans);
+            that.jsNode.channelCountMode = "explicit";
+            that.jsNode.channelCount = settings.chans;
+
             that.insertOutputNode(that.jsNode);
             that.jsNode.onaudioprocess = that.writeSamples;
 
