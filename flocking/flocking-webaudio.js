@@ -214,10 +214,21 @@ var fluid = fluid || require("infusion"),
             }
 
             that.context = flock.enviro.webAudio.audioContext;
+            // Override audio settings based on the capabilities of the environment.
+            // These values are "pulled" by the enviro in a hacky sort of way.
             settings.rates.audio = that.context.sampleRate;
+            settings.chans = that.context.destination.maxChannelCount;
+
+            // Create the script processor and setup the audio context's
+            // destination to the appropriate number of channels.
             scriptNodeConstructorName = that.context.createScriptProcessor ?
                 "createScriptProcessor" : "createJavaScriptNode";
-            that.jsNode = that.context[scriptNodeConstructorName](settings.bufferSize);
+            that.context.destination.channelCount = settings.chans;
+            that.jsNode = that.context[scriptNodeConstructorName](settings.bufferSize,
+                settings.chans, settings.chans);
+            that.jsNode.channelCountMode = "explicit";
+            that.jsNode.channelCount = settings.chans;
+
             that.insertOutputNode(that.jsNode);
             that.jsNode.onaudioprocess = that.writeSamples;
 
