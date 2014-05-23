@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (May 18, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (May 23, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -19650,7 +19650,7 @@ var fluid = fluid || require("infusion"),
      */
     flock.interpolate.cubic = function (idx, table) {
         var len = table.length,
-            intPortion = (idx | 0),
+            intPortion = Math.floor(idx),
             i0 = intPortion % len,
             frac = idx - intPortion,
             im1 = i0 > 0 ? i0 - 1 : len - 1,
@@ -19664,9 +19664,10 @@ var fluid = fluid || require("infusion"),
             v = x0 - x1,
             w = c + v,
             a = w + v + (x2 - x0) * 0.5,
-            bNeg = w + a;
+            bNeg = w + a,
+            val = (((a * frac) - bNeg) * frac + c) * frac + x0;
 
-        return (((a * frac) - bNeg) * frac + c) * frac + x0;
+        return val;
     };
 
 
