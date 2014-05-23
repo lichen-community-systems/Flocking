@@ -19,7 +19,7 @@
         "index.html",
         "Gruntfile.js",
         "MIT-LICENSE.txt",
-        "package.json",
+        "package.json"
     ],
     "dependencies": {},
     "devDependencies": {}
