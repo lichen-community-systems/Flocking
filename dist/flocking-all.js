@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (May 23, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (May 28, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -23321,8 +23321,7 @@ var fluid = fluid || require("infusion"),
 
         that.init = function () {
             var m = that.model,
-                settings = that.options.audioSettings,
-                scriptNodeConstructorName;
+                settings = that.options.audioSettings;
 
             m.krPeriods = settings.bufferSize / settings.blockSize;
 
@@ -23344,18 +23343,16 @@ var fluid = fluid || require("infusion"),
             // overhead. The best way to solve this is to not override settings.chans,
             // but to instead offer some kind of controls in the playground for adjusting this,
             // or by providing some kind of "max channels" flag as a parameter to chans.
-            settings.chans = that.context.destination.maxChannelCount;
 
-            // Create the script processor and setup the audio context's
-            // destination to the appropriate number of channels.
-            scriptNodeConstructorName = that.context.createScriptProcessor ?
-                "createScriptProcessor" : "createJavaScriptNode";
-            that.context.destination.channelCount = settings.chans;
-            that.jsNode = that.context[scriptNodeConstructorName](settings.bufferSize,
-                settings.chans, settings.chans);
-            that.jsNode.channelCountMode = "explicit";
-            that.jsNode.channelCount = settings.chans;
+            if (!flock.platform.isIOS) {
+                // TODO: Fix this temporary workaround for the fact that iOS won't
+                // allow us to access the destination node until the user has
+                // touched something.
+                settings.chans = that.context.destination.maxChannelCount;
+                that.context.destination.channelCount = settings.chans;
+            }
 
+            that.jsNode = flock.enviro.webAudio.createScriptNode(that.context, settings);
             that.insertOutputNode(that.jsNode);
             that.jsNode.onaudioprocess = that.writeSamples;
 
@@ -23363,6 +23360,19 @@ var fluid = fluid || require("infusion"),
         };
 
         that.init();
+    };
+
+    flock.enviro.webAudio.createScriptNode = function (context, settings) {
+        // Create the script processor and setup the audio context's
+        // destination to the appropriate number of channels.
+        var creatorName = context.createScriptProcessor ?
+            "createScriptProcessor" : "createJavaScriptNode";
+
+        var jsNode = context[creatorName](settings.bufferSize, settings.chans, settings.chans);
+        jsNode.channelCountMode = "explicit";
+        jsNode.channelCount = settings.chans;
+
+        return jsNode;
     };
 
     flock.enviro.webAudio.removeNode = function (node) {
