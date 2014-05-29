@@ -403,6 +403,48 @@ var fluid = fluid || require("infusion"),
     };
 
 
+    flock.expand = {};
+
+    // TODO: Unit tests.
+    flock.expand.overlay = function (expandSpec) {
+        if (!expandSpec) {
+            return;
+        }
+
+        var ugenDefs = [];
+
+        for (var inputPath in expandSpec.expandInputs) {
+            var expansions = expandSpec.expandInputs[inputPath];
+            if (expansions.length > ugenDefs.length) {
+                flock.expand.overlay.extend(ugenDefs, expandSpec.ugenDef, expansions.length);
+            }
+
+            flock.expand.overlay.merge(ugenDefs, inputPath, expansions);
+        }
+
+        return ugenDefs;
+    };
+
+    flock.expand.overlay.extend = function (arr, protoObj, length) {
+        var numExtra = length - arr.length;
+
+        for (var i = 0; i < numExtra; i++) {
+            arr.push(fluid.copy(protoObj));
+        }
+
+        return arr;
+    };
+
+    flock.expand.overlay.merge = function (protos, path, extensions) {
+        for (var i = 0; i < extensions.length; i++) {
+            var obj = protos[i],
+                extension = extensions[i];
+            flock.set(obj, path, extension);
+        }
+
+        return protos;
+    };
+
     flock.pathParseError = function (root, path, token) {
         throw new Error("Error parsing path: " + path + ". Segment '" + token +
             "' could not be resolved. Root object was: " + fluid.prettyPrintJSON(root));

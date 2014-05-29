@@ -225,7 +225,7 @@ var fluid = fluid || require("infusion"),
             // but to instead offer some kind of controls in the playground for adjusting this,
             // or by providing some kind of "max channels" flag as a parameter to chans.
 
-            if (!flock.platform.isIOS) {
+            if (!flock.platform.browser.safari) {
                 // TODO: Fix this temporary workaround for the fact that iOS won't
                 // allow us to access the destination node until the user has
                 // touched something.
