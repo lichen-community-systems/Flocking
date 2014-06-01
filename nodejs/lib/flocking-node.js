@@ -13,13 +13,11 @@
 var fs = require("fs"),
     url = require("url"),
     fluid = fluid || require("infusion"),
-    flock = fluid.registerNamespace("flock");
+    flock = fluid.registerNamespace("flock"),
+    macaudio = require("../../node_modules/macaudio/build/Release/macaudio");
 
 (function () {
     "use strict";
-
-    var Speaker = require("speaker");
-    var Readable = require("stream").Readable;
 
     /*********************************************************
      * Override default clocks with same-thread alternatives *
@@ -102,92 +100,77 @@ var fs = require("fs"),
 
     flock.enviro.nodejs.finalInit = function (that) {
         that.startGeneratingSamples = function () {
-            that.outputStream._read = that.writeSamples;
-            that.outputStream.pipe(that.speaker);
+            that.node.start();
         };
 
-        that.pushSamples = function () {
-            var audioSettings = that.options.audioSettings,
-                m = that.model,
+        that.writeSamples = function (e) {
+            var m = that.model,
+                hasInput = m.hasInput,
+                krPeriods = m.krPeriods,
+                evaluator = that.nodeEvaluator,
+                buses = evaluator.buses,
+                settings = that.options.audioSettings,
+                blockSize = settings.blockSize,
                 playState = m.playState,
-                blockSize = audioSettings.blockSize,
-                chans = audioSettings.chans,
-                more = true,
-                out;
+                chans = settings.chans,
+                chan,
+                i,
+                samp;
 
-            if (that.nodeEvaluator.nodes.length < 1) {
-                // If there are no nodes providing samples, write out silence.
-                while (more) {
-                    more = that.outputStream.push(that.silence);
+            // If there are no nodes providing samples, write out silence.
+            if (evaluator.nodes.length < 1) {
+                for (chan = 0; chan < chans; chan++) {
+                    flock.generate.silence(e.getChannelData(chan));
                 }
-            } else {
-                while (more) {
-                    that.nodeEvaluator.clearBuses();
-                    that.nodeEvaluator.gen();
-                    out = new Buffer(m.numBlockBytes);
+                return;
+            }
 
-                    // Interleave each output channel.
-                    for (var chan = 0; chan < chans; chan++) {
-                        var bus = that.nodeEvaluator.buses[chan];
-                        for (var sampIdx = 0; sampIdx < blockSize; sampIdx++) {
-                            var frameIdx = sampIdx * chans;
-                            out.writeFloatLE(bus[sampIdx], (frameIdx + chan) * 4);
-                        }
+            for (i = 0; i < krPeriods; i++) {
+                var offset = i * blockSize;
+
+                evaluator.clearBuses();
+                evaluator.gen();
+
+                // Output the environment's signal
+                // to this node's output channels.
+                for (chan = 0; chan < chans; chan++) {
+                    var sourceBuf = buses[chan],
+                        outBuf = e.getChannelData(chan);
+
+                    // And output each sample.
+                    for (samp = 0; samp < blockSize; samp++) {
+                        outBuf[samp + offset] = sourceBuf[samp];
                     }
-
-                    more = that.outputStream.push(out);
                 }
             }
 
-            playState.written += audioSettings.bufferSize * chans;
+            playState.written += settings.bufferSize * chans;
             if (playState.written >= playState.total) {
                 that.stop();
             }
         };
 
-        that.writeSamples = function (numBytes) {
-            setTimeout(that.pushSamples, that.model.pushRate);
-        };
-
         that.stopGeneratingSamples = function () {
-            that.outputStream.unpipe(that.speaker);
-            that.outputStream._read = undefined;
+            that.node.stop();
         };
 
         // TODO: Implement audio input on Node.js.
         that.startReadingAudioInput = that.stopReadingAudioInput = function () {
             throw new Error("Audio input is not currently supported on Node.js");
         };
-        
+
         that.init = function () {
-            var audioSettings = that.options.audioSettings,
-                rates = audioSettings.rates,
-                bufSize = audioSettings.bufferSize,
+            var settings = that.options.audioSettings,
+                rates = settings.rates,
+                bufSize = 1024,//settings.bufferSize,
                 m = that.model;
 
-            m.numBlockBytes = audioSettings.blockSize * audioSettings.chans * 4; // Flocking uses Float32s, hence * 4
-            m.pushRate = (bufSize / rates.audio) * 1000;
-            that.speaker = new Speaker();
-            that.outputStream = flock.enviro.nodejs.setupOutputStream(audioSettings);
-            that.silence = flock.generate.silence(new Buffer(m.numBlockBytes));
+            m.krPeriods = bufSize / settings.blockSize;
+            that.node = new macaudio.JavaScriptOutputNode(bufSize);
+            that.node.onaudioprocess = that.writeSamples;
         };
 
         that.init();
-    };
-
-    flock.enviro.nodejs.setupOutputStream = function (audioSettings) {
-        var outputStream = new Readable({
-            highWaterMark: audioSettings.bufferSize * audioSettings.chans * 4
-        });
-
-        outputStream.bitDepth = 32;
-        outputStream.float = true
-        outputStream.signed = true;
-        outputStream.channels = audioSettings.chans;
-        outputStream.sampleRate = audioSettings.rates.audio;
-        outputStream.samplesPerFrame = audioSettings.bufferSize;
-
-        return outputStream;
     };
 
     fluid.demands("flock.enviro.audioStrategy", "flock.platform.nodejs", {

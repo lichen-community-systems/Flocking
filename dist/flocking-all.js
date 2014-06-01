@@ -19378,7 +19378,7 @@ var fluid = fluid || require("infusion"),
             return 16384;
         }
 
-        if (!flock.platform.isWebAudio || flock.platform.isMobile) {
+        if (flock.platform.isMobile) {
             return 8192;
         }
 
