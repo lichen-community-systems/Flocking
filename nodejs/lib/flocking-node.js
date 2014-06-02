@@ -106,47 +106,47 @@ var fs = require("fs"),
             that.outputStream.pipe(that.speaker);
         };
 
-        that.pushSamples = function () {
-            var audioSettings = that.options.audioSettings,
+        that.writeSamples = function (numBytes) {
+            var settings = that.options.audioSettings,
                 m = that.model,
                 playState = m.playState,
-                blockSize = audioSettings.blockSize,
-                chans = audioSettings.chans,
-                more = true,
-                out;
+                bytesPerSample = m.bytesPerSample,
+                blockSize = settings.blockSize,
+                chans = settings.chans,
+                krPeriods = numBytes / m.bytesPerBlock,
+                evaluator = that.nodeEvaluator,
+                outputStream = that.outputStream,
+                out = new Buffer(numBytes);
 
-            if (that.nodeEvaluator.nodes.length < 1) {
+            if (numBytes < m.bytesPerBlock) {
+                return;
+            }
+
+            if (evaluator.nodes.length < 1) {
                 // If there are no nodes providing samples, write out silence.
-                while (more) {
-                    more = that.outputStream.push(that.silence);
-                }
+                flock.generate.silence(out);
             } else {
-                while (more) {
-                    that.nodeEvaluator.clearBuses();
-                    that.nodeEvaluator.gen();
-                    out = new Buffer(m.numBlockBytes);
+                for (var i = 0, offset = 0; i < krPeriods; i++, offset += m.bytesPerBlock) {
+                    evaluator.clearBuses();
+                    evaluator.gen();
 
                     // Interleave each output channel.
                     for (var chan = 0; chan < chans; chan++) {
-                        var bus = that.nodeEvaluator.buses[chan];
+                        var bus = evaluator.buses[chan];
                         for (var sampIdx = 0; sampIdx < blockSize; sampIdx++) {
-                            var frameIdx = sampIdx * chans;
-                            out.writeFloatLE(bus[sampIdx], (frameIdx + chan) * 4);
+                            var frameIdx = (sampIdx * chans + chan) * bytesPerSample;
+                            out.writeFloatLE(bus[sampIdx], offset + frameIdx);
                         }
                     }
-
-                    more = that.outputStream.push(out);
                 }
             }
 
-            playState.written += audioSettings.bufferSize * chans;
+            outputStream.push(out);
+
+            playState.written += settings.bufferSize * chans;
             if (playState.written >= playState.total) {
                 that.stop();
             }
-        };
-
-        that.writeSamples = function (numBytes) {
-            setTimeout(that.pushSamples, that.model.pushRate);
         };
 
         that.stopGeneratingSamples = function () {
@@ -158,34 +158,41 @@ var fs = require("fs"),
         that.startReadingAudioInput = that.stopReadingAudioInput = function () {
             throw new Error("Audio input is not currently supported on Node.js");
         };
-        
+
         that.init = function () {
-            var audioSettings = that.options.audioSettings,
-                rates = audioSettings.rates,
-                bufSize = audioSettings.bufferSize,
+            var settings = that.options.audioSettings,
+                rates = settings.rates,
+                bufSize = settings.bufferSize,
                 m = that.model;
 
-            m.numBlockBytes = audioSettings.blockSize * audioSettings.chans * 4; // Flocking uses Float32s, hence * 4
+            m.bytesPerSample = 4;// Flocking uses Float32s, hence 4 bytes.
+            m.bytesPerBlock = settings.blockSize * settings.chans * m.bytesPerSample;
             m.pushRate = (bufSize / rates.audio) * 1000;
-            that.speaker = new Speaker();
-            that.outputStream = flock.enviro.nodejs.setupOutputStream(audioSettings);
-            that.silence = flock.generate.silence(new Buffer(m.numBlockBytes));
+            that.speaker = new Speaker({
+                sampleRate: settings.rates.audio,
+                float: true,
+                bitDepth: 32,
+                signed: true,
+                endianness: "LE",
+                samplesPerFrame: settings.blockSize
+            });
+            that.outputStream = flock.enviro.nodejs.setupOutputStream(settings);
         };
 
         that.init();
     };
 
-    flock.enviro.nodejs.setupOutputStream = function (audioSettings) {
+    flock.enviro.nodejs.setupOutputStream = function (settings) {
         var outputStream = new Readable({
-            highWaterMark: audioSettings.bufferSize * audioSettings.chans * 4
+            highWaterMark: settings.bufferSize * settings.chans * 4
         });
 
         outputStream.bitDepth = 32;
         outputStream.float = true
         outputStream.signed = true;
-        outputStream.channels = audioSettings.chans;
-        outputStream.sampleRate = audioSettings.rates.audio;
-        outputStream.samplesPerFrame = audioSettings.bufferSize;
+        outputStream.channels = settings.chans;
+        outputStream.sampleRate = settings.rates.audio;
+        outputStream.samplesPerFrame = settings.bufferSize;
 
         return outputStream;
     };

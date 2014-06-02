@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (June 1, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (June 2, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -19378,7 +19378,7 @@ var fluid = fluid || require("infusion"),
             return 16384;
         }
 
-        if (!flock.platform.isWebAudio || flock.platform.isMobile) {
+        if (flock.platform.isMobile) {
             return 8192;
         }
 
