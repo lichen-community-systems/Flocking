@@ -14,7 +14,7 @@ var fs = require("fs"),
     url = require("url"),
     fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock"),
-    macaudio = require("../../node_modules/macaudio/build/Release/macaudio");
+    macaudio = require("macaudio");
 
 (function () {
     "use strict";
@@ -162,7 +162,7 @@ var fs = require("fs"),
         that.init = function () {
             var settings = that.options.audioSettings,
                 rates = settings.rates,
-                bufSize = 1024,//settings.bufferSize,
+                bufSize = settings.bufferSize,
                 m = that.model;
 
             m.krPeriods = bufSize / settings.blockSize;
