@@ -18,8 +18,13 @@ var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
 
 (function () {
+
     "use strict";
 
+    /*
+     * TODO:
+     *  - refreshable ports list
+     */
     fluid.defaults("flock.midi", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
 
@@ -32,6 +37,7 @@ var fluid = fluid || require("infusion"),
             }
         },
 
+        // TODO: Replace this with something simpler?
         dynamicComponents: {
             system: {
                 createOnEvent: "onReady",
@@ -82,71 +88,10 @@ var fluid = fluid || require("infusion"),
         return ports;
     };
 
-    flock.midi.findPorts = function (ports, portSpec) {
-        var portFinder = flock.midi.findPorts.portFinder(portSpec),
-            matches = portFinder(ports);
-
-        return matches;
-    };
-
-    flock.midi.findPorts.portFinder = function (portSpec) {
-        if (portSpec.id) {
-            return function (ports) {
-                ports.find(flock.midi.findPorts.idMatch(portSpec.id));
-            };
-        }
-
-        var matcher = portSpec.manufacturer && portSpec.name ?
-            flock.midi.findPorts.bothMatch(portSpec.manufacturer, portSpec.name) :
-            portSpec.manufacturer ? flock.midi.findPorts.manufacturerMatch(portSpec.manufacturer) :
-            flock.midi.findPorts.nameMatch(portSpec.name);
-
-        return function (ports) {
-            return ports.filter(matcher);
-        };
-    };
-
-    flock.midi.findPorts.idMatch = function (id) {
-        return function (port) {
-            return port.id === id;
-        };
-    };
-
-    flock.midi.findPorts.bothMatch = function (manu, name) {
-        return function (port) {
-            return port.manufacturer.toLowerCase() === manu.toLowerCase() &&
-                port.name.toLowerCase() === name.toLowerCase();
-        };
-    };
-
-    flock.midi.findPorts.manufacturerMatch = function (manu) {
-        return function (port) {
-            return port.manufacturer.toLowerCase() === manu.toLowerCase();
-        };
-    };
-
-    flock.midi.findPorts.nameMatch = function (name) {
-        return function (port) {
-            return port.name.toLowerCase() === name.toLowerCase();
-        };
-    };
-
-
     /*
-    window.midiConnection = flock.midi.connection({
-        ports: {
-            manufacturer: "korg inc."
-        },
-
-        listeners: {
-            onMessage: {
-                "this": "console",
-                method: "log"
-            }
-        }
-    });
-    */
-
+     * TODO:
+     *  - handle port disconnections (destroy the whole connection, or just disable listeners?)
+     */
     fluid.defaults("flock.midi.connection", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
 
@@ -199,6 +144,65 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+    flock.midi.findPorts = function (ports, portSpecs) {
+        portSpecs = fluid.makeArray(portSpecs);
+
+        var matches = [];
+
+        fluid.each(portSpecs, function (portSpec) {
+            var portFinder = flock.midi.findPorts.portFinder(portSpec),
+                matchesForSpec = portFinder(ports);
+
+            matches = matches.concat(matchesForSpec);
+        });
+
+        return matches;
+    };
+
+    flock.midi.findPorts.portFinder = function (portSpec) {
+        if (portSpec.id) {
+            return function (ports) {
+                ports.find(flock.midi.findPorts.idMatch(portSpec.id));
+            };
+        }
+
+        var matcher = portSpec.manufacturer && portSpec.name ?
+            flock.midi.findPorts.bothMatch(portSpec.manufacturer, portSpec.name) :
+            portSpec.manufacturer ? flock.midi.findPorts.manufacturerMatch(portSpec.manufacturer) :
+            flock.midi.findPorts.nameMatch(portSpec.name);
+
+        return function (ports) {
+            return ports.filter(matcher);
+        };
+    };
+
+    flock.midi.findPorts.idMatch = function (id) {
+        return function (port) {
+            return port.id === id;
+        };
+    };
+
+    flock.midi.findPorts.bothMatch = function (manu, name) {
+        return function (port) {
+            var manuMatches = port.manufacturer.toLowerCase().match(manu.toLowerCase()) !== null,
+                nameMatches = port.name.toLowerCase().match(name.toLowerCase()) !== null;
+
+            return manuMatches && nameMatches;
+        };
+    };
+
+    flock.midi.findPorts.manufacturerMatch = function (manu) {
+        return function (port) {
+            return port.manufacturer.toLowerCase().match(manu.toLowerCase()) !== null;
+        };
+    };
+
+    flock.midi.findPorts.nameMatch = function (name) {
+        return function (port) {
+            return port.name.toLowerCase().match(name.toLowerCase()) !== null;
+        };
+    };
+
     flock.midi.listenToPort = function (port, onRawMIDI) {
         var ports = fluid.makeArray(port);
         fluid.each(ports, function (port) {
@@ -221,13 +225,21 @@ var fluid = fluid || require("infusion"),
         var input = flock.midi.findPorts(ports.inputs, portSpec.input),
             output = flock.midi.findPorts(ports.outputs, portSpec.output);
 
-        if (input) {
+        if (input && input.length > 0) {
             flock.midi.listenToPort(input, onRawMIDI);
+        } else {
+            flock.midi.bindConnection.logNoPorts("input", portSpec);
         }
 
-        if (output) {
+        if (output && output.length > 0) {
             flock.midi.bindPortSender(output, onSendMessage);
+        } else {
+            flock.midi.bindConnection.logNoPorts("output", portSpec);
         }
+    };
+
+    flock.midi.bindConnection.logNoPorts = function (type, portSpec) {
+        fluid.log("No matching " + type + " ports were found for port specification: ", portSpec[type]);
     };
 
     flock.midi.expandPortSpec = function (portSpec) {
@@ -327,15 +339,24 @@ var fluid = fluid || require("infusion"),
             };
         }
 
-        var notes = [];
+        return flock.midi.read.runningStatus(type, chan, data);
+    };
 
-        for (var i = 3; i < data.length; i += 3) {
-            var chunk = data.subarray(i, i + 3);
-            var note = flock.midi.noteOn(chan, chunk);
-            notes.push(note);
+    flock.midi.read.runningStatus = function (type, chan, data) {
+        var msgs = [],
+            start = 0,
+            end = 3,
+            len = data.length + 1;
+
+        while (end < len) {
+            var chunk = data.subarray(start, end);
+            var msg = flock.midi.read[type](chan, chunk);
+            msgs.push(msg);
+            start += 3;
+            end += 3;
         }
 
-        return notes;
+        return msgs;
     };
 
     flock.midi.read.noteOn = function (chan, data) {
@@ -381,7 +402,6 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.midi.read.pitchbend = function (chan, data) {
-        // TODO: Implement this properly
         return {
             type: "pitchbend",
             chan: chan,
