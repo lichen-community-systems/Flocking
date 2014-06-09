@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (June 2, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (June 9, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -19587,8 +19587,8 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.midiFreq = function (midi, a4Freq, a4NoteNum, notesPerOctave) {
-        a4Freq = a4Freq === "undefined" ? 440 : a4Freq;
-        a4NoteNum = a4NoteNum === "undefined" ? 69 : a4NoteNum;
+        a4Freq = a4Freq === undefined ? 440 : a4Freq;
+        a4NoteNum = a4NoteNum === undefined ? 69 : a4NoteNum;
         notesPerOctave = notesPerOctave || 12;
 
         if (typeof midi === "string") {

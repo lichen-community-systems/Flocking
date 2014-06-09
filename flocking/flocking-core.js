@@ -319,8 +319,8 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.midiFreq = function (midi, a4Freq, a4NoteNum, notesPerOctave) {
-        a4Freq = a4Freq === "undefined" ? 440 : a4Freq;
-        a4NoteNum = a4NoteNum === "undefined" ? 69 : a4NoteNum;
+        a4Freq = a4Freq === undefined ? 440 : a4Freq;
+        a4NoteNum = a4NoteNum === undefined ? 69 : a4NoteNum;
         notesPerOctave = notesPerOctave || 12;
 
         if (typeof midi === "string") {
