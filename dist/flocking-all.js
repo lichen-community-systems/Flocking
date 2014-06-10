@@ -28156,7 +28156,8 @@ var fluid = fluid || require("infusion"),
                     func: "{that}.refreshPorts"
                 },
                 {
-                    func: "{that}.events.onReady.fire"
+                    func: "{that}.events.onReady.fire",
+                    args: "{that}.ports"
                 }
             ]
         }
@@ -28180,12 +28181,31 @@ var fluid = fluid || require("infusion"),
         gradeNames: ["fluid.eventedComponent", "autoInit"],
 
         sysex: false,
+        openImmediately: false,
 
         ports: {},
 
         invokers: {
             send: {
                 func: "{that}.events.onSendMessage.fire"
+            },
+
+            open: {
+                funcName: "flock.midi.bindConnection",
+                args: [
+                    "{system}.ports",
+                    "{that}.options.ports",
+                    "{that}.events.rawMIDI.fire",
+                    "{that}.events.onSendMessage"
+                ]
+            },
+
+            close: {
+                funcName: "flock.midi.closeConnection",
+                args: [
+                    "{system}.ports",
+                    "{that}.events.rawMIDI.fire"
+                ]
             }
         },
 
@@ -28197,8 +28217,7 @@ var fluid = fluid || require("infusion"),
 
         events: {
             onReady: {
-                event: "{system}.events.onReady",
-                args: "{system}.ports"
+                event: "{system}.events.onReady"
             },
             onError: null,
             onSendMessage: null,
@@ -28216,13 +28235,8 @@ var fluid = fluid || require("infusion"),
 
         listeners: {
             onReady: {
-                funcName: "flock.midi.bindConnection",
-                args: [
-                    "{arguments}.0",
-                    "{that}.options.ports",
-                    "{that}.events.rawMIDI.fire",
-                    "{that}.events.onSendMessage"
-                ]
+                funcName: "flock.midi.connection.autoOpen",
+                args: ["{that}.options.openImmediately", "{that}.open"]
             },
 
             rawMIDI: {
@@ -28231,6 +28245,12 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
+
+    flock.midi.connection.autoOpen = function (openImmediately, openFn) {
+        if (openImmediately) {
+            openFn();
+        }
+    };
 
     flock.midi.findPorts = function (ports, portSpecs) {
         portSpecs = fluid.makeArray(portSpecs);
@@ -28291,12 +28311,24 @@ var fluid = fluid || require("infusion"),
         };
     };
 
-    flock.midi.listenToPort = function (port, onRawMIDI) {
+    flock.midi.forEachInputPort = function (port, fn) {
         var ports = fluid.makeArray(port);
         fluid.each(ports, function (port) {
             if (port.type === "input") {
-                port.onmidimessage = onRawMIDI;
+                fn(port);
             }
+        });
+    };
+
+    flock.midi.listenToPort = function (port, onRawMIDI) {
+        flock.midi.forEachInputPort(port, function (port) {
+            port.addEventListener("midimessage", onRawMIDI, false);
+        });
+    };
+
+    flock.midi.stopListeningToPort = function (port, onRawMIDI) {
+        flock.midi.forEachInputPort(port, function (port) {
+            port.removeEventListener("midimessage", onRawMIDI, false);
         });
     };
 
@@ -28324,6 +28356,12 @@ var fluid = fluid || require("infusion"),
         } else {
             flock.midi.bindConnection.logNoPorts("output", portSpec);
         }
+    };
+
+    flock.midi.closeConnection = function (ports, onRawMIDI) {
+        flock.midi.stopListeningToPort(ports.inputs, onRawMIDI);
+        // TODO: Come up with some scheme for unbinding port senders
+        // since they use Function.bind().
     };
 
     flock.midi.bindConnection.logNoPorts = function (type, portSpec) {
