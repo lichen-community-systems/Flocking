@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (June 9, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (June 10, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -28191,20 +28191,15 @@ var fluid = fluid || require("infusion"),
 
         components: {
             system: {
-                type: "flock.midi.system",
-                options: {
-                    listeners: {
-                        onReady: {
-                            func: "{connection}.events.onReady.fire",
-                            args: ["{that}.ports"]
-                        }
-                    }
-                }
+                type: "flock.midi.system"
             }
         },
 
         events: {
-            onReady: null,
+            onReady: {
+                event: "{system}.events.onReady",
+                args: "{system}.ports"
+            },
             onError: null,
             onSendMessage: null,
 
@@ -28226,7 +28221,7 @@ var fluid = fluid || require("infusion"),
                     "{arguments}.0",
                     "{that}.options.ports",
                     "{that}.events.rawMIDI.fire",
-                    "{that}.events.onSendMessage.fire"
+                    "{that}.events.onSendMessage"
                 ]
             },
 

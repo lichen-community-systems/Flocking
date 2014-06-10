@@ -131,20 +131,15 @@ var fluid = fluid || require("infusion"),
 
         components: {
             system: {
-                type: "flock.midi.system",
-                options: {
-                    listeners: {
-                        onReady: {
-                            func: "{connection}.events.onReady.fire",
-                            args: ["{that}.ports"]
-                        }
-                    }
-                }
+                type: "flock.midi.system"
             }
         },
 
         events: {
-            onReady: null,
+            onReady: {
+                event: "{system}.events.onReady",
+                args: "{system}.ports"
+            },
             onError: null,
             onSendMessage: null,
 
@@ -166,7 +161,7 @@ var fluid = fluid || require("infusion"),
                     "{arguments}.0",
                     "{that}.options.ports",
                     "{that}.events.rawMIDI.fire",
-                    "{that}.events.onSendMessage.fire"
+                    "{that}.events.onSendMessage"
                 ]
             },
 
