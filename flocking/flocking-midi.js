@@ -21,60 +21,17 @@ var fluid = fluid || require("infusion"),
 
     "use strict";
 
-    /*
-     * TODO:
-     *  - refreshable ports list
-     */
-    fluid.defaults("flock.midi", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+    fluid.registerNamespace("flock.midi");
 
-        sysex: false,
-
-        invokers: {
-            requestAccess: {
-                funcName: "flock.midi.requestAccess",
-                args: ["{that}.options.sysex", "{that}.events.onReady.fire", "{that}.events.onError.fire"]
-            }
-        },
-
-        // TODO: Replace this with something simpler?
-        dynamicComponents: {
-            system: {
-                createOnEvent: "onReady",
-                type: "fluid.eventedComponent",
-                options: {
-                    access: "{arguments}.0",
-                    ports: {
-                        expander: {
-                            funcName: "flock.midi.ports",
-                            args: ["{arguments}.0"]
-                        }
-                    }
-                }
-            }
-        },
-
-        events: {
-            onReady: null,
-            onError: null
-        },
-
-        listeners: {
-            onCreate: {
-                func: "{that}.requestAccess"
-            }
-        }
-    });
-
-    flock.midi.requestAccess = function (sysex, onReady, onError) {
+    flock.midi.requestAccess = function (sysex, onAccessGranted, onError) {
         var p = navigator.requestMIDIAccess({
             sysex: sysex
         });
 
-        p.then(onReady, onError);
+        p.then(onAccessGranted, onError);
     };
 
-    flock.midi.ports = function (access) {
+    flock.midi.getPorts = function (access) {
         var ports = {};
 
         if (access.inputs) {
@@ -88,12 +45,81 @@ var fluid = fluid || require("infusion"),
         return ports;
     };
 
-    /*
-     * TODO:
-     *  - handle port disconnections (destroy the whole connection, or just disable listeners?)
+    /**
+     * Represents the overall Web MIDI system,
+     * including references to all the available MIDI ports
+     * and the MIDIAccess object.
      */
+    fluid.defaults("flock.midi.system", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        sysex: true,
+
+        members: {
+            access: undefined,
+            ports: undefined
+        },
+
+        invokers: {
+            requestAccess: {
+                funcName: "flock.midi.requestAccess",
+                args: [
+                    "{that}.options.sysex",
+                    "{that}.events.onAccessGranted.fire",
+                    "{that}.events.onAccessError.fire"
+                ]
+            },
+
+            refreshPorts: {
+                funcName: "flock.midi.system.refreshPorts",
+                args: ["{that}", "{that}.access"]
+            }
+        },
+
+        events: {
+            onAccessGranted: null,
+            onAccessError: null,
+            onReady: null
+        },
+
+        listeners: {
+            onCreate: {
+                func: "{that}.requestAccess"
+            },
+
+            onAccessGranted: [
+                {
+                    funcName: "flock.midi.system.setAccess",
+                    args: ["{that}", "{arguments}.0"]
+                },
+                {
+                    func: "{that}.refreshPorts"
+                },
+                {
+                    func: "{that}.events.onReady.fire"
+                }
+            ]
+        }
+    });
+
+    flock.midi.system.setAccess = function (that, access) {
+        that.access = access;
+    };
+
+    flock.midi.system.refreshPorts = function (that, access) {
+        that.ports = flock.midi.getPorts(access);
+    };
+
+
+    /*
+     * A MIDI Connection represents a connection between an arbitrary set of
+     * input and output ports across one or more MIDI devices connected to the system.
+     */
+    // TODO: Handle port disconnection events.
     fluid.defaults("flock.midi.connection", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        sysex: false,
 
         ports: {},
 
@@ -104,18 +130,13 @@ var fluid = fluid || require("infusion"),
         },
 
         components: {
-            midi: {
-                type: "flock.midi",
+            system: {
+                type: "flock.midi.system",
                 options: {
                     listeners: {
                         onReady: {
-                            funcName: "flock.midi.bindConnection",
-                            args: [
-                                "{system}.options.ports",
-                                "{connection}.options.ports",
-                                "{connection}.events.onRawMIDI.fire",
-                                "{connection}.events.onSendMessage.fire"
-                            ]
+                            func: "{connection}.events.onReady.fire",
+                            args: ["{that}.ports"]
                         }
                     }
                 }
@@ -123,10 +144,12 @@ var fluid = fluid || require("infusion"),
         },
 
         events: {
-            onRawMIDI: null,
-            onMessage: null,
+            onReady: null,
+            onError: null,
             onSendMessage: null,
 
+            rawMIDI: null,
+            message: null,
             note: null,
             noteOn: null,
             noteOff: null,
@@ -137,7 +160,17 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onRawMIDI: {
+            onReady: {
+                funcName: "flock.midi.bindConnection",
+                args: [
+                    "{arguments}.0",
+                    "{that}.options.ports",
+                    "{that}.events.rawMIDI.fire",
+                    "{that}.events.onSendMessage.fire"
+                ]
+            },
+
+            rawMIDI: {
                 funcName: "flock.midi.fireEvent",
                 args: ["{arguments}.0", "{that}.events"]
             }
@@ -277,7 +310,7 @@ var fluid = fluid || require("infusion"),
         var model = flock.midi.read(midiEvent.data),
             eventForType = model.type ? events[model.type] : undefined;
 
-        events.onMessage.fire(model);
+        events.message.fire(model);
 
         // TODO: Remove this special-casing of noteOn/noteOff events into note events.
         if (model.type === "noteOn" || model.type === "noteOff") {
