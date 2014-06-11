@@ -42,7 +42,7 @@
   },
   "dependencies": {
     "infusion": "git://github.com/fluid-project/infusion.git",
-    "speaker": "0.1.1",
+    "speaker": "0.1.0",
     "dspapi": "git://github.com/colinbdclark/node-dsp.git"
   },
   "engines": {
