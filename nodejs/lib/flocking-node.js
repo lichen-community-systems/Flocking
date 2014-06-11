@@ -18,7 +18,7 @@ var fs = require("fs"),
 (function () {
     "use strict";
 
-    var Speaker = require("speaker");
+    var alsa = require("alsa");
     var Readable = require("stream").Readable;
 
     /*********************************************************
@@ -168,14 +168,14 @@ var fs = require("fs"),
             m.bytesPerSample = 4;// Flocking uses Float32s, hence 4 bytes.
             m.bytesPerBlock = settings.blockSize * settings.chans * m.bytesPerSample;
             m.pushRate = (bufSize / rates.audio) * 1000;
-            that.speaker = new Speaker({
-                sampleRate: settings.rates.audio,
-                float: true,
-                bitDepth: 32,
-                signed: true,
-                endianness: "LE",
-                samplesPerFrame: settings.blockSize
-            });
+            that.speaker = new alsa.Playback(
+                "default",
+                settings.chans,
+                settings.rates.audio,
+                alsa.FORMAT_FLOAT_LE,
+                alsa.ACCESS_RW_INTERLEAVED,
+                settings.bufferSize
+            );
             that.outputStream = flock.enviro.nodejs.setupOutputStream(settings);
         };
 
@@ -186,13 +186,6 @@ var fs = require("fs"),
         var outputStream = new Readable({
             highWaterMark: settings.bufferSize * settings.chans * 4
         });
-
-        outputStream.bitDepth = 32;
-        outputStream.float = true
-        outputStream.signed = true;
-        outputStream.channels = settings.chans;
-        outputStream.sampleRate = settings.rates.audio;
-        outputStream.samplesPerFrame = settings.bufferSize;
 
         return outputStream;
     };

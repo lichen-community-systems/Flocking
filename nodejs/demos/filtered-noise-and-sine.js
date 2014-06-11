@@ -2,6 +2,14 @@ var fluid = require("infusion"),
     loader = fluid.getLoader(__dirname),
     flock = require(__dirname + "/../index.js");
 
+flock.init({
+    bufferSize: 2048,
+    blockSize: 128,
+    rates: {
+        audio: 22050
+    }
+});
+
 var synth = flock.synth({
     id: "noise-sine-synth",
     synthDef: {

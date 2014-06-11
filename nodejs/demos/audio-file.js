@@ -2,6 +2,14 @@ var fluid = require("infusion"),
     loader = fluid.getLoader(__dirname),
     flock = require(__dirname + "/../index.js");
 
+flock.init({
+    bufferSize: 4096,
+    blockSize: 128,
+    rates: {
+        audio: 44100 
+    }
+});
+
 var synth = flock.synth({
     synthDef: {
         ugen: "flock.ugen.playBuffer",

@@ -2,7 +2,13 @@ var fluid = require("infusion"),
     flock = require(__dirname + "/../index.js"),
     loader = fluid.getLoader(__dirname);
 
-flock.init();
+flock.init({
+    bufferSize: 1024,
+    blockSize: 64,
+    rates: {
+        audio: 22050 
+    }
+});
 
 fluid.registerNamespace("flock.demo");
 
