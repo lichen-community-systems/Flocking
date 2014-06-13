@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (June 10, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (June 13, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -28183,7 +28183,7 @@ var fluid = fluid || require("infusion"),
         sysex: false,
         openImmediately: false,
 
-        ports: {},
+        ports: 0,
 
         invokers: {
             send: {
@@ -28268,6 +28268,12 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.midi.findPorts.portFinder = function (portSpec) {
+        if (typeof portSpec === "number") {
+            return function (ports) {
+                return ports[portSpec];
+            };
+        }
+
         if (portSpec.id) {
             return function (ports) {
                 ports.find(flock.midi.findPorts.idMatch(portSpec.id));
@@ -28284,6 +28290,23 @@ var fluid = fluid || require("infusion"),
         };
     };
 
+    flock.midi.findPorts.matchLower = function (matchSpec) {
+        return function (obj) {
+            var isMatch = false;
+            for (var prop in matchSpec) {
+                var objVal = obj[prop];
+                var matchVal = matchSpec[prop];
+
+                isMatch = objVal && objVal.toLowerCase().match(matchVal.toLowerCase());
+                if (!isMatch) {
+                    break;
+                }
+            }
+
+            return isMatch;
+        };
+    };
+
     flock.midi.findPorts.idMatch = function (id) {
         return function (port) {
             return port.id === id;
@@ -28291,24 +28314,22 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.midi.findPorts.bothMatch = function (manu, name) {
-        return function (port) {
-            var manuMatches = port.manufacturer.toLowerCase().match(manu.toLowerCase()) !== null,
-                nameMatches = port.name.toLowerCase().match(name.toLowerCase()) !== null;
-
-            return manuMatches && nameMatches;
-        };
+        return flock.midi.findPorts.matchLower({
+            manufacturer: manu,
+            name: name
+        });
     };
 
     flock.midi.findPorts.manufacturerMatch = function (manu) {
-        return function (port) {
-            return port.manufacturer.toLowerCase().match(manu.toLowerCase()) !== null;
-        };
+        return flock.midi.findPorts.matchLower({
+            manufacturer: manu
+        });
     };
 
     flock.midi.findPorts.nameMatch = function (name) {
-        return function (port) {
-            return port.name.toLowerCase().match(name.toLowerCase()) !== null;
-        };
+        return flock.midi.findPorts.matchLower({
+            name: name
+        });
     };
 
     flock.midi.forEachInputPort = function (port, fn) {
@@ -28378,8 +28399,12 @@ var fluid = fluid || require("infusion"),
             output: {}
         };
 
-        flock.midi.expandPortSpecProperty("manufacturer", portSpec, expanded);
-        flock.midi.expandPortSpecProperty("name", portSpec, expanded);
+        if (typeof portSpec === "number") {
+            expanded.input = expanded.output = portSpec;
+        } else {
+            flock.midi.expandPortSpecProperty("manufacturer", portSpec, expanded);
+            flock.midi.expandPortSpecProperty("name", portSpec, expanded);
+        }
 
         return expanded;
     };
