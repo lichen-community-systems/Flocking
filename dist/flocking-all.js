@@ -28084,6 +28084,13 @@ var fluid = fluid || require("infusion"),
     fluid.registerNamespace("flock.midi");
 
     flock.midi.requestAccess = function (sysex, onAccessGranted, onError) {
+        if (!navigator.requestMIDIAccess) {
+            var msg = "The Web MIDI API is not available. You may need to enable it in your browser's settings.";
+            fluid.log(fluid.logLevel.WARN, msg);
+            onError(msg);
+            return;
+        }
+
         var p = navigator.requestMIDIAccess({
             sysex: sysex
         });
