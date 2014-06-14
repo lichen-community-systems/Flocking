@@ -13,13 +13,12 @@
 var fs = require("fs"),
     url = require("url"),
     fluid = fluid || require("infusion"),
-    flock = fluid.registerNamespace("flock");
+    flock = fluid.registerNamespace("flock"),
+    alsa = require("alsa"),
+    Readable = require("stream").Readable;
 
 (function () {
     "use strict";
-
-    var alsa = require("alsa");
-    var Readable = require("stream").Readable;
 
     /*********************************************************
      * Override default clocks with same-thread alternatives *
