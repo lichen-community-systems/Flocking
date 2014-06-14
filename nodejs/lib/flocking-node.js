@@ -14,8 +14,7 @@ var fs = require("fs"),
     url = require("url"),
     fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock"),
-    Speaker = require("speaker"),
-    Readable = require("stream").Readable;
+    macaudio = require("macaudio");
 
 (function () {
     "use strict";
@@ -101,46 +100,49 @@ var fs = require("fs"),
 
     flock.enviro.nodejs.finalInit = function (that) {
         that.startGeneratingSamples = function () {
-            that.outputStream._read = that.writeSamples;
-            that.outputStream.pipe(that.speaker);
+            that.node.start();
         };
 
-        that.writeSamples = function (numBytes) {
-            var settings = that.options.audioSettings,
-                m = that.model,
-                playState = m.playState,
-                bytesPerSample = m.bytesPerSample,
-                blockSize = settings.blockSize,
-                chans = settings.chans,
-                krPeriods = numBytes / m.bytesPerBlock,
+        that.writeSamples = function (e) {
+            var m = that.model,
+                hasInput = m.hasInput,
+                krPeriods = m.krPeriods,
                 evaluator = that.nodeEvaluator,
-                outputStream = that.outputStream,
-                out = new Buffer(numBytes);
+                buses = evaluator.buses,
+                settings = that.options.audioSettings,
+                blockSize = settings.blockSize,
+                playState = m.playState,
+                chans = settings.chans,
+                chan,
+                i,
+                samp;
 
-            if (numBytes < m.bytesPerBlock) {
+            // If there are no nodes providing samples, write out silence.
+            if (evaluator.nodes.length < 1) {
+                for (chan = 0; chan < chans; chan++) {
+                    flock.generate.silence(e.getChannelData(chan));
+                }
                 return;
             }
 
-            if (evaluator.nodes.length < 1) {
-                // If there are no nodes providing samples, write out silence.
-                flock.generate.silence(out);
-            } else {
-                for (var i = 0, offset = 0; i < krPeriods; i++, offset += m.bytesPerBlock) {
-                    evaluator.clearBuses();
-                    evaluator.gen();
+            for (i = 0; i < krPeriods; i++) {
+                var offset = i * blockSize;
 
-                    // Interleave each output channel.
-                    for (var chan = 0; chan < chans; chan++) {
-                        var bus = evaluator.buses[chan];
-                        for (var sampIdx = 0; sampIdx < blockSize; sampIdx++) {
-                            var frameIdx = (sampIdx * chans + chan) * bytesPerSample;
-                            out.writeFloatLE(bus[sampIdx], offset + frameIdx);
-                        }
+                evaluator.clearBuses();
+                evaluator.gen();
+
+                // Output the environment's signal
+                // to this node's output channels.
+                for (chan = 0; chan < chans; chan++) {
+                    var sourceBuf = buses[chan],
+                        outBuf = e.getChannelData(chan);
+
+                    // And output each sample.
+                    for (samp = 0; samp < blockSize; samp++) {
+                        outBuf[samp + offset] = sourceBuf[samp];
                     }
                 }
             }
-
-            outputStream.push(out);
 
             playState.written += settings.bufferSize * chans;
             if (playState.written >= playState.total) {
@@ -149,8 +151,7 @@ var fs = require("fs"),
         };
 
         that.stopGeneratingSamples = function () {
-            that.outputStream.unpipe(that.speaker);
-            that.outputStream._read = undefined;
+            that.node.stop();
         };
 
         // TODO: Implement audio input on Node.js.
@@ -164,36 +165,12 @@ var fs = require("fs"),
                 bufSize = settings.bufferSize,
                 m = that.model;
 
-            m.bytesPerSample = 4;// Flocking uses Float32s, hence 4 bytes.
-            m.bytesPerBlock = settings.blockSize * settings.chans * m.bytesPerSample;
-            m.pushRate = (bufSize / rates.audio) * 1000;
-            that.speaker = new Speaker({
-                sampleRate: settings.rates.audio,
-                float: true,
-                bitDepth: 32,
-                signed: true,
-                endianness: "LE",
-                samplesPerFrame: settings.blockSize
-            });
-            that.outputStream = flock.enviro.nodejs.setupOutputStream(settings);
+            m.krPeriods = bufSize / settings.blockSize;
+            that.node = new macaudio.JavaScriptOutputNode(bufSize);
+            that.node.onaudioprocess = that.writeSamples;
         };
 
         that.init();
-    };
-
-    flock.enviro.nodejs.setupOutputStream = function (settings) {
-        var outputStream = new Readable({
-            highWaterMark: settings.bufferSize * settings.chans * 4
-        });
-
-        outputStream.bitDepth = 32;
-        outputStream.float = true
-        outputStream.signed = true;
-        outputStream.channels = settings.chans;
-        outputStream.sampleRate = settings.rates.audio;
-        outputStream.samplesPerFrame = settings.bufferSize;
-
-        return outputStream;
     };
 
     fluid.demands("flock.enviro.audioStrategy", "flock.platform.nodejs", {
