@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (June 13, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (June 14, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -28105,6 +28105,112 @@ var fluid = fluid || require("infusion"),
         return ports;
     };
 
+    flock.midi.read = function (data) {
+        var status = data[0],
+            type = status >> 4,
+            chan = status & 0xf,
+            fn;
+
+        switch (type) {
+            case 8:
+                fn = flock.midi.read.noteOff;
+                break;
+            case 9:
+                fn = data[2] > 0 ? flock.midi.read.noteOn : flock.midi.read.noteOff;
+                break;
+            case 10:
+                fn = flock.midi.read.polyAftertouch;
+                break;
+            case 11:
+                fn = flock.midi.read.controlChange;
+                break;
+            case 12:
+                fn = flock.midi.read.programChange;
+                break;
+            case 13:
+                fn = flock.midi.read.channelAftertouch;
+                break;
+            case 14:
+                fn = flock.midi.read.pitchbend;
+                break;
+            case 15:
+                fn = flock.midi.read.sysex;
+                break;
+            default:
+                throw new Error("Recieved an unrecognized MIDI message: " + data);
+        }
+
+        return fn(chan, data);
+    };
+
+    flock.midi.read.note = function (type, chan, data) {
+        return {
+            type: type,
+            chan: chan,
+            note: data[1],
+            velocity: data[2]
+        };
+    };
+
+    flock.midi.read.noteOn = function (chan, data) {
+        return flock.midi.read.note("noteOn", chan, data);
+    };
+
+    flock.midi.read.noteOff = function (chan, data) {
+        return flock.midi.read.note("noteOff", chan, data);
+    };
+
+    flock.midi.read.polyAftertouch = function (chan, data) {
+        return {
+            type: "aftertouch",
+            chan: chan,
+            note: data[1],
+            pressure: data[2]
+        };
+    };
+
+    flock.midi.read.controlChange = function (chan, data) {
+        return {
+            type: "control",
+            chan: chan,
+            number: data[1],
+            value: data[2]
+        };
+    };
+
+    flock.midi.read.programChange = function (chan, data) {
+        return {
+            type: "program",
+            chan: chan,
+            program: data[1]
+        };
+    };
+
+    flock.midi.read.channelAftertouch = function (chan, data) {
+        return {
+            type: "aftertouch",
+            chan: chan,
+            pressure: data[1]
+        };
+    };
+
+    flock.midi.read.pitchbend = function (chan, data) {
+        return {
+            type: "pitchbend",
+            chan: chan,
+            value: (data[1] << 7) | data[2]
+        };
+    };
+
+    flock.midi.read.sysex = function (chan, data) {
+        return {
+            type: "system",
+            chan: chan,
+            data: data.subarray(1)
+        };
+    };
+
+
     /**
      * Represents the overall Web MIDI system,
      * including references to all the available MIDI ports
@@ -28183,6 +28289,11 @@ var fluid = fluid || require("infusion"),
         sysex: false,
         openImmediately: false,
 
+        // Supported PortSpec formats:
+        //  - Number: the index of the input and output port to use (this is the default)
+        //  - { manufacturer: "akai", name: "LPD8"}
+        //  - { input: Number, output: Number}
+        //  - { input: { manufacturer: "akai", name: "LPD8"}, output: {manufacturer: "korg", name: "output"}}
         ports: 0,
 
         invokers: {
@@ -28191,20 +28302,20 @@ var fluid = fluid || require("infusion"),
             },
 
             open: {
-                funcName: "flock.midi.bindConnection",
+                funcName: "flock.midi.connection.bind",
                 args: [
                     "{system}.ports",
                     "{that}.options.ports",
-                    "{that}.events.rawMIDI.fire",
+                    "{that}.events.raw.fire",
                     "{that}.events.onSendMessage"
                 ]
             },
 
             close: {
-                funcName: "flock.midi.closeConnection",
+                funcName: "flock.midi.connection.close",
                 args: [
                     "{system}.ports",
-                    "{that}.events.rawMIDI.fire"
+                    "{that}.events.raw.fire"
                 ]
             }
         },
@@ -28222,7 +28333,7 @@ var fluid = fluid || require("infusion"),
             onError: null,
             onSendMessage: null,
 
-            rawMIDI: null,
+            raw: null,
             message: null,
             note: null,
             noteOn: null,
@@ -28239,8 +28350,8 @@ var fluid = fluid || require("infusion"),
                 args: ["{that}.options.openImmediately", "{that}.open"]
             },
 
-            rawMIDI: {
-                funcName: "flock.midi.fireEvent",
+            raw: {
+                funcName: "flock.midi.connection.fireEvent",
                 args: ["{arguments}.0", "{that}.events"]
             }
         }
@@ -28269,28 +28380,33 @@ var fluid = fluid || require("infusion"),
 
     flock.midi.findPorts.portFinder = function (portSpec) {
         if (typeof portSpec === "number") {
-            return function (ports) {
-                return ports[portSpec];
-            };
+            return flock.midi.findPorts.byIndex(portSpec);
         }
 
         if (portSpec.id) {
             return function (ports) {
-                ports.find(flock.midi.findPorts.idMatch(portSpec.id));
+                ports.find(flock.midi.findPorts.idMatcher(portSpec.id));
             };
         }
 
         var matcher = portSpec.manufacturer && portSpec.name ?
-            flock.midi.findPorts.bothMatch(portSpec.manufacturer, portSpec.name) :
-            portSpec.manufacturer ? flock.midi.findPorts.manufacturerMatch(portSpec.manufacturer) :
-            flock.midi.findPorts.nameMatch(portSpec.name);
+            flock.midi.findPorts.bothMatcher(portSpec.manufacturer, portSpec.name) :
+            portSpec.manufacturer ? flock.midi.findPorts.manufacturerMatcher(portSpec.manufacturer) :
+            flock.midi.findPorts.nameMatcher(portSpec.name);
 
         return function (ports) {
             return ports.filter(matcher);
         };
     };
 
-    flock.midi.findPorts.matchLower = function (matchSpec) {
+    flock.midi.findPorts.byIndex = function (idx) {
+        return function (ports) {
+            var port = ports[idx];
+            return port ? [port] : [];
+        };
+    };
+
+    flock.midi.findPorts.lowerRegExMatcher = function (matchSpec) {
         return function (obj) {
             var isMatch = false;
             for (var prop in matchSpec) {
@@ -28307,90 +28423,91 @@ var fluid = fluid || require("infusion"),
         };
     };
 
-    flock.midi.findPorts.idMatch = function (id) {
+    flock.midi.findPorts.idMatcher = function (id) {
         return function (port) {
             return port.id === id;
         };
     };
 
-    flock.midi.findPorts.bothMatch = function (manu, name) {
-        return flock.midi.findPorts.matchLower({
+    flock.midi.findPorts.bothMatcher = function (manu, name) {
+        return flock.midi.findPorts.lowerRegExMatcher({
             manufacturer: manu,
             name: name
         });
     };
 
-    flock.midi.findPorts.manufacturerMatch = function (manu) {
-        return flock.midi.findPorts.matchLower({
+    flock.midi.findPorts.manufacturerMatcher = function (manu) {
+        return flock.midi.findPorts.lowerRegExMatcher({
             manufacturer: manu
         });
     };
 
-    flock.midi.findPorts.nameMatch = function (name) {
-        return flock.midi.findPorts.matchLower({
+    flock.midi.findPorts.nameMatcher = function (name) {
+        return flock.midi.findPorts.lowerRegExMatcher({
             name: name
         });
     };
 
-    flock.midi.forEachInputPort = function (port, fn) {
+    flock.midi.findPorts.eachPortOfType = function (port, type, fn) {
         var ports = fluid.makeArray(port);
         fluid.each(ports, function (port) {
-            if (port.type === "input") {
+            if (port.type === type) {
                 fn(port);
             }
         });
     };
 
-    flock.midi.listenToPort = function (port, onRawMIDI) {
-        flock.midi.forEachInputPort(port, function (port) {
-            port.addEventListener("midimessage", onRawMIDI, false);
+    flock.midi.connection.listen = function (port, onRaw) {
+        flock.midi.findPorts.eachPortOfType(port, "input", function (port) {
+            port.addEventListener("midimessage", onRaw, false);
         });
     };
 
-    flock.midi.stopListeningToPort = function (port, onRawMIDI) {
-        flock.midi.forEachInputPort(port, function (port) {
-            port.removeEventListener("midimessage", onRawMIDI, false);
+    flock.midi.connection.stopListening = function (port, onRaw) {
+        flock.midi.findPorts.eachPortOfType(port, "input", function (port) {
+            port.removeEventListener("midimessage", onRaw, false);
         });
     };
 
-    flock.midi.bindPortSender = function (port, onSendMessage) {
+    flock.midi.connection.bindSender = function (port, onSendMessage) {
         var ports = fluid.makeArray(port);
         fluid.each(ports, function (port) {
             onSendMessage.addListener(port.send.bind(port));
         });
     };
 
-    flock.midi.bindConnection = function (ports, portSpec, onRawMIDI, onSendMessage) {
-        portSpec = flock.midi.expandPortSpec(portSpec);
+    flock.midi.connection.bind = function (ports, portSpec, onRaw, onSendMessage) {
+        portSpec = flock.midi.connection.expandPortSpec(portSpec);
 
         var input = flock.midi.findPorts(ports.inputs, portSpec.input),
             output = flock.midi.findPorts(ports.outputs, portSpec.output);
 
         if (input && input.length > 0) {
-            flock.midi.listenToPort(input, onRawMIDI);
-        } else {
-            flock.midi.bindConnection.logNoPorts("input", portSpec);
+            flock.midi.connection.listen(input, onRaw);
+        } else if (portSpec.input !== undefined) {
+            flock.midi.connection.logNoMatchedPorts("input", portSpec);
         }
 
         if (output && output.length > 0) {
-            flock.midi.bindPortSender(output, onSendMessage);
-        } else {
-            flock.midi.bindConnection.logNoPorts("output", portSpec);
+            flock.midi.connection.bindSender(output, onSendMessage);
+        } else if (portSpec.output !== undefined) {
+            flock.midi.connection.logNoMatchedPorts("output", portSpec);
         }
     };
 
-    flock.midi.closeConnection = function (ports, onRawMIDI) {
-        flock.midi.stopListeningToPort(ports.inputs, onRawMIDI);
+    flock.midi.connection.close = function (ports, onRaw) {
+        flock.midi.connection.stopListening(ports.inputs, onRaw);
         // TODO: Come up with some scheme for unbinding port senders
         // since they use Function.bind().
     };
 
-    flock.midi.bindConnection.logNoPorts = function (type, portSpec) {
-        fluid.log("No matching " + type + " ports were found for port specification: ", portSpec[type]);
+    flock.midi.connection.logNoMatchedPorts = function (type, portSpec) {
+        fluid.log(fluid.logLevel.WARN,
+            "No matching " + type + " ports were found for port specification: ", portSpec[type]);
     };
 
-    flock.midi.expandPortSpec = function (portSpec) {
-        if (portSpec.input && portSpec.output) {
+    flock.midi.connection.expandPortSpec = function (portSpec) {
+        if (portSpec.input !== undefined || portSpec.output !== undefined) {
             return portSpec;
         }
 
@@ -28402,29 +28519,19 @@ var fluid = fluid || require("infusion"),
         if (typeof portSpec === "number") {
             expanded.input = expanded.output = portSpec;
         } else {
-            flock.midi.expandPortSpecProperty("manufacturer", portSpec, expanded);
-            flock.midi.expandPortSpecProperty("name", portSpec, expanded);
+            flock.midi.connection.expandPortSpecProperty("manufacturer", portSpec, expanded);
+            flock.midi.connection.expandPortSpecProperty("name", portSpec, expanded);
         }
 
         return expanded;
     };
 
-    flock.midi.expandPortSpecProperty = function (propName, portSpec, expanded) {
-        if (flock.isIterable(portSpec[propName])) {
-            if (portSpec[propName].length > 1) {
-                expanded.input[propName] = portSpec[propName][0];
-                expanded.output[propName] = portSpec[propName][1];
-            } else {
-                expanded.input[propName] = expanded.output[propName] = portSpec[propName][0];
-            }
-        } else {
-            expanded.input[propName] = expanded.output[propName] = portSpec[propName];
-        }
-
+    flock.midi.connection.expandPortSpecProperty = function (propName, portSpec, expanded) {
+        expanded.input[propName] = expanded.output[propName] = portSpec[propName];
         return expanded;
     };
 
-    flock.midi.fireEvent = function (midiEvent, events) {
+    flock.midi.connection.fireEvent = function (midiEvent, events) {
         var model = flock.midi.read(midiEvent.data),
             eventForType = model.type ? events[model.type] : undefined;
 
@@ -28438,134 +28545,6 @@ var fluid = fluid || require("infusion"),
         if (eventForType) {
             eventForType.fire(model);
         }
-    };
-
-    flock.midi.read = function (data) {
-        var status = data[0],
-            type = status >> 4,
-            chan = status & 0xf,
-            fn;
-
-        switch (type) {
-            case 8:
-                fn = flock.midi.read.noteOff;
-                break;
-            case 9:
-                fn = data[2] > 0 ? flock.midi.read.noteOn : flock.midi.read.noteOff;
-                break;
-            case 10:
-                fn = flock.midi.read.polyAftertouch;
-                break;
-            case 11:
-                fn = flock.midi.read.controlChange;
-                break;
-            case 12:
-                fn = flock.midi.read.programChange;
-                break;
-            case 13:
-                fn = flock.midi.read.channelAftertouch;
-                break;
-            case 14:
-                fn = flock.midi.read.pitchbend;
-                break;
-            case 15:
-                fn = flock.midi.read.sysex;
-                break;
-            default:
-                throw new Error("Recieved an unrecognized MIDI message: " + data);
-        }
-
-        return fn(chan, data);
-    };
-
-    flock.midi.read.note = function (type, chan, data) {
-        var vel = data[2];
-
-        if (data.length === 3) {
-            return {
-                type: type,
-                chan: chan,
-                note: data[1],
-                velocity: vel
-            };
-        }
-
-        return flock.midi.read.runningStatus(type, chan, data);
-    };
-
-    flock.midi.read.runningStatus = function (type, chan, data) {
-        var msgs = [],
-            start = 0,
-            end = 3,
-            len = data.length + 1;
-
-        while (end < len) {
-            var chunk = data.subarray(start, end);
-            var msg = flock.midi.read[type](chan, chunk);
-            msgs.push(msg);
-            start += 3;
-            end += 3;
-        }
-
-        return msgs;
-    };
-
-    flock.midi.read.noteOn = function (chan, data) {
-        return flock.midi.read.note("noteOn", chan, data);
-    };
-
-    flock.midi.read.noteOff = function (chan, data) {
-        return flock.midi.read.note("noteOff", chan, data);
-    };
-
-    flock.midi.read.polyAftertouch = function (chan, data) {
-        return {
-            type: "aftertouch",
-            chan: chan,
-            note: data[1],
-            pressure: data[2]
-        };
-    };
-
-    flock.midi.read.controlChange = function (chan, data) {
-        return {
-            type: "control",
-            chan: chan,
-            number: data[1],
-            value: data[2]
-        };
-    };
-
-    flock.midi.read.programChange = function (chan, data) {
-        return {
-            type: "program",
-            chan: chan,
-            program: data[1]
-        };
-    };
-
-    flock.midi.read.channelAftertouch = function (chan, data) {
-        return {
-            type: "aftertouch",
-            chan: chan,
-            pressure: data[1]
-        };
-    };
-
-    flock.midi.read.pitchbend = function (chan, data) {
-        return {
-            type: "pitchbend",
-            chan: chan,
-            value: (data[1] << 7) | data[2]
-        };
-    };
-
-    flock.midi.read.sysex = function (chan, data) {
-        return {
-            type: "system",
-            chan: chan,
-            data: data.subarray(1)
-        };
     };
 
 }());

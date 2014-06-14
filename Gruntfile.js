@@ -49,7 +49,7 @@ module.exports = function(grunt) {
                     "flocking/flocking-ugens.js",
                     "flocking/flocking-ugens-browser.js",
                     "flocking/flocking-gfx.js",
-                    "flocking/flocking-midi.js"
+                    "flocking/flocking-webmidi.js"
                 ],
                 dest: "dist/<%= pkg.name %>-all.js"
             }
