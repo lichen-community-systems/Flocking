@@ -53,12 +53,14 @@ var fluid = fluid || require("infusion"),
                 container: "{that}.dom.demoSelector",
                 options: {
                     listeners: {
-                        afterDemoLoaded: [
-                            {
-                                func: "{editor}.setContent",
-                                args: ["{arguments}.0"]
-                            }
-                        ]
+                        afterDemoLoaded: {
+                            func: "{editor}.setContent",
+                            args: ["{arguments}.0"]
+                        },
+
+                        onSelect: {
+                            func: "{playButton}.pause"
+                        }
                     }
                 }
             },
