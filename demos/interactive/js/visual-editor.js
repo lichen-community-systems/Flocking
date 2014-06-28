@@ -5,7 +5,7 @@
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
 
-/*global require, dagre*/
+/*global require, dagre, jsPlumb*/
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
@@ -14,6 +14,93 @@ var fluid = fluid || require("infusion"),
     "use strict";
 
     var $ = fluid.registerNamespace("jQuery");
+
+    /*****************************
+     * JSPlumb Component Wrapper *
+     *****************************/
+
+    fluid.defaults("flock.playground.jsPlumb", {
+        gradeNames: ["fluid.viewComponent", "autoInit"],
+
+        jsPlumbSettings: {},
+
+        members: {
+            plumb: {
+                expander: {
+                    funcName: "flock.playground.jsPlumb.create",
+                    args: ["{that}.container", "{that}.options.jsPlumbSettings"]
+                }
+            }
+        },
+
+        events: {
+            onReady: null
+        },
+
+        listeners: {
+            onCreate: [
+                {
+                    "this": "{that}.plumb",
+                    method: "ready",
+                    args: "{that}.events.onReady.fire"
+                },
+                {
+                    "this": "console",
+                    method: "log",
+                    args: "JSPlumb is ready!"
+                }
+            ]
+        }
+    });
+
+    flock.playground.jsPlumb.create = function (/*container, jsPlumbSettings*/) {
+        // jsPlumbSettings.Container = jsPlumbSettings.Container || container;
+        // return jsPlumb.getInstance(jsPlumbSettings);
+        return jsPlumb;
+    };
+
+
+    /***************
+     * Visual View *
+     ***************/
+
+    fluid.defaults("flock.playground.visualView", {
+        gradeNames: ["fluid.viewComponent", "autoInit"],
+
+        model: {}, // The active synthSpec
+
+        components: {
+            jsPlumb: {
+                type: "flock.playground.jsPlumb",
+                container: "{that}.container"
+            },
+
+            synthDefRenderer: {
+                createOnEvent: "onReady",
+                type: "flock.ui.nodeRenderers.synth",
+                container: "{that}.container",
+                options: {
+                    components: {
+                        jsPlumb: "{jsPlumb}"
+                    },
+
+                    // TODO: Move this IoC reference upwards.
+                    model: {
+                        synthDef: "{visualView}.model"
+                    }
+                }
+            }
+        },
+
+        events: {
+            onReady: "{jsPlumb}.events.onReady"
+        }
+    });
+
+
+    /******************
+     * Node Renderers *
+     ******************/
 
     fluid.registerNamespace("flock.ui.nodeRenderers");
 
