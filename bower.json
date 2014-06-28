@@ -1,0 +1,26 @@
+{
+    "name": "flocking",
+    "version": "0.1.0",
+    "main": "dist/flocking-all.min.js",
+    "ignore": [
+        "demos",
+        "docs",
+        "flocking",
+        "images",
+        "node_modules",
+        "nodejs",
+        "tests",
+        "third-party",
+        "ui",
+        ".jshintrc",
+        ".gitignore",
+        "favicon.ico",
+        "GPL-LICENSE.txt",
+        "index.html",
+        "Gruntfile.js",
+        "MIT-LICENSE.txt",
+        "package.json"
+    ],
+    "dependencies": {},
+    "devDependencies": {}
+}

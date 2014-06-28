@@ -2,7 +2,6 @@ var fluid = require("infusion"),
     flock = fluid.registerNamespace("flock"),
     loader = fluid.getLoader(__dirname);
 
-loader.require("../third-party/polydataview/js/polydataview.js");
 loader.require("../flocking/flocking-core.js");
 loader.require("../flocking/flocking-buffers.js");
 loader.require("../flocking/flocking-audiofile.js");

@@ -3,39 +3,35 @@
     <head>
         <title>Audio Input Demo</title>
         <meta charset="UTF-8">
-        
+
         <link rel="stylesheet" type="text/css" href="../../shared/css/demos.css" />
-                
-        <script src="../../../third-party/polydataview/js/polydataview.js"></script>
-        <script src="../../../third-party/mikejs/js/mike.js"></script>
+
         <script src="../../../third-party/jquery/js/jquery-2.0.0.js"></script>
         <script src="../../../third-party/infusion/js/Fluid.js"></script>
         <script src="../../../third-party/infusion/js/FluidIoC.js"></script>
         <script src="../../../third-party/infusion/js/DataBinding.js"></script>
-        
+
         <script src="../../../flocking/flocking-core.js"></script>
         <script src="../../../flocking/flocking-scheduler.js"></script>
         <script src="../../../flocking/flocking-buffers.js"></script>
         <script src="../../../flocking/flocking-audiofile.js"></script>
-        <script src="../../../flocking/flocking-firefox.js"></script>
         <script src="../../../flocking/flocking-webaudio.js"></script>
         <script src="../../../flocking/flocking-parser.js"></script>
         <script src="../../../flocking/flocking-ugens.js"></script>
         <script src="../../../flocking/flocking-ugens-browser.js"></script>
     </head>
-    
+
     <body>
         <h1>Audio Input Demo</h1>
-        
+
         <script>
+            flock.init({
+                bufferSize: 256
+            });
+
             var synth = flock.synth({
                 synthDef: {
                     ugen: "flock.ugen.audioIn",
-                    options: {
-                        mike: {
-                            swfPath: "../../../third-party/mikejs/swf/mike.swf"
-                        }
-                    },
                     mul: {
                         ugen: "flock.ugen.sinOsc",
                         freq: {
@@ -54,7 +50,7 @@
                     }
                 }
             });
-            
+
             // TODO: Use a standard Flocking play button control here.
             synth.play();
         </script>

@@ -44,19 +44,20 @@ module.exports = function(grunt) {
                     // Marcus Geelnard's DSPI API polyfill
                     "third-party/dspapi/js/dspapi.js",
 
-                    // DataView Polyfill
-                    "third-party/polydataview/js/polydataview.js",
+                    // Sim.js' random distribution library.
+                    "third-party/simjs/js/random-0.26.js",
 
                     // Flocking
                     "flocking/flocking-core.js",
+                    "flocking/flocking-buffers.js",
                     "flocking/flocking-parser.js",
                     "flocking/flocking-audiofile.js",
                     "flocking/flocking-scheduler.js",
-                    "flocking/flocking-firefox.js",
                     "flocking/flocking-webaudio.js",
                     "flocking/flocking-ugens.js",
                     "flocking/flocking-ugens-browser.js",
-                    "flocking/flocking-gfx.js"
+                    "flocking/flocking-gfx.js",
+                    "flocking/flocking-webmidi.js"
                 ],
                 dest: "dist/<%= pkg.name %>-all.js"
             }

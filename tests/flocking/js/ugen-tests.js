@@ -19,29 +19,7 @@ var fluid = fluid || require("infusion"),
 
     flock.init();
 
-    var mockLeft = [
-        1, 2, 3, 4, 5,
-        6, 7, 8, 9, 10,
-        11, 12, 13, 14, 15,
-        16, 17, 18, 19, 20
-    ];
-
-    var mockRight = [
-        20, 19, 18, 17, 16,
-        15, 14, 13, 12, 11,
-        10, 9, 8, 7, 6,
-        5, 4, 3, 2, 1
-    ];
-
-    var audioSettings = fluid.defaults("flock.enviro").audioSettings;
     var sampleRate = flock.enviro.shared.audioSettings.rates.audio;
-
-    var bufferValueUGen = flock.ugen.value({value: 0}, new Float32Array(1), {
-        audioSettings: audioSettings
-    });
-    var stereoExpandValueUGen = flock.ugen.value({value: 2}, new Float32Array(1), {
-        audioSettings: audioSettings
-    });
 
     module("ugen.input() tests");
 
@@ -116,110 +94,6 @@ var fluid = fluid || require("infusion"),
         setup: function () {
             flock.enviro.shared = flock.enviro();
         }
-    });
-
-    var checkOutput = function (numSamps, chans, outUGen, expectedBuffer, msg) {
-        var audioSettings = {
-            blockSize: 20,
-            chans: chans,
-            bufferSize: 40
-        };
-
-        outUGen.model.blockSize = audioSettings.blockSize;
-
-        var env = flock.enviro.shared;
-        var nodeEvaluator = flock.enviro.nodeEvaluator({
-            numBuses: env.options.audioSettings.numBuses,
-            blockSize: audioSettings.blockSize
-        });
-        nodeEvaluator.buses = env.buses;
-        nodeEvaluator.nodes = [outUGen];
-
-        var actual = flock.enviro.moz.interleavedWriter(
-            new Float32Array(numSamps * chans),
-            nodeEvaluator.gen,
-            flock.enviro.shared.buses,
-            audioSettings.bufferSize / audioSettings.blockSize,
-            audioSettings.blockSize,
-            audioSettings.chans
-        );
-        deepEqual(actual, expectedBuffer, msg);
-    };
-
-    test("flock.enviro.moz.interleavedWriter() mono input, mono output", function () {
-        // Test with a single input buffer being multiplexed by ugen.out.
-        var mockLeftUGen = flock.mock.makeMockUGen(mockLeft);
-        var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen}, [], {
-            audioSettings: {
-                buses: flock.enviro.shared.buses,
-                rates: flock.enviro.shared.audioSettings.rates
-            },
-            multiInputNames: ["sources"] // TODO: why aren't we using the parser?
-        });
-        out.input("expand", 2);
-
-        // Pull the whole buffer.
-        var expected = new Float32Array([
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
-        ]);
-        checkOutput(40, 1, out, expected,
-            "We should receive a mono buffer containing two copies of the original input buffer.");
-
-        // Pull a partial buffer.
-        expected = new Float32Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
-        checkOutput(20, 1, out, expected,
-            "We should receive a mono buffer containing the input buffer unmodified.");
-    });
-
-    test("flock.enviro.moz.interleavedWriter() mono input, stereo output", function () {
-        // Test with a single mono input buffer.
-        var mockLeftUGen = flock.mock.makeMockUGen(mockLeft);
-        var out = flock.ugen.out({sources: mockLeftUGen, bus: bufferValueUGen, expand: stereoExpandValueUGen}, [], {
-            audioSettings: {
-                buses: flock.enviro.shared.buses,
-                rates: flock.enviro.shared.audioSettings.rates
-            },
-            multiInputNames: ["sources"] // TODO: why aren't we using the parser?
-        });
-
-        // Pull the whole buffer.
-        var expected = new Float32Array([
-            1, 1, 2, 2, 3, 3, 4, 4, 5, 5,
-            6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11,
-            12, 12, 13, 13, 14, 14, 15, 15, 16, 16,
-            17, 17, 18, 18, 19, 19, 20, 20
-        ]);
-        checkOutput(20, 2, out, expected,
-            "We should receive a stereo buffer containing two copies of the original input buffer.");
-    });
-
-    test("flock.enviro.moz.interleavedWriter() stereo input", function () {
-        // Test with two input buffers.
-        var out = flock.ugen.out({
-            sources: [
-                flock.mock.makeMockUGen(mockLeft),
-                flock.mock.makeMockUGen(mockRight)
-            ],
-            bus: bufferValueUGen
-        }, [], {
-            audioSettings: {
-                buses: flock.enviro.shared.buses,
-                rates: flock.enviro.shared.audioSettings.rates
-            },
-            multiInputNames: ["sources"] // TODO: why aren't we using the parser?
-        });
-        out.input("expand", 2);
-
-        // Pull the whole buffer. Expect a stereo interleaved buffer as the result,
-        // containing two copies of the original input buffer.
-        var expected = new Float32Array([
-            1, 20, 2, 19, 3, 18, 4, 17, 5, 16,
-            6, 15, 7, 14, 8, 13, 9, 12, 10, 11, 11, 10,
-            12, 9, 13, 8, 14, 7, 15, 6, 16, 5,
-            17, 4, 18, 3, 19, 2, 20, 1
-        ]);
-        checkOutput(20, 2, out, expected, "We should receive a stereo buffer, with each buffer interleaved.");
     });
 
     var simpleOutDef = {
@@ -1537,117 +1411,119 @@ var fluid = fluid || require("infusion"),
     });
 
 
-    module("flock.ugen.filter tests");
+    (function () {
+        module("flock.ugen.filter tests");
 
-    var filterInputValues = [
-        {
-            freq: 440,
-            q: 1.0
-        },
-        {
-            freq: 880,
-            q: 0.5
-        },
-        {
-            freq: 22050,
-            q: 0.1
-        },
-        {
-            freq: 440,
-            q: 10
-        },
-        {
-            freq: 880,
-            q: 20
-        },
-        {
-            freq: 22050,
-            q: 100
-        }
-    ];
+        var filterInputValues = [
+            {
+                freq: 440,
+                q: 1.0
+            },
+            {
+                freq: 880,
+                q: 0.5
+            },
+            {
+                freq: 22050,
+                q: 0.1
+            },
+            {
+                freq: 440,
+                q: 10
+            },
+            {
+                freq: 880,
+                q: 20
+            },
+            {
+                freq: 22050,
+                q: 100
+            }
+        ];
 
-    var checkCoefficient = function (coefficient) {
-        ok(!isNaN(coefficient), "The coefficient should never be NaN");
-        ok(coefficient !== Infinity, "The coefficient should never be Infinity");
-        ok(coefficient !== Number.NEGATIVE_INFINITY, "The coefficient should never be negative Infinity");
-        //ok(coefficient >= -1.0 && coefficient <= 1.0, "The coefficient should be in the range of -1.0 to 1.0");
-    };
+        var checkCoefficient = function (coefficient) {
+            ok(!isNaN(coefficient), "The coefficient should never be NaN");
+            ok(coefficient !== Infinity, "The coefficient should never be Infinity");
+            ok(coefficient !== Number.NEGATIVE_INFINITY, "The coefficient should never be negative Infinity");
+            //ok(coefficient >= -1.0 && coefficient <= 1.0, "The coefficient should be in the range of -1.0 to 1.0");
+        };
 
-    var checkCoefficients = function (model) {
-        $.each(model.coeffs, function (i, coefficientArray) {
-            $.each(coefficientArray, function (i, coefficient) {
-                checkCoefficient(coefficient);
+        var checkCoefficients = function (model) {
+            $.each(model.coeffs, function (i, coefficientArray) {
+                $.each(coefficientArray, function (i, coefficient) {
+                    checkCoefficient(coefficient);
+                });
+            });
+        };
+
+        var forEachFilterType = function (fn) {
+            $.each(flock.coefficients, function (recipeName, recipe) {
+                $.each(recipe, function (filterType, calculator) {
+                    // TODO: This suggests that the payload for filter recipes isn't quite right.
+                    if (filterType === "sizes") {
+                        return;
+                    }
+                    fn(recipeName, recipe, filterType, calculator);
+                });
+            });
+        };
+
+        var testEachFilterInputValue = function (name, fn) {
+            test(name, function () {
+                $.each(filterInputValues, function (i, inputs) {
+                    fn(inputs);
+                });
+            });
+        };
+
+        // Test all coefficient recipes.
+        forEachFilterType(function (recipeName, receipe, filterType, fn) {
+            var name = "flock.coefficients." + recipeName + "." + filterType;
+
+            testEachFilterInputValue(name, function (inputs) {
+                var model = {
+                    coeffs: {
+                        a: new Float32Array(2),
+                        b: new Float32Array(3)
+                    },
+                    sampleRate: sampleRate
+                };
+
+                fn(model, inputs.freq, inputs.q);
+                checkCoefficients(model);
             });
         });
-    };
 
-    var forEachFilterType = function (fn) {
-        $.each(flock.coefficients, function (recipeName, recipe) {
-            $.each(recipe, function (filterType, calculator) {
-                // TODO: This suggests that the payload for filter recipes isn't quite right.
-                if (filterType === "sizes") {
-                    return;
-                }
-                fn(recipeName, recipe, filterType, calculator);
+        // Test the flock.ugen.filter unit generator with all filter types and a set of generic input values.
+        /*
+        forEachFilterType(function (recipeName, recipe, filterType) {
+            var name = "flock.ugen.filter() " + recipeName + "." + filterType;
+            testEachFilterInputValue(name, function (inputs) {
+                var ugen = {
+                    id: "filter",
+                    ugen: "flock.ugen.filter",
+                    inputs: inputs,
+                    options: {
+                        // TODO: API bug. I should just be able to specify a type (as a key path) without a recipe if I want.
+                        recipe: recipe,
+                        type: filterType
+                    }
+                };
+                ugen.inputs.source = {
+                    ugen: "flock.ugen.lfNoise",
+                    inputs: {
+                        freq: 440,
+                        mul: 0.95
+                    }
+                };
+
+                var filterSynth = flock.synth(ugen);
+                filterSynth.gen(64);
+                flock.test.arrayUnbrokenSignal(filterSynth.get("filter"), -1.0, 1.0);
             });
         });
-    };
-
-    var testEachFilterInputValue = function (name, fn) {
-        test(name, function () {
-            $.each(filterInputValues, function (i, inputs) {
-                fn(inputs);
-            });
-        });
-    };
-
-    // Test all coefficient recipes.
-    forEachFilterType(function (recipeName, receipe, filterType, fn) {
-        var name = "flock.coefficients." + recipeName + "." + filterType;
-
-        testEachFilterInputValue(name, function (inputs) {
-            var model = {
-                coeffs: {
-                    a: new Float32Array(2),
-                    b: new Float32Array(3)
-                },
-                sampleRate: sampleRate
-            };
-
-            fn(model, inputs.freq, inputs.q);
-            checkCoefficients(model);
-        });
-    });
-
-    // Test the flock.ugen.filter unit generator with all filter types and a set of generic input values.
-    /*
-    forEachFilterType(function (recipeName, recipe, filterType) {
-        var name = "flock.ugen.filter() " + recipeName + "." + filterType;
-        testEachFilterInputValue(name, function (inputs) {
-            var ugen = {
-                id: "filter",
-                ugen: "flock.ugen.filter",
-                inputs: inputs,
-                options: {
-                    // TODO: API bug. I should just be able to specify a type (as a key path) without a recipe if I want.
-                    recipe: recipe,
-                    type: filterType
-                }
-            };
-            ugen.inputs.source = {
-                ugen: "flock.ugen.lfNoise",
-                inputs: {
-                    freq: 440,
-                    mul: 0.95
-                }
-            };
-
-            var filterSynth = flock.synth(ugen);
-            filterSynth.gen(64);
-            flock.test.arrayUnbrokenSignal(filterSynth.get("filter"), -1.0, 1.0);
-        });
-    });
-    */
+        */
+    }());
 
     test("flock.ugen.delay", function () {
         var sourceBuffer = flock.test.ascendingBuffer(64, 1),
@@ -2352,6 +2228,167 @@ var fluid = fluid || require("infusion"),
         deepEqual(t2a.output, expected,
             "The control rate trigger value should have been shifted to index 27 in the audio rate output stream.");
     });
+
+    (function () {
+        module("flock.ugen.triggerCallback");
+        flock.test.CallbackCounter = function () {
+            this.callbackRecords = [];
+        };
+
+        flock.test.CallbackCounter.prototype.callback = function () {
+            this.callbackRecords.push(arguments);
+        };
+
+        flock.test.CallbackCounter.prototype.clear = function () {
+            this.callbackRecords = [];
+        };
+
+        var makeCallbackCounter = function () {
+            var counter = new flock.test.CallbackCounter();
+            counter.boundCallback = counter.callback.bind(counter);
+            flock.test.CallbackCounter.singleton = counter;
+            return counter;
+        };
+
+        fluid.defaults("flock.test.triggerCallbackSynth", {
+            gradeNames: ["flock.synth", "autoInit"],
+            synthDef: {
+                ugen: "flock.ugen.triggerCallback",
+                source: {
+                    ugen: "flock.mock.ugen",
+                    options: {
+                        buffer: flock.generate(64, function (i) {
+                            return i;
+                        })
+                    }
+                },
+                trigger: {
+                    ugen: "flock.mock.ugen",
+                    options: {
+                        buffer: flock.generate(64, function (i) {
+                            return i === 31 ? 1.0 : 0.0;
+                        })
+                    }
+                },
+                options: {}
+            }
+        });
+
+        var testTriggerCallback = function (testSpec) {
+            var counter = makeCallbackCounter();
+            var synthDefSpec = {
+                options: {
+                    callback: {}
+                }
+            };
+
+            if (testSpec.type === "func" || testSpec.type === "funcName") {
+                synthDefSpec.options.callback[testSpec.type] = counter.boundCallback;
+            }
+
+            var synth = flock.test.triggerCallbackSynth({
+                synthDef: $.extend(true, synthDefSpec, testSpec.synthDefOverrides)
+            });
+            synth.gen();
+
+            var expectedNumCalls = testSpec.expectedCallbackArgs.length;
+            equal(counter.callbackRecords.length, expectedNumCalls, "The callback should have been invoked " +
+                expectedNumCalls + " times.");
+
+            for (var i = 0; i < expectedNumCalls; i++) {
+                var expectedCallbackRecord = fluid.makeArray(testSpec.expectedCallbackArgs[i]);
+                var actualCallbackRecord = counter.callbackRecords[i];
+                equal(actualCallbackRecord.length, expectedCallbackRecord.length,
+                    expectedCallbackRecord.length + " arguments should have been passed to the callback.");
+                for (var j = 0; j < expectedCallbackRecord.length; j++) {
+                    equal(actualCallbackRecord[j], expectedCallbackRecord[j],
+                        "The expected argument at position " + j + " should have been passed to the callback.");
+                }
+            }
+        };
+
+        var runTriggerCallbackTests = function (testSpecs) {
+            fluid.each(testSpecs, function (testSpec) {
+                test(testSpec.name, function () {
+                    testTriggerCallback(testSpec);
+                });
+            });
+        };
+
+        var triggerCallbackTestSpecs = [
+            {
+                name: "Raw function",
+                type: "func",
+                expectedCallbackArgs: [
+                    [31]
+                ]
+            },
+            {
+                name: "Raw function, multiple triggers",
+                type: "func",
+                synthDefOverrides: {
+                    trigger: {
+                        options: {
+                            buffer: flock.generate(64, function (i) {
+                                return (i === 31 || i === 62) ? 1.0 : 0.0;
+                            })
+                        }
+                    }
+                },
+
+                expectedCallbackArgs: [
+                    [31],
+                    [62]
+                ]
+            },
+            {
+                name: "Raw function with arguments",
+                type: "func",
+                synthDefOverrides: {
+                    options: {
+                        callback: {
+                            args: ["cat"]
+                        }
+                    }
+                },
+                expectedCallbackArgs: [
+                    ["cat", 31]
+                ]
+            },
+            {
+                name: "Function EL path",
+                type: "funcName",
+                synthDefOverrides: {
+                    options: {
+                        callback: {
+                            funcName: "flock.test.CallbackCounter.singleton.boundCallback"
+                        }
+                    }
+                },
+                expectedCallbackArgs: [
+                    [31]
+                ]
+            },
+            {
+                name: "this/method pair",
+                synthDefOverrides: {
+                    options: {
+                        callback: {
+                            "this": "flock.test.CallbackCounter.singleton",
+                            method: "callback"
+                        }
+                    }
+                },
+                expectedCallbackArgs: [
+                    [31]
+                ]
+            }
+        ];
+
+        runTriggerCallbackTests(triggerCallbackTestSpecs);
+
+    }());
+
 
     (function () {
         module("flock.ugen.pan2");
