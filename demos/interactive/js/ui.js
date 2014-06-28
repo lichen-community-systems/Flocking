@@ -76,6 +76,8 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ui.toggleButton", {
         gradeNames: ["fluid.viewComponent", "autoInit"],
 
+        selfRender: false,
+
         model: {
             isEnabled: false
         },
@@ -109,6 +111,11 @@ var fluid = fluid || require("infusion"),
 
         listeners: {
             onCreate: [
+                {
+                    funcName: "flock.ui.toggleButton.render",
+                    args: ["{that}"]
+                },
+
                 {
                     "this": "{that}.container",
                     method: "click",
@@ -167,12 +174,30 @@ var fluid = fluid || require("infusion"),
             disabled: "Off",
         },
 
+        markup: {
+            button: "<button>%label</button>"
+        },
+
         styles: {
             enabled: "on",
             disabled: "off"
         }
     });
 
+    flock.ui.toggleButton.render = function (that) {
+        if (!that.options.selfRender) {
+            return;
+        }
+
+        // TODO: This is all very shady.
+        var renderedMarkup = fluid.stringTemplate(that.options.markup.button, {
+            label: that.options.strings.disabled
+        });
+
+        var button = $(renderedMarkup);
+        that.container.append(button);
+        that.container = button;
+    };
 
     flock.ui.toggleButton.toggleModelState = function (model, applier) {
         applier.requestChange("isEnabled", !model.isEnabled);

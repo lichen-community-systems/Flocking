@@ -162,7 +162,10 @@ var fluid = fluid || require("infusion"),
         components: {
             viewToggleButton: {
                 type: "flock.playground.editorModeToggle",
-                container: "{that}.dom.viewToggler"
+                container: "{that}.dom.synthSelector",
+                options: {
+                    selfRender: true
+                }
             },
 
             visualView: {
@@ -176,7 +179,7 @@ var fluid = fluid || require("infusion"),
 
         selectors: {
             visual: "#visual-view",
-            viewToggler: "#viewButton"
+            synthSelector: ".synthSelector"
         },
 
         modelListeners: {

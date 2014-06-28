@@ -68,7 +68,7 @@ label {
     padding-right: 0.55em;
 }
 
-#viewButton {
+.synthSelector button {
     float: right;
     width: 4.5em;
     margin-right: 1em;
