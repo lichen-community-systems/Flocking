@@ -74,7 +74,7 @@ var fluid = fluid || require("infusion"),
         invokers: {
             evaluateSource: {
                 funcName: "flock.playground.evaluateSource",
-                args: ["{that}.applier", "@expand:{editor}.getContent()"],
+                args: ["@expand:{editor}.getContent()", "{that}.applier"],
                 dynamic: true
             }
         },
@@ -90,10 +90,15 @@ var fluid = fluid || require("infusion"),
                 }
             ],
 
-            onEvaluateDemo: {
-                funcName: "flock.playground.synthForActiveSynthSpec",
-                args: "{that}.model.activeSynthSpec"
-            }
+            onEvaluateDemo: [
+                {
+                    func: "{that}.evaluateSource"
+                },
+                {
+                    funcName: "flock.playground.synthForActiveSynthSpec",
+                    args: ["{that}", "{that}.model.activeSynthSpec"]
+                }
+            ]
         },
 
         selectors: {
@@ -103,16 +108,46 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    flock.playground.evaluateSource = function (applier, source) {
-        var synthSpec = JSON.parse(source);
+    flock.playground.evaluateSource = function (source, applier) {
+        if (source.length < 1) {
+            return;
+        }
+
+        var trimmed = source.trim(),
+            first = trimmed[0],
+            last = trimmed[trimmed.length - 1];
 
         applier.change("activeSynthSpec", null);
+
+        // TODO: Better JSON detection.
+        // CodeMirror's JavaScript and JSON modes are the same,
+        // so we have to detect declarative synths by brute force.
+        if ((first === "[" && last === "]") || (first === "{" && last === "}")) {
+            return flock.playground.parseJSON(source, applier);
+        } else {
+            return flock.playground.evaluateCode(source);
+        }
+    };
+
+    flock.playground.parseJSON = function (source, applier) {
+        var synthSpec = JSON.parse(source);
         applier.change("activeSynthSpec", synthSpec);
     };
 
+    flock.playground.evaluateCode = function (source) {
+        eval(source); // jshint ignore: line
+    };
+
     // TODO: This synth needs to be a dynamic component!
-    flock.playground.synthForActiveSynthSpec = function (activeSynthSpec) {
-        return flock.synth(activeSynthSpec);
+    flock.playground.synthForActiveSynthSpec = function (that, activeSynthSpec) {
+        if (that.synth) {
+            that.synth.pause();
+        }
+
+        if (activeSynthSpec) {
+            that.synth = flock.synth(activeSynthSpec);
+            return that.synth;
+        }
     };
 
     fluid.defaults("flock.playground.editorModeToggle", {
