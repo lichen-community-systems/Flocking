@@ -60,14 +60,108 @@ var fluid = fluid || require("infusion"),
     };
 
 
+    /***********************************
+     * Graph/Source View Taggle Button *
+     ***********************************/
+
+    fluid.defaults("flock.playground.editorModeToggle", {
+        gradeNames: ["flock.ui.toggleButton", "autoInit"],
+
+        model: {
+            isEnabled: true
+        },
+
+        listeners: {
+            onEnabled: [
+                {
+                    "this": "{playground}.dom.editor",
+                    method: "hide"
+                },
+                {
+                    "this": "{playground}.dom.visual",
+                    method: "show"
+                }
+            ],
+
+            onDisabled: [
+                {
+                    "this": "{playground}.dom.visual",
+                    method: "hide"
+                },
+                {
+                    "this": "{playground}.dom.editor",
+                    method: "show"
+                }
+            ]
+        },
+
+        strings: {
+            enabled: "Source",
+            disabled: "Graph"
+        }
+    });
+
+
+    /*********************
+     * Visual Playground *
+     *********************/
+
+    fluid.defaults("flock.playground.visual", {
+        gradeNames: ["flock.playground", "autoInit"],
+
+        components: {
+            viewToggleButton: {
+                type: "flock.playground.editorModeToggle",
+                container: "{that}.dom.synthSelector",
+                options: {
+                    selfRender: true,
+                    model: {
+                        isEnabled: false
+                    },
+                    modelListeners: {
+                        "isEnabled": [
+                            {
+                                func: "{visual}.events.onSourceUpdated.fire"
+                            },
+                            {
+                                "this": "{editor}.editor",
+                                method: "refresh"
+                            }
+                        ]
+                    }
+                }
+            },
+
+            visualView: {
+                type: "flock.playground.visualView",
+                container: "#visual-view"
+            }
+        },
+
+        selectors: {
+            visual: "#visual-view",
+            synthSelector: ".synthSelector"
+        },
+
+        modelListeners: {
+            isDeclarative: {
+                funcName: "flock.playground.visual.updateToggleButton",
+                args: ["{change}.value", "{viewToggleButton}.container"]
+            }
+        }
+    });
+
+    flock.playground.visual.updateToggleButton = function (isDeclarative, button) {
+        button.attr("disabled", !isDeclarative);
+    };
+
+
     /***************
      * Visual View *
      ***************/
 
     fluid.defaults("flock.playground.visualView", {
         gradeNames: ["fluid.viewComponent", "autoInit"],
-
-        model: {}, // The active synthSpec
 
         components: {
             jsPlumb: {
@@ -84,9 +178,8 @@ var fluid = fluid || require("infusion"),
                         jsPlumb: "{jsPlumb}"
                     },
 
-                    // TODO: Move this IoC reference upwards.
                     model: {
-                        synthDef: "{visualView}.model"
+                        synthSpec: "{playground}.model.activeSynthSpec"
                     }
                 }
             }
@@ -95,6 +188,7 @@ var fluid = fluid || require("infusion"),
         events: {
             onReady: "{jsPlumb}.events.onReady"
         }
+
     });
 
 
@@ -190,10 +284,10 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.ui.nodeRenderers.synth", {
-        gradeNames: ["fluid.viewComponent", "autoInit"],
+        gradeNames: ["fluid.viewRelayComponent", "autoInit"],
 
         model: {
-            synthDef: {},
+            synthSpec: {},
             nodeGraph: {}
         },
 
@@ -204,7 +298,7 @@ var fluid = fluid || require("infusion"),
                     "{that}",
                     "{that}.applier",
                     "{that}.container",
-                    "{arguments}.0",
+                    "{that}.model.synthSpec",
                     "{that}.events.afterRender.fire"
                 ]
             }
@@ -212,6 +306,18 @@ var fluid = fluid || require("infusion"),
 
         events: {
             afterRender: null
+        },
+
+        listeners: {
+            onCreate: {
+                func: "{that}.refreshView"
+            }
+        },
+
+        modelListeners: {
+            "*": {
+                func: "{that}.refreshView"
+            }
         }
     });
 
@@ -242,7 +348,8 @@ var fluid = fluid || require("infusion"),
         // TODO: Copy pasted from flock.parser.ugenForDef. It needs refactoring.
         // TODO: should this be sourced elsewhere in this context?
         var options = {
-            rate: flock.rates.AUDIO, // TODO: This is hardcoded to audio rate, which is fine until we can edit value synths.
+            // TODO: This is hardcoded to audio rate, which is fine until we can edit value synths.
+            rate: flock.rates.AUDIO,
             audioSettings: flock.enviro.shared.options.audioSettings,
             buses: flock.enviro.shared.buses,
             buffers: flock.enviro.shared.buffers
@@ -257,7 +364,6 @@ var fluid = fluid || require("infusion"),
 
     flock.ui.nodeRenderers.synth.makeRenderers = function (synthDef, container) {
         var renderers = [];
-
         flock.ui.nodeRenderers.synth.accumulateRenderers(synthDef, container, renderers);
 
         return renderers;
@@ -346,20 +452,20 @@ var fluid = fluid || require("infusion"),
 
     // TODO: use dynamic components instead.
     flock.ui.nodeRenderers.synth.refreshView = function (that, applier, container, synthSpec, afterRender) {
-        if (!synthSpec || $.isEmptyObject(synthSpec)) {
+        if (!synthSpec || !synthSpec.synthDef || $.isEmptyObject(synthSpec.synthDef)) {
             return;
         }
 
-        container.children().remove();
+        var synthDef = synthSpec.synthDef,
+            expanded = flock.ui.nodeRenderers.synth.expandDef(synthDef);
 
-        var synthDef = synthSpec.synthDef;
-        var expanded = flock.ui.nodeRenderers.synth.expandDef(synthDef);
+        container.children().remove();
         // TODO: Renderers leak?
         that.ugenRenderers = flock.ui.nodeRenderers.synth.makeRenderers(expanded, container);
         var graph = flock.ui.nodeRenderers.synth.render(that.ugenRenderers);
 
         flock.ui.nodeRenderers.synth.layoutGraph(container, graph);
-        flock.ui.nodeRenderers.synth.renderEdges(that.jsPlumb.plumb, graph.edges);
+        //flock.ui.nodeRenderers.synth.renderEdges(that.jsPlumb.plumb, graph.edges);
 
         if (afterRender) {
             afterRender();

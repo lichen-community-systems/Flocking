@@ -23,12 +23,13 @@ var fluid = fluid || require("infusion"),
      **************/
 
     fluid.defaults("flock.playground", {
-        gradeNames: ["fluid.viewComponent", "autoInit"],
+        gradeNames: ["fluid.viewRelayComponent", "autoInit"],
 
         flockingSettings: {},
 
         model: {
-            activeSynth: {}
+            activeSynth: {},
+            isDeclarative: false
         },
 
         components: {
@@ -42,7 +43,7 @@ var fluid = fluid || require("infusion"),
                 options: {
                     listeners: {
                         afterContentReplaced: {
-                            func: "{playground}.evaluateSource"
+                            func: "{playground}.detectSourceType"
                         }
                     }
                 }
@@ -53,14 +54,25 @@ var fluid = fluid || require("infusion"),
                 container: "{that}.dom.demoSelector",
                 options: {
                     listeners: {
-                        afterDemoLoaded: {
-                            func: "{editor}.setContent",
-                            args: ["{arguments}.0"]
-                        },
+                        afterDemoLoaded: [
+                            {
+                                func: "{editor}.setContent",
+                                args: ["{arguments}.0"]
+                            },
+                            {
+                                func: "{playground}.events.onSourceUpdated.fire"
+                            }
 
-                        onSelect: {
-                            func: "{playButton}.pause"
-                        }
+                        ],
+
+                        onSelect: [
+                            {
+                                func: "{playButton}.pause"
+                            },
+                            {
+                                func: "{playground}.events.onSourceUpdated.fire"
+                            }
+                        ]
                     }
                 }
             },
@@ -72,15 +84,22 @@ var fluid = fluid || require("infusion"),
         },
 
         invokers: {
+            detectSourceType: {
+                funcName: "flock.playground.detectSourceType",
+                args: ["@expand:{editor}.getContent()", "{that}.applier"],
+                dynamic: true
+            },
+
             evaluateSource: {
                 funcName: "flock.playground.evaluateSource",
-                args: ["@expand:{editor}.getContent()", "{that}.applier"],
+                args: ["{arguments}.0", "@expand:{editor}.getContent()", "{that}.applier"],
                 dynamic: true
             }
         },
 
         events: {
-            onEvaluateDemo: "{playButton}.events.onPlay"
+            onEvaluateDemo: "{playButton}.events.onPlay",
+            onSourceUpdated: null
         },
 
         listeners: {
@@ -92,11 +111,25 @@ var fluid = fluid || require("infusion"),
 
             onEvaluateDemo: [
                 {
-                    func: "{that}.evaluateSource"
+                    func: "{that}.detectSourceType"
+                },
+                {
+                    func: "{that}.evaluateSource",
+                    args: "{that}.model.isDeclarative"
                 },
                 {
                     funcName: "flock.playground.synthForActiveSynthSpec",
                     args: ["{that}", "{that}.model.activeSynthSpec"]
+                }
+            ],
+
+            onSourceUpdated: [
+                {
+                    func: "{playground}.detectSourceType"
+                },
+                {
+                    func: "{playground}.evaluateSource",
+                    args: "{playground}.model.isDeclarative"
                 }
             ]
         },
@@ -108,25 +141,26 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    flock.playground.evaluateSource = function (source, applier) {
+    // TODO: Better JSON detection.
+    // CodeMirror's JavaScript and JSON modes are the same,
+    // so we have to detect declarative synths by brute force.
+    flock.playground.detectSourceType = function (source, applier) {
         if (source.length < 1) {
             return;
         }
 
         var trimmed = source.trim(),
             first = trimmed[0],
-            last = trimmed[trimmed.length - 1];
+            last = trimmed[trimmed.length - 1],
+            isJSON = (first === "[" && last === "]") || (first === "{" && last === "}");
 
         applier.change("activeSynthSpec", null);
+        applier.change("isDeclarative", isJSON);
+    };
 
-        // TODO: Better JSON detection.
-        // CodeMirror's JavaScript and JSON modes are the same,
-        // so we have to detect declarative synths by brute force.
-        if ((first === "[" && last === "]") || (first === "{" && last === "}")) {
-            return flock.playground.parseJSON(source, applier);
-        } else {
-            return flock.playground.evaluateCode(source);
-        }
+    flock.playground.evaluateSource = function (isJSON, source, applier) {
+        var fn = isJSON ? flock.playground.parseJSON : flock.playground.evaluateCode;
+        fn(source, applier);
     };
 
     flock.playground.parseJSON = function (source, applier) {
@@ -150,80 +184,6 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    fluid.defaults("flock.playground.editorModeToggle", {
-        gradeNames: ["flock.ui.toggleButton", "autoInit"],
-
-        model: {
-            isEnabled: true
-        },
-
-        listeners: {
-            onEnabled: [
-                {
-                    "this": "{playground}.dom.editor",
-                    method: "hide"
-                },
-                {
-                    "this": "{playground}.dom.visual",
-                    method: "show"
-                },
-                {
-                    func: "{visualView}.synthDefRenderer.refreshView"
-                }
-            ],
-
-            onDisabled: [
-                {
-                    "this": "{playground}.dom.visual",
-                    method: "hide"
-                },
-                {
-                    "this": "{playground}.dom.editor",
-                    method: "show"
-                }
-            ]
-        },
-
-        strings: {
-            enabled: "Source",
-            disabled: "Graph"
-        }
-    });
-
-
-    fluid.defaults("flock.playground.visual", {
-        gradeNames: ["flock.playground", "autoInit"],
-
-        components: {
-            viewToggleButton: {
-                type: "flock.playground.editorModeToggle",
-                container: "{that}.dom.synthSelector",
-                options: {
-                    selfRender: true
-                }
-            },
-
-            visualView: {
-                type: "flock.playground.visualView",
-                container: "#visual-view",
-                options: {
-                    model: "{playground}.model.activeSynthSpec"
-                }
-            }
-        },
-
-        selectors: {
-            visual: "#visual-view",
-            synthSelector: ".synthSelector"
-        },
-
-        modelListeners: {
-            "activeSynthSpec": {
-                func: "{visualView}.synthDefRenderer.refreshView",
-                args: "{change}.value"
-            }
-        }
-    });
 
     /*****************
      * Demo Selector *
