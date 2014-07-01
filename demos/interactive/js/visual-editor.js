@@ -115,9 +115,6 @@ var fluid = fluid || require("infusion"),
                 container: "{that}.dom.synthSelector",
                 options: {
                     selfRender: true,
-                    model: {
-                        isEnabled: false
-                    },
                     modelListeners: {
                         "isEnabled": [
                             {
@@ -459,13 +456,15 @@ var fluid = fluid || require("infusion"),
         var synthDef = synthSpec.synthDef,
             expanded = flock.ui.nodeRenderers.synth.expandDef(synthDef);
 
+        that.jsPlumb.plumb.detachEveryConnection();
         container.children().remove();
+
         // TODO: Renderers leak?
         that.ugenRenderers = flock.ui.nodeRenderers.synth.makeRenderers(expanded, container);
         var graph = flock.ui.nodeRenderers.synth.render(that.ugenRenderers);
 
         flock.ui.nodeRenderers.synth.layoutGraph(container, graph);
-        //flock.ui.nodeRenderers.synth.renderEdges(that.jsPlumb.plumb, graph.edges);
+        flock.ui.nodeRenderers.synth.renderEdges(that.jsPlumb.plumb, graph.edges);
 
         if (afterRender) {
             afterRender();
@@ -476,7 +475,9 @@ var fluid = fluid || require("infusion"),
         fluid.each(edges, function (edge) {
             plumb.connect({
                 source: plumb.addEndpoint(edge.source),
-                target: plumb.addEndpoint(edge.target)
+                target: plumb.addEndpoint(edge.target),
+                anchors:["Right", "Left"],
+                connector: "Straight"
             });
         });
     };
