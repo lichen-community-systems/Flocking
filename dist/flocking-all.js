@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (June 15, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (July 1, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -23743,6 +23743,10 @@ var fluid = fluid || require("infusion"),
                 name;
 
             m.strides = m.strides || {};
+
+            if (!strideNames) {
+                return;
+            }
 
             for (i = 0; i < strideNames.length; i++) {
                 name = strideNames[i];
