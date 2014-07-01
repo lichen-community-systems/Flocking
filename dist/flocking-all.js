@@ -23752,6 +23752,10 @@ var fluid = fluid || require("infusion"),
 
             m.strides = m.strides || {};
 
+            if (!strideNames) {
+                return;
+            }
+
             for (i = 0; i < strideNames.length; i++) {
                 name = strideNames[i];
                 m.strides[name] = inputs[name].rate === flock.rates.AUDIO ? 1 : 0;
