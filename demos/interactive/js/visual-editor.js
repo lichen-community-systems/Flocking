@@ -28,7 +28,7 @@ var fluid = fluid || require("infusion"),
             plumb: {
                 expander: {
                     funcName: "flock.playground.jsPlumb.create",
-                    args: ["{that}.container", "{that}.options.jsPlumbSettings"]
+                    args: ["{that}.container"]
                 }
             }
         },
@@ -43,19 +43,13 @@ var fluid = fluid || require("infusion"),
                     "this": "{that}.plumb",
                     method: "ready",
                     args: "{that}.events.onReady.fire"
-                },
-                {
-                    "this": "console",
-                    method: "log",
-                    args: "JSPlumb is ready!"
                 }
             ]
         }
     });
 
-    flock.playground.jsPlumb.create = function (/*container, jsPlumbSettings*/) {
-        // jsPlumbSettings.Container = jsPlumbSettings.Container || container;
-        // return jsPlumb.getInstance(jsPlumbSettings);
+    flock.playground.jsPlumb.create = function (container) {
+        jsPlumb.setContainer(container[0]);
         return jsPlumb;
     };
 
@@ -115,6 +109,9 @@ var fluid = fluid || require("infusion"),
                 container: "{that}.dom.synthSelector",
                 options: {
                     selfRender: true,
+                    model: {
+                        isEnabled: true
+                    },
                     modelListeners: {
                         "isEnabled": [
                             {
@@ -292,12 +289,14 @@ var fluid = fluid || require("infusion"),
             refreshView: {
                 funcName: "flock.ui.nodeRenderers.synth.refreshView",
                 args: [
+                    "{viewToggleButton}.model.isEnabled",
                     "{that}",
                     "{that}.applier",
                     "{that}.container",
                     "{that}.model.synthSpec",
                     "{that}.events.afterRender.fire"
-                ]
+                ],
+                dynamic: true
             }
         },
 
@@ -447,17 +446,25 @@ var fluid = fluid || require("infusion"),
         });
     };
 
+    flock.ui.nodeRenderers.synth.clear = function (jsPlumb, container) {
+        jsPlumb.plumb.detachEveryConnection();
+        container.children().remove();
+    };
+
     // TODO: use dynamic components instead.
-    flock.ui.nodeRenderers.synth.refreshView = function (that, applier, container, synthSpec, afterRender) {
+    flock.ui.nodeRenderers.synth.refreshView = function (isVisible, that, applier, container, synthSpec, afterRender) {
         if (!synthSpec || !synthSpec.synthDef || $.isEmptyObject(synthSpec.synthDef)) {
+            return;
+        }
+
+        flock.ui.nodeRenderers.synth.clear(that.jsPlumb, container);
+
+        if (!isVisible) {
             return;
         }
 
         var synthDef = synthSpec.synthDef,
             expanded = flock.ui.nodeRenderers.synth.expandDef(synthDef);
-
-        that.jsPlumb.plumb.detachEveryConnection();
-        container.children().remove();
 
         // TODO: Renderers leak?
         that.ugenRenderers = flock.ui.nodeRenderers.synth.makeRenderers(expanded, container);

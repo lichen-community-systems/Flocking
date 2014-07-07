@@ -11,37 +11,38 @@ var fluid = fluid || require("infusion");
 
 (function () {
     "use strict";
-    
+
     fluid.defaults("flock.playground.demos", {
         gradeNames: ["fluid.modelComponent", "fluid.eventedComponent", "autoInit"],
-        
+
         model: {
             groups: [
                 "{osc}.options.demos",
-                "{noise}.options.demos"
+                "{noise}.options.demos",
+                "{granular}.options.demos"
             ],
             defaultOption: "am"
         },
-        
+
         components: {
             osc: {
                 type: "flock.playground.demos.osc",
             },
-            
+
             noise: {
                 type: "flock.playground.demos.noise"
             },
-            
+
             granular: {
                 type: "flock.playground.demos.granular"
             }
         }
     });
-    
-    
+
+
     fluid.defaults("flock.playground.demos.osc", {
         gradeNames: ["fluid.littleComponent", "autoInit"],
-        
+
         demos: {
             name: "Oscillators",
             options: [
@@ -68,10 +69,10 @@ var fluid = fluid || require("infusion");
             ]
         }
     });
-    
+
     fluid.defaults("flock.playground.demos.noise", {
         gradeNames: ["fluid.littleComponent", "autoInit"],
-        
+
         demos: {
             name: "Noise",
             options: [
@@ -106,10 +107,10 @@ var fluid = fluid || require("infusion");
             ]
         }
     });
-    
+
     fluid.defaults("flock.playground.demos.granular", {
         gradeNames: ["fluid.littleComponent", "autoInit"],
-        
+
         demos: {
             name: "Granular synthesis",
             options: [
