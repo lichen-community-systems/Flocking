@@ -119,20 +119,26 @@ label {
 }
 
 .node {
-    width: 5%;
+    width: 7.5%;
     height: 5%;
     background-color: #999;
     color: #fff;
     border-radius: 0.5em;
     padding-bottom: 2.2em;
-    padding-top: 1.5em;
+    padding-top: 1.2em;
+    text-align: center;
+    letter-spacing: 0.1em;
+    font-size: 0.9em;
 }
 
-.node .label {
-    font-size: 0.75em;
-    text-align: center;
-    font-style: bold;
+.node.flock\.ugen\.value {
+    font-family: monospace;
+    font-weight: normal;
+    font-size: 1em;
+    border: 0.1em solid #999;
+    background-color: rgba(0,0,0,0);
 }
+
 
 @media screen and (max-width:480px) {
 	.masthead {

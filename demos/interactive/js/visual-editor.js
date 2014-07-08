@@ -229,7 +229,7 @@ var fluid = fluid || require("infusion"),
             node = $(renderedMarkup);
 
         container.append(node);
-        that.node = node; // TODO: C'mon, seriously?
+        that.node = node;
 
         if (afterRender) {
             afterRender(node, ugenDef);
@@ -248,20 +248,12 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.ui.nodeRenderers.ugen.prepareStrings = function (ugenDef) {
-        var toTailPath = fluid.pathUtil.getToTailPath(ugenDef.ugen),
-            type = toTailPath === "flock.ugen" ? fluid.pathUtil.getTailPath(ugenDef.ugen) : ugenDef.ugen,
-            displayName;
-
         // Come up with a display name for each unit generator.
-        // For value ugens, this will be its actual value. Other ugens will be
-        // displayed with their last path segment (tail).
-        // TODO: Do this more gracefully.
-        if (flock.ui.nodeRenderers.ugen.hasTag(ugenDef.ugen,"flock.ugen.valueType")) {
-            displayName = ugenDef.inputs.value;
-        } else {
-            // TODO: Make configurable.
-            displayName = type;
-        }
+        // For value ugens, this will be its actual value.
+        // Other ugens will be displayed with their last path segment (tail).
+        // TODO: This should become an option for all unit generators.
+        var isValueUGen = flock.ui.nodeRenderers.ugen.hasTag(ugenDef.ugen, "flock.ugen.valueType"),
+            displayName = isValueUGen ? ugenDef.inputs.value : fluid.pathUtil.getTailPath(ugenDef.ugen);
 
         // TODO: We should have some other ID that represents the view, not the model.
         // TODO: and this is the wrong time to do this.
@@ -271,7 +263,7 @@ var fluid = fluid || require("infusion"),
 
         return {
             id: ugenDef.id,
-            type: type,
+            type: ugenDef.ugen,
             displayName: displayName
         };
     };
@@ -280,9 +272,12 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ui.nodeRenderers.synth", {
         gradeNames: ["fluid.viewRelayComponent", "autoInit"],
 
+        members: {
+            ugenRenderers: []
+        },
+
         model: {
-            synthSpec: {},
-            nodeGraph: {}
+            synthSpec: {}
         },
 
         invokers: {
@@ -311,7 +306,7 @@ var fluid = fluid || require("infusion"),
         },
 
         modelListeners: {
-            "*": {
+            "synthSpec": {
                 func: "{that}.refreshView"
             }
         }
@@ -358,13 +353,7 @@ var fluid = fluid || require("infusion"),
         return flock.ui.nodeRenderers.synth.expandAllInputs(synthDef, options);
     };
 
-    flock.ui.nodeRenderers.synth.makeRenderers = function (synthDef, container) {
-        var renderers = [];
-        flock.ui.nodeRenderers.synth.accumulateRenderers(synthDef, container, renderers);
-
-        return renderers;
-    };
-
+    // TODO: use dynamic components instead.
     flock.ui.nodeRenderers.synth.accumulateRenderers = function (ugen, container, renderers) {
         var inputDefs = ugen.inputs,
             edges = [],
@@ -399,7 +388,7 @@ var fluid = fluid || require("infusion"),
         renderers.push(renderer);
     };
 
-    flock.ui.nodeRenderers.synth.render = function (renderers) {
+    flock.ui.nodeRenderers.synth.renderGraph = function (renderers) {
         var graphSpec = {
             nodes: {},
             edges: []
@@ -446,44 +435,49 @@ var fluid = fluid || require("infusion"),
         });
     };
 
-    flock.ui.nodeRenderers.synth.clear = function (jsPlumb, container) {
+    flock.ui.nodeRenderers.synth.clear = function (jsPlumb, container, ugenRenderers) {
         jsPlumb.plumb.detachEveryConnection();
         container.children().remove();
+
+        // TODO: Remove this when these renderers become dynamic components.
+        fluid.each(ugenRenderers, function (renderer) {
+            renderer.destroy();
+        });
+        ugenRenderers.length = 0;
     };
 
-    // TODO: use dynamic components instead.
+    flock.ui.nodeRenderers.synth.render = function (jsPlumb, synthDef, container, ugenRenderers) {
+        var expanded = flock.ui.nodeRenderers.synth.expandDef(synthDef);
+        flock.ui.nodeRenderers.synth.accumulateRenderers(expanded, container, ugenRenderers);
+
+        var graph = flock.ui.nodeRenderers.synth.renderGraph(ugenRenderers);
+        flock.ui.nodeRenderers.synth.layoutGraph(container, graph);
+        flock.ui.nodeRenderers.synth.renderEdges(jsPlumb.plumb, graph.edges);
+    };
+
     flock.ui.nodeRenderers.synth.refreshView = function (isVisible, that, applier, container, synthSpec, afterRender) {
         if (!synthSpec || !synthSpec.synthDef || $.isEmptyObject(synthSpec.synthDef)) {
             return;
         }
 
-        flock.ui.nodeRenderers.synth.clear(that.jsPlumb, container);
+        flock.ui.nodeRenderers.synth.clear(that.jsPlumb, container, that.ugenRenderers);
 
-        if (!isVisible) {
-            return;
+        if (isVisible) {
+            flock.ui.nodeRenderers.synth.render(that.jsPlumb, synthSpec.synthDef, container, that.ugenRenderers);
         }
 
-        var synthDef = synthSpec.synthDef,
-            expanded = flock.ui.nodeRenderers.synth.expandDef(synthDef);
-
-        // TODO: Renderers leak?
-        that.ugenRenderers = flock.ui.nodeRenderers.synth.makeRenderers(expanded, container);
-        var graph = flock.ui.nodeRenderers.synth.render(that.ugenRenderers);
-
-        flock.ui.nodeRenderers.synth.layoutGraph(container, graph);
-        flock.ui.nodeRenderers.synth.renderEdges(that.jsPlumb.plumb, graph.edges);
-
-        if (afterRender) {
-            afterRender();
-        }
+        afterRender();
     };
 
     flock.ui.nodeRenderers.synth.renderEdges = function (plumb, edges) {
         fluid.each(edges, function (edge) {
             plumb.connect({
-                source: plumb.addEndpoint(edge.source),
-                target: plumb.addEndpoint(edge.target),
-                anchors:["Right", "Left"],
+                source: plumb.addEndpoint(edge.source, {
+                    anchor: "Right"
+                }),
+                target: plumb.addEndpoint(edge.target, {
+                    anchor: "Left"
+                }),
                 connector: "Straight"
             });
         });
