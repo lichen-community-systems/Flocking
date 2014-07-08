@@ -373,7 +373,8 @@ var fluid = fluid || require("infusion"),
                 inputDef.id = inputDef.id || fluid.allocateGuid();
                 edges.push({
                     source: ugen.id,
-                    target: inputDef.id
+                    target: inputDef.id,
+                    label: inputName
                 });
             }
         }
@@ -420,7 +421,7 @@ var fluid = fluid || require("infusion"),
             g.addEdge(null, edge.source, edge.target);
         });
 
-        var outputGraph = dagre.layout().rankDir("LR").run(g);
+        var outputGraph = dagre.layout().rankDir("RL").rankSep(75).run(g);
 
         // Position the nodes.
         outputGraph.eachNode(function (id, graphNode) {
@@ -429,8 +430,8 @@ var fluid = fluid || require("infusion"),
                 "position": "absolute",
                 // TODO: calculate position from centre, which is what Dagre gives us.
                 // TODO: Offset based on the container's position on screen.
-                "top": graphNode.y + 125,
-                "left": graphNode.x + 25
+                "top": graphNode.y + 120,
+                "left": graphNode.x
             });
         });
     };
@@ -472,13 +473,43 @@ var fluid = fluid || require("infusion"),
     flock.ui.nodeRenderers.synth.renderEdges = function (plumb, edges) {
         fluid.each(edges, function (edge) {
             plumb.connect({
-                source: plumb.addEndpoint(edge.source, {
-                    anchor: "Right"
+                source: plumb.addEndpoint(edge.target, {
+                    anchor: "Right",
+                    width: 2,
+                    endpoint: [
+                        "Dot",
+                        {
+                            radius: 4
+                        }
+                    ]
                 }),
-                target: plumb.addEndpoint(edge.target, {
-                    anchor: "Left"
+                target: plumb.addEndpoint(edge.source, {
+                    endpoint: [
+                        "Dot",
+                        {
+                            radius: 4
+                        }
+                    ],
+                    anchor: [
+                        "Perimeter",
+                        {
+                            shape: "Rectangle",
+                        }
+                    ]
                 }),
-                connector: "Straight"
+                connector: "Straight",
+                overlays: [
+                    [
+                        "Label", {
+                            label: edge.label
+                        }
+                    ],
+                    [
+                        "PlainArrow", {
+                            location: 1
+                        }
+                    ]
+                ]
             });
         });
     };

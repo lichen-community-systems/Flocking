@@ -94,6 +94,9 @@ label {
 
 #visual-view {
     color: #fff;
+    overflow: auto;
+    position: relative;
+    height: 100%;
 }
 
 .CodeMirror {
@@ -124,21 +127,43 @@ label {
     background-color: #999;
     color: #fff;
     border-radius: 0.5em;
+    border: 0.1em solid #999;
     padding-bottom: 2.2em;
     padding-top: 1.2em;
     text-align: center;
     letter-spacing: 0.1em;
     font-size: 0.9em;
+    z-index: 1;
 }
 
 .node.flock\.ugen\.value {
+    width: 4%;
+    height: 5%;
     font-family: monospace;
     font-weight: normal;
     font-size: 1em;
-    border: 0.1em solid #999;
-    background-color: rgba(0,0,0,0);
+    background-color: #272822;
 }
 
+._jsPlumb_overlay {
+    border-radius: 0.5em;
+    background-color: rgba(68, 85, 102, 1);
+    color: #fff;
+    padding: 0.5em 0.5em;
+    font-size: 0.75em;
+    z-index: 2;
+    letter-spacing: 0.1em;
+}
+
+._jsPlumb_endpoint {
+    z-index: 1;
+}
+
+._jsPlumb_endpoint circle {
+    fill: #272822;
+    z-index: 1;
+    stroke: #999;
+}
 
 @media screen and (max-width:480px) {
 	.masthead {
