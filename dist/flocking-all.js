@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (June 15, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (July 10, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -23744,6 +23744,10 @@ var fluid = fluid || require("infusion"),
 
             m.strides = m.strides || {};
 
+            if (!strideNames) {
+                return;
+            }
+
             for (i = 0; i < strideNames.length; i++) {
                 name = strideNames[i];
                 m.strides[name] = inputs[name].rate === flock.rates.AUDIO ? 1 : 0;
@@ -28272,7 +28276,12 @@ var fluid = fluid || require("infusion"),
                     func: "{that}.events.onReady.fire",
                     args: "{that}.ports"
                 }
-            ]
+            ],
+
+            onAccessError: {
+                funcName: "fluid.log",
+                args: [fluid.logLevel.WARN, "{arguments}.0"]
+            }
         }
     });
 
@@ -28358,6 +28367,11 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
+            onError: {
+                funcName: "fluid.log",
+                args: [fluid.logLevel.WARN, "{arguments}.0"]
+            },
+
             raw: {
                 funcName: "flock.midi.connection.fireEvent",
                 args: ["{arguments}.0", "{that}.events"]

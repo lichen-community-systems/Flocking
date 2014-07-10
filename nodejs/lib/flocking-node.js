@@ -191,19 +191,21 @@ var fs = require("fs"),
      */
     flock.midi.nodejs.MIDIAccess = function (options) {
         this.sysex = options.sysex !== undefined ? options.sysex : false;
+        this.input = new midi.input();
+        this.output = new midi.output();
+
+        this.input.ignoreTypes(this.sysex, false, false);
     };
+
     var p = flock.midi.nodejs.MIDIAccess.prototype = {};
     p.constructor = flock.midi.nodejs.MIDIAccess;
 
     p.inputs = function () {
-        var input = new midi.input();
-        input.ignoreTypes(this.sysex, false, false);
-        return flock.midi.nodejs.getAllPorts("input", input);
+        return flock.midi.nodejs.getAllPorts("input", this.input);
     };
 
     p.outputs = function () {
-        var output = new midi.output();
-        return flock.midi.nodejs.getAllPorts("output", output);
+        return flock.midi.nodejs.getAllPorts("output", this.output);
     };
 
     flock.midi.nodejs.getAllPorts = function (type, midi) {
