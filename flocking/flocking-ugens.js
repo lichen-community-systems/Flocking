@@ -830,7 +830,7 @@ var fluid = fluid || require("infusion"),
             var defaults = fluid.defaults("flock.ugen.osc"),
                 merged = fluid.merge(null, defaults, options),
                 s = merged.tableSize;
-            inputs.table = tableFillFn(s, flock.TWOPI / s);
+            inputs.table = flock.fillTable(s, tableFillFn);
             return flock.ugen.osc(inputs, output, options);
         };
 

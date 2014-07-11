@@ -275,6 +275,11 @@ var fluid = fluid || require("infusion"),
         return flock.normalize(table);
     };
 
+    flock.fillTable = function (sizeOrTable, fillFn) {
+        var len = typeof (sizeOrTable) === "number" ? sizeOrTable : sizeOrTable.length;
+        return fillFn(sizeOrTable, flock.TWOPI / len);
+    };
+
     flock.tableGenerators = {
         sin: function (size, scale) {
             return flock.generate(size, function (i) {
