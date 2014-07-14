@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (July 10, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (July 13, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -19621,6 +19621,71 @@ var fluid = fluid || require("infusion"),
         return output;
     };
 
+    flock.generateFourierTable = function (size, scale, numHarms, phase, amps) {
+        phase *= flock.TWOPI;
+
+        return flock.generate(size, function (i) {
+            var harm,
+                amp,
+                w,
+                val = 0.0;
+
+            for (harm = 0; harm < numHarms; harm++) {
+                amp = amps ? amps[harm] : 1.0;
+                w = (harm + 1) * (i * scale);
+                val += amp * Math.cos(w + phase);
+            }
+
+            return val;
+        });
+    };
+
+    flock.generateNormalizedFourierTable = function (size, scale, numHarms, phase, ampGenFn) {
+        var amps = flock.generate(numHarms, function (harm) {
+            return ampGenFn(harm + 1); //  Harmonics are indexed from 1 instead of 0.
+        });
+
+        var table = flock.generateFourierTable(size, scale, numHarms, phase, amps);
+        return flock.normalize(table);
+    };
+
+    flock.fillTable = function (sizeOrTable, fillFn) {
+        var len = typeof (sizeOrTable) === "number" ? sizeOrTable : sizeOrTable.length;
+        return fillFn(sizeOrTable, flock.TWOPI / len);
+    };
+
+    flock.tableGenerators = {
+        sin: function (size, scale) {
+            return flock.generate(size, function (i) {
+                return Math.sin(i * scale);
+            });
+        },
+
+        tri: function (size, scale) {
+            return flock.generateNormalizedFourierTable(size, scale, 1000, 1.0, function (harm) {
+                // Only odd harmonics,
+                // amplitudes decreasing by the inverse square of the harmonic number
+                return harm % 2 === 0 ? 0.0 : 1.0 / (harm * harm);
+            });
+        },
+
+        saw: function (size, scale) {
+            return flock.generateNormalizedFourierTable(size, scale, 10, -0.25, function (harm) {
+                // All harmonics,
+                // amplitudes decreasing by the inverse of the harmonic number
+                return 1.0 / harm;
+            });
+        },
+
+        square: function (size, scale) {
+            return flock.generateNormalizedFourierTable(size, scale, 10, -0.25, function (harm) {
+                // Only odd harmonics,
+                // amplitudes decreasing by the inverse of the harmonic number
+                return harm % 2 === 0 ? 0.0 : 1.0 / harm;
+            });
+        }
+    };
+
     flock.range = function (buf) {
         var range = {
             max: Number.NEGATIVE_INFINITY,
@@ -24366,68 +24431,17 @@ var fluid = fluid || require("infusion"),
             var defaults = fluid.defaults("flock.ugen.osc"),
                 merged = fluid.merge(null, defaults, options),
                 s = merged.tableSize;
-            inputs.table = tableFillFn(s, flock.TWOPI / s);
+            inputs.table = flock.fillTable(s, tableFillFn);
             return flock.ugen.osc(inputs, output, options);
         };
 
         fluid.defaults(name, fluid.defaults("flock.ugen.osc"));
     };
 
-
-    flock.ugen.osc.define("flock.ugen.sinOsc", function (size, scale) {
-        return flock.generate(size, function (i) {
-            return Math.sin(i * scale);
-        });
-    });
-
-    flock.ugen.osc.fourierTable = function (size, scale, numHarms, phase, amps) {
-        phase *= flock.TWOPI;
-
-        return flock.generate(size, function (i) {
-            var harm,
-                amp,
-                w,
-                val = 0.0;
-
-            for (harm = 0; harm < numHarms; harm++) {
-                amp = amps ? amps[harm] : 1.0;
-                w = (harm + 1) * (i * scale);
-                val += amp * Math.cos(w + phase);
-            }
-
-            return val;
-        });
-    };
-
-    flock.ugen.osc.normalizedFourierTable = function (size, scale, numHarms, phase, ampGenFn) {
-        var amps = flock.generate(numHarms, function (harm) {
-            return ampGenFn(harm + 1); // Indexed harmonics from 1 instead of 0.
-        });
-
-        var table = flock.ugen.osc.fourierTable(size, scale, numHarms, phase, amps);
-        return flock.normalize(table);
-    };
-
-    flock.ugen.osc.define("flock.ugen.triOsc", function (size, scale) {
-        return flock.ugen.osc.normalizedFourierTable(size, scale, 1000, 1.0, function (harm) {
-            // Only odd harmonics with amplitudes decreasing by the inverse square of the harmonic number
-            return harm % 2 === 0 ? 0.0 : 1.0 / (harm * harm);
-        });
-    });
-
-    flock.ugen.osc.define("flock.ugen.sawOsc", function (size, scale) {
-        return flock.ugen.osc.normalizedFourierTable(size, scale, 10, -0.25, function (harm) {
-            // All harmonics with amplitudes decreasing by the inverse of the harmonic number
-            return 1.0 / harm;
-        });
-    });
-
-    flock.ugen.osc.define("flock.ugen.squareOsc", function (size, scale) {
-        return flock.ugen.osc.normalizedFourierTable(size, scale, 10, -0.25, function (harm) {
-            // Only odd harmonics with amplitudes decreasing by the inverse of the harmonic number
-            return harm % 2 === 0 ? 0.0 : 1.0 / harm;
-        });
-    });
+    flock.ugen.osc.define("flock.ugen.sinOsc", flock.tableGenerators.sin);
+    flock.ugen.osc.define("flock.ugen.triOsc", flock.tableGenerators.tri);
+    flock.ugen.osc.define("flock.ugen.sawOsc", flock.tableGenerators.saw);
+    flock.ugen.osc.define("flock.ugen.squareOsc", flock.tableGenerators.square);
 
 
     flock.ugen.sin = function (inputs, output, options) {
