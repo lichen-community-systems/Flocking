@@ -24,6 +24,13 @@ var fluid = fluid || require("infusion"),
     fluid.registerNamespace("flock.midi");
 
     flock.midi.requestAccess = function (sysex, onAccessGranted, onError) {
+        if (!navigator.requestMIDIAccess) {
+            var msg = "The Web MIDI API is not available. You may need to enable it in your browser's settings.";
+            fluid.log(fluid.logLevel.WARN, msg);
+            onError(msg);
+            return;
+        }
+
         var p = navigator.requestMIDIAccess({
             sysex: sysex
         });
@@ -205,7 +212,12 @@ var fluid = fluid || require("infusion"),
                     func: "{that}.events.onReady.fire",
                     args: "{that}.ports"
                 }
-            ]
+            ],
+
+            onAccessError: {
+                funcName: "fluid.log",
+                args: [fluid.logLevel.WARN, "{arguments}.0"]
+            }
         }
     });
 
@@ -262,14 +274,20 @@ var fluid = fluid || require("infusion"),
 
         components: {
             system: {
-                type: "flock.midi.system"
+                type: "flock.midi.system",
+                options: {
+                    listeners: {
+                        onReady: {
+                            funcName: "flock.midi.connection.autoOpen",
+                            args: ["{connection}.options.openImmediately", "{connection}.open"]
+                        }
+                    }
+                }
             }
         },
 
         events: {
-            onReady: {
-                event: "{system}.events.onReady"
-            },
+            onReady: "{system}.events.onReady",
             onError: null,
             onSendMessage: null,
 
@@ -285,9 +303,9 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onReady: {
-                funcName: "flock.midi.connection.autoOpen",
-                args: ["{that}.options.openImmediately", "{that}.open"]
+            onError: {
+                funcName: "fluid.log",
+                args: [fluid.logLevel.WARN, "{arguments}.0"]
             },
 
             raw: {

@@ -247,6 +247,71 @@ var fluid = fluid || require("infusion"),
         return output;
     };
 
+    flock.generateFourierTable = function (size, scale, numHarms, phase, amps) {
+        phase *= flock.TWOPI;
+
+        return flock.generate(size, function (i) {
+            var harm,
+                amp,
+                w,
+                val = 0.0;
+
+            for (harm = 0; harm < numHarms; harm++) {
+                amp = amps ? amps[harm] : 1.0;
+                w = (harm + 1) * (i * scale);
+                val += amp * Math.cos(w + phase);
+            }
+
+            return val;
+        });
+    };
+
+    flock.generateNormalizedFourierTable = function (size, scale, numHarms, phase, ampGenFn) {
+        var amps = flock.generate(numHarms, function (harm) {
+            return ampGenFn(harm + 1); //  Harmonics are indexed from 1 instead of 0.
+        });
+
+        var table = flock.generateFourierTable(size, scale, numHarms, phase, amps);
+        return flock.normalize(table);
+    };
+
+    flock.fillTable = function (sizeOrTable, fillFn) {
+        var len = typeof (sizeOrTable) === "number" ? sizeOrTable : sizeOrTable.length;
+        return fillFn(sizeOrTable, flock.TWOPI / len);
+    };
+
+    flock.tableGenerators = {
+        sin: function (size, scale) {
+            return flock.generate(size, function (i) {
+                return Math.sin(i * scale);
+            });
+        },
+
+        tri: function (size, scale) {
+            return flock.generateNormalizedFourierTable(size, scale, 1000, 1.0, function (harm) {
+                // Only odd harmonics,
+                // amplitudes decreasing by the inverse square of the harmonic number
+                return harm % 2 === 0 ? 0.0 : 1.0 / (harm * harm);
+            });
+        },
+
+        saw: function (size, scale) {
+            return flock.generateNormalizedFourierTable(size, scale, 10, -0.25, function (harm) {
+                // All harmonics,
+                // amplitudes decreasing by the inverse of the harmonic number
+                return 1.0 / harm;
+            });
+        },
+
+        square: function (size, scale) {
+            return flock.generateNormalizedFourierTable(size, scale, 10, -0.25, function (harm) {
+                // Only odd harmonics,
+                // amplitudes decreasing by the inverse of the harmonic number
+                return harm % 2 === 0 ? 0.0 : 1.0 / harm;
+            });
+        }
+    };
+
     flock.range = function (buf) {
         var range = {
             max: Number.NEGATIVE_INFINITY,
