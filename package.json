@@ -43,7 +43,8 @@
   "dependencies": {
     "infusion": "git://github.com/fluid-project/infusion.git",
     "speaker": "0.1.0",
-    "dspapi": "git://github.com/colinbdclark/node-dsp.git"
+    "dspapi": "git://github.com/colinbdclark/node-dsp.git",
+    "midi": "v0.8.1"
   },
   "engines": {
     "node": "0.10.x"
