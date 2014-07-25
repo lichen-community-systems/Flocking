@@ -2,7 +2,7 @@ module.exports = function(grunt) {
 
     var files = {
         jQuery: [
-            "third-party/jquery/js/jquery-2.0.0.js"
+            "third-party/jquery/js/jquery.js"
         ],
 
         infusion: [
