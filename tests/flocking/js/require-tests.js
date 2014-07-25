@@ -1,4 +1,4 @@
-/*global flock, require, QUnit*/
+/*global require, QUnit*/
 
 (function () {
     "use strict";
@@ -38,13 +38,6 @@
 
             QUnit.start();
         });
-    });
-
-    QUnit.test("Flocking is returned synchronously when using a CommonJS-style require.", function () {
-        var myFlock = require(flockingBuildPath);
-        QUnit.ok(myFlock);
-        QUnit.equal(myFlock, flock,
-            "The value returned from a call to require() is the same instance as the browser global.");
     });
 
 }());
