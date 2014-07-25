@@ -1,5 +1,44 @@
 module.exports = function(grunt) {
 
+    var files = {
+        jQuery: [
+            "third-party/jquery/js/jquery-2.0.0.js"
+        ],
+
+        infusion: [
+            "third-party/infusion/js/Fluid.js",
+            "third-party/infusion/js/FluidDocument.js",
+            "third-party/infusion/js/FluidDOMUtilities.js",
+            "third-party/infusion/js/FluidDebugging.js",
+            "third-party/infusion/js/FluidIoC.js",
+            "third-party/infusion/js/DataBinding.js",
+            "third-party/infusion/js/ModelTransformation.js",
+            "third-party/infusion/js/ModelTransformationTransforms.js",
+            "third-party/infusion/js/FluidView.js",
+            "third-party/infusion/js/FluidRequests.js"
+        ],
+
+        miscDeps: [
+            // Marcus Geelnard's DSPI API polyfill
+            "third-party/dspapi/js/dspapi.js",
+            // Sim.js' random distribution library.
+            "third-party/simjs/js/random-0.26.js"
+        ],
+
+        flocking: [
+            "flocking/flocking-core.js",
+            "flocking/flocking-buffers.js",
+            "flocking/flocking-parser.js",
+            "flocking/flocking-audiofile.js",
+            "flocking/flocking-scheduler.js",
+            "flocking/flocking-webaudio.js",
+            "flocking/flocking-ugens.js",
+            "flocking/flocking-ugens-browser.js",
+            "flocking/flocking-gfx.js",
+            "flocking/flocking-webmidi.js"
+        ]
+    };
+
     // Project configuration.
     grunt.initConfig({
         pkg: grunt.file.readJSON("package.json"),
@@ -16,42 +55,13 @@ module.exports = function(grunt) {
                 separator: ";",
                 banner: "<%= flock.banners.short %>"
             },
-            dist: {
-                src: [
-                    // jQuery
-                    "third-party/jquery/js/jquery-2.0.0.js",
 
-                    // Fluid Infusion
-                    "third-party/infusion/js/Fluid.js",
-                    "third-party/infusion/js/FluidDocument.js",
-                    "third-party/infusion/js/FluidDOMUtilities.js",
-                    "third-party/infusion/js/FluidDebugging.js",
-                    "third-party/infusion/js/FluidIoC.js",
-                    "third-party/infusion/js/DataBinding.js",
-                    "third-party/infusion/js/ModelTransformation.js",
-                    "third-party/infusion/js/ModelTransformationTransforms.js",
-                    "third-party/infusion/js/FluidView.js",
-                    "third-party/infusion/js/FluidRequests.js",
-
-                    // Marcus Geelnard's DSPI API polyfill
-                    "third-party/dspapi/js/dspapi.js",
-
-                    // Sim.js' random distribution library.
-                    "third-party/simjs/js/random-0.26.js",
-
-                    // Flocking
-                    "flocking/flocking-core.js",
-                    "flocking/flocking-buffers.js",
-                    "flocking/flocking-parser.js",
-                    "flocking/flocking-audiofile.js",
-                    "flocking/flocking-scheduler.js",
-                    "flocking/flocking-webaudio.js",
-                    "flocking/flocking-ugens.js",
-                    "flocking/flocking-ugens-browser.js",
-                    "flocking/flocking-gfx.js",
-                    "flocking/flocking-webmidi.js"
-                ],
-                dest: "dist/<%= pkg.name %>-all.js"
+            all: {
+                src: [].concat(files.jQuery, files.infusion, files.miscDeps, files.flocking),
+                dest: "dist/<%= pkg.name %>-all.js",
+                options: {
+                    footer: "<%= flock.banners.amdFooter %>"
+                }
             }
         },
 
@@ -62,7 +72,7 @@ module.exports = function(grunt) {
                     ascii_only: true
                 }
             },
-            dist: {
+            all: {
                 files: [
                     {
                         expand: true,
@@ -103,7 +113,8 @@ module.exports = function(grunt) {
 
         flock: {
             banners: {
-                short: "/*! Flocking <%= pkg.version %> (<%= grunt.template.today('mmmm d, yyyy') %>), Copyright <%= grunt.template.today('yyyy') %> Colin Clark | flockingjs.org */\n\n"
+                short: "/*! Flocking <%= pkg.version %> (<%= grunt.template.today('mmmm d, yyyy') %>), Copyright <%= grunt.template.today('yyyy') %> Colin Clark | flockingjs.org */\n\n",
+                amdFooter: "if (typeof define === 'function' && define.amd) { define(function () { return flock; });}"
             }
         }
     });

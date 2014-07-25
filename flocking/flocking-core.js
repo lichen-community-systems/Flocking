@@ -24,6 +24,8 @@ var fluid = fluid || require("infusion"),
 
     var $ = fluid.registerNamespace("jQuery");
 
+    flock.fluid = fluid;
+
     flock.init = function (options) {
         var enviroOpts = !options ? undefined : {
             audioSettings: options

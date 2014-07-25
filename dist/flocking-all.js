@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (July 24, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (July 25, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.0.0
@@ -19398,6 +19398,8 @@ var fluid = fluid || require("infusion"),
 
     var $ = fluid.registerNamespace("jQuery");
 
+    flock.fluid = fluid;
+
     flock.init = function (options) {
         var enviroOpts = !options ? undefined : {
             audioSettings: options
@@ -28806,3 +28808,4 @@ var fluid = fluid || require("infusion"),
     };
 
 }());
+if (typeof define === 'function' && define.amd) { define(function () { return flock; });}

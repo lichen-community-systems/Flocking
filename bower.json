@@ -22,5 +22,7 @@
         "package.json"
     ],
     "dependencies": {},
-    "devDependencies": {}
+    "devDependencies": {
+        "requirejs": ">=2.1.14"
+    }
 }
