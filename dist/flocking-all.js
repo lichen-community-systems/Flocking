@@ -14512,7 +14512,7 @@ var fluid_1_5 = fluid_1_5 || {};
         var sourceListener = function (newValue, oldValue, path, changeRequest, trans, applier) {
             var transId = trans.id;
             var transRec = fluid.getModelTransactionRec(instantiator, transId);
-            if (applier && trans) {
+            if (applier && trans && !transRec[applier.applierId]) { // don't trash existing record which may contain "options" (FLUID-5397)
                 transRec[applier.applierId] = {transaction: trans}; // enlist the outer user's original transaction
             }
             var existing = transRec[applierId];
@@ -14730,6 +14730,7 @@ var fluid_1_5 = fluid_1_5 || {};
             var change = allChanges[i];
             change.listener.apply(null, change.args);
         }
+        fluid.clearLinkCounts(transRec, true); // "options" structures for relayCount are aliased
     };
     
     fluid.model.commitRelays = function (instantiator, transactionId) {
@@ -14741,7 +14742,6 @@ var fluid_1_5 = fluid_1_5 || {};
                 transEl.transaction.reset();
             }
         });
-        fluid.clearLinkCounts(transRec, true); // "options" structures for relayCount are aliased
     };
 
     fluid.model.updateRelays = function (instantiator, transactionId) {
