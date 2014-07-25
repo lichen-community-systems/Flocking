@@ -11,3 +11,5 @@
         root.flock = factory(jQuery);
     }
 }(this, function (jQuery) {
+    // To hell with isolationism.
+    window.jQuery = jQuery;
