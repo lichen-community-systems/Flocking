@@ -1,18 +1,22 @@
-/*! Flocking 0.1.0 (July 25, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (July 26, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof define === "function" && define.amd) {
-        define(["jquery"], function (jQuery) {
-            // Also create a global in case some scripts
-            // that are loaded still are looking for
-            // a global even when an AMD loader is in use.
-            return (root.flock = factory(jQuery));
+        // We're in an AMD-style loader.
+        define(["exports", "jquery"], function (exports, jQuery) {
+            root.flock = exports; // Always create the "flock" global.
+            return (root.flock, factory(exports, jQuery));
         });
+    } else if (typeof exports === "object") {
+        // We're in a CommonJS-style loader.
+        root.flock = exports;  // Always create the "flock" global.
+        factory(exports, require("jquery"));
     } else {
-        // Browser globals
-        root.flock = factory(jQuery);
+        // Plain old browser.
+        root.flock = {};
+        factory(root.flock, jQuery);
     }
-}(this, function (jQuery) {
+}(this, function (exports, jQuery) {
     // To hell with isolationism.
     window.jQuery = jQuery;
 ;/*!
