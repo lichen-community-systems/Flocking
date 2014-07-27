@@ -166,7 +166,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.midi.system", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
 
-        sysex: true,
+        sysex: false,
 
         members: {
             access: undefined,
@@ -238,8 +238,14 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.midi.connection", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
 
-        sysex: false,
         openImmediately: false,
+
+        sysex: false,
+
+        distributeOptions: {
+            source: "{that}.options.sysex",
+            target: "{that > system}.options.sysex"
+        },
 
         // Supported PortSpec formats:
         //  - Number: the index of the input and output port to use (this is the default)
@@ -341,6 +347,12 @@ var fluid = fluid || require("infusion"),
             return flock.midi.findPorts.byIndex(portSpec);
         }
 
+        if (typeof portSpec === "string") {
+            portSpec = {
+                name: portSpec
+            };
+        }
+
         if (portSpec.id) {
             return function (ports) {
                 ports.find(flock.midi.findPorts.idMatcher(portSpec.id));
@@ -364,14 +376,16 @@ var fluid = fluid || require("infusion"),
         };
     };
 
-    flock.midi.findPorts.lowerRegExMatcher = function (matchSpec) {
+    flock.midi.findPorts.lowerCaseContainsMatcher = function (matchSpec) {
         return function (obj) {
-            var isMatch = false;
+            var isMatch;
             for (var prop in matchSpec) {
                 var objVal = obj[prop];
                 var matchVal = matchSpec[prop];
 
-                isMatch = objVal && objVal.toLowerCase().match(matchVal.toLowerCase());
+                isMatch = (matchVal === "*") ? true :
+                    objVal && (objVal.toLowerCase().indexOf(matchVal.toLowerCase()) > -1);
+
                 if (!isMatch) {
                     break;
                 }
@@ -388,20 +402,20 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.midi.findPorts.bothMatcher = function (manu, name) {
-        return flock.midi.findPorts.lowerRegExMatcher({
+        return flock.midi.findPorts.lowerCaseContainsMatcher({
             manufacturer: manu,
             name: name
         });
     };
 
     flock.midi.findPorts.manufacturerMatcher = function (manu) {
-        return flock.midi.findPorts.lowerRegExMatcher({
+        return flock.midi.findPorts.lowerCaseContainsMatcher({
             manufacturer: manu
         });
     };
 
     flock.midi.findPorts.nameMatcher = function (name) {
-        return flock.midi.findPorts.lowerRegExMatcher({
+        return flock.midi.findPorts.lowerCaseContainsMatcher({
             name: name
         });
     };

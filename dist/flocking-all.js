@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (July 25, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (July 27, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.1
@@ -21338,10 +21338,10 @@ var fluid = fluid || require("infusion"),
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
-    
+
 (function () {
     "use strict";
-    
+
     // Based on Brian Cavalier and John Hann's Tiny Promises library.
     // https://github.com/unscriptable/promises/blob/master/src/Tiny2.js
     function Promise() {
@@ -21349,17 +21349,17 @@ var fluid = fluid || require("infusion"),
             complete("resolve", result);
             promise.state = "fulfilled";
         };
-        
+
         var reject = function (err) {
             complete("reject", err);
             promise.state = "rejected";
         };
-        
+
         var then = function (resolve, reject) {
             if (callbacks) {
                 callbacks.push({
-                    resolve: resolve, 
-                    reject: reject 
+                    resolve: resolve,
+                    reject: reject
                 });
             } else {
                 var fn = promise.state === "fulfilled" ? resolve : reject;
@@ -21368,7 +21368,7 @@ var fluid = fluid || require("infusion"),
 
             return this;
         };
-        
+
         var callbacks = [],
             promise = {
                 state: "pending",
@@ -21384,48 +21384,48 @@ var fluid = fluid || require("infusion"),
                 }
             };
 
-        
+
         function complete(type, result) {
             var rejector = function (resolve, reject) {
-                reject(result); 
+                reject(result);
                 return this;
             };
-            
+
             var resolver = function (resolve) {
-                resolve(result); 
+                resolve(result);
                 return this;
             };
-            
+
             promise.value = result;
             promise.then = type === "reject" ? rejector : resolver;
             promise.resolve = promise.reject = function () {
                 throw new Error("Promise already completed");
             };
-            
+
             invokeCallbacks(type, result);
         }
 
         function invokeCallbacks (type, result) {
             var i,
                 cb;
-            
+
             for (i = 0; i < callbacks.length; i++) {
                 cb = callbacks[i];
-                
+
                 if (cb[type]) {
                     cb[type](result);
                 }
             }
-            
+
             callbacks = null;
         }
 
         return promise;
     }
-    
+
     fluid.defaults("flock.promise", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
-        
+
         members: {
             promise: {
                 expander: {
@@ -21434,20 +21434,37 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
-    
+
     flock.promise.make = function () {
         return new Promise();
     };
-    
+
+    // TODO: This is actually part of the interpreter's expansion process
+    // and should be clearly named as such.
     flock.bufferDesc = function (data) {
         data.container = data.container || {};
         data.format = data.format || {};
 
-        data.format.sampleRate = data.format.sampleRate || 44100;
         data.format.numChannels = data.format.numChannels || data.data.channels.length;
+
+        if (data.data && data.data.channels) {
+            // Special case for an unwrapped single-channel array.
+            if (data.format.numChannels === 1 && data.data.channels.length !== 1) {
+                data.data.channels = [data.data.channels];
+            }
+
+            if (data.format.numChannels !== data.data.channels.length) {
+                throw new Error("The specified number of channels does not match " +
+                    "the actual channel data. " +
+                    "numChannels was: " + data.format.numChannels +
+                    " but the sample data contains " + data.data.channels.length + " channels.");
+            }
+        }
+
+        data.format.sampleRate = data.format.sampleRate || 44100;
         data.format.numSampleFrames = data.format.numSampleFrames || data.data.channels[0].length;
         data.format.duration = data.format.numSampleFrames / data.format.sampleRate;
-        
+
         return data;
     };
 
@@ -21456,12 +21473,12 @@ var fluid = fluid || require("infusion"),
      */
     fluid.defaults("flock.bufferSource", {
         gradeNames: ["fluid.eventedComponent", "fluid.modelComponent", "autoInit"],
-        
+
         model: {
             state: "start",
             src: null
         },
-        
+
         components: {
             bufferPromise: {
                 createOnEvent: "onRefreshPromise",
@@ -21477,39 +21494,39 @@ var fluid = fluid || require("infusion"),
                 }
             }
         },
-        
+
         invokers: {
             get: {
                 funcName: "flock.bufferSource.get",
                 args: ["{that}", "{arguments}.0"]
             },
-            
+
             set: {
                 funcName: "flock.bufferSource.set",
                 args: ["{that}", "{arguments}.0"]
             },
-            
+
             error: {
                 funcName: "flock.bufferSource.error",
                 args: ["{that}", "{arguments}.0"]
             }
         },
-        
+
         listeners: {
             onCreate: {
                 funcName: "{that}.events.onRefreshPromise.fire"
             },
-            
+
             onRefreshPromise: {
                 funcName: "{that}.applier.requestChange",
                 args: ["state", "start"]
             },
-            
+
             onFetch: {
                 funcName: "{that}.applier.requestChange",
                 args: ["state", "in-progress"]
             },
-            
+
             afterFetch: [
                 {
                     funcName: "{that}.applier.requestChange",
@@ -21520,19 +21537,19 @@ var fluid = fluid || require("infusion"),
                     args: ["{arguments}.0"]
                 }
             ],
-            
+
             onBufferUpdated: {
                 // TODO: Hardcoded reference to shared environment.
                 funcName: "flock.enviro.shared.registerBuffer",
                 args: ["{arguments}.0"]
             },
-            
+
             onError: {
                 funcName: "{that}.applier.requestChange",
                 args: ["state", "error"]
             }
         },
-        
+
         events: {
             onRefreshPromise: null,
             onError: null,
@@ -21541,7 +21558,7 @@ var fluid = fluid || require("infusion"),
             onBufferUpdated: null
         }
     });
-    
+
     flock.bufferSource.get = function (that, bufDef) {
         if (that.model.state === "in-progress" || (bufDef.src === that.model.src && !bufDef.replace)) {
             // We've already fetched the buffer or are in the process of doing so.
@@ -21549,11 +21566,11 @@ var fluid = fluid || require("infusion"),
         }
 
         if (bufDef.src) {
-            if ((that.model.state === "fetched" || that.model.state === "errored") && 
+            if ((that.model.state === "fetched" || that.model.state === "errored") &&
                 (that.model.src !== bufDef.src || bufDef.replace)) {
                 that.events.onRefreshPromise.fire();
             }
-            
+
             if (that.model.state === "start") {
                 that.model.src = bufDef.src;
                 that.events.onFetch.fire(bufDef);
@@ -21563,29 +21580,29 @@ var fluid = fluid || require("infusion"),
                         if (bufDef.id) {
                             bufDesc.id = bufDef.id;
                         }
-                        
+
                         that.set(bufDesc);
                     },
                     error: that.error
                 });
             }
         }
-                
+
         return that.bufferPromise.promise;
     };
-    
+
     flock.bufferSource.set = function (that, bufDesc) {
         var state = that.model.state;
         if (state === "start" || state === "in-progress") {
             that.bufferPromise.promise.resolve(bufDesc);
         }
-        
+
         return that.bufferPromise.promise;
     };
-    
+
     flock.bufferSource.error = function (that, msg) {
         that.bufferPromise.promise.reject(msg);
-        
+
         return that.bufferPromise.promise;
     };
 
@@ -28903,7 +28920,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.midi.system", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
 
-        sysex: true,
+        sysex: false,
 
         members: {
             access: undefined,
@@ -28975,8 +28992,14 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.midi.connection", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
 
-        sysex: false,
         openImmediately: false,
+
+        sysex: false,
+
+        distributeOptions: {
+            source: "{that}.options.sysex",
+            target: "{that > system}.options.sysex"
+        },
 
         // Supported PortSpec formats:
         //  - Number: the index of the input and output port to use (this is the default)
@@ -29078,6 +29101,12 @@ var fluid = fluid || require("infusion"),
             return flock.midi.findPorts.byIndex(portSpec);
         }
 
+        if (typeof portSpec === "string") {
+            portSpec = {
+                name: portSpec
+            };
+        }
+        
         if (portSpec.id) {
             return function (ports) {
                 ports.find(flock.midi.findPorts.idMatcher(portSpec.id));
@@ -29101,14 +29130,16 @@ var fluid = fluid || require("infusion"),
         };
     };
 
-    flock.midi.findPorts.lowerRegExMatcher = function (matchSpec) {
+    flock.midi.findPorts.lowerCaseContainsMatcher = function (matchSpec) {
         return function (obj) {
-            var isMatch = false;
+            var isMatch;
             for (var prop in matchSpec) {
                 var objVal = obj[prop];
                 var matchVal = matchSpec[prop];
 
-                isMatch = objVal && objVal.toLowerCase().match(matchVal.toLowerCase());
+                isMatch = (matchVal === "*") ? true :
+                    objVal && (objVal.toLowerCase().indexOf(matchVal.toLowerCase()) > -1);
+
                 if (!isMatch) {
                     break;
                 }
@@ -29125,20 +29156,20 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.midi.findPorts.bothMatcher = function (manu, name) {
-        return flock.midi.findPorts.lowerRegExMatcher({
+        return flock.midi.findPorts.lowerCaseContainsMatcher({
             manufacturer: manu,
             name: name
         });
     };
 
     flock.midi.findPorts.manufacturerMatcher = function (manu) {
-        return flock.midi.findPorts.lowerRegExMatcher({
+        return flock.midi.findPorts.lowerCaseContainsMatcher({
             manufacturer: manu
         });
     };
 
     flock.midi.findPorts.nameMatcher = function (name) {
-        return flock.midi.findPorts.lowerRegExMatcher({
+        return flock.midi.findPorts.lowerCaseContainsMatcher({
             name: name
         });
     };

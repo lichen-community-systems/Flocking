@@ -767,6 +767,60 @@ var fluid = fluid || require("infusion"),
 
     });
 
+    test("Getting and setting ugen-specified special inputs.", function () {
+        var s = flock.synth({
+            synthDef: {
+                id: "seq",
+                ugen: "flock.ugen.sequence",
+                list: [1, 2, 3, 5]
+            }
+        });
+
+        var seq = s.get("seq");
+        deepEqual(seq.inputs.list, s.options.synthDef.list,
+            "Sanity check: the sequence ugen should be initialized with the same list as specified in the synthDef.");
+
+        var newList = [9, 10, 11, 12];
+        s.set("seq.list", newList);
+        deepEqual(seq.inputs.list, newList,
+            "After setting a 'special input' on a unit generator, it should have been set correctly.");
+    });
+
+    module("Buffers");
+
+    var unwrappedSampleData = new Float32Array([1, 2, 3, 4, 5]);
+    var testDesc = {
+        format: {
+            numChannels: 1
+        },
+        data: {
+            channels: unwrappedSampleData
+        }
+    };
+
+    test("BufferDesc expansion: single channel raw sample array", function () {
+        var bufferDesc = fluid.copy(testDesc);
+        var actual = flock.bufferDesc(bufferDesc);
+        deepEqual(actual.data.channels, [unwrappedSampleData],
+            "A raw buffer of samples should be wrapped in an array if we know we have a single channel.");
+    });
+
+    test("BufferDesc expansion: mismatched channel data", function () {
+        var bufferDesc = fluid.copy(testDesc);
+        bufferDesc.format.numChannels = 2;
+
+        var thrown = false;
+
+        try {
+            flock.bufferDesc(bufferDesc);
+            thrown = false;
+        } catch (e) {
+            thrown = true;
+        }
+
+        ok(thrown, "An exception should have been thrown when mismatching sample data was provided.");
+    });
+
     var bufferTestSynthDef = {
         id: "play",
         ugen: "flock.ugen.playBuffer",
@@ -793,7 +847,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    asyncTest("Buffers: Setting a bufferDef", function () {
+    asyncTest("Setting a bufferDef", function () {
         var s = flock.synth({
             synthDef: {
                 id: "play",
@@ -872,25 +926,6 @@ var fluid = fluid || require("infusion"),
             "After setting a raw id reference, the actual input should reflect the value actually set.");
         deepEqual(play.buffer, s.enviro.buffers.dog,
             "And the actual buffer should be the correct bufferDesc from the environment.");
-    });
-
-    test("Getting and setting ugen-specified special inputs.", function () {
-        var s = flock.synth({
-            synthDef: {
-                id: "seq",
-                ugen: "flock.ugen.sequence",
-                list: [1, 2, 3, 5]
-            }
-        });
-
-        var seq = s.get("seq");
-        deepEqual(seq.inputs.list, s.options.synthDef.list,
-            "Sanity check: the sequence ugen should be initialized with the same list as specified in the synthDef.");
-
-        var newList = [9, 10, 11, 12];
-        s.set("seq.list", newList);
-        deepEqual(seq.inputs.list, newList,
-            "After setting a 'special input' on a unit generator, it should have been set correctly.");
     });
 
 
