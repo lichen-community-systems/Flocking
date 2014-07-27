@@ -21915,6 +21915,7 @@ var fluid = fluid || require("infusion"),
         bufDef = flock.parse.expandBufferDef(bufDef);
 
         if (bufDef.data && bufDef.data.channels) {
+            bufDef = flock.bufferDesc(bufDef);
             flock.parse.bufferForDef.resolveBuffer(bufDef, ugen, enviro);
         } else {
             flock.parse.bufferForDef.resolveDef(bufDef, ugen, enviro);
@@ -29106,7 +29107,7 @@ var fluid = fluid || require("infusion"),
                 name: portSpec
             };
         }
-        
+
         if (portSpec.id) {
             return function (ports) {
                 ports.find(flock.midi.findPorts.idMatcher(portSpec.id));
