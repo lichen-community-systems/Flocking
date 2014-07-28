@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (July 26, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (July 28, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof define === "function" && define.amd) {
@@ -7,6 +7,9 @@
             root.flock = exports; // Always create the "flock" global.
             return (root.flock, factory(exports, jQuery));
         });
+    } else if (typeof module === "object" && typeof module.exports === "object") {
+        root.flock = module.exports;
+        factory(module.exports, require("jquery"));
     } else if (typeof exports === "object") {
         // We're in a CommonJS-style loader.
         root.flock = exports;  // Always create the "flock" global.
