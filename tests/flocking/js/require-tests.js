@@ -1,18 +1,29 @@
-/*global flock, require, module, test, asyncTest, ok, equal, start*/
+/*global require, QUnit*/
 
 (function () {
     "use strict";
 
-    var flockingBuildPath = "../../../dist/flocking-all.min";
+    // Simulate a full-on require environment.
+    window.module = {
+        exports: {}
+    };
 
-    module("Require.js AMD tests");
+    require.config({
+        paths: {
+            jquery: "../../../third-party/jquery/js/jquery"
+        }
+    });
 
-    asyncTest("Flocking is defined and populated using the AMD style", function () {
+    var flockingBuildPath = "../../../dist/flocking-no-jquery";
+
+    QUnit.module("Require.js AMD tests");
+
+    QUnit.asyncTest("Flocking is defined and populated using the AMD style", function () {
         require([flockingBuildPath], function (flock) {
-            ok(flock, "The 'flock' variable should be defined");
+            QUnit.ok(flock, "The 'flock' variable should be defined");
 
             flock.init();
-            ok(flock.enviro.shared, "The shared environment can successfully be initialized.");
+            QUnit.ok(flock.enviro.shared, "The shared environment can successfully be initialized.");
 
             var synth = flock.synth({
                 synthDef: {
@@ -20,17 +31,13 @@
                 }
             });
 
-            ok(synth, "A synth can be correct instantiated.");
+            QUnit.ok(synth, "A synth can be correct instantiated.");
 
-            start();
+            flock.enviro.shared.play();
+            flock.enviro.shared.stop();
+
+            QUnit.start();
         });
-    });
-
-    test("Flocking is returned synchronously when using a CommonJS-style require.", function () {
-        var myFlock = require("../../../dist/flocking-all.min");
-        ok(myFlock);
-        equal(myFlock, flock,
-            "The value returned from a call to require() is the same instance as the browser global.");
     });
 
 }());

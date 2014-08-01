@@ -905,6 +905,8 @@ var flock = fluid.registerNamespace("flock");
     flock.audio.decode.async.findWorkerUrl.flockingFileNames = [
         "flocking-all.js",
         "flocking-all.min.js",
+        "flocking-no-jquery.js",
+        "flocking-no-jquery.min.js",
         "flocking-audiofile.js",
         "flocking-core.js"
     ];

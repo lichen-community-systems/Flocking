@@ -36,6 +36,14 @@ module.exports = function(grunt) {
             "flocking/flocking-ugens-browser.js",
             "flocking/flocking-gfx.js",
             "flocking/flocking-webmidi.js"
+        ],
+
+        amdHeader: [
+            "build-support/js/amd-header.js"
+        ],
+
+        amdFooter: [
+            "build-support/js/amd-footer.js"
         ]
     };
 
@@ -58,10 +66,17 @@ module.exports = function(grunt) {
 
             all: {
                 src: [].concat(files.jQuery, files.infusion, files.miscDeps, files.flocking),
-                dest: "dist/<%= pkg.name %>-all.js",
-                options: {
-                    footer: "<%= flock.banners.amdFooter %>"
-                }
+                dest: "dist/<%= pkg.name %>-all.js"
+            },
+
+            amd: {
+                src: [].concat(
+                    files.amdHeader,
+                    files.infusion, files.miscDeps, files.flocking,
+                    files.amdFooter
+                ),
+                dest: "dist/<%= pkg.name %>-no-jquery.js"
+
             }
         },
 
@@ -113,8 +128,7 @@ module.exports = function(grunt) {
 
         flock: {
             banners: {
-                short: "/*! Flocking <%= pkg.version %> (<%= grunt.template.today('mmmm d, yyyy') %>), Copyright <%= grunt.template.today('yyyy') %> Colin Clark | flockingjs.org */\n\n",
-                amdFooter: "if (typeof define === 'function' && define.amd) { define(function () { return flock; });}"
+                short: "/*! Flocking <%= pkg.version %> (<%= grunt.template.today('mmmm d, yyyy') %>), Copyright <%= grunt.template.today('yyyy') %> Colin Clark | flockingjs.org */\n\n"
             }
         }
     });
