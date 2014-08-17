@@ -10691,6 +10691,9 @@ var fluid = fluid || require("infusion"),
         FLOAT32NE: "float32NE"
     };
 
+    fluid.registerNamespace("flock.debug");
+    flock.debug.failHard = true;
+
     flock.browser = function () {
         if (typeof navigator === "undefined") {
             return {};
@@ -11160,9 +11163,19 @@ var fluid = fluid || require("infusion"),
         return protos;
     };
 
+    flock.fail = function (msg) {
+        if (flock.debug.failHard) {
+            throw new Error(msg);
+        } else {
+            fluid.log(fluid.logLevel.FAIL, msg);
+        }
+    };
+
     flock.pathParseError = function (root, path, token) {
-        throw new Error("Error parsing path: " + path + ". Segment '" + token +
-            "' could not be resolved. Root object was: " + fluid.prettyPrintJSON(root));
+        var msg = "Error parsing path: " + path + ". Segment '" + token +
+            "' could not be resolved. Root object was: " + fluid.prettyPrintJSON(root);
+
+        flock.fail(msg);
     };
 
     flock.get = function (root, path) {
@@ -11185,9 +11198,11 @@ var fluid = fluid || require("infusion"),
         for (i = 1; i < tokenized.length; i++) {
             if (valForSeg === null || valForSeg === undefined) {
                 flock.pathParseError(root, path, tokenized[i - 1]);
+                return;
             }
             valForSeg = valForSeg[tokenized[i]];
         }
+
         return valForSeg;
     };
 
@@ -11206,7 +11221,10 @@ var fluid = fluid || require("infusion"),
             root = root[prop];
             type = typeof root;
             if (type !== "object") {
-                throw new Error("A non-container object was found at segment " + prop + ". Value: " + root);
+                flock.fail("Error while setting a value at path + " + path +
+                    ". A non-container object was found at segment " + prop + ". Value: " + root);
+
+                return;
             }
             prop = tokenized[i];
             if (root[prop] === undefined) {
@@ -11221,7 +11239,8 @@ var fluid = fluid || require("infusion"),
     flock.invoke = function (root, path, args) {
         var fn = typeof root === "function" ? root : flock.get(root, path);
         if (typeof fn !== "function") {
-            throw new Error("Path '" + path + "' does not resolve to a function.");
+            flock.fail("Path '" + path + "' does not resolve to a function.");
+            return;
         }
         return fn.apply(null, args);
     };

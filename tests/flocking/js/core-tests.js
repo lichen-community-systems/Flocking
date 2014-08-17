@@ -161,6 +161,13 @@ var fluid = fluid || require("infusion"),
         fluid.each(testSpecs, runMidiStringTest);
     });
 
+    var defaultFailMode = flock.debug.failHard;
+    module("Path utilities", {
+        teardown: function () {
+            flock.debug.failHard = defaultFailMode;
+        }
+    });
+
     test("flock.set()", function () {
         var root = {
             cat: "meow",
@@ -219,6 +226,48 @@ var fluid = fluid || require("infusion"),
         } catch (e) {
             ok(e.message.indexOf("cat") !== -1);
         }
+    });
+
+    var assertNoErrorThrown = function (fn) {
+        try {
+            fn();
+            ok(true, "A hard error shouldn't be thrown.");
+        } catch (e) {
+            ok(false, "A hard error shouldn't be thrown.");
+        }
+    };
+
+    var assertErrorThrown = function (fn) {
+        try {
+            fn();
+            ok(false, "A hard error should be thrown.");
+        } catch (e) {
+            ok(true, "A hard error should be thrown.");
+        }
+    };
+
+    test("Getting and setting invalid paths with soft failure enabled", function () {
+        flock.debug.failHard = false;
+
+        assertNoErrorThrown(function () {
+            flock.get({}, "cow.moo");
+        });
+
+        assertNoErrorThrown(function () {
+            flock.set({}, "cow.moo", true);
+        });
+    });
+
+    test("Getting and setting invalid paths with hard failure enabled", function () {
+        flock.debug.failHard = true;
+
+        assertErrorThrown(function () {
+            flock.get({}, "cow.moo");
+        });
+
+        assertErrorThrown(function () {
+            flock.set({}, "cow.moo", true);
+        });
     });
 
     var testInputPathExpansion = function (testSpecs) {
@@ -310,7 +359,11 @@ var fluid = fluid || require("infusion"),
     });
 
 
-    module("Synth tests");
+    module("Synth tests", {
+        teardown: function () {
+            flock.enviro.shared.reset();
+        }
+    });
 
     fluid.defaults("flock.test.genReportSynth", {
         gradeNames: ["flock.synth", "autoInit"],
@@ -338,11 +391,12 @@ var fluid = fluid || require("infusion"),
     };
 
     var testEnviroGraph = function (fn) {
+        var audioSettings = flock.enviro.shared.audioSettings;
+
         setTimeout(function () {
             fn();
-            flock.enviro.shared.clearAll();
             start();
-        }, 100);
+        }, (audioSettings.bufferSize / audioSettings.rates.audio) * 2000);
     };
 
     asyncTest("Auto add to the environment", function () {
@@ -375,6 +429,9 @@ var fluid = fluid || require("infusion"),
         var synth = flock.test.genReportSynth();
         flock.enviro.shared.play();
 
+        var audioSettings = flock.enviro.shared.audioSettings,
+            waitDur = (audioSettings.bufferSize / audioSettings.rates.audio) * 1000 * 2;
+
         setTimeout(function () {
             ok(flock.enviro.shared.nodes.indexOf(synth) > -1,
                 "The synth should have been automatically added to the environment.");
@@ -390,14 +447,16 @@ var fluid = fluid || require("infusion"),
             setTimeout(function () {
                 ok(!synth.model.didGen,
                     "The synth should not have been evaluated after being removed from the environment.");
-                flock.enviro.shared.clearAll();
                 start();
-            }, 100);
-        }, 100);
+            }, waitDur);
+        }, waitDur);
     });
 
     asyncTest("destroy() removes a synth from the environment", function () {
         var synth = flock.test.genReportSynth();
+        var audioSettings = flock.enviro.shared.audioSettings,
+            waitDur = (audioSettings.bufferSize / audioSettings.rates.audio) * 1000 * 2;
+
         flock.enviro.shared.play();
 
         setTimeout(function () {
@@ -414,10 +473,9 @@ var fluid = fluid || require("infusion"),
             setTimeout(function () {
                 ok(!synth.model.didGen,
                     "The synth should not have been evaluated after being destroyed.");
-                flock.enviro.shared.clearAll();
                 start();
-            }, 100);
-        }, 100);
+            }, waitDur);
+        }, waitDur);
     });
 
     test("Get input values", function () {
@@ -893,6 +951,7 @@ var fluid = fluid || require("infusion"),
         deepEqual(seq.inputs.list, newList,
             "After setting a 'special input' on a unit generator, it should have been set correctly.");
     });
+
 
     module("Buffers");
 
