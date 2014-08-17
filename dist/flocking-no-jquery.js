@@ -11064,10 +11064,15 @@ var fluid = fluid || require("infusion"),
      * Performs linear interpretation.
      */
     flock.interpolate.linear = function (idx, table) {
-        idx = idx % table.length;
+        var len = table.length;
+        if (len < 1) {
+            return 0;
+        }
+
+        idx = idx % len;
 
         var i1 = idx | 0,
-            i2 = (i1 + 1) % table.length,
+            i2 = (i1 + 1) % len,
             frac = idx - i1,
             y1 = table[i1],
             y2 = table[i2];
@@ -11086,8 +11091,13 @@ var fluid = fluid || require("infusion"),
      * @return {Number} an interpolated value
      */
     flock.interpolate.cubic = function (idx, table) {
-        var len = table.length,
-            intPortion = Math.floor(idx),
+        var len = table.length;
+
+        if (len < 1) {
+            return 0;
+        }
+
+        var intPortion = Math.floor(idx),
             i0 = intPortion % len,
             frac = idx - intPortion,
             im1 = i0 > 0 ? i0 - 1 : len - 1,
@@ -15722,7 +15732,7 @@ var fluid = fluid || require("infusion"),
         inputs: {
             freq: 440.0,
             phase: 0.0,
-            table: null,
+            table: [],
             mul: null,
             add: null
         },

@@ -820,7 +820,7 @@ var fluid = fluid || require("infusion"),
         inputs: {
             freq: 440.0,
             phase: 0.0,
-            table: null,
+            table: [],
             mul: null,
             add: null
         },
