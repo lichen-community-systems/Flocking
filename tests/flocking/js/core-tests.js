@@ -312,6 +312,114 @@ var fluid = fluid || require("infusion"),
 
     module("Synth tests");
 
+    fluid.defaults("flock.test.genReportSynth", {
+        gradeNames: ["flock.synth", "autoInit"],
+
+        model: {
+            didGen: false
+        },
+
+        synthDef: {
+            ugen: "flock.ugen.silence"
+        },
+
+        invokers: {
+            reset: {
+                func: "{that}.applier.change",
+                args: ["didGen", false]
+            }
+        }
+    });
+
+    flock.test.genReportSynth.finalInit = function (that) {
+        that.gen = function () {
+            that.applier.change("didGen", true);
+        };
+    };
+
+    var testEnviroGraph = function (fn) {
+        setTimeout(function () {
+            fn();
+            flock.enviro.shared.clearAll();
+            start();
+        }, 100);
+    };
+
+    asyncTest("Auto add to the environment", function () {
+        var synth = flock.test.genReportSynth();
+        flock.enviro.shared.play();
+
+        testEnviroGraph(function () {
+            ok(flock.enviro.shared.nodes.indexOf(synth) > -1,
+                "The synth should have been automatically added to the environment.");
+            ok(synth.model.didGen,
+                "The synth should have been evaluated.");
+        });
+    });
+
+    asyncTest("Don't auto add to the environment", function () {
+        var synth = flock.test.genReportSynth({
+            addToEnvironment: false
+        });
+        flock.enviro.shared.play();
+
+        testEnviroGraph(function () {
+            ok(flock.enviro.shared.nodes.indexOf(synth) === -1,
+                "The synth should not have been automatically added to the environment.");
+            ok(!synth.model.didGen,
+                "The synth should not have been evaluated.");
+        });
+    });
+
+    asyncTest("Remove from the environment", function () {
+        var synth = flock.test.genReportSynth();
+        flock.enviro.shared.play();
+
+        setTimeout(function () {
+            ok(flock.enviro.shared.nodes.indexOf(synth) > -1,
+                "The synth should have been automatically added to the environment.");
+            ok(synth.model.didGen,
+                "The synth should have been evaluated.");
+
+            synth.pause();
+
+            ok(flock.enviro.shared.nodes.indexOf(synth) === -1,
+                "The synth should have been removed from the environment.");
+
+            synth.reset();
+            setTimeout(function () {
+                ok(!synth.model.didGen,
+                    "The synth should not have been evaluated after being removed from the environment.");
+                flock.enviro.shared.clearAll();
+                start();
+            }, 100);
+        }, 100);
+    });
+
+    asyncTest("destroy() removes a synth from the environment", function () {
+        var synth = flock.test.genReportSynth();
+        flock.enviro.shared.play();
+
+        setTimeout(function () {
+            ok(flock.enviro.shared.nodes.indexOf(synth) > -1,
+                "The synth should have been automatically added to the environment.");
+            ok(synth.model.didGen,
+                "The synth should have been evaluated.");
+
+            synth.reset();
+            synth.destroy();
+            ok(flock.enviro.shared.nodes.indexOf(synth) === -1,
+                "The synth should have been removed from the environment.");
+
+            setTimeout(function () {
+                ok(!synth.model.didGen,
+                    "The synth should not have been evaluated after being destroyed.");
+                flock.enviro.shared.clearAll();
+                start();
+            }, 100);
+        }, 100);
+    });
+
     test("Get input values", function () {
         var synth = createSynth(simpleSynthDef);
 

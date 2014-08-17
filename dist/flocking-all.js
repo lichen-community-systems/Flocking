@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (August 9, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (August 17, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.1
@@ -20588,6 +20588,12 @@ var fluid = fluid || require("infusion"),
             }
             return idx;
         };
+
+        that.clearAll = function () {
+            while (that.nodes.length > 0) {
+                that.nodes.pop();
+            }
+        };
     };
 
 
@@ -20675,10 +20681,7 @@ var fluid = fluid || require("infusion"),
         that.reset = function () {
             that.stop();
             that.asyncScheduler.clearAll();
-            // Clear the environment's node list.
-            while (that.nodes.length > 0) {
-                that.nodes.pop();
-            }
+            that.clearAll();
         };
 
         that.registerBuffer = function (bufDesc) {
@@ -20901,7 +20904,15 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.synth", {
-        gradeNames: ["fluid.eventedComponent", "flock.node", "flock.ugenNodeList", "autoInit"],
+        gradeNames: [
+            "fluid.eventedComponent",
+            "fluid.modelComponent",
+            "flock.node",
+            "flock.ugenNodeList",
+            "autoInit"
+        ],
+
+        rate: flock.rates.AUDIO,
 
         invokers: {
             /**
@@ -20925,7 +20936,11 @@ var fluid = fluid || require("infusion"),
             }
         },
 
-        rate: flock.rates.AUDIO
+        listeners: {
+            onDestroy: {
+                "func": "{that}.pause"
+            }
+        }
     });
 
     flock.synth.play = function (that, en) {
@@ -24432,6 +24447,24 @@ var fluid = fluid || require("infusion"),
         ugenOptions: {
             tags: ["flock.ugen.valueType"]
         }
+    });
+
+
+    flock.ugen.silence = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.onInputChanged = function () {
+            for (var i = 0; i < that.output.length; i++) {
+                that.output[i] = 0;
+            }
+        };
+
+        that.onInputChanged();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.silence", {
+        rate: "constant"
     });
 
 

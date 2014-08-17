@@ -377,6 +377,24 @@ var fluid = fluid || require("infusion"),
     });
 
 
+    flock.ugen.silence = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.onInputChanged = function () {
+            for (var i = 0; i < that.output.length; i++) {
+                that.output[i] = 0;
+            }
+        };
+
+        that.onInputChanged();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.silence", {
+        rate: "constant"
+    });
+
+
     flock.ugen.passThrough = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 

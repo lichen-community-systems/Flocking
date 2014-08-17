@@ -779,6 +779,12 @@ var fluid = fluid || require("infusion"),
             }
             return idx;
         };
+
+        that.clearAll = function () {
+            while (that.nodes.length > 0) {
+                that.nodes.pop();
+            }
+        };
     };
 
 
@@ -866,10 +872,7 @@ var fluid = fluid || require("infusion"),
         that.reset = function () {
             that.stop();
             that.asyncScheduler.clearAll();
-            // Clear the environment's node list.
-            while (that.nodes.length > 0) {
-                that.nodes.pop();
-            }
+            that.clearAll();
         };
 
         that.registerBuffer = function (bufDesc) {
@@ -1092,7 +1095,15 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.synth", {
-        gradeNames: ["fluid.eventedComponent", "flock.node", "flock.ugenNodeList", "autoInit"],
+        gradeNames: [
+            "fluid.eventedComponent",
+            "fluid.modelComponent",
+            "flock.node",
+            "flock.ugenNodeList",
+            "autoInit"
+        ],
+
+        rate: flock.rates.AUDIO,
 
         invokers: {
             /**
@@ -1116,7 +1127,11 @@ var fluid = fluid || require("infusion"),
             }
         },
 
-        rate: flock.rates.AUDIO
+        listeners: {
+            onDestroy: {
+                "func": "{that}.pause"
+            }
+        }
     });
 
     flock.synth.play = function (that, en) {
