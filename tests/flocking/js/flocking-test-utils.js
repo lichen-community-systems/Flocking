@@ -209,11 +209,21 @@ var flock = flock || {};
     flock.test.arrayContainsOnlyValues = function (buffer, values, msg) {
         var outlierVals = [],
             outlierIndices = [],
-            i;
+            i,
+            j;
 
         for (i = 0; i < buffer.length; i++) {
-            var val = buffer[i];
-            if (values.indexOf(val) === -1) {
+            var val = buffer[i],
+                match = false;
+
+            for (j = 0; j < values.length; j++) {
+                if (val === values[j]) {
+                    match = true;
+                    break;
+                }
+            }
+
+            if (!match) {
                 outlierVals.push(val);
                 outlierIndices.push(i);
             }
