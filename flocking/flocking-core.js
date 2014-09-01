@@ -24,6 +24,8 @@ var fluid = fluid || require("infusion"),
 
     var $ = fluid.registerNamespace("jQuery");
 
+    flock.fluid = fluid;
+
     flock.init = function (options) {
         var enviroOpts = !options ? undefined : {
             audioSettings: options
@@ -50,6 +52,9 @@ var fluid = fluid || require("infusion"),
     flock.sampleFormats = {
         FLOAT32NE: "float32NE"
     };
+
+    fluid.registerNamespace("flock.debug");
+    flock.debug.failHard = true;
 
     flock.browser = function () {
         if (typeof navigator === "undefined") {
@@ -110,7 +115,7 @@ var fluid = fluid || require("infusion"),
             return 16384;
         }
 
-        if (!flock.platform.isWebAudio || flock.platform.isMobile) {
+        if (flock.platform.isMobile) {
             return 8192;
         }
 
@@ -247,6 +252,71 @@ var fluid = fluid || require("infusion"),
         return output;
     };
 
+    flock.generateFourierTable = function (size, scale, numHarms, phase, amps) {
+        phase *= flock.TWOPI;
+
+        return flock.generate(size, function (i) {
+            var harm,
+                amp,
+                w,
+                val = 0.0;
+
+            for (harm = 0; harm < numHarms; harm++) {
+                amp = amps ? amps[harm] : 1.0;
+                w = (harm + 1) * (i * scale);
+                val += amp * Math.cos(w + phase);
+            }
+
+            return val;
+        });
+    };
+
+    flock.generateNormalizedFourierTable = function (size, scale, numHarms, phase, ampGenFn) {
+        var amps = flock.generate(numHarms, function (harm) {
+            return ampGenFn(harm + 1); //  Harmonics are indexed from 1 instead of 0.
+        });
+
+        var table = flock.generateFourierTable(size, scale, numHarms, phase, amps);
+        return flock.normalize(table);
+    };
+
+    flock.fillTable = function (sizeOrTable, fillFn) {
+        var len = typeof (sizeOrTable) === "number" ? sizeOrTable : sizeOrTable.length;
+        return fillFn(sizeOrTable, flock.TWOPI / len);
+    };
+
+    flock.tableGenerators = {
+        sin: function (size, scale) {
+            return flock.generate(size, function (i) {
+                return Math.sin(i * scale);
+            });
+        },
+
+        tri: function (size, scale) {
+            return flock.generateNormalizedFourierTable(size, scale, 1000, 1.0, function (harm) {
+                // Only odd harmonics,
+                // amplitudes decreasing by the inverse square of the harmonic number
+                return harm % 2 === 0 ? 0.0 : 1.0 / (harm * harm);
+            });
+        },
+
+        saw: function (size, scale) {
+            return flock.generateNormalizedFourierTable(size, scale, 10, -0.25, function (harm) {
+                // All harmonics,
+                // amplitudes decreasing by the inverse of the harmonic number
+                return 1.0 / harm;
+            });
+        },
+
+        square: function (size, scale) {
+            return flock.generateNormalizedFourierTable(size, scale, 10, -0.25, function (harm) {
+                // Only odd harmonics,
+                // amplitudes decreasing by the inverse of the harmonic number
+                return harm % 2 === 0 ? 0.0 : 1.0 / harm;
+            });
+        }
+    };
+
     flock.range = function (buf) {
         var range = {
             max: Number.NEGATIVE_INFINITY,
@@ -301,6 +371,57 @@ var fluid = fluid || require("infusion"),
         return target;
     };
 
+    flock.parseMidiString = function (midiStr) {
+        if (!midiStr || midiStr.length < 2) {
+            return NaN;
+        }
+
+        midiStr = midiStr.toLowerCase();
+
+        var secondChar = midiStr.charAt(1),
+            splitIdx = secondChar === "#" || secondChar === "b" ? 2 : 1,
+            note = midiStr.substring(0, splitIdx),
+            octave = Number(midiStr.substring(splitIdx)),
+            pitchClass = flock.midiFreq.noteNames[note],
+            midiNum = octave * 12 + pitchClass;
+
+        return midiNum;
+    };
+
+    flock.midiFreq = function (midi, a4Freq, a4NoteNum, notesPerOctave) {
+        a4Freq = a4Freq === undefined ? 440 : a4Freq;
+        a4NoteNum = a4NoteNum === undefined ? 69 : a4NoteNum;
+        notesPerOctave = notesPerOctave || 12;
+
+        if (typeof midi === "string") {
+            midi = flock.parseMidiString(midi);
+        }
+
+        return a4Freq * Math.pow(2, (midi - a4NoteNum) * 1 / notesPerOctave);
+    };
+
+    flock.midiFreq.noteNames = {
+        "b#": 0,
+        "c": 0,
+        "c#": 1,
+        "db": 1,
+        "d": 2,
+        "d#": 3,
+        "eb": 3,
+        "e": 4,
+        "e#": 5,
+        "f": 5,
+        "f#": 6,
+        "gb": 6,
+        "g": 7,
+        "g#": 8,
+        "ab": 8,
+        "a": 9,
+        "a#": 10,
+        "bb": 10,
+        "b": 11,
+        "cb": 11
+    };
 
     flock.interpolate = {};
 
@@ -308,10 +429,15 @@ var fluid = fluid || require("infusion"),
      * Performs linear interpretation.
      */
     flock.interpolate.linear = function (idx, table) {
-        idx = idx % table.length;
+        var len = table.length;
+        if (len < 1) {
+            return 0;
+        }
+
+        idx = idx % len;
 
         var i1 = idx | 0,
-            i2 = (i1 + 1) % table.length,
+            i2 = (i1 + 1) % len,
             frac = idx - i1,
             y1 = table[i1],
             y2 = table[i2];
@@ -321,33 +447,97 @@ var fluid = fluid || require("infusion"),
 
     /**
      * Performs cubic interpretation.
+     *
+     * Based on Laurent De Soras' implementation at:
+     * http://www.musicdsp.org/showArchiveComment.php?ArchiveID=93
+     *
+     * @param idx {Number} an index into the table
+     * @param table {Arrayable} the table from which values around idx should be drawn and interpolated
+     * @return {Number} an interpolated value
      */
     flock.interpolate.cubic = function (idx, table) {
-        idx = idx % table.length;
+        var len = table.length;
 
-        var len = table.length,
-            i1 = idx | 0,
-            i0 = i1 > 0 ? i1 - 1 : len - 1,
-            i2 = (i1 + 1) % len,
-            i3 = (i1 + 2) % len,
-            frac = idx - i1,
-            fracSq = frac * frac,
-            fracCub = frac * fracSq,
-            y0 = table[i0],
-            y1 = table[i1],
-            y2 = table[i2],
-            y3 = table[i3],
-            a = 0.5 * (y1 - y2) + (y3 - y0),
-            b = (y0 + y2) * 0.5 - y1,
-            c = y2 - (0.3333333333333333 * y0) - (0.5 * y1) - (0.16666666666666667 * y3);
+        if (len < 1) {
+            return 0;
+        }
 
-        return (a * fracCub) + (b * fracSq) + (c * frac) + y1;
+        var intPortion = Math.floor(idx),
+            i0 = intPortion % len,
+            frac = idx - intPortion,
+            im1 = i0 > 0 ? i0 - 1 : len - 1,
+            i1 = (i0 + 1) % len,
+            i2 = (i0 + 2) % len,
+            xm1 = table[im1],
+            x0 = table[i0],
+            x1 = table[i1],
+            x2 = table[i2],
+            c = (x1 - xm1) * 0.5,
+            v = x0 - x1,
+            w = c + v,
+            a = w + v + (x2 - x0) * 0.5,
+            bNeg = w + a,
+            val = (((a * frac) - bNeg) * frac + c) * frac + x0;
+
+        return val;
     };
 
 
-    flock.pathParseError = function (path, token) {
-        throw new Error("Error parsing path: " + path + ". Segment '" + token +
-            "' could not be resolved.");
+    flock.expand = {};
+
+    // TODO: Unit tests.
+    flock.expand.overlay = function (expandSpec) {
+        if (!expandSpec) {
+            return;
+        }
+
+        var ugenDefs = [];
+
+        for (var inputPath in expandSpec.expandInputs) {
+            var expansions = expandSpec.expandInputs[inputPath];
+            if (expansions.length > ugenDefs.length) {
+                flock.expand.overlay.extend(ugenDefs, expandSpec.ugenDef, expansions.length);
+            }
+
+            flock.expand.overlay.merge(ugenDefs, inputPath, expansions);
+        }
+
+        return ugenDefs;
+    };
+
+    flock.expand.overlay.extend = function (arr, protoObj, length) {
+        var numExtra = length - arr.length;
+
+        for (var i = 0; i < numExtra; i++) {
+            arr.push(fluid.copy(protoObj));
+        }
+
+        return arr;
+    };
+
+    flock.expand.overlay.merge = function (protos, path, extensions) {
+        for (var i = 0; i < extensions.length; i++) {
+            var obj = protos[i],
+                extension = extensions[i];
+            flock.set(obj, path, extension);
+        }
+
+        return protos;
+    };
+
+    flock.fail = function (msg) {
+        if (flock.debug.failHard) {
+            throw new Error(msg);
+        } else {
+            fluid.log(fluid.logLevel.FAIL, msg);
+        }
+    };
+
+    flock.pathParseError = function (root, path, token) {
+        var msg = "Error parsing path: " + path + ". Segment '" + token +
+            "' could not be resolved. Root object was: " + fluid.prettyPrintJSON(root);
+
+        flock.fail(msg);
     };
 
     flock.get = function (root, path) {
@@ -369,10 +559,12 @@ var fluid = fluid || require("infusion"),
 
         for (i = 1; i < tokenized.length; i++) {
             if (valForSeg === null || valForSeg === undefined) {
-                flock.pathParseError(path, tokenized[i - 1]);
+                flock.pathParseError(root, path, tokenized[i - 1]);
+                return;
             }
             valForSeg = valForSeg[tokenized[i]];
         }
+
         return valForSeg;
     };
 
@@ -391,7 +583,10 @@ var fluid = fluid || require("infusion"),
             root = root[prop];
             type = typeof root;
             if (type !== "object") {
-                throw new Error("A non-container object was found at segment " + prop + ". Value: " + root);
+                flock.fail("Error while setting a value at path + " + path +
+                    ". A non-container object was found at segment " + prop + ". Value: " + root);
+
+                return;
             }
             prop = tokenized[i];
             if (root[prop] === undefined) {
@@ -406,7 +601,8 @@ var fluid = fluid || require("infusion"),
     flock.invoke = function (root, path, args) {
         var fn = typeof root === "function" ? root : flock.get(root, path);
         if (typeof fn !== "function") {
-            throw new Error("Path '" + path + "' does not resolve to a function.");
+            flock.fail("Path '" + path + "' does not resolve to a function.");
+            return;
         }
         return fn.apply(null, args);
     };
@@ -613,7 +809,7 @@ var fluid = fluid || require("infusion"),
             return idx;
         };
 
-        that.clear = function () {
+        that.clearAll = function () {
             // Clear the environment's node list.
             that.nodes.length = 0;
 
@@ -654,7 +850,7 @@ var fluid = fluid || require("infusion"),
             },
             blockSize: 64,
             chans: 2,
-            numBuses: 4,
+            numBuses: 8,
             // This buffer size determines the overall latency of Flocking's audio output.
             // TODO: Replace this with IoC awesomeness.
             bufferSize: flock.defaultBufferSizeForPlatform(),
@@ -713,7 +909,7 @@ var fluid = fluid || require("infusion"),
         that.reset = function () {
             that.stop();
             that.asyncScheduler.clearAll();
-            that.clear();
+            that.clearAll();
         };
 
         that.registerBuffer = function (bufDesc) {
@@ -745,6 +941,7 @@ var fluid = fluid || require("infusion"),
         // TODO: Model-based (with ChangeApplier) sharing of audioSettings
         rates.audio = that.audioStrategy.options.audioSettings.rates.audio;
         rates.control = rates.audio / audioSettings.blockSize;
+        audioSettings.chans = that.audioStrategy.options.audioSettings.chans;
     };
 
     flock.enviro.createAudioBuffers = function (numBufs, blockSize) {
@@ -955,7 +1152,16 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.synth", {
-        gradeNames: ["fluid.eventedComponent", "flock.node", "flock.ugenNodeList", "autoInit"],
+        gradeNames: [
+            "fluid.eventedComponent",
+            "fluid.modelComponent",
+            "flock.node",
+            "flock.ugenNodeList",
+            "autoInit"
+        ],
+
+        rate: flock.rates.AUDIO,
+        addToEnvironment: "tail",
 
         invokers: {
             /**
@@ -1003,9 +1209,11 @@ var fluid = fluid || require("infusion"),
             }
         },
 
-        rate: flock.rates.AUDIO,
-
-        addToEnvironment: "tail"
+        listeners: {
+            onDestroy: {
+                "func": "{that}.pause"
+            }
+        }
     });
 
     flock.synth.play = function (that) {

@@ -107,6 +107,67 @@ var fluid = fluid || require("infusion"),
 
     });
 
+    test("flock.parseMidiString", function () {
+        function runMidiStringTest(testSpec) {
+            var actual = flock.parseMidiString(testSpec.note);
+            deepEqual(actual, testSpec.expected, testSpec.name);
+        }
+
+
+        var testSpecs = [
+            {
+                name: "No accidental, c0",
+                note: "c0",
+                expected: 0
+            },
+            {
+                name: "No accidental",
+                note: "e9",
+                expected: 112
+            },
+            {
+                name: "Sharp lower case",
+                note: "g#6",
+                expected: 80
+            },
+            {
+                name: "Sharp upper case",
+                note: "F#6",
+                expected: 78
+            },
+            {
+                name: "Flat",
+                note: "Bb8",
+                expected: 106
+            },
+            {
+                name: "Two digits",
+                note: "G10",
+                expected: 127
+            },
+            {
+                name: "Two digits with accidental",
+                note: "C#10",
+                expected: 121
+            },
+            {
+                name: "Invalid note name",
+                note: "cat27",
+                expected: NaN
+            }
+            // What about out of range octaves? Should it work?
+        ];
+
+        fluid.each(testSpecs, runMidiStringTest);
+    });
+
+    var defaultFailMode = flock.debug.failHard;
+    module("Path utilities", {
+        teardown: function () {
+            flock.debug.failHard = defaultFailMode;
+        }
+    });
+
     test("flock.set()", function () {
         var root = {
             cat: "meow",
@@ -165,6 +226,48 @@ var fluid = fluid || require("infusion"),
         } catch (e) {
             ok(e.message.indexOf("cat") !== -1);
         }
+    });
+
+    var assertNoErrorThrown = function (fn) {
+        try {
+            fn();
+            ok(true, "A hard error shouldn't be thrown.");
+        } catch (e) {
+            ok(false, "A hard error shouldn't be thrown.");
+        }
+    };
+
+    var assertErrorThrown = function (fn) {
+        try {
+            fn();
+            ok(false, "A hard error should be thrown.");
+        } catch (e) {
+            ok(true, "A hard error should be thrown.");
+        }
+    };
+
+    test("Getting and setting invalid paths with soft failure enabled", function () {
+        flock.debug.failHard = false;
+
+        assertNoErrorThrown(function () {
+            flock.get({}, "cow.moo");
+        });
+
+        assertNoErrorThrown(function () {
+            flock.set({}, "cow.moo", true);
+        });
+    });
+
+    test("Getting and setting invalid paths with hard failure enabled", function () {
+        flock.debug.failHard = true;
+
+        assertErrorThrown(function () {
+            flock.get({}, "cow.moo");
+        });
+
+        assertErrorThrown(function () {
+            flock.set({}, "cow.moo", true);
+        });
     });
 
     var testInputPathExpansion = function (testSpecs) {
@@ -256,7 +359,124 @@ var fluid = fluid || require("infusion"),
     });
 
 
-    module("Synth tests");
+    module("Synth tests", {
+        teardown: function () {
+            flock.enviro.shared.reset();
+        }
+    });
+
+    fluid.defaults("flock.test.genReportSynth", {
+        gradeNames: ["flock.synth", "autoInit"],
+
+        model: {
+            didGen: false
+        },
+
+        synthDef: {
+            ugen: "flock.ugen.silence"
+        },
+
+        invokers: {
+            reset: {
+                func: "{that}.applier.change",
+                args: ["didGen", false]
+            }
+        }
+    });
+
+    flock.test.genReportSynth.finalInit = function (that) {
+        that.gen = function () {
+            that.applier.change("didGen", true);
+        };
+    };
+
+    var testEnviroGraph = function (fn) {
+        var audioSettings = flock.enviro.shared.audioSettings;
+
+        setTimeout(function () {
+            fn();
+            start();
+        }, (audioSettings.bufferSize / audioSettings.rates.audio) * 2000);
+    };
+
+    asyncTest("Auto add to the environment", function () {
+        var synth = flock.test.genReportSynth();
+        flock.enviro.shared.play();
+
+        testEnviroGraph(function () {
+            ok(flock.enviro.shared.nodes.indexOf(synth) > -1,
+                "The synth should have been automatically added to the environment.");
+            ok(synth.model.didGen,
+                "The synth should have been evaluated.");
+        });
+    });
+
+    asyncTest("Don't auto add to the environment", function () {
+        var synth = flock.test.genReportSynth({
+            addToEnvironment: false
+        });
+        flock.enviro.shared.play();
+
+        testEnviroGraph(function () {
+            ok(flock.enviro.shared.nodes.indexOf(synth) === -1,
+                "The synth should not have been automatically added to the environment.");
+            ok(!synth.model.didGen,
+                "The synth should not have been evaluated.");
+        });
+    });
+
+    asyncTest("Remove from the environment", function () {
+        var synth = flock.test.genReportSynth();
+        flock.enviro.shared.play();
+
+        var audioSettings = flock.enviro.shared.audioSettings,
+            waitDur = (audioSettings.bufferSize / audioSettings.rates.audio) * 1000 * 2;
+
+        setTimeout(function () {
+            ok(flock.enviro.shared.nodes.indexOf(synth) > -1,
+                "The synth should have been automatically added to the environment.");
+            ok(synth.model.didGen,
+                "The synth should have been evaluated.");
+
+            synth.pause();
+
+            ok(flock.enviro.shared.nodes.indexOf(synth) === -1,
+                "The synth should have been removed from the environment.");
+
+            synth.reset();
+            setTimeout(function () {
+                ok(!synth.model.didGen,
+                    "The synth should not have been evaluated after being removed from the environment.");
+                start();
+            }, waitDur);
+        }, waitDur);
+    });
+
+    asyncTest("destroy() removes a synth from the environment", function () {
+        var synth = flock.test.genReportSynth();
+        var audioSettings = flock.enviro.shared.audioSettings,
+            waitDur = (audioSettings.bufferSize / audioSettings.rates.audio) * 1000 * 2;
+
+        flock.enviro.shared.play();
+
+        setTimeout(function () {
+            ok(flock.enviro.shared.nodes.indexOf(synth) > -1,
+                "The synth should have been automatically added to the environment.");
+            ok(synth.model.didGen,
+                "The synth should have been evaluated.");
+
+            synth.reset();
+            synth.destroy();
+            ok(flock.enviro.shared.nodes.indexOf(synth) === -1,
+                "The synth should have been removed from the environment.");
+
+            setTimeout(function () {
+                ok(!synth.model.didGen,
+                    "The synth should not have been evaluated after being destroyed.");
+                start();
+            }, waitDur);
+        }, waitDur);
+    });
 
     test("Get input values", function () {
         var synth = createSynth(simpleSynthDef);
@@ -713,7 +933,7 @@ var fluid = fluid || require("infusion"),
     });
 
     var testAddToEnvironment = function (synthOptions, expectedOrder, message) {
-        flock.enviro.shared.clear();
+        flock.enviro.shared.clearAll();
 
         var synths = [];
         fluid.each(synthOptions, function (synthOption) {
@@ -808,7 +1028,60 @@ var fluid = fluid || require("infusion"),
         runAddToEnvironmentTests(testSpecs);
     });
 
-    module("Buffer tests");
+    test("Getting and setting ugen-specified special inputs.", function () {
+        var s = flock.synth({
+            synthDef: {
+                id: "seq",
+                ugen: "flock.ugen.sequence",
+                list: [1, 2, 3, 5]
+            }
+        });
+
+        var seq = s.get("seq");
+        deepEqual(seq.inputs.list, s.options.synthDef.list,
+            "Sanity check: the sequence ugen should be initialized with the same list as specified in the synthDef.");
+
+        var newList = [9, 10, 11, 12];
+        s.set("seq.list", newList);
+        deepEqual(seq.inputs.list, newList,
+            "After setting a 'special input' on a unit generator, it should have been set correctly.");
+    });
+
+
+    module("Buffers");
+
+    var unwrappedSampleData = new Float32Array([1, 2, 3, 4, 5]);
+    var testDesc = {
+        format: {
+            numChannels: 1
+        },
+        data: {
+            channels: unwrappedSampleData
+        }
+    };
+
+    test("BufferDesc expansion: single channel raw sample array", function () {
+        var bufferDesc = fluid.copy(testDesc);
+        var actual = flock.bufferDesc(bufferDesc);
+        deepEqual(actual.data.channels, [unwrappedSampleData],
+            "A raw buffer of samples should be wrapped in an array if we know we have a single channel.");
+    });
+
+    test("BufferDesc expansion: mismatched channel data", function () {
+        var bufferDesc = fluid.copy(testDesc);
+        bufferDesc.format.numChannels = 2;
+
+        var thrown = false;
+
+        try {
+            flock.bufferDesc(bufferDesc);
+            thrown = false;
+        } catch (e) {
+            thrown = true;
+        }
+
+        ok(thrown, "An exception should have been thrown when mismatching sample data was provided.");
+    });
 
     var bufferTestSynthDef = {
         id: "play",
@@ -836,7 +1109,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    asyncTest("Buffers: Setting a bufferDef", function () {
+    asyncTest("Setting a bufferDef", function () {
         var s = flock.synth({
             synthDef: {
                 id: "play",
@@ -915,25 +1188,6 @@ var fluid = fluid || require("infusion"),
             "After setting a raw id reference, the actual input should reflect the value actually set.");
         deepEqual(play.buffer, s.enviro.buffers.dog,
             "And the actual buffer should be the correct bufferDesc from the environment.");
-    });
-
-    test("Getting and setting ugen-specified special inputs.", function () {
-        var s = flock.synth({
-            synthDef: {
-                id: "seq",
-                ugen: "flock.ugen.sequence",
-                list: [1, 2, 3, 5]
-            }
-        });
-
-        var seq = s.get("seq");
-        deepEqual(seq.inputs.list, s.options.synthDef.list,
-            "Sanity check: the sequence ugen should be initialized with the same list as specified in the synthDef.");
-
-        var newList = [9, 10, 11, 12];
-        s.set("seq.list", newList);
-        deepEqual(seq.inputs.list, newList,
-            "After setting a 'special input' on a unit generator, it should have been set correctly.");
     });
 
 
@@ -1020,7 +1274,7 @@ var fluid = fluid || require("infusion"),
             "namedNodes should have been updated.");
     });
 
-    test("nodeList.clear()", function () {
+    test("nodeList.clearAll()", function () {
         var nl = flock.nodeList();
         equal(nl.nodes.length, 0,
             "When a NodeList is instantiated, it should contain no nodes.");
@@ -1033,7 +1287,7 @@ var fluid = fluid || require("infusion"),
         equal(nl.nodes.length, 3,
             "When a NodeList has stuff added to it, it should have stuff in it.");
 
-        nl.clear();
+        nl.clearAll();
         equal(nl.nodes.length, 0,
             "After a NodeList has been cleared, it should have no nodes in its list.");
         deepEqual(nl.namedNodes, {},
@@ -1666,7 +1920,7 @@ var fluid = fluid || require("infusion"),
     module("flock.band tests");
 
     test("flock.band with multiple addToEnvironment synths", function () {
-        flock.enviro.shared.clear();
+        flock.enviro.shared.clearAll();
 
         var def = {
             ugen: "flock.ugen.sin"

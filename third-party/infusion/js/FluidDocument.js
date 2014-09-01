@@ -16,21 +16,17 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
 /** This file contains functions which depend on the presence of a DOM document
  * but which do not depend on the contents of Fluid.js **/
 
-// Declare dependencies
-/*global fluid_1_5:true, jQuery*/
-
-// JSLint options 
-/*jslint white: true, funcinvoke: true, undef: true, newcap: true, nomen: true, regexp: true, bitwise: true, browser: true, forin: true, maxerr: 100, indent: 4 */
-
 var fluid_1_5 = fluid_1_5 || {};
 
 (function ($, fluid) {
+    "use strict";
+
     // polyfill for $.browser which was removed in jQuery 1.9 and later
-    // Taken from jquery-migrate-1.2.1.js, 
+    // Taken from jquery-migrate-1.2.1.js,
     // jQuery Migrate - v1.2.1 - 2013-05-08
     // https://github.com/jquery/jquery-migrate
     // Copyright 2005, 2013 jQuery Foundation, Inc. and other contributors; Licensed MIT
-    
+
     fluid.uaMatch = function (ua) {
         ua = ua.toLowerCase();
 
@@ -45,7 +41,7 @@ var fluid_1_5 = fluid_1_5 || {};
             version: match[ 2 ] || "0"
         };
     };
-    
+
     var matched, browser;
 
     // Don't clobber any existing jQuery.browser in case it's different
@@ -54,11 +50,11 @@ var fluid_1_5 = fluid_1_5 || {};
             browser = { // From http://stackoverflow.com/questions/18684099/jquery-fail-to-detect-ie-11
                 msie: true,
                 version: 11
-            }
+            };
         } else {
             matched = fluid.uaMatch(navigator.userAgent);
             browser = {};
-          
+
             if (matched.browser) {
                 browser[matched.browser] = true;
                 browser.version = matched.version;
@@ -103,11 +99,11 @@ var fluid_1_5 = fluid_1_5 || {};
      */
 
     var lastFocusedElement = null;
-    
+
     $(document).bind("focusin", function (event){
         lastFocusedElement = event.target;
     });
-    
+
     fluid.getLastFocusedElement = function () {
         return lastFocusedElement;
     };
@@ -120,7 +116,7 @@ var fluid_1_5 = fluid_1_5 || {};
      * (but still stored) until it is reenabled again.
      * This function is unsupported: It is not really intended for use by implementors.
      */
-     
+
     fluid.enabled = function(target, state) {
         target = $(target);
         if (state === undefined) {
@@ -138,32 +134,32 @@ var fluid_1_5 = fluid_1_5 || {};
             fluid.setScopedData(target, ENABLEMENT_KEY, state);
         }
     };
-    
+
     fluid.initEnablement = function(target) {
         fluid.setScopedData(target, ENABLEMENT_KEY, true);
     };
-    
+
     // This utility is required through the use of newer versions of jQuery which will obscure the original
     // event responsible for interaction with a target. This is currently use in Tooltip.js and FluidView.js
     // "dead man's blur" but would be of general utility
-    
+
     fluid.resolveEventTarget = function (event) {
         while (event.originalEvent && event.originalEvent.target) {
             event = event.originalEvent;
         }
         return event.target;
     };
-    
+
     // These function (fluid.focus() and fluid.blur()) serve several functions. They should be used by
     // all implementation both in test cases and component implementation which require to trigger a focus
-    // event. Firstly, they restore the old behaviour in jQuery versions prior to 1.10 in which a focus 
+    // event. Firstly, they restore the old behaviour in jQuery versions prior to 1.10 in which a focus
     // trigger synchronously relays to a focus handler. In newer jQueries this defers to the real browser
-    // relay with numerous platform and timing-dependent effects. 
+    // relay with numerous platform and timing-dependent effects.
     // Secondly, they are necessary since simulation of focus events by jQuery under IE
     // is not sufficiently good to intercept the "focusin" binding. Any code which triggers
     // focus or blur synthetically throughout the framework and client code must use this function,
     // especially if correct cross-platform interaction is required with the "deadMansBlur" function.
-    
+
     function applyOp(node, func) {
         node = $(node);
         node.trigger("fluid-"+func);
@@ -171,11 +167,11 @@ var fluid_1_5 = fluid_1_5 || {};
         node[func]();
         return node;
     }
-    
+
     $.each(["focus", "blur"], function(i, name) {
         fluid[name] = function(elem) {
             return applyOp(elem, name);
-        }
+        };
     });
-    
+
 })(jQuery, fluid_1_5);

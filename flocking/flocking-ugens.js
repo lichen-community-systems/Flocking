@@ -6,7 +6,7 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global require, Float32Array*/
+/*global require, Float32Array, Random*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,
@@ -208,6 +208,10 @@ var fluid = fluid || require("infusion"),
 
             m.strides = m.strides || {};
 
+            if (!strideNames) {
+                return;
+            }
+
             for (i = 0; i < strideNames.length; i++) {
                 name = strideNames[i];
                 m.strides[name] = inputs[name].rate === flock.rates.AUDIO ? 1 : 0;
@@ -254,23 +258,27 @@ var fluid = fluid || require("infusion"),
 
         that.init = function () {
             var tags = fluid.makeArray(that.options.tags),
+                m = that.model,
+                o = that.options,
                 i,
+                s,
                 valueDef;
 
             for (i = 0; i < tags.length; i++) {
                 that.tags.push(tags[i]);
             }
 
-            that.options.audioSettings = that.options.audioSettings || flock.enviro.shared.audioSettings;
-            that.model.sampleRate = options.sampleRate || that.options.audioSettings.rates[that.rate];
-            that.model.blockSize = that.rate === flock.rates.AUDIO ? that.options.audioSettings.blockSize : 1;
-            that.model.sampleDur = 1.0 / that.model.sampleRate;
+            s = o.audioSettings = o.audioSettings || flock.enviro.shared.audioSettings;
+            m.sampleRate = o.sampleRate || s.rates[that.rate];
+            m.nyquistRate = m.sampleRate;
+            m.blockSize = that.rate === flock.rates.AUDIO ? s.blockSize : 1;
+            m.sampleDur = 1.0 / m.sampleRate;
 
             // Assigns an interpolator function to the UGen.
             // This is inactive by default, but can be used in custom gen() functions.
             // Will be undefined if no interpolation default or option has been set,
             // or if it is set to "none"--make sure you check before invoking it.
-            that.interpolate = flock.interpolate[that.options.interpolation];
+            that.interpolate = flock.interpolate[o.interpolation];
 
             if (that.rate === flock.rates.DEMAND && that.inputs.freq) {
                 valueDef = flock.parse.ugenDefForConstantValue(1.0);
@@ -369,6 +377,24 @@ var fluid = fluid || require("infusion"),
     });
 
 
+    flock.ugen.silence = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.onInputChanged = function () {
+            for (var i = 0; i < that.output.length; i++) {
+                that.output[i] = 0;
+            }
+        };
+
+        that.onInputChanged();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.silence", {
+        rate: "constant"
+    });
+
+
     flock.ugen.passThrough = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
@@ -451,7 +477,7 @@ var fluid = fluid || require("infusion"),
     });
 
 
-    flock.ugen.inputTrigger = function (inputs, output, options) {
+    flock.ugen.inputChangeTrigger = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
         that.gen = function (numSamps) {
@@ -497,7 +523,8 @@ var fluid = fluid || require("infusion"),
         that.calculateStrides();
         return that;
     };
-    fluid.defaults("flock.ugen.inputTrigger", {
+
+    fluid.defaults("flock.ugen.inputChangeTrigger", {
         rate: "control",
 
         inputs: {
@@ -512,6 +539,95 @@ var fluid = fluid || require("infusion"),
             },
 
             strideInputs: ["source", "duration"]
+        }
+    });
+
+    flock.ugen.triggerCallback = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                o = that.options,
+                out = that.output,
+                inputs = that.inputs,
+                triggerInc = m.strides.trigger,
+                sourceInc = m.strides.source,
+                trig = inputs.trigger.output,
+                source = inputs.source.output,
+                cbSpec = o.callback,
+                fn = cbSpec.func,
+                args = cbSpec.args,
+                cbThis = cbSpec.this,
+                lastArgIdx = m.lastArgIdx,
+                prevTrig = m.prevTrig,
+                i,
+                j,
+                k,
+                currTrig,
+                sourceVal;
+
+            for (i = j = k = 0; i < numSamps; i++, j += triggerInc, k += sourceInc) {
+                currTrig = trig[j];
+                sourceVal = source[k];
+
+                if (currTrig > 0.0 && prevTrig <= 0.0 && fn) {
+                    // Insert the current source value into the arguments list
+                    // and then invoke the specified callback function.
+                    args[lastArgIdx] = sourceVal;
+                    fn.apply(cbThis, args);
+                }
+
+                out[i] = sourceVal;
+                prevTrig = currTrig;
+            }
+
+            m.prevTrig = prevTrig;
+        };
+
+        that.onInputChanged = function () {
+            var o = that.options,
+                m = that.model,
+                cbSpec = o.callback,
+                funcName = cbSpec.funcName;
+
+            if (funcName) {
+                cbSpec.func = fluid.getGlobalValue(funcName);
+            } else if (cbSpec.this && cbSpec.method) {
+                if (typeof cbSpec.this !== "string") {
+                    throw new Error("flock.ugen.triggerCallback doesn't support raw 'this' objects." +
+                        "Use a global key path instead.");
+                }
+                cbSpec.this = typeof cbSpec.this === "string" ?
+                    fluid.getGlobalValue(cbSpec.this) : cbSpec.this;
+                cbSpec.func = fluid.get(cbSpec.this, cbSpec.method);
+            }
+
+            m.lastArgIdx = cbSpec.args.length;
+            that.calculateStrides();
+        };
+
+        that.onInputChanged();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.triggerCallback", {
+        rate: "audio",
+        inputs: {
+            source: 0,
+            trigger: 0
+        },
+        ugenOptions: {
+            model: {
+                funcName: undefined,
+                lastArgIdx: 0
+            },
+            callback: {
+                "this": undefined,
+                method: undefined,
+                func: undefined,
+                args: []
+            },
+            strideInputs: ["source", "trigger"]
         }
     });
 
@@ -704,7 +820,7 @@ var fluid = fluid || require("infusion"),
         inputs: {
             freq: 440.0,
             phase: 0.0,
-            table: null,
+            table: [],
             mul: null,
             add: null
         },
@@ -732,68 +848,17 @@ var fluid = fluid || require("infusion"),
             var defaults = fluid.defaults("flock.ugen.osc"),
                 merged = fluid.merge(null, defaults, options),
                 s = merged.tableSize;
-            inputs.table = tableFillFn(s, flock.TWOPI / s);
+            inputs.table = flock.fillTable(s, tableFillFn);
             return flock.ugen.osc(inputs, output, options);
         };
 
         fluid.defaults(name, fluid.defaults("flock.ugen.osc"));
     };
 
-
-    flock.ugen.osc.define("flock.ugen.sinOsc", function (size, scale) {
-        return flock.generate(size, function (i) {
-            return Math.sin(i * scale);
-        });
-    });
-
-    flock.ugen.osc.fourierTable = function (size, scale, numHarms, phase, amps) {
-        phase *= flock.TWOPI;
-
-        return flock.generate(size, function (i) {
-            var harm,
-                amp,
-                w,
-                val = 0.0;
-
-            for (harm = 0; harm < numHarms; harm++) {
-                amp = amps ? amps[harm] : 1.0;
-                w = (harm + 1) * (i * scale);
-                val += amp * Math.cos(w + phase);
-            }
-
-            return val;
-        });
-    };
-
-    flock.ugen.osc.normalizedFourierTable = function (size, scale, numHarms, phase, ampGenFn) {
-        var amps = flock.generate(numHarms, function (harm) {
-            return ampGenFn(harm + 1); // Indexed harmonics from 1 instead of 0.
-        });
-
-        var table = flock.ugen.osc.fourierTable(size, scale, numHarms, phase, amps);
-        return flock.normalize(table);
-    };
-
-    flock.ugen.osc.define("flock.ugen.triOsc", function (size, scale) {
-        return flock.ugen.osc.normalizedFourierTable(size, scale, 1000, 1.0, function (harm) {
-            // Only odd harmonics with amplitudes decreasing by the inverse square of the harmonic number
-            return harm % 2 === 0 ? 0.0 : 1.0 / (harm * harm);
-        });
-    });
-
-    flock.ugen.osc.define("flock.ugen.sawOsc", function (size, scale) {
-        return flock.ugen.osc.normalizedFourierTable(size, scale, 10, -0.25, function (harm) {
-            // All harmonics with amplitudes decreasing by the inverse of the harmonic number
-            return 1.0 / harm;
-        });
-    });
-
-    flock.ugen.osc.define("flock.ugen.squareOsc", function (size, scale) {
-        return flock.ugen.osc.normalizedFourierTable(size, scale, 10, -0.25, function (harm) {
-            // Only odd harmonics with amplitudes decreasing by the inverse of the harmonic number
-            return harm % 2 === 0 ? 0.0 : 1.0 / harm;
-        });
-    });
+    flock.ugen.osc.define("flock.ugen.sinOsc", flock.tableGenerators.sin);
+    flock.ugen.osc.define("flock.ugen.triOsc", flock.tableGenerators.tri);
+    flock.ugen.osc.define("flock.ugen.sawOsc", flock.tableGenerators.saw);
+    flock.ugen.osc.define("flock.ugen.squareOsc", flock.tableGenerators.square);
 
 
     flock.ugen.sin = function (inputs, output, options) {
@@ -1791,6 +1856,291 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+    /*****************************************************
+     * Random distributions using Sim.js' Random library *
+     *****************************************************/
+
+    // TODO: Unit tests.
+    flock.ugen.random = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var generator = that.generator,
+                out = that.output,
+                i;
+
+            for (i = 0; i < numSamps; i++) {
+                out[i] = generator.uniform(-1, 1);
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        that.onInputChanged = function (inputName) {
+            if (inputName === "seed") {
+                that.initGenerator();
+            }
+            flock.onMulAddInputChanged(that);
+        };
+
+        that.initGenerator = function () {
+            var seed = that.inputs.seed;
+            that.generator = seed ? new Random(seed) : new Random();
+        };
+
+        that.init = function () {
+            that.initGenerator();
+            that.calculateStrides();
+            that.onInputChanged();
+        };
+
+        that.init();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.random", {
+        rate: "audio",
+        inputs: {
+            seed: null,
+            mul: null,
+            add: null
+        }
+    });
+
+    // TODO: Unit tests.
+    flock.ugen.random.exponential = function (inputs, output, options) {
+        var that = flock.ugen.random(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var generator = that.generator,
+                out = that.output,
+                lambda = that.inputs.lambda.output,
+                lambdaInc = that.model.strides.lambda,
+                i,
+                j;
+
+            for (i = j = 0; i < numSamps; i++, j += lambdaInc) {
+                out[i] = generator.exponential(lambda[j]);
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.random.exponential", {
+        rate: "audio",
+        inputs: {
+            seed: null,
+            lambda: 1,
+            mul: null,
+            add: null
+        },
+
+        ugenOptions: {
+            strideInputs: ["lambda"]
+        }
+    });
+
+    // TODO: Unit tests.
+    flock.ugen.random.gamma = function (inputs, output, options) {
+        var that = flock.ugen.random(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                inputs = that.inputs,
+                generator = that.generator,
+                out = that.output,
+                alphaInc = m.strides.alpha,
+                alpha = inputs.alpha.output,
+                betaInc = m.strides.beta,
+                beta = inputs.beta.output,
+                i,
+                j,
+                k;
+
+            for (i = j = k = 0; i < numSamps; i++, j += alphaInc, k += betaInc) {
+                out[i] = generator.gamma(alpha[j], beta[k]);
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.random.gamma", {
+        rate: "audio",
+        inputs: {
+            seed: null,
+            alpha: 1,
+            beta: 2,
+            mul: null,
+            add: null
+        },
+
+        ugenOptions: {
+            strideInputs: ["alpha", "beta"]
+        }
+    });
+
+    // TODO: Unit tests.
+    flock.ugen.random.normal = function (inputs, output, options) {
+        var that = flock.ugen.random(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                out = that.output,
+                inputs = that.inputs,
+                generator = that.generator,
+                muInc = m.strides.mu,
+                mu = inputs.mu.output,
+                sigmaInc = m.strides.sigma,
+                sigma = inputs.sigma.output,
+                i,
+                j,
+                k;
+
+            for (i = j = k = 0; i < numSamps; i++, j += muInc, k += sigmaInc) {
+                out[i] = generator.normal(mu[j], sigma[k]);
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.random.normal", {
+        rate: "audio",
+        inputs: {
+            seed: null,
+            mu: 0,
+            sigma: 1,
+            mul: null,
+            add: null
+        },
+
+        ugenOptions: {
+            strideInputs: ["mu", "sigma"]
+        }
+    });
+
+    // TODO: Unit tests.
+    flock.ugen.random.pareto = function (inputs, output, options) {
+        var that = flock.ugen.random(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var generator = that.generator,
+                out = that.output,
+                alphaInc = that.model.strides.alpha,
+                alpha = that.inputs.alpha.output,
+                i,
+                j;
+
+            for (i = j = 0; i < numSamps; i++, j += alphaInc) {
+                out[i] = generator.pareto(alpha[j]);
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.random.pareto", {
+        rate: "audio",
+        inputs: {
+            seed: null,
+            alpha: 5,
+            mul: null,
+            add: null
+        },
+
+        ugenOptions: {
+            strideInputs: ["alpha"]
+        }
+    });
+
+    // TODO: Unit tests.
+    flock.ugen.random.triangular = function (inputs, output, options) {
+        var that = flock.ugen.random(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var generator = that.generator,
+                out = that.output,
+                modeInc = that.model.strides.mode,
+                mode = that.inputs.mode.output,
+                i,
+                j;
+
+            for (i = j = 0; i < numSamps; i++, j += modeInc) {
+                out[i] = generator.triangular(-1, 1, mode[j]);
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.random.triangular", {
+        rate: "audio",
+        inputs: {
+            seed: null,
+            mode: 0.5,
+            mul: null,
+            add: null
+        },
+
+        ugenOptions: {
+            strideInputs: ["mode"]
+        }
+    });
+
+    // TODO: Unit tests.
+    flock.ugen.random.weibull = function (inputs, output, options) {
+        var that = flock.ugen.random(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                inputs = that.inputs,
+                generator = that.generator,
+                out = that.output,
+                alphaInc = m.strides.alpha,
+                alpha = inputs.alpha.output,
+                betaInc = m.strides.beta,
+                beta = inputs.beta.output,
+                i,
+                j,
+                k;
+
+            for (i = j = k = 0; i < numSamps; i++, j += alphaInc, k += betaInc) {
+                out[i] = generator.weibull(alpha[j], beta[k]);
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.random.weibull", {
+        rate: "audio",
+        inputs: {
+            seed: null,
+            alpha: 1,
+            beta: 1,
+            mul: null,
+            add: null
+        },
+
+        ugenOptions: {
+            strideInputs: ["alpha", "beta"]
+        }
+    });
+
 
     /**************************************
      * Envelopes and Amplitude Processors *
@@ -2734,6 +3084,12 @@ var fluid = fluid || require("infusion"),
             highPass: function (model, freq) {
                 var co = model.coeffs;
                 var lambda = Math.tan(Math.PI * freq / model.sampleRate);
+                // Works around NaN values in cases where the frequency
+                // is precisely half the sampling rate, and thus lambda
+                // is Infinite.
+                if (lambda === Infinity) {
+                    lambda = 0;
+                }
                 var lambdaSquared = lambda * lambda;
                 var rootTwoLambda = flock.ROOT2 * lambda;
                 var b0 = 1 / (1 + rootTwoLambda + lambdaSquared);
@@ -2851,6 +3207,118 @@ var fluid = fluid || require("infusion"),
         }
     };
 
+    /**
+     * A Moog-style 24db resonant low-pass filter.
+     *
+     * This unit generator is based on the following musicdsp snippet:
+     * http://www.musicdsp.org/showArchiveComment.php?ArchiveID=26
+     *
+     * Inputs:
+     *   - source: the source signal to process
+     *   - cutoff: the cutoff frequency
+     *   - resonance: the filter resonance [between 0 and 4, where 4 is self-oscillation]
+     */
+    // TODO: Unit tests.
+    flock.ugen.filter.moog = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                inputs = that.inputs,
+                out = that.output,
+                source = inputs.source.output,
+                sourceInc = m.strides.source,
+                res = inputs.resonance.output,
+                resInc = m.strides.resonance,
+                cutoff = inputs.cutoff.output,
+                cutoffInc = m.strides.cutoff,
+                f = m.f,
+                fSq = m.fSq,
+                fSqSq = m.fSqSq,
+                oneMinusF = m.oneMinusF,
+                fb = m.fb,
+                i,
+                j,
+                k,
+                l,
+                currCutoff,
+                currRes,
+                val;
+
+            for (i = j = k = l = 0; i < numSamps; i++, j += sourceInc, k += resInc, l += cutoffInc) {
+                currCutoff = cutoff[l];
+                currRes = res[k];
+
+                if (currCutoff !== m.prevCutoff) {
+                    if (currCutoff > m.nyquistRate) {
+                        currCutoff = m.nyquistRate;
+                    }
+
+                    f = m.f = (currCutoff / m.nyquistRate) * 1.16;
+                    fSq = m.fSq = f * f;
+                    fSqSq = m.fSqSq = fSq * fSq;
+                    oneMinusF = m.oneMinusF = 1 - f;
+                    m.prevRes = undefined; // Flag the need to update fb.
+                }
+
+                if (currRes !== m.prevRes) {
+                    if (currRes > 4) {
+                        currRes = 4;
+                    } else if (currRes < 0) {
+                        currRes = 0;
+                    }
+
+                    fb = m.fb = currRes * (1.0 - 0.15 * fSq);
+                }
+
+                val = source[j] - (m.out4 * fb);
+                val *= 0.35013 * fSqSq;
+                m.out1 = val + 0.3 * m.in1 + oneMinusF * m.out1;
+                m.in1 = val;
+                m.out2 = m.out1 + 0.3 * m.in2 + oneMinusF * m.out2;
+                m.in2 = m.out1;
+                m.out3 = m.out2 + 0.3 * m.in3 + oneMinusF * m.out3;
+                m.in3 = m.out2;
+                m.out4 = m.out3 + 0.3 * m.in4 + oneMinusF * m.out4;
+                m.in4 = m.out3;
+                out[i] = m.out4;
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        that.onInputChanged();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.filter.moog", {
+        rate: "audio",
+        inputs: {
+            cutoff: 3000,
+            resonance: 3.99,
+            source: null
+        },
+        ugenOptions: {
+            model: {
+                in1: 0,
+                in2: 0,
+                in3: 0,
+                in4: 0,
+                out1: 0,
+                out2: 0,
+                out3: 0,
+                out4: 0,
+                prevCutoff: undefined,
+                prevResonance: undefined,
+                f: undefined,
+                fSq: undefined,
+                fSqSq: undefined,
+                oneMinusF: undefined,
+                fb: undefined
+            },
+            strideInputs: ["source", "cutoff", "resonance"]
+        }
+    });
 
     flock.ugen.delay = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
@@ -3095,6 +3563,228 @@ var fluid = fluid || require("infusion"),
 
             tunings: [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617],
             allPassTunings: [556, 441, 341, 225]
+        }
+    });
+
+
+    /**
+     * A simple waveshaper-based distortion effect.
+     * Uses the polynomial y = (3/2) * x - (1/2) * x^3.
+     * http://www.musicdsp.org/showone.php?id=114
+     *
+     * Inputs:
+     *   - source: the input signal to distort
+     *   - gain: the gain factor to apply [1.0..Infinity]
+     */
+    flock.ugen.distortion = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var out = that.output,
+                source = that.inputs.source.output,
+                sourceInc = that.model.strides.source,
+                gain = that.inputs.gain.output,
+                gainInc = that.model.strides.gain,
+                val,
+                dist,
+                i,
+                j,
+                k;
+
+            for (i = j =  k = 0; i < numSamps; i++, j += sourceInc, k += gainInc) {
+                val = source[j] * gain[k];
+                dist = 1.5 * val - 0.5 * val * val * val;
+                out[i] = dist;
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        that.onInputChanged();
+
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.distortion", {
+        rate: "audio",
+        inputs: {
+            source: null,
+            gain: 1.0
+        },
+        ugenOptions: {
+            strideInputs: ["source", "gain"]
+        }
+    });
+
+
+    /**
+     * A simple waveshaper-based distortion effect by Bram de Jonge.
+     * http://www.musicdsp.org/showone.php?id=41
+     *
+     * Inputs:
+     *   - source: the input signal
+     *   - amount: a value between 1 and Infinity that represents the amount of distortion
+     *             to apply.
+     */
+    flock.ugen.distortion.deJonge = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var out = that.output,
+                source = that.inputs.source.output,
+                sourceInc = that.model.strides.source,
+                amount = that.inputs.amount.output,
+                amountInc = that.model.strides.amount,
+                x,
+                a,
+                absX,
+                dist,
+                i,
+                j,
+                k;
+
+            for (i = j = k = 0; i < numSamps; i++, j += sourceInc, k += amountInc) {
+                x = source[j];
+                a = amount[k];
+                absX = Math.abs(x);
+                dist = x * (absX + a) / ((x * x) + (a - 1) * absX + 1);
+                out[i] = dist;
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        that.onInputChanged();
+
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.distortion.deJonge", {
+        rate: "audio",
+        inputs: {
+            source: null,
+            amount: 2
+        },
+        ugenOptions: {
+            strideInputs: ["source", "amount"]
+        }
+    });
+
+
+    /**
+     * A simple waveshaper-based distortion effect by Partice Tarrabia and Bram de Jong.
+     * http://www.musicdsp.org/showone.php?id=46
+     *
+     * Inputs:
+     *   - source: the input signal
+     *   - amount: a value between -1 and 1 that represents the amount of distortion
+     *             to apply.
+     */
+    flock.ugen.distortion.tarrabiaDeJonge = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var out = that.output,
+                source = that.inputs.source.output,
+                sourceInc = that.model.strides.source,
+                amount = that.inputs.amount.output,
+                amountInc = that.model.strides.amount,
+                x,
+                a,
+                dist,
+                i,
+                sIdx,
+                aIdx,
+                k;
+
+            for (i = sIdx = aIdx = 0; i < numSamps; i++, sIdx += sourceInc, aIdx += amountInc) {
+                x = source[sIdx];
+                a = amount[aIdx];
+
+                // Expects an amount value in the range of
+                // -1.0 to 1.0, but NaNs are produced with exact 1.0s.
+                if (a >= 1.0) {
+                    a = 0.9999999999999999;
+                } else if (a < -1.0) {
+                    a = -1.0;
+                }
+
+                k = 2 * a / (1 - a);
+                dist = (1 + k) * x / (1 + k * Math.abs(x));
+                out[i] = dist;
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        that.onInputChanged();
+
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.distortion.tarrabiaDeJonge", {
+        rate: "audio",
+        inputs: {
+            source: null,
+            amount: 10
+        },
+        ugenOptions: {
+            strideInputs: ["source", "amount"]
+        }
+    });
+
+
+    /**
+     * Waveshaper distortion by Laurent de Soras.
+     * http://www.musicdsp.org/showone.php?id=86
+     *
+     * Inputs:
+     *   - source: the signal to distort
+     *   - gain: the gain factor to apply [1.0..Infinity]
+     */
+    flock.ugen.distortion.gloubiBoulga = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var out = that.output,
+                source = that.inputs.source.output,
+                sourceInc = that.model.strides.source,
+                gain = that.inputs.gain.output,
+                gainInc = that.model.strides.gain,
+                val,
+                dist,
+                i,
+                j,
+                k,
+                x,
+                a,
+                expX;
+
+            for (i = j = k = 0; i < numSamps; i++, j += sourceInc, k += gainInc) {
+                val = source[j] * gain[k];
+                x = val * 0.686306;
+                a = 1 + Math.exp(Math.sqrt(Math.abs(x)) * -0.75);
+                expX = Math.exp(x);
+                dist = (expX - Math.exp(-x * a)) / (expX + Math.exp(-x));
+                out[i] = dist;
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        that.onInputChanged();
+
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.distortion.gloubiBoulga", {
+        rate: "audio",
+        inputs: {
+            source: null,
+            gain: 1.0
+        },
+        ugenOptions: {
+            strideInputs: ["source", "gain"]
         }
     });
 
@@ -3588,15 +4278,17 @@ var fluid = fluid || require("infusion"),
         that.gen = function (numSamps) {
             var m = that.model,
                 a4 = m.a4,
+                a4Freq = a4.freq,
+                a4NoteNum = a4.noteNum,
+                notesPerOctave = m.notesPerOctave,
                 noteNum = that.inputs.source.output,
                 out = that.output,
                 i,
                 j;
 
             for (i = 0, j = 0; i < numSamps; i++, j += m.strides.source) {
-                out[i] = a4.freq * Math.pow(2, (noteNum[j] - a4.noteNum) * m.octaveScale);
+                out[i] = flock.midiFreq(noteNum[j], a4Freq, a4NoteNum, notesPerOctave);
             }
-
         };
 
         that.init = function () {
