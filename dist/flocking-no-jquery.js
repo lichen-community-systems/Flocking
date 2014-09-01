@@ -11372,94 +11372,171 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.nodeList", {
-        gradeNames: ["fluid.littleComponent", "autoInit"],
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
         members: {
             nodes: [],
             namedNodes: {}
+        },
+
+        invokers: {
+            insert: {
+                funcName: "flock.nodeList.insert",
+                // TODO: Backwards arguments?
+                args: [
+                    "{arguments}.0", // The index to insert it at.
+                    "{arguments}.1", // The node to insert.
+                    "{that}.nodes",
+                    "{that}.events.onInsert.fire"
+                ]
+            },
+
+            head: {
+                func: "{that}.insert",
+                args: [0, "{arguments}.0"]
+            },
+
+            tail: {
+                funcName: "flock.nodeList.tail",
+                args: ["{arguments}.0", "{that}.nodes", "{that}.insert"]
+            },
+
+            before: {
+                funcName: "flock.nodeList.before",
+                args: [
+                    "{arguments}.0", // Reference node.
+                    "{arguments}.1", // Node to add.
+                    "{that}.nodes",
+                    "{that}.insert"
+                ]
+            },
+
+            after: {
+                funcName: "flock.nodeList.after",
+                args: [
+                    "{arguments}.0", // Reference node.
+                    "{arguments}.1", // Node to add.
+                    "{that}.nodes",
+                    "{that}.insert"
+                ]
+            },
+
+            remove: {
+                funcName: "flock.nodeList.remove",
+                args: [
+                    "{arguments}.0", // Node to remove.
+                    "{that}.nodes",
+                    "{that}.events.onRemove.fire"
+                ]
+            },
+
+            replace: {
+                funcName: "flock.nodeList.replace",
+                args: [
+                    // TODO: Backwards arguments?
+                    "{arguments}.0", // New node.
+                    "{arguments}.1", // Old node.
+                    "{that}.nodes",
+                    "{that}.head",
+                    "{that}.events.onRemove.fire",
+                    "{that}.events.onInsert.fire"
+                ]
+            },
+
+            clearAll: {
+                func: "{that}.events.onClearAll.fire"
+            }
+        },
+
+        events: {
+            onInsert: null,
+            onRemove: null,
+            onClearAll: null
+        },
+
+        listeners: {
+            onClearAll: [
+                {
+                    func: "fluid.clear",
+                    args: "{that}.nodes"
+                },
+                {
+                    func: "fluid.clear",
+                    args: "{that}.namedNodes"
+                }
+            ],
+
+            onInsert: {
+                funcName: "flock.nodeList.registerNode",
+                args: ["{arguments}.0", "{that}.namedNodes"]
+            },
+
+            onRemove: {
+                funcName: "flock.nodeList.unregisterNode",
+                args: ["{arguments}.0", "{that}.namedNodes"]
+            }
         }
     });
 
-    flock.nodeList.preInit = function (that) {
-        that.head = function (node) {
-            that.nodes.unshift(node);
-            if (node.nickName) {
-                that.namedNodes[node.nickName] = node;
-            }
-            return 0;
-        };
+    flock.nodeList.insert = function (idx, node, nodes, onInsert) {
+        if (idx < 0) {
+            idx = 0;
+        }
 
-        that.before = function (refNode, node) {
-            var refIdx = that.nodes.indexOf(refNode);
-            that.insert(refIdx, node);
-            return refIdx;
-        };
+        nodes.splice(idx, 0, node);
+        onInsert(node, idx);
 
-        that.after = function (refNode, node) {
-            var refIdx = that.nodes.indexOf(refNode),
-                atIdx = refIdx + 1;
-            that.insert(atIdx, node);
-            return atIdx;
-        };
+        return idx;
+    };
 
-        that.insert = function (idx, node) {
-            if (idx < 0) {
-                return that.head(node);
-            }
+    flock.nodeList.registerNode = function (node, namedNodes) {
+        if (node.nickName) {
+            namedNodes[node.nickName] = node;
+        }
+    };
 
-            that.nodes.splice(idx, 0, node);
-            if (node.nickName) {
-                that.namedNodes[node.nickName] = node;
-            }
-            return idx;
-        };
+    flock.nodeList.before = function (refNode, node, nodes, insertFn) {
+        var refIdx = nodes.indexOf(refNode);
+        return insertFn(refIdx, node);
+    };
 
-        that.tail = function (node) {
-            that.nodes.push(node);
-            if (node.nickName) {
-                that.namedNodes[node.nickName] = node;
-            }
-            return that.nodes.length;
-        };
+    flock.nodeList.after = function (refNode, node, nodes, insertFn) {
+        var refIdx = nodes.indexOf(refNode),
+            atIdx = refIdx + 1;
 
-        that.remove = function (node) {
-            var idx = that.nodes.indexOf(node);
-            if (idx < 0) {
-                return idx;
-            }
+        return insertFn(atIdx, node);
+    };
 
-            that.nodes.splice(idx, 1);
-            delete that.namedNodes[node.nickName];
-            return idx;
-        };
+    flock.nodeList.tail = function (node, nodes, insertFn) {
+        var idx = nodes.length;
+        return insertFn(idx, node);
+    };
 
-        that.replace = function (newNode, oldNode) {
-            var idx = that.nodes.indexOf(oldNode);
-            if (idx < 0) {
-                return that.head(newNode);
-            }
+    flock.nodeList.remove = function (node, nodes, onRemove) {
+        var idx = nodes.indexOf(node);
+        if (idx > -1) {
+            nodes.splice(idx, 1);
+            onRemove(node);
+        }
 
-            that.nodes[idx] = newNode;
-            delete that.namedNodes[oldNode.nickName];
+        return idx;
+    };
 
-            if (newNode.nickName) {
-                that.namedNodes[newNode.nickName] = newNode;
-            }
-            return idx;
-        };
+    flock.nodeList.unregisterNode = function (node, namedNodes) {
+        delete namedNodes[node.nickName];
+    };
 
-        that.clearAll = function () {
-            // Clear the environment's node list.
-            that.nodes.length = 0;
+    flock.nodeList.replace = function (newNode, oldNode, nodes, notFoundFn, onRemove, onInsert) {
+        var idx = nodes.indexOf(oldNode);
+        if (idx < 0) {
+            return notFoundFn(newNode);
+        }
 
-            // And clear out all named nodes.
-            var nodeNames = Object.keys(that.namedNodes),
-                i,
-                nodeName;
-            for (i = 0; i < nodeNames.length; i++) {
-                nodeName = nodeNames[i];
-                delete that.namedNodes[nodeName];
-            }
-        };
+        nodes[idx] = newNode;
+        onRemove(oldNode);
+        onInsert(newNode);
+
+        return idx;
     };
 
 
