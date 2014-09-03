@@ -21126,15 +21126,49 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    fluid.defaults("flock.synth", {
-        gradeNames: [
-            "flock.node",
-            "flock.ugenNodeList",
-            "autoInit"
-        ],
 
-        rate: flock.rates.AUDIO,
+    /**
+     * Synths represent a collection of signal-generating units,
+     * wired together to form an instrument.
+     * They are created with a synthDef object, which is a declarative structure
+     * that describes the synth's unit generator graph.
+     */
+    fluid.defaults("flock.synth", {
+        gradeNames: ["flock.node", "flock.ugenNodeList", "autoInit"],
+
         addToEnvironment: "tail",
+        rate: flock.rates.AUDIO,
+
+        members: {
+            rate: "{that}.options.rate",
+
+            // TODO: Remove this when audioSettings is modelized.
+            audioSettings: {
+                expander: {
+                    "this": "jQuery",
+                    method: "extend",
+                    args: ["{that}.enviro.audioSettings", "{that}.options.audioSettings"]
+                }
+            },
+
+            out: {
+                expander: {
+                    funcName: "flock.synth.parseSynthDef",
+                    args: [
+                        "{that}.options.synthDef",
+                        "{that}.rate",
+                        "{that}.audioSettings",
+                        "{that}.enviro.buffers",
+                        "{that}.enviro.buses",
+                        "{that}.tail"
+                    ]
+                }
+            }
+        },
+
+        model: {
+            blockSize: "@expand:flock.synth.calcBlockSize({that}.rate, {that}.audioSettings)"
+        },
 
         invokers: {
             /**
@@ -21179,15 +21213,82 @@ var fluid = fluid || require("infusion"),
             get: {
                 funcName: "flock.input.get",
                 args: ["{that}.namedNodes", "{arguments}.0"]
+            },
+
+            /**
+             * Deprecated.
+             *
+             * Gets or sets the value of a ugen at the specified path
+             *
+             * @param {String} path the ugen's path within the synth graph
+             * @param {Number || UGenDef || Array} val an optional value to to set--a scalar value, a UGenDef object, or an array of UGenDefs
+             * @param {Boolean || Object} swap specifies if the existing inputs should be swapped onto the new value
+             * @return {Number || UGenDef || Array} the value that was set or retrieved
+             */
+            input: {
+                funcName: "flock.synth.input",
+                args: [
+                    "{arguments}",
+                    "{that}.get",
+                    "{that}.set"
+                ]
+            },
+
+            /**
+             * Generates one block of audio rate signal by evaluating this synth's unit generator graph.
+             */
+            gen: {
+                funcName: "flock.synth.gen",
+                args: ["{that}.nodes"]
+            },
+
+            /**
+             * Adds the synth to its environment's list of active nodes.
+             *
+             * @param {String || Boolean || Number} position the place to insert the node at;
+             *     if undefined, the synth's addToEnvironment option will be used.
+             */
+            addToEnvironment: {
+                funcName: "flock.synth.addToEnvironment",
+                args: ["{that}", "{arguments}.0", "{that}.options", "{that}.enviro"]
             }
         },
 
         listeners: {
+            onCreate: {
+                funcName: "flock.synth.addToEnvironment",
+                args: ["{that}", undefined, "{that}.options", "{that}.enviro"]
+            },
+
             onDestroy: {
                 "func": "{that}.pause"
             }
         }
     });
+
+    flock.synth.calcBlockSize = function (rate, audioSettings) {
+        return rate === flock.rates.AUDIO ? audioSettings.blockSize : 1;
+    };
+
+    flock.synth.parseSynthDef = function (synthDef, rate, audioSettings, buffers, buses, tailFn) {
+        if (!synthDef) {
+            fluid.log(fluid.logLevel.IMPORTANT,
+                "Warning: Instantiating a flock.synth instance with an empty synth def.");
+        }
+
+        // At demand or schedule rates, override the rate of all non-constant ugens.
+        var overrideRate = rate === flock.rates.SCHEDULED || rate === flock.rates.DEMAND;
+
+        // Parse the synthDef into a graph of unit generators.
+        return flock.parse.synthDef(synthDef, {
+            rate: rate,
+            overrideRate: overrideRate,
+            visitors: tailFn,
+            buffers: buffers,
+            buses: buses,
+            audioSettings: audioSettings
+        });
+    };
 
     flock.synth.play = function (that) {
         var enviro = that.enviro;
@@ -21212,99 +21313,45 @@ var fluid = fluid || require("infusion"),
         });
     };
 
-    /**
-     * Synths represent a collection of signal-generating units, wired together to form an instrument.
-     * They are created with a synthDef object, a declarative structure describing the synth's unit generator graph.
-     */
-    flock.synth.finalInit = function (that) {
-        that.rate = that.options.rate;
-        that.enviro = that.enviro || flock.enviro.shared;
-        that.audioSettings = $.extend(true, {}, that.enviro.audioSettings, that.options.audioSettings);
-        that.model.blockSize = that.rate === flock.rates.AUDIO ? that.audioSettings.blockSize : 1;
+    flock.synth.gen = function (nodes) {
+        var i,
+            node;
 
-        /**
-         * Generates one block of audio rate signal by evaluating this synth's unit generator graph.
-         */
-        that.gen = function () {
-            var nodes = that.nodes,
-                i,
-                node;
-
-            for (i = 0; i < nodes.length; i++) {
-                node = nodes[i];
-                if (node.gen !== undefined) {
-                    node.gen(node.model.blockSize);
-                }
+        for (i = 0; i < nodes.length; i++) {
+            node = nodes[i];
+            if (node.gen !== undefined) {
+                node.gen(node.model.blockSize);
             }
-        };
+        }
+    };
 
-        /**
-         * Deprecated.
-         *
-         * Gets or sets the value of a ugen at the specified path
-         *
-         * @param {String} path the ugen's path within the synth graph
-         * @param {Number || UGenDef || Array} val an optional value to to set--a scalar value, a UGenDef object, or an array of UGenDefs
-         * @param {Boolean || Object} swap specifies if the existing inputs should be swapped onto the new value
-         * @return {Number || UGenDef || Array} the value that was set or retrieved
-         */
-        that.input = function (path, val, swap) {
-            return !path ? undefined : typeof path === "string" ?
-                arguments.length < 2 ? that.get(path) : that.set(path, val, swap) :
-                flock.isIterable(path) ? that.get(path) : that.set(path, val, swap);
-        };
+    flock.synth.input = function (args, getFn, setFn) {
+        //path, val, swap
+        var path = args[0];
 
-        /**
-         * Adds the synth to its environment's list of active nodes.
-         *
-         * @param {String || Boolean || Number} position the place to insert the node at;
-         *     if undefined, the synth's addToEnvironment option will be used.
-         */
-        that.addToEnvironment = function (position) {
-            if (position === undefined) {
-                position = that.options.addToEnvironment;
-            }
+        return !path ? undefined : typeof path === "string" ?
+            args.length < 2 ? getFn(path) : setFn.apply(null, args) :
+            flock.isIterable(path) ? getFn(path) : setFn.apply(null, args);
+    };
 
-            // Add this synth to the tail of the synthesis environment if appropriate.
-            if (position === undefined || position === null || position === false) {
-                return;
-            }
+    flock.synth.addToEnvironment = function (synth, position, options, enviro) {
+        if (position === undefined) {
+            position = options.addToEnvironment;
+        }
 
-            var type = typeof (position);
-            if (type === "string" && position === "head" || position === "tail") {
-                that.enviro[position](that);
-            } else if (type === "number") {
-                that.enviro.insert(position, that);
-            } else {
-                that.enviro.tail(that);
-            }
-        };
+        // Add this synth to the tail of the synthesis environment if appropriate.
+        if (position === undefined || position === null || position === false) {
+            return;
+        }
 
-        that.init = function () {
-            var o = that.options,
-                // At demand or schedule rates, override the rate of all non-constant ugens.
-                overrideRate = o.rate === flock.rates.SCHEDULED || o.rate === flock.rates.DEMAND;
-
-            if (!o.synthDef) {
-                fluid.log(fluid.logLevel.IMPORTANT,
-                    "Warning: Instantiating a flock.synth instance with an empty synth def.");
-            }
-
-            // Parse the synthDef into a graph of unit generators.
-            that.out = flock.parse.synthDef(o.synthDef, {
-                rate: o.rate,
-                overrideRate: overrideRate,
-                visitors: that.tail,
-                buffers: that.enviro.buffers,
-                buses: that.enviro.buses,
-                audioSettings: that.audioSettings
-            });
-
-            that.addToEnvironment();
-        };
-
-        that.init();
-        return that;
+        var type = typeof (position);
+        if (type === "string" && position === "head" || position === "tail") {
+            enviro[position](synth);
+        } else if (type === "number") {
+            enviro.insert(position, synth);
+        } else {
+            enviro.tail(synth);
+        }
     };
 
     // TODO: Reduce all these dependencies on "that" (i.e. a synth instance).
@@ -21361,19 +21408,23 @@ var fluid = fluid || require("infusion"),
 
         rate: "demand",
 
-        addToEnvironment: false
+        addToEnvironment: false,
+
+        invokers: {
+            value: {
+                funcName: "flock.synth.value.genValue",
+                args: ["{that}.nodes", "{that}.gen"]
+            }
+        }
     });
 
-    flock.synth.value.finalInit = function (that) {
-        that.value = function () {
-            var nodes = that.nodes,
-                lastIdx = nodes.length - 1,
-                out = nodes[lastIdx];
+    flock.synth.value.genValue = function (nodes, genFn) {
+        var lastIdx = nodes.length - 1,
+            out = nodes[lastIdx];
 
-            that.gen(1);
+        genFn(1);
 
-            return out.model.value;
-        };
+        return out.model.value;
     };
 
 
