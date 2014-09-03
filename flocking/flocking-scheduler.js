@@ -128,7 +128,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.scheduler.webWorkerClock", {
-        gradeNames: ["fluid.modelComponent", "fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
         model: {
             messages: {
                 schedule: {

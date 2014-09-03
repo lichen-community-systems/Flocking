@@ -482,49 +482,6 @@ var fluid = fluid || require("infusion"),
         return val;
     };
 
-
-    flock.expand = {};
-
-    // TODO: Unit tests.
-    flock.expand.overlay = function (expandSpec) {
-        if (!expandSpec) {
-            return;
-        }
-
-        var ugenDefs = [];
-
-        for (var inputPath in expandSpec.expandInputs) {
-            var expansions = expandSpec.expandInputs[inputPath];
-            if (expansions.length > ugenDefs.length) {
-                flock.expand.overlay.extend(ugenDefs, expandSpec.ugenDef, expansions.length);
-            }
-
-            flock.expand.overlay.merge(ugenDefs, inputPath, expansions);
-        }
-
-        return ugenDefs;
-    };
-
-    flock.expand.overlay.extend = function (arr, protoObj, length) {
-        var numExtra = length - arr.length;
-
-        for (var i = 0; i < numExtra; i++) {
-            arr.push(fluid.copy(protoObj));
-        }
-
-        return arr;
-    };
-
-    flock.expand.overlay.merge = function (protos, path, extensions) {
-        for (var i = 0; i < extensions.length; i++) {
-            var obj = protos[i],
-                extension = extensions[i];
-            flock.set(obj, path, extension);
-        }
-
-        return protos;
-    };
-
     flock.fail = function (msg) {
         if (flock.debug.failHard) {
             throw new Error(msg);
@@ -906,16 +863,30 @@ var fluid = fluid || require("infusion"),
      * Synths and Playback *
      ***********************/
 
+
+    fluid.defaults("flock.audioStrategy", {
+        gradeNames: ["fluid.standardComponent", "autoInit"],
+
+        components: {
+            nodeEvaluator: {
+                type: "flock.enviro.nodeEvaluator"
+            }
+        }
+    });
+
+    
     fluid.defaults("flock.enviro", {
-        gradeNames: ["fluid.modelComponent", "flock.nodeList", "autoInit"],
+        gradeNames: ["fluid.standardComponent", "flock.nodeList", "autoInit"],
+
         model: {
             playState: {
                 written: 0,
-                total: null
+                total: Infinity
             },
 
             isPlaying: false
         },
+
         audioSettings: {
             rates: {
                 audio: 48000, // This is only a hint. Some audio backends (such as the Web Audio API)
@@ -935,15 +906,107 @@ var fluid = fluid || require("infusion"),
             // Hints to some audio backends.
             genPollIntervalFactor: flock.platform.isLinux ? 1 : 20 // Only used on Firefox.
         },
+
+        members: {
+            // TODO: Modelize.
+            audioSettings: "{that}.options.audioSettings",
+            buses: {
+                expander: {
+                    funcName: "flock.enviro.createAudioBuffers",
+                    args: ["{that}.audioSettings.numBuses", "{that}.audioSettings.blockSize"]
+                }
+            },
+            buffers: {},
+            bufferSources: {}
+        },
+
+        invokers: {
+            /**
+             * Generates a block of samples by evaluating all registered nodes.
+             */
+            gen: "flock.enviro.gen({audioStrategy}.nodeEvaluator)",
+
+            /**
+             * Starts generating samples from all synths.
+             *
+             * @param {Number} dur optional duration to play in seconds
+             */
+            play: {
+                funcName: "flock.enviro.play",
+                args: [
+                    "{arguments}.0",
+                    "{that}.model",
+                    "{that}.applier",
+                    "{that}.audioSettings",
+                    "{that}.events.onPlay.fire"
+                ]
+            },
+
+            /**
+             * Stops generating samples.
+             */
+            stop: {
+                funcName: "flock.enviro.stop",
+                args: [
+                    "{that}.applier",
+                    "{that}.events.onStop.fire"
+                ]
+            },
+
+            /**
+             * Fully resets the state of the environment.
+             */
+            reset: {
+                func: "{that}.events.onReset.fire"
+            },
+
+            /**
+             * Registers a shared buffer.
+             *
+             * @param {BufferDesc} bufDesc the buffer description object to register
+             */
+            registerBuffer: "flock.enviro.registerBuffer({arguments}.0, {that}.buffers)",
+
+            /**
+             * Releases a shared buffer.
+             *
+             * @param {String|BufferDesc} bufDesc the buffer description (or string id) to release
+             */
+            releaseBuffer: "flock.enviro.releaseBuffer({arguments}.0, {that}.buffers)"
+        },
+
+        events: {
+            onPlay: null,
+            onStop: null,
+            onReset: null
+        },
+
+        listeners: {
+            onPlay: "{audioStrategy}.startGeneratingSamples()",
+
+            onStop: "{audioStrategy}.stopGeneratingSamples()",
+
+            onReset: [
+                "{that}.stop()",
+                "{asyncScheduler}.clearAll()",
+                "{that}.clearAll()"
+            ],
+
+            onCreate: {
+                funcName: "flock.enviro.initAudioSettings",
+                args: ["{that}.audioSettings", "{audioStrategy}.options.audioSettings"]
+            }
+        },
+
         components: {
             asyncScheduler: {
                 type: "flock.scheduler.async"
             },
 
             audioStrategy: {
-                type: "flock.enviro.audioStrategy",
+                type: "flock.audioStrategy.platform",
                 options: {
-                    audioSettings: "{enviro}.options.audioSettings",
+                    audioSettings: "{enviro}.audioSettings",
                     model: {
                         playState: "{enviro}.model.playState"
                     }
@@ -952,73 +1015,50 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    flock.enviro.preInit = function (that) {
-        that.audioSettings = that.options.audioSettings;
-        that.buses = flock.enviro.createAudioBuffers(that.audioSettings.numBuses,
-                that.audioSettings.blockSize);
-        that.buffers = {};
-        that.bufferSources = {};
-
-        /**
-         * Starts generating samples from all synths.
-         *
-         * @param {Number} dur optional duration to play in seconds
-         */
-        that.play = function (dur) {
-            dur = dur === undefined ? Infinity : dur;
-
-            var playState = that.model.playState,
-                sps = dur * that.audioSettings.rates.audio * that.audioSettings.chans;
-
-            playState.total = playState.written + sps;
-            that.audioStrategy.startGeneratingSamples();
-            that.model.isPlaying = true;
-        };
-
-        /**
-         * Stops generating samples from all synths.
-         */
-        that.stop = function () {
-            that.audioStrategy.stopGeneratingSamples();
-            that.model.isPlaying = false;
-        };
-
-        that.reset = function () {
-            that.stop();
-            that.asyncScheduler.clearAll();
-            that.clearAll();
-        };
-
-        that.registerBuffer = function (bufDesc) {
-            if (bufDesc.id) {
-                that.buffers[bufDesc.id] = bufDesc;
-            }
-        };
-
-        that.releaseBuffer = function (bufDesc) {
-            if (!bufDesc) {
-                return;
-            }
-
-            var id = typeof bufDesc === "string" ? bufDesc : bufDesc.id;
-            delete that.buffers[id];
-        };
-    };
-
-    flock.enviro.finalInit = function (that) {
-        var audioSettings = that.options.audioSettings,
-            rates = audioSettings.rates;
-
-        that.gen = function () {
-            var evaluator = that.audioStrategy.nodeEvaluator;
-            evaluator.clearBuses();
-            evaluator.gen();
-        };
+    flock.enviro.initAudioSettings = function (audioSettings, audioStrategySettings) {
+        var rates = audioSettings.rates;
 
         // TODO: Model-based (with ChangeApplier) sharing of audioSettings
-        rates.audio = that.audioStrategy.options.audioSettings.rates.audio;
+        rates.audio = audioStrategySettings.rates.audio;
         rates.control = rates.audio / audioSettings.blockSize;
-        audioSettings.chans = that.audioStrategy.options.audioSettings.chans;
+        audioSettings.chans = audioStrategySettings.chans;
+    };
+
+    flock.enviro.play = function (dur, model, applier, audioSettings, onPlay) {
+        dur = dur === undefined ? Infinity : dur;
+
+        var playState = model.playState,
+            sps = dur * audioSettings.rates.audio * audioSettings.chans,
+            totalSamples = playState.written + sps;
+
+        applier.requestChange("playState.total", totalSamples);
+        applier.requestChange("isPlaying", true);
+        onPlay(dur);
+    };
+
+    flock.enviro.stop = function (applier, onStop) {
+        applier.requestChange("isPlaying", false);
+        onStop();
+    };
+
+    flock.enviro.registerBuffer = function (bufDesc, buffers) {
+        if (bufDesc.id) {
+            buffers[bufDesc.id] = bufDesc;
+        }
+    };
+
+    flock.enviro.releaseBuffer = function (bufDesc, buffers) {
+        if (!bufDesc) {
+            return;
+        }
+
+        var id = typeof bufDesc === "string" ? bufDesc : bufDesc.id;
+        delete buffers[id];
+    };
+
+    flock.enviro.gen = function (nodeEvaluator) {
+        nodeEvaluator.clearBuses();
+        nodeEvaluator.gen();
     };
 
     flock.enviro.createAudioBuffers = function (numBufs, blockSize) {
@@ -1030,22 +1070,13 @@ var fluid = fluid || require("infusion"),
         return bufs;
     };
 
-    fluid.defaults("flock.enviro.audioStrategy", {
-        gradeNames: ["fluid.modelComponent"],
-
-        components: {
-            nodeEvaluator: {
-                type: "flock.enviro.nodeEvaluator"
-            }
-        }
-    });
 
     /*****************
      * Node Evalutor *
      *****************/
 
     fluid.defaults("flock.enviro.nodeEvaluator", {
-        gradeNames: ["fluid.littleComponent", "autoInit"],
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
 
         members: {
             nodes: "{enviro}.nodes",
@@ -1106,18 +1137,24 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.autoEnviro", {
-        gradeNames: ["fluid.littleComponent", "autoInit"]
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        members: {
+            enviro: "@expand:flock.autoEnviro.initEnvironment()"
+        }
     });
 
-    flock.autoEnviro.preInit = function () {
+    flock.autoEnviro.initEnvironment = function () {
         if (!flock.enviro.shared) {
             flock.init();
         }
+
+        return flock.enviro.shared;
     };
 
-
     fluid.defaults("flock.node", {
-        gradeNames: ["flock.autoEnviro", "fluid.modelComponent", "autoInit"]
+        gradeNames: ["flock.autoEnviro", "fluid.standardComponent", "autoInit"],
+        model: {}
     });
 
     fluid.defaults("flock.ugenNodeList", {
@@ -1230,8 +1267,6 @@ var fluid = fluid || require("infusion"),
 
     fluid.defaults("flock.synth", {
         gradeNames: [
-            "fluid.eventedComponent",
-            "fluid.modelComponent",
             "flock.node",
             "flock.ugenNodeList",
             "autoInit"

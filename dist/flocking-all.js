@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (September 1, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (September 2, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.1
@@ -20291,49 +20291,6 @@ var fluid = fluid || require("infusion"),
         return val;
     };
 
-
-    flock.expand = {};
-
-    // TODO: Unit tests.
-    flock.expand.overlay = function (expandSpec) {
-        if (!expandSpec) {
-            return;
-        }
-
-        var ugenDefs = [];
-
-        for (var inputPath in expandSpec.expandInputs) {
-            var expansions = expandSpec.expandInputs[inputPath];
-            if (expansions.length > ugenDefs.length) {
-                flock.expand.overlay.extend(ugenDefs, expandSpec.ugenDef, expansions.length);
-            }
-
-            flock.expand.overlay.merge(ugenDefs, inputPath, expansions);
-        }
-
-        return ugenDefs;
-    };
-
-    flock.expand.overlay.extend = function (arr, protoObj, length) {
-        var numExtra = length - arr.length;
-
-        for (var i = 0; i < numExtra; i++) {
-            arr.push(fluid.copy(protoObj));
-        }
-
-        return arr;
-    };
-
-    flock.expand.overlay.merge = function (protos, path, extensions) {
-        for (var i = 0; i < extensions.length; i++) {
-            var obj = protos[i],
-                extension = extensions[i];
-            flock.set(obj, path, extension);
-        }
-
-        return protos;
-    };
-
     flock.fail = function (msg) {
         if (flock.debug.failHard) {
             throw new Error(msg);
@@ -20715,16 +20672,30 @@ var fluid = fluid || require("infusion"),
      * Synths and Playback *
      ***********************/
 
+
+    fluid.defaults("flock.audioStrategy", {
+        gradeNames: ["fluid.standardComponent", "autoInit"],
+
+        components: {
+            nodeEvaluator: {
+                type: "flock.enviro.nodeEvaluator"
+            }
+        }
+    });
+
+    
     fluid.defaults("flock.enviro", {
-        gradeNames: ["fluid.modelComponent", "flock.nodeList", "autoInit"],
+        gradeNames: ["fluid.standardComponent", "flock.nodeList", "autoInit"],
+
         model: {
             playState: {
                 written: 0,
-                total: null
+                total: Infinity
             },
 
             isPlaying: false
         },
+
         audioSettings: {
             rates: {
                 audio: 48000, // This is only a hint. Some audio backends (such as the Web Audio API)
@@ -20744,15 +20715,107 @@ var fluid = fluid || require("infusion"),
             // Hints to some audio backends.
             genPollIntervalFactor: flock.platform.isLinux ? 1 : 20 // Only used on Firefox.
         },
+
+        members: {
+            // TODO: Modelize.
+            audioSettings: "{that}.options.audioSettings",
+            buses: {
+                expander: {
+                    funcName: "flock.enviro.createAudioBuffers",
+                    args: ["{that}.audioSettings.numBuses", "{that}.audioSettings.blockSize"]
+                }
+            },
+            buffers: {},
+            bufferSources: {}
+        },
+
+        invokers: {
+            /**
+             * Generates a block of samples by evaluating all registered nodes.
+             */
+            gen: "flock.enviro.gen({audioStrategy}.nodeEvaluator)",
+
+            /**
+             * Starts generating samples from all synths.
+             *
+             * @param {Number} dur optional duration to play in seconds
+             */
+            play: {
+                funcName: "flock.enviro.play",
+                args: [
+                    "{arguments}.0",
+                    "{that}.model",
+                    "{that}.applier",
+                    "{that}.audioSettings",
+                    "{that}.events.onPlay.fire"
+                ]
+            },
+
+            /**
+             * Stops generating samples.
+             */
+            stop: {
+                funcName: "flock.enviro.stop",
+                args: [
+                    "{that}.applier",
+                    "{that}.events.onStop.fire"
+                ]
+            },
+
+            /**
+             * Fully resets the state of the environment.
+             */
+            reset: {
+                func: "{that}.events.onReset.fire"
+            },
+
+            /**
+             * Registers a shared buffer.
+             *
+             * @param {BufferDesc} bufDesc the buffer description object to register
+             */
+            registerBuffer: "flock.enviro.registerBuffer({arguments}.0, {that}.buffers)",
+
+            /**
+             * Releases a shared buffer.
+             *
+             * @param {String|BufferDesc} bufDesc the buffer description (or string id) to release
+             */
+            releaseBuffer: "flock.enviro.releaseBuffer({arguments}.0, {that}.buffers)"
+        },
+
+        events: {
+            onPlay: null,
+            onStop: null,
+            onReset: null
+        },
+
+        listeners: {
+            onPlay: "{audioStrategy}.startGeneratingSamples()",
+
+            onStop: "{audioStrategy}.stopGeneratingSamples()",
+
+            onReset: [
+                "{that}.stop()",
+                "{asyncScheduler}.clearAll()",
+                "{that}.clearAll()"
+            ],
+
+            onCreate: {
+                funcName: "flock.enviro.initAudioSettings",
+                args: ["{that}.audioSettings", "{audioStrategy}.options.audioSettings"]
+            }
+        },
+
         components: {
             asyncScheduler: {
                 type: "flock.scheduler.async"
             },
 
             audioStrategy: {
-                type: "flock.enviro.audioStrategy",
+                type: "flock.audioStrategy.platform",
                 options: {
-                    audioSettings: "{enviro}.options.audioSettings",
+                    audioSettings: "{enviro}.audioSettings",
                     model: {
                         playState: "{enviro}.model.playState"
                     }
@@ -20761,73 +20824,50 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    flock.enviro.preInit = function (that) {
-        that.audioSettings = that.options.audioSettings;
-        that.buses = flock.enviro.createAudioBuffers(that.audioSettings.numBuses,
-                that.audioSettings.blockSize);
-        that.buffers = {};
-        that.bufferSources = {};
-
-        /**
-         * Starts generating samples from all synths.
-         *
-         * @param {Number} dur optional duration to play in seconds
-         */
-        that.play = function (dur) {
-            dur = dur === undefined ? Infinity : dur;
-
-            var playState = that.model.playState,
-                sps = dur * that.audioSettings.rates.audio * that.audioSettings.chans;
-
-            playState.total = playState.written + sps;
-            that.audioStrategy.startGeneratingSamples();
-            that.model.isPlaying = true;
-        };
-
-        /**
-         * Stops generating samples from all synths.
-         */
-        that.stop = function () {
-            that.audioStrategy.stopGeneratingSamples();
-            that.model.isPlaying = false;
-        };
-
-        that.reset = function () {
-            that.stop();
-            that.asyncScheduler.clearAll();
-            that.clearAll();
-        };
-
-        that.registerBuffer = function (bufDesc) {
-            if (bufDesc.id) {
-                that.buffers[bufDesc.id] = bufDesc;
-            }
-        };
-
-        that.releaseBuffer = function (bufDesc) {
-            if (!bufDesc) {
-                return;
-            }
-
-            var id = typeof bufDesc === "string" ? bufDesc : bufDesc.id;
-            delete that.buffers[id];
-        };
-    };
-
-    flock.enviro.finalInit = function (that) {
-        var audioSettings = that.options.audioSettings,
-            rates = audioSettings.rates;
-
-        that.gen = function () {
-            var evaluator = that.audioStrategy.nodeEvaluator;
-            evaluator.clearBuses();
-            evaluator.gen();
-        };
+    flock.enviro.initAudioSettings = function (audioSettings, audioStrategySettings) {
+        var rates = audioSettings.rates;
 
         // TODO: Model-based (with ChangeApplier) sharing of audioSettings
-        rates.audio = that.audioStrategy.options.audioSettings.rates.audio;
+        rates.audio = audioStrategySettings.rates.audio;
         rates.control = rates.audio / audioSettings.blockSize;
-        audioSettings.chans = that.audioStrategy.options.audioSettings.chans;
+        audioSettings.chans = audioStrategySettings.chans;
+    };
+
+    flock.enviro.play = function (dur, model, applier, audioSettings, onPlay) {
+        dur = dur === undefined ? Infinity : dur;
+
+        var playState = model.playState,
+            sps = dur * audioSettings.rates.audio * audioSettings.chans,
+            totalSamples = playState.written + sps;
+
+        applier.requestChange("playState.total", totalSamples);
+        applier.requestChange("isPlaying", true);
+        onPlay(dur);
+    };
+
+    flock.enviro.stop = function (applier, onStop) {
+        applier.requestChange("isPlaying", false);
+        onStop();
+    };
+
+    flock.enviro.registerBuffer = function (bufDesc, buffers) {
+        if (bufDesc.id) {
+            buffers[bufDesc.id] = bufDesc;
+        }
+    };
+
+    flock.enviro.releaseBuffer = function (bufDesc, buffers) {
+        if (!bufDesc) {
+            return;
+        }
+
+        var id = typeof bufDesc === "string" ? bufDesc : bufDesc.id;
+        delete buffers[id];
+    };
+
+    flock.enviro.gen = function (nodeEvaluator) {
+        nodeEvaluator.clearBuses();
+        nodeEvaluator.gen();
     };
 
     flock.enviro.createAudioBuffers = function (numBufs, blockSize) {
@@ -20839,22 +20879,13 @@ var fluid = fluid || require("infusion"),
         return bufs;
     };
 
-    fluid.defaults("flock.enviro.audioStrategy", {
-        gradeNames: ["fluid.modelComponent"],
-
-        components: {
-            nodeEvaluator: {
-                type: "flock.enviro.nodeEvaluator"
-            }
-        }
-    });
 
     /*****************
      * Node Evalutor *
      *****************/
 
     fluid.defaults("flock.enviro.nodeEvaluator", {
-        gradeNames: ["fluid.littleComponent", "autoInit"],
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
 
         members: {
             nodes: "{enviro}.nodes",
@@ -20915,18 +20946,24 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.autoEnviro", {
-        gradeNames: ["fluid.littleComponent", "autoInit"]
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        members: {
+            enviro: "@expand:flock.autoEnviro.initEnvironment()"
+        }
     });
 
-    flock.autoEnviro.preInit = function () {
+    flock.autoEnviro.initEnvironment = function () {
         if (!flock.enviro.shared) {
             flock.init();
         }
+
+        return flock.enviro.shared;
     };
 
-
     fluid.defaults("flock.node", {
-        gradeNames: ["flock.autoEnviro", "fluid.modelComponent", "autoInit"]
+        gradeNames: ["flock.autoEnviro", "fluid.standardComponent", "autoInit"],
+        model: {}
     });
 
     fluid.defaults("flock.ugenNodeList", {
@@ -21039,8 +21076,6 @@ var fluid = fluid || require("infusion"),
 
     fluid.defaults("flock.synth", {
         gradeNames: [
-            "fluid.eventedComponent",
-            "fluid.modelComponent",
             "flock.node",
             "flock.ugenNodeList",
             "autoInit"
@@ -21670,7 +21705,7 @@ var fluid = fluid || require("infusion"),
      * Represents a source for fetching buffers.
      */
     fluid.defaults("flock.bufferSource", {
-        gradeNames: ["fluid.eventedComponent", "fluid.modelComponent", "autoInit"],
+        gradeNames: ["fluid.standardComponent", "autoInit"],
 
         model: {
             state: "start",
@@ -23550,7 +23585,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.scheduler.webWorkerClock", {
-        gradeNames: ["fluid.modelComponent", "fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
         model: {
             messages: {
                 schedule: {
@@ -24013,244 +24048,315 @@ var fluid = fluid || require("infusion"),
     /**
      * Web Audio API Audio Strategy
      */
-    fluid.defaults("flock.enviro.webAudio", {
-        gradeNames: ["flock.enviro.audioStrategy", "autoInit"],
-
-        members: {
-            preNode: null,
-            jsNode: null,
-            postNode: null
-        },
+    fluid.defaults("flock.audioStrategy.web", {
+        gradeNames: ["flock.audioStrategy", "autoInit"],
 
         model: {
+            // TODO: Resolve this with the isPlaying model field in flock.enviro.
             isGenerating: false,
-            hasInput: false
+            hasInput: false,
+            krPeriods: "@expand:flock.audioStrategy.web.calcNumBlocks({that}.options.audioSettings)"
+        },
+
+        members: {
+            context: "@expand:flock.audioStrategy.web.createAudioContext()",
+            jsNode: {
+                expander: {
+                    funcName: "flock.audioStrategy.web.createScriptNode",
+                    args: ["{that}.context", "{that}.options.audioSettings"]
+                }
+            },
+            postNode: "{that}.jsNode",
+            preNode: null
+        },
+
+        invokers: {
+            // TODO: Rename to "start"
+            startGeneratingSamples: {
+                funcName: "flock.audioStrategy.web.start",
+                args: [
+                    "{that}.model",
+                    "{that}.applier",
+                    "{that}.context",
+                    "{that}.jsNode",
+                    "{that}.preNode",
+                    "{that}.postNode"
+                ]
+            },
+
+            // TODO: Rename to "stop"
+            stopGeneratingSamples: {
+                funcName: "flock.audioStrategy.web.stop",
+                args: [
+                    "{that}.applier",
+                    "{that}.jsNode",
+                    "{that}.preNode",
+                    "{that}.postNode"
+                ]
+            },
+
+            writeSamples: {
+                funcName: "flock.audioStrategy.web.writeSamples",
+                args: [
+                    "{arguments}.0", // The onprocessaudio event.
+                    "{that}"
+                ]
+            },
+
+            // TODO: Rename, de-thatify.
+            insertInputNode: "flock.audioStrategy.web.insertInputNode({arguments}.0, {that})",
+
+            // TODO: De-thatify.
+            removeInputNode: "flock.audioStrategy.web.removeInputNode({that})",
+
+            // TODO: Rename, de-thatify.
+            insertOutputNode: "flock.audioStrategy.web.insertOutputNode({arguments}.0, {that})",
+
+            // TODO: De-thatify.
+            removeOutputNode: "flock.audioStrategy.web.removeOutputNode({that})",
+
+            // TODO: De-thatify.
+            startReadingAudioInput: "flock.audioStrategy.web.startReadingAudioInput({that})",
+
+            stopReadingAudioInput: "{that}.removeInputNode()"
+        },
+
+        listeners: {
+            onCreate: [
+                {
+                    funcName: "flock.audioStrategy.web.bindAudioProcessEvent",
+                    args: ["{that}.jsNode", "{that}.writeSamples"]
+                },
+                {
+                    // TODO: Replace this with progressive enhancement.
+                    func: "{that}.applier.change",
+                    args: ["shouldInitIOS", flock.platform.isIOS]
+                }
+            ]
         }
     });
 
-    flock.enviro.webAudio.finalInit = function (that) {
+    flock.audioStrategy.web.createAudioContext = function () {
+        // Singleton AudioContext since the WebKit implementation
+        // freaks if we try to instantiate a new one.
+        if (!flock.audioStrategy.web.audioContext) {
+            flock.audioStrategy.web.audioContext = new flock.audioStrategy.web.contextConstructor();
+        }
 
-        that.startGeneratingSamples = function () {
-            var m = that.model;
-
-            if (that.preNode) {
-                that.preNode.connect(that.jsNode);
-            }
-
-            that.postNode.connect(that.context.destination);
-            if (that.postNode !== that.jsNode) {
-                that.jsNode.connect(that.postNode);
-            }
-
-            // Work around a bug in iOS Safari where it now requires a noteOn()
-            // message to be invoked before sound will work at all. Just connecting a
-            // ScriptProcessorNode inside a user event handler isn't sufficient.
-            if (m.shouldInitIOS) {
-                var s = that.context.createBufferSource();
-                s.connect(that.jsNode);
-                s.start(0);
-                s.stop(0);
-                s.disconnect(0);
-                m.shouldInitIOS = false;
-            }
-
-            m.isGenerating = true;
-        };
-
-        that.stopGeneratingSamples = function () {
-            that.jsNode.disconnect(0);
-            that.postNode.disconnect(0);
-            if (that.preNode) {
-                that.preNode.disconnect(0);
-            }
-
-            that.model.isGenerating = false;
-        };
-
-        that.writeSamples = function (e) {
-            var m = that.model,
-                hasInput = m.hasInput,
-                krPeriods = m.krPeriods,
-                evaluator = that.nodeEvaluator,
-                buses = evaluator.buses,
-                audioSettings = that.options.audioSettings,
-                blockSize = audioSettings.blockSize,
-                playState = m.playState,
-                chans = audioSettings.chans,
-                inBufs = e.inputBuffer,
-                inChans = e.inputBuffer.numberOfChannels,
-                outBufs = e.outputBuffer,
-                chan,
-                i,
-                samp;
-
-            // If there are no nodes providing samples, write out silence.
-            if (evaluator.nodes.length < 1) {
-                for (chan = 0; chan < chans; chan++) {
-                    flock.generate.silence(outBufs.getChannelData(chan));
-                }
-                return;
-            }
-
-            // TODO: Make a formal distinction between input buses,
-            // output buses, and interconnect buses in the environment!
-            for (i = 0; i < krPeriods; i++) {
-                var offset = i * blockSize;
-
-                evaluator.clearBuses();
-
-                // Read this ScriptProcessorNode's input buffers
-                // into the environment.
-                if (hasInput) {
-                    for (chan = 0; chan < inChans; chan++) {
-                        var inBuf = inBufs.getChannelData(chan),
-                            inBusNumber = chans + chan, // Input buses are located after output buses.
-                            targetBuf = buses[inBusNumber];
-
-                        for (samp = 0; samp < blockSize; samp++) {
-                            targetBuf[samp] = inBuf[samp + offset];
-                        }
-                    }
-                }
-
-                evaluator.gen();
-
-                // Output the environment's signal
-                // to this ScriptProcessorNode's output channels.
-                for (chan = 0; chan < chans; chan++) {
-                    var sourceBuf = buses[chan],
-                        outBuf = outBufs.getChannelData(chan);
-
-                    // And output each sample.
-                    for (samp = 0; samp < blockSize; samp++) {
-                        outBuf[samp + offset] = sourceBuf[samp];
-                    }
-                }
-            }
-
-            playState.written += audioSettings.bufferSize * chans;
-            if (playState.written >= playState.total) {
-                that.stop();
-            }
-        };
-
-        that.insertInputNode = function (node) {
-            var m = that.model;
-
-            if (that.preNode) {
-                that.removeInputNode(that.preNode);
-            }
-
-            that.preNode = node;
-            m.hasInput = true;
-
-            if (m.isGenerating) {
-                that.preNode.connect(that.jsNode);
-            }
-        };
-
-        that.insertOutputNode = function (node) {
-            if (that.postNode) {
-                that.removeOutputNode(that.postNode);
-            }
-
-            that.postNode = node;
-        };
-
-        that.removeInputNode = function () {
-            flock.enviro.webAudio.removeNode(that.preNode);
-            that.preNode = null;
-            that.model.hasInput = false;
-        };
-
-        that.removeOutputNode = function () {
-            flock.enviro.webAudio.removeNode(that.postNode);
-            that.postNode = that.jsNode;
-        };
-
-        that.startReadingAudioInput = function () {
-            flock.shim.getUserMedia.call(navigator, {
-                audio: true
-            },
-            function success (mediaStream) {
-                var mic = that.context.createMediaStreamSource(mediaStream);
-                that.insertInputNode(mic);
-            },
-            function error (err) {
-                fluid.log(fluid.logLevel.IMPORTANT,
-                    "An error occurred while trying to access the user's microphone. " +
-                    err);
-            });
-        };
-
-        that.stopReadingAudioInput = function () {
-            that.removeInputNode();
-        };
-
-        that.init = function () {
-            var m = that.model,
-                settings = that.options.audioSettings;
-
-            m.krPeriods = settings.bufferSize / settings.blockSize;
-
-            // Singleton AudioContext since the WebKit implementation
-            // freaks if we try to instantiate a new one.
-            if (!flock.enviro.webAudio.audioContext) {
-                flock.enviro.webAudio.audioContext = new flock.enviro.webAudio.contextConstructor();
-            }
-
-            that.context = flock.enviro.webAudio.audioContext;
-            // Override audio settings based on the capabilities of the environment.
-            // These values are "pulled" by the enviro in a hacky sort of way.
-            settings.rates.audio = that.context.sampleRate;
-
-            // TODO: This reduces the user's ability to easily control how many
-            // channels of their device are actually used. They can control
-            // how many non-silent channels there are by using the "expand"
-            // input of flock.ugen.output, but there will still be some extra
-            // overhead. The best way to solve this is to not override settings.chans,
-            // but to instead offer some kind of controls in the playground for adjusting this,
-            // or by providing some kind of "max channels" flag as a parameter to chans.
-
-            if (!flock.platform.browser.safari) {
-                // TODO: Fix this temporary workaround for the fact that iOS won't
-                // allow us to access the destination node until the user has
-                // touched something.
-                settings.chans = that.context.destination.maxChannelCount;
-                that.context.destination.channelCount = settings.chans;
-            }
-
-            that.jsNode = flock.enviro.webAudio.createScriptNode(that.context, settings);
-            that.insertOutputNode(that.jsNode);
-            that.jsNode.onaudioprocess = that.writeSamples;
-
-            m.shouldInitIOS = flock.platform.isIOS;
-        };
-
-        that.init();
+        return flock.audioStrategy.web.audioContext;
     };
 
-    flock.enviro.webAudio.createScriptNode = function (context, settings) {
+    flock.audioStrategy.web.setupChannels = function (context, audioSettings) {
+        // TODO: This reduces the user's ability to easily control how many
+        // channels of their device are actually used. They can control
+        // how many non-silent channels there are by using the "expand"
+        // input of flock.ugen.output, but there will still be some extra
+        // overhead. The best way to solve this is to not override settings.chans,
+        // but to instead offer some kind of controls in the playground for adjusting this,
+        // or by providing some kind of "max channels" flag as a parameter to chans.
+
+        if (!flock.platform.browser.safari) {
+            // TODO: Fix this temporary workaround for the fact that iOS won't
+            // allow us to access the destination node until the user has
+            // touched something.
+            audioSettings.chans = context.destination.maxChannelCount;
+            context.destination.channelCount = audioSettings.chans;
+        }
+    };
+
+    flock.audioStrategy.web.calcNumBlocks = function (audioSettings) {
+        return audioSettings.bufferSize / audioSettings.blockSize;
+    };
+
+    flock.audioStrategy.web.updateSampleRate = function (context, audioSettings) {
+        // Override audio settings based on the capabilities of the environment.
+        // These values are "pulled" by the enviro in a hacky sort of way.
+        // TODO: Fix this by modelizing audioSettings.
+        audioSettings.rates.audio = context.sampleRate;
+    };
+
+    flock.audioStrategy.web.start = function (model, applier, context, jsNode, preNode, postNode) {
+        if (preNode) {
+            preNode.connect(jsNode);
+        }
+
+        postNode.connect(context.destination);
+        if (postNode !== jsNode) {
+            jsNode.connect(postNode);
+        }
+
+        // Work around a bug in iOS Safari where it now requires a noteOn()
+        // message to be invoked before sound will work at all. Just connecting a
+        // ScriptProcessorNode inside a user event handler isn't sufficient.
+        if (model.shouldInitIOS) {
+            var s = context.createBufferSource();
+            s.connect(jsNode);
+            s.start(0);
+            s.stop(0);
+            s.disconnect(0);
+            applier.change("shouldInitIOS", false);
+        }
+
+        applier.change("isGenerating", true);
+    };
+
+    flock.audioStrategy.web.stop = function (applier, jsNode, preNode, postNode) {
+        jsNode.disconnect(0);
+        postNode.disconnect(0);
+        if (preNode) {
+            preNode.disconnect(0);
+        }
+
+        applier.change("isGenerating", false);
+    };
+
+    // TODO: Break into multiple functions.
+    flock.audioStrategy.web.writeSamples = function (evt, that) {
+        var m = that.model,
+            hasInput = m.hasInput,
+            krPeriods = m.krPeriods,
+            evaluator = that.nodeEvaluator,
+            buses = evaluator.buses,
+            audioSettings = that.options.audioSettings,
+            blockSize = audioSettings.blockSize,
+            playState = m.playState,
+            chans = audioSettings.chans,
+            inBufs = evt.inputBuffer,
+            inChans = evt.inputBuffer.numberOfChannels,
+            outBufs = evt.outputBuffer,
+            chan,
+            i,
+            samp;
+
+        // If there are no nodes providing samples, write out silence.
+        if (evaluator.nodes.length < 1) {
+            for (chan = 0; chan < chans; chan++) {
+                flock.generate.silence(outBufs.getChannelData(chan));
+            }
+            return;
+        }
+
+        // TODO: Make a formal distinction between input buses,
+        // output buses, and interconnect buses in the environment!
+        for (i = 0; i < krPeriods; i++) {
+            var offset = i * blockSize;
+
+            evaluator.clearBuses();
+
+            // Read this ScriptProcessorNode's input buffers
+            // into the environment.
+            if (hasInput) {
+                for (chan = 0; chan < inChans; chan++) {
+                    var inBuf = inBufs.getChannelData(chan),
+                        inBusNumber = chans + chan, // Input buses are located after output buses.
+                        targetBuf = buses[inBusNumber];
+
+                    for (samp = 0; samp < blockSize; samp++) {
+                        targetBuf[samp] = inBuf[samp + offset];
+                    }
+                }
+            }
+
+            evaluator.gen();
+
+            // Output the environment's signal
+            // to this ScriptProcessorNode's output channels.
+            for (chan = 0; chan < chans; chan++) {
+                var sourceBuf = buses[chan],
+                    outBuf = outBufs.getChannelData(chan);
+
+                // And output each sample.
+                for (samp = 0; samp < blockSize; samp++) {
+                    outBuf[samp + offset] = sourceBuf[samp];
+                }
+            }
+        }
+
+        playState.written += audioSettings.bufferSize * chans;
+        if (playState.written >= playState.total) {
+            that.stopGeneratingSamples();
+        }
+    };
+
+    flock.audioStrategy.web.insertInputNode = function (node, that) {
+        var m = that.model;
+
+        if (that.preNode) {
+            that.removeInputNode(that.preNode);
+        }
+
+        that.preNode = node;
+        m.hasInput = true;
+
+        if (m.isGenerating) {
+            that.preNode.connect(that.jsNode);
+        }
+    };
+
+    flock.audioStrategy.web.insertOutputNode = function (node, that) {
+        if (that.postNode) {
+            that.removeOutputNode(that.postNode);
+        }
+
+        that.postNode = node;
+    };
+
+    flock.audioStrategy.web.removeInputNode = function (that) {
+        flock.audioStrategy.web.disconnectNode(that.preNode);
+        that.preNode = null;
+        that.model.hasInput = false;
+    };
+
+    flock.audioStrategy.web.removeOutputNode = function (that) {
+        flock.audioStrategy.web.disconnectNode(that.postNode);
+        that.postNode = that.jsNode;
+    };
+
+    flock.audioStrategy.web.startReadingAudioInput = function (that) {
+        flock.shim.getUserMedia.call(navigator, {
+            audio: true
+        },
+        function success (mediaStream) {
+            var mic = that.context.createMediaStreamSource(mediaStream);
+            that.insertInputNode(mic);
+        },
+        function error (err) {
+            fluid.log(fluid.logLevel.IMPORTANT,
+                "An error occurred while trying to access the user's microphone. " +
+                err);
+        });
+    };
+
+    flock.audioStrategy.web.createScriptNode = function (context, audioSettings) {
+        // TODO: Define an event for script process creation and factor this behaviour out.
+        flock.audioStrategy.web.updateSampleRate(context, audioSettings);
+        flock.audioStrategy.web.setupChannels(context, audioSettings);
+
         // Create the script processor and setup the audio context's
         // destination to the appropriate number of channels.
-        var creatorName = context.createScriptProcessor ?
-            "createScriptProcessor" : "createJavaScriptNode";
+        var chans = audioSettings.chans,
+            creatorName = context.createScriptProcessor ?
+                "createScriptProcessor" : "createJavaScriptNode";
 
-        var jsNode = context[creatorName](settings.bufferSize, settings.chans, settings.chans);
+        var jsNode = context[creatorName](audioSettings.bufferSize, chans, chans);
         jsNode.channelCountMode = "explicit";
-        jsNode.channelCount = settings.chans;
+        jsNode.channelCount = chans;
 
         return jsNode;
     };
 
-    flock.enviro.webAudio.removeNode = function (node) {
+    flock.audioStrategy.web.bindAudioProcessEvent = function (jsNode, writerFn) {
+        jsNode.onaudioprocess = writerFn;
+    };
+
+    flock.audioStrategy.web.disconnectNode = function (node) {
         node.disconnect(0);
     };
 
-    flock.enviro.webAudio.contextConstructor = window.AudioContext || window.webkitAudioContext;
+    flock.audioStrategy.web.contextConstructor = window.AudioContext || window.webkitAudioContext;
 
-    fluid.demands("flock.enviro.audioStrategy", "flock.platform.webAudio", {
-        funcName: "flock.enviro.webAudio"
+    fluid.demands("flock.audioStrategy.platform", "flock.platform.webAudio", {
+        funcName: "flock.audioStrategy.web"
     });
 
 }());
