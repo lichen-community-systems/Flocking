@@ -11796,111 +11796,163 @@ var fluid = fluid || require("infusion"),
     });
 
     fluid.defaults("flock.ugenNodeList", {
-        gradeNames: ["flock.nodeList", "autoInit"]
+        gradeNames: ["flock.nodeList", "autoInit"],
+
+        invokers: {
+            /**
+             * Inserts a unit generator and all its inputs into the node list,
+             * starting at the specified index.
+             *
+             * Note that the node itself will not be inserted into the list at this index;
+             * its inputs must must be ahead of it in the list.
+             *
+             * @param {Number} idx the index to start adding the new node and its inputs at
+             * @param {UGen} node the node to add, along with its inputs
+             * @return {Number} the index at which the specified node was inserted
+             */
+            insertTree: {
+                funcName: "flock.ugenNodeList.insertTree",
+                args: [
+                    "{arguments}.0", // The index at whcih to add the new node.
+                    "{arguments}.1", // The node to add.
+                    "{that}.insert"
+                ]
+            },
+
+            /**
+             * Removes the specified unit generator and all its inputs from the node list.
+             *
+             * @param {UGen} node the node to remove along with its inputs
+             * @return {Number} the index at which the node was removed
+             */
+            removeTree: {
+                funcName: "flock.ugenNodeList.removeTree",
+                args: [
+                    "{arguments}.0", // The node to remove.
+                    "{that}.remove"
+                ]
+            },
+
+            /**
+             * Replaces one node and all its inputs with a new node and its inputs.
+             *
+             * @param {UGen} newNode the node to add to the list
+             * @param {UGen} oldNode the node to remove from the list
+             * @return {Number} idx the index at which the new node was added
+             */
+            //flock.ugenNodeList.replaceTree = function (newNode, oldNode, insertFn, removeFn) {
+            replaceTree: {
+                funcName: "flock.ugenNodeList.replaceTree",
+                args: [
+                    "{arguments}.0", // The node to add.
+                    "{arguments}.1", // The node to replace.
+                    "{that}.nodes",
+                    "{that}.insert",
+                    "{that}.remove"
+                ]
+            },
+
+            /**
+             * Swaps one node in the list for another in place, attaching the previous unit generator's
+             * inputs to the new one. If a list of inputsToReattach is specified, only these inputs will
+             * be swapped.
+             *
+             * Note that this function will directly modify the nodes in question.
+             *
+             * @param {UGen} newNode the node to add to the list, swapping it in place for the old one
+             * @param {UGen} oldNode the node remove from the list
+             * @param {Array} inputsToReattach a list of inputNames to attach to the new node from the old one
+             * @return the index at which the new node was inserted
+             */
+            //flock.ugenNodeList.swapTree = function (newNode, oldNode, inputsToReattach, removeFn, replaceTreeFn, replaceFn) {
+
+            swapTree: {
+                funcName: "flock.ugenNodeList.swapTree",
+                args: [
+                    "{arguments}.0", // The node to add.
+                    "{arguments}.1", // The node to replace.
+                    "{arguments}.2", // A list of inputs to attach to the new node from the old.
+                    "{that}.remove",
+                    "{that}.replaceTree",
+                    "{that}.replace"
+                ]
+            }
+        }
     });
 
-    flock.ugenNodeList.finalInit = function (that) {
+    flock.ugenNodeList.insertTree = function (idx, node, insertFn) {
+        var inputs = node.inputs,
+            key,
+            input;
 
-        /**
-         * Inserts a unit generator and all its inputs into the node list, starting at the specified index.
-         * Note that the node itself will not be insert into the list at this index--its inputs must
-         * must be ahead of it in the list.
-         *
-         * @param {Number} idx the index to start adding the new node and its inputs at
-         * @param {UGen} node the node to add, along with its inputs
-         * @return {Number} the index at which the specified node was inserted
-         */
-        that.insertTree = function (idx, node) {
-            var inputs = node.inputs,
-                key,
-                input;
-
-            for (key in inputs) {
-                input = inputs[key];
-                if (typeof input !== "number") {
-                    idx = that.insertTree(idx, input);
-                    idx++;
-                }
+        for (key in inputs) {
+            input = inputs[key];
+            if (typeof input !== "number") {
+                idx = flock.ugenNodeList.insertTree(idx, input, insertFn);
+                idx++;
             }
+        }
 
-            return that.insert(idx, node);
-        };
+        return insertFn(idx, node);
+    };
 
-        /**
-         * Removes the specified unit generator and all its inputs from the node list.
-         *
-         * @param {UGen} node the node to remove along with its inputs
-         * @return {Number} the index at which the node was removed
-         */
-        that.removeTree = function (node) {
-            var inputs = node.inputs,
-                key,
-                input;
+    flock.ugenNodeList.removeTree = function (node, removeFn) {
+        var inputs = node.inputs,
+            key,
+            input;
 
-            for (key in inputs) {
-                input = inputs[key];
-                if (typeof input !== "number") {
-                    that.removeTree(input);
-                }
+        for (key in inputs) {
+            input = inputs[key];
+            if (typeof input !== "number") {
+                flock.ugenNodeList.removeTree(input, removeFn);
             }
+        }
 
-            return that.remove(node);
-        };
+        return removeFn(node);
+    };
 
-        /**
-         * Replaces one node and all its inputs with a new node and its inputs.
-         *
-         * @param {UGen} newNode the node to add to the list
-         * @param {UGen} oldNode the node to remove from the list
-         * @return {Number} idx the index at which the new node was added
-         */
-        that.replaceTree = function (newNode, oldNode) {
-            if (!oldNode) {
-                 // Can't use .tail() because it won't recursively add inputs.
-                return that.insertTree(that.nodes.length, newNode);
-            }
+    flock.ugenNodeList.replaceTree = function (newNode, oldNode, nodes, insertFn, removeFn) {
+        if (!oldNode) {
+             // Can't use .tail() because it won't recursively add inputs.
+            return flock.ugenNodeList.insertTree(nodes.length, newNode, insertFn);
+        }
 
-            var idx = that.removeTree(oldNode);
-            that.insertTree(idx, newNode);
+        var idx = flock.ugenNodeList.removeTree(oldNode, removeFn);
+        flock.ugenNodeList.insertTree(idx, newNode, insertFn);
 
-            return idx;
-        };
+        return idx;
+    };
 
-        /**
-         * Swaps one node in the list for another in place, attaching the previous unit generator's
-         * inputs to the new one. If a list of inputsToReattach is specified, only these inputs will
-         * be swapped.
-         *
-         * Note that this function will directly modify the nodes in question.
-         *
-         * @param {UGen} newNode the node to add to the list, swapping it in place for the old one
-         * @param {UGen} oldNode the node remove from the list
-         * @param {Array} inputsToReattach a list of inputNames to attach to the new node from the old one
-         * @return the index at which the new node was inserted
-         */
-        that.swapTree = function (newNode, oldNode, inputsToReattach) {
-            var inputName;
+    flock.ugenNodeList.swapTree = function (newNode, oldNode, inputsToReattach, removeFn, replaceTreeFn, replaceFn) {
+        if (!inputsToReattach) {
+            newNode.inputs = oldNode.inputs;
+        } else {
+            flock.ugenNodeList.reattachInputs(newNode, oldNode, inputsToReattach, removeFn);
+            flock.ugenNodeList.replaceInputs(newNode, oldNode, inputsToReattach, replaceTreeFn);
+        }
 
-            if (!inputsToReattach) {
-                newNode.inputs = oldNode.inputs;
+        return replaceFn(newNode, oldNode);
+    };
+
+    flock.ugenNodeList.reattachInputs = function (newNode, oldNode, inputsToReattach, removeFn) {
+        for (var inputName in oldNode.inputs) {
+            if (inputsToReattach.indexOf(inputName) < 0) {
+                flock.ugenNodeList.removeTree(oldNode.inputs[inputName], removeFn);
             } else {
-                for (inputName in oldNode.inputs) {
-                    if (inputsToReattach.indexOf(inputName) < 0) {
-                        that.removeTree(oldNode.inputs[inputName]);
-                    } else {
-                        newNode.inputs[inputName] = oldNode.inputs[inputName];
-                    }
-                }
-
-                for (inputName in newNode.inputs) {
-                    if (inputsToReattach.indexOf(inputName) < 0) {
-                        that.replaceTree(newNode.inputs[inputName], oldNode.inputs[inputName]);
-                    }
-                }
+                newNode.inputs[inputName] = oldNode.inputs[inputName];
             }
+        }
+    };
 
-            return that.replace(newNode, oldNode);
-        };
+    flock.ugenNodeList.replaceInputs = function (newNode, oldNode, inputsToReattach, replaceTreeFn) {
+        for (var inputName in newNode.inputs) {
+            if (inputsToReattach.indexOf(inputName) < 0) {
+                replaceTreeFn(
+                    newNode.inputs[inputName],
+                    oldNode.inputs[inputName]
+                );
+            }
+        }
     };
 
     fluid.defaults("flock.synth", {
