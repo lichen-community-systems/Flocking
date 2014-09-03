@@ -874,7 +874,7 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    
+
     fluid.defaults("flock.enviro", {
         gradeNames: ["fluid.standardComponent", "flock.nodeList", "autoInit"],
 

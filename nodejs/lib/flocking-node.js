@@ -97,12 +97,13 @@ var fs = require("fs"),
     fluid.defaults("flock.audioStrategy.nodejs", {
         gradeNames: ["flock.audioStrategy", "autoInit"],
 
+        bytesPerSample: 4, // Flocking uses Float32s, hence 4 bytes.
+
         model: {
-            bytesPerSample: 4, // Flocking uses Float32s, hence 4 bytes.
             bytesPerBlock: {
                 expander: {
                     funcName: "flock.audioStrategy.nodejs.calcBlockBytes",
-                    args: ["{that}.options.audioSettings", "{that}.model.bytesPerSample"]
+                    args: ["{that}.options.audioSettings", "{that}.options.bytesPerSample"]
                 }
             }
         },
@@ -180,7 +181,7 @@ var fs = require("fs"),
         var settings = that.options.audioSettings,
             m = that.model,
             playState = m.playState,
-            bytesPerSample = m.bytesPerSample,
+            bytesPerSample = that.options.bytesPerSample,
             blockSize = settings.blockSize,
             chans = settings.chans,
             krPeriods = numBytes / m.bytesPerBlock,

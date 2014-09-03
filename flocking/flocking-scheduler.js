@@ -56,7 +56,7 @@ var fluid = fluid || require("infusion"),
      **********/
 
     fluid.defaults("flock.scheduler.intervalClock", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.standardComponent", "autoInit"],
         events: {
             tick: null
         }
@@ -128,7 +128,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.scheduler.webWorkerClock", {
-        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
+        gradeNames: ["fluid.standardComponent", "autoInit"],
         model: {
             messages: {
                 schedule: {
@@ -325,7 +325,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.scheduler.async", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.standardComponent", "autoInit"],
         components: {
             timeConverter: {
                 type: "flock.convert.seconds"

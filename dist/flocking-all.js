@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (September 2, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (September 3, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.1
@@ -20683,7 +20683,7 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    
+
     fluid.defaults("flock.enviro", {
         gradeNames: ["fluid.standardComponent", "flock.nodeList", "autoInit"],
 
@@ -23513,7 +23513,7 @@ var fluid = fluid || require("infusion"),
      **********/
 
     fluid.defaults("flock.scheduler.intervalClock", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.standardComponent", "autoInit"],
         events: {
             tick: null
         }
@@ -23585,7 +23585,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.scheduler.webWorkerClock", {
-        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
+        gradeNames: ["fluid.standardComponent", "autoInit"],
         model: {
             messages: {
                 schedule: {
@@ -23782,7 +23782,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.scheduler.async", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.standardComponent", "autoInit"],
         components: {
             timeConverter: {
                 type: "flock.convert.seconds"
@@ -24075,12 +24075,12 @@ var fluid = fluid || require("infusion"),
             startGeneratingSamples: {
                 funcName: "flock.audioStrategy.web.start",
                 args: [
-                    "{that}.model",
                     "{that}.applier",
                     "{that}.context",
                     "{that}.jsNode",
                     "{that}.preNode",
-                    "{that}.postNode"
+                    "{that}.postNode",
+                    "{that}.events.onStart.fire"
                 ]
             },
 
@@ -24091,7 +24091,8 @@ var fluid = fluid || require("infusion"),
                     "{that}.applier",
                     "{that}.jsNode",
                     "{that}.preNode",
-                    "{that}.postNode"
+                    "{that}.postNode",
+                    "{that}.events.onStop.fire"
                 ]
             },
 
@@ -24121,6 +24122,11 @@ var fluid = fluid || require("infusion"),
             stopReadingAudioInput: "{that}.removeInputNode()"
         },
 
+        events: {
+            onStart: null,
+            onStop: null
+        },
+
         listeners: {
             onCreate: [
                 {
@@ -24132,7 +24138,12 @@ var fluid = fluid || require("infusion"),
                     func: "{that}.applier.change",
                     args: ["shouldInitIOS", flock.platform.isIOS]
                 }
-            ]
+            ],
+
+            onStart: {
+                funcName: "flock.audioStrategy.web.initIOS",
+                args: ["{that}.model", "{that}.applier", "{that}.context", "{that}.jsNode"]
+            }
         }
     });
 
@@ -24175,16 +24186,7 @@ var fluid = fluid || require("infusion"),
         audioSettings.rates.audio = context.sampleRate;
     };
 
-    flock.audioStrategy.web.start = function (model, applier, context, jsNode, preNode, postNode) {
-        if (preNode) {
-            preNode.connect(jsNode);
-        }
-
-        postNode.connect(context.destination);
-        if (postNode !== jsNode) {
-            jsNode.connect(postNode);
-        }
-
+    flock.audioStrategy.web.initIOS = function (model, applier, context, jsNode) {
         // Work around a bug in iOS Safari where it now requires a noteOn()
         // message to be invoked before sound will work at all. Just connecting a
         // ScriptProcessorNode inside a user event handler isn't sufficient.
@@ -24196,17 +24198,30 @@ var fluid = fluid || require("infusion"),
             s.disconnect(0);
             applier.change("shouldInitIOS", false);
         }
+    };
 
+    flock.audioStrategy.web.start = function (applier, context, jsNode, preNode, postNode, onStart) {
+        if (preNode) {
+            preNode.connect(jsNode);
+        }
+
+        postNode.connect(context.destination);
+        if (postNode !== jsNode) {
+            jsNode.connect(postNode);
+        }
+
+        onStart();
         applier.change("isGenerating", true);
     };
 
-    flock.audioStrategy.web.stop = function (applier, jsNode, preNode, postNode) {
+    flock.audioStrategy.web.stop = function (applier, jsNode, preNode, postNode, onStop) {
         jsNode.disconnect(0);
         postNode.disconnect(0);
         if (preNode) {
             preNode.disconnect(0);
         }
 
+        onStop();
         applier.change("isGenerating", false);
     };
 
