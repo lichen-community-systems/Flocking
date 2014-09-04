@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (September 3, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (September 4, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof exports === "object") {
@@ -12008,7 +12008,7 @@ var fluid = fluid || require("infusion"),
              */
             play: {
                 funcName: "flock.synth.play",
-                args: ["{that}"]
+                args: ["{that}", "{that}.enviro", "{that}.addToEnvironment"]
             },
 
             /**
@@ -12017,7 +12017,7 @@ var fluid = fluid || require("infusion"),
              */
             pause: {
                 funcName: "flock.synth.pause",
-                args: ["{that}"]
+                args: ["{that}", "{that}.enviro"]
             },
 
             /**
@@ -12119,21 +12119,22 @@ var fluid = fluid || require("infusion"),
         });
     };
 
-    flock.synth.play = function (that) {
-        var enviro = that.enviro;
-
-        if (enviro.nodes.indexOf(that) === -1) {
-            that.addToEnvironment();
+    flock.synth.play = function (synth, enviro, addToEnviroFn) {
+        if (enviro.nodes.indexOf(synth) === -1) {
+            addToEnviroFn();
         }
 
+        // TODO: This behaviour is confusing
+        // since calling mySynth.play() will cause
+        // all synths in the environment to be played.
+        // This functionality should be removed.
         if (!enviro.model.isPlaying) {
             enviro.play();
         }
     };
 
-    flock.synth.pause = function (that) {
-        var enviro = that.enviro;
-        enviro.remove(that);
+    flock.synth.pause = function (synth, enviro) {
+        enviro.remove(synth);
     };
 
     flock.synth.set = function (that, namedNodes, path, val, swap) {
@@ -12275,63 +12276,104 @@ var fluid = fluid || require("infusion"),
     // TODO: At the moment, flock.synth.group attempts to act as a proxy for
     // a collection of synths, allowing users to address it as if it were
     // a single synth. However, it does nothing to ensure that its contained synths
-    // are managed properly with the environment. As a result, it will double-generate
-    // output from each synth unless the user has manually specified their synths with the
-    // "addToEnvironment: false" option.
-    // It's also not IoC-enabled, which makes it very diffult to use it in IoC-based
-    // contexts.
-    // At very least, it should override the essential flock.nodeList methods and ensure
-    // that synths added to the group are actively removed from the environment's node list.
+    // are managed properly with the environment. There's currently no way to ensure that
+    // when a group is removed from the environment, all its synths are too.
+    // This should be completely refactored in favour of an approach using dynamic components.
     fluid.defaults("flock.synth.group", {
-        gradeNames: ["fluid.eventedComponent", "flock.node", "flock.nodeList", "autoInit"],
-        rate: flock.rates.AUDIO
+        gradeNames: ["flock.synth", "autoInit"],
+
+        members: {
+            out: null
+        },
+
+        methodEventMap: {
+            "onSet": "set",
+            "onGen": "gen",
+            "onPlay": "play",
+            "onPause": "pause"
+        },
+
+        invokers: {
+            play: "{that}.events.onPlay.fire",
+            pause: "{that}.events.onPause.fire",
+            set: "{that}.events.onSet.fire",
+            get: "flock.synth.group.get({arguments}, {that}.nodes)",
+            input: {
+                funcName: "flock.synth.group.input",
+                args: ["{arguments}", "{that}.get", "{that}.events.onSet.fire"]
+            },
+            gen: "{that}.events.onGen.fire"
+        },
+
+        events: {
+            onSet: null,
+            onGen: null,
+            onPlay: null,
+            onPause: null
+        },
+
+        listeners: {
+            onInsert: [
+                {
+                    funcName: "flock.synth.group.bindMethods",
+                    args: [
+                        "{arguments}.0", // The newly added node.
+                        "{that}.options.methodEventMap",
+                        "{that}.events",
+                        "addListener"
+                    ]
+                },
+
+                // Brute force and unreliable way of ensuring that
+                // children of a group don't get directly added to the environment.
+                {
+                    funcName: "flock.synth.pause",
+                    args: ["{arguments}.0", "{that}.enviro"]
+                }
+            ],
+
+            onRemove: {
+                funcName: "flock.synth.group.bindMethods",
+                args: [
+                    "{arguments}.0", // The removed node.
+                    "{that}.options.methodEventMap",
+                    "{that}.events",
+                    "removeListener"
+                ]
+            }
+        }
     });
 
-    flock.synth.group.finalInit = function (that) {
-        that.rate = that.options.rate;
-        that.enviro = that.enviro || flock.enviro.shared;
+    flock.synth.group.get = function (args, nodes) {
+        var tailIdx = nodes.length - 1,
+            tailNode = nodes[tailIdx];
 
-        flock.synth.group.makeDispatchedMethods(that, [
-            "input", "get", "set", "gen", "play", "pause"
-        ]);
-
-        that.init = function () {
-            if (that.options.addToEnvironment !== false) {
-                that.enviro.tail(that);
-            }
-        };
-
-        that.init();
+        return tailNode.get.apply(tailNode, args);
     };
 
-    flock.synth.group.makeDispatcher = function (nodes, msg) {
-        return function () {
-            var i,
-                node,
-                val;
-            for (i = 0; i < nodes.length; i++) {
-                node = nodes[i];
-                val = node[msg].apply(node, arguments);
-            }
-
-            return val;
-        };
+    flock.synth.group.input = function (args, onGet, onSet) {
+        var evt = args.length > 1 ? onSet : onGet;
+        return evt.apply(null, args);
     };
 
-    flock.synth.group.makeDispatchedMethods = function (that, methodNames) {
-        var name,
-            i;
+    flock.synth.group.bindMethods = function (node, methodEventMap, events, eventActionName) {
+        for (var eventName in methodEventMap) {
+            var methodName = methodEventMap[eventName],
+                method = node[methodName],
+                firer = events[eventName],
+                eventAction = firer[eventActionName];
 
-        for (i = 0; i < methodNames.length; i++) {
-            name = methodNames[i];
-            that[name] = flock.synth.group.makeDispatcher(that.nodes, name, flock.synth.group.dispatch);
+            eventAction(method);
         }
-
-        return that;
     };
 
     fluid.defaults("flock.synth.polyphonic", {
         gradeNames: ["flock.synth.group", "autoInit"],
+
+        maxVoices: 16,
+        amplitudeNormalizer: "static", // "dynamic", "static", Function, falsey
+        amplitudeKey: "env.sustain",
+
         noteSpecs: {
             on: {
                 "env.gate": 1
@@ -12340,94 +12382,185 @@ var fluid = fluid || require("infusion"),
                 "env.gate": 0
             }
         },
-        maxVoices: 16,
-        initVoicesLazily: true,
-        amplitudeKey: "env.sustain",
-        amplitudeNormalizer: "static" // "dynamic", "static", Function, falsey
+
+        components: {
+            voiceAllocator: {
+                type: "flock.synth.voiceAllocator.lazy",
+                options: {
+                    // TODO: Replace these with distributeOptions.
+                    synthDef: "{polyphonic}.options.synthDef",
+                    maxVoices: "{polyphonic}.options.maxVoices",
+                    amplitudeNormalizer: "{polyphonic}.options.amplitudeNormalizer",
+                    amplitudeKey: "{polyphonic}.options.amplitudeKey",
+
+                    listeners: {
+                        onCreateVoice: "{polyphonic}.tail({arguments}.0)"
+                    }
+                }
+            }
+        },
+
+        invokers: {
+            noteChange: {
+                funcName: "flock.synth.polyphonic.noteChange",
+                args: [
+                    "{arguments}.0", // The voice synth to change.
+                    "{arguments}.1", // The note event name (i.e. "on" or "off").
+                    "{arguments}.2", // The note change spec to apply.
+                    "{that}.options.noteSpecs"
+                ]
+            },
+
+            noteOn: {
+                funcName: "flock.synth.polyphonic.noteOn",
+                args: [
+                    "{arguments}.0", // Note name.
+                    "{arguments}.1", // Optional changeSpec
+                    "{voiceAllocator}",
+                    "{that}.noteOff",
+                    "{that}.noteChange"
+                ]
+            },
+
+            noteOff: {
+                funcName: "flock.synth.polyphonic.noteOff",
+                args: [
+                    "{arguments}.0", // Note name.
+                    "{arguments}.1", // Optional changeSpec
+                    "{voiceAllocator}",
+                    "{that}.noteChange"
+                ]
+            },
+
+            createVoice: {
+                funcName: "flock.synth.polyphonic.createVoice",
+                args: ["{that}.options", "{that}.insert"]
+            }
+        }
     });
 
-    flock.synth.polyphonic.finalInit = function (that) {
-        that.activeVoices = {};
-        that.freeVoices = [];
-
-        that.noteChange = function (voice, eventName, changeSpec) {
-            var noteEventSpec = that.options.noteSpecs[eventName];
-            changeSpec = $.extend({}, noteEventSpec, changeSpec);
-            voice.input(changeSpec);
-        };
-
-        that.noteOn = function (noteName, changeSpec) {
-            var voice = that.nextFreeVoice();
-            if (that.activeVoices[noteName]) {
-                that.noteOff(noteName);
-            }
-            that.activeVoices[noteName] = voice;
-            that.noteChange(voice, "on", changeSpec);
-
-            return voice;
-        };
-
-        that.noteOff = function (noteName, changeSpec) {
-            var voice = that.activeVoices[noteName];
-            if (!voice) {
-                return null;
-            }
-            that.noteChange(voice, "off", changeSpec);
-            delete that.activeVoices[noteName];
-            that.freeVoices.push(voice);
-
-            return voice;
-        };
-
-        that.createVoice = function () {
-            var voice = flock.synth({
-                synthDef: that.options.synthDef,
-                addToEnvironment: false
-            });
-
-            var normalizer = that.options.amplitudeNormalizer,
-                ampKey = that.options.amplitudeKey,
-                normValue;
-
-            if (normalizer) {
-                if (typeof normalizer === "function") {
-                    normalizer(voice, ampKey);
-                } else if (normalizer === "static") {
-                    normValue = 1.0 / that.options.maxVoices;
-                    voice.input(ampKey, normValue);
-                }
-                // TODO: Implement dynamic voice normalization.
-            }
-            that.nodes.push(voice);
-
-            return voice;
-        };
-
-        that.pooledVoiceAllocator = function () {
-            return that.freeVoices.pop();
-        };
-
-        that.lazyVoiceAllocator = function () {
-            return that.freeVoices.length > 1 ?
-                that.freeVoices.pop() : Object.keys(that.activeVoices).length > that.options.maxVoices ?
-                null : that.createVoice();
-        };
-
-        that.init = function () {
-            if (!that.options.initVoicesLazily) {
-                var i;
-                for (i = 0; i < that.options.maxVoices; i++) {
-                    that.freeVoices[i] = that.createVoice();
-                }
-                that.nextFreeVoice = that.pooledVoiceAllocator;
-            } else {
-                that.nextFreeVoice = that.lazyVoiceAllocator;
-            }
-        };
-
-        that.init();
-        return that;
+    flock.synth.polyphonic.noteChange = function (voice, eventName, changeSpec, noteSpecs) {
+        var noteEventSpec = noteSpecs[eventName];
+        changeSpec = $.extend({}, noteEventSpec, changeSpec);
+        voice.input(changeSpec);
     };
+
+    flock.synth.polyphonic.noteOn = function (noteName, changeSpec, voiceAllocator, noteOff, noteChange) {
+        var voice = voiceAllocator.getFreeVoice();
+        if (voiceAllocator.activeVoices[noteName]) {
+            noteOff(noteName);
+        }
+        voiceAllocator.activeVoices[noteName] = voice;
+        noteChange(voice, "on", changeSpec);
+
+        return voice;
+    };
+
+    flock.synth.polyphonic.noteOff = function (noteName, changeSpec, voiceAllocator, noteChange) {
+        var voice = voiceAllocator.activeVoices[noteName];
+        if (!voice) {
+            return null;
+        }
+        noteChange(voice, "off", changeSpec);
+        delete voiceAllocator.activeVoices[noteName];
+        voiceAllocator.freeVoices.push(voice);
+
+        return voice;
+    };
+
+    fluid.defaults("flock.synth.voiceAllocator", {
+        gradeNames: ["fluid.standardComponent", "autoInit"],
+
+        maxVoices: 16,
+        amplitudeNormalizer: "static", // "dynamic", "static", Function, falsey
+        amplitudeKey: "env.sustain",
+
+        members: {
+            activeVoices: {},
+            freeVoices: []
+        },
+
+        invokers: {
+            createVoice: {
+                funcName: "flock.synth.voiceAllocator.createVoice",
+                args: ["{that}.options", "{that}.events.onCreateVoice.fire"]
+            }
+        },
+
+        events: {
+            onCreateVoice: null
+        }
+    });
+
+
+    flock.synth.voiceAllocator.createVoice = function (options, onCreateVoice) {
+        var voice = flock.synth({
+            synthDef: options.synthDef,
+            addToEnvironment: false
+        });
+
+        var normalizer = options.amplitudeNormalizer,
+            ampKey = options.amplitudeKey,
+            normValue;
+
+        if (normalizer) {
+            if (typeof normalizer === "function") {
+                normalizer(voice, ampKey);
+            } else if (normalizer === "static") {
+                normValue = 1.0 / options.maxVoices;
+                voice.input(ampKey, normValue);
+            }
+            // TODO: Implement dynamic voice normalization.
+        }
+
+        onCreateVoice(voice);
+
+        return voice;
+    };
+
+    fluid.defaults("flock.synth.voiceAllocator.lazy", {
+        gradeNames: ["flock.synth.voiceAllocator", "autoInit"],
+
+        invokers: {
+            getFreeVoice: {
+                funcName: "flock.synth.voiceAllocator.lazy.get",
+                args: [
+                    "{that}.freeVoices",
+                    "{that}.activeVoices",
+                    "{that}.createVoice",
+                    "{that}.options.maxVoices"
+                ]
+            }
+        }
+    });
+
+    flock.synth.voiceAllocator.lazy.get = function (freeVoices, activeVoices, createVoiceFn, maxVoices) {
+        return freeVoices.length > 1 ?
+            freeVoices.pop() : Object.keys(activeVoices).length > maxVoices ?
+            null : createVoiceFn();
+    };
+
+    fluid.defaults("flock.synth.voiceAllocator.pool", {
+        gradeNames: ["flock.synth.voiceAllocator", "autoInit"],
+
+        invokers: {
+            getFreeVoice: "flock.synth.voiceAllocator.pool.get({that}.freeVoices)"
+        }
+    });
+
+    flock.synth.voiceAllocator.pool.get = function (freeVoices) {
+        if (freeVoices.length > 0) {
+            return freeVoices.pop();
+        }
+    };
+
+    flock.synth.voiceAllocator.pool.allocateVoices = function (freeVoices, createVoiceFn, maxVoices) {
+        for (var i = 0; i < maxVoices; i++) {
+            freeVoices[i] = createVoiceFn();
+        }
+
+    };
+
 
     /**
      * flock.band provides an IoC-friendly interface for a collection of named synths.

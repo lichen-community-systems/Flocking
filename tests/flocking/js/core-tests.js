@@ -1602,12 +1602,15 @@ var fluid = fluid || require("infusion"),
 
 
     var checkVoiceInputValues = function (synth, voiceName, expectedValues, msg) {
-        var inputVals = synth.activeVoices[voiceName].input(Object.keys(expectedValues));
+        var voice = synth.voiceAllocator.activeVoices[voiceName],
+            keys = Object.keys(expectedValues),
+            inputVals = voice.input(keys);
+
         deepEqual(inputVals, expectedValues, msg);
     };
 
     var checkVoicesAndInputValues = function (synth, expectations, msg) {
-        var numActive = Object.keys(synth.activeVoices).length,
+        var numActive = Object.keys(synth.voiceAllocator.activeVoices).length,
             numExpected = Object.keys(expectations).length;
 
         equal(numActive, numExpected,
@@ -1682,7 +1685,7 @@ var fluid = fluid || require("infusion"),
             synthDef: def,
             addToEnvironment: false
         });
-        equal(Object.keys(poly.activeVoices).length, 0,
+        equal(Object.keys(poly.voiceAllocator.activeVoices).length, 0,
             "When a polyphonic synth is instantiated, it should have no active voices.");
 
         $.each(polySynthTestSpecs, function (i, testSpec) {
