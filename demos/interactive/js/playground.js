@@ -43,18 +43,18 @@ var fluid = fluid || require("infusion"),
     var setupPlayButton = function (that) {
         // TODO: might be able to avoid eval()'ing if we load each demo's JavaScript source via Ajax and inject it as a script block.
         that.playButton.click(function () {
-            if (!flock.enviro.shared.model.isPlaying) {
+            if (!flock.environment.model.isPlaying) {
                 eval(that.editor.getDoc().getValue()); // jshint ignore:line
 
                 that.playButton.html("Pause");
                 that.playButton.removeClass("paused");
                 that.playButton.addClass("playing");
-                flock.enviro.shared.play();
+                flock.environment.play();
             } else {
                 that.playButton.html("Play");
                 that.playButton.removeClass("playing");
                 that.playButton.addClass("paused");
-                flock.enviro.shared.reset();
+                flock.environment.reset();
             }
         });
     };
@@ -102,7 +102,7 @@ var fluid = fluid || require("infusion"),
             var code = $("#" + id).html();
             that.editor.getDoc().setValue(code);
 
-            if (flock.enviro.shared.model.isPlaying) {
+            if (flock.environment.model.isPlaying) {
                 that.playButton.click(); // Stop the previous demo if it is playing.
             }
         };

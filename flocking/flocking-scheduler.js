@@ -510,7 +510,7 @@ var fluid = fluid || require("infusion"),
 
             // TODO: Hardcoded to the shared environment.
             var targetSynth = typeof changeSpec.synth === "string" ?
-                flock.enviro.shared.namedNodes[changeSpec.synth] : changeSpec.synth;
+                flock.environment.namedNodes[changeSpec.synth] : changeSpec.synth;
             targetSynth.set(staticChanges);
         };
     };

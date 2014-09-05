@@ -268,7 +268,7 @@ var fluid = fluid || require("infusion"),
                 that.tags.push(tags[i]);
             }
 
-            s = o.audioSettings = o.audioSettings || flock.enviro.shared.audioSettings;
+            s = o.audioSettings = o.audioSettings || flock.environment.audioSettings;
             m.sampleRate = o.sampleRate || s.rates[that.rate];
             m.nyquistRate = m.sampleRate;
             m.blockSize = that.rate === flock.rates.AUDIO ? s.blockSize : 1;
@@ -1212,7 +1212,7 @@ var fluid = fluid || require("infusion"),
 
             if (m.bufDef !== inputs.buffer || inputName === "buffer") {
                 m.bufDef = inputs.buffer;
-                flock.parse.bufferForDef(m.bufDef, that, flock.enviro.shared); // TODO: Shared enviro reference.
+                flock.parse.bufferForDef(m.bufDef, that, flock.environment); // TODO: Shared enviro reference.
             }
         };
 
@@ -2863,7 +2863,7 @@ var fluid = fluid || require("infusion"),
 
         that.init = function () {
             // TODO: Direct reference to the shared environment.
-            flock.enviro.shared.audioStrategy.startReadingAudioInput();
+            flock.environment.audioStrategy.startReadingAudioInput();
             that.onInputChanged();
         };
 

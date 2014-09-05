@@ -23,7 +23,7 @@
             QUnit.ok(flock, "The 'flock' variable should be defined");
 
             flock.init();
-            QUnit.ok(flock.enviro.shared, "The shared environment can successfully be initialized.");
+            QUnit.ok(flock.environment, "The shared environment can successfully be initialized.");
 
             var synth = flock.synth({
                 synthDef: {
@@ -33,8 +33,8 @@
 
             QUnit.ok(synth, "A synth can be correct instantiated.");
 
-            flock.enviro.shared.play();
-            flock.enviro.shared.stop();
+            flock.environment.play();
+            flock.environment.stop();
 
             QUnit.start();
         });

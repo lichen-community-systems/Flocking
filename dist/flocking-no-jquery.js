@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (September 4, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (September 5, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof exports === "object") {
@@ -10668,7 +10668,15 @@ var fluid = fluid || require("infusion"),
         var enviroOpts = !options ? undefined : {
             audioSettings: options
         };
-        flock.enviro.shared = flock.enviro(enviroOpts);
+
+        var enviro = flock.enviro(enviroOpts);
+        fluid.staticEnvironment.environment = flock.environment = enviro;
+
+        // flock.environment is deprecated. Use "flock.environment"
+        // or an IoC reference to {environment} instead
+        flock.enviro.shared = enviro;
+
+        return enviro;
     };
 
     flock.OUT_UGEN_ID = "flocking-out";
@@ -11783,11 +11791,11 @@ var fluid = fluid || require("infusion"),
     });
 
     flock.autoEnviro.initEnvironment = function () {
-        if (!flock.enviro.shared) {
+        if (!flock.environment) {
             flock.init();
         }
 
-        return flock.enviro.shared;
+        return flock.environment;
     };
 
     fluid.defaults("flock.node", {
@@ -12836,11 +12844,7 @@ var fluid = fluid || require("infusion"),
                 }
             ],
 
-            onBufferUpdated: {
-                // TODO: Hardcoded reference to shared environment.
-                funcName: "flock.enviro.shared.registerBuffer",
-                args: ["{arguments}.0"]
-            },
+            onBufferUpdated: "{environment}.registerBuffer({arguments}.0)",
 
             onError: {
                 funcName: "{that}.applier.requestChange",
@@ -13125,9 +13129,9 @@ var fluid = fluid || require("infusion"),
      */
     flock.parse.ugenForDef = function (ugenDef, options) {
         options = $.extend(true, {
-            audioSettings: flock.enviro.shared.options.audioSettings,
-            buses: flock.enviro.shared.buses,
-            buffers: flock.enviro.shared.buffers
+            audioSettings: flock.environment.options.audioSettings,
+            buses: flock.environment.buses,
+            buffers: flock.environment.buffers
         }, options);
 
         var o = options,
@@ -15032,7 +15036,7 @@ var fluid = fluid || require("infusion"),
 
             // TODO: Hardcoded to the shared environment.
             var targetSynth = typeof changeSpec.synth === "string" ?
-                flock.enviro.shared.namedNodes[changeSpec.synth] : changeSpec.synth;
+                flock.environment.namedNodes[changeSpec.synth] : changeSpec.synth;
             targetSynth.set(staticChanges);
         };
     };
@@ -15710,7 +15714,7 @@ var fluid = fluid || require("infusion"),
                 that.tags.push(tags[i]);
             }
 
-            s = o.audioSettings = o.audioSettings || flock.enviro.shared.audioSettings;
+            s = o.audioSettings = o.audioSettings || flock.environment.audioSettings;
             m.sampleRate = o.sampleRate || s.rates[that.rate];
             m.nyquistRate = m.sampleRate;
             m.blockSize = that.rate === flock.rates.AUDIO ? s.blockSize : 1;
@@ -16654,7 +16658,7 @@ var fluid = fluid || require("infusion"),
 
             if (m.bufDef !== inputs.buffer || inputName === "buffer") {
                 m.bufDef = inputs.buffer;
-                flock.parse.bufferForDef(m.bufDef, that, flock.enviro.shared); // TODO: Shared enviro reference.
+                flock.parse.bufferForDef(m.bufDef, that, flock.environment); // TODO: Shared enviro reference.
             }
         };
 
@@ -18305,7 +18309,7 @@ var fluid = fluid || require("infusion"),
 
         that.init = function () {
             // TODO: Direct reference to the shared environment.
-            flock.enviro.shared.audioStrategy.startReadingAudioInput();
+            flock.environment.audioStrategy.startReadingAudioInput();
             that.onInputChanged();
         };
 

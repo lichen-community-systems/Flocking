@@ -361,7 +361,7 @@ var fluid = fluid || require("infusion"),
 
     module("Synth tests", {
         teardown: function () {
-            flock.enviro.shared.reset();
+            flock.environment.reset();
         }
     });
 
@@ -391,7 +391,7 @@ var fluid = fluid || require("infusion"),
     };
 
     var testEnviroGraph = function (fn) {
-        var audioSettings = flock.enviro.shared.audioSettings;
+        var audioSettings = flock.environment.audioSettings;
 
         setTimeout(function () {
             fn();
@@ -401,10 +401,10 @@ var fluid = fluid || require("infusion"),
 
     asyncTest("Auto add to the environment", function () {
         var synth = flock.test.genReportSynth();
-        flock.enviro.shared.play();
+        flock.environment.play();
 
         testEnviroGraph(function () {
-            ok(flock.enviro.shared.nodes.indexOf(synth) > -1,
+            ok(flock.environment.nodes.indexOf(synth) > -1,
                 "The synth should have been automatically added to the environment.");
             ok(synth.model.didGen,
                 "The synth should have been evaluated.");
@@ -415,10 +415,10 @@ var fluid = fluid || require("infusion"),
         var synth = flock.test.genReportSynth({
             addToEnvironment: false
         });
-        flock.enviro.shared.play();
+        flock.environment.play();
 
         testEnviroGraph(function () {
-            ok(flock.enviro.shared.nodes.indexOf(synth) === -1,
+            ok(flock.environment.nodes.indexOf(synth) === -1,
                 "The synth should not have been automatically added to the environment.");
             ok(!synth.model.didGen,
                 "The synth should not have been evaluated.");
@@ -427,20 +427,20 @@ var fluid = fluid || require("infusion"),
 
     asyncTest("Remove from the environment", function () {
         var synth = flock.test.genReportSynth();
-        flock.enviro.shared.play();
+        flock.environment.play();
 
-        var audioSettings = flock.enviro.shared.audioSettings,
+        var audioSettings = flock.environment.audioSettings,
             waitDur = (audioSettings.bufferSize / audioSettings.rates.audio) * 1000 * 2;
 
         setTimeout(function () {
-            ok(flock.enviro.shared.nodes.indexOf(synth) > -1,
+            ok(flock.environment.nodes.indexOf(synth) > -1,
                 "The synth should have been automatically added to the environment.");
             ok(synth.model.didGen,
                 "The synth should have been evaluated.");
 
             synth.pause();
 
-            ok(flock.enviro.shared.nodes.indexOf(synth) === -1,
+            ok(flock.environment.nodes.indexOf(synth) === -1,
                 "The synth should have been removed from the environment.");
 
             synth.reset();
@@ -454,20 +454,20 @@ var fluid = fluid || require("infusion"),
 
     asyncTest("destroy() removes a synth from the environment", function () {
         var synth = flock.test.genReportSynth();
-        var audioSettings = flock.enviro.shared.audioSettings,
+        var audioSettings = flock.environment.audioSettings,
             waitDur = (audioSettings.bufferSize / audioSettings.rates.audio) * 1000 * 2;
 
-        flock.enviro.shared.play();
+        flock.environment.play();
 
         setTimeout(function () {
-            ok(flock.enviro.shared.nodes.indexOf(synth) > -1,
+            ok(flock.environment.nodes.indexOf(synth) > -1,
                 "The synth should have been automatically added to the environment.");
             ok(synth.model.didGen,
                 "The synth should have been evaluated.");
 
             synth.reset();
             synth.destroy();
-            ok(flock.enviro.shared.nodes.indexOf(synth) === -1,
+            ok(flock.environment.nodes.indexOf(synth) === -1,
                 "The synth should have been removed from the environment.");
 
             setTimeout(function () {
@@ -827,7 +827,7 @@ var fluid = fluid || require("infusion"),
                 source: {
                     ugen: "flock.ugen.sequence",
                     rate: "audio",
-                    freq: flock.enviro.shared.audioSettings.rates.audio,
+                    freq: flock.environment.audioSettings.rates.audio,
                     list: flock.test.fillBuffer(1, 64)
                 }
             }
@@ -841,7 +841,7 @@ var fluid = fluid || require("infusion"),
         synth.set("pass.source", {
             ugen: "flock.ugen.sequence",
             rate: "audio",
-            freq: flock.enviro.shared.audioSettings.rates.audio,
+            freq: flock.environment.audioSettings.rates.audio,
             list: flock.test.fillBuffer(64, 127)
         });
         synth.gen();
@@ -858,7 +858,7 @@ var fluid = fluid || require("infusion"),
         synth.set("pass.source", {
             ugen: "flock.ugen.sequence",
             rate: "audio",
-            freq: flock.enviro.shared.audioSettings.rates.audio,
+            freq: flock.environment.audioSettings.rates.audio,
             list: flock.test.fillBuffer(128, 191)
         });
         synth.gen();
@@ -933,7 +933,7 @@ var fluid = fluid || require("infusion"),
     });
 
     var testAddToEnvironment = function (synthOptions, expectedOrder, message) {
-        flock.enviro.shared.clearAll();
+        flock.environment.clearAll();
 
         var synths = [];
         fluid.each(synthOptions, function (synthOption) {
@@ -941,7 +941,7 @@ var fluid = fluid || require("infusion"),
         });
 
         var actualOrder = fluid.transform(synths, function (synth) {
-            return flock.enviro.shared.nodes.indexOf(synth);
+            return flock.environment.nodes.indexOf(synth);
         });
 
         deepEqual(actualOrder, expectedOrder, message);
@@ -1923,7 +1923,7 @@ var fluid = fluid || require("infusion"),
     module("flock.band tests");
 
     test("flock.band with multiple addToEnvironment synths", function () {
-        flock.enviro.shared.clearAll();
+        flock.environment.clearAll();
 
         var def = {
             ugen: "flock.ugen.sin"
@@ -1957,14 +1957,14 @@ var fluid = fluid || require("infusion"),
             }
         });
 
-        equal(flock.enviro.shared.nodes.length, 3,
+        equal(flock.environment.nodes.length, 3,
             "Three synth nodes should have been added to the shared environment.");
 
-        equal(flock.enviro.shared.nodes[0], band.cat,
+        equal(flock.environment.nodes[0], band.cat,
             "The first node in the list should be the synth that declared itself at the head.");
 
         // TODO: This test probably doesn't belong here.
-        equal(band.cat.enviro.audioStrategy.nodeEvaluator.nodes, flock.enviro.shared.nodes,
+        equal(band.cat.enviro.audioStrategy.nodeEvaluator.nodes, flock.environment.nodes,
             "The synths' enviro's audio strategy's node evaluator should share the same node list" +
             "as the environment itself.");
     });

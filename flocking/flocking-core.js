@@ -30,7 +30,15 @@ var fluid = fluid || require("infusion"),
         var enviroOpts = !options ? undefined : {
             audioSettings: options
         };
-        flock.enviro.shared = flock.enviro(enviroOpts);
+
+        var enviro = flock.enviro(enviroOpts);
+        fluid.staticEnvironment.environment = flock.environment = enviro;
+
+        // flock.environment is deprecated. Use "flock.environment"
+        // or an IoC reference to {environment} instead
+        flock.enviro.shared = enviro;
+
+        return enviro;
     };
 
     flock.OUT_UGEN_ID = "flocking-out";
@@ -1145,11 +1153,11 @@ var fluid = fluid || require("infusion"),
     });
 
     flock.autoEnviro.initEnvironment = function () {
-        if (!flock.enviro.shared) {
+        if (!flock.environment) {
             flock.init();
         }
 
-        return flock.enviro.shared;
+        return flock.environment;
     };
 
     fluid.defaults("flock.node", {
