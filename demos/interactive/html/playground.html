@@ -50,22 +50,22 @@
 
     <body>
         <div class="everything">
-            <header class="masthead">
-                <div id="controlRegion" class="toolbar">
-                    <!-- Controls for selecting a demo and playing/pausing the active synth. -->
-                    <div class="left">
-                        <!-- Play Button -->
-                        <button id="playButton" class="playButton paused icon-">Play</button>
-                    </div>
 
-                    <!-- Waveform View -->
-                    <div id="gfxContainer" class="right">
-                        <canvas id="gfx" height="45" width="240"></canvas>
-                    </div>
-                </div>
+            <!-- Waveform View -->
+            <div id="gfxContainer" class="right">
+                <canvas id="gfx" height="45" width="240"></canvas>
+            </div>
+
+            <header class="masthead">
+                <!-- Control for selecting a demo -->
                 <div class="synthSelector">
                     <label for="sample_code_sel" class="hidden-accessible">Demo:</label>
                     <select id="demos" size="1"></select>
+                </div>
+                <!-- Control for playing/pausing the active synth. -->
+                <div class="playSynth">
+                    <!-- Play Button -->
+                    <button id="playButton" class="playButton paused icon-">Play</button>
                 </div>
             </header>
 

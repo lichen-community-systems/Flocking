@@ -1,4 +1,11 @@
-html, body {
+*,
+*:before,
+*:after {
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+}
+html, body, .everything {
     height: 100%;
 }
 
@@ -15,7 +22,6 @@ label {
 .everything {
     width: 100%;
     height: 100%;
-    background-color: #272822;
 }
 
 .toolbar {
@@ -38,41 +44,41 @@ label {
 .toolbar .right {
     float: right;
 }
-
-#gfx {
-    margin: 2px;
-    border: 2px solid #999;
-    border-radius: 10px;
-    background-color: #fff;
-}
-
 .synthSelector {
-    background-color: #aaa;
-    padding: 0.5em 0 0.5em 0.5em;
+    float: left;
+    margin-top: 0.45em;
+}
+#gfx {
+    background-color: #272822;
+    height: 100%;
+    position: absolute;
+    width: 100%;
+    z-index: -1;
 }
 
-.playButton {
-    height: 2em;
-    width: 2em;
+.playSynth .playButton {
+    height: 1.75em;
+    width: 1.75em;
     padding: 0;
     border: 0 none;
     border-radius: 2em;
     font-size: 125%;
+    float: left;
     background-color: #777;
     color: #fff;
     text-align: center;
+    margin-left: 0.5em;
+    margin-top: 0;
 }
 
 .playButton.paused {
-    padding-left: 0.55em;
-    padding-right: 0.55em;
+    padding-left: 0.45em;
+    padding-right: 0.45em;
 }
 
-.synthSelector button {
+.playSynth button {
     float: right;
     width: 4.5em;
-    margin-right: 1em;
-    margin-top: -0.15em;
     padding: 0.5em;
     border: 0 none;
     border-radius: 0.3em;
@@ -80,12 +86,13 @@ label {
     background-color: #777;
     color: #fff;
     text-align: center;
+    margin-top: 0.35em;
 }
 
 .mainPanel {
     height: 100%;
     width: 100%;
-    padding-top: 6.75em;
+    padding-top: 3.1em;
 }
 
 #source-view {
@@ -107,18 +114,13 @@ label {
     overflow: auto;
 }
 
-*,
-*:before,
-*:after {
-    -moz-box-sizing: border-box;
-    -webkit-box-sizing: border-box;
-    box-sizing: border-box;
-}
 .masthead {
-     position: fixed;
-     top: 0;
-     width: 100%;
-     z-index: 100;
+    background-color: #aaa;
+    padding: 0.5em;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 100;
 }
 
 .node {
@@ -163,17 +165,4 @@ label {
     fill: #272822;
     z-index: 1;
     stroke: #999;
-}
-
-@media screen and (max-width:480px) {
-	.masthead {
-		position: relative;
-	}
-	.mainPanel {
-		padding-top: 0;
-		height: auto;
-	}
-	.CodeMirror {
-		height: auto;
-	}
 }

@@ -134,7 +134,7 @@ var fluid = fluid || require("infusion"),
 
         selectors: {
             visual: "#visual-view",
-            synthSelector: ".synthSelector"
+            synthSelector: ".playSynth"
         },
 
         modelListeners: {
