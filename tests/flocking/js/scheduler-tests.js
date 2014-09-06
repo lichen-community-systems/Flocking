@@ -66,7 +66,7 @@ var fluid = fluid || require("infusion"),
             "The callback should return the correct scheduled time.");
         ok(duration >= minDur && duration <= maxDur,
             "The callback should be fired at the scheduled time, within a tolerance of " +
-            maxOutlier + "ms. Actual interval was: " + duration);
+            maxOutlier + "ms. Actual interval was: " + (duration - expectedInterval) + "ms.");
 
         return Math.abs(duration - expectedInterval);
     };
@@ -136,6 +136,7 @@ var fluid = fluid || require("infusion"),
             tolerance = 25, // TODO: Insanely high.
             fired = {},
             makeRecordingListener,
+            assertWithinTolerance,
             testingListenerImpl,
             listener1,
             listener2,
@@ -156,15 +157,16 @@ var fluid = fluid || require("infusion"),
             };
         };
 
+        assertWithinTolerance = function (actual, scheduled, tolerance, msgPrefix) {
+            ok(actual >= scheduled - tolerance &&
+                actual <= scheduled + tolerance,
+                msgPrefix + " should be scheduled at the expected time, within a tolerance of " +
+                tolerance + "ms." + " Actual: " + (fired.listener1 - scheduledDelays[0]) + "ms.");
+        };
+
         testingListenerImpl = function () {
-            ok(fired.listener1 >= scheduledDelays[0] - tolerance &&
-                fired.listener1 <= scheduledDelays[0] + tolerance,
-                "The first callback should be scheduled at the expected time, within a tolerance of " + tolerance + "ms." +
-                " Actual: " + fired.listener1);
-            ok(fired.listener2 >= scheduledDelays[1] - tolerance &&
-                fired.listener2 <= scheduledDelays[1] + tolerance,
-                "The second callback should be scheduled at the expected time, within a tolerance of " + tolerance + "ms." +
-                " Actual: " + fired.listener2);
+            assertWithinTolerance(fired.listener1, scheduledDelays[0], tolerance, "The first callback");
+            assertWithinTolerance(fired.listener2, scheduledDelays[1], tolerance, "The second callback");
             start();
         };
 

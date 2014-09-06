@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (September 5, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (September 6, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.1
@@ -23751,142 +23751,237 @@ var fluid = fluid || require("infusion"),
     /**********
      * Clocks *
      **********/
+    fluid.defaults("flock.scheduler.clock", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
 
-    fluid.defaults("flock.scheduler.intervalClock", {
-        gradeNames: ["fluid.standardComponent", "autoInit"],
         events: {
-            tick: null
+            tick: null,
+            onScheduled: null,
+            onClear: null
         }
     });
 
-    flock.scheduler.intervalClock.finalInit = function (that) {
-        that.scheduled = {};
+    fluid.defaults("flock.scheduler.intervalClock", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
 
-        that.schedule = function (interval) {
-            var id = setInterval(function () {
-                that.events.tick.fire(interval);
-            }, interval);
-            that.scheduled[interval] = id;
-        };
+        members: {
+            scheduled: {}
+        },
 
-        that.clear = function (interval) {
-            var id = that.scheduled[interval];
-            clearInterval(id);
-            delete that.scheduled[interval];
-        };
+        invokers: {
+            schedule: {
+                funcName: "flock.scheduler.intervalClock.schedule",
+                args: [
+                    "{arguments}.0", // The inverval to clear.
+                    "{that}.scheduled",
+                    "{that}.events.tick.fire",
+                    "{that}.events.onClear.fire"
+                ]
+            },
 
-        that.clearAll = function () {
-            for (var interval in that.scheduled) {
-                that.clear(interval);
-            }
-        };
+            clear: {
+                funcName: "flock.scheduler.intervalClock.clear",
+                args:[
+                    "{arguments}.0", // The inverval to clear.
+                    "{that}.scheduled",
+                    "{that}.events.onClear.fire"
+                ]
+            },
 
-        that.end = that.clearAll;
+            clearAll: {
+                funcName: "flock.scheduler.intervalClock.clearAll",
+                args: ["{that}.scheduled", "{that}.events.onClear.fire"]
+            },
+
+            end: "{that}.clearAll"
+        }
+    });
+
+    flock.scheduler.intervalClock.schedule = function (interval, scheduled, onTick, onScheduled) {
+        var id = setInterval(function () {
+            onTick(interval);
+        }, interval);
+        scheduled[interval] = id;
+        onScheduled(interval, id);
+    };
+
+    flock.scheduler.intervalClock.clear = function (interval, scheduled, onClear) {
+        var id = scheduled[interval];
+        clearInterval(id);
+        delete scheduled[interval];
+        onClear(interval, id);
+    };
+
+    flock.scheduler.intervalClock.clearAll = function (scheduled, onClear) {
+        for (var interval in scheduled) {
+            flock.scheduler.intervalClock.clear(interval, scheduled, onClear);
+        }
     };
 
 
     fluid.defaults("flock.scheduler.scheduleClock", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
-        events: {
-            tick: null
+
+        memebrs: {
+            scheduled: []
+        },
+
+        invokers: {
+            schedule: {
+                funcName: "flock.scheduler.scheduleClock.schedule",
+                args: [
+                    "{arguments}.0",
+                    "{that}.scheduled",
+                    "{that}.events"
+                ]
+            },
+
+            clear: {
+                funcName: "flock.scheduler.scheduleClock.clear",
+                args: [
+                    "{arguments}.0",
+                    "{arguments}.1",
+                    "{that}.scheduled",
+                    "{that}.events.onClear.fire"
+                ]
+            },
+
+            clearAll: {
+                funcName: "flock.scheduler.scheduleClock.clearAll",
+                args: [
+                    "{that}.scheduled",
+                    "{that}.events.onClear.fire"
+                ]
+            },
+
+            end: "{that}.clearAll"
+        },
+
+        listeners: {
+            onClear: [
+                {
+                    func: "window.clearTimeout",
+                    args: ["{arguments}.0"]
+                }
+            ]
         }
     });
 
-    flock.scheduler.scheduleClock.finalInit = function (that) {
-        that.scheduled = [];
+    flock.scheduler.scheduleClock.schedule = function (timeFromNow, scheduled, events) {
+        var id;
+        id = setTimeout(function () {
+            events.onClear.fire(id);
+            events.tick.fire(timeFromNow);
+        }, timeFromNow);
 
-        that.schedule = function (timeFromNow) {
-            var id;
-            id = setTimeout(function () {
-                that.clear(id);
-                that.events.tick.fire(timeFromNow);
-            }, timeFromNow);
-            that.scheduled.push(id);
-        };
+        scheduled.push(id);
+        events.onScheduled.fire(timeFromNow, id);
+    };
 
-        that.clear = function (id, idx) {
-            idx = idx === undefined ? that.scheduled.indexOf(id) : idx;
-            if (idx > -1) {
-                that.scheduled.splice(idx, 1);
-            }
-            clearTimeout(id);
-        };
+    flock.scheduler.scheduleClock.clear = function (id, idx, scheduled, onClear) {
+        idx = idx === undefined ? scheduled.indexOf(id) : idx;
+        if (idx > -1) {
+            scheduled.splice(idx, 1);
+            onClear(id);
+        }
+    };
 
-        that.clearAll = function () {
-            for (var i = 0; i < that.scheduled.length; i++) {
-                var id = that.scheduled[i];
-                clearTimeout(id);
-            }
-            that.scheduled.length = 0;
-        };
+    flock.scheduler.scheduleClock.clearAll = function (scheduled, onClear) {
+        for (var i = 0; i < scheduled.length; i++) {
+            var id = scheduled[i];
+            onClear(id);
+        }
 
-        that.end = that.clearAll;
+        scheduled.length = 0;
     };
 
 
     fluid.defaults("flock.scheduler.webWorkerClock", {
-        gradeNames: ["fluid.standardComponent", "autoInit"],
-        model: {
-            messages: {
-                schedule: {
-                    msg: "schedule"
-                },
-                clear: {
-                    msg: "clear"
-                },
-                clearAll: {
-                    msg: "clearAll"
-                },
-                end: {
-                    msg: "end"
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        members: {
+            worker: {
+                expander: {
+                    funcName: "flock.worker",
+                    args: "@expand:fluid.getGlobalValue(flock.scheduler.webWorkerClock.workerImpl)"
                 }
             }
         },
-        events: {
-            tick: null
+
+        invokers: {
+            postToWorker: {
+                funcName: "flock.scheduler.webWorkerClock.postToWorker",
+                args: [
+                    "{arguments}.0", // Message name.
+                    "{arguments}.1", // Value.
+                    "{that}.options.messages",
+                    "{that}.worker"
+                ]
+            },
+
+            schedule: "{that}.postToWorker(schedule, {arguments}.0)",
+
+            clear: "{that}.postToWorker(clear, {arguments}.0)",
+
+            clearAll: "{that}.postToWorker(clearAll)",
+
+            end: "{that}.postToWorker(end)"
         },
-        clockType: "intervalClock"
+
+        events: {
+            onMessage: null,
+            tick: {
+                event: "onMessage",
+                args: "{arguments}.0.data.value"
+            }
+        },
+
+        listeners: {
+            onCreate: [
+                {
+                    "this": "{that}.worker",
+                    method: "addEventListener",
+                    args: ["message", "{that}.events.onMessage.fire", false]
+                },
+                {
+                    "this": "{that}.worker",
+                    method: "postMessage",
+                    args: ["{that}.options.startMsg"]
+                }
+            ]
+        },
+
+        startMsg: {
+            msg: "start",
+            value: "{that}.options.clockType"
+        },
+
+        messages: {
+            schedule: {
+                msg: "schedule"
+            },
+
+            clear: {
+                msg: "clear"
+            },
+
+            clearAll: {
+                msg: "clearAll"
+            },
+
+            end: {
+                msg: "end"
+            }
+        }
     });
 
-    flock.scheduler.webWorkerClock.finalInit = function (that) {
-        that.worker = new flock.worker(flock.scheduler.webWorkerClock.workerImpl);
-
-        // Start the worker-side clock.
-        that.worker.postMessage({
-            msg: "start",
-            value: that.options.clockType
-        });
-
-        // Listen for tick messages from the worker and fire accordingly.
-        that.worker.addEventListener("message", function (e) {
-            that.events.tick.fire(e.data.value);
-        }, false);
-
-        that.postToWorker = function (msgName, value) {
-            var msg = that.model.messages[msgName];
-            if (value !== undefined) {
-                msg.value = value;
-            }
-            that.worker.postMessage(msg);
-        };
-
-        that.schedule = function (time) {
-            that.postToWorker("schedule", time);
-        };
-
-        that.clear = function (time) {
-            that.postToWorker("clear", time);
-        };
-
-        that.clearAll = function () {
-            that.postToWorker("clearAll");
-        };
-
-        that.end = function () {
-            that.postToWorker("end");
-        };
+    flock.scheduler.webWorkerClock.postToWorker = function (msgName, value, messages, worker) {
+        var msg = messages[msgName];
+        if (value !== undefined) {
+            msg.value = value;
+        }
+        worker.postMessage(msg);
     };
-
 
     // This code is only intended to run from within a Worker, via flock.worker.
     flock.scheduler.webWorkerClock.workerImpl = function () {
