@@ -20876,7 +20876,6 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.enviro.gen = function (nodeEvaluator) {
-        nodeEvaluator.clearBuses();
         nodeEvaluator.gen();
     };
 
@@ -20926,17 +20925,9 @@ var fluid = fluid || require("infusion"),
 
     flock.enviro.nodeEvaluator.gen = function (numBuses, busLen, nodes, buses) {
         var i,
-            bus,
-            j,
             node;
 
-        // Clear all buses before evaluating the synth graph.
-        for (i = 0; i < numBuses; i++) {
-            bus = buses[i];
-            for (j = 0; j < busLen; j++) {
-                bus[j] = 0;
-            }
-        }
+        flock.enviro.nodeEvaluator.clearBuses(numBuses, busLen, buses);
 
         // Now evaluate each node.
         for (i = 0; i < nodes.length; i++) {
@@ -23824,7 +23815,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.scheduler.scheduleClock", {
         gradeNames: ["flock.scheduler.clock", "autoInit"],
 
-        memebrs: {
+        members: {
             scheduled: []
         },
 
@@ -24844,8 +24835,6 @@ var fluid = fluid || require("infusion"),
         // output buses, and interconnect buses in the environment!
         for (i = 0; i < krPeriods; i++) {
             var offset = i * blockSize;
-
-            evaluator.clearBuses();
 
             // Read this ScriptProcessorNode's input buffers
             // into the environment.

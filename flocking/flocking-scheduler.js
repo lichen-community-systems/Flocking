@@ -125,7 +125,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.scheduler.scheduleClock", {
         gradeNames: ["flock.scheduler.clock", "autoInit"],
 
-        memebrs: {
+        members: {
             scheduled: []
         },
 

@@ -198,7 +198,6 @@ var fs = require("fs"),
             flock.generate.silence(out);
         } else {
             for (var i = 0, offset = 0; i < krPeriods; i++, offset += m.bytesPerBlock) {
-                evaluator.clearBuses();
                 evaluator.gen();
 
                 // Interleave each output channel.

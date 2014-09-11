@@ -1067,7 +1067,6 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.enviro.gen = function (nodeEvaluator) {
-        nodeEvaluator.clearBuses();
         nodeEvaluator.gen();
     };
 
@@ -1117,17 +1116,9 @@ var fluid = fluid || require("infusion"),
 
     flock.enviro.nodeEvaluator.gen = function (numBuses, busLen, nodes, buses) {
         var i,
-            bus,
-            j,
             node;
 
-        // Clear all buses before evaluating the synth graph.
-        for (i = 0; i < numBuses; i++) {
-            bus = buses[i];
-            for (j = 0; j < busLen; j++) {
-                bus[j] = 0;
-            }
-        }
+        flock.enviro.nodeEvaluator.clearBuses(numBuses, busLen, buses);
 
         // Now evaluate each node.
         for (i = 0; i < nodes.length; i++) {

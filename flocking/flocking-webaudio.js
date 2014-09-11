@@ -234,8 +234,6 @@ var fluid = fluid || require("infusion"),
         for (i = 0; i < krPeriods; i++) {
             var offset = i * blockSize;
 
-            evaluator.clearBuses();
-
             // Read this ScriptProcessorNode's input buffers
             // into the environment.
             if (hasInput) {
