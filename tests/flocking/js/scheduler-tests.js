@@ -116,7 +116,7 @@ var fluid = fluid || require("infusion"),
             interval: "once",
             time: 100,
             maxOutlier: 50,
-            averageDrift: 5,
+            averageDrift: 6,
             scheduler: {
                 type: "flock.scheduler.async",
                 options: {
@@ -133,7 +133,7 @@ var fluid = fluid || require("infusion"),
     asyncTest("flock.scheduler.once() multiple listeners, different intervals", function () {
         // TODO: Cut and pastage and inconsistencies everywhere!
         var scheduledDelays = [100, 200],
-            tolerance = 25, // TODO: Insanely high.
+            tolerance = 50, // TODO: Insanely high.
             fired = {},
             makeRecordingListener,
             assertWithinTolerance,
@@ -161,7 +161,7 @@ var fluid = fluid || require("infusion"),
             ok(actual >= scheduled - tolerance &&
                 actual <= scheduled + tolerance,
                 msgPrefix + " should be scheduled at the expected time, within a tolerance of " +
-                tolerance + "ms." + " Actual: " + (fired.listener1 - scheduledDelays[0]) + "ms.");
+                tolerance + "ms." + " Actual: " + (actual - scheduled) + "ms.");
         };
 
         testingListenerImpl = function () {
@@ -199,7 +199,7 @@ var fluid = fluid || require("infusion"),
                 actualInterval = now - lastFired;
 
             if (runs >= numRuns) {
-                sked.clearRepeat(expectedInterval);
+                sked.repeatScheduler.clearInterval(expectedInterval);
                 start();
                 return;
             }
@@ -246,12 +246,12 @@ var fluid = fluid || require("infusion"),
         testingListenerImpl = function () {
             if (runs >= numRuns) {
                 if (both) {
-                    sked.clear(listener1);
+                    sked.repeatScheduler.clear(interval, listener1);
                     both = false;
                     runs = 0;
                 } else {
-                    sked.clear(listener2);
-                    sked.clear(testingListener);
+                    sked.repeatScheduler.clear(interval, listener2);
+                    sked.repeatScheduler.clear(interval, testingListener);
                     expect(numRuns * 2);
                     start();
                 }
@@ -299,7 +299,7 @@ var fluid = fluid || require("infusion"),
 
             runNextTestStage = function () {
                 var stage = stages.shift();
-                sked[clearFnName](interval);
+                sked.repeatScheduler[clearFnName](interval);
 
                 if (stage) {
                     runs = 0;
@@ -334,7 +334,58 @@ var fluid = fluid || require("infusion"),
         });
     };
 
-    testClearScheduler("flock.scheduler.async.clearRepeat()", "clearRepeat");
+    testClearScheduler("flock.scheduler.repeat.clearInterval()", "clearInterval");
     testClearScheduler("flock.scheduler.async.clearAll()", "clearAll");
+
+    module("Declarative scheduling");
+
+    fluid.defaults("flock.scheduler.tests.targetingSynth", {
+        gradeNames: ["fluid.standardComponent", "autoInit"],
+
+        components: {
+            synthy: {
+                type: "flock.synth",
+                options: {
+                    synthDef: {
+                        id: "sin",
+                        ugen: "flock.ugen.sin",
+                        freq: 440,
+                        mul: 0.0
+                    }
+                }
+            },
+
+            sked: {
+                type: "flock.scheduler.async",
+                options: {
+                    score: [
+                        {
+                            interval: "once",
+                            time: 0.001,
+                            change: {
+                                synth: "synth",
+                                values: {
+                                    "sin.freq": 110
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    });
+
+    asyncTest("Targeting changes at synth using its global nickName", function () {
+        var testComponent = flock.scheduler.tests.targetingSynth();
+        equal(440, testComponent.synthy.get("sin.freq"),
+            "The target synth's initial frequency should be as configured.");
+
+        setTimeout(function () {
+            equal(110, testComponent.synthy.get("sin.freq"),
+                "The target synth's frequency input should have been updated correctly.");
+            testComponent.sked.end();
+            start();
+        }, 100);
+    });
 
 }());

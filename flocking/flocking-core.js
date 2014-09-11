@@ -817,9 +817,11 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.nodeList.registerNode = function (node, namedNodes) {
-        if (node.nickName) {
-            namedNodes[node.nickName] = node;
+        if (!node.nickName) {
+            return;
         }
+
+        namedNodes[node.nickName] = node;
     };
 
     flock.nodeList.before = function (refNode, node, nodes, insertFn) {

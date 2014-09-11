@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (September 6, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (September 11, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof exports === "object") {
@@ -11455,9 +11455,11 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.nodeList.registerNode = function (node, namedNodes) {
-        if (node.nickName) {
-            namedNodes[node.nickName] = node;
+        if (!node.nickName) {
+            return;
         }
+
+        namedNodes[node.nickName] = node;
     };
 
     flock.nodeList.before = function (refNode, node, nodes, insertFn) {
@@ -14591,7 +14593,7 @@ var fluid = fluid || require("infusion"),
     });
 
     fluid.defaults("flock.scheduler.intervalClock", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["flock.scheduler.clock", "autoInit"],
 
         members: {
             scheduled: {}
@@ -14649,7 +14651,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.scheduler.scheduleClock", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["flock.scheduler.clock", "autoInit"],
 
         memebrs: {
             scheduled: []
@@ -14925,187 +14927,422 @@ var fluid = fluid || require("infusion"),
      * Schedulers *
      **************/
 
-    flock.scheduler.makeOneShotValueListener = function (value, fn, removeFn) {
-        var listener = function (time) {
-            if (time === value) {
-                fn(time);
-                removeFn(listener);
-            }
-        };
+    fluid.defaults("flock.scheduler", {
+        gradeNames: ["fluid.standardComponent", "autoInit"],
+
+        events: {
+            onScheduled: null,
+            onFinished: null,
+            onClearAll: null
+        },
+
+        listeners: {
+            onClearAll: [
+                "{that}.clock.clearAll()"
+            ]
+        }
+    });
+
+    flock.scheduler.addListener = function (listener, listeners, onAdded) {
+        listeners.push(listener);
+        onAdded(listener);
 
         return listener;
     };
 
-    flock.scheduler.makeRepeatingValueListener = function (value, fn) {
-        return function (time) {
+    flock.scheduler.removeListener = function (listener, listeners, onRemoved) {
+        if (!listener) {
+            return;
+        }
+
+        var idx = listeners.indexOf(listener);
+        if (idx > -1) {
+            listeners.splice(idx, 1);
+            onRemoved(listener);
+        } else if (listener.wrappedListener) {
+            flock.scheduler.removeListener(listener.wrappedListener, listeners, onRemoved);
+        }
+    };
+
+    fluid.defaults("flock.scheduler.repeat", {
+        gradeNames: ["flock.scheduler", "autoInit"],
+
+        members: {
+            listeners: {}
+        },
+
+        components: {
+            clock: {
+                type: "flock.scheduler.webWorkerIntervalClock"
+            }
+        },
+
+        invokers: {
+            schedule: {
+                funcName: "flock.scheduler.repeat.schedule",
+                args: [
+                    "{arguments}.0", // The interval to schedule.
+                    "{arguments}.1", // The listener.
+                    "{timeConverter}",
+                    "{that}.listeners",
+                    "{that}.events.onScheduled.fire"
+                ]
+            },
+
+            clear: "{that}.events.onFinished.fire",
+
+            clearAll: {
+                funcName: "flock.scheduler.repeat.clearAll",
+                args: [
+                    "{that}.listeners",
+                    "{that}.events.onFinished.fire",
+                    "{that}.events.onClearAll.fire"
+                ]
+            },
+
+            clearInterval: {
+                funcName: "flock.scheduler.repeat.clearInterval",
+                args: ["{arguments}.0", "{that}.listeners", "{that}.events.onFinished.fire"]
+            }
+        },
+
+        listeners: {
+            onScheduled: [
+                {
+                    funcName: "flock.scheduler.addListener",
+                    args: [
+                        "{arguments}.1", // The listener.
+                        {
+                            expander: {
+                                funcName: "flock.scheduler.repeat.intervalListeners",
+                                args: ["{arguments}.0", "{that}.listeners"]
+                            }
+                        },
+                        "{that}.clock.events.tick.addListener"
+                    ]
+                },
+                {
+                    func: "{that}.clock.schedule",
+                    args: ["{arguments}.0"]
+                }
+            ],
+            onFinished: {
+                funcName: "flock.scheduler.removeListener",
+                args: [
+                    "{arguments}.1",    // The listener.
+                    {
+                        expander: {
+                            funcName: "flock.scheduler.repeat.intervalListeners",
+                            args: ["{arguments}.0", "{that}.listeners"]
+                        }
+                    },
+                    "{that}.clock.events.tick.removeListener"
+                ]
+            }
+        }
+    });
+
+    flock.scheduler.repeat.intervalListeners = function (interval, listeners) {
+        return listeners[interval];
+    };
+
+    flock.scheduler.repeat.schedule = function (interval, listener, timeConverter, listeners, onScheduled) {
+        interval = timeConverter.value(interval);
+        listener = flock.scheduler.async.prepareListener(listener);
+
+        var wrapper = flock.scheduler.repeat.wrapValueListener(interval, listener);
+
+        flock.scheduler.repeat.addInterval(interval, listeners);
+        onScheduled(interval, wrapper);
+
+        return wrapper;
+    };
+
+    flock.scheduler.repeat.wrapValueListener = function (value, listener) {
+        var wrapper = function (time) {
             if (time === value) {
-                fn(time);
+                listener(time);
             }
         };
+
+        wrapper.wrappedListener = listener;
+
+        return wrapper;
+    };
+
+    flock.scheduler.repeat.addInterval = function (interval, listeners) {
+        var listenersForInterval = listeners[interval];
+        if (!listenersForInterval) {
+            listenersForInterval = listeners[interval] = [];
+        }
+    };
+
+    flock.scheduler.repeat.clearAll = function (listeners, onFinished, onClearAll) {
+        for (var interval in listeners) {
+            flock.scheduler.repeat.clearInterval(interval, listeners, onFinished);
+        }
+
+        onClearAll();
+    };
+
+    flock.scheduler.repeat.clearInterval = function (interval, listeners, onFinished) {
+        var listenersForInterval = listeners[interval];
+
+        if (!listenersForInterval) {
+            return;
+        }
+
+        for (var i = 0; i < listenersForInterval.length; i++) {
+            var listener = listenersForInterval[i];
+            onFinished(interval, listener);
+        }
+    };
+
+
+    fluid.defaults("flock.scheduler.once", {
+        gradeNames: ["flock.scheduler", "autoInit"],
+
+        members: {
+            listeners: []
+        },
+
+        components: {
+            clock: {
+                type: "flock.scheduler.webWorkerScheduleClock"
+            }
+        },
+
+        invokers: {
+            schedule: {
+                funcName: "flock.scheduler.once.schedule",
+                args: [
+                    "{arguments}.0", // The scheduled time.
+                    "{arguments}.1", // The listener.
+                    "{timeConverter}",
+                    "{that}.clear",
+                    "{that}.events.onScheduled.fire"
+                ]
+            },
+
+            clear: "{that}.events.onFinished.fire",
+
+            clearAll: {
+                funcName: "flock.scheduler.once.clearAll",
+                args: [
+                    "{that}.listeners",
+                    "{that}.events.onFinished.fire",
+                    "{that}.events.onClearAll.fire"
+                ]
+            }
+        },
+
+        listeners: {
+            onScheduled: [
+                {
+                    funcName: "flock.scheduler.addListener",
+                    args: [
+                        "{arguments}.1", // The listener.
+                        "{that}.listeners", // All registered listeners.
+                        "{that}.clock.events.tick.addListener"
+                    ]
+                },
+                {
+                    func: "{that}.clock.schedule",
+                    args: ["{arguments}.0"]
+                }
+            ],
+            onFinished: {
+                funcName: "flock.scheduler.removeListener",
+                args: [
+                    "{arguments}.0",    // The listener.
+                    "{that}.listeners", // All registered listeners.
+                    "{that}.clock.events.tick.removeListener"
+                ]
+            }
+        }
+    });
+
+    flock.scheduler.once.wrapValueListener = function (value, listener, removeFn) {
+        var wrapper = function (time) {
+            if (time === value) {
+                listener(time);
+                removeFn(wrapper);
+            }
+        };
+
+        wrapper.wrappedListener = listener;
+
+        return wrapper;
+    };
+
+    flock.scheduler.once.schedule = function (time, listener, timeConverter, removeFn, onScheduled) {
+        time = timeConverter.value(time);
+        listener = flock.scheduler.async.prepareListener(listener);
+
+        var wrapper = flock.scheduler.once.wrapValueListener(time, listener, removeFn);
+        onScheduled(time, wrapper);
+
+        return wrapper;
+    };
+
+    flock.scheduler.once.clearAll = function (listeners, onFinished, onClearAll) {
+        for (var i = 0; i < listeners.length; i++) {
+            onFinished(listeners[i]);
+        }
+
+        onClearAll();
     };
 
 
     fluid.defaults("flock.scheduler.async", {
         gradeNames: ["fluid.standardComponent", "autoInit"],
+
+        subSchedulerOptions: {
+            components: {
+                timeConverter: "{async}.timeConverter"
+            },
+
+            listeners: {
+                "{async}.events.onClear": "{that}.clear()",
+                "{async}.events.onClearAll": "{that}.clearAll()",
+                "{async}.events.onEnd": "{that}.clock.end()"
+            }
+        },
+
+        distributeOptions: {
+            source: "{that}.options.subSchedulerOptions",
+            removeSource: true,
+            target: "{that flock.scheduler}.options"
+        },
+
         components: {
             timeConverter: {
                 type: "flock.convert.seconds"
             },
-            intervalClock: {
-                type: "flock.scheduler.webWorkerIntervalClock"
+
+            onceScheduler: {
+                type: "flock.scheduler.once"
             },
-            scheduleClock: {
-                type: "flock.scheduler.webWorkerScheduleClock"
+
+            repeatScheduler: {
+                type: "flock.scheduler.repeat"
             }
+        },
+
+        invokers: {
+            /**
+             * Schedules a listener to be invoked repeatedly at the specified interval.
+             *
+             * @param {Number} interval the interval to schedule
+             * @param {Function} listener the listener to invoke
+             */
+            repeat: {
+                func: "{repeatScheduler}.schedule",
+                args: ["{arguments}.0", "{arguments}.1"]
+            },
+
+            /**
+             * Schedules a listener to be invoked once at a future time.
+             *
+             * @param {Number} time the time (relative to now) when the listener should be invoked
+             * @param {Function} listener the listener to invoke
+             */
+            once: {
+                func: "{onceScheduler}.schedule",
+                args: ["{arguments}.0", "{arguments}.1"]
+            },
+
+            /**
+             * Schedules a series of "once" events.
+             *
+             * @param {Array} times an array of times to schedule
+             * @param {Object} changeSpec the change spec that should be applied
+             */
+            sequence: {
+                funcName: "flock.scheduler.async.sequence",
+                args: [
+                    "{arguments}.0", // Array of times to schedule.
+                    "{arguments}.1", // The changeSpec to schedule.
+                    "{that}.once"
+                ]
+            },
+
+            /**
+             * Schedules a score.
+             *
+             * @param {Array} score an array of score object
+             */
+            schedule: {
+                funcName: "flock.scheduler.async.schedule",
+                args: ["{arguments}.0", "{that}"]
+            },
+
+            /**
+             * Deprecated.
+             *
+             * Clears a previously-registered listener.
+             *
+             * Note that this function is relatively ineffecient, and
+             * a direct call to the clear() method of either the repeatScheduler
+             * or the onceScheduler is more effective.
+             *
+             * @param {Function} listener the listener to clear
+             */
+            clear: "{that}.events.onClear.fire",
+
+            /**
+             * Clears all listeners for all scheduled and repeating events.
+             */
+            clearAll: "{that}.events.onClearAll.fire",
+
+            /**
+             * Clears all registered listeners and stops this scheduler's
+             * clocks.
+             */
+            end: "{that}.events.onEnd.fire"
+        },
+
+        events: {
+            onClear: null,
+            onClearAll: null,
+            onEnd: null
+        },
+
+        listeners: {
+            onCreate: "{that}.schedule({that}.options.score)",
+            onEnd: "{that}.clearAll",
+            onDestroy: "{that}.end()"
         }
     });
 
-    // TODO: Duplication!
-    flock.scheduler.async.finalInit = function (that) {
-        that.intervalListeners = {};
-        that.scheduleListeners = [];
+    flock.scheduler.async.sequence = function (times, changeSpec, onceFn) {
+        var listeners = [];
 
-        that.addIntervalListener = function (interval, fn) {
-            var listener = flock.scheduler.makeRepeatingValueListener(interval, fn);
-            listener.wrappedListener = fn;
-            that.intervalListeners[interval] = that.intervalListeners[interval] || [];
-            that.intervalListeners[interval].push(listener);
-            that.intervalClock.events.tick.addListener(listener);
+        for (var i = 0; i < times.length; i++) {
+            var listener = onceFn(times[i], changeSpec);
+            listeners.push(listener);
+        }
 
-            return listener;
-        };
+        return listeners;
+    };
 
-        that.addScheduleListener = function (time, fn) {
-            var listener = flock.scheduler.makeOneShotValueListener(time, fn, that.clear);
-            listener.wrappedListener = fn;
-            that.scheduleListeners.push(listener);
-            that.scheduleClock.events.tick.addListener(listener);
+    // TODO: This function is implemented suspiciously.
+    flock.scheduler.async.schedule = function (schedules, that) {
+        if (!schedules) {
+            return;
+        }
 
-            return listener;
-        };
+        schedules = flock.isIterable(schedules) ? schedules : [schedules];
 
-        that.scheduleChange = function (time, changeSpec, addListenerFn, clock) {
-            var ms = that.timeConverter.value(time),
-                fn = flock.scheduler.async.prepareSchedulerFn(changeSpec, that.events),
-                listener = addListenerFn(ms, fn);
-
-            clock.schedule(ms);
-            return listener;
-        };
-
-        that.repeat = function (interval, changeSpec) {
-            return that.scheduleChange(interval, changeSpec, that.addIntervalListener, that.intervalClock);
-        };
-
-        that.once = function (time, changeSpec) {
-            return that.scheduleChange(time, changeSpec, that.addScheduleListener, that.scheduleClock);
-        };
-
-        that.sequence = function (times, changeSpec) {
-            var listeners = [],
-                listener;
-
-            for (var i = 0; i < times.length; i++) {
-                listener = that.once(times[i], changeSpec);
-                listeners.push(listener);
-            }
-
-            return listeners;
-        };
-
-        that.schedule = function (schedules) {
-            schedules = flock.isIterable(schedules) ? schedules : [schedules];
-
-            var i,
-                schedule;
-
-            for (i = 0; i < schedules.length; i++) {
-                schedule = schedules[i];
-                flock.invoke(that, schedule.interval, [schedule.time, schedule.change]);
-            }
-        };
-
-        that.clear = function (listener) {
-            if (!listener) {
-                return;
-            }
-
-            // TODO: Rather inefficient.
-            var idx = that.scheduleListeners.indexOf(listener),
-                interval;
-            if (idx > -1) {
-                that.scheduleClock.events.tick.removeListener(listener);
-                that.scheduleListeners.splice(idx, 1);
-                return;
-            }
-
-            that.intervalClock.events.tick.removeListener(listener);
-            for (interval in that.intervalListeners) {
-                idx = that.intervalListeners[interval].indexOf(listener);
-                if (idx > -1) {
-                    that.intervalListeners[interval].splice(idx, 1);
-                }
-            }
-        };
-
-        that.clearRepeat = function (interval) {
-            that.intervalClock.clear(interval);
-
-            var listeners = that.intervalListeners[interval],
-                i,
-                listener;
-
-            if (!listeners) {
-                return;
-            }
-
-            for (i = 0; i < listeners.length; i++) {
-                listener = listeners[i];
-                that.intervalClock.events.tick.removeListener(listener);
-            }
-            listeners.length = 0;
-
-            return listener;
-        };
-
-        that.clearAll = function () {
-            that.intervalClock.clearAll();
-            for (var interval in that.intervalListeners) {
-                that.clearRepeat(interval);
-            }
-
-            that.scheduleClock.clearAll();
-            for (var listener in that.scheduleListeners) {
-                that.clear(listener);
-            }
-        };
-
-        that.end = function () {
-            that.intervalClock.end();
-            that.scheduleClock.end();
-        };
-
-        if (that.options.score) {
-            that.schedule(that.options.score);
+        for (var i = 0; i < schedules.length; i++) {
+            var schedule = schedules[i];
+            flock.invoke(that, schedule.interval, [schedule.time, schedule.change]);
         }
     };
 
-    flock.scheduler.async.prepareSchedulerFn = function (changeSpec, events) {
-        var type = typeof changeSpec,
-            fn;
-
-        if (type === "function") {
-            // The user has scheduled a raw function pointer.
-            fn = changeSpec;
-        } else if (type === "string") {
-            // An event was scheduled by name.
-            fn = events[changeSpec].fire;
-        } else {
-            // A change spec object was scheduled.
-            fn = flock.scheduler.async.evaluateChangeSpec(changeSpec);
-        }
-
-        return fn;
+    flock.scheduler.async.prepareListener = function (changeSpec) {
+        return typeof changeSpec === "function" ? changeSpec :
+            flock.scheduler.async.evaluateChangeSpec(changeSpec);
     };
 
     flock.scheduler.async.evaluateChangeSpec = function (changeSpec) {
@@ -15132,7 +15369,13 @@ var fluid = fluid || require("infusion"),
             // TODO: Hardcoded to the shared environment.
             var targetSynth = typeof changeSpec.synth === "string" ?
                 flock.environment.namedNodes[changeSpec.synth] : changeSpec.synth;
-            targetSynth.set(staticChanges);
+
+            if (!targetSynth) {
+                flock.fail("The Flocking environment doesn't have a registered node named " +
+                    changeSpec.synth);
+            } else {
+                targetSynth.set(staticChanges);
+            }
         };
     };
 
@@ -15158,31 +15401,42 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.convert");
 
-    flock.convert.makeStatelessConverter = function (convertFn) {
-        return function () {
-            return {
-                value: convertFn
-            };
-        };
+    fluid.defaults("flock.convert.ms", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        invokers: {
+            value: "fluid.identity({arguments}.0)"
+        }
+    });
+
+
+    fluid.defaults("flock.convert.seconds", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        invokers: {
+            value: "flock.convert.seconds.toMillis({arguments}.0)"
+        }
+    });
+
+    flock.convert.seconds.toMillis = function (secs) {
+        return secs * 1000;
     };
 
-    flock.convert.ms = flock.convert.makeStatelessConverter(fluid.identity);
-
-    flock.convert.seconds = flock.convert.makeStatelessConverter(function (secs) {
-        return secs * 1000;
-    });
 
     fluid.defaults("flock.convert.beats", {
-        gradeNames: ["fluid.littleComponent", "autoInit"],
-        bpm: 60
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        bpm: 60,
+
+        invokers: {
+            value: "flock.convert.beats.toMillis({arguments}.0, {that}.options.bpm)"
+        }
     });
 
-    flock.convert.beats.finalInit = function (that) {
-        that.value = function (beats) {
-            var bpm = that.options.bpm;
-            return bpm <= 0 ? 0 : (beats / bpm) * 60000;
-        };
+    flock.convert.beats.toMillis = function (beats, bpm) {
+        return bpm <= 0 ? 0 : (beats / bpm) * 60000;
     };
+
 }());
 ;/*
 * Flocking WebAudio Strategy
