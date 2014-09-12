@@ -1067,6 +1067,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.enviro.gen = function (nodeEvaluator) {
+        nodeEvaluator.clearBuses();
         nodeEvaluator.gen();
     };
 
@@ -1114,11 +1115,9 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    flock.enviro.nodeEvaluator.gen = function (numBuses, busLen, nodes, buses) {
+    flock.enviro.nodeEvaluator.gen = function (numBuses, busLen, nodes) {
         var i,
             node;
-
-        flock.enviro.nodeEvaluator.clearBuses(numBuses, busLen, buses);
 
         // Now evaluate each node.
         for (i = 0; i < nodes.length; i++) {

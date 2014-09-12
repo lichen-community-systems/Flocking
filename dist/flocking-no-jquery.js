@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (September 11, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (September 12, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof exports === "object") {
@@ -11705,6 +11705,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.enviro.gen = function (nodeEvaluator) {
+        nodeEvaluator.clearBuses();
         nodeEvaluator.gen();
     };
 
@@ -11752,11 +11753,9 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    flock.enviro.nodeEvaluator.gen = function (numBuses, busLen, nodes, buses) {
+    flock.enviro.nodeEvaluator.gen = function (numBuses, busLen, nodes) {
         var i,
             node;
-
-        flock.enviro.nodeEvaluator.clearBuses(numBuses, busLen, buses);
 
         // Now evaluate each node.
         for (i = 0; i < nodes.length; i++) {
@@ -14577,9 +14576,7 @@ var fluid = fluid || require("infusion"),
         gradeNames: ["fluid.eventedComponent", "autoInit"],
 
         events: {
-            tick: null,
-            onScheduled: null,
-            onClear: null
+            tick: null
         }
     });
 
@@ -14619,19 +14616,17 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    flock.scheduler.intervalClock.schedule = function (interval, scheduled, onTick, onScheduled) {
+    flock.scheduler.intervalClock.schedule = function (interval, scheduled, onTick) {
         var id = setInterval(function () {
             onTick(interval);
         }, interval);
         scheduled[interval] = id;
-        onScheduled(interval, id);
     };
 
-    flock.scheduler.intervalClock.clear = function (interval, scheduled, onClear) {
+    flock.scheduler.intervalClock.clear = function (interval, scheduled) {
         var id = scheduled[interval];
         clearInterval(id);
         delete scheduled[interval];
-        onClear(interval, id);
     };
 
     flock.scheduler.intervalClock.clearAll = function (scheduled, onClear) {
@@ -14677,41 +14672,31 @@ var fluid = fluid || require("infusion"),
             },
 
             end: "{that}.clearAll"
-        },
-
-        listeners: {
-            onClear: [
-                {
-                    func: "window.clearTimeout",
-                    args: ["{arguments}.0"]
-                }
-            ]
         }
     });
 
     flock.scheduler.scheduleClock.schedule = function (timeFromNow, scheduled, events) {
         var id;
         id = setTimeout(function () {
-            events.onClear.fire(id);
+            clearTimeout(id);
             events.tick.fire(timeFromNow);
         }, timeFromNow);
 
         scheduled.push(id);
-        events.onScheduled.fire(timeFromNow, id);
     };
 
-    flock.scheduler.scheduleClock.clear = function (id, idx, scheduled, onClear) {
+    flock.scheduler.scheduleClock.clear = function (id, idx, scheduled) {
         idx = idx === undefined ? scheduled.indexOf(id) : idx;
         if (idx > -1) {
             scheduled.splice(idx, 1);
-            onClear(id);
+            clearTimeout(id);
         }
     };
 
-    flock.scheduler.scheduleClock.clearAll = function (scheduled, onClear) {
+    flock.scheduler.scheduleClock.clearAll = function (scheduled) {
         for (var i = 0; i < scheduled.length; i++) {
             var id = scheduled[i];
-            onClear(id);
+            clearTimeout(id);
         }
 
         scheduled.length = 0;
@@ -14751,26 +14736,14 @@ var fluid = fluid || require("infusion"),
         },
 
         events: {
-            onMessage: null,
-            tick: {
-                event: "onMessage",
-                args: "{arguments}.0.data.value"
-            }
+            tick: null
         },
 
         listeners: {
-            onCreate: [
-                {
-                    "this": "{that}.worker",
-                    method: "addEventListener",
-                    args: ["message", "{that}.events.onMessage.fire", false]
-                },
-                {
-                    "this": "{that}.worker",
-                    method: "postMessage",
-                    args: ["{that}.options.startMsg"]
-                }
-            ]
+            onCreate: {
+                funcName: "flock.scheduler.webWorkerClock.init",
+                args: ["{that}"]
+            }
         },
 
         startMsg: {
@@ -14796,6 +14769,14 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
+
+    flock.scheduler.webWorkerClock.init = function (that) {
+        that.worker.addEventListener("message", function (e) {
+            that.events.tick.fire(e.data.value);
+        }, false);
+
+        that.worker.postMessage(that.options.startMsg);
+    };
 
     flock.scheduler.webWorkerClock.postToWorker = function (msgName, value, messages, worker) {
         var msg = messages[msgName];
@@ -15641,7 +15622,9 @@ var fluid = fluid || require("infusion"),
             krPeriods = m.krPeriods,
             evaluator = that.nodeEvaluator,
             buses = evaluator.buses,
+            nodes = evaluator.nodes,
             audioSettings = that.options.audioSettings,
+            numBuses = audioSettings.numBuses,
             blockSize = audioSettings.blockSize,
             playState = m.playState,
             chans = audioSettings.chans,
@@ -15665,6 +15648,8 @@ var fluid = fluid || require("infusion"),
         for (i = 0; i < krPeriods; i++) {
             var offset = i * blockSize;
 
+            flock.enviro.nodeEvaluator.clearBuses(numBuses, blockSize, buses);
+
             // Read this ScriptProcessorNode's input buffers
             // into the environment.
             if (hasInput) {
@@ -15679,7 +15664,7 @@ var fluid = fluid || require("infusion"),
                 }
             }
 
-            evaluator.gen();
+            flock.enviro.nodeEvaluator.gen(numBuses, blockSize, nodes, buses);
 
             // Output the environment's signal
             // to this ScriptProcessorNode's output channels.

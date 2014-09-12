@@ -58,9 +58,7 @@ var fluid = fluid || require("infusion"),
         gradeNames: ["fluid.eventedComponent", "autoInit"],
 
         events: {
-            tick: null,
-            onScheduled: null,
-            onClear: null
+            tick: null
         }
     });
 
@@ -100,19 +98,17 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    flock.scheduler.intervalClock.schedule = function (interval, scheduled, onTick, onScheduled) {
+    flock.scheduler.intervalClock.schedule = function (interval, scheduled, onTick) {
         var id = setInterval(function () {
             onTick(interval);
         }, interval);
         scheduled[interval] = id;
-        onScheduled(interval, id);
     };
 
-    flock.scheduler.intervalClock.clear = function (interval, scheduled, onClear) {
+    flock.scheduler.intervalClock.clear = function (interval, scheduled) {
         var id = scheduled[interval];
         clearInterval(id);
         delete scheduled[interval];
-        onClear(interval, id);
     };
 
     flock.scheduler.intervalClock.clearAll = function (scheduled, onClear) {
@@ -158,41 +154,31 @@ var fluid = fluid || require("infusion"),
             },
 
             end: "{that}.clearAll"
-        },
-
-        listeners: {
-            onClear: [
-                {
-                    func: "window.clearTimeout",
-                    args: ["{arguments}.0"]
-                }
-            ]
         }
     });
 
     flock.scheduler.scheduleClock.schedule = function (timeFromNow, scheduled, events) {
         var id;
         id = setTimeout(function () {
-            events.onClear.fire(id);
+            clearTimeout(id);
             events.tick.fire(timeFromNow);
         }, timeFromNow);
 
         scheduled.push(id);
-        events.onScheduled.fire(timeFromNow, id);
     };
 
-    flock.scheduler.scheduleClock.clear = function (id, idx, scheduled, onClear) {
+    flock.scheduler.scheduleClock.clear = function (id, idx, scheduled) {
         idx = idx === undefined ? scheduled.indexOf(id) : idx;
         if (idx > -1) {
             scheduled.splice(idx, 1);
-            onClear(id);
+            clearTimeout(id);
         }
     };
 
-    flock.scheduler.scheduleClock.clearAll = function (scheduled, onClear) {
+    flock.scheduler.scheduleClock.clearAll = function (scheduled) {
         for (var i = 0; i < scheduled.length; i++) {
             var id = scheduled[i];
-            onClear(id);
+            clearTimeout(id);
         }
 
         scheduled.length = 0;
@@ -232,26 +218,14 @@ var fluid = fluid || require("infusion"),
         },
 
         events: {
-            onMessage: null,
-            tick: {
-                event: "onMessage",
-                args: "{arguments}.0.data.value"
-            }
+            tick: null
         },
 
         listeners: {
-            onCreate: [
-                {
-                    "this": "{that}.worker",
-                    method: "addEventListener",
-                    args: ["message", "{that}.events.onMessage.fire", false]
-                },
-                {
-                    "this": "{that}.worker",
-                    method: "postMessage",
-                    args: ["{that}.options.startMsg"]
-                }
-            ]
+            onCreate: {
+                funcName: "flock.scheduler.webWorkerClock.init",
+                args: ["{that}"]
+            }
         },
 
         startMsg: {
@@ -277,6 +251,14 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
+
+    flock.scheduler.webWorkerClock.init = function (that) {
+        that.worker.addEventListener("message", function (e) {
+            that.events.tick.fire(e.data.value);
+        }, false);
+
+        that.worker.postMessage(that.options.startMsg);
+    };
 
     flock.scheduler.webWorkerClock.postToWorker = function (msgName, value, messages, worker) {
         var msg = messages[msgName];

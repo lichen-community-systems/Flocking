@@ -210,7 +210,9 @@ var fluid = fluid || require("infusion"),
             krPeriods = m.krPeriods,
             evaluator = that.nodeEvaluator,
             buses = evaluator.buses,
+            nodes = evaluator.nodes,
             audioSettings = that.options.audioSettings,
+            numBuses = audioSettings.numBuses,
             blockSize = audioSettings.blockSize,
             playState = m.playState,
             chans = audioSettings.chans,
@@ -234,6 +236,8 @@ var fluid = fluid || require("infusion"),
         for (i = 0; i < krPeriods; i++) {
             var offset = i * blockSize;
 
+            flock.enviro.nodeEvaluator.clearBuses(numBuses, blockSize, buses);
+
             // Read this ScriptProcessorNode's input buffers
             // into the environment.
             if (hasInput) {
@@ -248,7 +252,7 @@ var fluid = fluid || require("infusion"),
                 }
             }
 
-            evaluator.gen();
+            flock.enviro.nodeEvaluator.gen(numBuses, blockSize, nodes, buses);
 
             // Output the environment's signal
             // to this ScriptProcessorNode's output channels.
