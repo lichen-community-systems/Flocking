@@ -19,7 +19,8 @@ var fluid = fluid || require("infusion");
             groups: [
                 "{osc}.options.demos",
                 "{noise}.options.demos",
-                "{granular}.options.demos"
+                "{granular}.options.demos",
+                "{browser}.options.demos"
             ],
             defaultOption: "am"
         },
@@ -35,6 +36,10 @@ var fluid = fluid || require("infusion");
 
             granular: {
                 type: "flock.playground.demos.granular"
+            },
+
+            browser: {
+                type: "flock.playground.demos.browser"
             }
         }
     });
@@ -117,6 +122,20 @@ var fluid = fluid || require("infusion");
                 {
                     id: "granulator",
                     name: "Granulator"
+                }
+            ]
+        }
+    });
+
+    fluid.defaults("flock.playground.demos.browser", {
+        gradeNames: ["fluid.littleComponent", "autoInit"],
+
+        demos: {
+            name: "Browser unit generators",
+            options: [
+                {
+                    id: "scope",
+                    name: "Scope"
                 }
             ]
         }
