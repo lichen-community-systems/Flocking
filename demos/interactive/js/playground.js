@@ -42,9 +42,10 @@ var fluid = fluid || require("infusion"),
                 container: "{that}.dom.editor",
                 options: {
                     listeners: {
-                        afterContentReplaced: {
-                            func: "{playground}.detectSourceType"
-                        }
+                        onChange: [
+                            "{playground}.detectSourceType()",
+                            "{playground}.events.onSourceUpdated.fire()"
+                        ]
                     }
                 }
             },

@@ -104,32 +104,14 @@ var fluid = fluid || require("infusion"),
         gradeNames: ["flock.playground", "autoInit"],
 
         components: {
-            viewToggleButton: {
-                type: "flock.playground.editorModeToggle",
-                container: "{that}.dom.synthSelector",
-                options: {
-                    selfRender: true,
-                    model: {
-                        isEnabled: true
-                    },
-                    modelListeners: {
-                        "isEnabled": [
-                            {
-                                func: "{visual}.events.onSourceUpdated.fire"
-                            },
-                            {
-                                "this": "{editor}.editor",
-                                method: "refresh"
-                            }
-                        ]
-                    }
-                }
-            },
-
             visualView: {
                 type: "flock.playground.visualView",
                 container: "#visual-view"
             }
+        },
+
+        events: {
+            onChange: "{editor}.events.onChange"
         },
 
         selectors: {
@@ -139,11 +121,19 @@ var fluid = fluid || require("infusion"),
 
         modelListeners: {
             isDeclarative: {
-                funcName: "flock.playground.visual.updateToggleButton",
-                args: ["{change}.value", "{viewToggleButton}.container"]
+                funcName: "flock.playground.visual.updateVisualView",
+                args: ["{change}.value", "{that}.dom.visual"]
             }
         }
     });
+
+    flock.playground.visual.updateVisualView = function (isActive, visualView) {
+        if (isActive) {
+            visualView.show();
+        } else {
+            visualView.hide();
+        }
+    };
 
     flock.playground.visual.updateToggleButton = function (isDeclarative, button) {
         button.attr("disabled", !isDeclarative);
@@ -174,6 +164,10 @@ var fluid = fluid || require("infusion"),
 
                     model: {
                         synthSpec: "{playground}.model.activeSynthSpec"
+                    },
+
+                    listeners: {
+                        "{editor}.events.onChange": "{that}.refreshView()"
                     }
                 }
             }
@@ -284,7 +278,6 @@ var fluid = fluid || require("infusion"),
             refreshView: {
                 funcName: "flock.ui.nodeRenderers.synth.refreshView",
                 args: [
-                    "{viewToggleButton}.model.isEnabled",
                     "{that}",
                     "{that}.applier",
                     "{that}.container",
@@ -421,7 +414,7 @@ var fluid = fluid || require("infusion"),
             g.addEdge(null, edge.source, edge.target);
         });
 
-        var outputGraph = dagre.layout().rankDir("RL").rankSep(75).run(g);
+        var outputGraph = dagre.layout().rankDir("BT").rankSep(100).nodeSep(25).run(g);
 
         // Position the nodes.
         outputGraph.eachNode(function (id, graphNode) {
@@ -437,6 +430,10 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.ui.nodeRenderers.synth.clear = function (jsPlumb, container, ugenRenderers) {
+        if (!jsPlumb) {
+            return;
+        }
+
         jsPlumb.plumb.detachEveryConnection();
         container.children().remove();
 
@@ -448,6 +445,10 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.ui.nodeRenderers.synth.render = function (jsPlumb, synthDef, container, ugenRenderers) {
+        if (!jsPlumb) {
+            return;
+        }
+
         var expanded = flock.ui.nodeRenderers.synth.expandDef(synthDef);
         flock.ui.nodeRenderers.synth.accumulateRenderers(expanded, container, ugenRenderers);
 
@@ -456,25 +457,22 @@ var fluid = fluid || require("infusion"),
         flock.ui.nodeRenderers.synth.renderEdges(jsPlumb.plumb, graph.edges);
     };
 
-    flock.ui.nodeRenderers.synth.refreshView = function (isVisible, that, applier, container, synthSpec, afterRender) {
+    flock.ui.nodeRenderers.synth.refreshView = function (that, applier, container, synthSpec, afterRender) {
         if (!synthSpec || !synthSpec.synthDef || $.isEmptyObject(synthSpec.synthDef)) {
             return;
         }
 
         flock.ui.nodeRenderers.synth.clear(that.jsPlumb, container, that.ugenRenderers);
-
-        if (isVisible) {
-            flock.ui.nodeRenderers.synth.render(that.jsPlumb, synthSpec.synthDef, container, that.ugenRenderers);
-        }
+        flock.ui.nodeRenderers.synth.render(that.jsPlumb, synthSpec.synthDef, container, that.ugenRenderers);
 
         afterRender();
     };
 
     flock.ui.nodeRenderers.synth.renderEdges = function (plumb, edges) {
-        fluid.each(edges, function (edge) {
+        fluid.each(edges, function (edge, idx) {
             plumb.connect({
                 source: plumb.addEndpoint(edge.target, {
-                    anchor: "Right",
+                    anchor: "Bottom",
                     width: 2,
                     endpoint: [
                         "Dot",
@@ -501,7 +499,8 @@ var fluid = fluid || require("infusion"),
                 overlays: [
                     [
                         "Label", {
-                            label: edge.label
+                            label: edge.label,
+                            location: idx % 2 ? 0.5 : 0.3
                         }
                     ],
                     [

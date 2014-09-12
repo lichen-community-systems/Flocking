@@ -84,19 +84,21 @@ label {
 
 .mainPanel {
     height: 100%;
-    width: 100%;
+    width: 50%;
     padding-top: 6.75em;
 }
 
 #source-view {
     font-size: 12pt;
+    float: left;
+    border-right: 1px dotted #aaa;
 }
 
 #visual-view {
     color: #fff;
     overflow: auto;
     position: relative;
-    height: 100%;
+    float: right;
 }
 
 .CodeMirror {
@@ -137,7 +139,7 @@ label {
 }
 
 .node.flock\.ugen\.value {
-    width: 4%;
+    width: 6%;
     height: 5%;
     font-family: monospace;
     font-weight: normal;

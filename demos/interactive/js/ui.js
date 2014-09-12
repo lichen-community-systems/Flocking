@@ -44,7 +44,8 @@ var fluid = fluid || require("infusion"),
         },
 
         events: {
-            afterContentReplaced: null
+            afterContentReplaced: null,
+            onChange: null
         },
 
         cmOptions: {
@@ -59,6 +60,14 @@ var fluid = fluid || require("infusion"),
             indentUnit: 4,
             tabSize: 4,
             lineNumbers: true
+        },
+
+        listeners: {
+            onCreate: {
+                "this": "{that}.editor",
+                method: "on",
+                args: ["change", "{that}.events.onChange.fire"]
+            }
         }
     });
 
