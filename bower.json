@@ -22,7 +22,7 @@
         "package.json"
     ],
     "dependencies": {
-        "jsPlumb": "1.6.2"
+        "jsPlumb": "1.6.4"
     },
     "devDependencies": {}
 }
