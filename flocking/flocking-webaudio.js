@@ -33,7 +33,12 @@ var fluid = fluid || require("infusion"),
             // TODO: Resolve this with the isPlaying model field in flock.enviro.
             isGenerating: false,
             hasInput: false,
-            krPeriods: "@expand:flock.audioStrategy.web.calcNumBlocks({that}.options.audioSettings)"
+            krPeriods: {
+                expander: {
+                    funcName: "flock.audioStrategy.web.calcNumBlocks",
+                    args: "{that}.options.audioSettings"
+                }
+            }
         },
 
         members: {
@@ -50,6 +55,7 @@ var fluid = fluid || require("infusion"),
 
         invokers: {
             // TODO: Rename to "start"
+            // TODO: Implement this like flock.enviro's equivalent invokers.
             startGeneratingSamples: {
                 funcName: "flock.audioStrategy.web.start",
                 args: [
@@ -63,6 +69,7 @@ var fluid = fluid || require("infusion"),
             },
 
             // TODO: Rename to "stop"
+            // TODO: Implement this like flock.enviro's equivalent invoker.
             stopGeneratingSamples: {
                 funcName: "flock.audioStrategy.web.stop",
                 args: [
@@ -107,6 +114,10 @@ var fluid = fluid || require("infusion"),
 
         listeners: {
             onCreate: [
+                {
+                    funcName: "flock.audioStrategy.created",
+                    args: "{that}"
+                },
                 {
                     funcName: "flock.audioStrategy.web.bindAudioProcessEvent",
                     args: ["{that}.jsNode", "{that}.writeSamples"]

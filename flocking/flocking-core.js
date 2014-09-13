@@ -875,7 +875,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.audioStrategy", {
-        gradeNames: ["fluid.standardComponent", "autoInit"],
+        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
 
         components: {
             nodeEvaluator: {
@@ -886,7 +886,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.enviro", {
-        gradeNames: ["fluid.standardComponent", "flock.nodeList", "autoInit"],
+        gradeNames: ["fluid.standardRelayComponent", "flock.nodeList", "autoInit"],
 
         model: {
             playState: {
@@ -945,10 +945,9 @@ var fluid = fluid || require("infusion"),
                 funcName: "flock.enviro.play",
                 args: [
                     "{arguments}.0",
-                    "{that}.model",
+                    "{that}.model.playState.written",
                     "{that}.applier",
-                    "{that}.audioSettings",
-                    "{that}.events.onPlay.fire"
+                    "{that}.audioSettings"
                 ]
             },
 
@@ -956,11 +955,8 @@ var fluid = fluid || require("infusion"),
              * Stops generating samples.
              */
             stop: {
-                funcName: "flock.enviro.stop",
-                args: [
-                    "{that}.applier",
-                    "{that}.events.onStop.fire"
-                ]
+                changePath: "isPlaying",
+                value: false
             },
 
             /**
@@ -1008,6 +1004,18 @@ var fluid = fluid || require("infusion"),
             }
         },
 
+        modelListeners: {
+            "isPlaying": {
+                funcName: "flock.enviro.firePlaybackStateEvent",
+                args: [
+                    "{change}.value",
+                    "{that}.events.onPlay.fire",
+                    "{that}.events.onStop.fire",
+                    "{that}.model.playState.dur"
+                ]
+            }
+        },
+        
         components: {
             asyncScheduler: {
                 type: "flock.scheduler.async"
@@ -1034,21 +1042,22 @@ var fluid = fluid || require("infusion"),
         audioSettings.chans = audioStrategySettings.chans;
     };
 
-    flock.enviro.play = function (dur, model, applier, audioSettings, onPlay) {
-        dur = dur === undefined ? Infinity : dur;
-
-        var playState = model.playState,
-            sps = dur * audioSettings.rates.audio * audioSettings.chans,
-            totalSamples = playState.written + sps;
-
-        applier.requestChange("playState.total", totalSamples);
-        applier.requestChange("isPlaying", true);
-        onPlay(dur);
+    flock.enviro.firePlaybackStateEvent = function (isPlaying, onPlay, onStop, dur) {
+        (isPlaying ? onPlay : onStop)(dur);
     };
+    
+    flock.enviro.play = function (dur, written, applier, audioSettings) {
+        dur = dur === undefined ? Infinity : dur;
+        var sps = dur * audioSettings.rates.audio * audioSettings.chans;
 
-    flock.enviro.stop = function (applier, onStop) {
-        applier.requestChange("isPlaying", false);
-        onStop();
+        applier.change("", {
+            playState: {
+                dur: dur,
+                total: written + sps
+            },
+            
+            isPlaying: true
+        });        
     };
 
     flock.enviro.registerBuffer = function (bufDesc, buffers) {
@@ -1137,7 +1146,7 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.autoEnviro", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.littleComponent", "autoInit"],
 
         members: {
             enviro: "@expand:flock.autoEnviro.initEnvironment()"
@@ -1153,7 +1162,7 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.node", {
-        gradeNames: ["flock.autoEnviro", "fluid.standardComponent", "autoInit"],
+        gradeNames: ["flock.autoEnviro", "fluid.standardRelayComponent", "autoInit"],
         model: {}
     });
 
@@ -1831,7 +1840,7 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.synth.voiceAllocator", {
-        gradeNames: ["fluid.standardComponent", "autoInit"],
+        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
 
         maxVoices: 16,
         amplitudeNormalizer: "static", // "dynamic", "static", Function, falsey

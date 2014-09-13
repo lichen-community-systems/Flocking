@@ -377,18 +377,10 @@ var fluid = fluid || require("infusion"),
         },
 
         invokers: {
-            reset: {
-                func: "{that}.applier.change",
-                args: ["didGen", false]
-            }
+            gen: "{that}.applier.change(didGen, true)",
+            reset: "{that}.applier.change(didGen, false)"
         }
     });
-
-    flock.test.genReportSynth.finalInit = function (that) {
-        that.gen = function () {
-            that.applier.change("didGen", true);
-        };
-    };
 
     var testEnviroGraph = function (fn) {
         var audioSettings = flock.environment.audioSettings;

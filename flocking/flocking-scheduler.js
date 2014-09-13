@@ -382,7 +382,7 @@ var fluid = fluid || require("infusion"),
      **************/
 
     fluid.defaults("flock.scheduler", {
-        gradeNames: ["fluid.standardComponent", "autoInit"],
+        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
 
         events: {
             onScheduled: null,
@@ -649,7 +649,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.scheduler.async", {
-        gradeNames: ["fluid.standardComponent", "autoInit"],
+        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
 
         subSchedulerOptions: {
             components: {
