@@ -230,8 +230,12 @@ var fluid = fluid || require("infusion"),
             return false;
         }
 
-        var defaults = fluid.defaults(ugenName),
-            defaultUGenOpts = defaults.ugenOptions;
+        var defaults = fluid.defaults(ugenName);
+        if (!defaults) {
+            return false;
+        }
+
+        var defaultUGenOpts = defaults.ugenOptions;
 
         return defaultUGenOpts && defaultUGenOpts.tags && defaultUGenOpts.tags.indexOf(tagName) > -1;
     };

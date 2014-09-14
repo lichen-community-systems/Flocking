@@ -44,16 +44,16 @@ label {
 .toolbar .right {
     float: right;
 }
+
 .synthSelector {
     float: left;
     margin-top: 0.45em;
 }
+
 #gfx {
-    background-color: #272822;
-    height: 100%;
-    position: absolute;
-    width: 100%;
-    z-index: -1;
+    float: right;
+    padding-right: 1em;
+    padding-top: 0.25em;
 }
 
 .playSynth .playButton {
@@ -93,6 +93,7 @@ label {
     height: 100%;
     width: 50%;
     padding-top: 3.1em;
+    background-color: #272822;
 }
 
 #source-view {

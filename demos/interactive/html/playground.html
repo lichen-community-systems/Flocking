@@ -22,7 +22,7 @@
         <script src="../../../bower_components/codemirror/addon/lint/lint.js"></script>
         <script src="../../../bower_components/codemirror/addon/lint/javascript-lint.js"></script>
         <script src="../../../bower_components/codemirror/addon/lint/json-lint.js"></script>
-        <script src="../../../bower_components/jsonlint/web/jsonlint.js"></script>
+        <script src="../../../bower_components/jsonlint/lib/jsonlint.js"></script>
 
         <script src="../../../third-party/infusion/js/Fluid.js"></script>
         <script src="../../../third-party/infusion/js/FluidDocument.js"></script>
@@ -59,12 +59,6 @@
 
     <body>
         <div class="everything">
-
-            <!-- Waveform View -->
-            <div id="gfxContainer" class="right">
-                <canvas id="gfx" height="45" width="240"></canvas>
-            </div>
-
             <header class="masthead">
                 <!-- Control for selecting a demo -->
                 <div class="synthSelector">
@@ -75,6 +69,10 @@
                 <div class="playSynth">
                     <!-- Play Button -->
                     <button id="playButton" class="playButton paused icon-">Play</button>
+                </div>
+                <!-- Waveform View -->
+                <div id="gfxContainer" class="right">
+                    <canvas id="gfx" height="30" width="240"></canvas>
                 </div>
             </header>
 

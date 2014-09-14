@@ -20,7 +20,11 @@ var fluid = fluid || require("infusion"),
      **********************/
 
     fluid.defaults("flock.ui.codeMirror", {
-        gradeNames: ["fluid.lintingCodeMirror", "autoInit"],
+        gradeNames: ["fluid.lintingCodeMirror", "fluid.modelComponent", "autoInit"],
+
+        model: {
+            lastChange: {}
+        },
 
         codeMirrorOpts:[
             "lineNumbers",
@@ -44,11 +48,48 @@ var fluid = fluid || require("infusion"),
         lineNumbers: true,
         gutters: ["CodeMirror-lint-markers"],
 
+        changeEventDelay: 250,
+
         invokers: {
             createEditor: "CodeMirror({that}.container.0, {arguments}.0)"
+        },
+
+        events: {
+            onValidChange: null
+        },
+
+        listeners: {
+            onValidatedContentChange: {
+                funcName: "flock.ui.codeMirror.throttleContentValidation",
+                args: [
+                    "{arguments}.1", // Is valid?
+                    "{that}.model.lastChange",
+                    "{that}.options.changeEventDelay",
+                    "{that}.applier",
+                    "{that}.events.onValidChange.fire"
+                ]
+            }
         }
     });
 
+    flock.ui.codeMirror.throttleContentValidation = function (isValid, lastChange, changeEventDelay, applier, onValidChange) {
+        if (!isValid) {
+            return;
+        }
+
+        if (lastChange.id) {
+            clearTimeout(lastChange.id);
+        }
+
+        var id = setTimeout(function () {
+            onValidChange();
+            applier.change("lastChange", {});
+        }, changeEventDelay);
+
+        applier.change("lastChange", {
+            id: id
+        });
+    };
 
     fluid.defaults("flock.ui.toggleButton", {
         gradeNames: ["fluid.viewComponent", "autoInit"],

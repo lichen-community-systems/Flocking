@@ -42,9 +42,7 @@ var fluid = fluid || require("infusion"),
                 container: "{that}.dom.editor",
                 options: {
                     listeners: {
-                        onValidatedContentChange: [
-                            "{playground}.events.onSourceUpdated.fire()"
-                        ]
+                        onValidChange: "{playground}.events.onSourceUpdated.fire()"
                     }
                 }
             },
