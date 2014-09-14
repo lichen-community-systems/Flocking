@@ -104,11 +104,11 @@ var fluid = fluid || require("infusion");
                 {
                     id: "impulse",
                     name: "Impulse"
-                },
-                {
-                    id: "impulse-pm",
-                    name: "Impulse Phase Modulation"
                 }
+                // {
+                //     id: "impulse-pm",
+                //     name: "Impulse Phase Modulation"
+                // }
             ]
         }
     });
@@ -136,6 +136,27 @@ var fluid = fluid || require("infusion");
                 {
                     id: "scope",
                     name: "Scope"
+                },
+                {
+                    id: "mouse-x",
+                    name: "Mouse X axis"
+                },
+                {
+                    id: "mouse-y",
+                    name: "Mouse Y axis"
+                },
+                {
+                    id: "mouse-xy",
+                    name: "Mouse X and Y axes"
+                },
+                {
+                    id: "mouse-click",
+                    name: "Mouse click"
+                },
+                {
+                    id: "trigger-callback",
+                    name: "Trigger a callback",
+                    fileExt: "js"
                 }
             ]
         }

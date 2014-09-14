@@ -276,7 +276,8 @@ var fluid = fluid || require("infusion"),
             id: demoDefaults.id
         };
 
-        var url = demo.url || (demoDefaults.pathPrefix + demo.id + "." + demoDefaults.fileExt);
+        var fileExt = demo.fileExt || demoDefaults.fileExt,
+            url = demo.url || (demoDefaults.pathPrefix + demo.id + "." + fileExt);
 
         $.ajax({
             type: "get",

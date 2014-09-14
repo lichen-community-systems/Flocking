@@ -22,6 +22,7 @@ label {
 .everything {
     width: 100%;
     height: 100%;
+    background-color: #272822;
 }
 
 .toolbar {

@@ -10,7 +10,7 @@
             "options": {
                 "axis": "width",
                 "interpolation": "exponential",
-                "target": "#editorRegion"
+                "target": "#source-view"
             }
         },
         "mul": {
@@ -18,7 +18,7 @@
             "rate": "control",
             "options": {
                 "axis": "height",
-                "target": "#editorRegion"
+                "target": "#source-view"
             },
             "mul": 0.5
         }

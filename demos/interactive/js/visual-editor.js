@@ -284,6 +284,11 @@ var fluid = fluid || require("infusion"),
                     "{that}.events.afterRender.fire"
                 ],
                 dynamic: true
+            },
+
+            clear: {
+                funcName: "flock.ui.nodeRenderers.synth.clear",
+                args: ["{that}.jsPlumb", "{that}.container", "{that}.ugenRenderers"]
             }
         },
 
