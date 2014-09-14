@@ -110,10 +110,6 @@ var fluid = fluid || require("infusion"),
             }
         },
 
-        events: {
-            onChange: "{editor}.events.onChange"
-        },
-
         selectors: {
             visual: "#visual-view",
             synthSelector: ".synthSelector"
@@ -145,7 +141,7 @@ var fluid = fluid || require("infusion"),
      ***************/
 
     fluid.defaults("flock.playground.visualView", {
-        gradeNames: ["fluid.viewComponent", "autoInit"],
+        gradeNames: ["fluid.viewRelayComponent", "autoInit"],
 
         components: {
             jsPlumb: {
@@ -164,10 +160,6 @@ var fluid = fluid || require("infusion"),
 
                     model: {
                         synthSpec: "{playground}.model.activeSynthSpec"
-                    },
-
-                    listeners: {
-                        "{editor}.events.onChange": "{that}.refreshView()"
                     }
                 }
             }
@@ -175,8 +167,11 @@ var fluid = fluid || require("infusion"),
 
         events: {
             onReady: "{jsPlumb}.events.onReady"
-        }
+        },
 
+        modelListeners: {
+            "synthSpec": "{synthDefRenderer}.refreshView()"
+        }
     });
 
 

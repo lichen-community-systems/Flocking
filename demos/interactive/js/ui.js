@@ -19,67 +19,35 @@ var fluid = fluid || require("infusion"),
      * Code Mirror Editor *
      **********************/
 
-    fluid.defaults("flock.ui.codeEditor.cm", {
-        gradeNames: ["fluid.viewComponent", "autoInit"],
+    fluid.defaults("flock.ui.codeMirror", {
+        gradeNames: ["fluid.lintingCodeMirror", "autoInit"],
 
-        members: {
-            editor: {
-                expander: {
-                    func: "CodeMirror",
-                    args: ["{that}.container.0", "{that}.options.cmOptions"]
-                }
-            }
-        },
+        codeMirrorOpts:[
+            "lineNumbers",
+            "mode",
+            "gutters",
+            "autoCloseBrackets",
+            "tabSize",
+            "indentUnit",
+            "theme",
+            "smartIndent",
+            "matchBrackets"
+        ],
+
+        mode: "application/json",
+        autoCloseBrackets: true,
+        matchBrackets: true,
+        smartIndent: true,
+        theme: "flockingcm",
+        indentUnit: 4,
+        tabSize: 4,
+        lineNumbers: true,
+        gutters: ["CodeMirror-lint-markers"],
 
         invokers: {
-            setContent: {
-                funcName: "flock.ui.codeEditor.cm.setContent",
-                args: ["{arguments}.0", "{that}.editor", "{that}.events.afterContentReplaced.fire"]
-            },
-
-            getContent: {
-                funcName: "flock.ui.codeEditor.cm.getContent",
-                args: ["{that}.editor"]
-            }
-        },
-
-        events: {
-            afterContentReplaced: null,
-            onChange: null
-        },
-
-        cmOptions: {
-            mode: {
-                name: "javascript",
-                json: true
-            },
-            autoCloseBrackets: true,
-            matchBrackets: true,
-            smartIndent: true,
-            theme: "flockingcm",
-            indentUnit: 4,
-            tabSize: 4,
-            lineNumbers: true
-        },
-
-        listeners: {
-            onCreate: {
-                "this": "{that}.editor",
-                method: "on",
-                args: ["change", "{that}.events.onChange.fire"]
-            }
+            createEditor: "CodeMirror({that}.container.0, {arguments}.0)"
         }
     });
-
-    flock.ui.codeEditor.cm.getContent = function (editor) {
-        return editor.getDoc().getValue();
-    };
-
-    flock.ui.codeEditor.cm.setContent = function (code, editor, afterContentReplaced) {
-        var doc = editor.getDoc();
-        doc.setValue(code);
-        afterContentReplaced(code, doc);
-    };
 
 
     fluid.defaults("flock.ui.toggleButton", {

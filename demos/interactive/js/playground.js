@@ -38,12 +38,11 @@ var fluid = fluid || require("infusion"),
             },
 
             editor: {
-                type: "flock.ui.codeEditor.cm",
+                type: "flock.ui.codeMirror",
                 container: "{that}.dom.editor",
                 options: {
                     listeners: {
-                        onChange: [
-                            "{playground}.detectSourceType()",
+                        onValidatedContentChange: [
                             "{playground}.events.onSourceUpdated.fire()"
                         ]
                     }
@@ -87,13 +86,13 @@ var fluid = fluid || require("infusion"),
         invokers: {
             detectSourceType: {
                 funcName: "flock.playground.detectSourceType",
-                args: ["@expand:{editor}.getContent()", "{that}.applier"],
+                args: ["{editor}", "{that}.applier"],
                 dynamic: true
             },
 
             evaluateSource: {
                 funcName: "flock.playground.evaluateSource",
-                args: ["{arguments}.0", "@expand:{editor}.getContent()", "{that}.applier"],
+                args: ["{arguments}.0", "{editor}", "{that}.applier"],
                 dynamic: true
             }
         },
@@ -145,7 +144,13 @@ var fluid = fluid || require("infusion"),
     // TODO: Better JSON detection.
     // CodeMirror's JavaScript and JSON modes are the same,
     // so we have to detect declarative synths by brute force.
-    flock.playground.detectSourceType = function (source, applier) {
+    flock.playground.detectSourceType = function (editor, applier) {
+        if (!editor.editor || !editor.editor.getDoc()) {
+            return;
+        }
+
+        var source = editor.getContent();
+
         if (source.length < 1) {
             return;
         }
@@ -159,8 +164,14 @@ var fluid = fluid || require("infusion"),
         applier.change("isDeclarative", isJSON);
     };
 
-    flock.playground.evaluateSource = function (isJSON, source, applier) {
-        var fn = isJSON ? flock.playground.parseJSON : flock.playground.evaluateCode;
+    flock.playground.evaluateSource = function (isJSON, editor, applier) {
+        if (!editor.editor || !editor.editor.getDoc()) {
+            return;
+        }
+
+        var source = editor.getContent(),
+            fn = isJSON ? flock.playground.parseJSON : flock.playground.evaluateCode;
+
         fn(source, applier);
     };
 

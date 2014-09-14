@@ -7,7 +7,8 @@
         <title>Flocking Playground</title>
 
         <link rel="stylesheet" href="../../../ui/third-party/normalize/css/normalize.css" />
-        <link rel="stylesheet" href="../../../ui/third-party/codemirror/css/codemirror.css" />
+        <link rel="stylesheet" href="../../../bower_components/codemirror/lib/codemirror.css" />
+        <link rel="stylesheet" href="../../../bower_components/codemirror/addon/lint/lint.css" />
         <link rel="stylesheet" type="text/css" href="../../../ui/editor/css/flockingcm.css" />
         <link rel="stylesheet" type="text/css" href="../../../ui/shared/css/flocking-icon-font.css" />
         <link rel="stylesheet" type="text/css" href="../css/playground.css" />
@@ -16,7 +17,12 @@
         <script src="../../../third-party/jquery/js/jquery-2.0.0.js"></script>
         <script src="../third-party/dagre/js/dagre.min.js"></script>
         <script src="../../../bower_components/jsPlumb/dist/js/jquery.jsPlumb-1.6.4.js"></script>
-        <script src="../../../ui/third-party/codemirror/js/codemirror-compressed.js"></script>
+        <script src="../../../bower_components/codemirror/lib/codemirror.js"></script>
+        <script src="../../../bower_components/codemirror/mode/javascript/javascript.js"></script>
+        <script src="../../../bower_components/codemirror/addon/lint/lint.js"></script>
+        <script src="../../../bower_components/codemirror/addon/lint/javascript-lint.js"></script>
+        <script src="../../../bower_components/codemirror/addon/lint/json-lint.js"></script>
+        <script src="../../../bower_components/jsonlint/web/jsonlint.js"></script>
 
         <script src="../../../third-party/infusion/js/Fluid.js"></script>
         <script src="../../../third-party/infusion/js/FluidDocument.js"></script>
@@ -27,6 +33,8 @@
         <script src="../../../third-party/infusion/js/ModelTransformation.js"></script>
         <script src="../../../third-party/infusion/js/ModelTransformationTransforms.js"></script>
         <script src="../../../third-party/infusion/js/FluidView.js"></script>
+
+        <script src="../../../bower_components/codemirror-infusion/src/codemirror-infusion.js"></script>
 
         <script src="../../../third-party/dspapi/js/dspapi.js"></script>
         <script src="../../../third-party/simjs/js/random-0.26.js"></script>
@@ -41,6 +49,7 @@
         <script src="../../../flocking/flocking-ugens-browser.js"></script>
         <script src="../../../flocking/flocking-gfx.js"></script>
         <script src="../../../flocking/flocking-webmidi.js"></script>
+
 
         <script src="../js/ui.js"></script>
         <script src="../js/playground.js"></script>
