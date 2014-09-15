@@ -27,6 +27,8 @@ var fluid = fluid || require("infusion"),
 
         flockingSettings: {},
 
+        defaultComponentType: "flock.band",
+
         model: {
             activeSynth: {},
             isDeclarative: false
@@ -56,9 +58,6 @@ var fluid = fluid || require("infusion"),
                             {
                                 func: "{editor}.setContent",
                                 args: ["{arguments}.0"]
-                            },
-                            {
-                                func: "{playground}.events.onSourceUpdated.fire"
                             }
 
                         ],
@@ -66,9 +65,6 @@ var fluid = fluid || require("infusion"),
                         onSelect: [
                             {
                                 func: "{playButton}.pause"
-                            },
-                            {
-                                func: "{playground}.events.onSourceUpdated.fire"
                             }
                         ]
                     }
@@ -77,11 +73,30 @@ var fluid = fluid || require("infusion"),
 
             playButton: {
                 type: "flock.ui.enviroPlayButton",
-                container: "{that}.dom.playButton"
+                container: "{that}.dom.playButton",
+                options: {
+                    listeners: {
+                        onPause: "{playground}.clearPlayableComponent()"
+                    }
+                }
             }
         },
 
         invokers: {
+            makePlayableComponent: {
+                funcName: "flock.playground.makePlayableComponent",
+                args: [
+                    "{that}",
+                    "{arguments}.0", // A component definition.
+                    "{that}.options.defaultComponentType"
+                ]
+            },
+
+            clearPlayableComponent: {
+                funcName: "flock.playground.clearPlayableComponent",
+                args: ["{that}"]
+            },
+
             detectSourceType: {
                 funcName: "flock.playground.detectSourceType",
                 args: ["{editor}", "{that}.applier"],
@@ -90,8 +105,7 @@ var fluid = fluid || require("infusion"),
 
             evaluateSource: {
                 funcName: "flock.playground.evaluateSource",
-                args: ["{arguments}.0", "{editor}", "{that}.applier"],
-                dynamic: true
+                args: ["{arguments}.0", "{editor}", "{that}.applier"]
             }
         },
 
@@ -116,8 +130,8 @@ var fluid = fluid || require("infusion"),
                     args: "{that}.model.isDeclarative"
                 },
                 {
-                    funcName: "flock.playground.synthForActiveSynthSpec",
-                    args: ["{that}", "{that}.model.activeSynthSpec"]
+                    func: "{that}.makePlayableComponent",
+                    args: ["{that}.model.componentDef"]
                 }
             ],
 
@@ -174,24 +188,84 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.playground.parseJSON = function (source, applier) {
-        var synthSpec = JSON.parse(source);
+        var componentDef = JSON.parse(source),
+            synthSpec = flock.playground.findFirstSynthSpec(componentDef);
+
+        applier.change("componentDef", null);
+        applier.change("componentDef", componentDef);
+
+        applier.change("activeSynthSpec", null);
         applier.change("activeSynthSpec", synthSpec);
+    };
+
+    flock.playground.isSynthSpec = function (o) {
+        return o.synthDef ? o : undefined;
+    };
+
+    flock.playground.findRecursive = function (o, fn) {
+        var ret,
+            match;
+
+        if (fluid.isPrimitive(o)) {
+            return fn(o);
+        } else if (flock.isIterable(o)) {
+            for (var i = 0; i < o.length; i++) {
+                ret = fn(o[i], i);
+                if (ret) {
+                    return ret;
+                } else {
+                    match = flock.playground.findRecursive(o[i], fn);
+                    if (match) {
+                        return match;
+                    }
+                }
+            }
+        } else {
+            for (var key in o) {
+                ret = fn(o[key], key);
+                if (ret) {
+                    return ret;
+                } else {
+                    match = flock.playground.findRecursive(o[key], fn);
+                    if (match) {
+                        return match;
+                    }
+                }
+            }
+        }
+    };
+
+    flock.playground.findFirstSynthSpec = function (componentDef) {
+        return flock.playground.isSynthSpec(componentDef) ? componentDef :
+            flock.playground.findRecursive(componentDef, flock.playground.isSynthSpec);
     };
 
     flock.playground.evaluateCode = function (source) {
         eval(source); // jshint ignore: line
     };
 
-    // TODO: This synth needs to be a dynamic component!
-    flock.playground.synthForActiveSynthSpec = function (that, activeSynthSpec) {
-        if (that.synth) {
-            that.synth.pause();
-            that.synth.destroy();
+    flock.playground.makePlayableComponent = function (that, componentDef, defaultType) {
+        if (!componentDef) {
+            return;
         }
 
-        if (activeSynthSpec) {
-            that.synth = flock.synth(activeSynthSpec);
-            return that.synth;
+        var type = componentDef.synthDef ? "flock.synth" : componentDef.type || defaultType,
+            options = componentDef.options || componentDef;
+
+        flock.playground.clearPlayableComponent(that);
+
+        if (options) {
+            that.playable = fluid.invokeGlobalFunction(type, [options]);
+        }
+
+        return that.playable;
+    };
+
+    flock.playground.clearPlayableComponent = function (that) {
+        var current = that.playable;
+        if (current) {
+            current.destroy();
+            that.playable = undefined;
         }
     };
 

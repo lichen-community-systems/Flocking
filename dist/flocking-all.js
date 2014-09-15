@@ -21908,10 +21908,23 @@ var fluid = fluid || require("infusion"),
             onSet: null
         },
 
-        distributeOptions: {
-            source: "{that}.options.synthListeners",
-            removeSource: true,
-            target: "{that flock.synth}.options.listeners"
+        distributeOptions: [
+            {
+                source: "{that}.options.childListeners",
+                removeSource: true,
+                target: "{that fluid.eventedComponent}.options.listeners"
+            },
+            {
+                source: "{that}.options.synthListeners",
+                removeSource: true,
+                target: "{that flock.synth}.options.listeners"
+            }
+        ],
+
+        childListeners: {
+            "{band}.events.onDestroy": {
+                func: "{that}.destroy"
+            }
         },
 
         synthListeners: {

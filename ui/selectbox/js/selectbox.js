@@ -13,8 +13,6 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    fluid.setLogging(true);
-
     var $ = fluid.registerNamespace("jQuery");
 
     /**************
