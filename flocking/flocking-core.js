@@ -122,7 +122,7 @@ var fluid = fluid || require("infusion"),
             return 8192;
         }
 
-        return 4096;
+        return 1024;
     };
 
     flock.shim = {

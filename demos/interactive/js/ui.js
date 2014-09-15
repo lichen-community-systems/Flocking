@@ -35,7 +35,9 @@ var fluid = fluid || require("infusion"),
             "indentUnit",
             "theme",
             "smartIndent",
-            "matchBrackets"
+            "matchBrackets",
+            "lineWrapping",
+            "keyMap"
         ],
 
         mode: "application/json",
@@ -46,6 +48,7 @@ var fluid = fluid || require("infusion"),
         indentUnit: 4,
         tabSize: 4,
         lineNumbers: true,
+        keyMap: "sublime",
         gutters: ["CodeMirror-lint-markers"],
 
         changeEventDelay: 250,
