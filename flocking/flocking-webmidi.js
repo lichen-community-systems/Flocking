@@ -524,15 +524,17 @@ var fluid = fluid || require("infusion"),
         gradeNames: ["fluid.eventedComponent", "autoInit"],
 
         members: {
-            controlMap: "@expand:flock.midi.controller.optimizeControlMap({that}.options.controlMap)"
+            controlMap: "@expand:flock.midi.controller.optimizeControlMap({that}.options.controlMap)",
+            noteMap: "{that}.options.noteMap"
         },
 
-        controlMap: {},                       // Needs to be specified by the user.
+        controlMap: {},                       // Control and note maps
+        noteMap: {},                          // need to be specified by the user.
 
         components: {
-            synthContext: {                   // Also user-specified.
-                type: "flock.band"            // This is typically a flock.band instance,
-            },                                // but can be anything that has a set of named synths.
+            synthContext: {                   // Also user-specified. Typically a flock.band instance,
+                type: "flock.band"            // but can be anything that has a set of named synths,
+            },                                // including a synth itself.
 
             connection: {
                 type: "flock.midi.connection",
@@ -545,7 +547,10 @@ var fluid = fluid || require("infusion"),
 
                     listeners: {
                         control: {
-                            func: "{controller}.map"
+                            func: "{controller}.mapControl"
+                        },
+                        note: {
+                            func: "{controller}.mapNote"
                         }
                     }
                 }
@@ -553,9 +558,14 @@ var fluid = fluid || require("infusion"),
         },
 
         invokers: {
-            map: {
-                funcName: "flock.midi.controller.map",
+            mapControl: {
+                funcName: "flock.midi.controller.mapControl",
                 args: ["{arguments}.0", "{that}.synthContext", "{that}.controlMap"]
+            },
+
+            mapNote: {
+                funcName: "flock.midi.controller.mapNote",
+                args: ["{arguments}.0", "{that}.synthContext", "{that}.noteMap"]
             }
         }
     });
@@ -573,9 +583,9 @@ var fluid = fluid || require("infusion"),
     flock.midi.controller.expandControlMapSpec = function (valueUGenID, mapSpec) {
         mapSpec.transform.id = valueUGenID;
 
-        // TODO: THe key "valuePath" is confusin;
+        // TODO: The key "valuePath" is confusing;
         // it actually points to the location in the
-        // transform synth where the value should be set.
+        // transform synth where the value will be set.
         mapSpec.valuePath = mapSpec.valuePath || "value";
 
         if (!mapSpec.transform.ugen) {
@@ -604,16 +614,16 @@ var fluid = fluid || require("infusion"),
         return valueSynth;
     };
 
-    flock.midi.controller.transformValue = function (midiMsg, mapSpec) {
+    flock.midi.controller.transformValue = function (value, mapSpec) {
         var transform = mapSpec.transform,
-            value = midiMsg.value,
             type = typeof transform;
 
         if (type === "function") {
-            return transform(value, midiMsg);
+            return transform(value);
         }
         // TODO: Add support for string-based transforms
-        // that bind to globally-defined synths (e.g. "flock.synth.midiFreq" or "flock.synth.midiAmp")
+        // that bind to globally-defined synths
+        // (e.g. "flock.synth.midiFreq" or "flock.synth.midiAmp")
         // TODO: Factor this into a separate function.
         if (!mapSpec.transformSynth) {
             // We have a raw synthDef.
@@ -623,7 +633,8 @@ var fluid = fluid || require("infusion"),
             // this special path needs to be scoped to the argument name. In the case of MIDI,
             // this would be the CC number. In the case of OSC, it would be a combination of
             // OSC message address and argument index.
-            mapSpec.transformSynth = flock.midi.controller.makeValueSynth(value, "flock-midi-controller-in", mapSpec);
+            mapSpec.transformSynth = flock.midi.controller.makeValueSynth(
+                value, "flock-midi-controller-in", mapSpec);
         } else {
             // TODO: When the new node architecture is in in place, we can directly connect this
             // synth to the target synth at instantiation time.
@@ -634,17 +645,39 @@ var fluid = fluid || require("infusion"),
         return mapSpec.transformSynth.value();
     };
 
-    flock.midi.controller.map = function (midiMsg, synthContext, controlMap) {
-        var map = controlMap[midiMsg.number];
-
+    flock.midi.controller.setMappedValue = function (value, map, synthContext) {
         if (!map) {
             return;
         }
 
-        var value = map.transform ? flock.midi.controller.transformValue(midiMsg, map) : midiMsg.value,
-            synth = synthContext[map.synth] || synthContext;
+        value = map.transform ? flock.midi.controller.transformValue(value, map) : value;
+        var synth = synthContext[map.synth] || synthContext;
 
         synth.set(map.input, value);
+    };
+
+    flock.midi.controller.mapControl = function (midiMsg, synthContext, controlMap) {
+        var map = controlMap[midiMsg.number],
+            value = midiMsg.value;
+
+        flock.midi.controller.setMappedValue(value, map, synthContext);
+    };
+
+    // TODO: Add support for defining listener filters or subsets
+    // of all midi notes (e.g. for controllers like the Quneo).
+    flock.midi.controller.mapNote = function (midiMsg, synthContext, noteMap) {
+        var keyMap = noteMap.note,
+            key = midiMsg.note,
+            velMap = noteMap.velocity,
+            vel = midiMsg.velocity;
+
+        if (keyMap) {
+            flock.midi.controller.setMappedValue(key, keyMap, synthContext);
+        }
+
+        if (velMap) {
+            flock.midi.controller.setMappedValue(vel, velMap, synthContext);
+        }
     };
 
 }());
