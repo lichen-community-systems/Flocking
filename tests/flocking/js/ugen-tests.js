@@ -656,6 +656,15 @@ var fluid = fluid || require("infusion"),
         return buf;
     };
 
+    test("flock.ugen.osc() empty table", function () {
+        checkOsc({
+            freq: 440,
+            sampleRate: 44100,
+            numSamps: 64,
+            table: []
+        }, new Float32Array(64), "With an empty table input, osc should output silence.");
+    });
+
     test("flock.ugen.osc() simple table lookup", function () {
         var table = new Float32Array([1, 2, 3, 4]);
 

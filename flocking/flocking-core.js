@@ -24,6 +24,8 @@ var fluid = fluid || require("infusion"),
 
     var $ = fluid.registerNamespace("jQuery");
 
+    flock.fluid = fluid;
+
     flock.init = function (options) {
         var enviroOpts = !options ? undefined : {
             audioSettings: options
@@ -50,6 +52,9 @@ var fluid = fluid || require("infusion"),
     flock.sampleFormats = {
         FLOAT32NE: "float32NE"
     };
+
+    fluid.registerNamespace("flock.debug");
+    flock.debug.failHard = true;
 
     flock.browser = function () {
         if (typeof navigator === "undefined") {
@@ -424,10 +429,15 @@ var fluid = fluid || require("infusion"),
      * Performs linear interpretation.
      */
     flock.interpolate.linear = function (idx, table) {
-        idx = idx % table.length;
+        var len = table.length;
+        if (len < 1) {
+            return 0;
+        }
+
+        idx = idx % len;
 
         var i1 = idx | 0,
-            i2 = (i1 + 1) % table.length,
+            i2 = (i1 + 1) % len,
             frac = idx - i1,
             y1 = table[i1],
             y2 = table[i2];
@@ -446,8 +456,13 @@ var fluid = fluid || require("infusion"),
      * @return {Number} an interpolated value
      */
     flock.interpolate.cubic = function (idx, table) {
-        var len = table.length,
-            intPortion = Math.floor(idx),
+        var len = table.length;
+
+        if (len < 1) {
+            return 0;
+        }
+
+        var intPortion = Math.floor(idx),
             i0 = intPortion % len,
             frac = idx - intPortion,
             im1 = i0 > 0 ? i0 - 1 : len - 1,
@@ -510,9 +525,19 @@ var fluid = fluid || require("infusion"),
         return protos;
     };
 
+    flock.fail = function (msg) {
+        if (flock.debug.failHard) {
+            throw new Error(msg);
+        } else {
+            fluid.log(fluid.logLevel.FAIL, msg);
+        }
+    };
+
     flock.pathParseError = function (root, path, token) {
-        throw new Error("Error parsing path: " + path + ". Segment '" + token +
-            "' could not be resolved. Root object was: " + fluid.prettyPrintJSON(root));
+        var msg = "Error parsing path: " + path + ". Segment '" + token +
+            "' could not be resolved. Root object was: " + fluid.prettyPrintJSON(root);
+
+        flock.fail(msg);
     };
 
     flock.get = function (root, path) {
@@ -535,9 +560,11 @@ var fluid = fluid || require("infusion"),
         for (i = 1; i < tokenized.length; i++) {
             if (valForSeg === null || valForSeg === undefined) {
                 flock.pathParseError(root, path, tokenized[i - 1]);
+                return;
             }
             valForSeg = valForSeg[tokenized[i]];
         }
+
         return valForSeg;
     };
 
@@ -556,7 +583,10 @@ var fluid = fluid || require("infusion"),
             root = root[prop];
             type = typeof root;
             if (type !== "object") {
-                throw new Error("A non-container object was found at segment " + prop + ". Value: " + root);
+                flock.fail("Error while setting a value at path + " + path +
+                    ". A non-container object was found at segment " + prop + ". Value: " + root);
+
+                return;
             }
             prop = tokenized[i];
             if (root[prop] === undefined) {
@@ -571,7 +601,8 @@ var fluid = fluid || require("infusion"),
     flock.invoke = function (root, path, args) {
         var fn = typeof root === "function" ? root : flock.get(root, path);
         if (typeof fn !== "function") {
-            throw new Error("Path '" + path + "' does not resolve to a function.");
+            flock.fail("Path '" + path + "' does not resolve to a function.");
+            return;
         }
         return fn.apply(null, args);
     };
@@ -777,6 +808,12 @@ var fluid = fluid || require("infusion"),
             }
             return idx;
         };
+
+        that.clearAll = function () {
+            while (that.nodes.length > 0) {
+                that.nodes.pop();
+            }
+        };
     };
 
 
@@ -864,10 +901,7 @@ var fluid = fluid || require("infusion"),
         that.reset = function () {
             that.stop();
             that.asyncScheduler.clearAll();
-            // Clear the environment's node list.
-            while (that.nodes.length > 0) {
-                that.nodes.pop();
-            }
+            that.clearAll();
         };
 
         that.registerBuffer = function (bufDesc) {
@@ -1090,7 +1124,15 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.synth", {
-        gradeNames: ["fluid.eventedComponent", "flock.node", "flock.ugenNodeList", "autoInit"],
+        gradeNames: [
+            "fluid.eventedComponent",
+            "fluid.modelComponent",
+            "flock.node",
+            "flock.ugenNodeList",
+            "autoInit"
+        ],
+
+        rate: flock.rates.AUDIO,
 
         invokers: {
             /**
@@ -1114,7 +1156,11 @@ var fluid = fluid || require("infusion"),
             }
         },
 
-        rate: flock.rates.AUDIO
+        listeners: {
+            onDestroy: {
+                "func": "{that}.pause"
+            }
+        }
     });
 
     flock.synth.play = function (that, en) {

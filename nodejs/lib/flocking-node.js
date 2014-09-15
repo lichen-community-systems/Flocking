@@ -169,12 +169,13 @@ var fs = require("fs"),
             m.bytesPerBlock = settings.blockSize * settings.chans * m.bytesPerSample;
             m.pushRate = (bufSize / rates.audio) * 1000;
             that.speaker = new Speaker({
-                sampleRate: settings.rates.audio,
-                float: true,
+                channels: settings.chans,
                 bitDepth: 32,
+                sampleRate: settings.rates.audio,
                 signed: true,
-                endianness: "LE",
-                samplesPerFrame: settings.blockSize
+                float: true,
+                samplesPerFrame: settings.blockSize,
+                endianness: "LE"
             });
             that.outputStream = flock.enviro.nodejs.setupOutputStream(settings);
         };
@@ -184,15 +185,7 @@ var fs = require("fs"),
 
     flock.enviro.nodejs.setupOutputStream = function (settings) {
         var outputStream = new Readable({
-            highWaterMark: settings.bufferSize * settings.chans * 4
         });
-
-        outputStream.bitDepth = 32;
-        outputStream.float = true
-        outputStream.signed = true;
-        outputStream.channels = settings.chans;
-        outputStream.sampleRate = settings.rates.audio;
-        outputStream.samplesPerFrame = settings.bufferSize;
 
         return outputStream;
     };
