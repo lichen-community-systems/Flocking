@@ -15125,6 +15125,7 @@ var fluid = fluid || require("infusion"),
                     "{arguments}.0", // The interval to schedule.
                     "{arguments}.1", // The listener.
                     "{timeConverter}",
+                    "{synthContext}",
                     "{that}.listeners",
                     "{that}.events.onScheduled.fire"
                 ]
@@ -15187,9 +15188,9 @@ var fluid = fluid || require("infusion"),
         return listeners[interval];
     };
 
-    flock.scheduler.repeat.schedule = function (interval, listener, timeConverter, listeners, onScheduled) {
+    flock.scheduler.repeat.schedule = function (interval, listener, timeConverter, synthContext, listeners, onScheduled) {
         interval = timeConverter.value(interval);
-        listener = flock.scheduler.async.prepareListener(listener);
+        listener = flock.scheduler.async.prepareListener(listener, synthContext);
 
         var wrapper = flock.scheduler.repeat.wrapValueListener(interval, listener);
 
@@ -15260,6 +15261,7 @@ var fluid = fluid || require("infusion"),
                     "{arguments}.0", // The scheduled time.
                     "{arguments}.1", // The listener.
                     "{timeConverter}",
+                    "{synthContext}",
                     "{that}.clear",
                     "{that}.events.onScheduled.fire"
                 ]
@@ -15316,9 +15318,9 @@ var fluid = fluid || require("infusion"),
         return wrapper;
     };
 
-    flock.scheduler.once.schedule = function (time, listener, timeConverter, removeFn, onScheduled) {
+    flock.scheduler.once.schedule = function (time, listener, timeConverter, synthContext, removeFn, onScheduled) {
         time = timeConverter.value(time);
-        listener = flock.scheduler.async.prepareListener(listener);
+        listener = flock.scheduler.async.prepareListener(listener, synthContext);
 
         var wrapper = flock.scheduler.once.wrapValueListener(time, listener, removeFn);
         onScheduled(time, wrapper);
@@ -15367,7 +15369,12 @@ var fluid = fluid || require("infusion"),
 
             repeatScheduler: {
                 type: "flock.scheduler.repeat"
-            }
+            },
+
+            // This is user-specified.
+            // Typically a flock.band instance or a synth itself,
+            // but can be anything that has a set of named synths.
+            synthContext: undefined
         },
 
         invokers: {
@@ -15481,12 +15488,47 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    flock.scheduler.async.prepareListener = function (changeSpec) {
+    flock.scheduler.async.prepareListener = function (changeSpec, synthContext) {
         return typeof changeSpec === "function" ? changeSpec :
-            flock.scheduler.async.evaluateChangeSpec(changeSpec);
+            flock.scheduler.async.evaluateChangeSpec(changeSpec, synthContext);
     };
 
-    flock.scheduler.async.evaluateChangeSpec = function (changeSpec) {
+    flock.scheduler.async.getTargetSynth = function (changeSpec, synthContext) {
+        var synthPath = changeSpec.synth;
+
+        if (!changeSpec.synth) {
+            return synthContext;
+        }
+
+        if (typeof synthPath !== "string") {
+            return synthPath;
+        }
+
+        var synth = synthContext ? fluid.get(synthContext, synthPath) :
+            flock.environment.namedNodes[synthPath];
+
+        return synth || flock.environment.namedNodes[synthPath];
+    };
+
+    flock.scheduler.async.makeSynthUpdater = function (synths, changeSpec, staticChanges, synthContext) {
+        return function () {
+            for (var path in synths) {
+                var synth = synths[path];
+                staticChanges[path] = synth.value();
+            }
+
+            var targetSynth = flock.scheduler.async.getTargetSynth(changeSpec, synthContext);
+
+            if (!targetSynth) {
+                flock.fail("A target synth named " + changeSpec.synth +
+                    " could not be found in either the specified synthContext or the flock.environment.");
+            } else {
+                targetSynth.set(staticChanges);
+            }
+        };
+    };
+
+    flock.scheduler.async.evaluateChangeSpec = function (changeSpec, synthContext) {
         var synths = {},
             staticChanges = {};
 
@@ -15500,24 +15542,7 @@ var fluid = fluid || require("infusion"),
             }
         }
 
-        // Create a scheduler listener that evaluates the changeSpec and updates the synth.
-        return function () {
-            for (var path in synths) {
-                var synth = synths[path];
-                staticChanges[path] = synth.value();
-            }
-
-            // TODO: Hardcoded to the shared environment.
-            var targetSynth = typeof changeSpec.synth === "string" ?
-                flock.environment.namedNodes[changeSpec.synth] : changeSpec.synth;
-
-            if (!targetSynth) {
-                flock.fail("The Flocking environment doesn't have a registered node named " +
-                    changeSpec.synth);
-            } else {
-                targetSynth.set(staticChanges);
-            }
-        };
+        return flock.scheduler.async.makeSynthUpdater(synths, changeSpec, staticChanges, synthContext);
     };
 
     fluid.defaults("flock.scheduler.async.tempo", {

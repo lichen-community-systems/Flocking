@@ -47,5 +47,5 @@ clock.schedule([
         }
     }
 ]);
-    
+
 synth;
