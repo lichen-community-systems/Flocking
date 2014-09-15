@@ -2438,6 +2438,9 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+    flock.ugen.asr = flock.ugen.env.simpleASR;
+    fluid.defaults("flock.ugen.asr", fluid.copy(fluid.defaults("flock.ugen.env.simpleASR")));
+
     flock.ugen.amplitude = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
@@ -2884,6 +2887,59 @@ var fluid = fluid || require("infusion"),
     /***********
      * Filters *
      ***********/
+
+    flock.ugen.lag = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                out = that.output,
+                inputs = that.inputs,
+                time = inputs.time.output[0],
+                source = inputs.source.output,
+                prevSamp = m.prevSamp,
+                lagCoef = m.lagCoef,
+                i,
+                j,
+                currSamp,
+                outVal;
+
+            if (time !== m.prevTime) {
+                m.prevtime = time;
+                lagCoef = m.lagCoef = time === 0 ? 0.0 : Math.exp(flock.LOG001 / (time * m.sampleRate));
+            }
+
+            for (i = j = 0; i < numSamps; i++, j += m.strides.source) {
+                currSamp = source[j];
+                outVal = currSamp + lagCoef * (prevSamp - currSamp);
+                out[i] = prevSamp = outVal;
+            }
+
+            m.prevSamp = prevSamp;
+
+            that.mulAdd(numSamps);
+        };
+
+        that.onInputChanged();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.lag", {
+        rate: "audio",
+        inputs: {
+            source: null,
+            time: 0.1
+        },
+        ugenOptions: {
+            strideInputs: ["source"],
+            model: {
+                prevSamp: 0.0,
+                lagCoef: 0.0,
+                prevTime: 0.0
+            }
+        }
+    });
+
 
     /**
      * A generic FIR and IIR filter engine. You specify the coefficients, and this will do the rest.
