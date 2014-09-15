@@ -67,10 +67,10 @@ var fluid = fluid || require("infusion");
                     id: "saw",
                     name: "Saw"
                 },
-                {
-                    id: "stereo",
-                    name: "Stereo"
-                }
+                // {
+                //     id: "stereo",
+                //     name: "Stereo"
+                // }
             ]
         }
     });
@@ -149,10 +149,10 @@ var fluid = fluid || require("infusion");
                     id: "mouse-xy",
                     name: "Mouse X and Y axes"
                 },
-                {
-                    id: "mouse-click",
-                    name: "Mouse click"
-                },
+                // {
+                //     id: "mouse-click",
+                //     name: "Mouse click"
+                // },
                 {
                     id: "trigger-callback",
                     name: "Trigger a callback",

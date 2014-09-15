@@ -268,10 +268,12 @@ var fluid = fluid || require("infusion"),
 
         listeners: {
             onEnabled: {
-                funcName: "flock.enviro.shared.play"
+                funcName: "flock.enviro.shared.play",
+                priority: "last"
             },
             onDisabled: {
-                funcName: "flock.enviro.shared.reset"
+                funcName: "flock.enviro.shared.reset",
+                priority: "first"
             }
         }
     });

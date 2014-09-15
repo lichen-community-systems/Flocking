@@ -186,6 +186,7 @@ var fluid = fluid || require("infusion"),
     flock.playground.synthForActiveSynthSpec = function (that, activeSynthSpec) {
         if (that.synth) {
             that.synth.pause();
+            that.synth.destroy();
         }
 
         if (activeSynthSpec) {
