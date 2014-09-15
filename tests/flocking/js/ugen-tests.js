@@ -19,7 +19,7 @@ var fluid = fluid || require("infusion"),
 
     flock.init();
 
-    var sampleRate = flock.enviro.shared.audioSettings.rates.audio;
+    var sampleRate = flock.environment.audioSettings.rates.audio;
 
     module("ugen.input() tests");
 
@@ -92,7 +92,7 @@ var fluid = fluid || require("infusion"),
     // TODO: Create these graphs declaratively!
     module("Output tests", {
         setup: function () {
-            flock.enviro.shared = flock.enviro();
+            flock.environment = flock.enviro();
         }
     });
 
@@ -108,7 +108,7 @@ var fluid = fluid || require("infusion"),
     var testOutputs = function (numRuns, defs, bus, expectedOutput, msg) {
         var synths = [],
             i,
-            env = flock.enviro.shared;
+            env = flock.environment;
 
         defs = $.makeArray(defs);
         $.each(defs, function (i, def) {
@@ -834,6 +834,8 @@ var fluid = fluid || require("infusion"),
 
     module("flock.ugen.playBuffer() tests", {
         setup: function () {
+            flock.init();
+
             var bufDesc = flock.bufferDesc({
                 id: playbackDef.inputs.buffer.id,
                 format: {
@@ -843,7 +845,7 @@ var fluid = fluid || require("infusion"),
                     channels: [flock.test.fillBuffer(1, 64)]
                 }
             });
-            flock.parse.bufferForDef.resolveBuffer(bufDesc, undefined, flock.enviro.shared);
+            flock.parse.bufferForDef.resolveBuffer(bufDesc, undefined, flock.environment);
         }
     });
 
@@ -859,26 +861,35 @@ var fluid = fluid || require("infusion"),
     };
 
     test("flock.ugen.playBuffer, speed: 1.0", function () {
-        var player = flock.parse.ugenForDef(playbackDef);
+        var player = flock.parse.ugenForDef(playbackDef),
+            bufferID = playbackDef.inputs.buffer.id,
+            buffers = flock.environment.buffers;
 
         player.gen(64);
-        var expected = flock.enviro.shared.buffers[playbackDef.inputs.buffer.id].data.channels[0];
-        deepEqual(player.output, expected, "With a playback speed of 1.0, the output buffer should be identical to the source buffer.");
+        var expected = buffers[bufferID].data.channels[0];
+        deepEqual(player.output, expected,
+            "With a playback speed of 1.0, the output buffer should be identical to the source buffer.");
 
         player.gen(64);
         expected = flock.generate(64, 0.0);
-        deepEqual(player.output, expected, "With looping turned off, the output buffer should be silent once we hit the end of the source buffer.");
+        deepEqual(player.output, expected,
+            "With looping turned off, the output buffer should be silent once we hit the end of the source buffer.");
 
         player.input("loop", 1.0);
         player.gen(64);
-        expected = flock.enviro.shared.buffers[playbackDef.inputs.buffer.id].data.channels[0];
-        deepEqual(player.output, expected, "With looping turned on, the output buffer should repeat the source buffer from the beginning.");
+        expected = buffers[bufferID].data.channels[0];
+        deepEqual(player.output, expected,
+            "With looping turned on, the output buffer should repeat the source buffer from the beginning.");
     });
 
     test("flock.ugen.playBuffer, speed: 2.0", function () {
         var player = flock.parse.ugenForDef(playbackDef),
             expected = new Float32Array(64),
-            expectedFirst = new Float32Array([1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63]),
+            expectedFirst = new Float32Array([
+                1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21,
+                23, 25, 27, 29, 31, 33, 35, 37, 39, 41,
+                43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63
+            ]),
             expectedSecond = flock.generate(32, 0);
 
         player.input("speed", 2.0);
@@ -1208,6 +1219,15 @@ var fluid = fluid || require("infusion"),
 
     }());
 
+    module("flock.ugen.in", {
+        setup: function () {
+            flock.environment = flock.enviro({
+                audioSettings: {
+                    numBuses: 16
+                }
+            });
+        }
+    });
 
     var outSynthDef = {
         ugen: "flock.ugen.out",
@@ -1226,22 +1246,19 @@ var fluid = fluid || require("infusion"),
     };
 
     var inSynthDef = {
-        id: "in",
-        ugen: "flock.ugen.in",
-        rate: "audio",
-        inputs: {
-            bus: 3
-        }
-    };
-
-    var inEnviroOptions = {
-        audioSettings: {
-            numBuses: 16
+        ugen: "flock.ugen.out",
+        expand: 1,
+        sources: {
+            id: "in",
+            ugen: "flock.ugen.in",
+            rate: "audio",
+            inputs: {
+                bus: 3
+            }
         }
     };
 
     test("flock.ugen.in() single bus input", function () {
-        flock.enviro.shared = flock.enviro(inEnviroOptions);
         var outSynth = flock.synth({
             synthDef: outSynthDef
         });
@@ -1258,9 +1275,6 @@ var fluid = fluid || require("infusion"),
     });
 
     test("flock.ugen.in() multiple bus input", function () {
-        flock.enviro.shared = flock.enviro(inEnviroOptions);
-
-
         var bus4Def = $.extend(true, {}, outSynthDef, {
             inputs: {
                 bus: 4
@@ -1268,7 +1282,7 @@ var fluid = fluid || require("infusion"),
         });
 
         var multiInDef = $.extend(true, {}, inSynthDef);
-        multiInDef.inputs.bus = [3, 4];
+        multiInDef.sources.inputs.bus = [3, 4];
 
         flock.synth({
             synthDef: outSynthDef
@@ -1290,6 +1304,8 @@ var fluid = fluid || require("infusion"),
         deepEqual(actual, expected,
             "flock.ugen.in should sum the output of each bus when mutiple buses are specified.");
     });
+
+    module("Normalizer");
 
     test("flock.ugen.normalize()", function () {
         var testBuffer = flock.test.ascendingBuffer(64, -31),
@@ -1731,7 +1747,7 @@ var fluid = fluid || require("infusion"),
                     channels: [flock.test.ascendingBuffer(sampleRate * 2.5, 0)] // 2.5 second buffer
                 }
             });
-            flock.parse.bufferForDef.resolveBuffer(bufDesc, undefined, flock.enviro.shared);
+            flock.parse.bufferForDef.resolveBuffer(bufDesc, undefined, flock.environment);
         }
     });
 

@@ -150,7 +150,7 @@ var fluid = fluid || require("infusion"),
      * Represents a source for fetching buffers.
      */
     fluid.defaults("flock.bufferSource", {
-        gradeNames: ["fluid.eventedComponent", "fluid.modelComponent", "autoInit"],
+        gradeNames: ["fluid.standardComponent", "autoInit"],
 
         model: {
             state: "start",
@@ -216,11 +216,7 @@ var fluid = fluid || require("infusion"),
                 }
             ],
 
-            onBufferUpdated: {
-                // TODO: Hardcoded reference to shared environment.
-                funcName: "flock.enviro.shared.registerBuffer",
-                args: ["{arguments}.0"]
-            },
+            onBufferUpdated: "{environment}.registerBuffer({arguments}.0)",
 
             onError: {
                 funcName: "{that}.applier.requestChange",
