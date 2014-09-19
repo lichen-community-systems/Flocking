@@ -3418,19 +3418,18 @@ var fluid = fluid || require("infusion"),
 
     flock.ugen.freeverb = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
+        that.tunings = that.options.tunings;
+        that.allpassTunings = that.options.allpassTunings;
 
         that.gen = function (numSamps) {
-            var o = that.options,
-                inputs = that.inputs,
+            var inputs = that.inputs,
                 out = that.output,
-                tunings = o.tunings,
-                allPassTunings = o.allPassTunings,
                 source = inputs.source.output,
                 mix = inputs.mix.output[0],
-                roomSize = inputs.roomSize.output[0],
-                damp = inputs.damp.output[0],
                 dry = 1 - mix,
-                room_scaled = roomSize * 0.28 + 0.7,
+                roomsize = inputs.room.output[0],
+                room_scaled = roomsize * 0.28 + 0.7,
+                damp = inputs.damp.output[0],
                 damp1 = damp * 0.4,
                 damp2 = 1.0 - damp1,
                 i,
@@ -3443,7 +3442,7 @@ var fluid = fluid || require("infusion"),
 
                 // read samples from the allpasses
                 for (j = 0; j < that.buffers_a.length; j++) {
-                    if (++that.bufferindices_a[j] === allPassTunings[j]) {
+                    if (++that.bufferindices_a[j] === that.allpassTunings[j]) {
                         that.bufferindices_a[j] = 0;
                     }
                     that.readsamp_a[j] = that.buffers_a[j][that.bufferindices_a[j]];
@@ -3451,24 +3450,26 @@ var fluid = fluid || require("infusion"),
 
                 // foreach comb buffer, we perform same filtering (only bufferlen differs)
                 for (j = 0; j < that.buffers_c.length; j++) {
-                    if (++that.bufferindices_c[j] === tunings[j]) {
+                    if (++that.bufferindices_c[j] === that.tunings[j]) {
                         that.bufferindices_c[j] = 0;
                     }
-                    var readsamp_c = that.buffers_c[j][that.bufferindices_c[j]];
+                    var bufIdx_c = that.bufferindices_c[j],
+                        readsamp_c = that.buffers_c[j][bufIdx_c];
                     that.filterx_c[j] = (damp2 * that.filtery_c[j]) + (damp1 * that.filterx_c[j]);
-                    that.buffers_c[j][that.bufferindices_c[j]] = inp_scaled + (room_scaled * that.filterx_c[j]);
+                    that.buffers_c[j][bufIdx_c] = inp_scaled + (room_scaled * that.filterx_c[j]);
                     that.filtery_c[j] = readsamp_c;
                 }
 
-                // each allpass is handled individually, with different calculations made and stored into the delaylines
+                // each allpass is handled individually,
+                // with different calculations made and stored into the delaylines
                 var ftemp8 = (that.filtery_c[6] + that.filtery_c[7]);
 
                 that.buffers_a[3][that.bufferindices_a[3]] = ((((0.5 * that.filterx_a[3]) + that.filtery_c[0]) +
                     (that.filtery_c[1] + that.filtery_c[2])) +
                     ((that.filtery_c[3] + that.filtery_c[4]) + (that.filtery_c[5] + ftemp8)));
                 that.filterx_a[3] = that.readsamp_a[3];
-                that.filtery_a[3] = (that.filterx_a[3] -
-                    (((that.filtery_c[0] + that.filtery_c[1]) + (that.filtery_c[2] + that.filtery_c[3])) +
+                that.filtery_a[3] = (that.filterx_a[3] - (((that.filtery_c[0] + that.filtery_c[1]) +
+                    (that.filtery_c[2] + that.filtery_c[3])) +
                     ((that.filtery_c[4] + that.filtery_c[5]) + ftemp8)));
                 that.buffers_a[2][that.bufferindices_a[2]] = ((0.5 * that.filterx_a[2]) + that.filtery_a[3]);
                 that.filterx_a[2] = that.readsamp_a[2];
@@ -3483,54 +3484,44 @@ var fluid = fluid || require("infusion"),
                 that.filtery_a[0] = (that.filterx_a[0] - that.filtery_a[1]);
                 out[i] = ((dry * inp) + (mix * that.filtery_a[0]));
             }
-
             that.mulAdd(numSamps);
         };
 
-        that.onInputChanged = function () {
-            flock.onMulAddInputChanged(that);
-        };
-
         that.initDelayLines = function () {
-            var o = that.options,
-                tunings = o.tunings,
-                allPassTunings = o.allPassTunings;
-
             // Initialise the delay lines
-            that.buffers_c = [];
+            that.buffers_c = new Array(8);
             that.bufferindices_c = new Int32Array(8);
             that.filterx_c = new Float32Array(8);
             that.filtery_c = new Float32Array(8);
             var spread = that.model.spread;
             var i, j;
-            for (i = 0; i < that.buffers_c.length; i++) {
-                that.buffers_c[i] = new Float32Array(tunings[i] + spread);
+            for(i = 0; i < that.buffers_c.length; i++) {
+                that.buffers_c[i] = new Float32Array(that.tunings[i]+spread);
                 that.bufferindices_c[i] = 0;
                 that.filterx_c[i] = 0;
                 that.filtery_c[i] = 0;
-                for (j = 0; j < tunings[i] + spread; j++) {
+                for(j = 0; j < that.tunings[i]+spread; j++) {
                     that.buffers_c[i][j] = 0;
                 }
             }
-            that.buffers_a = [];
+            that.buffers_a = new Array(4);
             that.bufferindices_a = new Int32Array(4);
             that.filterx_a = new Float32Array(4);
             that.filtery_a = new Float32Array(4);
             // "readsamp" vars are temporary values read back from the delay lines,
-            // not stored but only used in the gen loop.
+            // not stored but only used in the gen loop
             that.readsamp_a = new Float32Array(4);
-
-            for (i = 0; i < 4; i++) {
+            for (i = 0; i < that.buffers_a.length; i++) {
                 that.bufferindices_a[i] = 0;
                 that.filterx_a[i] = 0;
                 that.filtery_a[i] = 0;
                 that.readsamp_a[i] = 0;
                 // TODO is this what the spread is meant to do?
-                for (j = 0; j < allPassTunings.length; j++) {
-                    allPassTunings[j] += spread;
+                for (j = 0; j < that.allpassTunings.length; j++) {
+                    that.allpassTunings[j] += spread;
                 }
-                that.buffers_a[i] = new Float32Array(allPassTunings[i]);
-                for (j = 0; j < allPassTunings[i]; j++) {
+                that.buffers_a[i] = new Float32Array(that.allpassTunings[i]);
+                for (j = 0; j < that.allpassTunings[i]; j++) {
                     that.buffers_a[i][j] = 0;
                 }
             }
@@ -3548,12 +3539,10 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.freeverb", {
         rate: "audio",
         inputs: {
-            mix: 0.5,
-            roomSize: 0.6,
-            damp: 0.1,
             source: null,
-            mul: null,
-            add: null
+            mix: 0.33,
+            room: 0.5,
+            damp: 0.5
         },
         ugenOptions: {
             model: {
@@ -3561,7 +3550,7 @@ var fluid = fluid || require("infusion"),
             },
 
             tunings: [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617],
-            allPassTunings: [556, 441, 341, 225]
+            allpassTunings: [556, 441, 341, 225]
         }
     });
 
