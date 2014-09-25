@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (September 19, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (September 25, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.1
@@ -20235,7 +20235,14 @@ var fluid = fluid || require("infusion"),
     flock.interpolate = {};
 
     /**
-     * Performs linear interpretation.
+     * Performs simple truncation.
+     */
+    flock.interpolate.none = function (idx, table) {
+        return table[idx | 0];
+    };
+
+    /**
+     * Performs linear interpolation.
      */
     flock.interpolate.linear = function (idx, table) {
         var len = table.length;
@@ -20255,7 +20262,7 @@ var fluid = fluid || require("infusion"),
     };
 
     /**
-     * Performs cubic interpretation.
+     * Performs cubic interpolation.
      *
      * Based on Laurent De Soras' implementation at:
      * http://www.musicdsp.org/showArchiveComment.php?ArchiveID=93
@@ -27957,6 +27964,7 @@ var fluid = fluid || require("infusion"),
                 out = that.output,
                 chan = inputs.channel.output[0],
                 buf = that.buffer.data.channels[chan],
+                bufRate = that.buffer.format.sampleRate,
                 dur = inputs.dur.output[0],
                 amp = inputs.amp.output,
                 centerPos = inputs.centerPos.output,
@@ -27978,7 +27986,7 @@ var fluid = fluid || require("infusion"),
             if (dur !== m.dur) {
                 m.dur = dur > m.maxDur ? m.maxDur : dur;
                 m.numGrainSamps = Math.round(m.sampleRate * m.dur);
-                m.grainCenter = Math.round(m.numGrainSamps / 2);
+                m.grainCenter = (m.numGrainSamps / 2) * m.stepSize;
                 for (i = 0; i < m.numGrainSamps; i++) {
                     m.env[i] = Math.sin(Math.PI * i / m.numGrainSamps);
                 }
@@ -27993,11 +28001,11 @@ var fluid = fluid || require("infusion"),
                     grain.sampIdx = 0;
                     grain.envIdx = 0;
                     grain.amp = amp[ampIdx];
-                    start = (centerPos[posIdx] * m.sampleRate) - m.grainCenter;
+                    start = (centerPos[posIdx] * bufRate) - m.grainCenter;
                     while (start < 0) {
                         start += buf.length;
                     }
-                    grain.readPos = Math.round(start);
+                    grain.readPos = start;
                     grain.writePos = i;
                     grain.speed = speed[speedIdx];
                     m.activeGrains.push(grain);
@@ -28014,10 +28022,10 @@ var fluid = fluid || require("infusion"),
             // Output samples for all active grains.
             for (j = 0; j < m.activeGrains.length;) {
                 grain = m.activeGrains[j];
-                for (k = grain.writePos; k < Math.min(m.numGrainSamps - grain.sampIdx, numSamps); k++) {
+                for (k = grain.writePos; k < Math.min(k + (m.numGrainSamps - grain.sampIdx), numSamps); k++) {
                     samp = that.interpolate ? that.interpolate(grain.readPos, buf) : buf[grain.readPos | 0];
                     out[k] += samp * m.env[grain.envIdx] * grain.amp;
-                    grain.readPos = (grain.readPos + grain.speed) % buf.length;
+                    grain.readPos = (grain.readPos + (m.stepSize * grain.speed)) % buf.length;
                     grain.sampIdx++;
                     grain.envIdx++;
                 }
@@ -28026,11 +28034,16 @@ var fluid = fluid || require("infusion"),
                     m.activeGrains.splice(j, 1);
                 } else {
                     j++;
-                    grain.writePos = grain.writePos % that.options.audioSettings.blockSize;
+                    grain.writePos = k % numSamps;
                 }
             }
 
             that.mulAdd(numSamps);
+        };
+
+        that.onBufferReady = function () {
+            var m = that.model;
+            m.stepSize = that.buffer.format.sampleRate / m.sampleRate;
         };
 
         that.onInputChanged = function (inputName) {

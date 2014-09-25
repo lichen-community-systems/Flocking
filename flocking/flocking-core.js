@@ -426,7 +426,14 @@ var fluid = fluid || require("infusion"),
     flock.interpolate = {};
 
     /**
-     * Performs linear interpretation.
+     * Performs simple truncation.
+     */
+    flock.interpolate.none = function (idx, table) {
+        return table[idx | 0];
+    };
+
+    /**
+     * Performs linear interpolation.
      */
     flock.interpolate.linear = function (idx, table) {
         var len = table.length;
@@ -446,7 +453,7 @@ var fluid = fluid || require("infusion"),
     };
 
     /**
-     * Performs cubic interpretation.
+     * Performs cubic interpolation.
      *
      * Based on Laurent De Soras' implementation at:
      * http://www.musicdsp.org/showArchiveComment.php?ArchiveID=93
