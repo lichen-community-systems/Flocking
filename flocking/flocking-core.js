@@ -314,6 +314,20 @@ var fluid = fluid || require("infusion"),
                 // amplitudes decreasing by the inverse of the harmonic number
                 return harm % 2 === 0 ? 0.0 : 1.0 / harm;
             });
+        },
+
+        hann: function (size) {
+            // Hanning envelope: sin^2(i) for i from 0 to pi
+            return flock.generate(size, function (i) {
+                var y = Math.sin(Math.PI * i / size);
+                return y * y;
+            });
+        },
+
+        sinWindow: function (size) {
+            return flock.generate(size, function (i) {
+                return Math.sin(Math.PI * i / size);
+            });
         }
     };
 

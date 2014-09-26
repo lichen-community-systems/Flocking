@@ -20123,6 +20123,20 @@ var fluid = fluid || require("infusion"),
                 // amplitudes decreasing by the inverse of the harmonic number
                 return harm % 2 === 0 ? 0.0 : 1.0 / harm;
             });
+        },
+
+        hann: function (size) {
+            // Hanning envelope: sin^2(i) for i from 0 to pi
+            return flock.generate(size, function (i) {
+                var y = Math.sin(Math.PI * i / size);
+                return y * y;
+            });
+        },
+
+        sinWindow: function (size) {
+            return flock.generate(size, function (i) {
+                return Math.sin(Math.PI * i / size);
+            });
         }
     };
 
@@ -27970,6 +27984,7 @@ var fluid = fluid || require("infusion"),
                 centerPos = inputs.centerPos.output,
                 trigger = inputs.trigger.output,
                 speed = inputs.speed.output,
+                grainEnv = that.options.grainEnv,
                 posIdx = 0,
                 trigIdx = 0,
                 ampIdx = 0,
@@ -27979,29 +27994,19 @@ var fluid = fluid || require("infusion"),
                 k,
                 grain,
                 start,
-                samp;
-
-            // Update the grain envelope if the grain duration input has changed.
-            // TODO: What happens when this changes while older grains are still sounding?
-            if (dur !== m.dur) {
-                m.dur = dur > m.maxDur ? m.maxDur : dur;
-                m.numGrainSamps = Math.round(m.sampleRate * m.dur);
-                m.grainCenter = (m.numGrainSamps / 2) * m.stepSize;
-                for (i = 0; i < m.numGrainSamps; i++) {
-                    m.env[i] = Math.sin(Math.PI * i / m.numGrainSamps);
-                }
-            }
+                samp,
+                env;
 
             // Trigger new grains.
-            // TODO: Why does this constantly trigger new grains with an audio rate trigger signal,
-            //       rarely or never cleaning old ones up?
             for (i = 0; i < numSamps; i++) {
                 if (trigger[trigIdx] > 0.0 && m.prevTrigger <= 0.0 && m.activeGrains.length < m.maxNumGrains) {
                     grain = m.freeGrains.pop();
+                    grain.numSamps = m.sampleRate * dur;
+                    grain.centerIdx = (grain.numSamps / 2) * m.stepSize;
+                    grain.envScale = that.options.grainEnv.length / grain.numSamps;
                     grain.sampIdx = 0;
-                    grain.envIdx = 0;
                     grain.amp = amp[ampIdx];
-                    start = (centerPos[posIdx] * bufRate) - m.grainCenter;
+                    start = (centerPos[posIdx] * bufRate) - grain.centerIdx;
                     while (start < 0) {
                         start += buf.length;
                     }
@@ -28010,6 +28015,7 @@ var fluid = fluid || require("infusion"),
                     grain.speed = speed[speedIdx];
                     m.activeGrains.push(grain);
                 }
+
                 m.prevTrigger = trigger[trigIdx];
                 out[i] = 0.0;
 
@@ -28022,14 +28028,14 @@ var fluid = fluid || require("infusion"),
             // Output samples for all active grains.
             for (j = 0; j < m.activeGrains.length;) {
                 grain = m.activeGrains[j];
-                for (k = grain.writePos; k < Math.min(k + (m.numGrainSamps - grain.sampIdx), numSamps); k++) {
+                for (k = grain.writePos; k < Math.min(k + (grain.numSamps - grain.sampIdx), numSamps); k++) {
                     samp = that.interpolate ? that.interpolate(grain.readPos, buf) : buf[grain.readPos | 0];
-                    out[k] += samp * m.env[grain.envIdx] * grain.amp;
+                    env = flock.interpolate.linear(grain.sampIdx * grain.envScale, grainEnv);
+                    out[k] += samp * env * grain.amp;
                     grain.readPos = (grain.readPos + (m.stepSize * grain.speed)) % buf.length;
                     grain.sampIdx++;
-                    grain.envIdx++;
                 }
-                if (grain.sampIdx >= m.numGrainSamps) {
+                if (grain.sampIdx >= grain.numSamps) {
                     m.freeGrains.push(grain);
                     m.activeGrains.splice(j, 1);
                 } else {
@@ -28057,19 +28063,20 @@ var fluid = fluid || require("infusion"),
 
             for (var i = 0; i < numGrains; i++) {
                 that.model.freeGrains.push({
+                    numSamps: 0,
+                    centerIdx: 0.0,
+                    envScale: 0.0,
                     sampIdx: 0,
-                    envIdx: 0,
-                    readPos: 0
+                    amp: 0.0,
+                    readPos: 0.0,
+                    writePos: 0,
+                    speed: 0.0
                 });
             }
         };
 
         that.init = function () {
-            var m = that.model,
-                maxGrainLength = Math.round(m.maxDur * m.sampleRate);
-
             flock.ugen.buffer(that);
-            that.model.env = new Float32Array(maxGrainLength);
             that.allocateGrains();
             that.initBuffer();
             that.onInputChanged();
@@ -28087,13 +28094,14 @@ var fluid = fluid || require("infusion"),
             amp: 1.0,
             dur: 0.1,
             speed: 1.0,
+            trigger: 0.0,
             buffer: null,
             mul: null,
             add: null
         },
         ugenOptions: {
+            grainEnv: flock.fillTable(8192, flock.tableGenerators.hann),
             model: {
-                maxDur: 30,
                 maxNumGrains: 512,
                 activeGrains: [],
                 freeGrains: [],
