@@ -314,6 +314,20 @@ var fluid = fluid || require("infusion"),
                 // amplitudes decreasing by the inverse of the harmonic number
                 return harm % 2 === 0 ? 0.0 : 1.0 / harm;
             });
+        },
+
+        hann: function (size) {
+            // Hanning envelope: sin^2(i) for i from 0 to pi
+            return flock.generate(size, function (i) {
+                var y = Math.sin(Math.PI * i / size);
+                return y * y;
+            });
+        },
+
+        sinWindow: function (size) {
+            return flock.generate(size, function (i) {
+                return Math.sin(Math.PI * i / size);
+            });
         }
     };
 
@@ -426,7 +440,14 @@ var fluid = fluid || require("infusion"),
     flock.interpolate = {};
 
     /**
-     * Performs linear interpretation.
+     * Performs simple truncation.
+     */
+    flock.interpolate.none = function (idx, table) {
+        return table[idx | 0];
+    };
+
+    /**
+     * Performs linear interpolation.
      */
     flock.interpolate.linear = function (idx, table) {
         var len = table.length;
@@ -446,7 +467,7 @@ var fluid = fluid || require("infusion"),
     };
 
     /**
-     * Performs cubic interpretation.
+     * Performs cubic interpolation.
      *
      * Based on Laurent De Soras' implementation at:
      * http://www.musicdsp.org/showArchiveComment.php?ArchiveID=93
