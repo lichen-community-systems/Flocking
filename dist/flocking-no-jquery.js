@@ -18976,10 +18976,9 @@ var fluid = fluid || require("infusion"),
                 source = inputs.source.output,
                 maxDelayDur = o.maxDelayDur,
                 grainEnv = o.grainEnv,
-                normalization,
                 i,
                 j,
-                grainPos,
+                delayLineReadIdx,
                 samp,
                 windowPos,
                 grainIdx,
@@ -19007,7 +19006,6 @@ var fluid = fluid || require("infusion"),
             // TODO: This implementation will cause currently-sounding grains
             // to be stopped immediately, rather than being allowed to finish.
             numGrains = numGrains > o.maxNumGrains ? o.maxNumGrains : Math.round(numGrains);
-            normalization = 1 / numGrains;
 
             for (i = 0; i < numSamps; i++) {
                 // Write into the delay line and update the write position.
@@ -19020,23 +19018,25 @@ var fluid = fluid || require("infusion"),
                 // Now fill with grains
                 for (j = 0; j < numGrains; j++) {
                     grainIdx = m.grainIdx[j];
-                    grainPos = m.delayLineIdx[j];
+                    delayLineReadIdx = m.delayLineIdx[j];
 
                     // Randomize the reset position of finished grains.
                     if (grainIdx > m.grainLength) {
                         grainIdx = 0;
-                        grainPos = (Math.random() * m.delayLength) | 0;
+                        delayLineReadIdx = (Math.random() * m.delayLength) | 0;
                     }
 
-                    samp = delayLine[grainPos];
+                    samp = delayLine[delayLineReadIdx];
                     windowPos = grainIdx * m.envScale;
                     amp = flock.interpolate.linear(windowPos, grainEnv);
-                    out[i] += samp * amp * normalization;
+                    out[i] += samp * amp;
 
                     // Update positions in the delay line and grain envelope arrays for next time.
-                    m.delayLineIdx[j] = ++grainPos % m.delayLength;
+                    m.delayLineIdx[j] = ++delayLineReadIdx % m.delayLength;
                     m.grainIdx[j] = ++grainIdx;
                 }
+
+                out[i] /= numGrains;
             }
 
             that.mulAdd(numSamps);
