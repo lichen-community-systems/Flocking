@@ -26471,9 +26471,7 @@ var fluid = fluid || require("infusion"),
 
     flock.ugen.env = {};
 
-    // TODO: Better names for these inputs; harmonize them with flock.ugen.line
-    // TODO: Make this a mul/adder.
-    flock.ugen.env.simpleASR = function (inputs, output, options) {
+    flock.ugen.asr = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
         that.gen = function (numSamps) {
@@ -26528,26 +26526,32 @@ var fluid = fluid || require("infusion"),
             stage.currentStep = currentStep;
             stage.stepInc = stepInc;
             stage.numSteps = numSteps;
+
+            that.mulAdd(numSamps);
         };
 
         that.init = function () {
             var m = that.model;
             m.level = that.inputs.start.output[0];
             m.targetLevel = that.inputs.sustain.output[0];
+
+            that.onInputChanged();
         };
 
         that.init();
         return that;
     };
 
-    fluid.defaults("flock.ugen.env.simpleASR", {
+    fluid.defaults("flock.ugen.asr", {
         rate: "control",
         inputs: {
             start: 0.0,
             attack: 0.01,
             sustain: 1.0,
             release: 1.0,
-            gate: 0.0
+            gate: 0.0,
+            mul: null,
+            add: null
         },
         ugenOptions: {
             model: {
@@ -26560,6 +26564,11 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
+
+    // Deprecated. Use flock.ugen.asr instead.
+    flock.ugen.env.simpleASR  = flock.ugen.asr;
+    fluid.defaults("flock.ugen.env.simpleASR", fluid.copy(fluid.defaults("flock.ugen.asr")));
+
 
     flock.ugen.amplitude = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);

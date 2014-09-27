@@ -106,7 +106,7 @@
                                 <option value="moog">Moog VCF</option>
 		                    </optgroup>
 		                    <optgroup label="Envelopes">
-		                        <option value="simpleASR">Simple Attack/Sustain/Release</option>
+		                        <option value="asr">Attack/Sustain/Release</option>
 		                        <option value="decay">Decay</option>
 		                        <option value="line_freq">SinOsc Freq</option>
 		                        <option value="line_mod">Mod SinOsc Freq</option>
@@ -269,14 +269,14 @@ var synth = flock.synth({
 });
         </script>
 
-        <script type="application/flocking" id="simpleASR">
+        <script type="application/flocking" id="asr">
 // Sine tone shaped by a simple attack/sustain/release envelope and periodically triggered.
 var synth = flock.synth({
     synthDef: {
         ugen: "flock.ugen.sinOsc",
         freq: 440,
         mul: {
-            ugen: "flock.ugen.env.simpleASR",
+            ugen: "flock.ugen.asr",
             start: 0.0,
             attack: 0.25,
             sustain: 0.25,
@@ -598,7 +598,7 @@ var synth = flock.synth({
         ugen: "flock.ugen.sinOsc",
         freq: 440,
         mul: {
-            ugen: "flock.ugen.env.simpleASR",
+            ugen: "flock.ugen.asr",
             attack: 0.25,
             sustain: 0.25,
             release: 0.5,
@@ -1011,7 +1011,7 @@ var polySynth = flock.synth.polyphonic({
         freq: fundamental,
         mul: {
             id: "env",
-            ugen: "flock.ugen.env.simpleASR",
+            ugen: "flock.ugen.asr",
             attack: 0.25,
             sustain: 1.0,
             release: 0.5

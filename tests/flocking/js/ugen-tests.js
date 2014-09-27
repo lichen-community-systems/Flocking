@@ -949,10 +949,10 @@ var fluid = fluid || require("infusion"),
     });
 
 
-    module("flock.ugen.env.simpleASR tests");
+    module("flock.ugen.asr tests");
 
     var simpleASRDef = {
-        ugen: "flock.ugen.env.simpleASR",
+        ugen: "flock.ugen.asr",
         rate: flock.rates.AUDIO,
         inputs: {
             start: 0.0,
