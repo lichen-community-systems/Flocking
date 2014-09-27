@@ -4026,10 +4026,11 @@ var fluid = fluid || require("infusion"),
                 grainEnv = o.grainEnv,
                 i,
                 j,
+                val,
+                grainIdx,
                 delayLineReadIdx,
                 samp,
                 windowPos,
-                grainIdx,
                 amp;
 
             // Update and clamp the delay line length.
@@ -4061,7 +4062,7 @@ var fluid = fluid || require("infusion"),
                 m.writePos = ++m.writePos % m.delayLength;
 
                 // Clear the previous output.
-                out[i] = 0;
+                val = 0;
 
                 // Now fill with grains
                 for (j = 0; j < numGrains; j++) {
@@ -4077,14 +4078,14 @@ var fluid = fluid || require("infusion"),
                     samp = delayLine[delayLineReadIdx];
                     windowPos = grainIdx * m.envScale;
                     amp = flock.interpolate.linear(windowPos, grainEnv);
-                    out[i] += samp * amp;
+                    val += samp * amp;
 
                     // Update positions in the delay line and grain envelope arrays for next time.
                     m.delayLineIdx[j] = ++delayLineReadIdx % m.delayLength;
                     m.grainIdx[j] = ++grainIdx;
                 }
 
-                out[i] /= numGrains;
+                out[i] = val / numGrains;
             }
 
             that.mulAdd(numSamps);
