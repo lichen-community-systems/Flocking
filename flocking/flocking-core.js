@@ -504,6 +504,95 @@ var fluid = fluid || require("infusion"),
     };
 
 
+    /*************
+     * Envelopes *
+     *************/
+
+    flock.env = function (name, options) {
+        var defaults = fluid.defaults(name),
+            merged = $.extend(true, {}, defaults, options);
+
+        return fluid.invokeGlobalFunction(name, [merged]);
+    };
+
+    flock.env.triangle = function (o) {
+        return {
+            levels: [0, o.level, 0],
+            times: [o.duration, o.duration]
+        };
+    };
+
+    fluid.defaults("flock.env.triangle", {
+        level: 1.0,
+        duration: 1.0
+    });
+
+    // TODO: Add curve.
+    flock.env.linear = function (o) {
+        return {
+            levels: [0, o.level, o.level, 0],
+            times: [o.attackTime, o.sustainTime, o.releaseTime]
+        };
+    };
+
+    fluid.defaults("flock.env.linear", {
+        level: 1.0,
+        attackTime: 0.01,
+        sustainTime: 1.0,
+        releaseTime: 1.0
+    });
+
+    // TODO: Add curve.
+    flock.env.asr = function (o) {
+        return {
+            levels: [0, o.sustainLevel, 0],
+            times: [o.attackTime, o.releaseTime],
+            sustainPoint: 1
+        };
+    };
+
+    fluid.defaults("flock.env.asr", {
+        sustainLevel: 1.0,
+        attacktime: 0.01,
+        releaseTime: 1.0
+    });
+
+    // TODO: Add curve and bias.
+    flock.env.dadsr = function (o) {
+        return {
+            levels: [0, o.peaklevel, o.peakLevel * o.sustainLevel, 0],
+            times: [o.delayTime, o.attackTime, o.decayTime, o.releaseTime],
+            sustainLevel: 3
+        };
+    };
+
+    fluid.defaults("flock.env.dadsr", {
+        delayTime: 0.1,
+        attackTime: 0.01,
+        decayTime: 0.3,
+        sustainLevel: 0.5,
+        releaseTime: 1.0,
+        peakLevel: 1.0
+    });
+
+    // TODO: Add curve and bias.
+    flock.env.adsr = function (o) {
+        return {
+            levels: [0, o.peakLevel, o.peakLevel * o.sustainLevel, 0],
+            times: [o.attackTime, o.decayTime, o.releaseTime],
+            sustainLevel: 2
+        };
+    };
+
+    fluid.defaults("flock.env.adsr", {
+        attackTime: 0.01,
+        decayTime: 0.3,
+        sustainLevel: 0.5,
+        releaseTime: 1.0,
+        peakLevel: 1.0
+    });
+
+
     flock.expand = {};
 
     // TODO: Unit tests.

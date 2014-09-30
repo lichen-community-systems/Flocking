@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (September 27, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (September 30, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.1
@@ -20313,6 +20313,95 @@ var fluid = fluid || require("infusion"),
     };
 
 
+    /*************
+     * Envelopes *
+     *************/
+
+    flock.env = function (name, options) {
+        var defaults = fluid.defaults(name),
+            merged = $.extend(true, {}, defaults, options);
+
+        return fluid.invokeGlobalFunction(name, [merged]);
+    };
+
+    flock.env.triangle = function (o) {
+        return {
+            levels: [0, o.level, 0],
+            times: [o.duration, o.duration]
+        };
+    };
+
+    fluid.defaults("flock.env.triangle", {
+        level: 1.0,
+        duration: 1.0
+    });
+
+    // TODO: Add curve.
+    flock.env.linear = function (o) {
+        return {
+            levels: [0, o.level, o.level, 0],
+            times: [o.attackTime, o.sustainTime, o.releaseTime]
+        };
+    };
+
+    fluid.defaults("flock.env.linear", {
+        level: 1.0,
+        attackTime: 0.01,
+        sustainTime: 1.0,
+        releaseTime: 1.0
+    });
+
+    // TODO: Add curve.
+    flock.env.asr = function (o) {
+        return {
+            levels: [0, o.sustainLevel, 0],
+            times: [o.attackTime, o.releaseTime],
+            sustainPoint: 1
+        };
+    };
+
+    fluid.defaults("flock.env.asr", {
+        sustainLevel: 1.0,
+        attacktime: 0.01,
+        releaseTime: 1.0
+    });
+
+    // TODO: Add curve and bias.
+    flock.env.dadsr = function (o) {
+        return {
+            levels: [0, o.peaklevel, o.peakLevel * o.sustainLevel, 0],
+            times: [o.delayTime, o.attackTime, o.decayTime, o.releaseTime],
+            sustainLevel: 3
+        };
+    };
+
+    fluid.defaults("flock.env.dadsr", {
+        delayTime: 0.1,
+        attackTime: 0.01,
+        decayTime: 0.3,
+        sustainLevel: 0.5,
+        releaseTime: 1.0,
+        peakLevel: 1.0
+    });
+
+    // TODO: Add curve and bias.
+    flock.env.adsr = function (o) {
+        return {
+            levels: [0, o.peakLevel, o.peakLevel * o.sustainLevel, 0],
+            times: [o.attackTime, o.decayTime, o.releaseTime],
+            sustainLevel: 2
+        };
+    };
+
+    fluid.defaults("flock.env.adsr", {
+        attackTime: 0.01,
+        decayTime: 0.3,
+        sustainLevel: 0.5,
+        releaseTime: 1.0,
+        peakLevel: 1.0
+    });
+
+
     flock.expand = {};
 
     // TODO: Unit tests.
@@ -21784,7 +21873,7 @@ var fluid = fluid || require("infusion"),
 
 
     flock.parse.reservedWords = ["id", "ugen", "rate", "inputs", "options"];
-    flock.parse.specialInputs = ["value", "buffer", "table"];
+    flock.parse.specialInputs = ["value", "buffer", "table", "envelope"];
 
     flock.parse.expandUGenDef = function (ugenDef) {
         var inputs = {},
@@ -26469,7 +26558,6 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    flock.ugen.env = {};
 
     flock.ugen.asr = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
@@ -26565,9 +26653,154 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+    flock.ugen.env = {};
+
     // Deprecated. Use flock.ugen.asr instead.
     flock.ugen.env.simpleASR  = flock.ugen.asr;
     fluid.defaults("flock.ugen.env.simpleASR", fluid.copy(fluid.defaults("flock.ugen.asr")));
+
+
+    flock.ugen.envGen = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                out = that.output,
+                inputs = that.inputs,
+                envSpec = that.envSpec,
+                prevGate = m.previousGate,
+                gate = inputs.gate.output,
+                timeScale = inputs.timeScale.output,
+                i,
+                j,
+                k,
+                currGate;
+
+            for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.gate, k += m.strides.timeScale) {
+                // TODO: In the case of a control-rate gate,
+                // this extra branching is going to reduce performance.
+                currGate = gate[j];
+                if (currGate !== prevGate) {
+                    if (currGate > 0.0 && prevGate <= 0.0) {
+                        m.stage = 1;
+                    } else if (currGate <= 0.0 && prevGate > 0) {
+                        m.stage = m.numStages - 1;
+                    }
+
+                    flock.ugen.envGen.setupSegment(m.stage, envSpec, m, timeScale[k]);
+                }
+                m.prevGate = gate[j];
+
+                // Check to see if we've reached our target value;
+                // if so, set up the next breakpoint stage (unless we're sustaining).
+                // TODO: Fix this conditional.
+                if (((m.stepSize > 0 && m.value >= m.destination) ||
+                    (m.stepSize < 0 && m.value <= m.destination)) && m.stage !== envSpec.sustainPoint) {
+                    if (m.stage < m.numStages) {
+                        flock.ugen.envGen.setupSegment(++m.stage, envSpec, m, timeScale[k]);
+                    } else {
+                        flock.ugen.envGen.setupSilence(m);
+                    }
+                }
+
+                // Output a value
+                // TODO: This assumes a linear segment;
+                // need to factor this out into a strategy.
+                out[i] = m.value;
+                m.value += m.stepSize;
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        that.onInputChanged = function (inputName) {
+            if (!inputName || inputName === "envelope") {
+                that.envSpec = flock.ugen.envGen.initEnvelope(that.model, that.inputs.envelope);
+            }
+
+            that.calculateStrides();
+            flock.onMulAddInputChanged(that);
+        };
+
+        that.onInputChanged();
+
+        return that;
+    };
+
+    flock.ugen.envGen.initEnvelope = function (m, envelope) {
+        var envSpec = flock.ugen.envGen.makeEnvSpec(envelope);
+
+        // TODO: What's the correct semantic for on-the-fly envelope changes?
+        // Presumably it should be possible, but only makes sense when the
+        // gate is closed.
+        flock.ugen.envGen.setupSilence(m);
+        m.stage = -1;
+        m.numStages = envSpec.times.length;
+
+        return envSpec;
+    };
+
+    flock.ugen.envGen.makeEnvSpec = function (envelope) {
+        // TODO: This places a very restrictive API
+        // on custom envelope creators. Fix it!
+        if (typeof envelope === "string") {
+            return flock.env(envelope);
+        } else if (envelope.type) {
+            // TODO: Super shady.
+            var envType = envelope.type;
+            delete envelope.type;
+            return flock.env(envType, envelope);
+        }
+
+        return envelope;
+    };
+
+    flock.ugen.envGen.setupSegment = function (idx, envSpec, m, timeScale) {
+        var dest = envSpec.levels[idx],
+            dur = envSpec.times[idx - 1] * timeScale,
+            durSamps = dur * m.sampleRate;
+
+        // Setup for a linear segment.
+        // TODO: Add other curve types.
+        // This will require factoring out curve generation into objects
+        // or function pairs that take care of both setting and incrementing the segment.
+        m.stepSize = (dest - m.value) / durSamps;
+        m.destination = dest;
+    };
+
+    flock.ugen.envGen.setupSilence = function (m) {
+        m.stepSize = 0;
+        m.destination = Infinity;
+        m.value = 0;
+    };
+
+    fluid.defaults("flock.ugen.envGen", {
+        rate: "audio",
+
+        inputs: {
+            envelope: null,
+            gate: 1.0,
+            timeScale: 1.0,
+            mul: null,          // This is equivalent to SC's levelScale parameter.
+            add: null           // And this to SC's levelBias.
+        },
+
+        ugenOptions: {
+            model: {
+                previousGate: 0.0,
+                stepSize: 0,
+                destination: Infinity,
+                value: 0,
+                stage: -1,
+                numStages: 0
+            },
+
+            strideInputs: [
+                "gate",
+                "timeScale"
+            ]
+        }
+    });
 
 
     flock.ugen.amplitude = function (inputs, output, options) {
@@ -28439,6 +28672,8 @@ var fluid = fluid || require("infusion"),
             for (i = 0, j = 0; i < numSamps; i++, j += m.strides.source) {
                 out[i] = flock.midiFreq(noteNum[j], a4Freq, a4NoteNum, notesPerOctave);
             }
+
+            that.mulAdd(numSamps);
         };
 
         that.init = function () {
