@@ -8,7 +8,7 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global require, Float32Array, window, AudioContext, webkitAudioContext*/
+/*global require, Float32Array, window, AudioContext, webkitAudioContext, DSP*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,
@@ -508,89 +508,141 @@ var fluid = fluid || require("infusion"),
      * Envelopes *
      *************/
 
-    flock.env = function (name, options) {
-        var defaults = fluid.defaults(name),
-            merged = $.extend(true, {}, defaults, options);
+    flock.envelope = {};
 
-        return fluid.invokeGlobalFunction(name, [merged]);
-    };
+    flock.envelope.makeCreator = function (name, envelopeOptionsTransformer) {
+        return function (options) {
+            var defaults = fluid.defaults(name),
+                merged = $.extend(true, {}, defaults, options);
 
-    flock.env.triangle = function (o) {
-        return {
-            levels: [0, o.level, 0],
-            times: [o.duration, o.duration]
+            return envelopeOptionsTransformer(merged);
         };
     };
 
-    fluid.defaults("flock.env.triangle", {
-        level: 1.0,
-        duration: 1.0
-    });
+    flock.envelope.registerCreators = function (inNamespace, creatorSpecs) {
+        var path, creatorSpec;
 
-    // TODO: Add curve.
-    flock.env.linear = function (o) {
-        return {
-            levels: [0, o.level, o.level, 0],
-            times: [o.attackTime, o.sustainTime, o.releaseTime]
-        };
+        for (var pathSuffix in creatorSpecs) {
+            path = fluid.pathUtil.composePath(inNamespace, pathSuffix);
+            creatorSpec = creatorSpecs[pathSuffix];
+
+            fluid.defaults(path, creatorSpec.defaults);
+            fluid.setGlobalValue(path, flock.envelope.makeCreator(path, creatorSpec.transformer));
+        }
     };
 
-    fluid.defaults("flock.env.linear", {
-        level: 1.0,
-        attackTime: 0.01,
-        sustainTime: 1.0,
-        releaseTime: 1.0
-    });
+    flock.envelope.creatorSpecs = {
+        linear: {
+            transformer: function (o) {
+                return {
+                    levels: [0, o.level, o.level, 0],
+                    times: [o.attackTime, o.sustainTime, o.releaseTime]
+                };
+            },
 
-    // TODO: Add curve.
-    flock.env.asr = function (o) {
-        return {
-            levels: [0, o.sustainLevel, 0],
-            times: [o.attackTime, o.releaseTime],
-            sustainPoint: 1
-        };
+            defaults: {
+                level: 1.0,
+                attackTime: 0.01,
+                sustainTime: 1.0,
+                releaseTime: 1.0
+            }
+        },
+
+        tri: {
+            transformer: function (o) {
+                return {
+                    levels: [0, o.level, 0],
+                    times: [o.duration, o.duration]
+                };
+            },
+
+            defaults: {
+                level: 1.0,
+                duration: 1.0
+            }
+        },
+
+        sin: {
+            transformer: function (o) {
+                return {
+                    levels: [0, o.level, 0],
+                    times: [o.duration, o.duration],
+                    curve: "sin"
+                };
+            },
+
+            defaults: {
+                level: 1.0,
+                duration: 1.0
+            }
+        },
+
+        asr: {
+            transformer: function (o) {
+                return {
+                    levels: [0, o.sustainLevel, 0],
+                    times: [o.attackTime, o.releaseTime],
+                    sustainPoint: 1,
+                    curve: -4.0
+                };
+            },
+
+            defaults: {
+                sustainLevel: 1.0,
+                attackTime: 0.01,
+                releaseTime: 1.0
+            }
+        },
+
+        dadsr: {
+            transformer: function (o) {
+                var levels = [0, 0, o.peakLevel, o.peakLevel * o.sustainLevel, 0];
+                DSP.add(levels, levels, o.bias);
+
+                return {
+                    levels: levels,
+                    times: [o.delayTime, o.attackTime, o.decayTime, o.releaseTime],
+                    sustainPoint: 3,
+                    curve: -4.0
+                };
+            },
+
+            defaults: {
+                delayTime: 0.1,
+                attackTime: 0.01,
+                decayTime: 0.3,
+                sustainLevel: 0.5,
+                releaseTime: 1.0,
+                peakLevel: 1.0,
+                bias: 0.0
+            }
+        },
+
+        adsr: {
+            transformer: function (o) {
+                var levels = [0, o.peakLevel, o.peakLevel * o.sustainLevel, 0];
+                DSP.add(levels, levels, o.bias);
+
+                return {
+                    levels: levels,
+                    times: [o.attackTime, o.decayTime, o.releaseTime],
+                    sustainPoint: 2,
+                    curve: -4.0
+                };
+            },
+
+            defaults: {
+                attackTime: 0.01,
+                decayTime: 0.3,
+                sustainLevel: 0.5,
+                releaseTime: 1.0,
+                peakLevel: 1.0,
+                bias: 0.0
+            }
+        }
     };
 
-    fluid.defaults("flock.env.asr", {
-        sustainLevel: 1.0,
-        attacktime: 0.01,
-        releaseTime: 1.0
-    });
-
-    // TODO: Add curve and bias.
-    flock.env.dadsr = function (o) {
-        return {
-            levels: [0, o.peaklevel, o.peakLevel * o.sustainLevel, 0],
-            times: [o.delayTime, o.attackTime, o.decayTime, o.releaseTime],
-            sustainLevel: 3
-        };
-    };
-
-    fluid.defaults("flock.env.dadsr", {
-        delayTime: 0.1,
-        attackTime: 0.01,
-        decayTime: 0.3,
-        sustainLevel: 0.5,
-        releaseTime: 1.0,
-        peakLevel: 1.0
-    });
-
-    // TODO: Add curve and bias.
-    flock.env.adsr = function (o) {
-        return {
-            levels: [0, o.peakLevel, o.peakLevel * o.sustainLevel, 0],
-            times: [o.attackTime, o.decayTime, o.releaseTime],
-            sustainLevel: 2
-        };
-    };
-
-    fluid.defaults("flock.env.adsr", {
-        attackTime: 0.01,
-        decayTime: 0.3,
-        sustainLevel: 0.5,
-        releaseTime: 1.0,
-        peakLevel: 1.0
-    });
+    flock.envelope.registerCreators("flock.envelope", flock.envelope.creatorSpecs);
 
 
     flock.expand = {};

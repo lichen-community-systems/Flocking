@@ -2456,46 +2456,54 @@ var fluid = fluid || require("infusion"),
                 out = that.output,
                 inputs = that.inputs,
                 envSpec = that.envSpec,
-                prevGate = m.previousGate,
                 gate = inputs.gate.output,
                 timeScale = inputs.timeScale.output,
                 i,
                 j,
                 k,
-                currGate;
+                currentGate;
 
             for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.gate, k += m.strides.timeScale) {
+                m.numSegmentSamps--;
+
                 // TODO: In the case of a control-rate gate,
-                // this extra branching is going to reduce performance.
-                currGate = gate[j];
-                if (currGate !== prevGate) {
-                    if (currGate > 0.0 && prevGate <= 0.0) {
+                // this extra branching reduces performance.
+                // Implement separate kr and ar gen() functions.
+                currentGate = gate[j];
+                if (currentGate !== m.previousGate) {
+                    if (currentGate > 0.0 && m.previousGate <= 0.0) {
                         m.stage = 1;
-                    } else if (currGate <= 0.0 && prevGate > 0) {
-                        m.stage = m.numStages - 1;
+                    } else if (currentGate <= 0.0 && m.previousGate > 0) {
+                        m.stage = m.numStages;
                     }
 
-                    flock.ugen.envGen.setupSegment(m.stage, envSpec, m, timeScale[k]);
+                    flock.ugen.envGen.setupSegment(envSpec, m, timeScale[k]);
                 }
-                m.prevGate = gate[j];
-
-                // Check to see if we've reached our target value;
-                // if so, set up the next breakpoint stage (unless we're sustaining).
-                // TODO: Fix this conditional.
-                if (((m.stepSize > 0 && m.value >= m.destination) ||
-                    (m.stepSize < 0 && m.value <= m.destination)) && m.stage !== envSpec.sustainPoint) {
-                    if (m.stage < m.numStages) {
-                        flock.ugen.envGen.setupSegment(++m.stage, envSpec, m, timeScale[k]);
-                    } else {
-                        flock.ugen.envGen.setupSilence(m);
-                    }
-                }
+                m.previousGate = currentGate;
 
                 // Output a value
                 // TODO: This assumes a linear segment;
                 // need to factor this out into a strategy.
                 out[i] = m.value;
-                m.value += m.stepSize;
+
+                // Check to see if we've reached our target value;
+                // if so, set up the next breakpoint stage (unless we're sustaining).
+                // TODO: Deal with nested conditionals.
+                if (m.numSegmentSamps <= 0) {
+                    if (m.stage === envSpec.sustainPoint) {
+                        m.stepSize = 0;
+                    } else {
+                        if (m.stage < m.numStages) {
+                            m.stage += 1;
+                            flock.ugen.envGen.setupSegment(envSpec, m, timeScale[k]);
+                        } else {
+                            flock.ugen.envGen.setupSilence(m);
+                        }
+                    }
+
+                } else {
+                    m.value += m.stepSize;
+                }
             }
 
             that.mulAdd(numSamps);
@@ -2522,29 +2530,26 @@ var fluid = fluid || require("infusion"),
         // Presumably it should be possible, but only makes sense when the
         // gate is closed.
         flock.ugen.envGen.setupSilence(m);
-        m.stage = -1;
+        m.stage = 0;
         m.numStages = envSpec.times.length;
 
         return envSpec;
     };
 
     flock.ugen.envGen.makeEnvSpec = function (envelope) {
-        // TODO: This places a very restrictive API
-        // on custom envelope creators. Fix it!
         if (typeof envelope === "string") {
-            return flock.env(envelope);
+            return fluid.invokeGlobalFunction(envelope);
         } else if (envelope.type) {
-            // TODO: Super shady.
             var envType = envelope.type;
-            delete envelope.type;
-            return flock.env(envType, envelope);
+            return fluid.invokeGlobalFunction(envType, [envelope]);
         }
 
         return envelope;
     };
 
-    flock.ugen.envGen.setupSegment = function (idx, envSpec, m, timeScale) {
-        var dest = envSpec.levels[idx],
+    flock.ugen.envGen.setupSegment = function (envSpec, m, timeScale) {
+        var idx = m.stage,
+            dest = envSpec.levels[idx],
             dur = envSpec.times[idx - 1] * timeScale,
             durSamps = dur * m.sampleRate;
 
@@ -2552,12 +2557,14 @@ var fluid = fluid || require("infusion"),
         // TODO: Add other curve types.
         // This will require factoring out curve generation into objects
         // or function pairs that take care of both setting and incrementing the segment.
+        m.numSegmentSamps = durSamps;
         m.stepSize = (dest - m.value) / durSamps;
         m.destination = dest;
     };
 
     flock.ugen.envGen.setupSilence = function (m) {
         m.stepSize = 0;
+        m.numSegmentSamps = Infinity;
         m.destination = Infinity;
         m.value = 0;
     };
@@ -2579,7 +2586,7 @@ var fluid = fluid || require("infusion"),
                 stepSize: 0,
                 destination: Infinity,
                 value: 0,
-                stage: -1,
+                stage: 0,
                 numStages: 0
             },
 
