@@ -845,11 +845,6 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.enviro", {
         gradeNames: ["fluid.modelComponent", "flock.nodeList", "autoInit"],
         model: {
-            playState: {
-                written: 0,
-                total: null
-            },
-
             isPlaying: false
         },
         audioSettings: {
@@ -879,10 +874,7 @@ var fluid = fluid || require("infusion"),
             audioStrategy: {
                 type: "flock.enviro.audioStrategy",
                 options: {
-                    audioSettings: "{enviro}.options.audioSettings",
-                    model: {
-                        playState: "{enviro}.model.playState"
-                    }
+                    audioSettings: "{enviro}.options.audioSettings"
                 }
             }
         }
@@ -897,16 +889,8 @@ var fluid = fluid || require("infusion"),
 
         /**
          * Starts generating samples from all synths.
-         *
-         * @param {Number} dur optional duration to play in seconds
          */
-        that.play = function (dur) {
-            dur = dur === undefined ? Infinity : dur;
-
-            var playState = that.model.playState,
-                sps = dur * that.audioSettings.rates.audio * that.audioSettings.chans;
-
-            playState.total = playState.written + sps;
+        that.play = function () {
             that.audioStrategy.startGeneratingSamples();
             that.model.isPlaying = true;
         };
