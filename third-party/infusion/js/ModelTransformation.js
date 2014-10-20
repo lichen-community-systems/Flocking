@@ -10,8 +10,8 @@ You may obtain a copy of the ECL 2.0 License and BSD License at
 https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
 */
 
-var fluid_1_5 = fluid_1_5 || {};
-var fluid = fluid || fluid_1_5;
+var fluid_2_0 = fluid_2_0 || {};
+var fluid = fluid || fluid_2_0;
 
 (function ($, fluid) {
     "use strict";
@@ -113,13 +113,13 @@ var fluid = fluid || fluid_1_5;
     // in a compound transform definition
     fluid.model.transform.NONDEFAULT_OUTPUT_PATH_RETURN = {};
 
-    fluid.model.transform.setValue = function (userOutputPath, value, transform, merge) {
+    fluid.model.transform.setValue = function (userOutputPath, value, transform) {
         // avoid crosslinking to input object - this might be controlled by a "nocopy" option in future
         var toset = fluid.copy(value);
         var outputPath = fluid.model.composePaths(transform.outputPrefix, userOutputPath);
         // TODO: custom resolver config here to create non-hash output model structure
         if (toset !== undefined) {
-            transform.applier.requestChange(outputPath, toset, merge ? "MERGE" : undefined);
+            transform.applier.requestChange(outputPath, toset);
         }
         return userOutputPath ? fluid.model.transform.NONDEFAULT_OUTPUT_PATH_RETURN : toset;
     };
@@ -150,9 +150,9 @@ var fluid = fluid || fluid_1_5;
                 stats.messages.push("Type mismatch at path " + stats.path + ": expected " + typeof(expected)  + " actual " + typeof(actual));
             } else {
                 fluid.each(expected, function (value, key) {
-                    stats.pathOps.push(key);
+                    stats.pathOp.push(key);
                     fluid.deepEquals(expected[key], actual[key], stats);
-                    stats.pathOps.pop(key);
+                    stats.pathOp.pop(key);
                 });
             }
         }
@@ -167,7 +167,7 @@ var fluid = fluid || fluid_1_5;
                 mismatchCount: 0,
                 messages: []
             };
-            fluid.model.makePathStack(stats, "path");
+            stats.pathOp = fluid.model.makePathStack(stats, "path");
             fluid.deepEquals(expected, actual, stats);
             return stats.matchCount;
         }
@@ -269,7 +269,7 @@ var fluid = fluid || fluid_1_5;
                 //If outputPath is given in the expander we want to:
                 // (1) output to the document
                 // (2) return undefined, to ensure that expanders higher up in the hierarchy doesn't attempt to output it again
-                fluid.model.transform.setValue(transformSpec.outputPath, transformed, transform, transformSpec.merge);
+                fluid.model.transform.setValue(transformSpec.outputPath, transformed, transform);
                 transformed = undefined;
             }
         }
@@ -383,14 +383,23 @@ var fluid = fluid || fluid_1_5;
         var defaults = fluid.defaults(typeName);
         return { defaults: defaults, typeName: typeName};
     };
+    
+    // A utility which is helpful in computing inverses involving compound values. 
+    // For example, with the valueMapper, compound input values are accepted as literals implicitly,
+    // whereas as output values they must be escaped. This utility escapes a value if it is not primitive.
+    fluid.model.transform.literaliseValue = function (value) {
+        return fluid.isPrimitive(value) ? value : {
+            literalValue: value
+        };
+    };
 
     // unsupported, NON-API function
     fluid.model.transform.processRule = function (rule, transform) {
         if (typeof(rule) === "string") {
             rule = fluid.model.transform.pathToRule(rule);
         }
-        // special dispensation to allow "literalValue" at top level
-        else if (rule.literalValue && transform.outputPrefix !== "") {
+        // special dispensation to allow "literalValue" to escape any value
+        else if (rule.literalValue !== undefined) {
             rule = fluid.model.transform.literalValueToRule(rule.literalValue);
         }
         var togo;
@@ -567,9 +576,11 @@ var fluid = fluid || fluid_1_5;
 
         var transform = {
             source: source,
-            target: schemaStrategy ? fluid.model.transform.defaultSchemaValue(schemaStrategy(null, "", 0, [""])) : {},
+            target: {
+                model: schemaStrategy ? fluid.model.transform.defaultSchemaValue(schemaStrategy(null, "", 0, [""])) : {}
+            },
             resolverGetConfig: getConfig,
-            collectedFlatSchemaOpts: undefined, //to hold options for flat schema collected during transforms
+            collectedFlatSchemaOpts: undefined, // to hold options for flat schema collected during transforms
             queuedChanges: [],
             queuedTransforms: [] // TODO: This is used only by wildcard applier - explain its operation
         };
@@ -592,7 +603,7 @@ var fluid = fluid || fluid_1_5;
         }
         setConfig.strategies = [fluid.model.defaultFetchStrategy, schemaStrategy ? fluid.model.transform.schemaToCreatorStrategy(schemaStrategy)
                 : fluid.model.defaultCreatorStrategy];
-        transform.finalApplier = options.finalApplier || fluid.makeChangeApplier(transform.target, {resolverSetConfig: setConfig});
+        transform.finalApplier = options.finalApplier || fluid.makeNewChangeApplier(transform.target, {resolverSetConfig: setConfig});
 
         if (transform.queuedTransforms.length > 0) {
             transform.typeStack = [];
@@ -600,7 +611,7 @@ var fluid = fluid || fluid_1_5;
             fluid.model.transform.expandWildcards(transform, source);
         }
         fluid.model.fireSortedChanges(transform.queuedChanges, transform.finalApplier);
-        return transform.target;
+        return transform.target.model;
     };
 
     $.extend(fluid.model.transformWithRules, fluid.model.transform);
@@ -626,4 +637,4 @@ var fluid = fluid || fluid_1_5;
         };
     };
 
-})(jQuery, fluid_1_5);
+})(jQuery, fluid_2_0);
