@@ -109,7 +109,6 @@ var fs = require("fs"),
         that.writeSamples = function (numBytes) {
             var settings = that.options.audioSettings,
                 m = that.model,
-                playState = m.playState,
                 bytesPerSample = m.bytesPerSample,
                 blockSize = settings.blockSize,
                 chans = settings.chans,
@@ -142,11 +141,6 @@ var fs = require("fs"),
             }
 
             outputStream.push(out);
-
-            playState.written += settings.bufferSize * chans;
-            if (playState.written >= playState.total) {
-                that.stop();
-            }
         };
 
         that.stopGeneratingSamples = function () {

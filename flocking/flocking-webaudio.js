@@ -88,7 +88,6 @@ var fluid = fluid || require("infusion"),
                 buses = evaluator.buses,
                 audioSettings = that.options.audioSettings,
                 blockSize = audioSettings.blockSize,
-                playState = m.playState,
                 chans = audioSettings.chans,
                 inBufs = e.inputBuffer,
                 inChans = e.inputBuffer.numberOfChannels,
@@ -139,11 +138,6 @@ var fluid = fluid || require("infusion"),
                         outBuf[samp + offset] = sourceBuf[samp];
                     }
                 }
-            }
-
-            playState.written += audioSettings.bufferSize * chans;
-            if (playState.written >= playState.total) {
-                that.stop();
             }
         };
 
