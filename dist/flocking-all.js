@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (October 23, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (October 24, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.1
@@ -26872,13 +26872,12 @@ var fluid = fluid || require("infusion"),
                         m.stage = m.numStages;
                     }
 
-                    flock.ugen.envGen.setupSegment(envSpec, m, timeScale[k]);
+                    that.lineGen = flock.ugen.envGen.segmentGeneratorForStage(m.stage, envSpec);
+                    that.lineGen.nextSegment(timeScale[k], envSpec, m);
                 }
                 m.previousGate = currentGate;
 
                 // Output a value
-                // TODO: This assumes a linear segment;
-                // need to factor this out into a strategy.
                 out[i] = m.value;
 
                 // Check to see if we've reached our target value;
@@ -26890,14 +26889,16 @@ var fluid = fluid || require("infusion"),
                     } else {
                         if (m.stage < m.numStages) {
                             m.stage += 1;
-                            flock.ugen.envGen.setupSegment(envSpec, m, timeScale[k]);
+                            that.lineGen = flock.ugen.envGen.segmentGeneratorForStage(m.stage, envSpec);
                         } else {
-                            flock.ugen.envGen.setupSilence(m);
+                            that.lineGen = flock.lineGen.silent;
                         }
+
+                        that.lineGen.nextSegment(timeScale[k], envSpec, m);
                     }
 
                 } else {
-                    m.value += m.stepSize;
+                    that.lineGen.gen(m);
                 }
             }
 
@@ -26906,7 +26907,7 @@ var fluid = fluid || require("infusion"),
 
         that.onInputChanged = function (inputName) {
             if (!inputName || inputName === "envelope") {
-                that.envSpec = flock.ugen.envGen.initEnvelope(that.model, that.inputs.envelope);
+                that.envSpec = flock.ugen.envGen.initEnvelope(that, that.inputs.envelope);
             }
 
             that.calculateStrides();
@@ -26918,15 +26919,30 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    flock.ugen.envGen.initEnvelope = function (m, envelope) {
-        var envSpec = flock.ugen.envGen.makeEnvSpec(envelope);
+    flock.ugen.envGen.resolveCurve = function (curveValue) {
+        var type = typeof curveValue;
+
+        return type === "string" ? flock.lineGen[curveValue] :
+            type === "number" ? flock.lineGen.linear : flock.lineGen.linear;
+    };
+
+    flock.ugen.envGen.segmentGeneratorForStage = function (stage, envSpec) {
+        var curve = envSpec.curve,
+            curveValue = flock.isIterable(curve) ? curve[stage] : curve;
+
+        return flock.ugen.envGen.resolveCurve(curveValue);
+    };
+
+    flock.ugen.envGen.initEnvelope = function (that, envelope) {
+        var m = that.model,
+            envSpec = flock.ugen.envGen.makeEnvSpec(envelope);
 
         // TODO: What's the correct semantic for on-the-fly envelope changes?
         // Presumably it should be possible, but only makes sense when the
         // gate is closed.
-        flock.ugen.envGen.setupSilence(m);
         m.stage = 0;
         m.numStages = envSpec.times.length;
+        that.lineGen = flock.ugen.envGen.segmentGeneratorForStage(m.stage, envSpec);
 
         return envSpec;
     };
@@ -26942,33 +26958,66 @@ var fluid = fluid || require("infusion"),
         return envelope;
     };
 
-    flock.ugen.envGen.setupSegment = function (envSpec, m, timeScale) {
-        var idx = m.stage,
-            dest = envSpec.levels[idx],
-            dur = envSpec.times[idx - 1] * timeScale,
-            durSamps = dur * m.sampleRate;
+    // TODO: Move this to core.
+    flock.lineGen = {
+        silent: {
+            nextSegment: function (timeScale, envSpec, m) {
+                m.stepSize = 0;
+                m.numSegmentSamps = Infinity;
+                m.destination = Infinity;
+                m.value = 0;
+            },
 
-        // Setup for a linear segment.
-        // TODO: Add other curve types.
-        // This will require factoring out curve generation into objects
-        // or function pairs that take care of both setting and incrementing the segment.
-        m.numSegmentSamps = durSamps;
-        m.stepSize = (dest - m.value) / durSamps;
-        m.destination = dest;
+            gen: fluid.identity
+        },
+
+        linear: {
+            nextSegment: function (timeScale, envSpec, m) {
+                var dest = envSpec.levels[m.stage],
+                    dur = envSpec.times[m.stage - 1] * timeScale,
+                    durSamps = dur * m.sampleRate;
+
+                m.stepSize = (dest - m.value) / durSamps;
+                m.numSegmentSamps = durSamps;
+                m.destination = dest;
+                flock.lineGen.linear.gen(m);
+
+            },
+
+            gen: function (m) {
+                m.value += m.stepSize;
+            }
+        },
+
+        sin: {
+            nextSegment: function (timeScale, envSpec, m) {
+                var w = Math.pi / m.numSegmentSamps;
+                m.a2 = (m.destination + m.value) * 0.5;
+                m.b1 = 2 * Math.cos(w);
+                m.y1 = (m.destination = m.value) * 0.5;
+                m.y2 = m.y1 * Math.sin(Math.pi * 0.5 - w);
+                m.value = m.a2 - m.y1;
+            },
+
+            gen: function (m) {
+                var y0 = m.b1 * m.y1 - m.y2;
+
+                m.value = m.a2 - m.y0;
+                m.y2 = m.y1;
+                m.y1 = y0;
+            }
+        }
     };
 
-    flock.ugen.envGen.setupSilence = function (m) {
-        m.stepSize = 0;
-        m.numSegmentSamps = Infinity;
-        m.destination = Infinity;
-        m.value = 0;
-    };
+    // TODO: Implement curve values.
+    flock.lineGen.value = flock.lineGen.linear;
+
 
     fluid.defaults("flock.ugen.envGen", {
         rate: "audio",
 
         inputs: {
-            envelope: null,
+            envelope: "flock.envelope.adsr",
             gate: 1.0,
             timeScale: 1.0,
             mul: null,          // This is equivalent to SC's levelScale parameter.
