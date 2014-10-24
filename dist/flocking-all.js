@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (October 20, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (October 23, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.1
@@ -29029,14 +29029,37 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.midi.getPorts = function (access) {
-        var ports = {};
+        var ports = {},
+            portCollector = typeof access.inputs === "function" ?
+                flock.midi.collectPortsLegacy : flock.midi.collectPorts;
 
-        if (access.inputs) {
-            ports.inputs = access.inputs();
+        portCollector("inputs", access, ports);
+        portCollector("outputs", access, ports);
+
+        return ports;
+    };
+
+    flock.midi.collectPorts = function (type, access, ports) {
+        var portsForType = ports[type] = ports[type] || [],
+            iterator = access[type].values();
+
+        // TODO: Switch to ES6 for..of syntax when it's safe to do so
+        // across all supported Flocking environments
+        // (i.e. when Node.js and eventually IE support it).
+        var next = iterator.next();
+        while (!next.done) {
+            portsForType.push(next.value);
+            next = iterator.next();
         }
 
-        if (access.outputs) {
-            ports.outputs = access.outputs();
+        return ports;
+    };
+
+    // TODO: Remove this when the new Web MIDI API makes it
+    // into the Chrome release channel.
+    flock.midi.collectPortsLegacy = function (type, access, ports) {
+        if (access[type]) {
+            ports[type] = access[type]();
         }
 
         return ports;
