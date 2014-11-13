@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (October 26, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (November 12, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof exports === "object") {
@@ -10941,6 +10941,9 @@ var fluid = fluid || require("infusion"),
         return obj.tags && obj.tags.indexOf(tag) > -1;
     };
 
+    // TODO: Chrome profiler marks this function as unoptimized.
+    // This should probably be factored into separate functions for
+    // new and existing arrays. (e.g. "generate" vs. "fill")
     flock.generate = function (bufOrSize, generator) {
         var buf = typeof bufOrSize === "number" ? new Float32Array(bufOrSize) : bufOrSize,
             isFunc = typeof generator === "function",
@@ -12127,6 +12130,7 @@ var fluid = fluid || require("infusion"),
         /**
          * Generates one block of audio rate signal by evaluating this synth's unit generator graph.
          */
+        // TODO: This function is marked as unoptimized by the Chrome profiler.
         that.gen = function () {
             var nodes = that.nodes,
                 i,
@@ -15428,7 +15432,8 @@ var fluid = fluid || require("infusion"),
                 strideNames = that.options.strideInputs,
                 inputs = that.inputs,
                 i,
-                name;
+                name,
+                input;
 
             m.strides = m.strides || {};
 
@@ -15438,7 +15443,14 @@ var fluid = fluid || require("infusion"),
 
             for (i = 0; i < strideNames.length; i++) {
                 name = strideNames[i];
-                m.strides[name] = inputs[name].rate === flock.rates.AUDIO ? 1 : 0;
+                input = inputs[name];
+
+                if (input) {
+                    m.strides[name] = input.rate === flock.rates.AUDIO ? 1 : 0;
+                } else {
+                    fluid.log(fluid.logLevel.WARN, "An invalid input ('" +
+                        name + "') was found on a unit generator: " + that);
+                }
             }
         };
 
@@ -15652,6 +15664,7 @@ var fluid = fluid || require("infusion"),
             add: null
         }
     });
+
 
     flock.ugen.valueChangeTrigger = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
@@ -17881,12 +17894,12 @@ var fluid = fluid || require("infusion"),
         ugenOptions: {
             model: {
                 previousGate: 0.0,
-                stepSize: 0,
-                destination: 0,
-                numSegmentSamps: 1,
-                value: 0,
-                stage: 0,
-                numStages: 0
+                stepSize: 0.0,
+                destination: 0.0,
+                numSegmentSamps: 1.0,
+                value: 0.0,
+                stage: 0.0,
+                numStages: 0.0
             },
 
             strideInputs: [
@@ -18133,6 +18146,7 @@ var fluid = fluid || require("infusion"),
 
         // TODO: Implement a "straight out" gen function for cases where the number
         // of sources matches the number of output buses (i.e. where no expansion is necessary).
+        // TODO: This function is marked as unoptimized by the Chrome profiler.
         that.gen = function (numSamps) {
             var sources = that.multiInputs.sources,
                 buses = that.options.audioSettings.buses,

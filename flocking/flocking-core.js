@@ -150,6 +150,9 @@ var fluid = fluid || require("infusion"),
         return obj.tags && obj.tags.indexOf(tag) > -1;
     };
 
+    // TODO: Chrome profiler marks this function as unoptimized.
+    // This should probably be factored into separate functions for
+    // new and existing arrays. (e.g. "generate" vs. "fill")
     flock.generate = function (bufOrSize, generator) {
         var buf = typeof bufOrSize === "number" ? new Float32Array(bufOrSize) : bufOrSize,
             isFunc = typeof generator === "function",
@@ -1336,6 +1339,7 @@ var fluid = fluid || require("infusion"),
         /**
          * Generates one block of audio rate signal by evaluating this synth's unit generator graph.
          */
+        // TODO: This function is marked as unoptimized by the Chrome profiler.
         that.gen = function () {
             var nodes = that.nodes,
                 i,
