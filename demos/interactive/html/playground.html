@@ -13,11 +13,18 @@
         <link rel="stylesheet" type="text/css" href="../css/playground.css" />
         <link rel="stylesheet" type="text/css" href="../css/shake.css" />
 
-        <script src="../../../third-party/jquery/js/jquery-2.0.0.js"></script>
+        <script src="../../../third-party/jquery/js/jquery.js"></script>
         <script src="../../../third-party/infusion/js/Fluid.js"></script>
+        <script src="../../../third-party/infusion/js/FluidDocument.js"></script>
+        <script src="../../../third-party/infusion/js/FluidDOMUtilities.js"></script>
+        <script src="../../../third-party/infusion/js/FluidDebugging.js"></script>
         <script src="../../../third-party/infusion/js/FluidIoC.js"></script>
         <script src="../../../third-party/infusion/js/DataBinding.js"></script>
+        <script src="../../../third-party/infusion/js/ModelTransformation.js"></script>
+        <script src="../../../third-party/infusion/js/ModelTransformationTransforms.js"></script>
+        <script src="../../../third-party/infusion/js/FluidView.js"></script>
         <script src="../../../third-party/dspapi/js/dspapi.js"></script>
+        <script src="../../../third-party/simjs/js/random-0.26.js"></script>
 
         <script src="../../../flocking/flocking-core.js"></script>
         <script src="../../../flocking/flocking-buffers.js"></script>
@@ -28,6 +35,7 @@
         <script src="../../../flocking/flocking-ugens.js"></script>
         <script src="../../../flocking/flocking-ugens-browser.js"></script>
         <script src="../../../flocking/flocking-gfx.js"></script>
+        <script src="../../../flocking/flocking-webmidi.js"></script>
 
         <script src="../../../ui/third-party/codemirror/js/codemirror-compressed.js"></script>
 
@@ -95,6 +103,7 @@
 		                        <option value="bandreject">Band reject filter</option>
 		                        <option value="delay">Delay</option>
 		                        <option value="latch">Sample and Hold</option>
+                                <option value="moog">Moog VCF</option>
 		                    </optgroup>
 		                    <optgroup label="Envelopes">
 		                        <option value="simpleASR">Simple Attack/Sustain/Release</option>
@@ -674,6 +683,40 @@ var synth = flock.synth({
                 freq: 10
             }
         }
+    }
+});
+        </script>
+
+        <script type="application/flocking" id="moog">
+// A 24db low pass moog-style filter.
+var synth = flock.synth({
+    synthDef: {
+        ugen: "flock.ugen.filter.moog",
+        cutoff: {
+            ugen: "flock.ugen.sinOsc",
+            freq: 1/4,
+            mul: 5000,
+            add: 7000
+        },
+        resonance: {
+            ugen: "flock.ugen.sinOsc",
+            freq: 1/2,
+            mul: 1.5,
+            add: 1.5
+        },
+        source: {
+            ugen: "flock.ugen.lfSaw",
+            freq: {
+                ugen: "flock.ugen.sequence",
+                freq: 1/2,
+                loop: 1,
+                list: [220, 220 * 5/4, 220, 220 * 3/2, 220 * 4/3, 220],
+                options: {
+                    interpolation: "linear"
+                }
+            }
+        },
+        mul: 0.5
     }
 });
         </script>

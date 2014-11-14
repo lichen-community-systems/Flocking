@@ -42,7 +42,11 @@ var fluid = fluid || require("infusion"),
             var gumFn = navigator.getUserMedia || navigator.webkitGetUserMedia ||
                 navigator.mozGetUserMedia || navigator.msGetUserMedia;
 
-            return gumFn.call(navigator, options, success, error);
+            if (!gumFn) {
+                flock.fail("Media Streams and getUserMedia are not supported on this browser.");
+            } else {
+                return gumFn.call(navigator, options, success, error);
+            }
         },
 
         getMediaDevices: function (callback) {
@@ -144,6 +148,10 @@ var fluid = fluid || require("infusion"),
                     args: ["{that}.options.audioSettings", "{contextWrapper}.context.sampleRate"]
                 },
                 {
+                    funcName: "flock.webAudio.strategy.setChannelState",
+                    args: ["{that}.options.audioSettings", "{contextWrapper}.context"]
+                },
+                {
                     funcName: "flock.webAudio.strategy.bindWriter",
                     args: [
                         "{that}.jsNode",
@@ -202,6 +210,19 @@ var fluid = fluid || require("infusion"),
         audioSettings.sampleRate = sampleRate;
     };
 
+    // TODO: This is also shady. Refactor this into a shared environment-level model property.
+    flock.webAudio.strategy.setChannelState = function (audioSettings, context) {
+        if (flock.platform.browser.safari) {
+            // TODO: Figure out why attempting to set channelCount on the audioContext's
+            // destination here throws an InvalidStateError DOM Exception 11.
+            return;
+        }
+
+        var chans = context.destination.maxChannelCount;
+        audioSettings.chans = chans;
+        context.destination.channelCount = chans;
+    };
+
     flock.webAudio.strategy.calcNumKrPeriods = function (s) {
         return s.bufferSize / s.blockSize;
     };
@@ -210,15 +231,17 @@ var fluid = fluid || require("infusion"),
         var jsNodeName = ctx.createScriptProcessor ? "createScriptProcessor" : "createJavaScriptNode",
             jsNode = ctx[jsNodeName](s.bufferSize, s.numInputBuses, s.chans);
 
+        jsNode.channelCountMode = "explicit";
+        jsNode.channelCount = s.chans;
+
         return jsNode;
     };
 
-    flock.webAudio.strategy.bindWriter = function (jsNode, model, evaluator, audioSettings, inputNodes, stopFn) {
+    flock.webAudio.strategy.bindWriter = function (jsNode, model, evaluator, audioSettings, inputNodes) {
         jsNode.model = model;
         jsNode.evaluator = evaluator;
         jsNode.audioSettings = audioSettings;
         jsNode.inputNodes = inputNodes;
-        jsNode.stopFn = stopFn;
 
         jsNode.onaudioprocess = flock.webAudio.strategy.writeSamples;
     };
@@ -233,18 +256,15 @@ var fluid = fluid || require("infusion"),
      *  - inputNodes: a list of native input nodes to be read into input buses
      *  - nodeEvaluator: a nodeEvaluator instance
      *  - audioSettings: the enviornment's audio settings
-     *  - stopFn: a function to call when stopping the strategy.
      */
     flock.webAudio.strategy.writeSamples = function (e) {
         var m = this.model,
             numInputNodes = this.inputNodes.length,
             evaluator = this.evaluator,
             s = this.audioSettings,
-            stopFn = this.stopFn,
             inBufs = e.inputBuffer,
             outBufs = e.outputBuffer,
             krPeriods = m.krPeriods,
-            playState = m.playState,
             buses = evaluator.buses,
             blockSize = s.blockSize,
             chans = s.chans,
@@ -296,11 +316,6 @@ var fluid = fluid || require("infusion"),
                 }
             }
         }
-
-        playState.written += s.bufferSize * chans;
-        if (playState.written >= playState.total) {
-            stopFn();
-        }
     };
 
     flock.webAudio.strategy.iOSStart = function (model, applier, ctx, jsNode) {
@@ -348,6 +363,7 @@ var fluid = fluid || require("infusion"),
     flock.webAudio.contextWrapper.registerSingleton = function (that) {
         fluid.staticEnvironment.webAudioContextWrapper = that;
     };
+
 
     /**
      * Manages a collection of input nodes and an output node,
@@ -589,6 +605,7 @@ var fluid = fluid || require("infusion"),
 
         return specOpener();
     };
+
 
     flock.webAudio.inputManager.openAudioDeviceWithId = function (id, deviceOpener) {
         var options = {

@@ -100,7 +100,7 @@ Concatenated and minified Flocking files are committed to the source code reposi
 If you'd prefer to link to the individual Flocking files during development, these are the basic required dependencies:
 
     <!-- jQuery -->
-    <script src="flocking/third-party/jquery/js/jquery-2.0.0.js"></script>
+    <script src="flocking/third-party/jquery/js/jquery.js"></script>
 
     <!-- Infusion -->
     <script src="flocking/third-party/infusion/js/Fluid.js"></script>
