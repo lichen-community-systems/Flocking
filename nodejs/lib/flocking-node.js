@@ -6,7 +6,6 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global */
 /*jslint white: true, vars: true, undef: true, newcap: true, regexp: true, browser: true,
     forin: true, continue: true, nomen: true, bitwise: true, maxerr: 100, indent: 4 */
 
@@ -59,12 +58,12 @@ var fs = require("fs"),
                     });
                 });
             });
-        })
+        });
     };
 
     fluid.registerNamespace("flock.net");
 
-    flock.net.readBufferFromUrl = function (options) {
+    flock.net.readBufferFromUrl = function () {
         throw new Error("Loading files from URLs is not currently supported in Node.js.");
     };
 
@@ -151,6 +150,7 @@ var fs = require("fs"),
         return audioSettings.blockSize * audioSettings.chans * bytesPerSample;
     };
 
+
     flock.audioStrategy.nodejs.createSpeaker = function (audioSettings) {
         return new Speaker({
             channels: audioSettings.chans,
@@ -160,10 +160,10 @@ var fs = require("fs"),
             float: true,
             samplesPerFrame: audioSettings.blockSize,
             endianness: "LE"
-        })
+        });
     };
 
-    flock.audioStrategy.nodejs.createOutputStream = function (settings) {
+    flock.audioStrategy.nodejs.createOutputStream = function () {
         return new Readable();
     };
 
@@ -180,7 +180,6 @@ var fs = require("fs"),
     flock.audioStrategy.nodejs.writeSamples = function (numBytes, that) {
         var settings = that.options.audioSettings,
             m = that.model,
-            playState = m.playState,
             bytesPerSample = that.options.bytesPerSample,
             blockSize = settings.blockSize,
             chans = settings.chans,
@@ -216,11 +215,6 @@ var fs = require("fs"),
         }
 
         outputStream.push(out);
-
-        playState.written += settings.bufferSize * chans;
-        if (playState.written >= playState.total) {
-            that.stop();
-        }
     };
 
 
@@ -321,7 +315,7 @@ var fs = require("fs"),
     var listenerID = 0;
     flock.midi.nodejs.wrapMessageListener = function (that, fn) {
         var guid = "flock-guid-" + listenerID++;
-        fn.__flock_midi_id = guid
+        fn.__flock_midi_id = guid;
 
         var wrapper = function (deltaTime, data) {
             var e = {

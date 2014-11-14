@@ -14,7 +14,7 @@ var flock = flock || {};
     "use strict";
 
     flock.init();
-    
+
     flock.test = flock.test || {};
 
     var makeSynthDefTestSpec = function (synthDef, rate, numSampleBlocks) {
@@ -23,10 +23,10 @@ var flock = flock || {};
                 var synth = flock.synth({
                     synthDef: synthDef
                 });
-                
-                var i, 
+
+                var i,
                     ugen;
-                
+
                 // Change the rate of each unit generator to the specified rate.
                 for (i = 0; i < synth.nodes.length; i++) {
                     ugen = synth.nodes[i];
@@ -34,19 +34,19 @@ var flock = flock || {};
                         ugen.rate = rate;
                     }
                 }
-                
+
                 // And then whip through again and poke everyone to update their input assumptions.
                 for (i = 0; i < synth.nodes.length; i++) {
                     ugen = synth.nodes[i];
                     ugen.onInputChanged();
                 }
-                
+
                 return synth;
             },
-        
+
             test: function (synth) {
                 for (var i = 0; i < numSampleBlocks; i++) {
-                    synth.gen();    
+                    synth.gen();
                 }
             }
         };
@@ -58,25 +58,26 @@ var flock = flock || {};
             i,
             rate,
             j;
-        
+
         if (!flock.isIterable(synthDefs)) {
             synthDefs = [synthDefs];
         }
-        
+
         if (!flock.isIterable(rates)) {
             rates = [rates];
         }
-    
+
         for (i = 0; i < rates.length; i++) {
             rate = rates[i];
-            
+
             for (j = 0; j < synthDefs.length; j++) {
                 testSpec = makeSynthDefTestSpec(synthDefs[j], rate, numSampleBlocks);
                 testSpec.name = name + " " + rate + " rate.";
                 testSpecs.push(testSpec);
+                testSpec.numReps = 200;
             }
         }
-    
+
         sheep.test(testSpecs, true);
     };
 

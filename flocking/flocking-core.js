@@ -905,11 +905,6 @@ var fluid = fluid || require("infusion"),
         gradeNames: ["fluid.standardComponent", "flock.nodeList", "autoInit"],
 
         model: {
-            playState: {
-                written: 0,
-                total: Infinity
-            },
-
             isPlaying: false
         },
 
@@ -960,7 +955,6 @@ var fluid = fluid || require("infusion"),
             play: {
                 funcName: "flock.enviro.play",
                 args: [
-                    "{arguments}.0",
                     "{that}.model",
                     "{that}.applier",
                     "{that}.audioSettings",
@@ -1050,16 +1044,9 @@ var fluid = fluid || require("infusion"),
         audioSettings.chans = audioStrategySettings.chans;
     };
 
-    flock.enviro.play = function (dur, model, applier, audioSettings, onPlay) {
-        dur = dur === undefined ? Infinity : dur;
-
-        var playState = model.playState,
-            sps = dur * audioSettings.rates.audio * audioSettings.chans,
-            totalSamples = playState.written + sps;
-
-        applier.requestChange("playState.total", totalSamples);
+    flock.enviro.play = function (model, applier, audioSettings, onPlay) {
         applier.requestChange("isPlaying", true);
-        onPlay(dur);
+        onPlay();
     };
 
     flock.enviro.stop = function (applier, onStop) {
