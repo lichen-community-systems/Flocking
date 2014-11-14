@@ -5,31 +5,29 @@
         <meta charset="UTF-8" />
         <link rel="stylesheet" type="text/css" href="../../shared/css/demos.css" />
         <link rel="stylesheet" type="text/css" href="../css/audiofile.css" />
-        
-        <script src="../../../third-party/polydataview/js/polydataview.js"></script>
-        <script src="../../../third-party/jquery/js/jquery-2.0.0.js"></script>
-        
+
+        <script src="../../../third-party/jquery/js/jquery.js"></script>
+
         <script src="../../../third-party/infusion/js/Fluid.js"></script>
         <script src="../../../third-party/infusion/js/FluidIoC.js"></script>
         <script src="../../../third-party/infusion/js/DataBinding.js"></script>
-        
+
         <script src="../../../flocking/flocking-core.js"></script>
         <script src="../../../flocking/flocking-scheduler.js"></script>
         <script src="../../../flocking/flocking-buffers.js"></script>
         <script src="../../../flocking/flocking-audiofile.js"></script>
-        <script src="../../../flocking/flocking-firefox.js"></script>
         <script src="../../../flocking/flocking-webaudio.js"></script>
         <script src="../../../flocking/flocking-parser.js"></script>
         <script src="../../../flocking/flocking-ugens.js"></script>
         <script src="../../../flocking/flocking-gfx.js"></script>
         <script src="../../../flocking/flocking-ugens-browser.js"></script>
-        
+
         <script src="../../shared/js/demo-utils.js"></script>
     </head>
-    
+
     <body>
         <h1>Audio File Decoding Demo</h1>
-        
+
         <div class="controls">
             <div class="selectors">
                 <form class="fileSelector">
@@ -38,10 +36,10 @@
                     <button class="browse">Choose a sound file...</button>
                     <span class="filePath"></span>
                 </form>
-            
+
                 <form class="dataUrlSelector">
                     <label for="dataUrlField">...or paste in a data URL:</label>
-                    <textarea id="dataUrlField"></textarea>                
+                    <textarea id="dataUrlField"></textarea>
                 </form>
             </div>
             <button class="playButton">Play</button>
@@ -53,7 +51,7 @@
             <label for="playbackSpeed">Playback speed:</label>
             <input type="range" name="playbackSpeed" id="playbackSpeed" min="0.5" max="2.0" step="0.1" value="1.0" />
         </div>
-        
+
         <script>
 
             var synth = flock.synth({
@@ -82,7 +80,7 @@
                     }
                 }
             }),
-            
+
             fileSelectorView = demo.fileSelectorView(synth, {
                 playerId: "player",
                 selectors: {
@@ -91,16 +89,16 @@
                     fileName: ".fileSelector .filePath"
                 }
             }),
-            
+
             dataUrlSelectorView = demo.dataUrlSelectorView(synth, {
                 playerId: "player",
                 selectors: {
                     field: "#dataUrlField"
                 }
             }),
-            
+
             playButtonView = demo.toggleButtonView(synth, ".playButton");
-            
+
             // Dynamically change the playback speed of the playBuffer ugen based on changes to the slider.
             document.querySelector("#playbackSpeed").addEventListener("change", function (e) {
                 synth.input("player.speed", Number(e.target.value));

@@ -5,7 +5,6 @@
     "use strict";
 
     importScripts(
-        "../third-party/polydataview/js/polydataview.js",
         "./flocking-audiofile.js"
     );
 

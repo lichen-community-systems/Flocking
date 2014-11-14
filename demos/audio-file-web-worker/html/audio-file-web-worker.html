@@ -3,19 +3,17 @@
     <head>
         <meta charset="UTF-8" />
         <title>Decoding Audio in a Web Worker</title>
-        
-        <script src="../../../third-party/polydataview/js/polydataview.js"></script>
-        <script src="../../../third-party/jquery/js/jquery-2.0.0.js"></script>
-        
+
+        <script src="../../../third-party/jquery/js/jquery.js"></script>
+
         <script src="../../../third-party/infusion/js/Fluid.js"></script>
         <script src="../../../third-party/infusion/js/FluidIoC.js"></script>
         <script src="../../../third-party/infusion/js/DataBinding.js"></script>
-        
+
         <script src="../../../flocking/flocking-core.js"></script>
         <script src="../../../flocking/flocking-audiofile.js"></script>
         <script src="../../../flocking/flocking-buffers.js"></script>
         <script src="../../../flocking/flocking-scheduler.js"></script>
-        <script src="../../../flocking/flocking-firefox.js"></script>
         <script src="../../../flocking/flocking-webaudio.js"></script>
         <script src="../../../flocking/flocking-parser.js"></script>
         <script src="../../../flocking/flocking-ugens.js"></script>
@@ -24,22 +22,22 @@
         <script>
             flock.init();
             fluid.registerNamespace("demo");
-            
+
             demo.playBuffer = function (bufferDesc) {
                 var enviro = flock.enviro.shared;
                 enviro.play();
-                                
+
                 var s = flock.synth({
                     synthDef: {
                         ugen: "flock.ugen.playBuffer",
                         buffer: bufferDesc
                     }
                 });
-                
+
                 var k = flock.scheduler.async();
                 k.once(bufferDesc.format.duration, enviro.reset);
             };
-            
+
             flock.audio.decode({
                 src: "../../shared/audio/hillier-first-chord.wav",
                 success: demo.playBuffer,
@@ -47,7 +45,7 @@
                     throw new Error(msg);
                 }
             });
-            
+
         </script>
     </body>
 </html>
