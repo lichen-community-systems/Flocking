@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (November 12, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (November 24, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.1
@@ -24732,9 +24732,13 @@ var fluid = fluid || require("infusion"),
             var m = that.model,
                 inputs = that.inputs;
 
-            if (inputName === "atTime" || !inputName) {
+            if (inputName === "time" || !inputName) {
                 m.samplesLeft = Math.round(inputs.time.output[0] * m.sampleRate);
+            }
+
+            if (inputName === "crossfade" || !inputName) {
                 m.crossfadeStepSize = 1.0 / Math.round(inputs.crossfade.output[0] * m.sampleRate);
+                m.crossfadeLevel = inputs.crossfade.output[0] > 0.0 ? 1.0 : 0.0;
             }
 
             that.calculateStrides();
@@ -24778,7 +24782,7 @@ var fluid = fluid || require("infusion"),
             model: {
                 samplesLeft: 0.0,
                 crossfadeStepSize: 0,
-                crossfadeLevel: 1.0
+                crossfadeLevel: 0.0
             },
             strideInputs: ["initial", "target"]
         }
