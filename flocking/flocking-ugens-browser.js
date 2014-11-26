@@ -167,15 +167,19 @@ var fluid = fluid || require("infusion"),
             }
         };
 
+        that.calcCursor = function(e) {
+            var off;
+            off = that.model.target.offset();
+            e.clientX = e.pageX - off.left;
+            e.clientY = e.pageY - off.top;
+        }
+
         that.moveListener = function (e) {
             var m = that.model,
-                pos = e[m.eventProp],
-                off;
+                pos = e[m.eventProp];
 
-            if (pos === undefined) {
-                off = $(e.target).offset();
-                e.offsetX = e.clientX - off.left;
-                e.offsetY = e.clientY - off.top;
+            if (pos === undefined || m.target[0] != window) {
+                that.calcCursor(e);
                 pos = e[m.eventProp];
             }
             m.mousePosition = m.isWithinTarget ? pos : 0.0;
