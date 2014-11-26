@@ -238,10 +238,10 @@ var fluid = fluid || require("infusion"),
                 target = $(options.target || window);
 
             if (axis === "x" || axis === "width" || axis === "horizontal") {
-                m.eventProp = "offsetX";
+                m.eventProp = "clientX";
                 m.size = target.width();
             } else {
-                m.eventProp = "offsetY";
+                m.eventProp = "clientY";
                 m.size = target.height();
             }
 
