@@ -429,6 +429,112 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+    /**
+     * Changes from the <code>initial</code> input to the <code>target</code> input
+     * at the specified <code>time</code>. An optional <code>crossfade</code> duration
+     * may be specified to linearly crossfade between the two inputs.
+     *
+     * Can be used to schedule sample-accurate changes.
+     * Note that the <code>target</code> input will be evaluated from the beginning,
+     * even if its value isn't yet output.
+     *
+     */
+    flock.ugen.change = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                initial = that.inputs.initial.output,
+                initialInc = m.strides.initial,
+                target = that.inputs.target.output,
+                targetInc = m.strides.target,
+                out = that.output,
+                samplesLeft = m.samplesLeft,
+                crossfadeLevel = m.crossfadeLevel,
+                val;
+
+            for (var i = 0, j = 0, k = 0; i < numSamps; i++, j += initialInc, k += targetInc) {
+                if (samplesLeft > 0) {
+                    // We haven't hit the scheduled time yet.
+                    val = initial[j];
+                    samplesLeft--;
+                } else if (crossfadeLevel > 0.0) {
+                    // We've hit the scheduled time, but we still need to peform the crossfade.
+                    val = (initial[j] * crossfadeLevel) + (target[k] * (1.0 - crossfadeLevel));
+                    crossfadeLevel -= m.crossfadeStepSize;
+                } else {
+                    // We're done.
+                    val = target[k];
+                }
+
+                out[i] = val;
+            }
+
+            m.samplesLeft = samplesLeft;
+            m.crossfadeLevel = crossfadeLevel;
+        };
+
+        that.onInputChanged = function (inputName) {
+            var m = that.model,
+                inputs = that.inputs;
+
+            if (inputName === "time" || !inputName) {
+                m.samplesLeft = Math.round(inputs.time.output[0] * m.sampleRate);
+            }
+
+            if (inputName === "crossfade" || !inputName) {
+                m.crossfadeStepSize = 1.0 / Math.round(inputs.crossfade.output[0] * m.sampleRate);
+                m.crossfadeLevel = inputs.crossfade.output[0] > 0.0 ? 1.0 : 0.0;
+            }
+
+            that.calculateStrides();
+        };
+
+        that.onInputChanged();
+
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.change", {
+        rate: "audio",
+
+        inputs: {
+            /**
+             * An input unit generator to output initially.
+             * Can be audio, control, or constant rate.
+             */
+            initial: 0.0,
+
+            /**
+             * The unit generator to output after the specified time.
+             * Can be audio, control, or constant rate.
+             */
+            target: 0.0,
+
+            /**
+             * The sample-accurate time (in seconds) at which the
+             * the change should occur.
+             */
+            time: 0.0,
+
+            /**
+             * The duration of the optional linear crossfade between
+             * the two values.
+             */
+            crossfade: 0.0
+        },
+
+        ugenOptions: {
+            model: {
+                samplesLeft: 0.0,
+                crossfadeStepSize: 0,
+                crossfadeLevel: 0.0
+            },
+            strideInputs: ["initial", "target"]
+        }
+    });
+
+
     flock.ugen.valueChangeTrigger = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
@@ -4157,7 +4263,8 @@ var fluid = fluid || require("infusion"),
                 source = chan ? inputs.source.output[chan.output[0]] : inputs.source.output,
                 trig = inputs.trigger.output[0],
                 freq = inputs.freq.output[0],
-                i;
+                i,
+                j;
 
             if (trig > 0.0 && m.prevTrig <= 0.0) {
                 fluid.log(fluid.logLevel.IMPORTANT, label + source);
@@ -4169,9 +4276,9 @@ var fluid = fluid || require("infusion"),
                 m.counter = m.sampInterval;
             }
 
-            for (i = 0; i < numSamps; i++) {
+            for (i = 0, j = 0 ; i < numSamps; i++, j += m.strides.source) {
                 if (m.counter >= m.sampInterval) {
-                    fluid.log(fluid.logLevel.IMPORTANT, label + source[i]);
+                    fluid.log(fluid.logLevel.IMPORTANT, label + source[j]);
                     m.counter = 0;
                 }
                 m.counter++;
@@ -4182,6 +4289,7 @@ var fluid = fluid || require("infusion"),
         that.init = function () {
             var o = that.options;
             that.model.label = o.label ? o.label + ": " : "";
+            that.onInputChanged();
         };
 
         that.init();
@@ -4198,7 +4306,8 @@ var fluid = fluid || require("infusion"),
         ugenOptions: {
             model: {
                 counter: 0
-            }
+            },
+            strideInputs: ["source"]
         }
     });
 
