@@ -20,7 +20,8 @@ var fluid = fluid || require("infusion");
                 "{osc}.options.demos",
                 "{noise}.options.demos",
                 "{granular}.options.demos",
-                "{browser}.options.demos"
+                "{browser}.options.demos",
+                "{scheduling}.options.demos"
             ],
             defaultOption: "am"
         },
@@ -40,6 +41,10 @@ var fluid = fluid || require("infusion");
 
             browser: {
                 type: "flock.playground.demos.browser"
+            },
+
+            scheduling: {
+                type: "flock.playground.demos.scheduling"
             }
         }
     });
@@ -161,6 +166,31 @@ var fluid = fluid || require("infusion");
             ]
         }
     });
+
+    fluid.defaults("flock.playground.demos.scheduling", {
+        gradeNames: ["fluid.littleComponent", "autoInit"],
+
+        demos: {
+            name: "Synths and scheduling",
+            options: [
+                {
+                    id: "polyphonicSynth",
+                    name: "Polyphonic synth",
+                    fileExt: "js"
+                },
+                {
+                    id: "declarative-scheduling",
+                    name: "Declarative scheduling",
+                    fileExt: "js"
+                },
+                {
+                    id: "sample-accurate-scheduling",
+                    name: "Sample-accurate scheduling"
+                }
+            ]
+        }
+    });
+
         /*<optgroup label="Simple Waveforms">
             <option value="simple_sin">Sine</option>
             <option value="simple_triangle">Triangle</option>
