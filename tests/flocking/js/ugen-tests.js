@@ -2187,6 +2187,68 @@ var fluid = fluid || require("infusion"),
             "The first value of the source buffer should be passed through as-is.");
     });
 
+    (function () {
+        module("flock.ugen.change");
+
+        var changeDef = {
+            id: "changer",
+            ugen: "flock.ugen.change",
+            initial: 1.0,
+            target: 2.0,
+            time: 1/750
+        };
+
+        function makeChangeSynth(synthDef) {
+            return flock.synth({
+                audioSettings: {
+                    rates: {
+                        audio: 48000
+                    }
+                },
+
+                synthDef: synthDef
+            });
+        }
+
+        test("Change at specified time", function () {
+            var synth = makeChangeSynth(changeDef),
+                changer = synth.get("changer");
+
+            synth.gen();
+            deepEqual(changer.output, flock.generate(64, 1),
+                "For the first sample block, the output should be the initial input's output.");
+            synth.gen();
+            deepEqual(changer.output, flock.generate(64, 2),
+                "For the second sample block, the output should be the target input's output.");
+        });
+
+        test("Crossfade", function () {
+            var crossFadeDef = $.extend(true, {}, changeDef, {
+                crossfade: 1/750
+            });
+
+            var synth = makeChangeSynth(crossFadeDef),
+                changer = synth.get("changer"),
+                crossfadeBuffer = flock.generate(64, function (i) {
+                    var targetLevel = i / 64,
+                        initialLevel = 1 - targetLevel;
+                    return (1 * initialLevel) + (2 * targetLevel);
+                });
+
+            synth.gen();
+            deepEqual(changer.output, flock.generate(64, 1),
+                "For the first sample block, the output should be the initial input's output.");
+            synth.gen();
+            deepEqual(changer.output, crossfadeBuffer,
+                "For the second sample block, the output should crossfade from the initial to the target input.");
+            synth.gen();
+            deepEqual(changer.output, flock.generate(64, 2),
+                "For the third sample block, the output should be the target input's output.");
+        });
+
+    }());
+
+
 
     module("flock.ugen.t2a");
 
