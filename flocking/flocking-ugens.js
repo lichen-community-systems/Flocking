@@ -4263,7 +4263,8 @@ var fluid = fluid || require("infusion"),
                 source = chan ? inputs.source.output[chan.output[0]] : inputs.source.output,
                 trig = inputs.trigger.output[0],
                 freq = inputs.freq.output[0],
-                i;
+                i,
+                j;
 
             if (trig > 0.0 && m.prevTrig <= 0.0) {
                 fluid.log(fluid.logLevel.IMPORTANT, label + source);
@@ -4275,9 +4276,9 @@ var fluid = fluid || require("infusion"),
                 m.counter = m.sampInterval;
             }
 
-            for (i = 0; i < numSamps; i++) {
+            for (i = 0, j = 0 ; i < numSamps; i++, j += m.strides.source) {
                 if (m.counter >= m.sampInterval) {
-                    fluid.log(fluid.logLevel.IMPORTANT, label + source[i]);
+                    fluid.log(fluid.logLevel.IMPORTANT, label + source[j]);
                     m.counter = 0;
                 }
                 m.counter++;
@@ -4288,6 +4289,7 @@ var fluid = fluid || require("infusion"),
         that.init = function () {
             var o = that.options;
             that.model.label = o.label ? o.label + ": " : "";
+            that.onInputChanged();
         };
 
         that.init();
@@ -4304,7 +4306,8 @@ var fluid = fluid || require("infusion"),
         ugenOptions: {
             model: {
                 counter: 0
-            }
+            },
+            strideInputs: ["source"]
         }
     });
 
