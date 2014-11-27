@@ -147,33 +147,33 @@ var fluid = fluid || require("infusion"),
                     }
                 }
             },
-            // {
-            //     name: "16 bit AIFF file",
-            //     format: "aiff",
-            //     src: flock.test.audio.triangleInt16AIFF,
-            //     decoded: {
-            //         container: {
-            //             id: "FORM",
-            //             size: 130,
-            //             formatType: "AIFF"
-            //         },
-            //         format: {
-            //             id: "COMM",
-            //             size: 18,
-            //             numChannels: 1,
-            //             numSampleFrames: 42,
-            //             bitRate: 16,
-            //             duration: 0.0009523809523809524,
-            //             sampleRate: 44100.0
-            //         },
-            //         data: {
-            //             id: "SSND",
-            //             size: 92,
-            //             offset: 0,
-            //             blockSize: 0
-            //         }
-            //     }
-            // }
+            {
+                name: "16 bit AIFF file",
+                format: "aiff",
+                src: flock.test.audio.triangleInt16AIFF,
+                decoded: {
+                    container: {
+                        id: "FORM",
+                        size: 130,
+                        formatType: "AIFF"
+                    },
+                    format: {
+                        id: "COMM",
+                        size: 18,
+                        numChannels: 1,
+                        numSampleFrames: 42,
+                        bitRate: 16,
+                        duration: 0.0009523809523809524,
+                        sampleRate: 44100.0
+                    },
+                    data: {
+                        id: "SSND",
+                        size: 92,
+                        offset: 0,
+                        blockSize: 0
+                    }
+                }
+            }
         ];
 
         var testAudioFileFormat = function (config) {
@@ -250,49 +250,55 @@ var fluid = fluid || require("infusion"),
                 dataSize: eightBitSampleSize * 2,
                 src: flock.test.audio.triangleInt16WAV
             },
-            // {
-            //     name: "int 16 AIFF file",
-            //     bitDepth: 16,
-            //     dataSize: (eightBitSampleSize * 2) + 4 + 4, // 42 samples in 16 bit representation plus 4 bytes for offset and 4 for blockSize
-            //     src: flock.test.audio.triangleInt16AIFF
-            // },
-            // {
-            //     name: "int8 AIFF file",
-            //     bitDepth: 8,
-            //     dataSize: eightBitSampleSize + 4 + 4,
-            //     src: flock.test.audio.triangleInt8AIFF
-            // },
+            {
+                name: "int 16 AIFF file",
+                bitDepth: 16,
+                dataSize: (eightBitSampleSize * 2) + 4 + 4, // 42 samples in 16 bit representation plus 4 bytes for offset and 4 for blockSize
+                src: flock.test.audio.triangleInt16AIFF
+            },
+            {
+                name: "int8 AIFF file",
+                bitDepth: 8,
+                dataSize: eightBitSampleSize + 4 + 4,
+                src: flock.test.audio.triangleInt8AIFF
+            },
             // No 32-bit support yet.
-            // {
-            //     name: "int32 WAV file",
-            //     bitDepth: 32,
-            //     dataSize: eightBitSampleSize * 4,
-            //     src: flock.test.audio.triangleInt32WAV
-            // },
-            // {
-            //     name: "int32 AIFF file",
-            //     bitDepth: 32,
-            //     dataSize: (eightBitSampleSize * 4) + 4 + 4,
-            //     src: flock.test.audio.triangleInt32AIFF
-            // },
+            {
+                name: "int32 WAV file",
+                bitDepth: 32,
+                dataSize: eightBitSampleSize * 4,
+                src: flock.test.audio.triangleInt32WAV,
+                decoder: flock.audio.decode.workerAsync
+            },
+            {
+                name: "int32 AIFF file",
+                bitDepth: 32,
+                dataSize: (eightBitSampleSize * 4) + 4 + 4,
+                src: flock.test.audio.triangleInt32AIFF,
+                decoder: flock.audio.decode.workerAsync
+
+            },
             {
                 name: "float WAV file",
                 bitDepth: 32,
                 dataSize: eightBitSampleSize * 4,
-                src: flock.test.audio.triangleFloatWAV
+                src: flock.test.audio.triangleFloatWAV,
+                decoder: flock.audio.decode.workerAsync
             },
-            // {
-            //     name: "float AIFF file",
-            //     bitDepth: 32,
-            //     dataSize: (eightBitSampleSize * 4) + 4 + 4,
-            //     src: flock.test.audio.triangleFloatAIFF
-            // }
+            {
+                name: "float AIFF file",
+                bitDepth: 32,
+                dataSize: (eightBitSampleSize * 4) + 4 + 4,
+                src: flock.test.audio.triangleFloatAIFF,
+                decoder: flock.audio.decode.workerAsync
+            }
         ];
 
         var makeTester = function (config) {
             return function () {
                 flock.audio.decode({
                     src: config.src,
+                    decoder: config.decoder,
                     success: function (decoded) {
                         testTriangleBuffer(decoded);
                         start();

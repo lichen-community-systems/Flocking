@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (November 26, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (November 27, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof exports === "object") {
@@ -13839,15 +13839,15 @@ var flock = fluid.registerNamespace("flock");
         var success = options.success;
 
         var wrappedSuccess = function (rawData, type) {
-            var decoders = flock.audio.decode,
-                decoder = decoders.async;
+            var strategies = flock.audio.decoderStrategies,
+                strategy = strategies[type] || strategies["default"];
 
             if (options.decoder) {
-                decoder = typeof (options.decoder) === "string" ?
+                strategy = typeof (options.decoder) === "string" ?
                      fluid.getGlobalValue(options.decoder) : options.decoder;
             }
 
-            decoder({
+            strategy({
                 rawData: rawData,
                 type: type,
                 success: success,
@@ -13945,9 +13945,6 @@ var flock = fluid.registerNamespace("flock");
         return baseUrl + workerFileName;
     };
 
-    flock.audio.decode.async = flock.platform.isWebAudio ?
-        flock.audio.decode.webAudio : flock.audio.decode.workerAsync;
-
     flock.audio.decode.workerAsync.findUrl.flockingFileNames = [
         "flocking-all.js",
         "flocking-all.min.js",
@@ -13956,6 +13953,24 @@ var flock = fluid.registerNamespace("flock");
         "flocking-audiofile.js",
         "flocking-core.js"
     ];
+
+    flock.audio.decoderStrategies = {
+        "default": flock.platform && flock.platform.isWebAudio ?
+        flock.audio.decode.webAudio : flock.audio.decode.workerAsync,
+        aiff: flock.audio.decode.workerAsync
+    };
+
+    flock.audio.registerDecoderStrategy = function (type, strategy) {
+        if (!type) {
+            return;
+        }
+
+        if (typeof strategy === "string") {
+            strategy = fluid.getGlobalValue(strategy);
+        }
+
+        flock.audio.decoderStrategies[type] = strategy;
+    };
 
     flock.audio.decodeArrayBuffer = function (data, type) {
         var formatSpec = flock.audio.formats[type];
