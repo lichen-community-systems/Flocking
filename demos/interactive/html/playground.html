@@ -133,7 +133,6 @@
 
             <!-- Placeholder for the interactive editor -->
             <div id="editorRegion"></div>
-            <div id="test" style="height:400px;"></div>
 
         <script>
             var editorView = demo.liveEditorView("#editorRegion");
@@ -577,7 +576,7 @@ var synth = flock.synth({
             options: {
                 axis: "width",
                 interpolation: "exponential",
-                target: "#editorRegion"
+                target: ".CodeMirror"
             }
         },
         mul: {
@@ -585,7 +584,7 @@ var synth = flock.synth({
             rate: "control",
             options: {
                 axis: "height",
-                target: "#editorRegion"
+                target: ".CodeMirror"
             },
             mul: 0.5
         }

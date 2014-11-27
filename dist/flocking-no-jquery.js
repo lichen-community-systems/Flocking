@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (November 10, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (November 26, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof exports === "object") {
@@ -19240,7 +19240,8 @@ var fluid = fluid || require("infusion"),
                 source = chan ? inputs.source.output[chan.output[0]] : inputs.source.output,
                 trig = inputs.trigger.output[0],
                 freq = inputs.freq.output[0],
-                i;
+                i,
+                j;
 
             if (trig > 0.0 && m.prevTrig <= 0.0) {
                 fluid.log(fluid.logLevel.IMPORTANT, label + source);
@@ -19252,9 +19253,9 @@ var fluid = fluid || require("infusion"),
                 m.counter = m.sampInterval;
             }
 
-            for (i = 0; i < numSamps; i++) {
+            for (i = 0, j = 0 ; i < numSamps; i++, j += m.strides.source) {
                 if (m.counter >= m.sampInterval) {
-                    fluid.log(fluid.logLevel.IMPORTANT, label + source[i]);
+                    fluid.log(fluid.logLevel.IMPORTANT, label + source[j]);
                     m.counter = 0;
                 }
                 m.counter++;
@@ -19265,6 +19266,7 @@ var fluid = fluid || require("infusion"),
         that.init = function () {
             var o = that.options;
             that.model.label = o.label ? o.label + ": " : "";
+            that.onInputChanged();
         };
 
         that.init();
@@ -19281,7 +19283,8 @@ var fluid = fluid || require("infusion"),
         ugenOptions: {
             model: {
                 counter: 0
-            }
+            },
+            strideInputs: ["source"]
         }
     });
 
@@ -19526,14 +19529,13 @@ var fluid = fluid || require("infusion"),
          */
         that.exponentialGen = function (numSamps) {
             var m = that.model,
-                scaledMouse = m.mousePosition / m.size,
+                val = flock.ugen.mouse.cursor.normalize(that.target, that.getTargetSize, m),
                 movingAvg = m.movingAvg,
                 lag = that.inputs.lag.output[0],
                 add = that.inputs.add.output[0],
                 mul = that.inputs.mul.output[0],
                 lagCoef = m.lagCoef,
                 out = that.output,
-                pow = Math.pow,
                 i,
                 max;
 
@@ -19544,8 +19546,8 @@ var fluid = fluid || require("infusion"),
 
             for (i = 0; i < numSamps; i++) {
                 max = mul + add;
-                scaledMouse = pow(max  / add, scaledMouse) * add;
-                movingAvg = scaledMouse + lagCoef * (movingAvg - scaledMouse); // 1-pole filter averages mouse values.
+                val = Math.pow(max  / add, val) * add;
+                movingAvg = val + lagCoef * (movingAvg - val); // 1-pole filter averages mouse values.
                 out[i] = movingAvg;
             }
 
@@ -19554,7 +19556,7 @@ var fluid = fluid || require("infusion"),
 
         that.linearGen = function (numSamps) {
             var m = that.model,
-                scaledMouse = m.mousePosition / m.size,
+                val = flock.ugen.mouse.cursor.normalize(that.target, that.getTargetSize, m),
                 movingAvg = m.movingAvg,
                 lag = that.inputs.lag.output[0],
                 add = that.inputs.add.output[0],
@@ -19569,7 +19571,7 @@ var fluid = fluid || require("infusion"),
             }
 
             for (i = 0; i < numSamps; i++) {
-                movingAvg = scaledMouse + lagCoef * (movingAvg - scaledMouse);
+                movingAvg = val + lagCoef * (movingAvg - val);
                 out[i] = movingAvg * mul + add;
             }
 
@@ -19577,30 +19579,17 @@ var fluid = fluid || require("infusion"),
         };
 
         that.noInterpolationGen = function (numSamps) {
-            var m = that.model,
-                scaledMouse = m.mousePosition / m.size,
-                add = that.inputs.add.output[0],
-                mul = that.inputs.mul.output[0],
-                out = that.output,
+            var val = flock.ugen.mouse.cursor.normalize(that.target, that.getTargetSize, that.model),
                 i;
 
             for (i = 0; i < numSamps; i++) {
-                out[i] = scaledMouse * mul + add;
+                that.output[i] = val * that.inputs.mul.output[0] + that.inputs.add.output[0];
             }
         };
 
         that.moveListener = function (e) {
-            var m = that.model,
-                pos = e[m.eventProp],
-                off;
-
-            if (pos === undefined) {
-                off = $(e.target).offset();
-                e.offsetX = e.clientX - off.left;
-                e.offsetY = e.clientY - off.top;
-                pos = e[m.eventProp];
-            }
-            m.mousePosition = m.isWithinTarget ? pos : 0.0;
+            var m = that.model;
+            m.mousePosition = e[m.eventProp];
         };
 
         that.overListener = function () {
@@ -19630,8 +19619,7 @@ var fluid = fluid || require("infusion"),
         };
 
         that.bindEvents = function () {
-            var m = that.model,
-                target = m.target,
+            var target = that.target,
                 moveListener = that.moveListener;
 
             if (that.options.onlyOnMouseDown) {
@@ -19649,27 +19637,32 @@ var fluid = fluid || require("infusion"),
             flock.onMulAddInputChanged(that);
 
             var interp = that.options.interpolation;
-            that.gen = interp === "none" ? that.noInterpolationGen : interp === "exponential" ? that.exponentialGen : that.linearGen;
-            that.model.exponential = interp === "exponential";
+            that.gen = interp === "none" ? that.noInterpolationGen :
+                interp === "exponential" ? that.exponentialGen : that.linearGen;
         };
 
         that.init = function () {
             var m = that.model,
                 options = that.options,
                 axis = options.axis,
-                target = $(options.target || window);
+                target = $(options.target || window),
+                targetSizeFn;
 
             if (axis === "x" || axis === "width" || axis === "horizontal") {
-                m.eventProp = "offsetX";
-                m.size = target.width();
+                m.eventProp = "clientX";
+                m.offsetProp = "left";
+                targetSizeFn = target.width;
             } else {
-                m.eventProp = "offsetY";
-                m.size = target.height();
+                m.eventProp = "clientY";
+                m.offsetProp = "top";
+                targetSizeFn = target.height;
             }
+
+            that.getTargetSize = targetSizeFn.bind(target);
+            that.target = target;
 
             m.mousePosition = 0;
             m.movingAvg = 0;
-            m.target = target;
 
             that.bindEvents();
             that.onInputChanged();
@@ -19677,6 +19670,22 @@ var fluid = fluid || require("infusion"),
 
         that.init();
         return that;
+    };
+
+    flock.ugen.mouse.cursor.normalize = function (target, getTargetSizeFn, m) {
+        if (!m.isWithinTarget) {
+            return 0.0;
+        }
+
+        var size = getTargetSizeFn(),
+            offset = target.offset(),
+            pos = m.mousePosition;
+
+        if (offset) {
+            pos -= offset[m.offsetProp];
+        }
+
+        return pos / size;
     };
 
     fluid.defaults("flock.ugen.mouse.cursor", {
@@ -19688,7 +19697,12 @@ var fluid = fluid || require("infusion"),
         },
 
         ugenOptions: {
-            axis: "x"
+            axis: "x",
+            interpolation: "linear",
+            model: {
+                mousePosition: 0,
+                movingAvg: 0
+            }
         }
     });
 
