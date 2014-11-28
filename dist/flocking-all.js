@@ -27859,7 +27859,7 @@ var fluid = fluid || require("infusion"),
          */
         that.exponentialGen = function (numSamps) {
             var m = that.model,
-                val = flock.ugen.mouse.cursor.normalize(that.target, that.getTargetSize, m),
+                val = flock.ugen.mouse.cursor.normalize(that.target, m),
                 movingAvg = m.movingAvg,
                 lag = that.inputs.lag.output[0],
                 add = that.inputs.add.output[0],
@@ -27886,7 +27886,7 @@ var fluid = fluid || require("infusion"),
 
         that.linearGen = function (numSamps) {
             var m = that.model,
-                val = flock.ugen.mouse.cursor.normalize(that.target, that.getTargetSize, m),
+                val = flock.ugen.mouse.cursor.normalize(that.target, m),
                 movingAvg = m.movingAvg,
                 lag = that.inputs.lag.output[0],
                 add = that.inputs.add.output[0],
@@ -27909,7 +27909,7 @@ var fluid = fluid || require("infusion"),
         };
 
         that.noInterpolationGen = function (numSamps) {
-            var val = flock.ugen.mouse.cursor.normalize(that.target, that.getTargetSize, that.model),
+            var val = flock.ugen.mouse.cursor.normalize(that.target, that.model),
                 i;
 
             for (i = 0; i < numSamps; i++) {
@@ -27975,22 +27975,19 @@ var fluid = fluid || require("infusion"),
             var m = that.model,
                 options = that.options,
                 axis = options.axis,
-                target = $(options.target || window),
-                targetSizeFn;
+                target = $(options.target || window);
 
             if (axis === "x" || axis === "width" || axis === "horizontal") {
                 m.eventProp = "clientX";
                 m.offsetProp = "left";
-                targetSizeFn = target.width;
+                m.dimension = "width";
             } else {
                 m.eventProp = "clientY";
                 m.offsetProp = "top";
-                targetSizeFn = target.height;
+                m.dimension = "height";
             }
 
-            that.getTargetSize = targetSizeFn.bind(target);
             that.target = target;
-
             m.mousePosition = 0;
             m.movingAvg = 0;
 
@@ -28002,12 +27999,12 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    flock.ugen.mouse.cursor.normalize = function (target, getTargetSizeFn, m) {
+    flock.ugen.mouse.cursor.normalize = function (target, m) {
         if (!m.isWithinTarget) {
             return 0.0;
         }
 
-        var size = getTargetSizeFn(),
+        var size = target[m.dimension](),
             offset = target.offset(),
             pos = m.mousePosition;
 
