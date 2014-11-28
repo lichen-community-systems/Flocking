@@ -1030,7 +1030,7 @@ var fluid = fluid || require("infusion"),
 
         s.set("play.buffer", {
             id: "hamster",
-            src: flock.test.audio.triangleFloatWAV
+            src: flock.test.audio.triangleInt16WAV
         });
     });
 
