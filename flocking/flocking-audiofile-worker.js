@@ -1,6 +1,6 @@
 /*! Flocking audio file web worker decoder, Copyright 2011-2014 Colin Clark | flockingjs.org */
 
-/*global importScripts, flock, postMessage, self*/
+/*global importScripts, postMessage, self*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,
@@ -8,16 +8,21 @@
     unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
     funcscope: false*/
 
+var flock = {};
+
 (function () {
 
     "use strict";
 
+    flock.audio = {
+        decode: {},
+        workerDecoder: {}
+    };
+
     // TODO: Allow toggling of these files with a production concatenated build.
     importScripts(
-        "./flocking-audiofile.js"
+        "./flocking-audiofile-compatibility.js"
     );
-
-    flock.audio.workerDecoder = {};
 
     flock.audio.workerDecoder.sendBuffer = function (buffer, type) {
         postMessage({

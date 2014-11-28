@@ -12,16 +12,15 @@
  * Contributions:
  *   - getFloat32 and getFloat64, Copyright 2011 Christopher Chedeau
  *   - getFloat80, Copyright 2011 Joe Turner
- */
+*/
 
-/*global global, self, require, window, ArrayBuffer, Uint8Array, Uint32Array, Float32Array,
-  File, FileReader, PolyDataView*/
+/*global global, self, require, window, Float32Array, PolyDataView*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
-    forin: false, nomen: true, bitwise: false, maxerr: 100,
-    indent: 4, plusplus: false, curly: true, eqeqeq: true,
-    freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
-    unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
-    funcscope: false*/
+forin: false, nomen: true, bitwise: false, maxerr: 100,
+indent: 4, plusplus: false, curly: true, eqeqeq: true,
+freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
+unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
+funcscope: false*/
 
 /*
  * To Do:
@@ -29,25 +28,11 @@
  */
 
 (function () {
+
     "use strict";
 
-    var g = typeof (window) !== "undefined" ? window : typeof (self) !== "undefined" ? self : global;
-
-    var nativeDataView = typeof (g.DataView) !== "undefined" ? g.DataView : undefined;
-
-    var isHostLittleEndian = (function () {
-        var endianTest = new ArrayBuffer(4),
-            u8View = new Uint8Array(endianTest),
-            u32View = new Uint32Array(endianTest);
-
-        u8View[0] = 0x01;
-        u8View[1] = 0x02;
-        u8View[2] = 0x03;
-        u8View[3] = 0x04;
-
-        return u32View[0] === 0x04030201;
-    }());
-
+    var g = typeof (window) !== "undefined" ? window : typeof (self) !== "undefined" ? self : global,
+        nativeDataView = typeof (g.DataView) !== "undefined" ? g.DataView : undefined;
 
     var addSharedMethods = function (that) {
 
@@ -113,298 +98,6 @@
 
             return sign * value;
         };
-    };
-
-    var PolyDataView = function (buffer, byteOffset, byteLength) {
-        var cachedArray = [];
-
-        var that = {
-            buffer: buffer,
-            byteOffset: typeof (byteOffset) === "number" ? byteOffset : 0
-        };
-        that.byteLength = typeof (byteLength) === "number" ? byteLength : buffer.byteLength - that.byteOffset;
-
-        // Bail if we're trying to read off the end of the buffer.
-        if (that.byteOffset > buffer.byteLength || that.byteOffset + that.byteLength > buffer.byteLength) {
-            throw new Error("INDEX_SIZE_ERR: DOM Exception 1");
-        }
-
-        /**
-         * Non-standard
-         */
-        that.u8Buf = new Uint8Array(buffer, that.byteOffset, that.byteLength);
-
-        /**
-         * Non-standard
-         */
-        that.offsetState = that.byteOffset;
-
-        /**
-         * Non-standard
-         */
-        that.getUints = function (len, w, o, isL, array) {
-            // TODO: Complete cut and paste job from getInts()!
-            o = typeof (o) === "number" ? o : that.offsetState;
-            if (o + (len * w) > that.u8Buf.length) {
-                throw new Error("INDEX_SIZE_ERR: DOM Exception 1");
-            }
-
-            that.offsetState = o + (len * w);
-            var arrayType = g["Uint" + (w * 8) + "Array"];
-
-            if (len > 1 && isHostLittleEndian === isL) {
-                return new arrayType(that.buffer, o, len); // jshint ignore:line
-            }
-
-            array = array || new arrayType(len); // jshint ignore:line
-            var startByte,
-                idxInc,
-                i,
-                idx,
-                n,
-                j,
-                scale,
-                v;
-
-            if (isL) {
-                startByte = 0;
-                idxInc = 1;
-            } else {
-                startByte = w - 1;
-                idxInc = -1;
-            }
-
-            for (i = 0; i < len; i++) {
-                idx = o + (i * w) + startByte;
-                n = 0;
-                for (j = 0, scale = 1; j < w; j++, scale *= 256) {
-                    v = that.u8Buf[idx];
-                    n += v * scale;
-                    idx += idxInc;
-                }
-                array[i] = n;
-            }
-
-            return array;
-        };
-
-        /**
-         * Non-standard
-         */
-        that.getInts = function (len, w, o, isL, array) {
-            o = typeof (o) === "number" ? o : that.offsetState;
-            if (o + (len * w) > that.u8Buf.length) {
-                throw new Error("INDEX_SIZE_ERR: DOM Exception 1");
-            }
-
-            that.offsetState = o + (len * w);
-            var arrayType = g["Int" + (w * 8) + "Array"];
-
-            // If the host's endianness matches the file's, just use a typed array view directly.
-            if (len > 1 && isHostLittleEndian === isL) {
-                return new arrayType(that.buffer, o, len); // jshint ignore:line
-            }
-
-            array = array || new arrayType(len); // jshint ignore:line
-            var mask = Math.pow(256, w),
-                halfMask = (mask / 2) - 1,
-                startByte,
-                idxInc,
-                i,
-                idx,
-                n,
-                j,
-                scale,
-                v;
-
-            if (isL) {
-                startByte = 0;
-                idxInc = 1;
-            } else {
-                startByte = w - 1;
-                idxInc = -1;
-            }
-
-            for (i = 0; i < len; i++) {
-                idx = o + (i * w) + startByte;
-                n = 0;
-                for (j = 0, scale = 1; j < w; j++, scale *= 256) {
-                    v = that.u8Buf[idx];
-                    n += v * scale;
-                    idx += idxInc;
-                }
-                array[i] = n > halfMask ? n - mask : n;
-            }
-
-            return array;
-        };
-
-        /**
-         * Non-standard
-         */
-        that.getFloats = function (len, w, o, isL, array) {
-            var bits = w * 8,
-                getterName = "getFloat" + bits,
-                arrayType = g["Float" + bits + "Array"],
-                i;
-
-            // If the host's endianness matches the file's, just use a typed array view directly.
-            if (len > 1 && isHostLittleEndian === isL) {
-                o = typeof (o) === "number" ? o : that.offsetState;
-                if (o + (len * w) > that.u8Buf.length) {
-                    throw new Error("INDEX_SIZE_ERR: DOM Exception 1");
-                }
-                that.offsetState = o + (len * w);
-                return new arrayType(that.buffer, o, len); // jshint ignore:line
-            }
-
-            array = array || new arrayType(len); // jshint ignore:line
-
-            for (i = 0; i < len; i++) {
-                array[i] = that[getterName](o, isL);
-            }
-
-            return array;
-        };
-
-        /**
-         * Non-standard
-         */
-        that.getUint = function (w, o, isL) {
-            return w === 1 ? that.getUint8(o, isL) : that.getUints(1, w, o, isL, cachedArray)[0];
-        };
-
-        /**
-         * Non-standard
-         */
-        that.getInt = function (w, o, isL) {
-            return that.getInts(1, w, o, isL, cachedArray)[0];
-        };
-
-        that.getUint8 = function (o) {
-            o = typeof (o) === "number" ? o : that.offsetState;
-
-            var n = that.u8Buf[o];
-            that.offsetState = o + 1;
-
-            return n;
-        };
-
-        that.getInt8 = function (o, isL) {
-            return that.getInts(1, 1, o, isL, cachedArray)[0];
-        };
-
-        that.getUint16 = function (o, isL) {
-            return that.getUints(1, 2, o, isL, cachedArray)[0];
-        };
-
-        that.getInt16 = function (o, isL) {
-            return that.getInts(1, 2, o, isL, cachedArray)[0];
-        };
-
-        that.getUint32 = function (o, isL) {
-            return that.getUints(1, 4, o, isL, cachedArray)[0];
-        };
-
-        that.getInt32 = function (o, isL) {
-            return that.getInts(1, 4, o, isL, cachedArray)[0];
-        };
-
-        that.getFloat32 = function (o, isL) {
-            // This method is a modified version of Christopher Chedeau's Float32 decoding
-            // implementation from jDataView, originally distributed under the WTF license.
-            // https://github.com/vjeux/jDataView
-            var bytes = that.getUints(4, 1, o, isL),
-                b0,
-                b1,
-                b2,
-                b3,
-                sign,
-                exp,
-                mant;
-
-            if (isL) {
-                b0 = bytes[3];
-                b1 = bytes[2];
-                b2 = bytes[1];
-                b3 = bytes[0];
-            } else {
-                b0 = bytes[0];
-                b1 = bytes[1];
-                b2 = bytes[2];
-                b3 = bytes[3];
-            }
-
-            sign = 1 - (2 * (b0 >> 7));
-            exp = (((b0 << 1) & 255) | (b1 >> 7)) - 127;
-            mant = ((b1 & 127) * 65536) | (b2 * 256) | b3;
-
-            if (exp === 128) {
-                return mant !== 0 ? NaN : sign * Infinity;
-            }
-
-            if (exp === -127) {
-                return sign * mant * 1.401298464324817e-45;
-            }
-
-            return sign * (1 + mant * 1.1920928955078125e-7) * Math.pow(2, exp);
-        };
-
-        that.getFloat64 = function (o, isL) {
-            // This method is a modified version of Christopher Chedeau's Float64 decoding
-            // implementation from jDataView, originally distributed under the WTF license.
-            // https://github.com/vjeux/jDataView
-            var bytes = that.getUints(8, 1, o, isL),
-                b0,
-                b1,
-                b2,
-                b3,
-                b4,
-                b5,
-                b6,
-                b7,
-                sign,
-                exp,
-                mant;
-
-            if (isL) {
-                b0 = bytes[7];
-                b1 = bytes[6];
-                b2 = bytes[5];
-                b3 = bytes[4];
-                b4 = bytes[3];
-                b5 = bytes[2];
-                b6 = bytes[1];
-                b7 = bytes[0];
-            } else {
-                b0 = bytes[0];
-                b1 = bytes[1];
-                b2 = bytes[2];
-                b3 = bytes[3];
-                b4 = bytes[4];
-                b5 = bytes[5];
-                b6 = bytes[6];
-                b7 = bytes[7];
-            }
-
-            sign = 1 - (2 * (b0 >> 7));
-            exp = ((((b0 << 1) & 255) << 3) | (b1 >> 4)) - 1023;
-            mant = ((b1 & 15) * 281474976710656) + (b2 * 1099511627776) + (b3 * 4294967296) +
-                (b4 * 16777216) + (b5 * 65536) + (b6 * 256) + b7;
-
-            if (exp === 1024) {
-                return mant !== 0 ? NaN : sign * Infinity;
-            }
-
-            if (exp === -1023) {
-                return sign * mant * 5e-324;
-            }
-
-            return sign * (1 + mant * 2.220446049250313e-16) * Math.pow(2, exp);
-        };
-
-        addSharedMethods(that);
-        return that;
     };
 
     var wrappedDataView = function (buffer, byteOffset, byteLength) {
@@ -568,8 +261,12 @@
         return that;
     };
 
-    g.PolyDataView = nativeDataView ? wrappedDataView : PolyDataView;
+    if (!nativeDataView && typeof window.PolyDataView === "undefined") {
+        throw new Error("Your browser doesn't support DataView natively. " +
+            "Please include the PolyDataView polyfill. https://github.com/colinbdclark/PolyDataView");
+    }
 
+    g.PolyDataView = nativeDataView ? wrappedDataView : PolyDataView;
 }());
 
 
@@ -579,7 +276,7 @@
  *
  * Copyright 2011-2014, Colin Clark
  * Dual licensed under the MIT and GPL Version 2 licenses.
- */
+*/
 
 // Stub out fluid.registerNamespace in cases where we're in a Web Worker and Infusion is unavailable.
 var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undefined" ? require("infusion") : {
@@ -606,220 +303,12 @@ var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undef
     }
 };
 
-var flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
 
-    var $ = fluid.registerNamespace("jQuery");
-
-    /**
-     * Applies the specified function in the next round of the event loop.
-     */
-    // TODO: Replace this and the code that depends on it with a good Promise implementation.
-    flock.applyDeferred = function (fn, args, delay) {
-        if (!fn) {
-            return;
-        }
-
-        delay = typeof (delay) === "undefined" ? 0 : delay;
-        setTimeout(function () {
-            fn.apply(null, args);
-        }, delay);
-    };
-
-
-    /*********************
-     * Network utilities *
-     *********************/
-
-    fluid.registerNamespace("flock.net");
-
-    /**
-     * Loads an ArrayBuffer into memory using XMLHttpRequest.
-     */
-    flock.net.readBufferFromUrl = function (options) {
-        var src = options.src,
-            xhr = new XMLHttpRequest();
-
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState === 4) {
-                if (xhr.status === 200) {
-                    options.success(xhr.response, flock.file.parseFileExtension(src));
-                } else {
-                    if (!options.error) {
-                        throw new Error(xhr.statusText);
-                    }
-
-                    options.error(xhr.statusText);
-                }
-            }
-        };
-
-        xhr.open(options.method || "GET", src, true);
-        xhr.responseType = options.responseType || "arraybuffer";
-        xhr.send(options.data);
-    };
-
-
-    /*****************
-     * File Utilties *
-     *****************/
-
-    fluid.registerNamespace("flock.file");
-
-    flock.file.mimeTypes = {
-        "audio/wav": "wav",
-        "audio/x-wav": "wav",
-        "audio/wave": "wav",
-        "audio/x-aiff": "aiff",
-        "audio/aiff": "aiff",
-        "sound/aiff": "aiff"
-    };
-
-    flock.file.typeAliases = {
-        "aif": "aiff",
-        "wave": "wav"
-    };
-
-    flock.file.parseFileExtension = function (fileName) {
-        var lastDot = fileName.lastIndexOf("."),
-            ext,
-            alias;
-
-        // TODO: Better error handling in cases where we've got unrecognized file extensions.
-        //       i.e. we should try to read the header instead of relying on extensions.
-        if (lastDot < 0) {
-            return undefined;
-        }
-
-        ext = fileName.substring(lastDot + 1);
-        ext = ext.toLowerCase();
-        alias =  flock.file.typeAliases[ext];
-
-        return alias || ext;
-    };
-
-    flock.file.parseMIMEType = function (mimeType) {
-        return flock.file.mimeTypes[mimeType];
-    };
-
-    /**
-     * Converts a binary string to an ArrayBuffer, suitable for use with a DataView.
-     *
-     * @param {String} s the raw string to convert to an ArrayBuffer
-     *
-     * @return {Uint8Array} the converted buffer
-     */
-    flock.file.stringToBuffer = function (s) {
-        var len = s.length,
-            b = new ArrayBuffer(len),
-            v = new Uint8Array(b),
-            i;
-        for (i = 0; i < len; i++) {
-            v[i] = s.charCodeAt(i);
-        }
-        return v.buffer;
-    };
-
-    /**
-     * Asynchronously parses the specified data URL into an ArrayBuffer.
-     */
-    flock.file.readBufferFromDataUrl = function (options) {
-        var url = options.src,
-            delim = url.indexOf(","),
-            header = url.substring(0, delim),
-            data = url.substring(delim + 1),
-            base64Idx = header.indexOf(";base64"),
-            isBase64 =  base64Idx > -1,
-            mimeTypeStartIdx = url.indexOf("data:") + 5,
-            mimeTypeEndIdx = isBase64 ? base64Idx : delim,
-            mimeType = url.substring(mimeTypeStartIdx, mimeTypeEndIdx);
-
-        if (isBase64) {
-            data = atob(data);
-        }
-
-        flock.applyDeferred(function () {
-            var buffer = flock.file.stringToBuffer(data);
-            options.success(buffer, flock.file.parseMIMEType(mimeType));
-        });
-    };
-
-    /**
-     * Asynchronously reads the specified File into an ArrayBuffer.
-     */
-    flock.file.readBufferFromFile = function (options) {
-        var reader  = new FileReader();
-        reader.onload = function (e) {
-            options.success(e.target.result, flock.file.parseFileExtension(options.src.name));
-        };
-        reader.readAsArrayBuffer(options.src);
-
-        return reader;
-    };
-
-
-    fluid.registerNamespace("flock.audio");
-
-    /**
-     * Asychronously loads an ArrayBuffer into memory.
-     *
-     * Options:
-     *  - src: the URL to load the array buffer from
-     *  - method: the HTTP method to use (if applicable)
-     *  - data: the data to be sent as part of the request (it's your job to query string-ize this if it's an HTTP request)
-     *  - success: the success callback, which takes the ArrayBuffer response as its only argument
-     *  - error: a callback that will be invoked if an error occurs, which takes the error message as its only argument
-     */
-    flock.audio.loadBuffer = function (options) {
-        var src = options.src || options.url;
-        if (!src) {
-            return;
-        }
-
-        if (src instanceof ArrayBuffer) {
-            flock.applyDeferred(options.success, [src, options.type]);
-        }
-
-        var reader = flock.audio.loadBuffer.readerForSource(src);
-
-        reader(options);
-    };
-
-    flock.audio.loadBuffer.readerForSource = function (src) {
-        return (typeof (File) !== "undefined" && src instanceof File) ? flock.file.readBufferFromFile :
-            src.indexOf("data:") === 0 ? flock.file.readBufferFromDataUrl : flock.net.readBufferFromUrl;
-    };
-
-
-    /**
-     * Loads and decodes an audio file. By default, this is done asynchronously in a Web Worker.
-     * This decoder currently supports WAVE and AIFF file formats.
-     */
-    flock.audio.decode = function (options) {
-        var success = options.success;
-
-        var wrappedSuccess = function (rawData, type) {
-            var strategies = flock.audio.decoderStrategies,
-                strategy = strategies[type] || strategies["default"];
-
-            if (options.decoder) {
-                strategy = typeof (options.decoder) === "string" ?
-                     fluid.getGlobalValue(options.decoder) : options.decoder;
-            }
-
-            strategy({
-                rawData: rawData,
-                type: type,
-                success: success,
-                error: options.error
-            });
-        };
-
-        options.success = wrappedSuccess;
-        flock.audio.loadBuffer(options);
-    };
+    var $ = fluid.registerNamespace("jQuery"),
+        flock = fluid.registerNamespace("flock");
 
     /**
      * Synchronously decodes an audio file.
@@ -837,27 +326,13 @@ var flock = fluid.registerNamespace("flock");
         }
     };
 
-    /**
-     * Asynchronously decodes the specified ArrayBuffer rawData using
-     * the browser's Web Audio Context.
-     */
-    flock.audio.decode.webAudio = function (o) {
-        var ctx = flock.enviro.shared.audioStrategy.context,
-            success = function (audioBuffer) {
-                var bufDesc = flock.bufferDesc.fromAudioBuffer(audioBuffer);
-                o.success(bufDesc);
-            };
-
-        ctx.decodeAudioData(o.rawData, success, o.error);
-    };
-
     flock.audio.decode.workerAsync = function (options) {
         var workerUrl = flock.audio.decode.workerAsync.findUrl(options),
             w = new Worker(workerUrl);
 
         w.addEventListener("message", function (e) {
             var data = e.data,
-                msg = e.data.msg;
+            msg = e.data.msg;
 
             if (msg === "afterDecoded") {
                 options.success(data.buffer, data.type);
@@ -897,7 +372,7 @@ var flock = fluid.registerNamespace("flock");
 
         if (scripts.length < 1) {
             throw new Error("Flocking error: could not load the Audio Decoder into a worker because " +
-                "flocking-all.js or flocking-core.js could not be found.");
+            "flocking-all.js or flocking-core.js could not be found.");
         }
 
         src = scripts.eq(0).attr("src");
@@ -908,6 +383,7 @@ var flock = fluid.registerNamespace("flock");
     };
 
     flock.audio.decode.workerAsync.findUrl.flockingFileNames = [
+        "flocking-audiofile-compatibilty.js",
         "flocking-all.js",
         "flocking-all.min.js",
         "flocking-no-jquery.js",
@@ -915,24 +391,6 @@ var flock = fluid.registerNamespace("flock");
         "flocking-audiofile.js",
         "flocking-core.js"
     ];
-
-    flock.audio.decoderStrategies = {
-        "default": flock.platform && flock.platform.isWebAudio ?
-        flock.audio.decode.webAudio : flock.audio.decode.workerAsync,
-        aiff: flock.audio.decode.workerAsync
-    };
-
-    flock.audio.registerDecoderStrategy = function (type, strategy) {
-        if (!type) {
-            return;
-        }
-
-        if (typeof strategy === "string") {
-            strategy = fluid.getGlobalValue(strategy);
-        }
-
-        flock.audio.decoderStrategies[type] = strategy;
-    };
 
     flock.audio.decodeArrayBuffer = function (data, type) {
         var formatSpec = flock.audio.formats[type];
@@ -1078,7 +536,7 @@ var flock = fluid.registerNamespace("flock");
             spec = fields[name];
 
             decoded[name] = typeof spec === "string" ? dv[spec](undefined, isLittle) :
-                dv[spec.getter](spec.length, spec.width, undefined, isLittle);
+            dv[spec.getter](spec.length, spec.width, undefined, isLittle);
         }
 
         return decoded;
@@ -1136,8 +594,8 @@ var flock = fluid.registerNamespace("flock");
 
 
     /************************************
-     * Audio Format Decoding Strategies *
-     ************************************/
+    * Audio Format Decoding Strategies *
+    ************************************/
 
     flock.audio.formats = {};
 
@@ -1266,5 +724,18 @@ var flock = fluid.registerNamespace("flock");
 
         findSampleDataType: flock.audio.decode.aiffSampleDataType
     };
+
+
+    if (flock.audio.registerDecoderStrategy) {
+        // Register this implementation for AIFF files and, if not on Web Audio,
+        // as the default decoder strategy.
+        if (!flock.browser.safari) {
+            flock.audio.registerDecoderStrategy("aiff", flock.audio.decode.workerAsync);
+        }
+
+        if (flock.platform && !flock.platform.isWebAudio) {
+            flock.audio.registerDecoderStrategy("default", flock.audio.decode.workerAsync);
+        }
+    }
 
 }());
