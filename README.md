@@ -35,11 +35,10 @@ Flocking is in active development. It has bugs, it's growing fast, and help is w
    * ADSR and other envelopes
    * Dynamics processors (compressor/limiter)
    * Lots more
- * Full multichannel support and channel expansion
+ * Multichannel expansion
  * The ability to connect one unit generator to multiple inputs
- * Sample-accurate scheduling
+ * A block-accurate scheduler and more sample-accurate scheduling unit generators
  * Major improvements to the Demo Playground/IDE
- * MediaStream-based audio input
  * The ability to record sessions and export an audio file from your browser
 
 

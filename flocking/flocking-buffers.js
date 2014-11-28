@@ -6,7 +6,7 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global require*/
+/*global require, AudioBuffer*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,
@@ -120,6 +120,13 @@ var fluid = fluid || require("infusion"),
     // TODO: This is actually part of the interpreter's expansion process
     // and should be clearly named as such.
     flock.bufferDesc = function (data) {
+        var fn = flock.platform.isWebAudio && data instanceof AudioBuffer ?
+            flock.bufferDesc.fromAudioBuffer : flock.bufferDesc.fromRawData;
+
+        return fn(data);
+    };
+
+    flock.bufferDesc.fromRawData = function (data) {
         data.container = data.container || {};
         data.format = data.format || {};
 
@@ -145,6 +152,29 @@ var fluid = fluid || require("infusion"),
 
         return data;
     };
+
+    flock.bufferDesc.fromAudioBuffer = function (audioBuffer) {
+        var desc = {
+            container: {},
+            format: {
+                sampleRate: audioBuffer.sampleRate,
+                numChannels: audioBuffer.numberOfChannels,
+                numSampleFrames: audioBuffer.length,
+                duration: audioBuffer.duration
+            },
+            data: {
+                channels: []
+            }
+        },
+        i;
+
+        for (i = 0; i < audioBuffer.numberOfChannels; i++) {
+            desc.data.channels.push(audioBuffer.getChannelData(i));
+        }
+
+        return desc;
+    };
+
 
     /**
      * Represents a source for fetching buffers.
