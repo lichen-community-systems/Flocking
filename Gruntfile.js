@@ -30,6 +30,8 @@ module.exports = function(grunt) {
             "flocking/flocking-buffers.js",
             "flocking/flocking-parser.js",
             "flocking/flocking-audiofile.js",
+            // flocking-audiofile-compatibility.js is intentionally omitted
+            // to reduce the size of the default Flocking build.
             "flocking/flocking-scheduler.js",
             "flocking/flocking-webaudio.js",
             "flocking/flocking-ugens.js",
@@ -91,10 +93,10 @@ module.exports = function(grunt) {
                 files: [
                     {
                         expand: true,
-                        cwd: 'dist/',
-                        src: ['*.js'],
-                        dest: 'dist/',
-                        ext: '.min.js',
+                        cwd: "dist/",
+                        src: ["*.js"],
+                        dest: "dist/",
+                        ext: ".min.js",
                     }
                 ]
             }
@@ -106,7 +108,10 @@ module.exports = function(grunt) {
                 {
                     expand: true,
                     flatten: true,
-                    src: ["flocking/flocking-audiofile*.js"],
+                    src: [
+                        "flocking/flocking-audiofile-compatibility.js",
+                        "flocking/flocking-audiofile-worker.js"
+                    ],
                     dest: "dist/",
                     filter: "isFile"
                 }

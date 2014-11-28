@@ -83,11 +83,16 @@ var fs = require("fs"),
     fluid.registerNamespace("flock.audio.decode");
 
     // TODO: Use a stream-style interface for decoding rather than just dumping the whole job on nextTick().
-    flock.audio.decode.async = function (options) {
+    flock.audio.decode.node = function (options) {
         process.nextTick(function () {
             flock.audio.decode.sync(options);
         });
     };
+
+    flock.audio.registerDecoderStrategy({
+        "default": flock.audio.decode.node,
+        "aiff": flock.audio.decode.node
+    });
 
 
     /*********************************************
