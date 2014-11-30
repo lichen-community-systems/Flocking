@@ -15,6 +15,12 @@ var flock = flock || {};
 
     flock.test = flock.test || {};
 
+    flock.test.valueBuffer = function (numSamps, value) {
+        return flock.generate(numSamps, function () {
+            return value;
+        });
+    };
+    
     flock.test.fillBuffer = function (start, end, skip) {
         var buf = [],
             count = 0,
@@ -37,6 +43,20 @@ var flock = flock || {};
             return start + (i * step);
         });
     };
+
+    flock.test.lineBuffer = function (numSamps, start, end, buffer) {
+        buffer = buffer || new Float32Array(numSamps);
+        var inc = (end - start) / numSamps,
+            val = start;
+
+        for (var i = 0; i < buffer.length; i++) {
+            buffer[i] = val;
+            val += inc;
+        }
+
+        return buffer;
+    };
+
 
     flock.test.arrayNotNaN = function (buffer, msg) {
         var failures = [],
