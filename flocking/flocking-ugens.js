@@ -2573,59 +2573,59 @@ var fluid = fluid || require("infusion"),
                 envSpec = that.envSpec,
                 gate = inputs.gate.output,
                 timeScale = inputs.timeScale.output,
+                stageTransition = false,
                 i,
                 j,
                 k,
                 currentGate;
 
             for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.gate, k += m.strides.timeScale) {
+                out[i] = m.value;
+
                 m.numSegmentSamps--;
 
-                // TODO: In the case of a control-rate gate,
-                // this extra branching reduces performance.
-                // Implement separate kr and ar gen() functions.
-                currentGate = gate[j];
-
                 // Check to see if the gate has transitioned.
+                // TODO: In the case of a control-rate gate,
+                // this per-sample branching reduces performance.
+                // Implement separate kr and ar gate check functions.
+                currentGate = gate[j];
                 if (currentGate !== m.previousGate) {
-                    // TODO: Poorly factored conditional.
                     if (currentGate > 0.0 && m.previousGate <= 0.0) {
-                        // Gate is open.
+                        // Gate has opened.
                         m.stage = 1;
+                        stageTransition = true;
                     } else if (currentGate <= 0.0 && m.previousGate > 0) {
                         // Gate has closed.
                         m.stage = m.numStages;
-                    } else {
-                        continue;
+                        stageTransition = true;
                     }
-
-                    that.lineGen = flock.ugen.envGen.lineGeneratorForStage(m.stage, envSpec);
-                    that.lineGen.nextSegment(timeScale[k], envSpec, m);
                 }
                 m.previousGate = currentGate;
 
-                // Output a value
-                out[i] = m.value;
-
-                // Check to see if we've reached our target value;
-                // if so, set up the next breakpoint stage (unless we're sustaining).
-                if (m.numSegmentSamps <= 0) {
-                    // TODO: Deal with nested conditionals.
+                // Assuming we're not at the beginning or end stage,
+                // Check to see if we've reached our target value
+                // and that we aren't at the sustain point.
+                // If that's the case, move on to the next breakpoint stage.
+                if (m.numSegmentSamps === 0) {
                     if (m.stage === envSpec.sustainPoint) {
-                        m.stepSize = 0;
+                        // TODO: Major dependency issues here, since we're
+                        // selectively doing much of the behaviour from setup segment stage.
+                        that.lineGen = flock.lineGen.constant;
+                        m.numSegmentSamps = Infinity;
+                        m.destination = m.value;
                     } else {
-                        if (m.stage < m.numStages) {
-                            m.stage += 1;
-                            that.lineGen = flock.ugen.envGen.lineGeneratorForStage(m.stage, envSpec);
-                        } else {
-                            that.lineGen = flock.lineGen.constant;
-                        }
-
-                        that.lineGen.nextSegment(timeScale[k], envSpec, m);
+                        m.stage++;
+                        stageTransition = true;
                     }
-                } else {
-                    that.lineGen.gen(m);
                 }
+
+                if (stageTransition) {
+                    that.lineGen = flock.ugen.envGen.lineGeneratorForStage(m, envSpec);
+                    that.lineGen.nextSegment(timeScale[k], envSpec, m);
+                    stageTransition = false;
+                }
+
+                that.lineGen.gen(m);
             }
 
             that.mulAdd(numSamps);
@@ -2645,9 +2645,13 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    flock.ugen.envGen.lineGeneratorForStage = function (stage, envSpec) {
+    flock.ugen.envGen.lineGeneratorForStage = function (m, envSpec) {
+        if (m.stage === 0 || m.stage > m.numStages) {
+            return flock.lineGen.constant;
+        }
+
         var curve = envSpec.curve,
-            curveValue = flock.isIterable(curve) ? curve[stage] : curve,
+            curveValue = flock.isIterable(curve) ? curve[m.stage - 1] : curve,
             type = typeof curveValue;
 
         return type === "string" ? flock.lineGen[curveValue] :
@@ -2663,10 +2667,9 @@ var fluid = fluid || require("infusion"),
         // gate is closed.
         m.stage = 0;
         m.numStages = envSpec.times.length;
-        m.value = envSpec.levels[0];
-        that.lineGen = flock.lineGen.constant;
-        that.lineGen.nextSegment(undefined, envSpec, m);
-
+        that.lineGen = flock.ugen.envGen.lineGeneratorForStage(m, envSpec);
+        that.lineGen.nextSegment(that.inputs.timeScale.output[0], envSpec, m);
+        m.value = that.lineGen.gen(m);
         return envSpec;
     };
 
@@ -2685,8 +2688,15 @@ var fluid = fluid || require("infusion"),
     flock.lineGen = {
         setupSegmentStage: function (timeScale, envSpec, m) {
             var dest = envSpec.levels[m.stage],
-                dur = envSpec.times[m.stage - 1] * timeScale,
+                dur,
+                durSamps;
+
+            if (m.stage === 0 || m.stage > m.numStages) {
+                durSamps = Infinity;
+            } else {
+                dur = envSpec.times[m.stage - 1] * timeScale;
                 durSamps = Math.max(1, dur * m.sampleRate);
+            }
 
             m.numSegmentSamps = durSamps;
             m.destination = dest;
@@ -2695,18 +2705,19 @@ var fluid = fluid || require("infusion"),
         constant: {
             nextSegment: function (timeScale, envSpec, m) {
                 m.stepSize = 0;
-                m.numSegmentSamps = 1;
-                m.destination = 0;
+                m.value = m.stage > m.numStages ? m.value : envSpec.levels[m.stage];
+                flock.lineGen.setupSegmentStage(timeScale, envSpec, m);
             },
 
-            gen: fluid.identity
+            gen: function (m) {
+                return m.value;
+            }
         },
 
         linear: {
             nextSegment: function (timeScale, envSpec, m) {
                 flock.lineGen.setupSegmentStage(timeScale, envSpec, m);
                 m.stepSize = (m.destination - m.value) / m.numSegmentSamps;
-                flock.lineGen.linear.gen(m);
             },
 
             gen: function (m) {
@@ -2723,8 +2734,6 @@ var fluid = fluid || require("infusion"),
                 }
                 m.stepSize = m.numSegmentSamps === 0 ? 0 :
                     Math.pow(m.destination / m.value, 1.0 / m.numSegmentSamps);
-
-                flock.lineGen.exponential.gen(m);
             },
 
             gen: function (m) {

@@ -145,7 +145,7 @@ var fluid = fluid || require("infusion"),
             synthDef: {
                 gate: 1.0,
                 envelope: {
-                    sustainPoint: 3
+                    sustainPoint: 2
                 }
             },
             test: {
@@ -154,7 +154,12 @@ var fluid = fluid || require("infusion"),
                     flock.test.envGen.attackDecayExpectations,
                     flock.test.envGen.sustainPointExpectations,
                     flock.test.envGen.releaseExpectations
-                )
+                ),
+                changes: {
+                    4: {
+                        "env.gate": 0.0
+                    }
+                }
             }
         },
         {
