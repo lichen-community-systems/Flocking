@@ -2573,7 +2573,6 @@ var fluid = fluid || require("infusion"),
                 envSpec = that.envSpec,
                 gate = inputs.gate.output,
                 timeScale = inputs.timeScale.output,
-                stageTransition = false,
                 i,
                 j,
                 k,
@@ -2593,11 +2592,11 @@ var fluid = fluid || require("infusion"),
                     if (currentGate > 0.0 && m.previousGate <= 0.0) {
                         // Gate has opened.
                         m.stage = 1;
-                        stageTransition = true;
+                        that.lineGen = flock.ugen.envGen.lineGenForStage(m, envSpec, timeScale[k]);
                     } else if (currentGate <= 0.0 && m.previousGate > 0) {
                         // Gate has closed.
                         m.stage = m.numStages;
-                        stageTransition = true;
+                        that.lineGen = flock.ugen.envGen.lineGenForStage(m, envSpec, timeScale[k]);
                     }
                 }
                 m.previousGate = currentGate;
@@ -2613,13 +2612,8 @@ var fluid = fluid || require("infusion"),
                         m.destination = m.value;
                     } else {
                         m.stage++;
-                        stageTransition = true;
+                        that.lineGen = flock.ugen.envGen.lineGenForStage(m, envSpec, timeScale[k]);
                     }
-                }
-
-                if (stageTransition) {
-                    that.lineGen = flock.ugen.envGen.lineGenForStage(m, envSpec, timeScale[k]);
-                    stageTransition = false;
                 }
 
                 that.lineGen.gen(m);
