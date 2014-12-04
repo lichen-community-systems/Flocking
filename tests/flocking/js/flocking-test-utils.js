@@ -20,7 +20,7 @@ var flock = flock || {};
             return value;
         });
     };
-    
+
     flock.test.fillBuffer = function (start, end, skip) {
         var buf = [],
             count = 0,
@@ -57,6 +57,19 @@ var flock = flock || {};
         return buffer;
     };
 
+    /**
+     * Concatenates all arguments (arrays or individual objects)
+     * into a single array.
+     */
+    flock.test.concat = function () {
+        var expectations = [];
+
+        for (var i = 0; i < arguments.length; i++) {
+            expectations = expectations.concat(arguments[i]);
+        }
+
+        return expectations;
+    };
 
     flock.test.arrayNotNaN = function (buffer, msg) {
         var failures = [],

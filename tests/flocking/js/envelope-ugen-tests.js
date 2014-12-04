@@ -58,16 +58,6 @@ var fluid = fluid || require("infusion"),
         });
     };
 
-    function combineExpectations () {
-        var expectations = [];
-
-        for (var i = 0; i < arguments.length; i++) {
-            expectations = expectations.concat(arguments[i]);
-        }
-
-        return expectations;
-    }
-
     flock.test.envGen.synthDef = {
         id: "env",
         ugen: "flock.ugen.envGen",
@@ -120,6 +110,11 @@ var fluid = fluid || require("infusion"),
         }
     ];
 
+    flock.test.envGen.releaseFromDecayMidpointExpectations = {
+        msg: "Midway through the decay stage, when the gate closes, we should immediately start decaying.",
+        buffer: flock.test.lineBuffer(64, 0.75, 0)
+    };
+
     flock.test.envGen.silentExpectation = {
         msg: "The output should be silent.",
         buffer: flock.test.envGen.silentBlock
@@ -127,13 +122,30 @@ var fluid = fluid || require("infusion"),
 
     flock.test.envGen.testSpecs = [
         {
+            name: "Gate closed",
+            test: {
+                numBlocksToGen: 5,
+
+                // Gate is always closed, so output should be silent.
+                expected: [
+                    flock.test.envGen.silentExpectation,
+                    flock.test.envGen.silentExpectation,
+                    flock.test.envGen.silentExpectation,
+                    flock.test.envGen.silentExpectation,
+                    flock.test.envGen.silentExpectation
+                ],
+                // No changes; gate stays closed throughout.
+                changes: {}
+            }
+        },
+        {
             name: "Full envelope, no sustain point, gate open",
             synthDef: {
                 gate: 1.0
             },
             test: {
                 numBlocksToGen: 5,
-                expected: combineExpectations(
+                expected: flock.test.concat(
                     flock.test.envGen.attackDecayExpectations,
                     flock.test.envGen.noSustainPointExpectations,
                     flock.test.envGen.releaseExpectations
@@ -150,7 +162,7 @@ var fluid = fluid || require("infusion"),
             },
             test: {
                 numBlocksToGen: 7,
-                expected: combineExpectations(
+                expected: flock.test.concat(
                     flock.test.envGen.attackDecayExpectations,
                     flock.test.envGen.sustainPointExpectations,
                     flock.test.envGen.releaseExpectations
@@ -163,20 +175,55 @@ var fluid = fluid || require("infusion"),
             }
         },
         {
-            name: "Gate closed",
+            name: "Full envelope, sustain for two blocks; gate closed for two blocks then open.",
+            synthDef: {
+                gate: 0.0,
+                envelope: {
+                    sustainPoint: 2
+                }
+            },
             test: {
-                numBlocksToGen: 5,
-
-                // Gate is always closed, so output should be silent.
-                expected: [
+                numBlocksToGen: 10,
+                expected: flock.test.concat(
                     flock.test.envGen.silentExpectation,
                     flock.test.envGen.silentExpectation,
-                    flock.test.envGen.silentExpectation,
-                    flock.test.envGen.silentExpectation,
+                    flock.test.envGen.attackDecayExpectations,
+                    flock.test.envGen.sustainPointExpectations,
+                    flock.test.envGen.releaseExpectations,
                     flock.test.envGen.silentExpectation
-                ],
-                // No changes; gate stays closed throughout.
-                changes: {}
+                ),
+                changes: {
+                    1: {
+                        "env.gate": 1.0
+                    },
+                    6: {
+                        "env.gate": 0.0
+                    }
+
+                }
+            }
+        },
+        {
+            name: "Gate closes halfway through release stage.",
+            synthDef: {
+                gate: 1.0,
+                envelope: {
+                    sustainPoint: 2
+                }
+            },
+            test: {
+                numBlocksToGen: 4,
+                expected: flock.test.concat(
+                    flock.test.envGen.attackDecayExpectations[0], // Attack stage
+                    flock.test.envGen.attackDecayExpectations[1], // First half of decay stage.
+                    flock.test.envGen.releaseFromDecayMidpointExpectations,
+                    flock.test.envGen.silentExpectation
+                ),
+                changes: {
+                    1: {
+                        "env.gate": 0.0
+                    }
+                }
             }
         }
     ];

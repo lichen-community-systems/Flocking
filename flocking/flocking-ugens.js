@@ -2608,8 +2608,6 @@ var fluid = fluid || require("infusion"),
                 // If that's the case, move on to the next breakpoint stage.
                 if (m.numSegmentSamps === 0) {
                     if (m.stage === envSpec.sustainPoint) {
-                        // TODO: Major dependency issues here, since we're
-                        // selectively doing much of the behaviour from setup segment stage.
                         that.lineGen = flock.lineGen.constant;
                         m.numSegmentSamps = Infinity;
                         m.destination = m.value;
@@ -2620,8 +2618,7 @@ var fluid = fluid || require("infusion"),
                 }
 
                 if (stageTransition) {
-                    that.lineGen = flock.ugen.envGen.lineGeneratorForStage(m, envSpec);
-                    that.lineGen.nextSegment(timeScale[k], envSpec, m);
+                    that.lineGen = flock.ugen.envGen.lineGenForStage(m, envSpec, timeScale[k]);
                     stageTransition = false;
                 }
 
@@ -2645,19 +2642,6 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    flock.ugen.envGen.lineGeneratorForStage = function (m, envSpec) {
-        if (m.stage === 0 || m.stage > m.numStages) {
-            return flock.lineGen.constant;
-        }
-
-        var curve = envSpec.curve,
-            curveValue = flock.isIterable(curve) ? curve[m.stage - 1] : curve,
-            type = typeof curveValue;
-
-        return type === "string" ? flock.lineGen[curveValue] :
-            type === "number" ? flock.lineGen.value : flock.lineGen.linear;
-    };
-
     flock.ugen.envGen.initEnvelope = function (that, envelope) {
         var m = that.model,
             envSpec = flock.ugen.envGen.makeEnvSpec(envelope);
@@ -2667,21 +2651,50 @@ var fluid = fluid || require("infusion"),
         // gate is closed.
         m.stage = 0;
         m.numStages = envSpec.times.length;
-        that.lineGen = flock.ugen.envGen.lineGeneratorForStage(m, envSpec);
+        that.lineGen = flock.lineGen.constant;
         that.lineGen.nextSegment(that.inputs.timeScale.output[0], envSpec, m);
         m.value = that.lineGen.gen(m);
+
         return envSpec;
     };
 
-    flock.ugen.envGen.makeEnvSpec = function (envelope) {
-        if (typeof envelope === "string") {
-            return fluid.invokeGlobalFunction(envelope);
-        } else if (envelope.type) {
-            var envType = envelope.type;
-            return fluid.invokeGlobalFunction(envType, [envelope]);
+    flock.ugen.envGen.lineGenForStage = function (m, envSpec, timeScale) {
+        var curve = envSpec.curve,
+            lineGen,
+            curveValue,
+            type;
+
+        if (m.stage === 0 || m.stage > m.numStages) {
+            lineGen = flock.lineGen.constant;
+        } else {
+            curveValue = curve[m.stage - 1];
+            type = typeof curveValue;
+            lineGen = type === "string" ? flock.lineGen[curveValue] :
+                type === "number" ? flock.lineGen.value : flock.lineGen.linear;
         }
 
-        return envelope;
+        lineGen.nextSegment(timeScale, envSpec, m);
+
+        return lineGen;
+    };
+
+    flock.ugen.envGen.makeEnvSpec = function (envelope) {
+        var envSpec = typeof envelope === "string" ? fluid.invokeGlobalFunction(envelope) :
+            envelope.type ? fluid.invokeGlobalFunction(envelope.type, [envelope]) : envelope;
+
+        envSpec.curve = flock.isIterable(envSpec.curve) ? envSpec.curve :
+            flock.ugen.envGen.fillArrayWithValue(envSpec.curve, envSpec.levels.length - 1);
+
+        return envSpec;
+    };
+
+    // TODO: Should this be a general utility?
+    flock.ugen.envGen.fillArrayWithValue = function (value, len) {
+        var arr = new Array(len);
+        for (var i = 0; i < len; i++) {
+            arr[i] = value;
+        }
+        return arr;
     };
 
     // TODO: Move this to core.
