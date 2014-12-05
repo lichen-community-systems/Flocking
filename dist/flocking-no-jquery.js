@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (December 3, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (December 4, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof exports === "object") {
@@ -10929,6 +10929,8 @@ var fluid = fluid || require("infusion"),
      * Utilities *
      *************/
 
+    flock.noOp = function () {};
+    
     flock.isIterable = function (o) {
         var type = typeof o;
         return o && o.length !== undefined && type !== "string" && type !== "function";
@@ -11245,10 +11247,6 @@ var fluid = fluid || require("infusion"),
      */
     flock.interpolate.linear = function (idx, table) {
         var len = table.length;
-        if (len < 1) {
-            return 0;
-        }
-
         idx = idx % len;
 
         var i1 = idx | 0,
@@ -11272,10 +11270,6 @@ var fluid = fluid || require("infusion"),
      */
     flock.interpolate.cubic = function (idx, table) {
         var len = table.length;
-
-        if (len < 1) {
-            return 0;
-        }
 
         var intPortion = Math.floor(idx),
             i0 = intPortion % len,
@@ -14565,9 +14559,8 @@ var fluid = fluid || require("infusion"),
 
             // Assigns an interpolator function to the UGen.
             // This is inactive by default, but can be used in custom gen() functions.
-            // Will be undefined if no interpolation default or option has been set,
-            // or if it is set to "none"--make sure you check before invoking it.
-            that.interpolate = flock.interpolate[o.interpolation];
+            that.interpolate = o.interpolate ?
+                flock.interpolate[o.interpolation] : flock.interpolate.none;
 
             if (that.rate === flock.rates.DEMAND && that.inputs.freq) {
                 valueDef = flock.parse.ugenDefForConstantValue(1.0);
@@ -15179,7 +15172,7 @@ var fluid = fluid || require("infusion"),
                 } else if (idx < 0) {
                     idx += tableLen;
                 }
-                out[i] = that.interpolate ? that.interpolate(idx, table) : table[idx | 0];
+                out[i] = that.interpolate(idx, table);
                 phase += freq[k] * tableIncHz;
                 if (phase >= tableLen) {
                     phase -= tableLen;
@@ -15192,19 +15185,30 @@ var fluid = fluid || require("infusion"),
             that.mulAdd(numSamps);
         };
 
-        that.onInputChanged = function () {
+        that.onInputChanged = function (inputName) {
             flock.ugen.osc.onInputChanged(that);
 
             // Precalculate table-related values.
-            var m = that.model;
-            m.tableLen = that.inputs.table.length;
-            m.tableIncHz = m.tableLen / m.sampleRate;
-            m.tableIncRad =  m.tableLen / flock.TWOPI;
+            if (!inputName || inputName === "table") {
+                var m = that.model,
+                    table = that.inputs.table;
+
+                if (table.length < 1) {
+                    table = that.inputs.table = flock.ugen.osc.emptyTable;
+                }
+
+                m.tableLen = table.length;
+                m.tableIncHz = m.tableLen / m.sampleRate;
+                m.tableIncRad =  m.tableLen / flock.TWOPI;
+            }
+
         };
 
         that.onInputChanged();
         return that;
     };
+
+    flock.ugen.osc.emptyTable = new Float32Array([0, 0, 0]);
 
     flock.ugen.osc.onInputChanged = function (that) {
         that.calculateStrides();
@@ -15665,7 +15669,7 @@ var fluid = fluid || require("infusion"),
                 }
                 m.prevTrig = trig[j];
 
-                samp = that.interpolate ? that.interpolate(bufIdx, source) : source[bufIdx | 0];
+                samp = that.interpolate(bufIdx, source);
                 out[i] = samp;
                 bufIdx += m.stepSize;
             }
@@ -15704,7 +15708,7 @@ var fluid = fluid || require("infusion"),
                 }
                 m.prevTrig = trig[j];
 
-                samp = that.interpolate ? that.interpolate(bufIdx, source) : source[bufIdx | 0];
+                samp = that.interpolate(bufIdx, source);
                 out[i] = samp;
                 bufIdx += m.stepSize * speedInc;
             }
@@ -15803,7 +15807,7 @@ var fluid = fluid || require("infusion"),
 
             for (i = j = 0; i < numSamps; i++, j += phaseS) {
                 bufIdx = phase[j] * sourceLen;
-                val = that.interpolate ? that.interpolate(bufIdx, source) : source[bufIdx | 0];
+                val = that.interpolate(bufIdx, source);
                 out[i] = val;
             }
 
@@ -16928,7 +16932,7 @@ var fluid = fluid || require("infusion"),
         m.numStages = envSpec.times.length;
         that.lineGen = flock.lineGen.constant;
         that.lineGen.nextSegment(that.inputs.timeScale.output[0], envSpec, m);
-        m.value = that.lineGen.gen(m);
+        m.value = envSpec.levels[m.stage];
 
         return envSpec;
     };
@@ -16997,9 +17001,7 @@ var fluid = fluid || require("infusion"),
                 flock.lineGen.setupSegmentStage(timeScale, envSpec, m);
             },
 
-            gen: function (m) {
-                return m.value;
-            }
+            gen: flock.noOp
         },
 
         linear: {
@@ -18554,7 +18556,7 @@ var fluid = fluid || require("infusion"),
             for (j = 0; j < m.activeGrains.length;) {
                 grain = m.activeGrains[j];
                 for (k = grain.writePos; k < Math.min(k + (grain.numSamps - grain.sampIdx), numSamps); k++) {
-                    samp = that.interpolate ? that.interpolate(grain.readPos, buf) : buf[grain.readPos | 0];
+                    samp = that.interpolate(grain.readPos, buf);
                     env = flock.interpolate.linear(grain.sampIdx * grain.envScale, grainEnv);
                     out[k] += samp * env * grain.amp;
                     grain.readPos = (grain.readPos + (m.stepSize * grain.speed)) % buf.length;

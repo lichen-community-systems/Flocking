@@ -138,6 +138,8 @@ var fluid = fluid || require("infusion"),
      * Utilities *
      *************/
 
+    flock.noOp = function () {};
+    
     flock.isIterable = function (o) {
         var type = typeof o;
         return o && o.length !== undefined && type !== "string" && type !== "function";
@@ -454,10 +456,6 @@ var fluid = fluid || require("infusion"),
      */
     flock.interpolate.linear = function (idx, table) {
         var len = table.length;
-        if (len < 1) {
-            return 0;
-        }
-
         idx = idx % len;
 
         var i1 = idx | 0,
@@ -481,10 +479,6 @@ var fluid = fluid || require("infusion"),
      */
     flock.interpolate.cubic = function (idx, table) {
         var len = table.length;
-
-        if (len < 1) {
-            return 0;
-        }
 
         var intPortion = Math.floor(idx),
             i0 = intPortion % len,
