@@ -124,7 +124,7 @@ var fluid = fluid || require("infusion"),
 
         // If we have no mul or add inputs, bail immediately.
         if (!mul && !add) {
-            that.mulAdd = fluid.identity;
+            that.mulAdd = flock.noOp;
             return;
         }
 
@@ -2582,13 +2582,13 @@ var fluid = fluid || require("infusion"),
                 inputs = that.inputs,
                 envSpec = that.envSpec,
                 gate = inputs.gate.output,
-                timeScale = inputs.timeScale.output,
+                timeScale = inputs.timeScale.output[0],
                 i,
                 j,
                 k,
                 currentGate;
 
-            for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.gate, k += m.strides.timeScale) {
+            for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.gate) {
                 out[i] = m.value;
 
                 m.numSegmentSamps--;
@@ -2596,33 +2596,32 @@ var fluid = fluid || require("infusion"),
                 // Check to see if the gate has transitioned.
                 // TODO: In the case of a control-rate gate,
                 // this per-sample branching reduces performance.
-                // Implement separate kr and ar gate check functions.
                 currentGate = gate[j];
                 if (currentGate !== m.previousGate) {
                     if (currentGate > 0.0 && m.previousGate <= 0.0) {
                         // Gate has opened.
                         m.stage = 1;
-                        that.lineGen = flock.ugen.envGen.lineGenForStage(m, envSpec, timeScale[k]);
+                        that.lineGen = flock.ugen.envGen.lineGenForStage(m, envSpec, timeScale);
                     } else if (currentGate <= 0.0 && m.previousGate > 0) {
                         // Gate has closed.
                         m.stage = m.numStages;
-                        that.lineGen = flock.ugen.envGen.lineGenForStage(m, envSpec, timeScale[k]);
+                        that.lineGen = flock.ugen.envGen.lineGenForStage(m, envSpec, timeScale);
                     }
                 }
                 m.previousGate = currentGate;
 
-                // Assuming we're not at the beginning or end stage,
-                // Check to see if we've reached our target value
-                // and that we aren't at the sustain point.
-                // If that's the case, move on to the next breakpoint stage.
                 if (m.numSegmentSamps === 0) {
+                    // We've hit the end of the current transition.
                     if (m.stage === envSpec.sustainPoint) {
+                        // We're at the sustain point.
+                        // Output a constant value.
                         that.lineGen = flock.lineGen.constant;
                         m.numSegmentSamps = Infinity;
                         m.destination = m.value;
                     } else {
+                        // Move on to the next breakpoint stage.
                         m.stage++;
-                        that.lineGen = flock.ugen.envGen.lineGenForStage(m, envSpec, timeScale[k]);
+                        that.lineGen = flock.ugen.envGen.lineGenForStage(m, envSpec, timeScale);
                     }
                 }
 
@@ -2788,7 +2787,7 @@ var fluid = fluid || require("infusion"),
         inputs: {
             envelope: "flock.envelope.adsr",
             gate: 0.0,
-            timeScale: 1.0,
+            timeScale: 1.0,     // Timescale is control-rate (or lower) only.
             mul: null,          // This is equivalent to SC's levelScale parameter.
             add: null           // And this to SC's levelBias.
         },
@@ -2805,8 +2804,7 @@ var fluid = fluid || require("infusion"),
             },
 
             strideInputs: [
-                "gate",
-                "timeScale"
+                "gate"
             ]
         }
     });
