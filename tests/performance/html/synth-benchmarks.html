@@ -58,6 +58,20 @@
                     mul: 0.1
                 }
             }, audioAndControl, oneSecondBlocks);
+
+            flock.test.timeSynthDefs("flock.ugen.change(), both inputs running at audio rate.", {
+                ugen: "flock.ugen.change",
+                initial: {
+                    ugen: "flock.ugen.sinOsc",
+                    freq: 440
+                },
+                target: {
+                    ugen: "flock.ugen.sinOsc",
+                    freq: 220
+                },
+                time: 10,
+                crossfade: 2
+            }, [flock.rates.AUDIO], oneSecondBlocks);
         </script>
     </body>
 </html>

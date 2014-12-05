@@ -181,6 +181,15 @@ var flock = flock || {};
             "add"
         ], audioAndControl, ["none"]);
 
+        flock.test.timeIsolatedUGens([
+            "flock.ugen.change"
+        ], [
+            "initial",
+            "target",
+            "time",
+            "crossfade"
+        ], audioAndControl, ["none"]);
+
         // Other UGens.
         flock.test.timeIsolatedUGens([
             "flock.ugen.line",
