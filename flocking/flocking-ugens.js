@@ -2688,6 +2688,8 @@ var fluid = fluid || require("infusion"),
         envSpec.curve = flock.isIterable(envSpec.curve) ? envSpec.curve :
             flock.ugen.envGen.fillArrayWithValue(envSpec.curve, envSpec.levels.length - 1);
 
+        flock.envelope.validateEnvSpec(envSpec, true);
+
         return envSpec;
     };
 

@@ -139,7 +139,7 @@ var fluid = fluid || require("infusion"),
      *************/
 
     flock.noOp = function () {};
-    
+
     flock.isIterable = function (o) {
         var type = typeof o;
         return o && o.length !== undefined && type !== "string" && type !== "function";
@@ -640,6 +640,38 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.envelope.registerCreators("flock.envelope", flock.envelope.creatorSpecs);
+
+    flock.envelope.validateEnvSpec = function (envSpec, failOnError) {
+        var levels = envSpec.levels,
+            levelsLen = levels.length,
+            times = envSpec.times,
+            curve = envSpec.curve,
+            sustainPoint = envSpec.sustainPoint,
+            report = {};
+
+        if (times.length !== levelsLen - 1) {
+            report.levels = "The envelope specification should provide one fewer time values " +
+                "than the number of level values. times: " + times + " levels: " + levels;
+        }
+
+        if (flock.isIterable(curve) && curve.length !== levelsLen - 1) {
+            report.curve = "When curve is specified as an array, there should be one few curve value " +
+                "than the number of level values. curve: " + curve + " levels: " + levels;
+        }
+
+        if (sustainPoint < 0 || sustainPoint >= levelsLen) {
+            report.sustainPoint = "The specified sustainPoint index is out range for the levels array. " +
+                "sustainPoint: " + sustainPoint + " levels: " + levels;
+        }
+
+        if (failOnError !== false) {
+            for (var errorProp in report) {
+                flock.fail(report[errorProp]);
+            }
+        }
+
+        return report;
+    };
 
 
     flock.expand = {};

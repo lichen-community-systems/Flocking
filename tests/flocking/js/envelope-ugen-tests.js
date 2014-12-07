@@ -6,7 +6,7 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, module, test, deepEqual*/
+/*global require, module, test, ok, deepEqual*/
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
@@ -229,4 +229,51 @@ var fluid = fluid || require("infusion"),
     ];
 
     flock.test.envGen.runTests(flock.test.envGen.synthDef, flock.test.envGen.testSpecs);
+
+    flock.test.envGen.envelopeCreatorsToTest = fluid.transform(flock.envelope.creatorSpecs, function (spec, name) {
+        return {
+            name: name,
+            creator: flock.envelope[name]
+        };
+    });
+
+    flock.test.envGen.testEnvelopeValidity = function (name, envSpec) {
+        // Create an envGen ugen instance and verify that it's valid.
+        try {
+            flock.parse.ugenDef({
+                ugen: "flock.ugen.envGen",
+                envelope: envSpec
+            });
+
+            ok(true, "The " + name + " envelope is valid.");
+        } catch (e){
+            ok(false, "A validation error occurred while instantiating an envGen instance " +
+                "with a " + name + " envelope. " + envSpec);
+        }
+    };
+
+    test("Validity of built-in envelope defaults", function () {
+        fluid.each(flock.test.envGen.envelopeCreatorsToTest, function (spec) {
+            flock.test.envGen.testEnvelopeValidity(spec.name, spec.creator());
+        });
+    });
+
+    test("Validity of customized envelopes", function () {
+        // This test only tests that the envelope creator functions return
+        // valid envSpecs when the user provides options. It doesn't test
+        // that the envSpecs produce the requested envelope shape.
+        fluid.each(flock.test.envGen.envelopeCreatorsToTest, function (spec) {
+            var defaults = flock.envelope[spec.name].defaults,
+                options = fluid.copy(defaults),
+                envSpec;
+
+            fluid.each(options, function (value, prop) {
+                options[prop] = Math.random() * 10;
+            });
+
+            envSpec = spec.creator(options);
+
+            flock.test.envGen.testEnvelopeValidity(spec.name, envSpec);
+        });
+    });
 }());
