@@ -159,7 +159,7 @@ var flock = flock || {};
             }
         }
 
-        equal(outOfRanges.length, 0, msg + "Out of range values found at:" + outOfRanges);
+        equal(outOfRanges.length, 0, msg + (outOfRanges.length > 0 ? " Out of range values found at: " + outOfRanges : ""));
     };
 
     flock.test.continuousArray = function (buffer, threshold, msg) {
@@ -284,7 +284,7 @@ var flock = flock || {};
         flock.test.arrayNotNaN(output,
             "The ugen should never output NaN.");
         flock.test.arrayNotSilent(output,
-            "The output should not be completely silent");
+            "The output should not be completely silent.");
         flock.test.arrayUnbroken(output,
             "The ugen should produce an unbroken audio tone.");
         flock.test.arrayWithinRange(output, expectedMin, expectedMax,

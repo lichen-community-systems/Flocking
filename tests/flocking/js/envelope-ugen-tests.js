@@ -63,62 +63,68 @@ var fluid = fluid || require("infusion"),
         ugen: "flock.ugen.envGen",
         envelope: {
             levels: [0, 1, 0.5, 0],
-            times: [1/750, 1/375, 1/750]
+            times: [1/750, 1/375, 1/750] // One block, two blocks, one block.
         },
         gate: 0.0
     };
 
     flock.test.envGen.silentBlock = new Float32Array(64);
-    flock.test.envGen.expectedDecayBuffer = flock.test.lineBuffer(128, 1, 0.5);
+    flock.test.envGen.twoBlockLinearDecay = flock.test.lineBuffer(128, 1, 0.5);
 
-    flock.test.envGen.attackDecayExpectations = [
-        {
-            msg: "The attack portion should sound.",
-            buffer: flock.test.lineBuffer(64, 0, 1)
-        },
-        {
-            msg: "The first part of the decay stage should sound.",
-            buffer: flock.test.envGen.expectedDecayBuffer.subarray(0, 64)
-        },
-        {
-            msg: "The second part of the decay stage should sound.",
-            buffer: flock.test.envGen.expectedDecayBuffer.subarray(64)
-        }
-    ];
-
-    flock.test.envGen.noSustainPointExpectations = [];
-
-    flock.test.envGen.sustainPointExpectations = [
-        {
-            msg: "The first part of the sustain stage should hold the sustain value.",
-            buffer: flock.test.valueBuffer(64, 0.5)
-        },
-        {
-            msg: "The second part of the sustain stage should continue to hold the sustain value.",
-            buffer: flock.test.valueBuffer(64, 0.5)
-        }
-    ];
-
-    flock.test.envGen.releaseExpectations = [
-        {
-            msg: "The release stage should sound for the expected duration.",
-            buffer: flock.test.lineBuffer(64, 0.5, 0)
-        },
-        {
-            msg: "After the envelope has decayed, it should output silence.",
+    flock.test.envGen.segmentExpectations = {
+        silent: {
+            msg: "The output should be silent.",
             buffer: flock.test.envGen.silentBlock
+        },
+
+        noSustain: [],
+
+        sustain: [
+            {
+                msg: "The first part of the sustain stage should hold the sustain value.",
+                buffer: flock.test.valueBuffer(64, 0.5)
+            },
+            {
+                msg: "The second part of the sustain stage should continue to hold the sustain value.",
+                buffer: flock.test.valueBuffer(64, 0.5)
+            }
+        ],
+
+        linear: {
+            attack: {
+                msg: "The attack portion should sound.",
+                buffer: flock.test.lineBuffer(64, 0, 1)
+            },
+
+            decay: [
+                {
+                    msg: "The first part of the decay stage should sound.",
+                    buffer: flock.test.envGen.twoBlockLinearDecay.subarray(0, 64)
+                },
+                {
+                    msg: "The second part of the decay stage should sound.",
+                    buffer: flock.test.envGen.twoBlockLinearDecay.subarray(64)
+                }
+            ],
+
+            release: [
+                {
+                    msg: "The release stage should sound for the expected duration.",
+                    buffer: flock.test.lineBuffer(64, 0.5, 0)
+                },
+                {
+                    msg: "After the envelope has decayed, it should output silence.",
+                    buffer: flock.test.envGen.silentBlock
+                }
+            ],
+
+            releaseFromDecayMidpoint: {
+                msg: "Midway through the decay stage, when the gate closes, we should immediately start decaying.",
+                buffer: flock.test.lineBuffer(64, 0.75, 0)
+            }
         }
-    ];
-
-    flock.test.envGen.releaseFromDecayMidpointExpectations = {
-        msg: "Midway through the decay stage, when the gate closes, we should immediately start decaying.",
-        buffer: flock.test.lineBuffer(64, 0.75, 0)
     };
 
-    flock.test.envGen.silentExpectation = {
-        msg: "The output should be silent.",
-        buffer: flock.test.envGen.silentBlock
-    };
 
     flock.test.envGen.testSpecs = [
         {
@@ -128,11 +134,11 @@ var fluid = fluid || require("infusion"),
 
                 // Gate is always closed, so output should be silent.
                 expected: [
-                    flock.test.envGen.silentExpectation,
-                    flock.test.envGen.silentExpectation,
-                    flock.test.envGen.silentExpectation,
-                    flock.test.envGen.silentExpectation,
-                    flock.test.envGen.silentExpectation
+                    flock.test.envGen.segmentExpectations.silent,
+                    flock.test.envGen.segmentExpectations.silent,
+                    flock.test.envGen.segmentExpectations.silent,
+                    flock.test.envGen.segmentExpectations.silent,
+                    flock.test.envGen.segmentExpectations.silent
                 ],
                 // No changes; gate stays closed throughout.
                 changes: {}
@@ -146,9 +152,10 @@ var fluid = fluid || require("infusion"),
             test: {
                 numBlocksToGen: 5,
                 expected: flock.test.concat(
-                    flock.test.envGen.attackDecayExpectations,
-                    flock.test.envGen.noSustainPointExpectations,
-                    flock.test.envGen.releaseExpectations
+                    flock.test.envGen.segmentExpectations.linear.attack,
+                    flock.test.envGen.segmentExpectations.linear.decay,
+                    flock.test.envGen.segmentExpectations.noSustain,
+                    flock.test.envGen.segmentExpectations.linear.release
                 )
             }
         },
@@ -163,9 +170,10 @@ var fluid = fluid || require("infusion"),
             test: {
                 numBlocksToGen: 7,
                 expected: flock.test.concat(
-                    flock.test.envGen.attackDecayExpectations,
-                    flock.test.envGen.sustainPointExpectations,
-                    flock.test.envGen.releaseExpectations
+                    flock.test.envGen.segmentExpectations.linear.attack,
+                    flock.test.envGen.segmentExpectations.linear.decay,
+                    flock.test.envGen.segmentExpectations.sustain,
+                    flock.test.envGen.segmentExpectations.linear.release
                 ),
                 changes: {
                     4: {
@@ -185,12 +193,13 @@ var fluid = fluid || require("infusion"),
             test: {
                 numBlocksToGen: 10,
                 expected: flock.test.concat(
-                    flock.test.envGen.silentExpectation,
-                    flock.test.envGen.silentExpectation,
-                    flock.test.envGen.attackDecayExpectations,
-                    flock.test.envGen.sustainPointExpectations,
-                    flock.test.envGen.releaseExpectations,
-                    flock.test.envGen.silentExpectation
+                    flock.test.envGen.segmentExpectations.silent,
+                    flock.test.envGen.segmentExpectations.silent,
+                    flock.test.envGen.segmentExpectations.linear.attack,
+                    flock.test.envGen.segmentExpectations.linear.decay,
+                    flock.test.envGen.segmentExpectations.sustain,
+                    flock.test.envGen.segmentExpectations.linear.release,
+                    flock.test.envGen.segmentExpectations.silent
                 ),
                 changes: {
                     1: {
@@ -214,10 +223,10 @@ var fluid = fluid || require("infusion"),
             test: {
                 numBlocksToGen: 4,
                 expected: flock.test.concat(
-                    flock.test.envGen.attackDecayExpectations[0], // Attack stage
-                    flock.test.envGen.attackDecayExpectations[1], // First half of decay stage.
-                    flock.test.envGen.releaseFromDecayMidpointExpectations,
-                    flock.test.envGen.silentExpectation
+                    flock.test.envGen.segmentExpectations.linear.attack, // Attack stage
+                    flock.test.envGen.segmentExpectations.linear.decay[0], // First half of decay stage.
+                    flock.test.envGen.segmentExpectations.linear.releaseFromDecayMidpoint,
+                    flock.test.envGen.segmentExpectations.silent
                 ),
                 changes: {
                     1: {
@@ -276,4 +285,39 @@ var fluid = fluid || require("infusion"),
             flock.test.envGen.testEnvelopeValidity(spec.name, envSpec);
         });
     });
+
+    flock.test.envGen.curveNames = [];
+    fluid.each(flock.lineGen, function (lineGenerator, name) {
+        if (name === "curve") {
+            flock.test.envGen.curveNames.push(-2);
+            flock.test.envGen.curveNames.push(2);
+        } else if (typeof lineGenerator === "object") {
+            flock.test.envGen.curveNames.push(name);
+        }
+    });
+
+    flock.test.envGen.testNormalOutput = function (synth, numBlocks) {
+        for (var i = 0; i < numBlocks; i++) {
+            synth.gen();
+            var actual = synth.get("env").output;
+            flock.test.arrayNotNaN(actual,
+                "The segment generator should never output NaN.");
+            flock.test.arrayWithinRange(actual, 0.0, 1.0,
+                "The segment generator should produce output values ranging between 0 and 1");
+        }
+    };
+
+    fluid.each(flock.test.envGen.curveNames, function (curveName){
+        test("A " + curveName + " segment produces normal output", function () {
+            var synth = flock.test.envGen.makeSynth(flock.test.envGen.synthDef, {
+                envelope: {
+                    curve: curveName,
+                },
+                gate: 1.0
+            });
+
+            flock.test.envGen.testNormalOutput(synth, 4);
+        });
+    });
+
 }());

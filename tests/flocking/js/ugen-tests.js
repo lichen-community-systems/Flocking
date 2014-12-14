@@ -1213,7 +1213,7 @@ var fluid = fluid || require("infusion"),
         ugen: "flock.ugen.out",
         rate: "audio",
         inputs: {
-            bus: 3,
+            bus: 62,
             expand: 1,
             sources: {
                 ugen: "flock.mock.ugen",
@@ -1230,13 +1230,17 @@ var fluid = fluid || require("infusion"),
         ugen: "flock.ugen.in",
         rate: "audio",
         inputs: {
-            bus: 3
+            bus: 62
         }
     };
 
+    // TODO: We're using 64 buses here so we don't run into
+    // legitimate output buses when running tests while plugged into a multichannel
+    // audio interface. This illustrates why we should have some kind of separation between
+    // interconnect buses and output buses.
     var inEnviroOptions = {
         audioSettings: {
-            numBuses: 16
+            numBuses: 64
         }
     };
 
@@ -1249,9 +1253,9 @@ var fluid = fluid || require("infusion"),
             synthDef: inSynthDef
         });
 
-        inSynth.enviro.gen();
+        flock.enviro.shared.gen();
         var actual = inSynth.namedNodes["in"].output;
-        deepEqual(actual, inSynth.enviro.buses[3],
+        deepEqual(actual, inSynth.enviro.buses[62],
             "With a single source input, the output of flock.ugen.in should a copy of the bus referenced.");
         deepEqual(actual, outSynth.get("bufferMock").options.buffer,
             "And it should reflect exactly the output of the flock.ugen.out that is writing to the buffer.");
@@ -1263,12 +1267,12 @@ var fluid = fluid || require("infusion"),
 
         var bus4Def = $.extend(true, {}, outSynthDef, {
             inputs: {
-                bus: 4
+                bus: 63
             }
         });
 
         var multiInDef = $.extend(true, {}, inSynthDef);
-        multiInDef.inputs.bus = [3, 4];
+        multiInDef.inputs.bus = [62, 63];
 
         flock.synth({
             synthDef: outSynthDef

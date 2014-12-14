@@ -116,7 +116,7 @@ var fluid = fluid || require("infusion"),
             interval: "once",
             time: 100,
             maxOutlier: 50,
-            averageDrift: 5,
+            averageDrift: 6,
             scheduler: {
                 type: "flock.scheduler.async",
                 options: {

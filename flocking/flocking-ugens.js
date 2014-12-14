@@ -2671,9 +2671,10 @@ var fluid = fluid || require("infusion"),
             lineGen = flock.lineGen.constant;
         } else {
             curveValue = curve[m.stage - 1];
+            m.currentCurve = curveValue;
             type = typeof curveValue;
             lineGen = type === "string" ? flock.lineGen[curveValue] :
-                type === "number" ? flock.lineGen.value : flock.lineGen.linear;
+                type === "number" ? flock.lineGen.curve : flock.lineGen.linear;
         }
 
         lineGen.nextSegment(timeScale, envSpec, m);
@@ -2685,21 +2686,14 @@ var fluid = fluid || require("infusion"),
         var envSpec = typeof envelope === "string" ? fluid.invokeGlobalFunction(envelope) :
             envelope.type ? fluid.invokeGlobalFunction(envelope.type, [envelope]) : envelope;
 
-        envSpec.curve = flock.isIterable(envSpec.curve) ? envSpec.curve :
-            flock.ugen.envGen.fillArrayWithValue(envSpec.curve, envSpec.levels.length - 1);
+        if (!flock.isIterable(envSpec.curve)) {
+            var numCurves = envSpec.levels.length - 1;
+            envSpec.curve = flock.generate(new Array(numCurves), envSpec.curve);
+        }
 
         flock.envelope.validateEnvSpec(envSpec, true);
 
         return envSpec;
-    };
-
-    // TODO: Should this be a general utility?
-    flock.ugen.envGen.fillArrayWithValue = function (value, len) {
-        var arr = new Array(len);
-        for (var i = 0; i < len; i++) {
-            arr[i] = value;
-        }
-        return arr;
     };
 
     // TODO: Move this to core.
@@ -2725,6 +2719,15 @@ var fluid = fluid || require("infusion"),
                 m.stepSize = 0;
                 m.value = m.stage > m.numStages ? m.value : envSpec.levels[m.stage];
                 flock.lineGen.setupSegmentStage(timeScale, envSpec, m);
+            },
+
+            gen: flock.noOp
+        },
+
+        step: {
+            nextSegment: function (timeScale, envSpec, m) {
+                flock.lineGen.setupSegmentStage(timeScale, envSpec, m);
+                m.value = m.destination;
             },
 
             gen: flock.noOp
@@ -2757,6 +2760,27 @@ var fluid = fluid || require("infusion"),
             }
         },
 
+        curve: {
+            nextSegment: function (timeScale, envSpec, m) {
+                flock.lineGen.setupSegmentStage(timeScale, envSpec, m);
+
+                if (Math.abs(m.currentCurve) < 0.001) {
+                    // A curve value this small might as well be linear.
+                    return flock.lineGen.linear.nextSegment(timeScale, envSpec, m);
+                } else {
+                    var a1 = (m.destination - m.value) / (1.0 - Math.exp(m.currentCurve));
+                    m.a2 = m.value + a1;
+                    m.b1 = a1;
+                    m.stepSize = Math.exp(m.currentCurve / m.numSegmentSamps);
+                }
+            },
+
+            gen: function (m) {
+                m.b1 *= m.stepSize;
+                m.value = m.a2 - m.b1;
+            }
+        },
+
         sin: {
             nextSegment: function (timeScale, envSpec, m) {
                 flock.lineGen.setupSegmentStage(timeScale, envSpec, m);
@@ -2776,12 +2800,69 @@ var fluid = fluid || require("infusion"),
                 m.y2 = m.y1;
                 m.y1 = y0;
             }
+        },
+
+        welsh: {
+            nextSegment: function (timeScale, envSpec, m) {
+                flock.lineGen.setupSegmentStage(timeScale, envSpec, m);
+
+                var w = flock.HALFPI / m.numSegmentSamps,
+                    cosW = Math.cos(w);
+
+                m.b1 = 2.0 * cosW;
+
+                if (m.destination >= m.value) {
+                    m.a2 = m.value;
+                    m.y1 = 0.0;
+                    m.y2 = -Math.sin(w) * (m.destination - m.value);
+                } else {
+                    m.a2 = m.destination;
+                    m.y1 = m.value - m.destination;
+                    m.y2 = cosW * (m.value - m.destination);
+                }
+
+                m.value = m.a2 + m.y1;
+            },
+
+            gen: function (m) {
+                var y0 = m.b1 * m.y1 - m.y2;
+                m.y2 = m.y1;
+                m.y1 = y0;
+
+                m.value = m.a2 + y0;
+            }
+        },
+
+        squared: {
+            nextSegment: function (timeScale, envSpec, m) {
+                flock.lineGen.setupSegmentStage(timeScale, envSpec, m);
+                m.y1 = Math.sqrt(m.value);
+                m.y2 = Math.sqrt(m.destination);
+                m.stepSize = (m.y2 - m.y1) / m.numSegmentSamps;
+            },
+
+            gen: function (m) {
+                m.y1 += m.stepSize;
+                m.value = m.y1 * m.y1;
+            }
+        },
+
+        cubed: {
+            nextSegment: function (timeScale, envSpec, m) {
+                flock.lineGen.setupSegmentStage(timeScale, envSpec, m);
+
+                var third = 0.3333333333333333;
+                m.y1 = Math.pow(m.value, third);
+                m.y2 = Math.pow(m.destination, third);
+                m.stepSize = (m.y2 - m.y1) / m.numSegmentSamps;
+            },
+
+            gen: function (m) {
+                m.y1 += m.stepSize;
+                m.value = m.y1 * m.y1 * m.y1;
+            }
         }
     };
-
-    // TODO: Implement curve values.
-    flock.lineGen.value = flock.lineGen.linear;
-
 
     fluid.defaults("flock.ugen.envGen", {
         rate: "audio",
