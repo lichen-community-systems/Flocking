@@ -44,7 +44,8 @@ var flock = flock || {};
         });
     };
 
-    flock.test.lineBuffer = function (numSamps, start, end, buffer) {
+    // TODO: Unit tests.
+    flock.test.linearBuffer = function (numSamps, start, end, buffer) {
         buffer = buffer || new Float32Array(numSamps);
         var inc = (end - start) / numSamps,
             val = start;
@@ -56,6 +57,63 @@ var flock = flock || {};
 
         return buffer;
     };
+
+    // TODO: Unit tests.
+    flock.test.squaredBuffer = function (numSamps, start, end, buffer) {
+        buffer = buffer || new Float32Array(numSamps);
+
+        var startSqrt = Math.sqrt(start),
+            endSqrt = Math.sqrt(end),
+            inc = (endSqrt - startSqrt) / numSamps,
+            y1 = startSqrt,
+            val = start;
+
+        for (var i = 0; i < buffer.length; i++) {
+            buffer[i] = val;
+            y1 += inc;
+            val = y1 * y1;
+        }
+
+        return buffer;
+    };
+
+    // TODO: Unit tests.
+    flock.test.cubedBuffer = function (numSamps, start, end, buffer) {
+        buffer = buffer || new Float32Array(numSamps);
+
+        var startCubed = Math.pow(start, 1/3),
+            endCubed = Math.pow(end, 1/3),
+            inc = (endCubed - startCubed) / numSamps,
+            y1 = startCubed,
+            val = start;
+
+        for (var i = 0; i < buffer.length; i++) {
+            buffer[i] = val;
+            y1 += inc;
+            val = y1 * y1 * y1;
+        }
+
+        return buffer;
+    };
+
+    // TODO: Unit tests. This implementation may not be correct.
+    flock.test.exponentialBuffer = function (numSamps, start, end, buffer) {
+        buffer = buffer || new Float32Array(numSamps);
+
+        var scaledStart = start === 0 ? 0.0000000000000001 : start,
+            inc = Math.pow(end / scaledStart, 1.0 / numSamps),
+            val = scaledStart * inc;
+
+        buffer[0] = start;
+
+        for (var i = 1; i < numSamps; i++) {
+            buffer[i] = val;
+            val *= inc;
+        }
+
+        return buffer;
+    };
+
 
     /**
      * Concatenates all arguments (arrays or individual objects)
@@ -98,6 +156,15 @@ var flock = flock || {};
 
         for (i = 0; i < actual.length; i++) {
             flock.test.equalRounded(numDecimals, actual[i], expected[i], msg);
+        }
+    };
+
+    flock.test.arrayEqualBothRounded = function (numDecimals, actual, expected, msg) {
+        for (var i = 0; i < actual.length; i++) {
+            var actualRounded = flock.test.roundTo(actual[i], numDecimals),
+                expectedRounded = flock.test.roundTo(expected[i], numDecimals);
+
+            equal(actualRounded, expectedRounded, msg);
         }
     };
 

@@ -42,7 +42,13 @@ var fluid = fluid || require("infusion"),
             expectedPath = expectations[i];
             expected = fluid.get(flock.test.envGen.segmentExpectations[curveName], expectedPath);
             synth.gen();
-            deepEqual(envUGen.output, expected.buffer, expected.msg);
+
+            if (expected.roundTo !== undefined) {
+                flock.test.arrayEqualBothRounded(expected.roundTo, envUGen.output, expected.buffer, expected.msg);
+            } else {
+                deepEqual(envUGen.output, expected.buffer, expected.msg);
+            }
+
             change = testSpec.changes ? testSpec.changes[i] : undefined;
             if (change) {
                 synth.set(change);
@@ -79,8 +85,11 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.test.envGen.silentBlock = new Float32Array(64);
-    flock.test.envGen.twoBlockLinearDecay = flock.test.lineBuffer(128, 1, 0.5);
+    flock.test.envGen.twoBlockLinearDecay = flock.test.linearBuffer(128, 1, 0.5);
     flock.test.envGen.twoBlockStepDecay = flock.generate(128, function (i) { return i > 0 ? 0.5 : 1.0;});
+    flock.test.envGen.twoBlockSquaredDecay = flock.test.squaredBuffer(128, 1, 0.5);
+    flock.test.envGen.twoBlockCubedDecay = flock.test.cubedBuffer(128, 1, 0.5);
+    flock.test.envGen.twoBlockExponentialDecay = flock.test.exponentialBuffer(128, 1, 0.5);
 
     flock.test.envGen.silentExpectation = {
         msg: "The output should be silent.",
@@ -102,8 +111,6 @@ var fluid = fluid || require("infusion"),
         step: {
             silent: flock.test.envGen.silentExpectation,
 
-            sustain: flock.test.envGen.sustainExpectation,
-
             attack: {
                 msg: "The attack stage should consist of an immediate step to the target value.",
                 buffer: flock.generate(64, function (i) { return i > 0 ? 1.0 : 0.0; })
@@ -119,6 +126,8 @@ var fluid = fluid || require("infusion"),
                     buffer: flock.test.envGen.twoBlockStepDecay.subarray(64)
                 }
             ],
+
+            sustain: flock.test.envGen.sustainExpectation,
 
             release: [
                 {
@@ -139,12 +148,9 @@ var fluid = fluid || require("infusion"),
 
         linear: {
             silent: flock.test.envGen.silentExpectation,
-
-            sustain: flock.test.envGen.sustainExpectation,
-
             attack: {
-                msg: "The attack portion should sound.",
-                buffer: flock.test.lineBuffer(64, 0, 1)
+                msg: "The attack stage should ramp up from 0 to 1.",
+                buffer: flock.test.linearBuffer(64, 0, 1)
             },
 
             decay: [
@@ -158,10 +164,12 @@ var fluid = fluid || require("infusion"),
                 }
             ],
 
+            sustain: flock.test.envGen.sustainExpectation,
+
             release: [
                 {
                     msg: "The release stage should ramp down for the expected duration.",
-                    buffer: flock.test.lineBuffer(64, 0.5, 0)
+                    buffer: flock.test.linearBuffer(64, 0.5, 0)
                 },
                 {
                     msg: "After the envelope has released, it should output silence.",
@@ -171,10 +179,130 @@ var fluid = fluid || require("infusion"),
 
             releaseFromDecayMidpoint: {
                 msg: "Midway through the decay stage, when the gate closes, we should immediately start releasing.",
-                buffer: flock.test.lineBuffer(64, 0.75, 0)
+                buffer: flock.test.linearBuffer(64, 0.75, 0)
+            }
+        },
+
+        squared: {
+            silent: flock.test.envGen.silentExpectation,
+
+            attack: {
+                msg: "The attack stage shoud ramp up from 0 to 1.",
+                buffer: flock.test.squaredBuffer(64, 0, 1)
+            },
+
+            decay: [
+                {
+                    msg: "The first part of the decay stage should ramp down to the target.",
+                    buffer: flock.test.envGen.twoBlockSquaredDecay.subarray(0, 64)
+                },
+                {
+                    msg: "The second part of the decay stage should continue to ramp down to 0.5.",
+                    buffer: flock.test.envGen.twoBlockSquaredDecay.subarray(64)
+                }
+            ],
+
+            sustain: flock.test.envGen.sustainExpectation,
+
+            release: [
+                {
+                    msg: "The release stage should ramp down for the expected duration.",
+                    buffer: flock.test.squaredBuffer(64, 0.5, 0)
+                },
+                {
+                    msg: "After the envelope has released, it should output silence.",
+                    buffer: flock.test.envGen.silentBlock
+                }
+            ],
+
+            releaseFromDecayMidpoint: {
+                msg: "Midway through the decay stage, when the gate closes, we should immediately start releasing.",
+                buffer: flock.test.squaredBuffer(64, flock.test.envGen.twoBlockSquaredDecay[64], 0),
+                roundTo: 6
+            }
+        },
+
+        cubed: {
+            silent: flock.test.envGen.silentExpectation,
+
+            attack: {
+                msg: "The attack stage shoud ramp up from 0 to 1.",
+                buffer: flock.test.cubedBuffer(64, 0, 1)
+            },
+
+            decay: [
+                {
+                    msg: "The first part of the decay stage should ramp down to the target.",
+                    buffer: flock.test.envGen.twoBlockCubedDecay.subarray(0, 64)
+                },
+                {
+                    msg: "The second part of the decay stage should continue to ramp down to 0.5.",
+                    buffer: flock.test.envGen.twoBlockCubedDecay.subarray(64)
+                }
+            ],
+
+            sustain: flock.test.envGen.sustainExpectation,
+
+            release: [
+                {
+                    msg: "The release stage should ramp down for the expected duration.",
+                    buffer: flock.test.cubedBuffer(64, 0.5, 0)
+                },
+                {
+                    msg: "After the envelope has released, it should output silence.",
+                    buffer: flock.test.envGen.silentBlock
+                }
+            ],
+
+            releaseFromDecayMidpoint: {
+                msg: "Midway through the decay stage, when the gate closes, we should immediately start releasing.",
+                buffer: flock.test.cubedBuffer(64, flock.test.envGen.twoBlockCubedDecay[64], 0),
+                roundTo: 6
+            }
+        },
+
+        exponential: {
+            silent: flock.test.envGen.silentExpectation,
+
+            attack: {
+                msg: "The attack stage shoud ramp up from 0 to 1.",
+                buffer: flock.test.exponentialBuffer(64, 0, 1)
+            },
+
+            decay: [
+                {
+                    msg: "The first part of the decay stage should ramp down to the target.",
+                    buffer: flock.test.envGen.twoBlockExponentialDecay.subarray(0, 64),
+                },
+                {
+                    msg: "The second part of the decay stage should continue to ramp down to 0.5.",
+                    buffer: flock.test.envGen.twoBlockExponentialDecay.subarray(64),
+                }
+            ],
+
+            sustain: flock.test.envGen.sustainExpectation,
+
+            release: [
+                {
+                    msg: "The release stage should ramp down for the expected duration.",
+                    buffer: flock.test.exponentialBuffer(64, 0.5, 0)
+                },
+                {
+                    msg: "After the envelope has released, it should output silence.",
+                    buffer: flock.test.envGen.silentBlock
+                }
+            ],
+
+            releaseFromDecayMidpoint: {
+                msg: "Midway through the decay stage, when the gate closes, we should immediately start releasing.",
+                buffer: flock.test.exponentialBuffer(64, flock.test.envGen.twoBlockExponentialDecay[64], 0)
             }
         }
     };
+
+    // Constant behaves identically to step in practice.
+    // TODO: Does this mean they can be consolidated?
+    flock.test.envGen.segmentExpectations.constant = flock.test.envGen.segmentExpectations.step;
 
     flock.test.envGen.expectations = [
         [
@@ -221,7 +349,8 @@ var fluid = fluid || require("infusion"),
     ];
 
     flock.test.envGen.segmentTestSpec = {
-        curves: ["step", "linear"],
+        curves: Object.keys(flock.test.envGen.segmentExpectations),
+
         tests: [
             {
                 name: "Gate closed",
