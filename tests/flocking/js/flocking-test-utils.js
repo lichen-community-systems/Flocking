@@ -114,6 +114,84 @@ var flock = flock || {};
         return buffer;
     };
 
+    // TODO: Unit tests.
+    flock.test.sineCurveBuffer = function (numSamps, start, end, buffer) {
+        buffer = buffer || new Float32Array(numSamps);
+
+        var w = Math.PI / numSamps,
+            a2 = (end + start) * 0.5,
+            b1 = 2.0 * Math.cos(w),
+            y1 = (end - start) * 0.5,
+            y2 = y1 * Math.sin(flock.HALFPI - w),
+            val = a2 - y1,
+            y0;
+
+        for (var i = 0; i < numSamps; i++) {
+            buffer[i] = val;
+
+            y0 = b1 * y1 - y2;
+            val = a2 - y0;
+            y2 = y1;
+            y1 = y0;
+        }
+
+        return buffer;
+    };
+
+    flock.test.welshCurveBuffer = function (numSamps, start, end, buffer) {
+        buffer = buffer || new Float32Array(numSamps);
+
+        var w = flock.HALFPI / numSamps,
+            cosW = Math.cos(w),
+            b1 = 2.0 * cosW,
+            val = start,
+            a2,
+            y1,
+            y2,
+            y0;
+
+        if (end >= start) {
+            a2 = start;
+            y1 = 0;
+            y2 = -Math.sin(w) * (end - start);
+        } else {
+            a2 = end;
+            y1 = start - end;
+            y2 = cosW * (start - end);
+        }
+
+        for (var i = 0; i < numSamps; i++) {
+            buffer[i] = val;
+            y0 = b1 * y1 - y2;
+            y2 = y1;
+            y1 = y0;
+            val = a2 + y0;
+        }
+
+        return buffer;
+    };
+
+    flock.test.curveBuffer = function (numSamps, curveVal, start, end, buffer) {
+        buffer = buffer || new Float32Array(numSamps);
+
+        if (Math.abs(curveVal) < 0.001) {
+            return flock.test.linearBuffer(numSamps, start, end, buffer);
+        }
+
+        var a1 = (end - start) / (1.0 - Math.exp(curveVal)),
+            a2 = start + a1,
+            b1 = a1,
+            inc = Math.exp(curveVal / numSamps),
+            val = start;
+
+        for (var i = 0; i < numSamps; i++) {
+            buffer[i] = val;
+            b1 *= inc;
+            val = a2 - b1;
+        }
+
+        return buffer;
+    };
 
     /**
      * Concatenates all arguments (arrays or individual objects)

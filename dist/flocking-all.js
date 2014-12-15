@@ -26195,7 +26195,8 @@ var fluid = fluid || require("infusion"),
         constant: {
             nextSegment: function (timeScale, envSpec, m) {
                 m.stepSize = 0;
-                m.value = m.stage > m.numStages ? m.value : envSpec.levels[m.stage];
+                m.value = m.stage > m.numStages ?
+                    envSpec.levels[envSpec.levels.length - 1] : envSpec.levels[m.stage];
                 flock.lineGen.setupSegmentStage(timeScale, envSpec, m);
             },
 
@@ -26267,7 +26268,7 @@ var fluid = fluid || require("infusion"),
                 m.a2 = (m.destination + m.value) * 0.5;
                 m.b1 = 2.0 * Math.cos(w);
                 m.y1 = (m.destination - m.value) * 0.5;
-                m.y2 = m.y1 * Math.sin(Math.PI * 0.5 - w);
+                m.y2 = m.y1 * Math.sin(flock.HALFPI - w);
                 m.value = m.a2 - m.y1;
             },
 
