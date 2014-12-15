@@ -6,20 +6,14 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global ok, equal, deepEqual, Float32Array*/
+/*global fluid, ok, equal, deepEqual, Float32Array*/
 
 var flock = flock || {};
 
 (function () {
     "use strict";
 
-    flock.test = flock.test || {};
-
-    flock.test.valueBuffer = function (numSamps, value) {
-        return flock.generate(numSamps, function () {
-            return value;
-        });
-    };
+    fluid.registerNamespace("flock.test");
 
     flock.test.fillBuffer = function (start, end, skip) {
         var buf = [],
@@ -44,8 +38,24 @@ var flock = flock || {};
         });
     };
 
+
+    fluid.registerNamespace("flock.test.line");
+
     // TODO: Unit tests.
-    flock.test.linearBuffer = function (numSamps, start, end, buffer) {
+    flock.test.line.step = function (numSamps, start, end, buffer) {
+        buffer = buffer || new Float32Array(numSamps);
+
+        buffer[0] = start;
+
+        for (var i = 1; i < buffer.length; i++) {
+            buffer[i] = end;
+        }
+
+        return buffer;
+    };
+
+    // TODO: Unit tests.
+    flock.test.line.linear = function (numSamps, start, end, buffer) {
         buffer = buffer || new Float32Array(numSamps);
         var inc = (end - start) / numSamps,
             val = start;
@@ -59,7 +69,7 @@ var flock = flock || {};
     };
 
     // TODO: Unit tests.
-    flock.test.squaredBuffer = function (numSamps, start, end, buffer) {
+    flock.test.line.squared = function (numSamps, start, end, buffer) {
         buffer = buffer || new Float32Array(numSamps);
 
         var startSqrt = Math.sqrt(start),
@@ -78,7 +88,7 @@ var flock = flock || {};
     };
 
     // TODO: Unit tests.
-    flock.test.cubedBuffer = function (numSamps, start, end, buffer) {
+    flock.test.line.cubed = function (numSamps, start, end, buffer) {
         buffer = buffer || new Float32Array(numSamps);
 
         var startCubed = Math.pow(start, 1/3),
@@ -97,7 +107,7 @@ var flock = flock || {};
     };
 
     // TODO: Unit tests. This implementation may not be correct.
-    flock.test.exponentialBuffer = function (numSamps, start, end, buffer) {
+    flock.test.line.exponential = function (numSamps, start, end, buffer) {
         buffer = buffer || new Float32Array(numSamps);
 
         var scaledStart = start === 0 ? 0.0000000000000001 : start,
@@ -115,7 +125,7 @@ var flock = flock || {};
     };
 
     // TODO: Unit tests.
-    flock.test.sineCurveBuffer = function (numSamps, start, end, buffer) {
+    flock.test.line.sin = function (numSamps, start, end, buffer) {
         buffer = buffer || new Float32Array(numSamps);
 
         var w = Math.PI / numSamps,
@@ -138,7 +148,7 @@ var flock = flock || {};
         return buffer;
     };
 
-    flock.test.welshCurveBuffer = function (numSamps, start, end, buffer) {
+    flock.test.line.welsh = function (numSamps, start, end, buffer) {
         buffer = buffer || new Float32Array(numSamps);
 
         var w = flock.HALFPI / numSamps,
@@ -171,7 +181,7 @@ var flock = flock || {};
         return buffer;
     };
 
-    flock.test.curveBuffer = function (numSamps, curveVal, start, end, buffer) {
+    flock.test.line.curve = function (numSamps, curveVal, start, end, buffer) {
         buffer = buffer || new Float32Array(numSamps);
 
         if (Math.abs(curveVal) < 0.001) {
@@ -229,21 +239,31 @@ var flock = flock || {};
         equal(rounded, expected, msg);
     };
 
-    flock.test.arrayEqualRounded = function (numDecimals, actual, expected, msg) {
-        var i;
+    flock.test.makeNewArrayLike = function (arr) {
+        return (arr instanceof Float32Array) ?
+            new Float32Array(arr.length) : new Array(arr.length);
+    };
 
-        for (i = 0; i < actual.length; i++) {
-            flock.test.equalRounded(numDecimals, actual[i], expected[i], msg);
+    flock.test.arrayEqualRounded = function (numDecimals, actual, expected, msg) {
+        var roundedActual = flock.test.makeNewArrayLike(actual);
+
+        for (var i = 0; i < actual.length; i++) {
+            roundedActual[i] = flock.test.roundTo(actual[i], numDecimals);
         }
+
+        deepEqual(roundedActual, expected, msg);
     };
 
     flock.test.arrayEqualBothRounded = function (numDecimals, actual, expected, msg) {
-        for (var i = 0; i < actual.length; i++) {
-            var actualRounded = flock.test.roundTo(actual[i], numDecimals),
-                expectedRounded = flock.test.roundTo(expected[i], numDecimals);
+        var roundedActual = flock.test.makeNewArrayLike(actual),
+            roundedExpected = flock.test.makeNewArrayLike(expected);
 
-            equal(actualRounded, expectedRounded, msg);
+        for (var i = 0; i < actual.length; i++) {
+            roundedActual[i] = flock.test.roundTo(actual[i], numDecimals);
+            roundedExpected[i] = flock.test.roundTo(expected[i], numDecimals);
         }
+
+        deepEqual(roundedActual, roundedExpected, msg);
     };
 
     flock.test.arrayNotSilent = function (buffer, msg) {
