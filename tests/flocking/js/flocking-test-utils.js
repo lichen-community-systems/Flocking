@@ -324,7 +324,9 @@ var flock = flock || {};
             }
         }
 
-        equal(outOfRanges.length, 0, msg + (outOfRanges.length > 0 ? " Out of range values found at: " + outOfRanges : ""));
+        equal(outOfRanges.length, 0, msg +
+            (outOfRanges.length > 0 ? " Out of range values found at: " +
+            fluid.prettyPrintJSON(outOfRanges) : ""));
     };
 
     flock.test.continuousArray = function (buffer, threshold, msg) {

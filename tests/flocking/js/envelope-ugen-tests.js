@@ -6,7 +6,7 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, module, test, ok, deepEqual*/
+/*global require, module, expect, test, ok, deepEqual*/
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
@@ -204,17 +204,20 @@ var fluid = fluid || require("infusion"),
         return expanded;
     };
 
+    flock.test.envGen.makeSynthForCurveSpec = function (synthDef, synthDefOverrides, curveSpec) {
+        return flock.test.envGen.makeSynth(synthDef, synthDefOverrides, {
+            envelope: {
+                curve: curveSpec.value === undefined ? curveSpec.name : curveSpec.value
+            }
+        });
+    };
+
     flock.test.envGen.runEnvelopeCurveTest = function (synthDef, curveSpec, expectedSegments, testSpec) {
         var testName = curveSpec.name + (curveSpec.value ? " value " + curveSpec.value : "") + ", " + testSpec.name;
 
         test(testName, function () {
-            var synth = flock.test.envGen.makeSynth(synthDef, testSpec.synthDef, {
-                envelope: {
-                    curve: curveSpec.value === undefined ? curveSpec.name : curveSpec.value
-                }
-            });
-
-            var envUGen = synth.get("env");
+            var synth = flock.test.envGen.makeSynthForCurveSpec(synthDef, testSpec.synthDef, curveSpec),
+                envUGen = synth.get("env");
 
             for (var i = 0; i < testSpec.numBlocksToGen; i++) {
                 var expectedPath = testSpec.expectations[i];
@@ -241,8 +244,12 @@ var fluid = fluid || require("infusion"),
         });
     };
 
+    flock.test.envGen.expandCurveSpec = function (curveSpec) {
+        return typeof curveSpec === "string" ? {name: curveSpec} : curveSpec;
+    };
+
     flock.test.envGen.testEnvelopeCurve = function (curveSpec, testSpec) {
-        curveSpec = typeof curveSpec === "string" ? {name: curveSpec} : curveSpec;
+        curveSpec = flock.test.envGen.expandCurveSpec(curveSpec);
 
         var segmentSpecs = fluid.copy(testSpec.segmentSpecs),
             expectedSegments = flock.test.envGen.expandSegmentSpecs(curveSpec, segmentSpecs);
@@ -460,4 +467,86 @@ var fluid = fluid || require("infusion"),
 
     flock.test.envGen.testEnvelopeCurves(flock.test.envGen.customADSREnvelopeTestSpec);
 
+
+    module("Envelope curve start and end values");
+
+    flock.test.envGen.checkStartAndEnd = function (stages, stageSpecs, allSamples) {
+        var startIdx = 0,
+            endIdx = 0;
+
+        for (var i = 0; i < stages.length; i++) {
+            var stage = stages[i],
+                stageSpec = stageSpecs[stage],
+                numBlocks = stageSpec.numBlocks === undefined ? 1 : stageSpec.numBlocks;
+
+            startIdx = endIdx;
+            endIdx += 64 * numBlocks;
+
+            flock.test.equalRounded(13, allSamples[startIdx], stageSpec.start,
+                "The " + stage + " stage should start at " + stageSpec.start);
+            flock.test.equalRounded(13, allSamples[endIdx], stageSpec.end,
+                "The " + stage + " stage should end at " + stageSpec.end);
+        }
+    };
+
+    flock.test.envGen.collectBlock = function (block, allSamples, idx) {
+        for (var i = 0; i < block.length; i++, idx++) {
+            allSamples[idx] = block[i];
+        }
+
+        return idx;
+    };
+
+    flock.test.envGen.generateBlock = function (synth, allSamples, idx) {
+        synth.gen();
+        return flock.test.envGen.collectBlock(synth.get("env").output, allSamples, idx);
+    };
+
+    flock.test.envGen.generateStage = function (stage, stageSpecs, synth, allSamples, idx) {
+        var stageSpec = stageSpecs[stage],
+            numBlocks = stageSpec.numBlocks === undefined ? 1 : stageSpec.numBlocks;
+
+        for (var j = 0; j < numBlocks; j++) {
+            idx = flock.test.envGen.generateBlock(synth, allSamples, idx);
+        }
+
+        return idx;
+    };
+
+    flock.test.envGen.testEnvelopeCurveStartAndEndPoints = function (testSpec, stages) {
+        fluid.each(testSpec.curves, function (curveSpec) {
+            curveSpec = flock.test.envGen.expandCurveSpec(curveSpec);
+            var testName = curveSpec.name + (curveSpec.value ? " value " + curveSpec.value : "");
+
+            test(testName, function () {
+                expect(2 * stages.length);
+
+                var synth = flock.test.envGen.makeSynthForCurveSpec(testSpec.synthDef, {gate: 1.0}, curveSpec),
+                    stageSpecs = testSpec.segmentSpecs,
+                    allSamples = [],
+                    idx = 0;
+
+                for (var i = 0; i < stages.length; i++) {
+                    idx = flock.test.envGen.generateStage(stages[i], stageSpecs, synth, allSamples, idx);
+                }
+
+                // Generate an extra block for the end.
+                idx = flock.test.envGen.generateBlock(synth, allSamples, idx);
+
+                flock.test.envGen.checkStartAndEnd(stages, stageSpecs, allSamples);
+            });
+        });
+    };
+
+    flock.test.envGen.adsrStages = [
+        "attack",
+        "decay",
+        "release",
+        "postRelease"
+    ];
+
+    flock.test.envGen.testEnvelopeCurveStartAndEndPoints(
+        flock.test.envGen.customADSREnvelopeTestSpec,
+        flock.test.envGen.adsrStages
+    );
 }());
