@@ -282,7 +282,12 @@ var fluid = fluid || require("infusion"),
                     "releaseFromDecayMidpoint.0": 6
                 }
             },
-            "exponential",
+            {
+                name: "exponential",
+                round: {
+                    "attack.0": 15
+                }
+            },
             {
                 name: "sin",
                 round: {

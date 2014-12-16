@@ -2589,10 +2589,6 @@ var fluid = fluid || require("infusion"),
                 currentGate;
 
             for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.gate) {
-                out[i] = m.value;
-
-                m.numSegmentSamps--;
-
                 // Check to see if the gate has transitioned.
                 // TODO: In the case of a control-rate gate,
                 // this per-sample branching reduces performance.
@@ -2610,6 +2606,9 @@ var fluid = fluid || require("infusion"),
                 }
                 m.previousGate = currentGate;
 
+                that.lineGen.gen(1, i, out, m);
+                m.numSegmentSamps--;
+
                 if (m.numSegmentSamps === 0) {
                     // We've hit the end of the current transition.
                     if (m.stage === envSpec.sustainPoint) {
@@ -2624,8 +2623,6 @@ var fluid = fluid || require("infusion"),
                         that.lineGen = flock.ugen.envGen.lineGenForStage(m, envSpec, timeScale);
                     }
                 }
-
-                that.lineGen.gen(m);
             }
 
             that.mulAdd(numSamps);
@@ -2696,6 +2693,15 @@ var fluid = fluid || require("infusion"),
         return envSpec;
     };
 
+    flock.valueLineGen = function (numSamps, idx, buffer, m) {
+        var val = m.value;
+        for (var i = idx; i < numSamps + idx; i++) {
+            buffer[i] = val;
+        }
+
+        return buffer;
+    };
+
     // TODO: Move this to core.
     flock.lineGen = {
         setupSegmentStage: function (timeScale, envSpec, m) {
@@ -2722,16 +2728,24 @@ var fluid = fluid || require("infusion"),
                 flock.lineGen.setupSegmentStage(timeScale, envSpec, m);
             },
 
-            gen: flock.noOp
+            gen: flock.valueLineGen
         },
 
         step: {
             nextSegment: function (timeScale, envSpec, m) {
                 flock.lineGen.setupSegmentStage(timeScale, envSpec, m);
-                m.value = m.destination;
+                m.arrived = false;
             },
 
-            gen: flock.noOp
+            gen: function (numSamps, idx, buffer, m) {
+                for (var i = idx; i < numSamps + idx; i++) {
+                    buffer[i] = m.value;
+                    if (!m.arrived) {
+                        m.arrived = true;
+                        m.value = m.destination;
+                    }
+                }
+            }
         },
 
         linear: {
@@ -2740,8 +2754,19 @@ var fluid = fluid || require("infusion"),
                 m.stepSize = (m.destination - m.value) / m.numSegmentSamps;
             },
 
-            gen: function (m) {
-                m.value += m.stepSize;
+            gen: function (numSamps, idx, buffer, m) {
+                var val = m.value,
+                    stepSize = m.stepSize;
+
+                for (var i = idx; i < numSamps + idx; i++) {
+                    buffer[i] = val;
+                    val += stepSize;
+                }
+
+                m.value = val;
+                m.stepSize = stepSize;
+
+                return buffer;
             }
         },
 
@@ -2756,8 +2781,19 @@ var fluid = fluid || require("infusion"),
                     Math.pow(m.destination / m.value, 1.0 / m.numSegmentSamps);
             },
 
-            gen: function (m) {
-                m.value *= m.stepSize;
+            gen: function (numSamps, idx, buffer, m) {
+                var val = m.value,
+                    stepSize = m.stepSize;
+
+                for (var i = idx; i < numSamps + idx; i++) {
+                    buffer[i] = val;
+                    val *= stepSize;
+                }
+
+                m.value = val;
+                m.stepSize = stepSize;
+
+                return buffer;
             }
         },
 
@@ -2776,9 +2812,20 @@ var fluid = fluid || require("infusion"),
                 }
             },
 
-            gen: function (m) {
-                m.b1 *= m.stepSize;
-                m.value = m.a2 - m.b1;
+            gen: function (numSamps, idx, buffer, m) {
+                var val = m.value,
+                    b1 = m.b1;
+
+                for (var i = idx; i < numSamps + idx; i++) {
+                    buffer[i] = val;
+                    b1 *= m.stepSize;
+                    val = m.a2 - b1;
+                }
+
+                m.value = val;
+                m.b1 = b1;
+
+                return buffer;
             }
         },
 
@@ -2794,12 +2841,25 @@ var fluid = fluid || require("infusion"),
                 m.value = m.a2 - m.y1;
             },
 
-            gen: function (m) {
-                var y0 = m.b1 * m.y1 - m.y2;
+            gen: function (numSamps, idx, buffer, m) {
+                var val = m.value,
+                    y1 = m.y1,
+                    y2 = m.y2,
+                    y0;
 
-                m.value = m.a2 - y0;
-                m.y2 = m.y1;
-                m.y1 = y0;
+                for (var i = idx; i < numSamps + idx; i++) {
+                    buffer[i] = val;
+                    y0 = m.b1 * y1 - y2;
+                    val = m.a2 - y0;
+                    y2 = y1;
+                    y1 = y0;
+                }
+
+                m.value = val;
+                m.y1 = y1;
+                m.y2 = y2;
+
+                return buffer;
             }
         },
 
@@ -2825,12 +2885,25 @@ var fluid = fluid || require("infusion"),
                 m.value = m.a2 + m.y1;
             },
 
-            gen: function (m) {
-                var y0 = m.b1 * m.y1 - m.y2;
-                m.y2 = m.y1;
-                m.y1 = y0;
+            gen: function (numSamps, idx, buffer, m) {
+                var val = m.value,
+                    y1 = m.y1,
+                    y2 = m.y2,
+                    y0;
 
-                m.value = m.a2 + y0;
+                for (var i = idx; i < numSamps + idx; i++) {
+                    buffer[i] = val;
+                    y0 = m.b1 * y1 - y2;
+                    y2 = y1;
+                    y1 = y0;
+                    val = m.a2 + y0;
+                }
+
+                m.value = val;
+                m.y1 = y1;
+                m.y2 = y2;
+
+                return buffer;
             }
         },
 
@@ -2842,9 +2915,20 @@ var fluid = fluid || require("infusion"),
                 m.stepSize = (m.y2 - m.y1) / m.numSegmentSamps;
             },
 
-            gen: function (m) {
-                m.y1 += m.stepSize;
-                m.value = m.y1 * m.y1;
+            gen: function (numSamps, idx, buffer, m) {
+                var val = m.value,
+                    y1 = m.y1;
+
+                for (var i = idx; i < numSamps + idx; i++) {
+                    buffer[i] = val;
+                    y1 += m.stepSize;
+                    val = y1 * y1;
+                }
+
+                m.y1 = y1;
+                m.value = val;
+
+                return buffer;
             }
         },
 
@@ -2858,9 +2942,20 @@ var fluid = fluid || require("infusion"),
                 m.stepSize = (m.y2 - m.y1) / m.numSegmentSamps;
             },
 
-            gen: function (m) {
-                m.y1 += m.stepSize;
-                m.value = m.y1 * m.y1 * m.y1;
+            gen: function (numSamps, idx, buffer, m) {
+                var val = m.value,
+                    y1 = m.y1;
+
+                for (var i = idx; i < numSamps + idx; i++) {
+                    buffer[i] = val;
+                    y1 += m.stepSize;
+                    val = y1 * y1 * y1;
+                }
+
+                m.y1 = y1;
+                m.value = val;
+
+                return buffer;
             }
         }
     };
