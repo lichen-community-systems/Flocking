@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (December 16, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (December 17, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.1
@@ -27764,28 +27764,9 @@ var fluid = fluid || require("infusion"),
      ****************************/
 
     flock.line = {
-        setupStage: function (timeScale, envelope, m) {
-            var dest = envelope.levels[m.stage],
-                dur,
-                durSamps;
-
-            if (m.stage === 0 || m.stage > m.numStages) {
-                durSamps = Infinity;
-            } else {
-                dur = envelope.times[m.stage - 1] * timeScale;
-                durSamps = Math.max(1, dur * m.sampleRate);
-            }
-
-            m.numSegmentSamps = durSamps;
-            m.destination = dest;
-        },
-
         constant: {
-            nextSegment: function (timeScale, envelope, m) {
+            init: function (m) {
                 m.stepSize = 0;
-                m.value = m.stage > m.numStages ?
-                    envelope.levels[envelope.levels.length - 1] : envelope.levels[m.stage];
-                flock.line.setupStage(timeScale, envelope, m);
             },
 
             gen: function (numSamps, idx, buffer, m) {
@@ -27799,8 +27780,7 @@ var fluid = fluid || require("infusion"),
         },
 
         step: {
-            nextSegment: function (timeScale, envelope, m) {
-                flock.line.setupStage(timeScale, envelope, m);
+            init: function (m) {
                 m.arrived = false;
             },
 
@@ -27816,8 +27796,7 @@ var fluid = fluid || require("infusion"),
         },
 
         linear: {
-            nextSegment: function (timeScale, envelope, m) {
-                flock.line.setupStage(timeScale, envelope, m);
+            init: function (m) {
                 m.stepSize = (m.destination - m.value) / m.numSegmentSamps;
             },
 
@@ -27838,9 +27817,7 @@ var fluid = fluid || require("infusion"),
         },
 
         exponential: {
-            nextSegment: function (timeScale, envelope, m) {
-                flock.line.setupStage(timeScale, envelope, m);
-
+            init: function (m) {
                 if (m.value === 0) {
                     m.value = 0.0000000000000001;
                 }
@@ -27865,12 +27842,10 @@ var fluid = fluid || require("infusion"),
         },
 
         curve: {
-            nextSegment: function (timeScale, envelope, m) {
-                flock.line.setupStage(timeScale, envelope, m);
-
+            init: function (m) {
                 if (Math.abs(m.currentCurve) < 0.001) {
                     // A curve value this small might as well be linear.
-                    return flock.line.linear.nextSegment(timeScale, envelope, m);
+                    return flock.line.linear.init(m);
                 } else {
                     var a1 = (m.destination - m.value) / (1.0 - Math.exp(m.currentCurve));
                     m.a2 = m.value + a1;
@@ -27897,9 +27872,7 @@ var fluid = fluid || require("infusion"),
         },
 
         sin: {
-            nextSegment: function (timeScale, envelope, m) {
-                flock.line.setupStage(timeScale, envelope, m);
-
+            init: function (m) {
                 var w = Math.PI / m.numSegmentSamps;
                 m.a2 = (m.destination + m.value) * 0.5;
                 m.b1 = 2.0 * Math.cos(w);
@@ -27931,9 +27904,7 @@ var fluid = fluid || require("infusion"),
         },
 
         welsh: {
-            nextSegment: function (timeScale, envelope, m) {
-                flock.line.setupStage(timeScale, envelope, m);
-
+            init: function (m) {
                 var w = flock.HALFPI / m.numSegmentSamps,
                     cosW = Math.cos(w);
 
@@ -27975,8 +27946,7 @@ var fluid = fluid || require("infusion"),
         },
 
         squared: {
-            nextSegment: function (timeScale, envelope, m) {
-                flock.line.setupStage(timeScale, envelope, m);
+            init: function (m) {
                 m.y1 = Math.sqrt(m.value);
                 m.y2 = Math.sqrt(m.destination);
                 m.stepSize = (m.y2 - m.y1) / m.numSegmentSamps;
@@ -28000,9 +27970,7 @@ var fluid = fluid || require("infusion"),
         },
 
         cubed: {
-            nextSegment: function (timeScale, envelope, m) {
-                flock.line.setupStage(timeScale, envelope, m);
-
+            init: function (m) {
                 var third = 0.3333333333333333;
                 m.y1 = Math.pow(m.value, third);
                 m.y2 = Math.pow(m.destination, third);
@@ -28336,7 +28304,11 @@ var fluid = fluid || require("infusion"),
         m.stage = 0;
         m.numStages = envelope.times.length;
         that.lineGen = flock.line.constant;
-        that.lineGen.nextSegment(that.inputs.timeScale.output[0], envelope, m);
+
+        // TODO: Consolidate and rename.
+        flock.ugen.envGen.setupStage(that.inputs.timeScale.output[0], envelope, m);
+        that.lineGen.init(m);
+
         m.value = envelope.levels[m.stage];
 
         that.gen = that.inputs.gate.rate === flock.rates.AUDIO ? that.arGen : that.krGen;
@@ -28353,11 +28325,11 @@ var fluid = fluid || require("infusion"),
             if (gate > 0.0 && m.previousGate <= 0.0) {
                 // Gate has opened.
                 m.stage = 1;
-                that.lineGen = flock.ugen.envGen.lineGenForStage(m, envelope, timeScale);
+                that.lineGen = flock.ugen.envGen.lineGenForStage(timeScale, envelope, m);
             } else if (gate <= 0.0 && m.previousGate > 0) {
                 // Gate has closed.
                 m.stage = m.numStages;
-                that.lineGen = flock.ugen.envGen.lineGenForStage(m, envelope, timeScale);
+                that.lineGen = flock.ugen.envGen.lineGenForStage(timeScale, envelope, m);
             }
         }
         m.previousGate = gate;
@@ -28378,12 +28350,28 @@ var fluid = fluid || require("infusion"),
         } else {
             // Move on to the next breakpoint stage.
             m.stage++;
-            that.lineGen = flock.ugen.envGen.lineGenForStage(m, envelope, timeScale);
+            that.lineGen = flock.ugen.envGen.lineGenForStage(timeScale, envelope, m);
         }
     };
 
+    flock.ugen.envGen.setupStage = function (timeScale, envelope, m) {
+        var dest = envelope.levels[m.stage],
+            dur,
+            durSamps;
+
+        if (m.stage === 0 || m.stage > m.numStages) {
+            durSamps = Infinity;
+        } else {
+            dur = envelope.times[m.stage - 1] * timeScale;
+            durSamps = Math.max(1, dur * m.sampleRate);
+        }
+
+        m.numSegmentSamps = durSamps;
+        m.destination = dest;
+    };
+
     // Unsupported API.
-    flock.ugen.envGen.lineGenForStage = function (m, envelope, timeScale) {
+    flock.ugen.envGen.lineGenForStage = function (timeScale, envelope, m) {
         var curve = envelope.curve,
             lineGen,
             curveValue,
@@ -28399,7 +28387,9 @@ var fluid = fluid || require("infusion"),
                 type === "number" ? flock.line.curve : flock.line.linear;
         }
 
-        lineGen.nextSegment(timeScale, envelope, m);
+        // TODO: Consolidate and rename.
+        flock.ugen.envGen.setupStage(timeScale, envelope, m);
+        lineGen.init(m);
 
         return lineGen;
     };
