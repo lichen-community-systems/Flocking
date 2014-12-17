@@ -1663,15 +1663,15 @@ var fluid = fluid || require("infusion"),
     test("flock.synth() with mix of compressed and expanded ugenDefs", function () {
         var mixedSynthDef = {
             id: "carrier",
-            ugen: "flock.ugen.sinOsc",
+            ugen: "flock.mock.ugen",
             freq: {
                 id: "mod",
-                ugen: "flock.ugen.sinOsc",
+                ugen: "flock.mock.ugen",
                 inputs: {
                     freq: 440,
                     phase: {
                         id: "line",
-                        ugen: "flock.ugen.xLine",
+                        ugen: "flock.mock.ugen",
                         start: 1,
                         end: 10,
                         duration: 2

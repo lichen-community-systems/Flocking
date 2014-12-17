@@ -33,6 +33,7 @@
         <script src="../../../flocking/flocking-webaudio.js"></script>
         <script src="../../../flocking/flocking-parser.js"></script>
         <script src="../../../flocking/flocking-ugens.js"></script>
+        <script src="../../../flocking/flocking-envelopes.js"></script>
         <script src="../../../flocking/flocking-ugens-browser.js"></script>
         <script src="../../../flocking/flocking-gfx.js"></script>
         <script src="../../../flocking/flocking-webmidi.js"></script>
@@ -107,6 +108,7 @@
 		                    </optgroup>
 		                    <optgroup label="Envelopes">
 		                        <option value="asr">Attack/Sustain/Release</option>
+                                <option value="envGen">Envelope Generator</option>
 		                        <option value="decay">Decay</option>
 		                        <option value="line_freq">SinOsc Freq</option>
 		                        <option value="line_mod">Mod SinOsc Freq</option>
@@ -291,6 +293,66 @@ var synth = flock.synth({
         }
     }
 });
+        </script>
+
+        <script type="application/flocking" id="envGen">// James Tenney's For Ann (Rising).
+var numSweeps = 240,
+    sweeps = [];
+
+var sweepDef = {
+    ugen: "flock.ugen.sinOsc",
+    freq: {
+        ugen: "flock.ugen.envGen",
+        envelope: {
+            levels: [40, 10240],
+            times: [33.6],
+            curve: "exponential"
+        },
+        gate: {
+            ugen: "flock.ugen.change",
+            rate: "control",
+            initial: 0.0,
+            target: 1.0,
+            time: 2.8
+        }
+    },
+    mul: {
+        ugen: "flock.ugen.envGen",
+        envelope: {
+            type: "flock.envelope.linear",
+            attack: 8.4,
+            sustain: 16.8,
+            release: 8.4
+        },
+        gate: {
+            ugen: "flock.ugen.change",
+            rate: "control",
+            initial: 0.0,
+            target: 1.0,
+            time: 2.8
+        },
+        mul: 0.1
+    }
+};
+
+for (var i = 1; i <= numSweeps; i++) {
+    var def = fluid.copy(sweepDef),
+        atTime = 2.8 * i;
+
+    def.freq.gate.time = atTime;
+    def.mul.gate.time = atTime;
+
+    sweeps[i - 1] = def;
+}
+
+var forAnn = flock.synth({
+    synthDef: {
+        id: "sweeps",
+        ugen: "flock.ugen.sum",
+        sources: sweeps
+    }
+});
+
         </script>
 
         <script type="application/flocking" id="decay">

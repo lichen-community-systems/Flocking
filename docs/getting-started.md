@@ -116,16 +116,26 @@ If you'd prefer to link to the individual Flocking files during development, the
     <script src="flocking/flocking/flocking-webaudio.js"></script>
     <script src="flocking/flocking/flocking-parser.js"></script>
     <script src="flocking/flocking/flocking-ugens.js"></script>
+    <script src="flocking/flocking/flocking-envelopes.js"></script>
     <script src="flocking/flocking/flocking-ugens-browser.js"></script>
 
-In addition, if you're working with WAV or AIFF files, these files are required:
+In addition, if you're working with audio files, these files are required:
 
     <script src="../../../flocking/flocking-buffers.js"></script>
     <script src="../../../flocking/flocking-audiofile.js"></script>
 
+If you need to use AIFF files, which aren't supported in some browsers, you can include:
+
+    <script src="../../../flocking/flocking-audiofile-compatibility.js"></script>
+
 If you're using the flock.ugen.scope unit generator, you'll also need:
 
     <script src="../../../flocking/flocking-gfx.js"></script>
+
+If you want to use a MIDI controller with Flocking (currently only in Chrome), you'll need:
+
+    <script src="../../../flocking/flocking-webmidi.js"></script>
+
 
 ## Using Flocking with Infusion ##
 

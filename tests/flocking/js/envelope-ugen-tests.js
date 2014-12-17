@@ -6,7 +6,7 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, module, expect, test, ok, deepEqual*/
+/*global require, module, expect, test, ok, equal, deepEqual*/
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
@@ -15,11 +15,181 @@ var fluid = fluid || require("infusion"),
     "use strict";
 
     var $ = fluid.registerNamespace("jQuery");
-    fluid.registerNamespace("flock.test.envGen");
-
     flock.init();
 
-    module("flock.ugen.envGen");
+    var sampleRate = flock.enviro.shared.audioSettings.rates.audio;
+
+
+    /**************
+     * Line Tests *
+     **************/
+
+    module("flock.ugen.line");
+
+    var lineDef = {
+        ugen: "flock.ugen.line",
+        rate: flock.rates.AUDIO,
+        inputs: {
+            duration: 64 / sampleRate, // 64 samples.
+            start: 0,
+            end: 64
+        }
+    };
+
+    test("Generate a full line.", function () {
+        var line = flock.parse.ugenForDef(lineDef);
+
+        line.gen(64);
+        var expected = flock.test.fillBuffer(0, 63);
+        deepEqual(line.output, expected, "Line should generate all samples for its duration but one.");
+
+        line.gen(64);
+        expected = flock.generate(64, 64);
+        deepEqual(line.output, expected, "After the line's duration is finished, it should constantly output the end value.");
+    });
+
+    test("Generate a partial line.", function () {
+        var line = flock.parse.ugenForDef(lineDef);
+
+        line.gen(32);
+
+        // It's a 64 sample buffer, so split it in half to test it.
+        deepEqual(flock.copyBuffer(line.output, 0, 32), flock.test.fillBuffer(0, 31),
+            "The first half of the line's values should but generated.");
+        deepEqual(flock.copyBuffer(line.output, 32), flock.generate(32, 0),
+            "The last 32 samples of the buffer should be empty.");
+
+        line.gen(32);
+        deepEqual(flock.copyBuffer(line.output, 0, 32), flock.test.fillBuffer(32, 63),
+            "The second half of the line's values should be generated.");
+        deepEqual(flock.copyBuffer(line.output, 32), flock.generate(32, 0),
+            "The last 32 samples of the buffer should be empty.");
+
+        line.gen(32);
+        deepEqual(flock.copyBuffer(line.output, 0, 32), flock.generate(32, 64),
+            "After the line's duration is finished, it should constantly output the end value.");
+    });
+
+
+    /*************
+     * ASR Tests *
+     *************/
+    module("flock.ugen.asr");
+
+    var asrDef = {
+        ugen: "flock.ugen.asr",
+        rate: flock.rates.AUDIO,
+        inputs: {
+            start: 0.0,
+            attack: 1 / (sampleRate / 63), // 64 Samples, in seconds
+            sustain: 1.0,
+            release: 1 / (sampleRate / 63) // 128 Samples
+        }
+    };
+
+    var testEnvelopeStage = function (buffer, numSamps, expectedStart, expectedEnd, stageName) {
+        equal(buffer[0], expectedStart,
+            "During the " + stageName + " stage, the starting level should be " + expectedStart + ".");
+        equal(buffer[numSamps - 1], expectedEnd,
+            "At the end of the " + stageName + " stage, the expected end level should have been reached.");
+        flock.test.arrayUnbroken(buffer, "The output should not contain any dropouts.");
+        flock.test.arrayWithinRange(buffer, 0.0, 1.0,
+            "The output should always remain within the range between " + expectedStart + " and " + expectedEnd + ".");
+        flock.test.continuousArray(buffer, 0.02, "The buffer should move continuously within its range.");
+
+        var isClimbing = expectedStart < expectedEnd;
+        var directionText = isClimbing ? "climb" : "fall";
+        flock.test.rampingArray(buffer, isClimbing,
+            "The buffer should " + directionText + " steadily from " + expectedStart + " to " + expectedEnd + ".");
+    };
+
+    test("Constant values for all inputs", function () {
+        var asr = flock.parse.ugenForDef(asrDef);
+
+        // Until the gate is closed, the ugen should just output silence.
+        asr.gen(64);
+        deepEqual(asr.output, flock.generate(64, 0.0),
+            "When the gate is open at the beginning, the envelope's output should be 0.0.");
+
+        // Trigger the attack stage.
+        asr.input("gate", 1.0);
+        asr.gen(64);
+        testEnvelopeStage(asr.output, 64, 0.0, 1.0, "attack");
+
+        // Output a full control period of the sustain value.
+        asr.gen(64);
+        deepEqual(asr.output, flock.generate(64, 1.0),
+            "While the gate is open, the envelope should hold at the sustain level.");
+
+        // Release the gate and test the release stage.
+        asr.input("gate", 0.0);
+        asr.gen(64);
+        testEnvelopeStage(asr.output, 64, 1.0, 0.0, "release");
+
+        // Test a full control period of the end value.
+        asr.gen(64);
+        deepEqual(asr.output, flock.generate(64, 0.0),
+            "When the gate is closed and the release stage has completed, the envelope's output should be 0.0.");
+
+        // Trigger the attack stage again.
+        asr.input("gate", 1.0);
+        asr.gen(64);
+        testEnvelopeStage(asr.output, 64, 0.0, 1.0, "second attack");
+
+        // And the release stage again.
+        asr.input("gate", 0.0);
+        asr.gen(64);
+        testEnvelopeStage(asr.output, 64, 1.0, 0.0, "second release");
+    });
+
+    test("Release midway through attack", function () {
+        var asr = flock.parse.ugenForDef(asrDef);
+        asr.input("gate", 1.0);
+        asr.gen(32);
+        testEnvelopeStage(asr.output.subarray(0, 32), 32, 0.0, 0.4920634925365448, "halfway through the attack");
+
+        // If the gate closes during the attack stage, the remaining portion of the attack stage should be output before the release stage starts.
+        asr.input("gate", 0.0);
+        asr.gen(32);
+        testEnvelopeStage(asr.output.subarray(0, 32), 32, 0.5079365372657776, 1.0, "rest of the attack");
+
+        // After the attack stage has hit 1.0, it should immediately start the release phase.
+        asr.gen(64);
+        testEnvelopeStage(asr.output, 64, 1.0, 0.0, "release");
+    });
+
+    test("Attack midway through release", function () {
+        var asr = flock.parse.ugenForDef(asrDef);
+
+        // Trigger the attack stage, then the release stage immediately.
+        asr.input("gate", 1.0);
+        asr.gen(64);
+        testEnvelopeStage(asr.output, 64, 0.0, 1.0, "attack");
+        asr.input("gate", 0.0);
+        asr.gen(32);
+        testEnvelopeStage(flock.copyBuffer(asr.output, 0, 32), 32, 1.0, 0.5079365372657776, "halfway release");
+
+        // Then trigger a new attack halfway through the release stage.
+        // The envelope should immediately pick up the attack phase from the current level
+        // TODO: Note that there will be a one-increment lag before turning direction to the attack phase in this case. Is this a noteworthy bug?
+        asr.input("gate", 1.0);
+        asr.gen(32);
+        testEnvelopeStage(flock.copyBuffer(asr.output, 0, 32), 32, 0.4920634925365448, 0.7420005202293396, "attack after halfway release");
+
+        // Generate another control period of samples, which should be at the sustain level.
+        asr.gen(64);
+        testEnvelopeStage(flock.copyBuffer(asr.output, 0, 32), 32, 0.7500630021095276, 1.0, "second half of the attack after halfway release second half.");
+        deepEqual(flock.copyBuffer(asr.output, 32), flock.generate(32, 1.0),
+            "While the gate remains open after a mid-release attack, the envelope should hold at the sustain level.");
+    });
+
+
+    /****************
+     * EnvGen Tests *
+     ****************/
+    fluid.registerNamespace("flock.test.envGen");
+
+    module("Envelope validity");
 
     flock.test.envGen.customADSREnvelopeSynth = {
         id: "env",
@@ -59,24 +229,35 @@ var fluid = fluid || require("infusion"),
         };
     });
 
-    flock.test.envGen.testEnvelopeValidity = function (name, envSpec) {
+    flock.test.envGen.testUGenEnvelopeValidity = function (name, envelope) {
         // Create an envGen ugen instance and verify that it's valid.
         try {
             flock.parse.ugenDef({
                 ugen: "flock.ugen.envGen",
-                envelope: envSpec
+                envelope: envelope
             });
 
             ok(true, "The " + name + " envelope is valid.");
         } catch (e){
             ok(false, "A validation error occurred while instantiating an envGen instance " +
-                "with a " + name + " envelope. " + envSpec);
+                "with a " + name + " envelope. " + envelope);
         }
+    };
+
+    flock.test.envGen.testEnvelopeInvalidity = function (testSpec) {
+        test("Invalid envelope " + testSpec.name, function () {
+            try {
+                flock.envelope.validate(testSpec.envelope);
+                ok(false, "An envelope " + testSpec.name + " passed validation.");
+            } catch (e) {
+                ok(true, "The envelope " + testSpec.name + " correctly failed validation.");
+            }
+        });
     };
 
     test("Validity of built-in envelope defaults", function () {
         fluid.each(flock.test.envGen.envelopeCreatorsToTest, function (spec) {
-            flock.test.envGen.testEnvelopeValidity(spec.name, spec.creator());
+            flock.test.envGen.testUGenEnvelopeValidity(spec.name, spec.creator());
         });
     });
 
@@ -95,9 +276,90 @@ var fluid = fluid || require("infusion"),
 
             envSpec = spec.creator(options);
 
-            flock.test.envGen.testEnvelopeValidity(spec.name, envSpec);
+            flock.test.envGen.testUGenEnvelopeValidity(spec.name, envSpec);
         });
     });
+
+    var invalidEnvs = [
+        {
+            name: "without any levels",
+            envelope: {
+                levels: undefined,
+                times: [1, 2, 3]
+            }
+        },
+        {
+            name: "with an empty levels array",
+            envelope: {
+                levels: [],
+                times: [1, 2, 3]
+            }
+        },
+        {
+            name: "with no times",
+            envelope: {
+                levels: [0, 1, 0.5, 0],
+                times: undefined
+            }
+        },
+        {
+            name: "with an empty times array",
+            envelope: {
+                levels: [0, 1, 0.5, 0],
+                times: []
+            }
+        },
+        {
+            name: "with negative times",
+            envelope: {
+                levels: [0, 1, 0.5, 0],
+                times: [2, -1, 2]
+            }
+        },
+        {
+            name: "with too many times",
+            envelope: {
+                levels: [0, 1, 0.5, 0],
+                times: [2, 1, 2, 2]
+            }
+        },
+        {
+            name: "with too few times",
+            envelope: {
+                levels: [0, 1, 0.5, 0],
+                times: [2, 1]
+            }
+        },
+        {
+            name: "too many curves",
+            envelope: {
+                levels: [0, 1, 0.5, 0],
+                times: [2, 1, 2],
+                curve: ["linear", "cubic", "exponential", "welsh"]
+            }
+        },
+        {
+            name: "too few curves",
+            envelope: {
+                levels: [0, 1, 0.5, 0],
+                times: [2, 1, 2],
+                curve: ["linear"]
+            }
+        },
+        {
+            name: "sustainPoint out of range",
+            envelope: {
+                levels: [0, 1, 0.5, 0],
+                times: [2, 1, 2],
+                curve: ["linear", "cubic", "exponential"],
+                sustainPoint: 10
+            }
+        }
+    ];
+    fluid.each(invalidEnvs, flock.test.envGen.testEnvelopeInvalidity);
+
+
+    module("flock.ugen.envGen normal output");
 
     flock.test.envGen.curveNames = [];
     fluid.each(flock.lineGen, function (lineGenerator, name) {
@@ -137,7 +399,7 @@ var fluid = fluid || require("infusion"),
         });
     });
 
-    module("Envelope Curves");
+    module("flock.ugen.envGen envelope stages");
 
     flock.test.envGen.silentBlock = new Float32Array(64);
 
@@ -507,7 +769,7 @@ var fluid = fluid || require("infusion"),
     flock.test.envGen.testEnvelopeCurves(flock.test.envGen.customADSREnvelopeTestSpec);
 
 
-    module("Envelope curve start and end values");
+    module("flock.ugen.envGen segment start and end values");
 
     flock.test.envGen.checkStartAndEnd = function (stages, stageSpecs, allSamples) {
         var startIdx = 0,
