@@ -20,9 +20,9 @@ var fluid = fluid || require("infusion"),
     var sampleRate = flock.enviro.shared.audioSettings.rates.audio;
 
 
-    /**************
-     * Line Tests *
-     **************/
+    /*****************************
+     * Line Unit Generator Tests *
+     *****************************/
 
     module("flock.ugen.line");
 
@@ -71,9 +71,10 @@ var fluid = fluid || require("infusion"),
     });
 
 
-    /*************
-     * ASR Tests *
-     *************/
+    /******************
+     * ASR UGen Tests *
+     ******************/
+
     module("flock.ugen.asr");
 
     var asrDef = {
@@ -187,6 +188,7 @@ var fluid = fluid || require("infusion"),
     /****************
      * EnvGen Tests *
      ****************/
+
     fluid.registerNamespace("flock.test.envGen");
 
     module("Envelope validity");
@@ -850,4 +852,6 @@ var fluid = fluid || require("infusion"),
         flock.test.envGen.customADSREnvelopeTestSpec,
         flock.test.envGen.adsrStages
     );
+
+
 }());

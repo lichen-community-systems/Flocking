@@ -256,6 +256,27 @@ var fluid = fluid || require("infusion"),
      ****************************/
 
     flock.line = {
+        // TODO: Unit tests!
+        // e.g. flock.line.fill("linear", new Float32Array(64), 0, 1);
+        fill: function (type, buffer, start, end, startIdx, endIdx) {
+            startIdx = startIdx === undefined ? 0 : startIdx;
+            endIdx = endIdx === undefined ? buffer.length : endIdx;
+
+            var numSamps = endIdx - startIdx,
+                m = flock.line.fill.model;
+
+            m.value = start;
+            m.destination = end;
+
+            var generator = flock.line[type];
+            if (!generator) {
+                flock.fail("No line generator could be found for type " + type);
+            }
+            generator.init(m);
+
+            return generator.gen(numSamps, startIdx, buffer, m);
+        },
+
         constant: {
             init: function (m) {
                 m.stepSize = 0;
@@ -487,6 +508,11 @@ var fluid = fluid || require("infusion"),
         }
     };
 
+    // Unsupported API.
+    flock.line.fill.model = {
+        value: 0.0,
+        destination: 1.0
+    };
 
     /****************************
      * Envelope Unit Generators *
@@ -530,7 +556,7 @@ var fluid = fluid || require("infusion"),
             // Any change in input value will restart the line.
             m.start = that.inputs.start.output[0];
             m.end = that.inputs.end.output[0];
-            m.numSteps = Math.round(that.inputs.duration.output[0] * m.sampleRate); // Duration is seconds.
+            m.numSteps = Math.round(that.inputs.duration.output[0] * m.sampleRate);
             if (m.numSteps === 0) {
                 m.stepSize = 0.0;
                 m.level = m.end;
@@ -780,7 +806,6 @@ var fluid = fluid || require("infusion"),
                 that.envelope = flock.ugen.envGen.initEnvelope(that, that.inputs.envelope);
             }
 
-            that.calculateStrides();
             flock.onMulAddInputChanged(that);
         };
 
@@ -789,6 +814,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
+    // Unsupported API.
     flock.ugen.envGen.initEnvelope = function (that, envSpec) {
         var m = that.model,
             envelope = flock.envelope.expand(envSpec);
@@ -797,10 +823,7 @@ var fluid = fluid || require("infusion"),
         m.numStages = envelope.times.length;
         that.lineGen = flock.line.constant;
 
-        // TODO: Consolidate and rename.
-        flock.ugen.envGen.setupStage(that.inputs.timeScale.output[0], envelope, m);
-        that.lineGen.init(m);
-
+        flock.ugen.envGen.lineGenForStage(that.inputs.timeScale.output[0], envelope, m);
         m.value = envelope.levels[m.stage];
 
         that.gen = that.inputs.gate.rate === flock.rates.AUDIO ? that.arGen : that.krGen;
@@ -846,6 +869,7 @@ var fluid = fluid || require("infusion"),
         }
     };
 
+    // Unsupported API.
     flock.ugen.envGen.setupStage = function (timeScale, envelope, m) {
         var dest = envelope.levels[m.stage],
             dur,
@@ -879,7 +903,6 @@ var fluid = fluid || require("infusion"),
                 type === "number" ? flock.line.curve : flock.line.linear;
         }
 
-        // TODO: Consolidate and rename.
         flock.ugen.envGen.setupStage(timeScale, envelope, m);
         lineGen.init(m);
 
@@ -906,11 +929,7 @@ var fluid = fluid || require("infusion"),
                 value: 0.0,
                 stage: 0.0,
                 numStages: 0.0
-            },
-
-            strideInputs: [
-                "gate"
-            ]
+            }
         }
     });
 
