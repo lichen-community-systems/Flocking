@@ -179,7 +179,7 @@ var fluid = fluid || require("infusion"),
             numRuns = 100,
             runs = 0,
             lastFired = 0,
-            mistimingTolerance = 50, // TODO: This value is excessively high.
+            mistimingTolerance = 60, // TODO: This value is excessively high.
             callback;
 
         expect(2 * numRuns);

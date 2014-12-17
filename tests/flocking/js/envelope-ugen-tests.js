@@ -28,7 +28,11 @@ var fluid = fluid || require("infusion"),
             levels: [0, 1, 0.5, 0],
             times: [1/750, 1/375, 1/750] // One block, two blocks, one block.
         },
-        gate: 0.0
+        gate: {
+            ugen: "flock.ugen.value",
+            rate: "audio",
+            value: 0.0
+        }
     };
 
     flock.test.envGen.makeSynth = function () {
@@ -122,7 +126,11 @@ var fluid = fluid || require("infusion"),
                 envelope: {
                     curve: curveName,
                 },
-                gate: 1.0
+                gate: {
+                    ugen: "flock.ugen.value",
+                    rate: "audio",
+                    value: 1.0
+                }
             });
 
             flock.test.envGen.testNormalOutput(synth, 4);
@@ -266,7 +274,6 @@ var fluid = fluid || require("infusion"),
     flock.test.envGen.customADSREnvelopeTestSpec = {
         synthDef: flock.test.envGen.customADSREnvelopeSynth,
 
-        // TODO: Add roundTo specs in here.
         curves: [
             "step",
             "linear",
@@ -378,7 +385,7 @@ var fluid = fluid || require("infusion"),
                 ]
             },
             {
-                name: "Full envelope, no sustain point, gate open",
+                name: "Full envelope, no sustain point, gate open running at control rate",
                 synthDef: {
                     gate: 1.0
                 },
@@ -393,9 +400,32 @@ var fluid = fluid || require("infusion"),
                 ]
             },
             {
-                name: "Full envelope, sustain for two blocks, gate open",
+                name: "Full envelope, no sustain point, gate open running at audio rate",
                 synthDef: {
-                    gate: 1.0,
+                    gate: {
+                        ugen: "flock.ugen.value",
+                        rate: "audio",
+                        value: 1.0
+                    }
+                },
+                numBlocksToGen: 5,
+                changes: {}, // No changes; gate stays open throughout.
+                expectations: [
+                    "attack.0",
+                    "decay.0",
+                    "decay.1",
+                    "release.0",
+                    "postRelease.0"
+                ]
+            },
+            {
+                name: "Full envelope, sustain for two blocks, gate open at audio rate",
+                synthDef: {
+                    gate: {
+                        ugen: "flock.ugen.value",
+                        rate: "audio",
+                        value: 1.0
+                    },
                     envelope: {
                         sustainPoint: 2
                     }
@@ -403,7 +433,11 @@ var fluid = fluid || require("infusion"),
                 numBlocksToGen: 7,
                 changes: {
                     4: {
-                        "env.gate": 0.0
+                        "env.gate": {
+                            ugen: "flock.ugen.value",
+                            rate: "audio",
+                            value: 0.0
+                        }
                     }
                 },
                 expectations: [

@@ -2576,56 +2576,52 @@ var fluid = fluid || require("infusion"),
     flock.ugen.envGen = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
-        that.gen = function (numSamps) {
+        that.krGen = function (numSamps) {
             var m = that.model,
                 out = that.output,
                 inputs = that.inputs,
-                envSpec = that.envSpec,
+                gate = inputs.gate.output[0],
+                timeScale = inputs.timeScale.output[0],
+                i = 0,
+                sampsToGen;
+
+            flock.ugen.envGen.checkGate(that, gate, timeScale);
+
+            while (i < numSamps) {
+                sampsToGen = Math.min(numSamps - i, m.numSegmentSamps);
+                that.lineGen.gen(sampsToGen, i, out, m);
+                i += sampsToGen;
+                m.numSegmentSamps -= sampsToGen;
+
+                if (m.numSegmentSamps === 0) {
+                    flock.ugen.envGen.nextStage(that, timeScale);
+                }
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        that.arGen = function (numSamps) {
+            var m = that.model,
+                out = that.output,
+                inputs = that.inputs,
                 gate = inputs.gate.output,
                 timeScale = inputs.timeScale.output[0],
-                i,
-                j,
-                k,
-                currentGate;
+                i;
 
-            for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.gate) {
-                // Check to see if the gate has transitioned.
-                // TODO: In the case of a control-rate gate,
-                // this per-sample branching reduces performance.
-                currentGate = gate[j];
-                if (currentGate !== m.previousGate) {
-                    if (currentGate > 0.0 && m.previousGate <= 0.0) {
-                        // Gate has opened.
-                        m.stage = 1;
-                        that.lineGen = flock.ugen.envGen.lineGenForStage(m, envSpec, timeScale);
-                    } else if (currentGate <= 0.0 && m.previousGate > 0) {
-                        // Gate has closed.
-                        m.stage = m.numStages;
-                        that.lineGen = flock.ugen.envGen.lineGenForStage(m, envSpec, timeScale);
-                    }
-                }
-                m.previousGate = currentGate;
+            for (i = 0; i < numSamps; i++) {
+                flock.ugen.envGen.checkGate(that, gate[i], timeScale);
 
                 that.lineGen.gen(1, i, out, m);
                 m.numSegmentSamps--;
 
                 if (m.numSegmentSamps === 0) {
-                    // We've hit the end of the current transition.
-                    if (m.stage === envSpec.sustainPoint) {
-                        // We're at the sustain point.
-                        // Output a constant value.
-                        that.lineGen = flock.lineGen.constant;
-                        m.numSegmentSamps = Infinity;
-                        m.destination = m.value;
-                    } else {
-                        // Move on to the next breakpoint stage.
-                        m.stage++;
-                        that.lineGen = flock.ugen.envGen.lineGenForStage(m, envSpec, timeScale);
-                    }
+                    flock.ugen.envGen.nextStage(that, timeScale);
                 }
             }
 
             that.mulAdd(numSamps);
+
         };
 
         that.onInputChanged = function (inputName) {
@@ -2655,7 +2651,45 @@ var fluid = fluid || require("infusion"),
         that.lineGen.nextSegment(that.inputs.timeScale.output[0], envSpec, m);
         m.value = envSpec.levels[m.stage];
 
+        that.gen = that.inputs.gate.rate === flock.rates.AUDIO ? that.arGen : that.krGen;
+
         return envSpec;
+    };
+
+    flock.ugen.envGen.checkGate = function (that, gate, timeScale) {
+        var m = that.model,
+            envSpec = that.envSpec;
+
+        if (gate !== m.previousGate) {
+            if (gate > 0.0 && m.previousGate <= 0.0) {
+                // Gate has opened.
+                m.stage = 1;
+                that.lineGen = flock.ugen.envGen.lineGenForStage(m, envSpec, timeScale);
+            } else if (gate <= 0.0 && m.previousGate > 0) {
+                // Gate has closed.
+                m.stage = m.numStages;
+                that.lineGen = flock.ugen.envGen.lineGenForStage(m, envSpec, timeScale);
+            }
+        }
+        m.previousGate = gate;
+    };
+
+    flock.ugen.envGen.nextStage = function (that, timeScale) {
+        var m = that.model,
+            envSpec = that.envSpec;
+
+        // We've hit the end of the current transition.
+        if (m.stage === envSpec.sustainPoint) {
+            // We're at the sustain point.
+            // Output a constant value.
+            that.lineGen = flock.lineGen.constant;
+            m.numSegmentSamps = Infinity;
+            m.destination = m.value;
+        } else {
+            // Move on to the next breakpoint stage.
+            m.stage++;
+            that.lineGen = flock.ugen.envGen.lineGenForStage(m, envSpec, timeScale);
+        }
     };
 
     flock.ugen.envGen.lineGenForStage = function (m, envSpec, timeScale) {
