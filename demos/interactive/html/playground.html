@@ -81,7 +81,7 @@
 		                        <option value="impulse_phase">Impulse Phase Modulation</option>
 		                    </optgroup>
 		                    <optgroup label="Synthesis Techniques">
-		                        <option value="amp_mod" selected="selected">Amplitude modulation</option>
+		                        <option value="amp_mod">Amplitude modulation</option>
 		                        <option value="freq_mod">Frequency modulation</option>
 		                        <option value="phase_mod">Phase modulation</option>
 		                        <option value="sum">Additive Synthesis</option>
@@ -108,7 +108,7 @@
 		                    </optgroup>
 		                    <optgroup label="Envelopes">
 		                        <option value="asr">Attack/Sustain/Release</option>
-                                <option value="envGen">Envelope Generator</option>
+                                <option value="forAnn" selected="selected">For Ann (Rising) by James Tenney</option>
 		                        <option value="decay">Decay</option>
 		                        <option value="line_freq">SinOsc Freq</option>
 		                        <option value="line_mod">Mod SinOsc Freq</option>
@@ -295,9 +295,9 @@ var synth = flock.synth({
 });
         </script>
 
-        <script type="application/flocking" id="envGen">// James Tenney's For Ann (Rising).
+        <script type="application/flocking" id="forAnn">// James Tenney's For Ann (Rising).
 flock.init({
-    bufferSize: 8192
+    bufferSize: 16384
 });
 
 var numSweeps = 240,

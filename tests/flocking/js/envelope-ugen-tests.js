@@ -854,4 +854,125 @@ var fluid = fluid || require("infusion"),
     );
 
 
+    module("Line generators");
+
+    flock.test.envGen.lineGeneratorTests = [
+        {
+            type: "step",
+            start: 1,
+            end: 10,
+            numSamps: 10,
+            expected: new Float32Array([1, 10, 10, 10, 10, 10, 10, 10, 10, 10])
+        },
+        {
+            type: "constant",
+            start: 1,
+            end: 10,
+            numSamps: 10,
+            // Constant continuously outputs whatever the current model value is
+            // (i.e. the start value).
+            expected: new Float32Array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+        },
+        {
+            type: "linear",
+            start: 1,
+            end: 10,
+            numSamps: 10,
+            expected: new Float32Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        },
+        {
+            type: "squared",
+            start: 1, // Square root of 1 is 1.
+            end: 10,  // Square root of 10 is 3.1622776601683795.
+            numSamps: 10,
+
+            // y1 starts at 1
+            // Step increment is (3.1622776601683795 - 1) / 9 = 0.24025307335204216
+            // 0 = 1; y1 = 1
+            // 1 = 1.5382276859591864;  y1 = 1.24025307335204216
+            // 2 = 2.918984504285763; y1 = 1.4805061467040845
+            // 3 = 2.96101229340817; y1 = 1.7207592200561268
+            // 4 = 3.8455692148979668; y1 = 1.961012293408169
+            // 5 = 4.845569214897968; y1 = 2.2012653667602113
+            // 6 = 5.961012293408172; y1 = 2.4415184401122536
+            // 7 = 7.19189845042858; y1 = 2.681771513464296
+            // 8 = 8.53822768595919; y1 = 2.922024586816338
+            // 9 = 10.000000000000007; y1 = 3.1622776601683804
+            expected: new Float32Array([
+                1,
+                1.5382276859591864,
+                2.1918984504285763,
+                2.96101229340817,
+                3.8455692148979668,
+                4.845569214897968,
+                5.961012293408172,
+                7.19189845042858,
+                8.53822768595919,
+                10
+            ])
+        },
+        {
+            type: "cubed",
+            start: 1,
+            end: 10,  // 2.154434690031884.
+            numSamps: 10,
+
+            // y1 starts at 1
+            // Step increment is (2.154434690031884 - 1) / 9 = 0.12827052111465376
+            // 0 = 1; y1 = 1
+            // 1 = 1.436282019880423;  y1 = 1.128270521114653766
+            // 2 = 1.9839468599353185; y1 = 1.2565410422293075
+            // 3 = 2.6556573808170105; y1 = 1.3848115633439613
+            // 4 = 3.464076443177822; y1 = 1.513082084458615
+            // 5 = 4.421866907670077; y1 = 1.6413526055732688
+            // 6 = 5.5416916349460985; y1 = 1.7696231266879225
+            // 7 = 6.836213485658211; y1 = 1.8978936478025763
+            // 8 = 8.318095320458738; y1 = 2.02616416891723
+            // 9 = 10.000000000000002; y1 = 2.154434690031884
+            expected: new Float32Array([
+                1,
+                1.436282019880423,
+                1.9839468599353185,
+                2.6556573808170105,
+                3.464076443177822,
+                4.421866907670077,
+                5.5416916349460985,
+                6.836213485658211,
+                8.318095320458738,
+                10
+            ])
+        },
+        {
+            type: "exponential",
+            start: 1,
+            end: 10,
+            numSamps: 10,
+
+            // Step size is 1.2589254117941673.
+            expected: new Float32Array([
+                1,
+                1.2915496650148839,
+                1.6681005372000588,
+                2.1544347946583002,
+                2.7825594283858663,
+                3.593813703264459,
+                4.641588889066043,
+                5.994842656512711,
+                7.7426369660533965,
+                10,
+            ])
+        }
+
+    ];
+
+    flock.test.envGen.testLineGenerator = function (testSpec) {
+        test(testSpec.type + " line generator.", function () {
+            var actual = flock.line.fill(testSpec.type, new Float32Array(testSpec.numSamps), 1, 10);
+            flock.test.arrayEqualBothRounded(6, actual, testSpec.expected,
+                "The " + testSpec.type + " line generator should produce the correct output.");
+        });
+    };
+
+    fluid.each(flock.test.envGen.lineGeneratorTests, flock.test.envGen.testLineGenerator);
+
 }());
