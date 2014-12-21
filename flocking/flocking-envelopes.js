@@ -269,6 +269,11 @@ var fluid = fluid || require("infusion"),
             m.destination = end;
             m.numSegmentSamps = numSamps - 1;
 
+            if (typeof type === "number") {
+                m.currentCurve = type;
+                type = "curve";
+            }
+
             var generator = flock.line[type];
             if (!generator) {
                 flock.fail("No line generator could be found for type " + type);

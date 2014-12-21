@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (December 18, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (December 20, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.1
@@ -27776,6 +27776,11 @@ var fluid = fluid || require("infusion"),
             m.value = start;
             m.destination = end;
             m.numSegmentSamps = numSamps - 1;
+
+            if (typeof type === "number") {
+                m.currentCurve = type;
+                type = "curve";
+            }
 
             var generator = flock.line[type];
             if (!generator) {
