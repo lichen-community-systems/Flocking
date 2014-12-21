@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (December 20, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (December 21, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.1
@@ -27640,7 +27640,7 @@ var fluid = fluid || require("infusion"),
 
         dadsr: {
             transformer: function (o) {
-                var levels = [0, 0, o.peakLevel, o.peak * o.sustain, 0];
+                var levels = [0, 0, o.peak, o.peak * o.sustain, 0];
                 DSP.add(levels, levels, o.bias);
 
                 return {
@@ -27664,7 +27664,7 @@ var fluid = fluid || require("infusion"),
 
         adsr: {
             transformer: function (o) {
-                var levels = [0, o.peakLevel, o.peak * o.sustain, 0];
+                var levels = [0, o.peak, o.peak * o.sustain, 0];
                 DSP.add(levels, levels, o.bias);
 
                 return {
@@ -27705,8 +27705,20 @@ var fluid = fluid || require("infusion"),
             levelsLen = levels.length;
 
             for (i = 0; i < times.length; i++) {
-                if (times[i] < 0) {
+                var time = times[i];
+
+                if (isNaN(time)) {
+                    report.times = "A NaN time value was specified at index " + i + ". times: " + times;
+                }
+
+                if (time < 0) {
                     report.times = "All times should be positive values. times: " + times;
+                }
+            }
+
+            for (i = 0; i < levelsLen; i++) {
+                if (isNaN(levels[i])) {
+                    report.levels = "A NaN level value was specified at index " + i + ". levels: " + levels;
                 }
             }
 
@@ -28322,6 +28334,10 @@ var fluid = fluid || require("infusion"),
                 that.envelope = flock.ugen.envGen.initEnvelope(that, that.inputs.envelope);
             }
 
+            if (!inputName || inputName === "gate") {
+                that.gen = that.inputs.gate.rate === flock.rates.AUDIO ? that.arGen : that.krGen;
+            }
+
             flock.onMulAddInputChanged(that);
         };
 
@@ -28341,8 +28357,6 @@ var fluid = fluid || require("infusion"),
 
         flock.ugen.envGen.lineGenForStage(that.inputs.timeScale.output[0], envelope, m);
         m.value = envelope.levels[m.stage];
-
-        that.gen = that.inputs.gate.rate === flock.rates.AUDIO ? that.arGen : that.krGen;
 
         return envelope;
     };

@@ -87,7 +87,7 @@
 		                        <option value="sum">Additive Synthesis</option>
 		                    </optgroup>
 		                    <optgroup label="Granular Synthesis">
-		                        <option value="granulator">Granulator</option>
+		                        <option value="granulator" selected="selected">Granulator</option>
 		                    </optgroup>
 		                    <optgroup label="Audio Buffers">
 		                        <option value="playBuffer">Play a buffer</option>
@@ -108,7 +108,8 @@
 		                    </optgroup>
 		                    <optgroup label="Envelopes">
 		                        <option value="asr">Attack/Sustain/Release</option>
-                                <option value="forAnn" selected="selected">For Ann (Rising) by James Tenney</option>
+                                <option value="adsr_envGen">ADSR Envelope Generator</option>
+                                <option value="forAnn">For Ann (Rising) by James Tenney</option>
 		                        <option value="decay">Decay</option>
 		                        <option value="line_freq">SinOsc Freq</option>
 		                        <option value="line_mod">Mod SinOsc Freq</option>
@@ -295,8 +296,128 @@ var synth = flock.synth({
 });
         </script>
 
+        <script type="application/flocking" id="adsr_envGen">// Multiple harmonics, each with their own ADSR envelope.
+// The envelope generator's gate is opens whenever the mouse button is held down.
+flock.synth({
+    synthDef: {
+        ugen: "flock.ugen.sum",
+        sources: [
+            {
+                ugen: "flock.ugen.sinOsc",
+                freq: 440,
+                mul: {
+                    ugen: "flock.ugen.envGen",
+                    envelope: {
+                        type: "flock.envelope.adsr",
+                        attack: 1.0,
+                        decay: 0.5,
+                        peak: 0.15,
+                        sutain: 0.1,
+                        release: 1.0
+                    },
+                    gate: {
+                        ugen: "flock.ugen.mouse.click"
+                    }
+                }
+            },
+            {
+                ugen: "flock.ugen.sinOsc",
+                freq: 440 * 2/1,
+                mul: {
+                    ugen: "flock.ugen.envGen",
+                    envelope: {
+                        type: "flock.envelope.adsr",
+                        attack: 1.0 * 2/1,
+                        decay: 0.5 * 2/1,
+                        peak: 0.15,
+                        sustain: 0.1,
+                        release: 1.0 * 2/1
+                    },
+                    gate: {
+                        ugen: "flock.ugen.mouse.click"
+                    }
+                }
+            },
+            {
+                ugen: "flock.ugen.sinOsc",
+                freq: 440 * 3/2,
+                mul: {
+                    ugen: "flock.ugen.envGen",
+                    envelope: {
+                        type: "flock.envelope.adsr",
+                        attack: 1.0 * 3/2,
+                        decay: 0.5 * 3/2,
+                        peak: 0.15,
+                        sustain: 0.1,
+                        release: 1.0 * 3/2
+                    },
+                    gate: {
+                        ugen: "flock.ugen.mouse.click"
+                    }
+                }
+            },
+            {
+                ugen: "flock.ugen.sinOsc",
+                freq: 440 * 4/3,
+                mul: {
+                    ugen: "flock.ugen.envGen",
+                    envelope: {
+                        type: "flock.envelope.adsr",
+                        attack: 1.0 * 4/3,
+                        decay: 0.5 * 4/3,
+                        peak: 0.15,
+                        sustain: 0.1,
+                        release: 1.0 * 4/3
+                    },
+                    gate: {
+                        ugen: "flock.ugen.mouse.click"
+                    }
+                }
+            },
+            {
+                ugen: "flock.ugen.sinOsc",
+                freq: 440 * 5/4,
+                mul: {
+                    ugen: "flock.ugen.envGen",
+                    envelope: {
+                        type: "flock.envelope.adsr",
+                        attack: 1.0 * 5/4,
+                        decay: 0.5 * 5/4,
+                        peak: 0.15,
+                        sustain: 0.1,
+                        release: 1.0 * 5/4
+                    },
+                    gate: {
+                        ugen: "flock.ugen.mouse.click"
+                    }
+                }
+            },
+            {
+                ugen: "flock.ugen.sinOsc",
+                freq: 440 * 7/6,
+                mul: {
+                    ugen: "flock.ugen.envGen",
+                    envelope: {
+                        type: "flock.envelope.adsr",
+                        attack: 1.0 * 7/6,
+                        decay: 0.5 * 7/6,
+                        peak: 0.15,
+                        sustain: 0.1,
+                        release: 1.0 * 7/6
+                    },
+                    gate: {
+                        ugen: "flock.ugen.mouse.click"
+                    }
+                }
+            }
+        ]
+    }
+});
+        </script>
+
         <script type="application/flocking" id="forAnn">// James Tenney's For Ann (Rising).
 flock.init({
+    blockSize: 128,
     bufferSize: 16384
 });
 
