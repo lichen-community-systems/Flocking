@@ -124,7 +124,7 @@ var fluid = fluid || require("infusion"),
 
         // If we have no mul or add inputs, bail immediately.
         if (!mul && !add) {
-            that.mulAdd = fluid.identity;
+            that.mulAdd = flock.noOp;
             return;
         }
 
@@ -204,7 +204,8 @@ var fluid = fluid || require("infusion"),
                 strideNames = that.options.strideInputs,
                 inputs = that.inputs,
                 i,
-                name;
+                name,
+                input;
 
             m.strides = m.strides || {};
 
@@ -214,7 +215,14 @@ var fluid = fluid || require("infusion"),
 
             for (i = 0; i < strideNames.length; i++) {
                 name = strideNames[i];
-                m.strides[name] = inputs[name].rate === flock.rates.AUDIO ? 1 : 0;
+                input = inputs[name];
+
+                if (input) {
+                    m.strides[name] = input.rate === flock.rates.AUDIO ? 1 : 0;
+                } else {
+                    fluid.log(fluid.logLevel.WARN, "An invalid input ('" +
+                        name + "') was found on a unit generator: " + that);
+                }
             }
         };
 
@@ -276,9 +284,8 @@ var fluid = fluid || require("infusion"),
 
             // Assigns an interpolator function to the UGen.
             // This is inactive by default, but can be used in custom gen() functions.
-            // Will be undefined if no interpolation default or option has been set,
-            // or if it is set to "none"--make sure you check before invoking it.
-            that.interpolate = flock.interpolate[o.interpolation];
+            that.interpolate = o.interpolate ?
+                flock.interpolate[o.interpolation] : flock.interpolate.none;
 
             if (that.rate === flock.rates.DEMAND && that.inputs.freq) {
                 valueDef = flock.parse.ugenDefForConstantValue(1.0);
@@ -428,6 +435,7 @@ var fluid = fluid || require("infusion"),
             add: null
         }
     });
+
 
     /**
      * Changes from the <code>initial</code> input to the <code>target</code> input
@@ -889,7 +897,7 @@ var fluid = fluid || require("infusion"),
                 } else if (idx < 0) {
                     idx += tableLen;
                 }
-                out[i] = that.interpolate ? that.interpolate(idx, table) : table[idx | 0];
+                out[i] = that.interpolate(idx, table);
                 phase += freq[k] * tableIncHz;
                 if (phase >= tableLen) {
                     phase -= tableLen;
@@ -902,19 +910,30 @@ var fluid = fluid || require("infusion"),
             that.mulAdd(numSamps);
         };
 
-        that.onInputChanged = function () {
+        that.onInputChanged = function (inputName) {
             flock.ugen.osc.onInputChanged(that);
 
             // Precalculate table-related values.
-            var m = that.model;
-            m.tableLen = that.inputs.table.length;
-            m.tableIncHz = m.tableLen / m.sampleRate;
-            m.tableIncRad =  m.tableLen / flock.TWOPI;
+            if (!inputName || inputName === "table") {
+                var m = that.model,
+                    table = that.inputs.table;
+
+                if (table.length < 1) {
+                    table = that.inputs.table = flock.ugen.osc.emptyTable;
+                }
+
+                m.tableLen = table.length;
+                m.tableIncHz = m.tableLen / m.sampleRate;
+                m.tableIncRad =  m.tableLen / flock.TWOPI;
+            }
+
         };
 
         that.onInputChanged();
         return that;
     };
+
+    flock.ugen.osc.emptyTable = new Float32Array([0, 0, 0]);
 
     flock.ugen.osc.onInputChanged = function (that) {
         that.calculateStrides();
@@ -1375,7 +1394,7 @@ var fluid = fluid || require("infusion"),
                 }
                 m.prevTrig = trig[j];
 
-                samp = that.interpolate ? that.interpolate(bufIdx, source) : source[bufIdx | 0];
+                samp = that.interpolate(bufIdx, source);
                 out[i] = samp;
                 bufIdx += m.stepSize;
             }
@@ -1414,7 +1433,7 @@ var fluid = fluid || require("infusion"),
                 }
                 m.prevTrig = trig[j];
 
-                samp = that.interpolate ? that.interpolate(bufIdx, source) : source[bufIdx | 0];
+                samp = that.interpolate(bufIdx, source);
                 out[i] = samp;
                 bufIdx += m.stepSize * speedInc;
             }
@@ -1513,7 +1532,7 @@ var fluid = fluid || require("infusion"),
 
             for (i = j = 0; i < numSamps; i++, j += phaseS) {
                 bufIdx = phase[j] * sourceLen;
-                val = that.interpolate ? that.interpolate(bufIdx, source) : source[bufIdx | 0];
+                val = that.interpolate(bufIdx, source);
                 out[i] = val;
             }
 
@@ -2248,140 +2267,6 @@ var fluid = fluid || require("infusion"),
     });
 
 
-    /**************************************
-     * Envelopes and Amplitude Processors *
-     **************************************/
-
-    flock.ugen.line = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
-
-        that.gen = function (numSamps) {
-            var m = that.model,
-                stepSize = m.stepSize,
-                numSteps = m.numSteps,
-                numLevelVals = numSteps >= numSamps ? numSamps : numSteps,
-                numEndVals = numSamps - numLevelVals,
-                level = m.level,
-                out = that.output,
-                i;
-
-            for (i = 0; i < numLevelVals; i++) {
-                out[i] = level;
-                numSteps--;
-                level += stepSize;
-            }
-
-            // TODO: Implement a more efficient gen algorithm when the line has finished.
-            if (numEndVals > 0) {
-                for (i = 0; i < numEndVals; i++) {
-                    out[i] = level;
-                }
-            }
-
-            m.level = level;
-            m.numSteps = numSteps;
-
-            that.mulAdd(numSamps);
-        };
-
-        that.onInputChanged = function () {
-            var m = that.model;
-
-            // Any change in input value will restart the line.
-            m.start = that.inputs.start.output[0];
-            m.end = that.inputs.end.output[0];
-            m.numSteps = Math.round(that.inputs.duration.output[0] * m.sampleRate); // Duration is seconds.
-            if (m.numSteps === 0) {
-                m.stepSize = 0.0;
-                m.level = m.end;
-            } else {
-                m.stepSize = (m.end - m.start) / m.numSteps;
-                m.level = m.start;
-            }
-
-            flock.onMulAddInputChanged(that);
-        };
-
-        that.onInputChanged();
-        return that;
-    };
-
-    fluid.defaults("flock.ugen.line", {
-        rate: "control",
-        inputs: {
-            start: 0.0,
-            end: 1.0,
-            duration: 1.0,
-            mul: null,
-            add: null
-        }
-    });
-
-
-    flock.ugen.xLine = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
-
-        that.gen = function (numSamps) {
-            var m = that.model,
-                multiplier = m.multiplier,
-                numSteps = m.numSteps,
-                numLevelVals = numSteps >= numSamps ? numSamps : numSteps,
-                numEndVals = numSamps - numLevelVals,
-                level = m.level,
-                out = that.output,
-                i;
-
-            for (i = 0; i < numLevelVals; i++) {
-                out[i] = level;
-                numSteps--;
-                level *= multiplier;
-            }
-
-            // TODO: Implement a more efficient gen algorithm when the line has finished.
-            if (numEndVals > 0) {
-                for (i = 0; i < numEndVals; i++) {
-                    out[i] = level;
-                }
-            }
-
-            m.level = level;
-            m.numSteps = numSteps;
-
-            that.mulAdd(numSamps);
-        };
-
-        that.onInputChanged = function () {
-            var m = that.model;
-
-            flock.onMulAddInputChanged(that);
-
-            // Any change in input value will restart the line.
-            m.start = that.inputs.start.output[0];
-            if (m.start === 0.0) {
-                m.start = Number.MIN_VALUE; // Guard against divide by zero by using the smallest possible number.
-            }
-
-            m.end = that.inputs.end.output[0];
-            m.numSteps = Math.round(that.inputs.duration.output[0] * m.sampleRate);
-            m.multiplier = Math.pow(m.end / m.start, 1.0 / m.numSteps);
-            m.level = m.start;
-        };
-
-        that.onInputChanged();
-        return that;
-    };
-
-    fluid.defaults("flock.ugen.xLine", {
-        rate: "control",
-        inputs: {
-            start: 0.0,
-            end: 1.0,
-            duration: 1.0,
-            mul: null,
-            add: null
-        }
-    });
-
     /**
      * Loops through a linear ramp from start to end, incrementing the output by step.
      * Equivalent to SuperCollider's or CSound's Phasor unit generator.
@@ -2452,97 +2337,6 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    flock.ugen.env = {};
-
-    // TODO: Better names for these inputs; harmonize them with flock.ugen.line
-    // TODO: Make this a mul/adder.
-    flock.ugen.env.simpleASR = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
-
-        that.gen = function (numSamps) {
-            var m = that.model,
-                out = that.output,
-                prevGate = m.previousGate,
-                gate = that.inputs.gate.output[0],
-                level = m.level,
-                stage = m.stage,
-                currentStep = stage.currentStep,
-                stepInc = stage.stepInc,
-                numSteps = stage.numSteps,
-                targetLevel = m.targetLevel,
-                stepsNeedRecalc = false,
-                stageTime,
-                i;
-
-            // Recalculate the step state if necessary.
-            if (prevGate <= 0 && gate > 0) {
-                // Starting a new attack stage.
-                targetLevel = that.inputs.sustain.output[0];
-                stageTime = that.inputs.attack.output[0];
-                stepsNeedRecalc = true;
-            } else if (gate <= 0 && currentStep >= numSteps) {
-                // Starting a new release stage.
-                targetLevel = that.inputs.start.output[0];
-                stageTime = that.inputs.release.output[0];
-                stepsNeedRecalc = true;
-            }
-
-            // TODO: Can we get rid of this extra branch without introducing code duplication?
-            if (stepsNeedRecalc) {
-                numSteps = Math.round(stageTime * m.sampleRate);
-                stepInc = (targetLevel - level) / numSteps;
-                currentStep = 0;
-            }
-
-            // Output the the envelope's sample data.
-            for (i = 0; i < numSamps; i++) {
-                out[i] = level;
-                currentStep++;
-                // Hold the last value if the stage is complete, otherwise increment.
-                level = currentStep < numSteps ?
-                    level + stepInc : currentStep === numSteps ?
-                    targetLevel : level;
-            }
-
-            // Store instance state.
-            m.level = level;
-            m.targetLevel = targetLevel;
-            m.previousGate = gate;
-            stage.currentStep = currentStep;
-            stage.stepInc = stepInc;
-            stage.numSteps = numSteps;
-        };
-
-        that.init = function () {
-            var m = that.model;
-            m.level = that.inputs.start.output[0];
-            m.targetLevel = that.inputs.sustain.output[0];
-        };
-
-        that.init();
-        return that;
-    };
-
-    fluid.defaults("flock.ugen.env.simpleASR", {
-        rate: "control",
-        inputs: {
-            start: 0.0,
-            attack: 0.01,
-            sustain: 1.0,
-            release: 1.0,
-            gate: 0.0
-        },
-        ugenOptions: {
-            model: {
-                previousGate: 0.0,
-                stage: {
-                    currentStep: 0,
-                    stepInc: 0,
-                    numSteps: 0
-                }
-            }
-        }
-    });
 
     flock.ugen.amplitude = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
@@ -2780,6 +2574,7 @@ var fluid = fluid || require("infusion"),
 
         // TODO: Implement a "straight out" gen function for cases where the number
         // of sources matches the number of output buses (i.e. where no expansion is necessary).
+        // TODO: This function is marked as unoptimized by the Chrome profiler.
         that.gen = function (numSamps) {
             var sources = that.multiInputs.sources,
                 buses = that.options.audioSettings.buses,
@@ -4012,7 +3807,7 @@ var fluid = fluid || require("infusion"),
             for (j = 0; j < m.activeGrains.length;) {
                 grain = m.activeGrains[j];
                 for (k = grain.writePos; k < Math.min(k + (grain.numSamps - grain.sampIdx), numSamps); k++) {
-                    samp = that.interpolate ? that.interpolate(grain.readPos, buf) : buf[grain.readPos | 0];
+                    samp = that.interpolate(grain.readPos, buf);
                     env = flock.interpolate.linear(grain.sampIdx * grain.envScale, grainEnv);
                     out[k] += samp * env * grain.amp;
                     grain.readPos = (grain.readPos + (m.stepSize * grain.speed)) % buf.length;
@@ -4416,6 +4211,8 @@ var fluid = fluid || require("infusion"),
             for (i = 0, j = 0; i < numSamps; i++, j += m.strides.source) {
                 out[i] = flock.midiFreq(noteNum[j], a4Freq, a4NoteNum, notesPerOctave);
             }
+
+            that.mulAdd(numSamps);
         };
 
         that.init = function () {

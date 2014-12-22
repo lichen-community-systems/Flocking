@@ -138,6 +138,8 @@ var fluid = fluid || require("infusion"),
      * Utilities *
      *************/
 
+    flock.noOp = function () {};
+
     flock.isIterable = function (o) {
         var type = typeof o;
         return o && o.length !== undefined && type !== "string" && type !== "function";
@@ -150,6 +152,9 @@ var fluid = fluid || require("infusion"),
         return obj.tags && obj.tags.indexOf(tag) > -1;
     };
 
+    // TODO: Chrome profiler marks this function as unoptimized.
+    // This should probably be factored into separate functions for
+    // new and existing arrays. (e.g. "generate" vs. "fill")
     flock.generate = function (bufOrSize, generator) {
         var buf = typeof bufOrSize === "number" ? new Float32Array(bufOrSize) : bufOrSize,
             isFunc = typeof generator === "function",
@@ -451,10 +456,6 @@ var fluid = fluid || require("infusion"),
      */
     flock.interpolate.linear = function (idx, table) {
         var len = table.length;
-        if (len < 1) {
-            return 0;
-        }
-
         idx = idx % len;
 
         var i1 = idx | 0,
@@ -479,10 +480,6 @@ var fluid = fluid || require("infusion"),
     flock.interpolate.cubic = function (idx, table) {
         var len = table.length;
 
-        if (len < 1) {
-            return 0;
-        }
-
         var intPortion = Math.floor(idx),
             i0 = intPortion % len,
             frac = idx - intPortion,
@@ -503,48 +500,6 @@ var fluid = fluid || require("infusion"),
         return val;
     };
 
-
-    flock.expand = {};
-
-    // TODO: Unit tests.
-    flock.expand.overlay = function (expandSpec) {
-        if (!expandSpec) {
-            return;
-        }
-
-        var ugenDefs = [];
-
-        for (var inputPath in expandSpec.expandInputs) {
-            var expansions = expandSpec.expandInputs[inputPath];
-            if (expansions.length > ugenDefs.length) {
-                flock.expand.overlay.extend(ugenDefs, expandSpec.ugenDef, expansions.length);
-            }
-
-            flock.expand.overlay.merge(ugenDefs, inputPath, expansions);
-        }
-
-        return ugenDefs;
-    };
-
-    flock.expand.overlay.extend = function (arr, protoObj, length) {
-        var numExtra = length - arr.length;
-
-        for (var i = 0; i < numExtra; i++) {
-            arr.push(fluid.copy(protoObj));
-        }
-
-        return arr;
-    };
-
-    flock.expand.overlay.merge = function (protos, path, extensions) {
-        for (var i = 0; i < extensions.length; i++) {
-            var obj = protos[i],
-                extension = extensions[i];
-            flock.set(obj, path, extension);
-        }
-
-        return protos;
-    };
 
     flock.fail = function (msg) {
         if (flock.debug.failHard) {
@@ -1195,6 +1150,7 @@ var fluid = fluid || require("infusion"),
         /**
          * Generates one block of audio rate signal by evaluating this synth's unit generator graph.
          */
+        // TODO: This function is marked as unoptimized by the Chrome profiler.
         that.gen = function () {
             var nodes = that.nodes,
                 i,

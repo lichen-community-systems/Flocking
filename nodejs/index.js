@@ -13,5 +13,6 @@ loader.require("../flocking/flocking-webmidi.js");
 loader.require("./lib/flocking-node.js");
 loader.require("../flocking/flocking-parser.js");
 loader.require("../flocking/flocking-ugens.js");
+loader.require("../flocking/flocking-envelopes.js");
 
 module.exports = flock;
