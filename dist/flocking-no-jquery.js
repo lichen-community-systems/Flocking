@@ -18519,52 +18519,17 @@ var fluid = fluid || require("infusion"),
 
     flock.envelope.validate = function (envelope, failOnError) {
         var levels = envelope.levels,
-            times = envelope.times,
-            curve = envelope.curve,
-            sustainPoint = envelope.sustainPoint,
-            report = {},
-            i,
-            levelsLen;
+            report = {};
 
-        if (!times) {
+        if (!envelope.times) {
             report.times = "An array containing at least one time value must be specified.";
         } else if (!levels || levels.length < 2) {
             report.levels = "An array containing at least two levels must be specified.";
         } else {
-            levelsLen = levels.length;
-
-            for (i = 0; i < times.length; i++) {
-                var time = times[i];
-
-                if (isNaN(time)) {
-                    report.times = "A NaN time value was specified at index " + i + ". times: " + times;
-                }
-
-                if (time < 0) {
-                    report.times = "All times should be positive values. times: " + times;
-                }
-            }
-
-            for (i = 0; i < levelsLen; i++) {
-                if (isNaN(levels[i])) {
-                    report.levels = "A NaN level value was specified at index " + i + ". levels: " + levels;
-                }
-            }
-
-            if (times.length !== levelsLen - 1) {
-                report.levels = "The envelope specification should provide one fewer time value " +
-                    "than the number of level values. times: " + times + " levels: " + levels;
-            }
-
-            if (flock.isIterable(curve) && curve.length !== levelsLen - 1) {
-                report.curve = "When curve is specified as an array, there should be one fewer curve value " +
-                    "than the number of level values. curve: " + curve + " levels: " + levels;
-            }
-
-            if (sustainPoint < 0 || sustainPoint >= levelsLen) {
-                report.sustainPoint = "The specified sustainPoint index is out range for the levels array. " +
-                    "sustainPoint: " + sustainPoint + " levels: " + levels;
-            }
+            flock.envelope.validate.times(envelope.times, levels, report);
+            flock.envelope.validate.levels(levels, report);
+            flock.envelope.validate.curves(envelope.curve, levels, report);
+            flock.envelope.validate.sustainPoint(envelope.sustainPoint, levels, report);
         }
 
         if (failOnError !== false) {
@@ -18574,6 +18539,69 @@ var fluid = fluid || require("infusion"),
         }
 
         return report;
+    };
+
+    flock.envelope.validate.times = function (times, levels, report) {
+        if (times.length !== levels.length - 1) {
+            report.times = "The envelope specification should provide one fewer time value " +
+                "than the number of level values. times: " + times + " levels: " + levels;
+        }
+
+        for (var i = 0; i < times.length; i++) {
+            var time = times[i];
+
+            if (isNaN(time)) {
+                report.times = "A NaN time value was specified at index " +
+                    i + ". times: " + times;
+            }
+
+            if (time < 0) {
+                report.times = "All times should be positive values. times: " + times;
+            }
+        }
+    };
+
+    flock.envelope.validate.levels = function (levels, report) {
+        for (var i = 0; i < levels.length; i++) {
+            if (isNaN(levels[i])) {
+                report.levels = "A NaN level value was specified at index " +
+                    i + ". levels: " + levels;
+            }
+        }
+    };
+
+    flock.envelope.validate.curves = function (curve, levels, report) {
+        if (!curve) {
+            return report;
+        }
+
+        if (flock.isIterable(curve)) {
+            if (curve.length !== levels.length - 1) {
+                report.curve = "When curve is specified as an array, " +
+                    "there should be one fewer curve value " +
+                    "than the number of level values. curve: " +
+                    curve + " levels: " + levels;
+            }
+
+            fluid.each(curve, function (curveName) {
+                var lineGen = flock.line.generator(curveName);
+                if (!lineGen) {
+                    report.curve = "'" + curveName + "' is not a valid curve type. curve: " + curve;
+                }
+            });
+        }
+
+        var lineGen = flock.line.generator(curve);
+        if (!lineGen) {
+            report.curve = "'" + curve + "' is not a valid curve type.";
+        }
+    };
+
+    flock.envelope.validate.sustainPoint = function (sustainPoint, levels, report) {
+        if (sustainPoint < 0 || sustainPoint >= levels.length) {
+            report.sustainPoint = "The specified sustainPoint index is out range for the levels array. " +
+                "sustainPoint: " + sustainPoint + " levels: " + levels;
+        }
     };
 
     /**
@@ -18630,6 +18658,13 @@ var fluid = fluid || require("infusion"),
             generator.init(m);
 
             return generator.gen(numSamps, startIdx, buffer, m);
+        },
+
+        generator: function (curve) {
+            var type = typeof curve;
+
+            return type === "string" ? flock.line[curve] :
+                type === "number" ? flock.line.curve : flock.line.linear;
         },
 
         constant: {
@@ -19249,17 +19284,14 @@ var fluid = fluid || require("infusion"),
     flock.ugen.envGen.lineGenForStage = function (timeScale, envelope, m) {
         var curve = envelope.curve,
             lineGen,
-            curveValue,
-            type;
+            curveValue;
 
         if (m.stage === 0 || m.stage > m.numStages) {
             lineGen = flock.line.constant;
         } else {
             curveValue = curve[m.stage - 1];
             m.currentCurve = curveValue;
-            type = typeof curveValue;
-            lineGen = type === "string" ? flock.line[curveValue] :
-                type === "number" ? flock.line.curve : flock.line.linear;
+            lineGen = flock.line.generator(curveValue);
         }
 
         flock.ugen.envGen.setupStage(timeScale, envelope, m);

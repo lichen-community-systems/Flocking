@@ -298,6 +298,13 @@ var fluid = fluid || require("infusion"),
             }
         },
         {
+            name: "with NaN levels",
+            envelope: {
+                levels: [0, NaN, 1, 0],
+                times: [1, 2, 3]
+            }
+        },
+        {
             name: "with no times",
             envelope: {
                 levels: [0, 1, 0.5, 0],
@@ -309,6 +316,13 @@ var fluid = fluid || require("infusion"),
             envelope: {
                 levels: [0, 1, 0.5, 0],
                 times: []
+            }
+        },
+        {
+            name: "with NaN times",
+            envelope: {
+                levels: [0, 1, NaN, 0],
+                times: [1, 2, 3]
             }
         },
         {
@@ -346,6 +360,14 @@ var fluid = fluid || require("infusion"),
                 levels: [0, 1, 0.5, 0],
                 times: [2, 1, 2],
                 curve: ["linear"]
+            }
+        },
+        {
+            name: "invalid curve name",
+            envelope: {
+                levels: [0, 1, 0.5, 0],
+                times: [2, 1, 2],
+                curve: ["squiggly"]
             }
         },
         {
