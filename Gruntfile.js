@@ -1,4 +1,8 @@
+/*global module*/
+
 module.exports = function(grunt) {
+
+    "use strict";
 
     var files = {
         jQuery: [
@@ -35,6 +39,7 @@ module.exports = function(grunt) {
             "flocking/flocking-scheduler.js",
             "flocking/flocking-webaudio.js",
             "flocking/flocking-ugens.js",
+            "flocking/flocking-envelopes.js",
             "flocking/flocking-ugens-browser.js",
             "flocking/flocking-gfx.js",
             "flocking/flocking-webmidi.js"
