@@ -460,7 +460,7 @@ flock.init({
     bufferSize: 8192
 });
 
-var sked = flock.scheduler.async(),
+var sked = flock.enviro.shared.asyncScheduler,
     numSynths = 240,
     synths = [],
 	nextSynthIdx = 0,
