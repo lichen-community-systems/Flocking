@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (December 28, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (December 31, 2014), Copyright 2014 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof exports === "object") {
@@ -11618,7 +11618,7 @@ var fluid = fluid || require("infusion"),
             },
 
             audioStrategy: {
-                type: "flock.enviro.audioStrategy",
+                type: "flock.audioStrategy.platform",
                 options: {
                     audioSettings: "{enviro}.options.audioSettings"
                 }
@@ -11697,8 +11697,8 @@ var fluid = fluid || require("infusion"),
         return bufs;
     };
 
-    fluid.defaults("flock.enviro.audioStrategy", {
-        gradeNames: ["fluid.eventedComponent", "fluid.modelComponent"],
+    fluid.defaults("flock.audioStrategy", {
+        gradeNames: ["fluid.standardRelayComponent"],
 
         components: {
             nodeEvaluator: {
@@ -13853,7 +13853,9 @@ var fluid = fluid || require("infusion"),
     fluid.registerNamespace("flock.webAudio");
 
     // TODO: Remove this when Chrome implements navigator.getMediaDevices().
-    var getSources = function (callback) {
+    fluid.registerNamespace("flock.webAudio.chrome");
+
+    flock.webAudio.chrome.getSources = function (callback) {
         return MediaStreamTrack.getSources(function (infoSpecs) {
             var normalized = fluid.transform(infoSpecs, function (infoSpec) {
                 infoSpec.deviceId = infoSpec.id;
@@ -13864,40 +13866,43 @@ var fluid = fluid || require("infusion"),
         });
     };
 
-    // TODO: Implement these in a way that doesn't require checking every time.
+    flock.webAudio.mediaStreamFailure = function () {
+        flock.fail("Media Capture and Streams are not supported on this browser.");
+    };
+
     var webAudioShims = {
         AudioContext: window.AudioContext || window.webkitAudioContext,
 
-        getUserMedia: function (options, success, error) {
-            var gumFn = navigator.getUserMedia || navigator.webkitGetUserMedia ||
-                navigator.mozGetUserMedia || navigator.msGetUserMedia;
+        getUserMediaImpl: navigator.getUserMedia || navigator.webkitGetUserMedia ||
+            navigator.mozGetUserMedia || navigator.msGetUserMedia || flock.webAudio.mediaStreamFailure,
 
-            if (!gumFn) {
-                flock.fail("Media Streams and getUserMedia are not supported on this browser.");
-            } else {
-                return gumFn.call(navigator, options, success, error);
-            }
+        getUserMedia: function () {
+            flock.shim.getUserMediaImpl.apply(navigator, arguments);
         },
 
-        getMediaDevices: function (callback) {
-            return navigator.getMediaDevices ? navigator.getMediaDevices(callback) :
-                MediaStreamTrack.getSources ? getSources(callback) : undefined;
+        getMediaDevicesImpl: navigator.getMediaDevices ? navigator.getMediaDevices :
+            typeof window.MediaStreamTrack !== "undefined" ?
+            flock.webAudio.chrome.getSources : flock.webAudio.mediaStreamFailure,
+
+        getMediaDevice: function () {
+            flock.shim.getMediaDevicesImpl.apply(navigator, arguments);
         }
     };
+
     jQuery.extend(flock.shim, webAudioShims);
 
 
     /**
      * Web Audio API Audio Strategy
      */
-    fluid.defaults("flock.webAudio.strategy", {
-        gradeNames: ["flock.enviro.audioStrategy", "autoInit"],
+    fluid.defaults("flock.audioStrategy.web", {
+        gradeNames: ["flock.audioStrategy", "autoInit"],
 
         members: {
             context: "{contextWrapper}.context",
             jsNode: {
                 expander: {
-                    funcName: "flock.webAudio.strategy.createScriptProcessor",
+                    funcName: "flock.audioStrategy.web.createScriptProcessor",
                     args: [
                         "{contextWrapper}.context",
                         "{that}.options.audioSettings"
@@ -13907,13 +13912,33 @@ var fluid = fluid || require("infusion"),
         },
 
         model: {
+            sampleRate: "{that}.options.audioSettings.sampleRate",
+            chans: "{that}.options.audioSettings.chans",
+
             isGenerating: false,
             shouldInitIOS: flock.platform.isIOS,
             krPeriods: {
                 expander: {
-                    funcName: "flock.webAudio.strategy.calcNumKrPeriods",
+                    funcName: "flock.audioStrategy.web.calcNumKrPeriods",
                     args: "{that}.options.audioSettings"
                 }
+            }
+        },
+
+        modelListeners: {
+            sampleRate: {
+                funcName: "flock.audioStrategy.web.setSampleRate",
+                args: ["{change}.value", "{that}.options.audioSettings"]
+            },
+
+            chans: {
+                funcName: "flock.audioStrategy.web.setChannelState",
+                args: [
+                    "{change}.value",
+                    "{that}.options.audioSettings",
+                    "{contextWrapper}.context.destination",
+                    "{that}.jsNode"
+                ]
             }
         },
 
@@ -13933,7 +13958,15 @@ var fluid = fluid || require("infusion"),
 
         components: {
             contextWrapper: {
-                type: "flock.webAudio.contextWrapper"
+                type: "flock.webAudio.contextWrapper",
+                options: {
+                    listeners: {
+                        onCreate: [
+                            "{web}.applier.change(sampleRate, {that}.context.sampleRate)",
+                            "{web}.applier.change(chans, {that}.context.destination.maxChannelCount)"
+                        ]
+                    }
+                }
             },
 
             nativeNodeManager: {
@@ -13941,10 +13974,10 @@ var fluid = fluid || require("infusion"),
                 options: {
                     members: {
                         context: "{contextWrapper}.context",
-                        jsNode: "{strategy}.jsNode"
+                        jsNode: "{web}.jsNode"
                     },
 
-                    audioSettings: "{strategy}.options.audioSettings"
+                    audioSettings: "{web}.options.audioSettings"
                 }
             },
 
@@ -13974,22 +14007,11 @@ var fluid = fluid || require("infusion"),
         listeners: {
             onCreate: [
                 {
-                    funcName: "flock.webAudio.strategy.setSampleRate",
-                    args: ["{that}.options.audioSettings", "{contextWrapper}.context.sampleRate"]
-                },
-                {
-                    funcName: "flock.webAudio.strategy.setChannelState",
-                    args: ["{that}.options.audioSettings", "{contextWrapper}.context"]
-                },
-                {
-                    funcName: "flock.webAudio.strategy.bindWriter",
+                    funcName: "flock.audioStrategy.web.bindWriter",
                     args: [
-                        "{that}.jsNode",
-                        "{that}.model",
+                        "{that}",
                         "{nodeEvaluator}",
-                        "{that}.options.audioSettings",
-                        "{nativeNodeManager}.inputNodes",
-                        "{that}.stop"
+                        "{nativeNodeManager}"
                     ]
                 }
             ],
@@ -14001,7 +14023,7 @@ var fluid = fluid || require("infusion"),
                 },
                 {
                     // TODO: Replace this with some progressive enhancement action.
-                    funcName: "flock.webAudio.strategy.iOSStart",
+                    funcName: "flock.audioStrategy.web.iOSStart",
                     args: ["{that}.model", "{that}.applier", "{contextWrapper}.context", "{that}.jsNode"]
                 },
                 {
@@ -14034,60 +14056,62 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    // TODO: This is shady. Does it even work?
     // TODO: Refactor into a shared environment-level model property.
-    flock.webAudio.strategy.setSampleRate = function (audioSettings, sampleRate) {
+    flock.audioStrategy.web.setSampleRate = function (sampleRate, audioSettings) {
         audioSettings.sampleRate = sampleRate;
     };
 
-    // TODO: This is also shady. Refactor this into a shared environment-level model property.
-    flock.webAudio.strategy.setChannelState = function (audioSettings, context) {
+    // TODO: Refactor this into a shared environment-level model property.
+    // TODO: Set the channel count to the user-specified value. Only set it
+    //       to the max channel count if the user has asked for it.
+    flock.audioStrategy.web.setChannelState = function (chans, audioSettings, destinationNode, jsNode) {
         if (flock.platform.browser.safari) {
-            // TODO: Figure out why attempting to set channelCount on the audioContext's
-            // destination here throws an InvalidStateError DOM Exception 11.
+            // Safari will throw an InvalidStateError DOM Exception 11 when
+            // attempting to set channelCount on the audioContext's destination.
+            // TODO: Remove this when Safari adds support for multiple channels.
             return;
         }
 
-        var chans = context.destination.maxChannelCount;
         audioSettings.chans = chans;
-        context.destination.channelCount = chans;
+        destinationNode.channelCount = chans;
+
+        jsNode.channelCountMode = "explicit";
+        jsNode.channelCount = audioSettings.chans;
     };
 
-    flock.webAudio.strategy.calcNumKrPeriods = function (s) {
+    flock.audioStrategy.web.calcNumKrPeriods = function (s) {
         return s.bufferSize / s.blockSize;
     };
 
-    flock.webAudio.strategy.createScriptProcessor = function (ctx, s) {
+    flock.audioStrategy.web.createScriptProcessor = function (ctx, s) {
         var jsNodeName = ctx.createScriptProcessor ? "createScriptProcessor" : "createJavaScriptNode",
             jsNode = ctx[jsNodeName](s.bufferSize, s.numInputBuses, s.chans);
-
-        jsNode.channelCountMode = "explicit";
-        jsNode.channelCount = s.chans;
 
         return jsNode;
     };
 
-    flock.webAudio.strategy.bindWriter = function (jsNode, model, evaluator, audioSettings, inputNodes) {
-        jsNode.model = model;
-        jsNode.evaluator = evaluator;
-        jsNode.audioSettings = audioSettings;
-        jsNode.inputNodes = inputNodes;
+    flock.audioStrategy.web.bindWriter = function (that, nodeEvaluator, nativeNodeManager) {
+        var jsNode = that.jsNode;
 
-        jsNode.onaudioprocess = flock.webAudio.strategy.writeSamples;
+        jsNode.model = that.model;
+        jsNode.evaluator = nodeEvaluator;
+        jsNode.audioSettings = that.options.audioSettings;
+        jsNode.inputNodes = nativeNodeManager.inputNodes;
+        jsNode.onaudioprocess = flock.audioStrategy.web.writeSamples;
     };
 
     /**
      * Writes samples to the audio strategy's ScriptProcessorNode.
      *
-     * This function should be bound as the callback to the node, and
-     * expects to be called in the context of a "this" instance
-     * containing the following properties:
+     * This function must be bound as a listener to the node's
+     * onaudioprocess event. It expects to be called in the context
+     * of a "this" instance containing the following properties:
      *  - model: the strategy's model object
      *  - inputNodes: a list of native input nodes to be read into input buses
      *  - nodeEvaluator: a nodeEvaluator instance
      *  - audioSettings: the enviornment's audio settings
      */
-    flock.webAudio.strategy.writeSamples = function (e) {
+    flock.audioStrategy.web.writeSamples = function (e) {
         var m = this.model,
             numInputNodes = this.inputNodes.length,
             evaluator = this.evaluator,
@@ -14148,7 +14172,7 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    flock.webAudio.strategy.iOSStart = function (model, applier, ctx, jsNode) {
+    flock.audioStrategy.web.iOSStart = function (model, applier, ctx, jsNode) {
         // Work around a bug in iOS Safari where it now requires a noteOn()
         // message to be invoked before sound will work at all. Just connecting a
         // ScriptProcessorNode inside a user event handler isn't sufficient.
@@ -14521,8 +14545,8 @@ var fluid = fluid || require("infusion"),
         return node;
     };
 
-    fluid.demands("flock.enviro.audioStrategy", "flock.platform.webAudio", {
-        funcName: "flock.webAudio.strategy"
+    fluid.demands("flock.audioStrategy.platform", "flock.platform.webAudio", {
+        funcName: "flock.audioStrategy.web"
     });
 
 }());

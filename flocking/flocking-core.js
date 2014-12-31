@@ -827,7 +827,7 @@ var fluid = fluid || require("infusion"),
             },
 
             audioStrategy: {
-                type: "flock.enviro.audioStrategy",
+                type: "flock.audioStrategy.platform",
                 options: {
                     audioSettings: "{enviro}.options.audioSettings"
                 }
@@ -906,8 +906,8 @@ var fluid = fluid || require("infusion"),
         return bufs;
     };
 
-    fluid.defaults("flock.enviro.audioStrategy", {
-        gradeNames: ["fluid.eventedComponent", "fluid.modelComponent"],
+    fluid.defaults("flock.audioStrategy", {
+        gradeNames: ["fluid.standardRelayComponent"],
 
         components: {
             nodeEvaluator: {
