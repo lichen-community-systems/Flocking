@@ -23,11 +23,11 @@
     flock.test.audio.triangleInt32AIFF = "data:audio/aiff;base64,Rk9STQAAANZBSUZGQ09NTQAAABIAAQAAACoAIEAOrEQAAAAAAABTU05EAAAAsAAAAAAAAAAAAAAAAAzMzNAZmZmgJmZmgDMzM0BAAAAATMzNAFmZmYBmZmaAczMzAH////9zMzMAZmZmgFmZmYBMzM0AQAAAADMzM0AmZmaAGZmZoAzMzNAAAAAA8zMzMOZmZmDZmZmAzMzMwMAAAACzMzMApmZmgJmZmYCMzM0AgAAAAIzMzQCZmZmApmZmgLMzMwDAAAAAzMzMwNmZmYDmZmZg8zMzMAAAAAAMzMzQ";
     flock.test.audio.triangleFloatAIFF = "data:audio/aiff;base64,Rk9STQAAAQBBSUZDRlZFUgAAAASigFFAQ09NTQAAABgAAQAAACoAIEAOrEQAAAAAAABGTDMyAABQRUFLAAAAEAAAAAFPNqLKP4AAAAAAAApTU05EAAAAsAAAAAAAAAAAAAAAAD3MzM0+TMzNPpmZmj7MzM0/AAAAPxmZmj8zMzM/TMzNP2ZmZj+AAAA/ZmZmP0zMzT8zMzM/GZmaPwAAAD7MzM0+mZmaPkzMzT3MzM0AAAAAvczMzb5MzM2+mZmavszMzb8AAAC/GZmavzMzM79MzM2/ZmZmv4AAAL9mZma/TMzNvzMzM78ZmZq/AAAAvszMzb6ZmZq+TMzNvczMzQAAAAA9zMzN";
 
-    flock.test.audio.triangleData = [
+    flock.test.audio.triangleData = new Float32Array([
         0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
         0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1,
         0.0, -0.1, -0.2, -0.3, -0.4, -0.5, -0.6, -0.7, -0.8, -0.9, -1.0,
         -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1,
         0.0, 0.1
-    ];
+    ]);
 })();

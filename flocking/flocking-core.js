@@ -110,11 +110,6 @@ var fluid = fluid || require("infusion"),
     fluid.staticEnvironment.audioEngine = fluid.typeTag("flock.platform." + flock.platform.audioEngine);
 
     flock.defaultBufferSizeForPlatform = function () {
-        if (flock.platform.browser.mozilla) {
-            // Strangely terrible performance seems to have cropped up on Firefox in recent versions.
-            return 16384;
-        }
-
         if (flock.platform.isMobile) {
             return 8192;
         }
@@ -500,6 +495,10 @@ var fluid = fluid || require("infusion"),
         return val;
     };
 
+
+    flock.warn = function (msg) {
+        fluid.log(fluid.logLevel.WARN, msg);
+    };
 
     flock.fail = function (msg) {
         if (flock.debug.failHard) {

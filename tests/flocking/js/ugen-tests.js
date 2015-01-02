@@ -43,7 +43,7 @@ var fluid = fluid || require("infusion"),
     };
 
     test("input() data type tests", function () {
-        var mockUGen = flock.mock.makeMockUGen(new Float32Array(64));
+        var mockUGen = flock.test.ugen.mock.make(new Float32Array(64));
 
         // Non-existent input.
         var val = mockUGen.input("cat");
@@ -52,13 +52,13 @@ var fluid = fluid || require("infusion"),
 
         // Setting a previously non-existent input.
         setAndCheckInput(mockUGen, "cat", {
-            ugen: "flock.mock.ugen"
+            ugen: "flock.test.ugen.mock"
         });
 
         // Replacing an existing input with an ugenDef.
         setAndCheckInput(mockUGen, "cat", {
             id: "new-cat",
-            ugen: "flock.mock.ugen"
+            ugen: "flock.test.ugen.mock"
         });
         equal(mockUGen.input("cat").id, "new-cat", "The new input should have the appropriate ID.");
 
@@ -66,11 +66,11 @@ var fluid = fluid || require("infusion"),
         var defs = [
             {
                 id: "first-cat",
-                ugen: "flock.mock.ugen"
+                ugen: "flock.test.ugen.mock"
             },
             {
                 id: "second-cat",
-                ugen: "flock.mock.ugen"
+                ugen: "flock.test.ugen.mock"
             }
         ];
         setAndCheckArrayInput(mockUGen, "cat", defs, function (i, def) {
@@ -209,15 +209,15 @@ var fluid = fluid || require("infusion"),
                     ugen: "flock.tests.mockMultiInputUGen",
                     cats: [
                         {
-                            ugen: "flock.mock.ugen",
+                            ugen: "flock.test.ugen.mock",
                             rate: "audio"
                         },
                         {
-                            ugen: "flock.mock.ugen",
+                            ugen: "flock.test.ugen.mock",
                             rate: "control"
                         },
                         {
-                            ugen: "flock.mock.ugen",
+                            ugen: "flock.test.ugen.mock",
                             rate: "audio"
                         }
                     ]
@@ -274,7 +274,7 @@ var fluid = fluid || require("infusion"),
                     ugen: "flock.tests.mockMultiInputUGen",
                     cats: {
                         id: "mono",
-                        ugen: "flock.mock.ugen",
+                        ugen: "flock.test.ugen.mock",
                         rate: "audio"
                     }
                 }
@@ -603,9 +603,9 @@ var fluid = fluid || require("infusion"),
 
     test("flock.ugen.sum()", function () {
         var addBuffer = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31],
-            one = flock.mock.makeMockUGen(addBuffer),
-            two = flock.mock.makeMockUGen(addBuffer),
-            three = flock.mock.makeMockUGen(addBuffer);
+            one = flock.test.ugen.mock.make(addBuffer),
+            two = flock.test.ugen.mock.make(addBuffer),
+            three = flock.test.ugen.mock.make(addBuffer);
 
         var inputs = {
             sources: [one]
@@ -909,7 +909,7 @@ var fluid = fluid || require("infusion"),
         rate: flock.rates.AUDIO,
         inputs: {
             source: {
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 options: {
                     buffer: flock.generate(64, 1.0)
                 }
@@ -973,7 +973,7 @@ var fluid = fluid || require("infusion"),
                 id: "gate",
                 ugen: "flock.ugen.gate",
                 source: {
-                    ugen: "flock.mock.ugen",
+                    ugen: "flock.test.ugen.mock",
                     options: {
                         buffer: flock.test.ascendingBuffer(64, 1)
                     }
@@ -1015,7 +1015,7 @@ var fluid = fluid || require("infusion"),
                     synthDef: {
                         threshold: 0.5,
                         sideChain: {
-                            ugen: "flock.mock.ugen",
+                            ugen: "flock.test.ugen.mock",
                             options: {
                                 buffer: flock.test.ascendingBuffer(64, 0, 0.05)
                             }
@@ -1032,7 +1032,7 @@ var fluid = fluid || require("infusion"),
                     synthDef: {
                         threshold: 1,
                         sideChain: {
-                            ugen: "flock.mock.ugen",
+                            ugen: "flock.test.ugen.mock",
                             options: {
                                 buffer: flock.generate(64, function (i) {
                                     return i % 2 ? 1.0 : 0.0;
@@ -1059,7 +1059,7 @@ var fluid = fluid || require("infusion"),
             bus: 62,
             expand: 1,
             sources: {
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 id: "bufferMock",
                 options: {
                     buffer: flock.test.ascendingBuffer(64, 1)
@@ -1141,7 +1141,7 @@ var fluid = fluid || require("infusion"),
     test("flock.ugen.normalize()", function () {
         var testBuffer = flock.test.ascendingBuffer(64, -31),
             mock = {
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 options: {
                     buffer: testBuffer
                 }
@@ -1385,7 +1385,7 @@ var fluid = fluid || require("infusion"),
         var sourceBuffer = flock.test.ascendingBuffer(64, 1),
             sampGenCount = 0,
             incrementingMock = {
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 options: {
                     buffer: sourceBuffer,
                     gen: function (that, numSamps) {
@@ -1795,7 +1795,7 @@ var fluid = fluid || require("infusion"),
                     freq: sampleRate
                 },
                 trigger: {
-                    ugen: "flock.mock.ugen",
+                    ugen: "flock.test.ugen.mock",
                     rate: "audio",
                     options: {
                         buffer: flock.generate(64, 0.0)
@@ -1811,7 +1811,7 @@ var fluid = fluid || require("infusion"),
                 },
                 {
                     trigger: {
-                        ugen: "flock.mock.ugen",
+                        ugen: "flock.test.ugen.mock",
                         rate: "audio",
                         options: {
                             buffer: secondTrig
@@ -1823,7 +1823,7 @@ var fluid = fluid || require("infusion"),
                 },
                 {
                     trigger: {
-                        ugen: "flock.mock.ugen",
+                        ugen: "flock.test.ugen.mock",
                         rate: "audio",
                         options: {
                             buffer: thirdTrig
@@ -2037,7 +2037,7 @@ var fluid = fluid || require("infusion"),
             synthDef: {
                 ugen: "flock.ugen.triggerCallback",
                 source: {
-                    ugen: "flock.mock.ugen",
+                    ugen: "flock.test.ugen.mock",
                     options: {
                         buffer: flock.generate(64, function (i) {
                             return i;
@@ -2045,7 +2045,7 @@ var fluid = fluid || require("infusion"),
                     }
                 },
                 trigger: {
-                    ugen: "flock.mock.ugen",
+                    ugen: "flock.test.ugen.mock",
                     options: {
                         buffer: flock.generate(64, function (i) {
                             return i === 31 ? 1.0 : 0.0;
@@ -2183,7 +2183,7 @@ var fluid = fluid || require("infusion"),
                 pan: panVal,
                 source: {
                     id: "mock",
-                    ugen: "flock.mock.ugen",
+                    ugen: "flock.test.ugen.mock",
                     options: {
                         buffer: ones
                     }

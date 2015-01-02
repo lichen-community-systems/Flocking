@@ -6,7 +6,7 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global require, MediaStreamTrack, jQuery*/
+/*global require, MediaStreamTrack, jQuery, AudioNode*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,
@@ -21,6 +21,40 @@ var fluid = fluid || require("infusion"),
     "use strict";
 
     fluid.registerNamespace("flock.webAudio");
+
+    flock.webAudio.createNode = function (context, nodeSpec, onNodeCreated) {
+        var nodeName = nodeSpec.node,
+            creatorName = "create" + nodeName,
+            nodeStrIdx = creatorName.indexOf("Node");
+
+        // Trim off "Node" if it is present.
+        if (nodeStrIdx > -1) {
+            creatorName = creatorName.substring(0, nodeStrIdx);
+        }
+
+        var node = context[creatorName].apply(context, nodeSpec.args);
+        flock.webAudio.initializeNodeInputs(node, nodeSpec.params);
+
+        if (onNodeCreated) {
+            onNodeCreated(node);
+        }
+
+        return node;
+    };
+
+    // TODO: Add support for other types of AudioParams.
+    flock.webAudio.initializeNodeInputs = function (node, paramSpec) {
+        if (!node || !paramSpec) {
+            return;
+        }
+
+        for (var inputName in paramSpec) {
+            node[inputName].value = paramSpec[inputName];
+        }
+
+        return node;
+    };
+
 
     // TODO: Remove this when Chrome implements navigator.getMediaDevices().
     fluid.registerNamespace("flock.webAudio.chrome");
@@ -422,6 +456,11 @@ var fluid = fluid || require("infusion"),
                 args: ["{that}.merger", "{that}.jsNode", "{that}.outputNode", "{that}.context.destination"]
             },
 
+            createNode: {
+                funcName: "flock.webAudio.createNode",
+                args: ["{that}.context", "{arguments}.0"]
+            },
+
             disconnect: {
                 funcName: "flock.webAudio.nativeNodeManager.disconnect",
                 args: ["{that}.merger", "{that}.jsNode", "{that}.outputNode"]
@@ -429,7 +468,7 @@ var fluid = fluid || require("infusion"),
 
             insertInput: {
                 funcName: "flock.webAudio.nativeNodeManager.insertInput",
-                args: ["{arguments}.0", "{that}.inputNodes", "{that}.merger"]
+                args: ["{that}", "{arguments}.0",]
             },
 
             removeInput: {
@@ -490,9 +529,15 @@ var fluid = fluid || require("infusion"),
         inputNodes.length = 0;
     };
 
-    flock.webAudio.nativeNodeManager.insertInput = function (node, inputNodes, merger) {
-        inputNodes.push(node);
-        node.connect(merger, 0, inputNodes.indexOf(node));
+    flock.webAudio.nativeNodeManager.insertInput = function (that, node) {
+        if (!(node instanceof AudioNode)) {
+            node = that.createNode(node);
+        }
+
+        that.inputNodes.push(node);
+        node.connect(that.merger, 0, that.inputNodes.indexOf(node));
+
+        return node;
     };
 
     flock.webAudio.nativeNodeManager.removeInput = function (node, inputNodes) {
@@ -505,11 +550,17 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.webAudio.nativeNodeManager.insertOutput = function (that, node) {
+        if (!(node instanceof AudioNode)) {
+            node = that.createNode(node);
+        }
+
         if (that.outputNode) {
             that.outputNode.disconnect(0);
         }
 
         that.outputNode = node;
+
+        return node;
     };
 
     flock.webAudio.nativeNodeManager.removeOutput = function (jsNode) {
@@ -583,25 +634,25 @@ var fluid = fluid || require("infusion"),
             },
 
             openMediaStream: {
-                funcName: "flock.webAudio.inputManager.createNode",
+                funcName: "flock.webAudio.createNode",
                 args: [
+                    "{that}.context",
                     {
                         node: "MediaStreamSource",
                         args: ["{arguments}.0"]
                     },
-                    "{that}.context",
                     "{that}.events.onMediaStreamOpened.fire"
                 ]
             },
 
             openMediaElement: {
-                funcName: "flock.webAudio.inputManager.createNode",
+                funcName: "flock.webAudio.createNode",
                 args: [
+                    "{that}.context",
                     {
                         node: "MediaElementSource",
                         args: ["{arguments}.0"]
                     },
-                    "{that}.context",
                     "{that}.events.onMediaStreamOpened.fire"
                 ]
             }
@@ -680,39 +731,6 @@ var fluid = fluid || require("infusion"),
         }
 
         flock.shim.getUserMedia(options, openMediaStream, errback);
-    };
-
-    flock.webAudio.inputManager.createNode = function (nodeSpec, context, onNodeCreated) {
-        var nodeName = nodeSpec.node,
-            creatorName = "create" + nodeName,
-            nodeStrIdx = creatorName.indexOf("Node");
-
-        // Trim off "Node" if it is present.
-        if (nodeStrIdx > -1) {
-            creatorName = creatorName.substring(0, nodeStrIdx);
-        }
-
-        var node = context[creatorName].apply(context, nodeSpec.args);
-        flock.webAudio.inputManager.initializeNodeInputs(node, nodeSpec.params);
-
-        if (onNodeCreated) {
-            onNodeCreated(node);
-        }
-
-        return node;
-    };
-
-    // TODO: Add support for other types of AudioParams.
-    flock.webAudio.inputManager.initializeNodeInputs = function (node, inputSpec) {
-        if (!node || !inputSpec) {
-            return;
-        }
-
-        for (var inputName in inputSpec) {
-            node[inputName].value = inputSpec[inputName];
-        }
-
-        return node;
     };
 
     fluid.demands("flock.audioStrategy.platform", "flock.platform.webAudio", {

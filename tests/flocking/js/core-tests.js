@@ -1317,11 +1317,11 @@ var fluid = fluid || require("infusion"),
         ugen: "flock.ugen.out",
         inputs: {
             sources: {
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 inputs: {
                     gerbil: {
                         id: "gerbil",
-                        ugen: "flock.mock.ugen",
+                        ugen: "flock.test.ugen.mock",
                         inputs: {
                             ear: {
                                 id: "ear",
@@ -1332,10 +1332,10 @@ var fluid = fluid || require("infusion"),
                     },
                     cat: {
                         id: "cat",
-                        ugen: "flock.mock.ugen"
+                        ugen: "flock.test.ugen.mock"
                     },
                     dog: {
-                        ugen: "flock.mock.ugen"
+                        ugen: "flock.test.ugen.mock"
                     }
                 }
             },
@@ -1401,7 +1401,7 @@ var fluid = fluid || require("infusion"),
             expectedInput = synth.namedNodes.ear,
             newUGen = flock.parse.ugenForDef({
                 id: "gerbil",
-                ugen: "flock.mock.ugen"
+                ugen: "flock.test.ugen.mock"
             });
         synth.swapTree(newUGen, toReplace);
 
@@ -1433,7 +1433,7 @@ var fluid = fluid || require("infusion"),
         var synth1 = flock.synth({
             synthDef: {
                 id: "mock",
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 freq: 110,
                 mul: 0.1,
                 options: {
@@ -1447,7 +1447,7 @@ var fluid = fluid || require("infusion"),
         var synth2 = flock.synth({
             synthDef: {
                 id: "mock",
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 freq: 220,
                 mul: 0.2,
                 options: {
@@ -1553,11 +1553,11 @@ var fluid = fluid || require("infusion"),
     test("flock.synth.polyphonic", function () {
         var def = {
             id: "carrier",
-            ugen: "flock.mock.ugen",
+            ugen: "flock.test.ugen.mock",
             freq: 440,
             mul: {
                 id: "env",
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 gate: 0
             }
         };
@@ -1663,15 +1663,15 @@ var fluid = fluid || require("infusion"),
     test("flock.synth() with mix of compressed and expanded ugenDefs", function () {
         var mixedSynthDef = {
             id: "carrier",
-            ugen: "flock.mock.ugen",
+            ugen: "flock.test.ugen.mock",
             freq: {
                 id: "mod",
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 inputs: {
                     freq: 440,
                     phase: {
                         id: "line",
-                        ugen: "flock.mock.ugen",
+                        ugen: "flock.test.ugen.mock",
                         start: 1,
                         end: 10,
                         duration: 2

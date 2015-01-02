@@ -329,17 +329,9 @@ var fluid = fluid || require("infusion"),
     flock.ugen.mediaIn = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
-        // TODO: Complete cut and paste of flock.ugen.audioIn,
-        // which is a cut and paste job of flock.ugen.in.singleBusGen().
         that.gen = function (numSamps) {
-            var out = that.output,
-                busNum = that.inputs.bus.output[0] | 0,
-                bus = that.options.audioSettings.buses[busNum],
-                i;
-
-            for (i = 0; i < numSamps; i++) {
-                out[i] = bus[i];
-            }
+            flock.ugen.in.readBus(numSamps, that.output, that.inputs.bus,
+                that.options.audioSettings.buses);
 
             that.mulAdd(numSamps);
         };
@@ -353,6 +345,17 @@ var fluid = fluid || require("infusion"),
             // TODO: Direct reference to the shared environment.
             flock.enviro.shared.audioStrategy.inputManager.openMediaElement(mediaEl);
             that.onInputChanged();
+
+            // TODO: Remove this warning when Safari and Android
+            // fix their MediaElementAudioSourceNode implementations.
+            if (flock.platform.browser.safari) {
+                flock.warn("MediaElementSourceNode does not work on Safari. " +
+                    "For more information, see https://bugs.webkit.org/show_bug.cgi?id=84743 " +
+                    "and https://bugs.webkit.org/show_bug.cgi?id=125031");
+            } else if (flock.platform.isAndroid) {
+                flock.warn("MediaElementSourceNode does not work on Android. " +
+                    "For more information, see https://code.google.com/p/chromium/issues/detail?id=419446");
+            }
         };
 
         that.init();

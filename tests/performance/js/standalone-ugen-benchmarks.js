@@ -33,8 +33,8 @@ var flock = flock || {};
                 for (i = 0; i < inputs.length; i++) {
                     input = inputs[i];
                     inputName = typeof (input) === "string" ? input : input.name;
-                    randomized = flock.mock.makeRandomInputGenerator(input, input.scale, input.round);
-                    ug.inputs[inputName] = flock.mock.makeMockUGen(randomized, rate);
+                    randomized = flock.test.ugen.mock.makeRandomInputGenerator(input, input.scale, input.round);
+                    ug.inputs[inputName] = flock.test.ugen.mock.make(randomized, rate);
                 }
 
                 ug.onInputChanged();
@@ -77,7 +77,7 @@ var flock = flock || {};
                     for (l = 0; l < inputs.length; l++) {
                         input = inputs[l];
                         inputName = (typeof (input) === "string") ? input : input.name;
-                        randomizer = flock.mock.makeRandomInputGenerator(input);
+                        randomizer = flock.test.ugen.mock.makeRandomInputGenerator(input);
                         ugenDef[inputName] = randomizer();
                     }
                     ugenDefs.push(ugenDef);

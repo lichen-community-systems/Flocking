@@ -1,28 +1,14 @@
-/*global fluid, flock, equal, deepEqual, start, asyncTest*/
+/*global fluid, flock, equal, start, asyncTest*/
 
 (function () {
     "use strict";
 
     fluid.registerNamespace("flock.test.audioFile");
 
-    flock.test.audioFile.roundBuffer = function (buf, digits) {
-        var roundedBuf = [],
-        i;
-
-        digits = digits !== undefined ? digits : 1;
-
-        for (i = 0; i < buf.length; i++) {
-            roundedBuf[i] = parseFloat(buf[i].toFixed(digits));
-        }
-
-        return roundedBuf;
-    };
-
     flock.test.audioFile.testTriangleBuffer = function (decoded) {
         var data = decoded.data,
             format = decoded.format,
             buffer = data.channels[0],
-            roundedBuffer = flock.test.audioFile.roundBuffer(buffer, 1),
             expected = flock.test.audio.triangleData;
 
         equal(format.numChannels, 1,
@@ -39,7 +25,7 @@
 
         equal(buffer.length, decoded.format.numSampleFrames,
             "The decoded audio buffer should have the same number of frames as the metadata reports.");
-        deepEqual(roundedBuffer, expected,
+        flock.test.arrayEqualBothRounded(1, buffer, expected,
             "The decoded buffer should be a single period triangle wave incrementing by 0.1");
     };
 
