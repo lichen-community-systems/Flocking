@@ -260,6 +260,12 @@ var flock = flock || {};
             return;
         }
 
+        if (actual.length !== expected.length) {
+            ok(false, msg + " - the actual array was a different length (" +
+                actual.length + " instead of " + expected.length + ")");
+            return;
+        }
+
         var roundedActual = flock.test.makeNewArrayLike(actual),
             roundedExpected = flock.test.makeNewArrayLike(expected);
 

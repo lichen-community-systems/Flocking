@@ -42,7 +42,8 @@
         $.each(testSpecs, function (i, testSpec) {
             var def = $.extend(true, {rate: testSpec.rate, id: "looper"}, testSpec.def);
             var synth = flock.synth({
-                synthDef: def
+                synthDef: def,
+                addToEnvironment: false
             });
             var loop = synth.namedNodes.looper;
 
@@ -60,7 +61,7 @@
             tests: [
                 {
                     expected: flock.test.ascendingBuffer(64, 1),
-                    msg: "The loop unit generator should output a signal increasing from 1 to 64"
+                    msg: "The phasor unit generator should output a signal increasing from 1 to 64"
                 },
                 {
                     expected: flock.generate(64, function (i) {
