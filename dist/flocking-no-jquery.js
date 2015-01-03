@@ -10825,6 +10825,9 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.OUT_UGEN_ID = "flocking-out";
+    flock.MAX_CHANNELS = 32;
+    flock.MAX_INPUT_BUSES = 32;
+
     flock.PI = Math.PI;
     flock.TWOPI = 2.0 * Math.PI;
     flock.HALFPI = Math.PI / 2.0;
@@ -11625,10 +11628,18 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+    // TODO: This should be modelized.
+    flock.enviro.setupAudioSettings = function (s) {
+        s.numInputBuses = Math.min(s.numInputBuses, flock.MAX_INPUT_BUSES);
+        s.chans = Math.min(s.chans, flock.MAX_CHANNELS);
+
+        return s;
+    };
+
     flock.enviro.preInit = function (that) {
-        that.audioSettings = that.options.audioSettings;
+        that.audioSettings = flock.enviro.setupAudioSettings(that.options.audioSettings);
         that.buses = flock.enviro.createAudioBuffers(that.audioSettings.numBuses,
-                that.audioSettings.blockSize);
+            that.audioSettings.blockSize);
         that.buffers = {};
         that.bufferSources = {};
 
@@ -13851,9 +13862,6 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.webAudio");
 
-    flock.webAudio.MAX_NODE_INPUTS = 32;
-    flock.webAudio.MAX_CHANS = 32;
-
     flock.webAudio.createNode = function (context, nodeSpec, onNodeCreated) {
         var nodeName = nodeSpec.node,
             creatorName = "create" + nodeName,
@@ -13997,15 +14005,7 @@ var fluid = fluid || require("infusion"),
             },
 
             nativeNodeManager: {
-                type: "flock.webAudio.nativeNodeManager",
-                options: {
-                    members: {
-                        context: "{contextWrapper}.context",
-                        jsNode: "{web}.jsNode"
-                    },
-
-                    audioSettings: "{web}.options.audioSettings"
-                }
+                type: "flock.webAudio.nativeNodeManager"
             },
 
             inputManager: {
@@ -14261,8 +14261,8 @@ var fluid = fluid || require("infusion"),
         gradeNames: ["fluid.eventedComponent", "autoInit"],
 
         members: {
-            context: undefined,
-            jsNode: undefined,
+            context: "{contextWrapper}.context",
+            jsNode: "{web}.jsNode",
             outputNode: undefined,
             inputNodes: [],
             merger: {
@@ -14276,6 +14276,8 @@ var fluid = fluid || require("infusion"),
                 }
             }
         },
+
+        audioSettings: "{web}.options.audioSettings",
 
         invokers: {
             connect: {
@@ -14360,9 +14362,11 @@ var fluid = fluid || require("infusion"),
     // TODO: How could a user possibly know which input bus this will
     // end up being connected to, except to know how many inputs have already been created?
     flock.webAudio.nativeNodeManager.insertInput = function (that, node) {
-        if (that.inputNodes.length > flock.webAudio.MAX_NODE_INPUTS) {
-            flock.fail("There are already " + flock.webAudio.MAX_NODE_INPUTS +
-                " Web Audio input nodes connected to Flocking, which is the maximum.");
+        var maxInputs = that.options.audioSettings.numInputBuses;
+        if (that.inputNodes.length >= maxInputs) {
+            flock.fail("There are too many input nodes connected to Flocking. " +
+                "The maximum number of input buses is currently set to " + maxInputs + ". " +
+                "Either remove an existing input node or increase Flockings numInputBuses option.");
 
             return;
         }
@@ -14483,13 +14487,10 @@ var fluid = fluid || require("infusion"),
             },
 
             openMediaElement: {
-                funcName: "flock.webAudio.createNode",
+                funcName: "flock.webAudio.inputManager.createMediaElementSource",
                 args: [
                     "{that}.context",
-                    {
-                        node: "MediaElementSource",
-                        args: ["{arguments}.0"]
-                    },
+                    "{arguments}.0",
                     "{that}.events.onMediaStreamOpened.fire"
                 ]
             }
@@ -14505,6 +14506,15 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+    flock.webAudio.inputManager.createMediaElementSource = function (context, element, onNodeCreated) {
+        element = typeof element === "string" ? document.querySelector(element) : element;
+
+        var source = context.createMediaElementSource(element);
+        if (onNodeCreated) {
+            onNodeCreated(source);
+        }
+        return source;
+    };
 
     flock.webAudio.inputManager.openAudioDevice = function (sourceSpec, idOpener, labelOpener, specOpener) {
         if (sourceSpec) {
@@ -20150,13 +20160,12 @@ var fluid = fluid || require("infusion"),
         };
 
         that.init = function () {
-            var mediaEl = $(that.options.selector)[0];
             // TODO: Direct reference to the shared environment.
             // TODO: How could a user possibly know which input bus
             //       the underlying MediaElementAudioSourceNode will
             //       end up being connected to? openMediaElement has to return this information
             //       so that the user will be shielded from even needing to know that buses are involved.
-            flock.enviro.shared.audioStrategy.inputManager.openMediaElement(mediaEl);
+            flock.enviro.shared.audioStrategy.inputManager.openMediaElement(that.options.element);
             that.onInputChanged();
 
             // TODO: Remove this warning when Safari and Android
@@ -20183,7 +20192,7 @@ var fluid = fluid || require("infusion"),
             add: null
         },
         ugenOptions: {
-            selector: "audio"
+            element: "audio"
         }
     });
 }());

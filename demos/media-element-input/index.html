@@ -8,6 +8,7 @@
         <script src="../../third-party/jquery/js/jquery.js"></script>
 
         <script src="../../third-party/infusion/js/Fluid.js"></script>
+        <script src="../../third-party/infusion/js/FluidDocument.js"></script>
         <script src="../../third-party/infusion/js/FluidIoC.js"></script>
         <script src="../../third-party/infusion/js/DataBinding.js"></script>
         <script src="../../third-party/infusion/js/FluidDOMUtilities.js"></script>
@@ -29,9 +30,17 @@
 
     <body>
         <h1>Processing Audio from an HTML5 Media Element</h1>
-        <audio id="hillier" src="../shared/audio/hillier-first-chord.wav" loop="true" autoplay="true" controls="true"></audio>
+
+        <div id="sounds">
+            <div>
+                <audio id="regular" src="../shared/audio/hillier-first-chord.wav" loop="true" controls="true" autoplay></audio>
+            </div>
+            <div>
+                <audio id="slow" src="../shared/audio/hillier-first-chord.wav" loop="true" controls="true" autoplay></audio>
+            </div>
+        </div>
         <script>
-            window.demo = flock.demo.mediaElementInput("#hillier");
+            window.demo = flock.demo.mediaElementInput("#sounds");
         </script>
     </body>
 </html>

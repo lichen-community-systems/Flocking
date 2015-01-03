@@ -34,6 +34,9 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.OUT_UGEN_ID = "flocking-out";
+    flock.MAX_CHANNELS = 32;
+    flock.MAX_INPUT_BUSES = 32;
+
     flock.PI = Math.PI;
     flock.TWOPI = 2.0 * Math.PI;
     flock.HALFPI = Math.PI / 2.0;
@@ -834,10 +837,18 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+    // TODO: This should be modelized.
+    flock.enviro.setupAudioSettings = function (s) {
+        s.numInputBuses = Math.min(s.numInputBuses, flock.MAX_INPUT_BUSES);
+        s.chans = Math.min(s.chans, flock.MAX_CHANNELS);
+
+        return s;
+    };
+
     flock.enviro.preInit = function (that) {
-        that.audioSettings = that.options.audioSettings;
+        that.audioSettings = flock.enviro.setupAudioSettings(that.options.audioSettings);
         that.buses = flock.enviro.createAudioBuffers(that.audioSettings.numBuses,
-                that.audioSettings.blockSize);
+            that.audioSettings.blockSize);
         that.buffers = {};
         that.bufferSources = {};
 

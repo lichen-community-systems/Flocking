@@ -6,7 +6,7 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global fluid, flock, module, test, asyncTest, $, start, equal*/
+/*global fluid, flock, module, test, asyncTest, $, start, equal, ok*/
 
 (function () {
 
@@ -35,7 +35,9 @@
 
     module("flock.ugen.mediaIn", {
         setup: function () {
-            flock.init();
+            flock.init({
+                numInputBuses: 4
+            });
 
             flock.enviro.shared.audioStrategy.nativeNodeManager.insertOutput({
                 node: "Gain",
@@ -62,7 +64,7 @@
             source: {
                 ugen: "flock.ugen.mediaIn",
                 options: {
-                    selector: audioEl
+                    element: audioEl
                 }
             },
             options: {
@@ -117,6 +119,43 @@
             equal(mediaElementNode.mediaElement, audioEl,
                 "The MediaElementSourceNode should have been initialized with the audio element.");
         }
+    });
+
+    test("Create more input nodes than the configured maxium", function () {
+        function createMediaInDef (id) {
+            var def = {
+                ugen: "flock.ugen.mediaIn",
+                options: {
+                    element: String("#audio-" + id)
+                }
+            };
+
+            return def;
+        }
+
+        function createMediaInDefs (numDefs) {
+            var defs = [];
+            for (var i = 0; i < numDefs; i++) {
+                defs.push(createMediaInDef(i + 1));
+            }
+            return defs;
+        }
+
+        var defs = createMediaInDefs(5);
+        try {
+            flock.synth({
+                synthDef: {
+                    ugen: "flock.ugen.sum",
+                    sources: defs
+                }
+            });
+
+            ok(false, "An error should have been raised when too many inputs were created.");
+        } catch (e) {
+            ok(e.message.indexOf("too many input nodes") > 0,
+                "An error was raised when too many inputs were created.");
+        }
+
     });
 
     // TODO: Remove this warning when Safari fixes its MediaElementAudioSourceNode implementation.

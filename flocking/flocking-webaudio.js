@@ -22,9 +22,6 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.webAudio");
 
-    flock.webAudio.MAX_NODE_INPUTS = 32;
-    flock.webAudio.MAX_CHANS = 32;
-
     flock.webAudio.createNode = function (context, nodeSpec, onNodeCreated) {
         var nodeName = nodeSpec.node,
             creatorName = "create" + nodeName,
@@ -168,15 +165,7 @@ var fluid = fluid || require("infusion"),
             },
 
             nativeNodeManager: {
-                type: "flock.webAudio.nativeNodeManager",
-                options: {
-                    members: {
-                        context: "{contextWrapper}.context",
-                        jsNode: "{web}.jsNode"
-                    },
-
-                    audioSettings: "{web}.options.audioSettings"
-                }
+                type: "flock.webAudio.nativeNodeManager"
             },
 
             inputManager: {
@@ -432,8 +421,8 @@ var fluid = fluid || require("infusion"),
         gradeNames: ["fluid.eventedComponent", "autoInit"],
 
         members: {
-            context: undefined,
-            jsNode: undefined,
+            context: "{contextWrapper}.context",
+            jsNode: "{web}.jsNode",
             outputNode: undefined,
             inputNodes: [],
             merger: {
@@ -447,6 +436,8 @@ var fluid = fluid || require("infusion"),
                 }
             }
         },
+
+        audioSettings: "{web}.options.audioSettings",
 
         invokers: {
             connect: {
@@ -531,9 +522,11 @@ var fluid = fluid || require("infusion"),
     // TODO: How could a user possibly know which input bus this will
     // end up being connected to, except to know how many inputs have already been created?
     flock.webAudio.nativeNodeManager.insertInput = function (that, node) {
-        if (that.inputNodes.length > flock.webAudio.MAX_NODE_INPUTS) {
-            flock.fail("There are already " + flock.webAudio.MAX_NODE_INPUTS +
-                " Web Audio input nodes connected to Flocking, which is the maximum.");
+        var maxInputs = that.options.audioSettings.numInputBuses;
+        if (that.inputNodes.length >= maxInputs) {
+            flock.fail("There are too many input nodes connected to Flocking. " +
+                "The maximum number of input buses is currently set to " + maxInputs + ". " +
+                "Either remove an existing input node or increase Flockings numInputBuses option.");
 
             return;
         }
@@ -654,13 +647,10 @@ var fluid = fluid || require("infusion"),
             },
 
             openMediaElement: {
-                funcName: "flock.webAudio.createNode",
+                funcName: "flock.webAudio.inputManager.createMediaElementSource",
                 args: [
                     "{that}.context",
-                    {
-                        node: "MediaElementSource",
-                        args: ["{arguments}.0"]
-                    },
+                    "{arguments}.0",
                     "{that}.events.onMediaStreamOpened.fire"
                 ]
             }
@@ -676,6 +666,15 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+    flock.webAudio.inputManager.createMediaElementSource = function (context, element, onNodeCreated) {
+        element = typeof element === "string" ? document.querySelector(element) : element;
+
+        var source = context.createMediaElementSource(element);
+        if (onNodeCreated) {
+            onNodeCreated(source);
+        }
+        return source;
+    };
 
     flock.webAudio.inputManager.openAudioDevice = function (sourceSpec, idOpener, labelOpener, specOpener) {
         if (sourceSpec) {
