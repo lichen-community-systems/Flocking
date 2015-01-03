@@ -52,7 +52,10 @@
         synthDef: {
             expander: {
                 funcName: "flock.demo.mediaElementInput.granulators",
-                args: ["{that}.options.granulatorDef", "{that}.options.selectors"]
+                args: ["{that}.options.granulatorDef", [
+                    "{that}.dom.regular",
+                    "{that}.dom.slow"
+                ]]
             }
         },
 
@@ -88,16 +91,13 @@
     };
 
     flock.demo.mediaElementInput.granulators = function (def, elementSelectors) {
-        var defs = [];
-
-        fluid.each(elementSelectors, function (selector, selectorName) {
+        return fluid.transform(elementSelectors, function (element, i) {
             var defForAudio = fluid.copy(def);
-            defForAudio.source.options.element = selector;
-            defForAudio.id = selectorName;
-            defs.push(defForAudio);
-            defForAudio.source.bus = flock.enviro.shared.audioSettings.chans + defs.length - 1;
-        });
+            defForAudio.source.options.element = element;
+            defForAudio.id = element.selector;
+            defForAudio.source.bus = flock.enviro.shared.audioSettings.chans + i;
 
-        return defs;
+            return defForAudio;
+        });
     };
 }());

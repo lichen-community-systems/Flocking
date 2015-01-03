@@ -23033,9 +23033,18 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.webAudio");
 
-    flock.webAudio.createNode = function (context, nodeSpec, onNodeCreated) {
-        var nodeName = nodeSpec.node,
-            creatorName = "create" + nodeName,
+    flock.webAudio.createNode = function (context, type, args, params) {
+        // Second argument is a NodeSpec object.
+        if (typeof type !== "string") {
+            args = type.args;
+            params = type.params;
+            type = type.node;
+        }
+
+        args = args === undefined || args === null ? [] :
+            fluid.isArrayable(args) ? args : [args];
+
+        var creatorName = "create" + type,
             nodeStrIdx = creatorName.indexOf("Node");
 
         // Trim off "Node" if it is present.
@@ -23043,12 +23052,8 @@ var fluid = fluid || require("infusion"),
             creatorName = creatorName.substring(0, nodeStrIdx);
         }
 
-        var node = context[creatorName].apply(context, nodeSpec.args);
-        flock.webAudio.initializeNodeInputs(node, nodeSpec.params);
-
-        if (onNodeCreated) {
-            onNodeCreated(node);
-        }
+        var node = context[creatorName].apply(context, args);
+        flock.webAudio.initializeNodeInputs(node, params);
 
         return node;
     };
@@ -23458,7 +23463,12 @@ var fluid = fluid || require("infusion"),
 
             createNode: {
                 funcName: "flock.webAudio.createNode",
-                args: ["{that}.context", "{arguments}.0"]
+                args: [
+                    "{that}.context",
+                    "{arguments}.0", // Node type.
+                    "{arguments}.1", // Constructor args.
+                    "{arguments}.2"  // AudioParam connections.
+                ]
             },
 
             disconnect: {
@@ -23646,23 +23656,22 @@ var fluid = fluid || require("infusion"),
             },
 
             openMediaStream: {
-                funcName: "flock.webAudio.createNode",
+                funcName: "flock.webAudio.inputManager.createMediaStreamNode",
                 args: [
+                    "{that}.events.onMediaStreamOpened.fire",                
                     "{that}.context",
-                    {
-                        node: "MediaStreamSource",
-                        args: ["{arguments}.0"]
-                    },
-                    "{that}.events.onMediaStreamOpened.fire"
+                    "MediaStreamSource",
+                    "{arguments}.0"
                 ]
             },
 
             openMediaElement: {
-                funcName: "flock.webAudio.inputManager.createMediaElementSource",
+                funcName: "flock.webAudio.inputManager.createMediaStreamNode",
                 args: [
+                    "{that}.events.onMediaStreamOpened.fire",
                     "{that}.context",
-                    "{arguments}.0",
-                    "{that}.events.onMediaStreamOpened.fire"
+                    "MediaElementSource",
+                    "{arguments}.0"
                 ]
             }
         },
@@ -23677,9 +23686,12 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    flock.webAudio.inputManager.createMediaElementSource = function (context, element, onNodeCreated) {
-        element = typeof element === "string" ? document.querySelector(element) : element;
+    flock.webAudio.inputManager.createMediaStreamNode = function (onCreate, context, type, args, params) {
+        var node = flock.webAudio.createNode(context, type, args, params);
+        onCreate(node);
+    };
 
+    flock.webAudio.inputManager.createMediaElementSource = function (context, element, onNodeCreated) {
         var source = context.createMediaElementSource(element);
         if (onNodeCreated) {
             onNodeCreated(source);
@@ -29331,12 +29343,14 @@ var fluid = fluid || require("infusion"),
         };
 
         that.init = function () {
+            var mediaEl = $(that.options.element);
+
             // TODO: Direct reference to the shared environment.
             // TODO: How could a user possibly know which input bus
             //       the underlying MediaElementAudioSourceNode will
             //       end up being connected to? openMediaElement has to return this information
             //       so that the user will be shielded from even needing to know that buses are involved.
-            flock.enviro.shared.audioStrategy.inputManager.openMediaElement(that.options.element);
+            flock.enviro.shared.audioStrategy.inputManager.openMediaElement(mediaEl[0]);
             that.onInputChanged();
 
             // TODO: Remove this warning when Safari and Android

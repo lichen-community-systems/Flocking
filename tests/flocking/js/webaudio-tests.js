@@ -63,6 +63,7 @@
             ugen: "flock.test.ugen.record",
             source: {
                 ugen: "flock.ugen.mediaIn",
+                bus: flock.enviro.shared.audioSettings.chans,
                 options: {
                     element: audioEl
                 }
@@ -126,7 +127,7 @@
             var def = {
                 ugen: "flock.ugen.mediaIn",
                 options: {
-                    element: String("#audio-" + id)
+                    element: $("#audio-" + id)[0]
                 }
             };
 

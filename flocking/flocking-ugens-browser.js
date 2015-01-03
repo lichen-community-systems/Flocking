@@ -341,12 +341,14 @@ var fluid = fluid || require("infusion"),
         };
 
         that.init = function () {
+            var mediaEl = $(that.options.element);
+
             // TODO: Direct reference to the shared environment.
             // TODO: How could a user possibly know which input bus
             //       the underlying MediaElementAudioSourceNode will
             //       end up being connected to? openMediaElement has to return this information
             //       so that the user will be shielded from even needing to know that buses are involved.
-            flock.enviro.shared.audioStrategy.inputManager.openMediaElement(that.options.element);
+            flock.enviro.shared.audioStrategy.inputManager.openMediaElement(mediaEl[0]);
             that.onInputChanged();
 
             // TODO: Remove this warning when Safari and Android
