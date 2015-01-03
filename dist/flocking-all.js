@@ -23022,6 +23022,9 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.webAudio");
 
+    flock.webAudio.MAX_NODE_INPUTS = 32;
+    flock.webAudio.MAX_CHANS = 32;
+
     flock.webAudio.createNode = function (context, nodeSpec, onNodeCreated) {
         var nodeName = nodeSpec.node,
             creatorName = "create" + nodeName,
@@ -23435,7 +23438,7 @@ var fluid = fluid || require("infusion"),
             inputNodes: [],
             merger: {
                 expander: {
-                    funcName: "flock.webAudio.nativeNodeManager.createMerger",
+                    funcName: "flock.webAudio.nativeNodeManager.createInputMerger",
                     args: [
                         "{contextWrapper}.context",
                         "{that}.options.audioSettings.numInputBuses",
@@ -23495,7 +23498,7 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    flock.webAudio.nativeNodeManager.createMerger = function (ctx, numInputBuses, jsNode) {
+    flock.webAudio.nativeNodeManager.createInputMerger = function (ctx, numInputBuses, jsNode) {
         var merger = ctx.createChannelMerger(numInputBuses);
         merger.channelInterpretation = "discrete";
         merger.connect(jsNode);
@@ -23525,7 +23528,16 @@ var fluid = fluid || require("infusion"),
         inputNodes.length = 0;
     };
 
+    // TODO: How could a user possibly know which input bus this will
+    // end up being connected to, except to know how many inputs have already been created?
     flock.webAudio.nativeNodeManager.insertInput = function (that, node) {
+        if (that.inputNodes.length > flock.webAudio.MAX_NODE_INPUTS) {
+            flock.fail("There are already " + flock.webAudio.MAX_NODE_INPUTS +
+                " Web Audio input nodes connected to Flocking, which is the maximum.");
+
+            return;
+        }
+
         if (!(node instanceof AudioNode)) {
             node = that.createNode(node);
         }
@@ -29311,6 +29323,10 @@ var fluid = fluid || require("infusion"),
         that.init = function () {
             var mediaEl = $(that.options.selector)[0];
             // TODO: Direct reference to the shared environment.
+            // TODO: How could a user possibly know which input bus
+            //       the underlying MediaElementAudioSourceNode will
+            //       end up being connected to? openMediaElement has to return this information
+            //       so that the user will be shielded from even needing to know that buses are involved.
             flock.enviro.shared.audioStrategy.inputManager.openMediaElement(mediaEl);
             that.onInputChanged();
 
