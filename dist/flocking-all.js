@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (January 2, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (January 3, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.1
@@ -23109,6 +23109,7 @@ var fluid = fluid || require("infusion"),
                     funcName: "flock.audioStrategy.web.createScriptProcessor",
                     args: [
                         "{contextWrapper}.context",
+                        "{contextWrapper}.context.destination",
                         "{that}.options.audioSettings"
                     ]
                 }
@@ -23116,9 +23117,6 @@ var fluid = fluid || require("infusion"),
         },
 
         model: {
-            sampleRate: "{that}.options.audioSettings.sampleRate",
-            chans: "{that}.options.audioSettings.chans",
-
             isGenerating: false,
             shouldInitIOS: flock.platform.isIOS,
             krPeriods: {
@@ -23126,23 +23124,6 @@ var fluid = fluid || require("infusion"),
                     funcName: "flock.audioStrategy.web.calcNumKrPeriods",
                     args: "{that}.options.audioSettings"
                 }
-            }
-        },
-
-        modelListeners: {
-            sampleRate: {
-                funcName: "flock.audioStrategy.web.setSampleRate",
-                args: ["{change}.value", "{that}.options.audioSettings"]
-            },
-
-            chans: {
-                funcName: "flock.audioStrategy.web.setChannelState",
-                args: [
-                    "{change}.value",
-                    "{that}.options.audioSettings",
-                    "{contextWrapper}.context.destination",
-                    "{that}.jsNode"
-                ]
             }
         },
 
@@ -23166,8 +23147,18 @@ var fluid = fluid || require("infusion"),
                 options: {
                     listeners: {
                         onCreate: [
-                            "{web}.applier.change(sampleRate, {that}.context.sampleRate)",
-                            "{web}.applier.change(chans, {that}.context.destination.maxChannelCount)"
+                            {
+                                funcName: "flock.audioStrategy.web.setSampleRate",
+                                args: ["{that}.context.sampleRate", "{web}.options.audioSettings"]
+                            },
+                            {
+                                funcName: "flock.audioStrategy.web.setChannelState",
+                                args: [
+                                    "{contextWrapper}.context.destination",
+                                    "{web}.jsNode",
+                                    "{web}.options.audioSettings"
+                                ]
+                            }
                         ]
                     }
                 }
@@ -23268,7 +23259,7 @@ var fluid = fluid || require("infusion"),
     // TODO: Refactor this into a shared environment-level model property.
     // TODO: Set the channel count to the user-specified value. Only set it
     //       to the max channel count if the user has asked for it.
-    flock.audioStrategy.web.setChannelState = function (chans, audioSettings, destinationNode, jsNode) {
+    flock.audioStrategy.web.setChannelState = function (destinationNode, jsNode, audioSettings) {
         if (flock.platform.browser.safari) {
             // Safari will throw an InvalidStateError DOM Exception 11 when
             // attempting to set channelCount on the audioContext's destination.
@@ -23276,20 +23267,24 @@ var fluid = fluid || require("infusion"),
             return;
         }
 
+        var chans = destinationNode.maxChannelCount;
+
         audioSettings.chans = chans;
         destinationNode.channelCount = chans;
-
-        jsNode.channelCountMode = "explicit";
-        jsNode.channelCount = audioSettings.chans;
+        destinationNode.channelCountMode = "explicit";
+        destinationNode.channelInterpretation = "discrete";
     };
 
     flock.audioStrategy.web.calcNumKrPeriods = function (s) {
         return s.bufferSize / s.blockSize;
     };
 
-    flock.audioStrategy.web.createScriptProcessor = function (ctx, s) {
-        var jsNodeName = ctx.createScriptProcessor ? "createScriptProcessor" : "createJavaScriptNode",
-            jsNode = ctx[jsNodeName](s.bufferSize, s.numInputBuses, s.chans);
+    flock.audioStrategy.web.createScriptProcessor = function (ctx, destinationNode, audioSettings) {
+        var chans = flock.platform.browser.safari ? destinationNode.channelCount : destinationNode.maxChannelCount,
+            jsNodeName = ctx.createScriptProcessor ? "createScriptProcessor" : "createJavaScriptNode",
+            jsNode = ctx[jsNodeName](audioSettings.bufferSize, audioSettings.numInputBuses, chans);
+
+        jsNode.channelCountMode = "explicit";
 
         return jsNode;
     };
@@ -23502,6 +23497,7 @@ var fluid = fluid || require("infusion"),
 
     flock.webAudio.nativeNodeManager.createMerger = function (ctx, numInputBuses, jsNode) {
         var merger = ctx.createChannelMerger(numInputBuses);
+        merger.channelInterpretation = "discrete";
         merger.connect(jsNode);
 
         return merger;
