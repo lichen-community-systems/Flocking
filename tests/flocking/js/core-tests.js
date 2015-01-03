@@ -1799,7 +1799,19 @@ var fluid = fluid || require("infusion"),
                 cat: new Float32Array([4.4, 5.5, 6.6])
             }
         });
+    });
 
+    test("Options clamping", function () {
+        flock.init({
+            chans: 64,
+            numInputBuses: 128
+        });
+
+        var enviro = flock.enviro.shared;
+        ok(enviro.audioSettings.chans <= flock.MAX_CHANNELS,
+            "The environment's number of channels should be clamped at " + flock.MAX_CHANNELS);
+        equal(enviro.audioSettings.numInputBuses, flock.MAX_INPUT_BUSES,
+            "The environment's number of input buses should be clamped at " + flock.MAX_INPUT_BUSES);
     });
 
 }());
