@@ -1814,4 +1814,32 @@ var fluid = fluid || require("infusion"),
             "The environment's number of input buses should be clamped at " + flock.MAX_INPUT_BUSES);
     });
 
+    test("Bus acquisition", function () {
+        var enviro = flock.init({
+            chans: 4,
+            buses: 10,
+            numInputBuses: 2
+        });
+
+        var actualBusNum = enviro.acquireNextBus("input"),
+            expectedBusNum = enviro.audioSettings.chans;
+
+        equal(actualBusNum, expectedBusNum,
+            "The first input bus number should have been returned.");
+
+        actualBusNum = enviro.acquireNextBus("input");
+        expectedBusNum = enviro.audioSettings.chans + 1;
+        ok(actualBusNum, expectedBusNum,
+            "The second input bus number should have been returned.");
+
+        try {
+            enviro.acquireNextBus("input");
+            ok(false, "An error should have been thrown when " +
+                "trying to acquire more than the available number of buses.");
+        } catch (e) {
+            ok(e.message.indexOf("insufficient buses available") > -1,
+                "The correct error should be thrown when trying to acquire " +
+                "more than the available number of buses.");
+        }
+    });
 }());

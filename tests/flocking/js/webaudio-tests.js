@@ -35,15 +35,12 @@
 
     module("flock.ugen.mediaIn", {
         setup: function () {
-            flock.init({
+            var enviro = flock.init({
                 numInputBuses: 4
             });
 
-            flock.enviro.shared.audioStrategy.nativeNodeManager.insertOutput({
-                node: "Gain",
-                params: {
-                    gain: 0.0
-                }
+            enviro.audioStrategy.nativeNodeManager.createOutputNode("Gain", undefined, {
+                gain: 0.0
             });
         }
     });

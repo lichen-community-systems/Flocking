@@ -30,7 +30,10 @@ var fluid = fluid || require("infusion"),
         var enviroOpts = !options ? undefined : {
             audioSettings: options
         };
-        flock.enviro.shared = flock.enviro(enviroOpts);
+
+        var enviro = flock.enviro.shared = flock.enviro(enviroOpts);
+
+        return enviro;
     };
 
     flock.OUT_UGEN_ID = "flocking-out";
@@ -801,8 +804,15 @@ var fluid = fluid || require("infusion"),
 
     fluid.defaults("flock.enviro", {
         gradeNames: ["fluid.modelComponent", "flock.nodeList", "autoInit"],
+
         model: {
-            isPlaying: false
+            isPlaying: false,
+
+            // TODO: Buses should probably be managed by their own component.
+            nextAvailableBus: {
+                input: 0,
+                interconnect: 0
+            }
         },
 
         audioSettings: {
@@ -834,6 +844,19 @@ var fluid = fluid || require("infusion"),
                     audioSettings: "{enviro}.options.audioSettings"
                 }
             }
+        },
+
+        invokers: {
+            acquireNextBus: {
+                funcName: "flock.enviro.acquireNextBus",
+                args: [
+                    "{arguments}.0", // The type of bus, either "input" or "interconnect".
+                    "{that}.buses",
+                    "{that}.applier",
+                    "{that}.model",
+                    "{that}.options.audioSettings"
+                ]
+            }
         }
     });
 
@@ -843,6 +866,37 @@ var fluid = fluid || require("infusion"),
         s.chans = Math.min(s.chans, flock.MAX_CHANNELS);
 
         return s;
+    };
+
+    flock.enviro.acquireNextBus = function (type, buses, applier, m, s) {
+        var busNum = m.nextAvailableBus[type];
+
+        if (busNum === undefined) {
+            flock.fail("An invalid bus type was specified when invoking " +
+                "flock.enviro.acquireNextBus(). Type was: " + type);
+            return;
+        }
+
+        // Input buses start immediately after the output buses.
+        var offsetBusNum = busNum + s.chans,
+            offsetBusMax = s.chans + s.numInputBuses;
+
+        // Interconnect buses are after the input buses.
+        if (type === "interconnect") {
+            offsetBusNum += s.numInputBuses;
+            offsetBusMax = buses.length;
+        }
+
+        if (offsetBusNum >= offsetBusMax) {
+            flock.fail("Unable to aquire a bus. There are insufficient buses available." +
+                "Please use an existing bus or configure additional buses using the enviroment's " +
+                "numBuses and numInputBuses parameters.");
+            return;
+        }
+
+        applier.change("nextAvailableBus." + type, ++busNum);
+
+        return offsetBusNum;
     };
 
     flock.enviro.preInit = function (that) {

@@ -2748,8 +2748,13 @@ var fluid = fluid || require("infusion"),
         var that = flock.ugen(inputs, output, options);
 
         that.gen = function (numSamps) {
-            flock.ugen.in.readBus(numSamps, that.output, that.inputs.bus,
-                that.options.audioSettings.buses);
+            var out = that.output,
+                bus = that.bus,
+                i;
+
+            for (i = 0; i < numSamps; i++) {
+                out[i] = bus[i];
+            }
 
             that.mulAdd(numSamps);
         };
@@ -2760,7 +2765,9 @@ var fluid = fluid || require("infusion"),
 
         that.init = function () {
             // TODO: Direct reference to the shared environment.
-            flock.enviro.shared.audioStrategy.inputDeviceManager.openAudioDevice(options);
+            var busNum = flock.enviro.shared.audioStrategy.inputDeviceManager.openAudioDevice(options);
+            that.bus = that.options.audioSettings.buses[busNum];
+
             that.onInputChanged();
         };
 
@@ -2771,7 +2778,6 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.audioIn", {
         rate: "audio",
         inputs: {
-            bus: 2, // TODO: The user shouldn't have to know that buses are involved at all here.
             mul: null,
             add: null
         }

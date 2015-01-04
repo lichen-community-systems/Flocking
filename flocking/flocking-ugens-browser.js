@@ -348,8 +348,7 @@ var fluid = fluid || require("infusion"),
             var enviro = flock.enviro.shared,
                 mediaEl = $(that.options.element),
                 // TODO: Direct reference to the shared environment.
-                busNum = enviro.audioSettings.chans +
-                    enviro.audioStrategy.nativeNodeManager.insertMediaElementInput(mediaEl[0]);
+                busNum = enviro.audioStrategy.nativeNodeManager.createMediaElementInput(mediaEl[0]);
 
             that.bus = that.options.audioSettings.buses[busNum];
             that.onInputChanged();
