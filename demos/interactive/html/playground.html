@@ -1313,7 +1313,8 @@ var synth = flock.synth({
 // Wear headphones to prevent feedback.
 var synth = flock.synth({
     synthDef: {
-        ugen: "flock.ugen.audioIn"
+        ugen: "flock.ugen.audioIn",
+        bus: flock.enviro.shared.audioSettings.chans
     }
 });
         </script>
@@ -1335,7 +1336,8 @@ var synth = flock.synth({
             }
         },
         source: {
-            ugen: "flock.ugen.audioIn"
+            ugen: "flock.ugen.audioIn",
+            bus: flock.enviro.shared.audioSettings.chans
         }
     }
 });

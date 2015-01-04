@@ -2760,7 +2760,7 @@ var fluid = fluid || require("infusion"),
 
         that.init = function () {
             // TODO: Direct reference to the shared environment.
-            flock.enviro.shared.audioStrategy.inputManager.openAudioDevice(options);
+            flock.enviro.shared.audioStrategy.inputDeviceManager.openAudioDevice(options);
             that.onInputChanged();
         };
 
@@ -2771,7 +2771,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.audioIn", {
         rate: "audio",
         inputs: {
-            bus: 2,
+            bus: 2, // TODO: The user shouldn't have to know that buses are involved at all here.
             mul: null,
             add: null
         }

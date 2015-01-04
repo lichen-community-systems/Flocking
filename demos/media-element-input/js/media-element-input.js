@@ -91,11 +91,10 @@
     };
 
     flock.demo.mediaElementInput.granulators = function (def, elementSelectors) {
-        return fluid.transform(elementSelectors, function (element, i) {
+        return fluid.transform(elementSelectors, function (element) {
             var defForAudio = fluid.copy(def);
             defForAudio.source.options.element = element;
             defForAudio.id = element.selector;
-            defForAudio.source.bus = flock.enviro.shared.audioSettings.chans + i;
 
             return defForAudio;
         });

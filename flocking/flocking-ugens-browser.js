@@ -330,8 +330,12 @@ var fluid = fluid || require("infusion"),
         var that = flock.ugen(inputs, output, options);
 
         that.gen = function (numSamps) {
-            flock.ugen.in.readBus(numSamps, that.output, that.inputs.bus,
-                that.options.audioSettings.buses);
+            var out = that.output,
+                bus = that.bus;
+
+            for (var i = 0; i < numSamps; i++) {
+                out[i] = bus[i];
+            }
 
             that.mulAdd(numSamps);
         };
@@ -341,14 +345,13 @@ var fluid = fluid || require("infusion"),
         };
 
         that.init = function () {
-            var mediaEl = $(that.options.element);
+            var enviro = flock.enviro.shared,
+                mediaEl = $(that.options.element),
+                // TODO: Direct reference to the shared environment.
+                busNum = enviro.audioSettings.chans +
+                    enviro.audioStrategy.nativeNodeManager.insertMediaElementInput(mediaEl[0]);
 
-            // TODO: Direct reference to the shared environment.
-            // TODO: How could a user possibly know which input bus
-            //       the underlying MediaElementAudioSourceNode will
-            //       end up being connected to? openMediaElement has to return this information
-            //       so that the user will be shielded from even needing to know that buses are involved.
-            flock.enviro.shared.audioStrategy.inputManager.openMediaElement(mediaEl[0]);
+            that.bus = that.options.audioSettings.buses[busNum];
             that.onInputChanged();
 
             // TODO: Remove this warning when Safari and Android
@@ -370,7 +373,6 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.mediaIn", {
         rate: "audio",
         inputs: {
-            bus: 2,
             mul: null,
             add: null
         },
