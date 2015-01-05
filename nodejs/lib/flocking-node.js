@@ -51,7 +51,8 @@ var fs = require("fs"),
             fs.stat(path, function (error, stats) {
                 fs.open(path, "r", function (error, fd) {
                     var buf = new Buffer(stats.size);
-                    fs.read(fd, buf, 0, buf.length, null, function (error, bytesRead) {
+
+                    fs.read(fd, buf, 0, buf.length, null, function () {
                         var type = flock.file.parseFileExtension(path);
                         var arr = new Int8Array(buf);
                         options.success(arr.buffer, type);
@@ -151,7 +152,7 @@ var fs = require("fs"),
     flock.audioStrategy.nodejs.calcBlockBytes = function (audioSettings, bytesPerSample) {
         return audioSettings.blockSize * audioSettings.chans * bytesPerSample;
     };
-    
+
     flock.audioStrategy.nodejs.createSpeaker = function (audioSettings) {
         return new Speaker({
             channels: audioSettings.chans,

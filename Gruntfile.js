@@ -59,7 +59,7 @@ module.exports = function(grunt) {
         pkg: grunt.file.readJSON("package.json"),
 
         jshint: {
-            all: ["flocking/*.js", "demos/**/*.js", "tests/**/*.js", "!**/third-party/**"],
+            all: ["flocking/*.js", "demos/**/*.js", "tests/**/*.js", "nodejs/**/*.js", "!**/third-party/**"],
             options: {
                 jshintrc: true
             }
