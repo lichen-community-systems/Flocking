@@ -39,6 +39,7 @@ var fluid = fluid || require("infusion"),
     flock.OUT_UGEN_ID = "flocking-out";
     flock.MAX_CHANNELS = 32;
     flock.MAX_INPUT_BUSES = 32;
+    flock.ALL_CHANNELS = 8192;
 
     flock.PI = Math.PI;
     flock.TWOPI = 2.0 * Math.PI;
@@ -803,7 +804,19 @@ var fluid = fluid || require("infusion"),
      ***********************/
 
     fluid.defaults("flock.enviro", {
-        gradeNames: ["fluid.modelComponent", "flock.nodeList", "autoInit"],
+        gradeNames: ["fluid.standardRelayComponent", "flock.nodeList", "autoInit"],
+
+        members: {
+            audioSettings: "@expand:flock.enviro.clampAudioSettings({that}.options.audioSettings)",
+            buses: {
+                expander: {
+                    funcName: "flock.enviro.createAudioBuffers",
+                    args: ["{that}.audioSettings.numBuses", "{that}.audioSettings.blockSize"]
+                }
+            },
+            buffers: {},
+            bufferSources: {}
+        },
 
         model: {
             isPlaying: false,
@@ -841,7 +854,7 @@ var fluid = fluid || require("infusion"),
             audioStrategy: {
                 type: "flock.audioStrategy.platform",
                 options: {
-                    audioSettings: "{enviro}.options.audioSettings"
+                    audioSettings: "{enviro}.audioSettings"
                 }
             }
         },
@@ -854,18 +867,28 @@ var fluid = fluid || require("infusion"),
                     "{that}.buses",
                     "{that}.applier",
                     "{that}.model",
-                    "{that}.options.audioSettings"
+                    "{that}.audioSettings"
                 ]
+            }
+        },
+
+        listeners: {
+            onCreate: {
+                funcName: "flock.enviro.calculateControlRate",
+                args: ["{that}.audioSettings"]
             }
         }
     });
 
-    // TODO: This should be modelized.
-    flock.enviro.setupAudioSettings = function (s) {
-        s.numInputBuses = Math.min(s.numInputBuses, flock.MAX_INPUT_BUSES);
-        s.chans = Math.min(s.chans, flock.MAX_CHANNELS);
+    flock.enviro.clampAudioSettings = function (audioSettings) {
+        audioSettings.numInputBuses = Math.min(audioSettings.numInputBuses, flock.MAX_INPUT_BUSES);
+        return audioSettings;
+    };
 
-        return s;
+    // TODO: This should be modelized.
+    flock.enviro.calculateControlRate = function (audioSettings) {
+        audioSettings.rates.control = audioSettings.rates.audio / audioSettings.blockSize;
+        return audioSettings;
     };
 
     flock.enviro.acquireNextBus = function (type, buses, applier, m, s) {
@@ -888,7 +911,7 @@ var fluid = fluid || require("infusion"),
         }
 
         if (offsetBusNum >= offsetBusMax) {
-            flock.fail("Unable to aquire a bus. There are insufficient buses available." +
+            flock.fail("Unable to aquire a bus. There are insufficient buses available. " +
                 "Please use an existing bus or configure additional buses using the enviroment's " +
                 "numBuses and numInputBuses parameters.");
             return;
@@ -900,11 +923,6 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.enviro.preInit = function (that) {
-        that.audioSettings = flock.enviro.setupAudioSettings(that.options.audioSettings);
-        that.buses = flock.enviro.createAudioBuffers(that.audioSettings.numBuses,
-            that.audioSettings.blockSize);
-        that.buffers = {};
-        that.bufferSources = {};
 
         /**
          * Starts generating samples from all synths.
@@ -946,8 +964,6 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.enviro.finalInit = function (that) {
-        var audioSettings = that.options.audioSettings,
-            rates = audioSettings.rates;
 
         that.gen = function () {
             var evaluator = that.audioStrategy.nodeEvaluator;
@@ -955,10 +971,6 @@ var fluid = fluid || require("infusion"),
             evaluator.gen();
         };
 
-        // TODO: Model-based (with ChangeApplier) sharing of audioSettings
-        rates.audio = that.audioStrategy.options.audioSettings.rates.audio;
-        rates.control = rates.audio / audioSettings.blockSize;
-        audioSettings.chans = that.audioStrategy.options.audioSettings.chans;
     };
 
     flock.enviro.createAudioBuffers = function (numBufs, blockSize) {
@@ -969,6 +981,7 @@ var fluid = fluid || require("infusion"),
         }
         return bufs;
     };
+
 
     fluid.defaults("flock.audioStrategy", {
         gradeNames: ["fluid.standardRelayComponent"],

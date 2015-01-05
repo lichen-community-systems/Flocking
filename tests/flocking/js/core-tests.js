@@ -14,6 +14,8 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
+    fluid.registerNamespace("flock.test.core");
+
     flock.init();
 
     var $ = fluid.registerNamespace("jQuery");
@@ -1802,38 +1804,51 @@ var fluid = fluid || require("infusion"),
     });
 
     test("Options clamping", function () {
-        flock.init({
+        var enviro = flock.init({
             chans: 64,
             numInputBuses: 128
         });
 
-        var enviro = flock.enviro.shared;
         ok(enviro.audioSettings.chans <= flock.MAX_CHANNELS,
             "The environment's number of channels should be clamped at " + flock.MAX_CHANNELS);
         equal(enviro.audioSettings.numInputBuses, flock.MAX_INPUT_BUSES,
             "The environment's number of input buses should be clamped at " + flock.MAX_INPUT_BUSES);
     });
 
-    test("Bus acquisition", function () {
+    test("Options merging", function () {
         var enviro = flock.init({
-            chans: 4,
-            buses: 10,
-            numInputBuses: 2
+            numBuses: 24,
+            chans: 1
         });
 
-        var actualBusNum = enviro.acquireNextBus("input"),
-            expectedBusNum = enviro.audioSettings.chans;
+        var expectedNumChans = !flock.platform.browser.safari ? 1 : enviro.audioStrategy.context.destination.channelCount;
+        equal(enviro.audioSettings.chans, expectedNumChans,
+            "The environment should have been configured with the specified chans option (except on Safari).");
 
-        equal(actualBusNum, expectedBusNum,
-            "The first input bus number should have been returned.");
+        equal(enviro.audioSettings.numBuses, 24,
+            "The environment should have been configured with the specified number of buses");
 
-        actualBusNum = enviro.acquireNextBus("input");
-        expectedBusNum = enviro.audioSettings.chans + 1;
-        ok(actualBusNum, expectedBusNum,
-            "The second input bus number should have been returned.");
+        equal(enviro.buses.length, 24,
+            "The environment should actually have the specified number of buses.");
+    });
+
+
+    module("Bus tests");
+
+    flock.test.core.runBusTests = function (type, numBuses, enviroOpts, expectedCalcFn) {
+        var enviro = flock.init(enviroOpts),
+            actualBusNum,
+            expectedBusNum;
+
+        for (var i = 0; i < numBuses; i++) {
+            actualBusNum = enviro.acquireNextBus(type);
+            expectedBusNum = expectedCalcFn(i, enviro);
+            equal(actualBusNum, expectedBusNum,
+                "The correct " + type + " bus number should have been returned.");
+        }
 
         try {
-            enviro.acquireNextBus("input");
+            enviro.acquireNextBus(type);
             ok(false, "An error should have been thrown when " +
                 "trying to acquire more than the available number of buses.");
         } catch (e) {
@@ -1841,5 +1856,29 @@ var fluid = fluid || require("infusion"),
                 "The correct error should be thrown when trying to acquire " +
                 "more than the available number of buses.");
         }
+    };
+
+    test("Input bus acquisition", function () {
+        var enviroOpts = {
+            chans: 1,
+            numBuses: 10,
+            numInputBuses: 2
+        };
+
+        flock.test.core.runBusTests("input", 2, enviroOpts, function (runIdx, enviro) {
+            return runIdx + enviro.audioSettings.chans;
+        });
+    });
+
+    test("Interconnect bus acquisition", function () {
+        var enviroOpts = {
+            chans: 2,
+            numBuses: 6,
+            numInputBuses: 2
+        };
+
+        flock.test.core.runBusTests("interconnect", 2, enviroOpts, function (runIdx, enviro) {
+            return runIdx + enviro.audioSettings.chans + enviro.audioSettings.numInputBuses;
+        });
     });
 }());

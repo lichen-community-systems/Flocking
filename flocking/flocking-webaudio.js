@@ -109,13 +109,21 @@ var fluid = fluid || require("infusion"),
 
         members: {
             context: "{contextWrapper}.context",
+            sampleRate: "{that}.context.sampleRate",
+            chans: {
+                expander: {
+                    funcName: "flock.audioStrategy.web.calculateChannels",
+                    args: ["{contextWrapper}.context", "{enviro}.options.audioSettings.chans"]
+                }
+            },
             jsNode: {
                 expander: {
                     funcName: "flock.audioStrategy.web.createScriptProcessor",
                     args: [
                         "{contextWrapper}.context",
-                        "{contextWrapper}.context.destination",
-                        "{that}.options.audioSettings"
+                        "{enviro}.options.audioSettings.bufferSize",
+                        "{enviro}.options.audioSettings.numInputBuses",
+                        "{that}.chans"
                     ]
                 }
             }
@@ -127,7 +135,7 @@ var fluid = fluid || require("infusion"),
             krPeriods: {
                 expander: {
                     funcName: "flock.audioStrategy.web.calcNumKrPeriods",
-                    args: "{that}.options.audioSettings"
+                    args: "{enviro}.options.audioSettings"
                 }
             }
         },
@@ -169,11 +177,21 @@ var fluid = fluid || require("infusion"),
         listeners: {
             onCreate: [
                 {
+                    funcName: "flock.audioStrategy.web.setChannelState",
+                    args: ["{that}.chans", "{contextWrapper}.context.destination"]
+                },
+                {
+                    funcName: "flock.audioStrategy.web.pushAudioSettings",
+                    args: ["{that}.sampleRate", "{that}.chans", "{enviro}.options.audioSettings"]
+                },
+                {
                     funcName: "flock.audioStrategy.web.bindWriter",
                     args: [
-                        "{that}",
+                        "{that}.jsNode",
                         "{nodeEvaluator}",
-                        "{nativeNodeManager}"
+                        "{nativeNodeManager}",
+                        "{that}.model",
+                        "{enviro}.options.audioSettings"
                     ]
                 }
             ],
@@ -218,50 +236,46 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    // TODO: Refactor into a shared environment-level model property.
-    flock.audioStrategy.web.setSampleRate = function (sampleRate, audioSettings) {
-        audioSettings.sampleRate = sampleRate;
+    flock.audioStrategy.web.calculateChannels = function (context, chans) {
+        // TODO: Remove this conditional when Safari adds support for multiple channels.
+        return flock.platform.browser.safari ?  context.destination.channelCount :
+            Math.min(chans, context.destination.maxChannelCount);
     };
 
-    // TODO: Refactor this into a shared environment-level model property.
-    // TODO: Set the channel count to the user-specified value. Only set it
-    //       to the max channel count if the user has asked for it.
-    flock.audioStrategy.web.setChannelState = function (destinationNode, jsNode, audioSettings) {
-        if (flock.platform.browser.safari) {
-            // Safari will throw an InvalidStateError DOM Exception 11 when
-            // attempting to set channelCount on the audioContext's destination.
-            // TODO: Remove this when Safari adds support for multiple channels.
-            return;
-        }
-
-        var chans = destinationNode.maxChannelCount;
-
+    // TODO: Refactor into a shared environment-level model property.
+    flock.audioStrategy.web.pushAudioSettings = function (sampleRate, chans, audioSettings) {
+        audioSettings.rates.audio = sampleRate;
         audioSettings.chans = chans;
-        destinationNode.channelCount = chans;
-        destinationNode.channelCountMode = "explicit";
-        destinationNode.channelInterpretation = "discrete";
+    };
+
+    flock.audioStrategy.web.setChannelState = function (chans, destinationNode) {
+        // Safari will throw an InvalidStateError DOM Exception 11 when
+        // attempting to set channelCount on the audioContext's destination.
+        // TODO: Remove this conditional when Safari adds support for multiple channels.
+        if (!flock.platform.browser.safari) {
+            destinationNode.channelCount = chans;
+            destinationNode.channelCountMode = "explicit";
+            destinationNode.channelInterpretation = "discrete";
+        }
     };
 
     flock.audioStrategy.web.calcNumKrPeriods = function (s) {
         return s.bufferSize / s.blockSize;
     };
 
-    flock.audioStrategy.web.createScriptProcessor = function (ctx, destinationNode, audioSettings) {
-        var chans = flock.platform.browser.safari ? destinationNode.channelCount : destinationNode.maxChannelCount,
-            jsNodeName = ctx.createScriptProcessor ? "createScriptProcessor" : "createJavaScriptNode",
-            jsNode = ctx[jsNodeName](audioSettings.bufferSize, audioSettings.numInputBuses, chans);
+    flock.audioStrategy.web.createScriptProcessor = function (ctx, bufferSize, numInputs, chans) {
+        var jsNodeName = ctx.createScriptProcessor ? "createScriptProcessor" : "createJavaScriptNode",
+            jsNode = ctx[jsNodeName](bufferSize, numInputs, chans);
 
         jsNode.channelCountMode = "explicit";
 
         return jsNode;
     };
 
-    flock.audioStrategy.web.bindWriter = function (that, nodeEvaluator, nativeNodeManager) {
-        var jsNode = that.jsNode;
-
-        jsNode.model = that.model;
+    flock.audioStrategy.web.bindWriter = function (jsNode, nodeEvaluator, nativeNodeManager, model, audioSettings) {
+        jsNode.model = model;
         jsNode.evaluator = nodeEvaluator;
-        jsNode.audioSettings = that.options.audioSettings;
+        jsNode.audioSettings = audioSettings;
         jsNode.inputNodes = nativeNodeManager.inputNodes;
         jsNode.onaudioprocess = flock.audioStrategy.web.writeSamples;
     };
@@ -363,11 +377,7 @@ var fluid = fluid || require("infusion"),
         gradeNames: ["fluid.eventedComponent", "autoInit"],
 
         members: {
-            context: {
-                expander: {
-                    funcName: "flock.webAudio.contextWrapper.create"
-                }
-            }
+            context: "@expand:flock.webAudio.contextWrapper.create()"
         },
 
         listeners: {
@@ -375,18 +385,6 @@ var fluid = fluid || require("infusion"),
                 {
                     funcName: "flock.webAudio.contextWrapper.registerSingleton",
                     args: ["{that}"]
-                },
-                {
-                    funcName: "flock.audioStrategy.web.setSampleRate",
-                    args: ["{that}.context.sampleRate", "{web}.options.audioSettings"]
-                },
-                {
-                    funcName: "flock.audioStrategy.web.setChannelState",
-                    args: [
-                        "{contextWrapper}.context.destination",
-                        "{web}.jsNode",
-                        "{web}.options.audioSettings"
-                    ]
                 }
             ]
         }
@@ -412,7 +410,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.webAudio.nativeNodeManager", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
 
-        audioSettings: "{web}.options.audioSettings",
+        audioSettings: "{enviro}.options.audioSettings",
 
         members: {
             outputNode: undefined,
@@ -422,7 +420,7 @@ var fluid = fluid || require("infusion"),
                     funcName: "flock.webAudio.nativeNodeManager.createInputMerger",
                     args: [
                         "{contextWrapper}.context",
-                        "{that}.options.audioSettings.numInputBuses",
+                        "{enviro}.options.audioSettings.numInputBuses",
                         "{web}.jsNode"
                     ]
                 }

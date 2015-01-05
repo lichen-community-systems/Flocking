@@ -774,6 +774,10 @@ var synth = flock.synth({
         <script type="application/flocking" id="quad">// Four separate channels of sound.
 // This demo requires a sound interface with at least four channels, otherwise you'll only hear the first two.
 // At the moment, Firefox and Safari don't support more than two channels, so try this with Chrome.
+flock.init({
+    chans: 4
+});
+
 var synth = flock.synth({
     synthDef: [
         {
