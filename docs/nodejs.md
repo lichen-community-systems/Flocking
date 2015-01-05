@@ -27,7 +27,7 @@ or:
 or:
 
     node nodejs/demos/filtered-noise-and-sine.js
-    
+
 
 ## An Example Flocking Node.js Project Using Infusion ##
 
@@ -68,7 +68,7 @@ And your index.js might look something like this:
 
         // Gets an Infusion loader for the current directory (i.e. the one index.js is located in)
         loader = fluid.getLoader(__dirname),
-    
+
         // Imports Flocking
         flock = fluid.registerNamespace("flock");
 
@@ -115,13 +115,17 @@ In app.js (or whatever files you want to use), you'll define your Flocking code:
     fluid.defaults("myStuff.beepy.app", {
         gradeNames: ["fluid.eventedComponent", "fluid.modelComponent", "autoInit"],
 
+        members: {
+            enviro: "@expand:flock.init()"
+        },
+
         components: {
-        
+
             // Define your synth as a component of your application.
             synth: {
                 type: "myStuff.beepy.synth"
             },
-        
+
             // Define a scheduler for your app.
             scheduler: {
                 type: "flock.scheduler.async.tempo",
@@ -130,20 +134,20 @@ In app.js (or whatever files you want to use), you'll define your Flocking code:
                 }
             }
         },
-        
+
         score: [
             {
                 // Schedule this event as repeating
                 interval: "repeat",
-            
+
                 // Every beat.
                 time: 1.0,
-            
+
                 change: {
                     // This specifies that we want to send the change to the synth named "synth" in our app.
                     synth: "synth",
-                
-                    values: {    
+
+                    values: {
                         // Every beat, set the value of the dust unit generator's "density" input.
                         "beeper.freq": {
                             // This creates a "value Synth" that will be evaluated every time the scheduler ticks.
@@ -159,11 +163,11 @@ In app.js (or whatever files you want to use), you'll define your Flocking code:
                 }
             },
         ],
-    
+
         listeners: {
             onCreate: [
                 {
-                    funcName: "flock.enviro.shared.play"
+                    funcName: "{that}.enviro.play"
                 },
                 {
                     funcName: "{scheduler}.schedule",
@@ -177,7 +181,7 @@ In app.js (or whatever files you want to use), you'll define your Flocking code:
 To run your Node.js, first install its dependencies:
 
     npm install
-    
+
 And then you can start your app with:
-    
+
     node .

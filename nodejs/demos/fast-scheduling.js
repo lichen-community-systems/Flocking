@@ -4,9 +4,8 @@
 "use strict";
 
 var fluid = require("infusion"),
-    flock = require(__dirname + "/../index.js"); //jshint ignore:line
-
-flock.init();
+    flock = require(__dirname + "/../index.js"), //jshint ignore:line
+    enviro = flock.init();
 
 fluid.registerNamespace("flock.demo");
 
@@ -53,6 +52,6 @@ flock.demo.nodeTest = function () {
     return synth;
 };
 
-var synth = flock.demo.nodeTest();
-synth.play();
+flock.demo.nodeTest();
+enviro.play();
 console.log("Playing...");

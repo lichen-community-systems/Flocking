@@ -52,6 +52,8 @@ And an example JavaScript file:
         // You should change this to a namespace that is appropriate for your project.
         fluid.registerNamespace("myStuff");
 
+        var enviro = flock.init();
+
         // Expose any public functions or constructors as properties on your namesapce.
         myStuff.play = function () {
             var mySynth = flock.synth({
@@ -70,7 +72,7 @@ And an example JavaScript file:
             // If you're on iOS, you will need to call in a listener for
             // some kind of user input action, such a button click or touch handler.
             // This is because iOS will only play sound if the user initiated it.
-            flock.enviro.shared.play();
+            enviro.play();
         };
 
     }());
@@ -172,6 +174,10 @@ Fluid components are created by defining JSON "component trees", which are manag
 
             gradeNames: ["fluid.eventedComponent", "autoInit"],
 
+            members: {
+                enviro: "@expand:flock.init"
+            },
+
             // This composition has two components:
             //  1. our sinewaver instrument (defined above)
             //  2. a tempo scheduler running at 60 bpm
@@ -245,7 +251,7 @@ Fluid components are created by defining JSON "component trees", which are manag
             listeners: {
                 onCreate: [
                     {
-                        funcName: "flock.enviro.shared.play"
+                        func: "{that}.enviro.play"
                     },
                     {
                         funcName: "{clock}.schedule",

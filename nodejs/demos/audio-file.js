@@ -3,10 +3,11 @@
 
 "use strict";
 
-var currentDir = __dirname,
-    flock = require(currentDir + "/../index.js"); //jshint ignore:line
+var currentDir = __dirname, //jshint ignore:line
+    flock = require(currentDir + "/../index.js"),
+    enviro = flock.init();
 
-var synth = flock.synth({
+flock.synth({
     synthDef: {
         ugen: "flock.ugen.playBuffer",
         buffer: {
@@ -35,4 +36,4 @@ var synth = flock.synth({
     }
 });
 
-synth.play();
+enviro.play();

@@ -3,7 +3,8 @@
 
 "use strict";
 
-var flock = require(__dirname + "/../index.js"); //jshint ignore:line
+var flock = require(__dirname + "/../index.js"), //jshint ignore:line
+    enviro = flock.init();
 
 var synth = flock.synth({
     id: "noise-sine-synth",
@@ -90,8 +91,7 @@ var synth = flock.synth({
     }
 });
 
-
-synth.play();
+enviro.play();
 console.log("Playing...");
 
 var clock = flock.scheduler.async();
