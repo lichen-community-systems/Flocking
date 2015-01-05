@@ -30,7 +30,9 @@ var fluid = fluid || require("infusion"),
         var enviroOpts = !options ? undefined : {
             audioSettings: options
         };
-        flock.enviro.shared = flock.enviro(enviroOpts);
+        var enviro = flock.enviro.shared = flock.enviro(enviroOpts);
+
+        return enviro;
     };
 
     flock.OUT_UGEN_ID = "flocking-out";

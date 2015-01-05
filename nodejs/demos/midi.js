@@ -1,8 +1,7 @@
 var fluid = require("infusion"),
     loader = fluid.getLoader(__dirname),
-    flock = require(__dirname + "/../index.js");
-
-flock.init();
+    flock = require(__dirname + "/../index.js"),
+    enviro = flock.init();
 
 var midiBand = flock.band({
     components: {

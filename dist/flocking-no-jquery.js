@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (December 28, 2014), Copyright 2014 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (January 5, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof exports === "object") {
@@ -10821,7 +10821,9 @@ var fluid = fluid || require("infusion"),
         var enviroOpts = !options ? undefined : {
             audioSettings: options
         };
-        flock.enviro.shared = flock.enviro(enviroOpts);
+        var enviro = flock.enviro.shared = flock.enviro(enviroOpts);
+
+        return enviro;
     };
 
     flock.OUT_UGEN_ID = "flocking-out";

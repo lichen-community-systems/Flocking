@@ -1,8 +1,7 @@
 var fluid = require("infusion"),
     flock = require(__dirname + "/../index.js"),
-    loader = fluid.getLoader(__dirname);
-
-flock.init();
+    loader = fluid.getLoader(__dirname),
+    enviro = flock.init();
 
 fluid.registerNamespace("flock.demo");
 
@@ -50,5 +49,5 @@ flock.demo.nodeTest = function () {
 };
 
 var synth = flock.demo.nodeTest();
-synth.play();
+enviro.play();
 console.log("Playing...");

@@ -30,17 +30,17 @@ Status
 ------
 Flocking is in active development. It has bugs, it's growing fast, and help is welcome and appreciated.
 
-### Short Term To Dos###
- * More unit generators!
-   * ADSR and other envelopes
-   * Dynamics processors (compressor/limiter)
-   * Lots more
- * Multichannel expansion
- * The ability to connect one unit generator to multiple inputs
+### Roadmap ###
+
+Flocking's [development roadmap](https://github.com/colinbdclark/Flocking/wiki/Release-Plan) is documented in the wiki. Plans include:
+ * Better support for interleaving Flocking unit generators with the Web Audio API
+ * Improved documentation
+ * A new format for specifying connections between unit generators
  * A block-accurate scheduler and more sample-accurate scheduling unit generators
- * Major improvements to the Demo Playground/IDE
- * The ability to record sessions and export an audio file from your browser
- 
+ * Multichannel expansion
+ * A "live data merging" environment for live coding
+ * Graphical editing of Flocking synth defs
+
 
 Getting Started
 ---------------
@@ -127,13 +127,14 @@ by another sine oscillator ("mod"):
         }
     }
 
-**The Environment** is the component responsible for evaluating the graph of Synths and outputting their samples to the current audio output strategy. The Environment is a singleton that is, by default, stored at the global path _flock.enviro.shared_. It manages a tree of Synth (or SynthGroup) instances and evaluates them in order, and exposes a set of methods for managing the order of the Synth graph.
+**The Environment** is the component responsible for evaluating the graph of Synths and outputting their samples to the current audio output strategy. The Environment is created by calling <code>flock.init()</code>. It manages a tree of Synth (or SynthGroup) instances and evaluates them in order, and exposes a set of methods for managing the order of the Synth graph.
 
 The environment needs to be started prior to outputting sound. This can be done by calling the _play()_ method.
 
 Starting the shared Environment:
 
-    flock.enviro.shared.play();
+    var enviro = flock.init();
+    enviro.play();
 
 By default, a Synth is automatically added to the tail of the synth graph, which means it will start playing immediately. If you want to defer the playing of a Synth to a later time, you can override the _addToEnvironment_ option when you instantiate it:
 
@@ -149,11 +150,11 @@ To manage the Environment's synth graph manually, you can use the methods provid
 
 Add a synth to the head of the graph (meaning it will be evaluated first):
 
-    flock.enviro.shared.head(mySynth);
+    enviro.head(mySynth);
 
 Add a synth to the tail of the graph (meaning it will be evaluated after all other synths):
 
-    flock.enviro.shared.tail(mySynth);
+    enviro.tail(mySynth);
 
 Synths provide two convenience methods, _play()_ and _pause()_. Under the covers, these methods simply start the Environment if necessary, and then add the synth to the tail of the environment. In the long run, these methods may be removed from the framework to make the relationship between the Environment and Synths clearer to users.
 

@@ -1,6 +1,7 @@
 var fluid = require("infusion"),
     loader = fluid.getLoader(__dirname),
-    flock = require(__dirname + "/../index.js");
+    flock = require(__dirname + "/../index.js"),
+    enviro = flock.init();
 
 var synth = flock.synth({
     synthDef: {
@@ -31,4 +32,4 @@ var synth = flock.synth({
     }
 });
 
-synth.play();
+enviro.play();

@@ -1,6 +1,7 @@
 var fluid = require("infusion"),
     loader = fluid.getLoader(__dirname),
-    flock = require(__dirname + "/../index.js");
+    flock = require(__dirname + "/../index.js"),
+    enviro = flock.init();
 
 var synth = flock.synth({
     id: "noise-sine-synth",
@@ -87,8 +88,7 @@ var synth = flock.synth({
     }
 });
 
-
-synth.play();
+enviro.play();
 
 var clock = flock.scheduler.async();
 // Fade out after 10 minutes.
@@ -101,8 +101,7 @@ clock.once(600, function () {
         "noiseSource.mul.start": 0.02,
         "noiseSource.mul.end": 0.0
     });
-    
+
     // Wait ten seconds, then clean up.
     clock.once(10.0, clock.end);
 });
-
