@@ -152,7 +152,30 @@
             ok(e.message.indexOf("too many input nodes") > 0,
                 "An error was raised when too many inputs were created.");
         }
+    });
 
+    test("Audio settings are correctly pushed from the Web Audio context.", function () {
+        var enviro = flock.init({
+            chans: flock.ALL_CHANNELS,
+            sampleRate: 192000
+        });
+
+        equal(enviro.audioSettings.rates.audio, enviro.audioStrategy.context.sampleRate,
+            "The correct sample rate was pushed.");
+
+        var synth = flock.synth({
+            synthDef: {
+                id: "sine",
+                ugen: "flock.ugen.sinOsc"
+            },
+            addToEnvironment: false
+        });
+
+        equal(synth.audioSettings.rates.audio, enviro.audioStrategy.context.sampleRate,
+            "And newly instantiated synths receive the correct sample rate.");
+
+        equal(synth.get("sine").model.sampleRate, enviro.audioStrategy.context.sampleRate,
+            "Unit generators also receive the correct sample rate.");
     });
 
     // TODO: Remove this warning when Safari fixes its MediaElementAudioSourceNode implementation.
