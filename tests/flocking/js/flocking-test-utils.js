@@ -474,17 +474,19 @@ var flock = flock || {};
         return that;
     };
 
-    flock.mock.makeMockUGen = function (output, rate) {
+    flock.mock.makeMockUGen = function (output, rate, options) {
+        options = options || {};
+
         if (typeof (output) === "function") {
             output = flock.generate(64, output);
         }
 
+        options.buffer = output;
+
         return flock.parse.ugenForDef({
             ugen: "flock.mock.ugen",
             rate: rate || flock.rates.AUDIO,
-            options: {
-                buffer: output
-            }
+            options: options
         });
     };
 

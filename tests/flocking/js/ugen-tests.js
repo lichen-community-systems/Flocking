@@ -17,9 +17,50 @@ var fluid = fluid || require("infusion"),
     var $ = fluid.registerNamespace("jQuery");
     fluid.registerNamespace("flock.test");
 
+
     flock.init();
 
     var sampleRate = flock.enviro.shared.audioSettings.rates.audio;
+
+    module("UGen interpolation configuration tests");
+
+    fluid.registerNamespace("flock.test.ugen.interpolation");
+
+    flock.test.ugen.interpolation.runTests = function (testSpecs) {
+        fluid.each(testSpecs, function (testSpec) {
+            test(testSpec.interpolator, function () {
+                var ugen = flock.mock.makeMockUGen(new Float32Array(64), undefined, {
+                    interpolation: testSpec.interpolator
+                });
+
+                equal(ugen.interpolate, testSpec.expected,
+                    "The ugen should have been assigned the " + testSpec.interpolator + " interpolator.");
+
+            });
+        });
+    };
+
+    flock.test.ugen.interpolation.testSpecs = [
+        {
+            interpolator: "cubic",
+            expected: flock.interpolate.cubic
+        },
+        {
+            interpolator: "linear",
+            expected: flock.interpolate.linear
+        },
+        {
+            interpolator: "none",
+            expected: flock.interpolate.none
+        },
+        {
+            interpolator: "nonExistent",
+            expected: flock.interpolate.none
+        }
+    ];
+
+    flock.test.ugen.interpolation.runTests(flock.test.ugen.interpolation.testSpecs);
+
 
     module("ugen.input() tests");
 

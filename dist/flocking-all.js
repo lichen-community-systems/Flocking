@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (January 5, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (January 6, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.1
@@ -20412,6 +20412,8 @@ var fluid = fluid || require("infusion"),
      * Performs simple truncation.
      */
     flock.interpolate.none = function (idx, table) {
+        idx = idx % table.length;
+
         return table[idx | 0];
     };
 
@@ -20442,9 +20444,8 @@ var fluid = fluid || require("infusion"),
      * @return {Number} an interpolated value
      */
     flock.interpolate.cubic = function (idx, table) {
-        var len = table.length;
-
-        var intPortion = Math.floor(idx),
+        var len = table.length,
+            intPortion = Math.floor(idx),
             i0 = intPortion % len,
             frac = idx - intPortion,
             im1 = i0 > 0 ? i0 - 1 : len - 1,
@@ -23549,8 +23550,17 @@ var fluid = fluid || require("infusion"),
 
             // Assigns an interpolator function to the UGen.
             // This is inactive by default, but can be used in custom gen() functions.
-            that.interpolate = o.interpolate ?
-                flock.interpolate[o.interpolation] : flock.interpolate.none;
+            that.interpolate = flock.interpolate.none;
+            if (o.interpolation) {
+                var fn = flock.interpolate[o.interpolation];
+                if (!fn) {
+                    fluid.log(fluid.logLevel.IMPORTANT,
+                        "An invalid interpolation type of '" + o.interpolation +
+                        "' was specified. Defaulting to none.");
+                } else {
+                    that.interpolate = fn;
+                }
+            }
 
             if (that.rate === flock.rates.DEMAND && that.inputs.freq) {
                 valueDef = flock.parse.ugenDefForConstantValue(1.0);
