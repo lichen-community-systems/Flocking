@@ -1812,6 +1812,8 @@ var fluid = fluid || require("infusion"),
             "The environment's number of channels should be clamped at " + flock.MAX_CHANNELS);
         equal(enviro.audioSettings.numInputBuses, flock.MAX_INPUT_BUSES,
             "The environment's number of input buses should be clamped at " + flock.MAX_INPUT_BUSES);
+        ok(enviro.audioSettings.numInputBuses >= flock.MIN_INPUT_BUSES,
+            "The environment should have at least " + flock.MIN_INPUT_BUSES + " input buses.");
 
         enviro = flock.init({
             chans: 1,

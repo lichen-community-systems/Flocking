@@ -40,6 +40,7 @@ var fluid = fluid || require("infusion"),
     flock.MAX_CHANNELS = 32;
     flock.MIN_BUSES = 2;
     flock.MAX_INPUT_BUSES = 32;
+    flock.MIN_INPUT_BUSES = 1; // TODO: This constraint should be removed.
     flock.ALL_CHANNELS = flock.MAX_INPUT_BUSES;
 
     flock.PI = Math.PI;
@@ -883,6 +884,7 @@ var fluid = fluid || require("infusion"),
 
     flock.enviro.clampAudioSettings = function (s) {
         s.numInputBuses = Math.min(s.numInputBuses, flock.MAX_INPUT_BUSES);
+        s.numInputBuses = Math.max(s.numInputBuses, flock.MIN_INPUT_BUSES);
         s.chans = Math.min(s.chans, flock.MAX_CHANNELS);
         s.numBuses = Math.max(s.numBuses, s.chans);
         s.numBuses = Math.max(s.numBuses, flock.MIN_BUSES);

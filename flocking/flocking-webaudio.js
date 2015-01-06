@@ -546,9 +546,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.webAudio.nativeNodeManager.createInputMerger = function (ctx, numInputBuses, jsNode) {
-        var numInputs = Math.max(numInputBuses, 1), // Web Audio requires a minimum of 1 input.
-            merger = ctx.createChannelMerger(numInputs);
-
+        var merger = ctx.createChannelMerger(numInputBuses);
         merger.channelInterpretation = "discrete";
         merger.connect(jsNode);
 
