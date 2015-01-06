@@ -1808,11 +1808,24 @@ var fluid = fluid || require("infusion"),
             chans: 64,
             numInputBuses: 128
         });
-
         ok(enviro.audioSettings.chans <= flock.MAX_CHANNELS,
             "The environment's number of channels should be clamped at " + flock.MAX_CHANNELS);
         equal(enviro.audioSettings.numInputBuses, flock.MAX_INPUT_BUSES,
             "The environment's number of input buses should be clamped at " + flock.MAX_INPUT_BUSES);
+
+        enviro = flock.init({
+            chans: 1,
+            numBuses: 1
+        });
+        ok(enviro.audioSettings.numBuses >= 2,
+            "The environment should always have two or more buses.");
+
+        enviro = flock.init({
+            chans: 8,
+            numBuses: 4
+        });
+        equal(enviro.audioSettings.numBuses, 8,
+            "The environment should always have at least as many buses as channels.");
     });
 
     test("Options merging", function () {
