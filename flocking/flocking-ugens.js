@@ -284,8 +284,17 @@ var fluid = fluid || require("infusion"),
 
             // Assigns an interpolator function to the UGen.
             // This is inactive by default, but can be used in custom gen() functions.
-            that.interpolate = o.interpolate ?
-                flock.interpolate[o.interpolation] : flock.interpolate.none;
+            that.interpolate = flock.interpolate.none;
+            if (o.interpolation) {
+                var fn = flock.interpolate[o.interpolation];
+                if (!fn) {
+                    fluid.log(fluid.logLevel.IMPORTANT,
+                        "An invalid interpolation type of '" + o.interpolation +
+                        "' was specified. Defaulting to none.");
+                } else {
+                    that.interpolate = fn;
+                }
+            }
 
             if (that.rate === flock.rates.DEMAND && that.inputs.freq) {
                 valueDef = flock.parse.ugenDefForConstantValue(1.0);

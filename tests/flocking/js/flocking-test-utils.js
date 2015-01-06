@@ -485,17 +485,18 @@ var flock = flock || {};
         return that;
     };
 
-    flock.test.ugen.mock.make = function (output, rate) {
+    flock.test.ugen.mock.make = function (output, rate, options) {
+        options = options || {};
         if (typeof (output) === "function") {
             output = flock.generate(64, output);
         }
 
+        options.buffer = output;
+
         return flock.parse.ugenForDef({
             ugen: "flock.test.ugen.mock",
             rate: rate || flock.rates.AUDIO,
-            options: {
-                buffer: output
-            }
+            options: options
         });
     };
 
