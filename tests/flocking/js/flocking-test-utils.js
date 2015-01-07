@@ -266,8 +266,8 @@ var flock = flock || {};
             return;
         }
 
-        var roundedActual = flock.test.makeNewArrayLike(actual),
-            roundedExpected = flock.test.makeNewArrayLike(expected);
+        var roundedActual = [],
+            roundedExpected = [];
 
         for (var i = 0; i < actual.length; i++) {
             roundedActual[i] = flock.test.roundTo(actual[i], numDecimals);

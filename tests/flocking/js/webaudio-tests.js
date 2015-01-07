@@ -6,7 +6,7 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global fluid, flock, module, test, asyncTest, $, start, equal, ok*/
+/*global fluid, flock, module, test, asyncTest, $, start, equal, ok, deepEqual*/
 
 (function () {
 
@@ -14,13 +14,22 @@
 
     fluid.registerNamespace("flock.test.webaudio");
 
-    flock.test.webaudio.triangleInt16WAVFile = "../../shared/audio/long-triangle-int16.wav";
+    flock.test.webaudio.testFilePathPrefix = "../../shared/audio/long-triangle-int16-";
+    flock.test.webaudio.testFilePathSuffix = ".wav";
+    flock.test.webaudio.getTestFilePath = function (sampleRate) {
+        // Random query parameter works around second-rate web servers
+        // such as node-static, which seem unable to consistently deliver
+        // non-cached content.
+        var random = String(Math.random() + Math.random());
+        return flock.test.webaudio.testFilePathPrefix + sampleRate +
+            flock.test.webaudio.testFilePathSuffix + "?foilCache=" + random;
+    };
 
     flock.test.webaudio.trimArray = function (numLeadingZeros, actual, expected) {
         var start = -1;
 
         for (var i = 0; i < actual.length; i++) {
-            if (actual[i] > 0) {
+            if (actual[i] !== 0) {
                 start = i - numLeadingZeros;
                 break;
             }
@@ -76,7 +85,7 @@
     };
 
     flock.test.runWhenAudioReady = function (audioEl, testFn) {
-        $(audioEl).one("canplay", function () {
+        $(audioEl).one("canplaythrough", function () {
             testFn(audioEl);
         });
     };
@@ -97,12 +106,15 @@
     };
 
     test("Web Audio input node is created.", function () {
-        var nodeManager = flock.enviro.shared.audioStrategy.nativeNodeManager;
+        var audioStrategy = flock.enviro.shared.audioStrategy,
+            nodeManager = audioStrategy.nativeNodeManager;
 
         equal(nodeManager.inputNodes.length, 0,
             "Prior to creating any input nodes, there shouldn't be any in the environment.");
 
-        var audioEl = flock.test.createAudioElement(flock.test.webaudio.triangleInt16WAVFile, true, false);
+        var testFilePath = flock.test.webaudio.getTestFilePath(audioStrategy.context.sampleRate),
+            audioEl = flock.test.createAudioElement(testFilePath, true, false);
+
         flock.test.createRecordingMediaSynth(audioEl);
 
         var mediaElementNode = nodeManager.inputNodes[0];
@@ -178,22 +190,58 @@
             "Unit generators also receive the correct sample rate.");
     });
 
+    flock.test.webaudio.runMediaElementSourceNodeTest = function (expectedBuffer) {
+        var sampleRate = flock.enviro.shared.audioStrategy.context.sampleRate,
+            testFilePath = flock.test.webaudio.getTestFilePath(sampleRate),
+            audioEl = flock.test.createAudioElement(testFilePath, true, false),
+            synth = flock.test.createRecordingMediaSynth(audioEl);
+
+        flock.test.recordAndTest(audioEl, synth, 1.0, function () {
+            var actual = synth.get("recorder").recordBuffer,
+                expected = expectedBuffer.data.channels[0];
+
+            // Note: This trimming silliness appears to be necessary
+            // on Firefox due to the fact that there is a delay before the audio file
+            // actually starts being output to Flocking's input buses.
+            // On Chrome, the audio plays immediately.
+            if (flock.platform.browser.mozilla) {
+                actual = flock.test.webaudio.trimArray(0, actual, expected);
+            }
+
+            var actualShort = actual.subarray(0, 128),
+                expectedShort = expected.subarray(0, 128);
+
+            flock.test.arrayNotNaN(actualShort);
+            flock.test.arrayNotSilent(actualShort);
+            flock.test.arrayUnbroken(actualShort);
+            flock.test.arrayWithinRange(actualShort, -1, 1);
+
+            if (!flock.platform.browser.mozilla) {
+                // Firefox obviously uses two different strategies for decoding
+                // audio between the <audio> tag and audioContext.decodeAudioBuffer().
+                // As a result, this test is too brittle to run in Firefox.
+                deepEqual(actualShort, expectedShort,
+                    "The audio element's data should have been read. Note: this test may fail " +
+                    "if run on a device running at a sample rate other than 44.1, 48, 82.2 or 96 KHz.");
+            }
+        });
+    };
+
     // TODO: Remove this warning when Safari fixes its MediaElementAudioSourceNode implementation.
     if (!flock.platform.browser.safari) {
+        flock.init();
+
+        var sampleRate = flock.enviro.shared.audioStrategy.context.sampleRate,
+            testFilePath = flock.test.webaudio.getTestFilePath(sampleRate);
+
         asyncTest("Reading input samples.", function () {
-            var audioEl = flock.test.createAudioElement(flock.test.webaudio.triangleInt16WAVFile, true, false),
-                synth = flock.test.createRecordingMediaSynth(audioEl);
-
-            flock.test.recordAndTest(audioEl, synth, 1.0, function () {
-                var actual = synth.get("recorder").recordBuffer,
-                    // Note: This trimming silliness appears to be necessary
-                    // on Firefox due to the fact that there is a delay before the audio file
-                    // actually starts being output to Flocking's input buses.
-                    // On Chrome, the audio plays immediately.
-                    actualTrimmed = flock.test.webaudio.trimArray(1, actual, flock.test.audio.triangleData);
-
-                flock.test.arrayEqualBothRounded(4, actualTrimmed, flock.test.audio.triangleData,
-                    "The audio element's data should have been read.");
+            flock.audio.decode({
+                src: testFilePath,
+                success: flock.test.webaudio.runMediaElementSourceNodeTest,
+                error: function (msg) {
+                    ok(false, msg);
+                    start();
+                }
             });
         });
     }

@@ -46,7 +46,8 @@
             source: {
                 ugen: "flock.ugen.mediaIn",
                 options: {}
-            }
+            },
+            mul: 4
         },
 
         synthDef: {
