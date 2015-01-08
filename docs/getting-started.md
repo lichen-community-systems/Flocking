@@ -23,6 +23,7 @@ Here is an example of an HTML page that uses Flocking, which you can use as a te
 
     <html lang="en">
         <head>
+            <meta charset="UTF-8">
             <title>A Flocking Project</title>
 
             <script src="flocking/flocking-all.js"></script>
@@ -268,6 +269,7 @@ And here's the HTML page to go with it:
 
     <html lang="en">
         <head>
+            <meta charset="UTF-8">
             <title>A Flocking Project</title>
 
             <script src="flocking/flocking-all.js"></script>
