@@ -221,7 +221,9 @@ var fluid = fluid || require("infusion"),
                 rawData: rawData,
                 type: type,
                 success: success,
-                error: options.error
+                error: options.error,
+                sampleRate: options.sampleRate ||
+                    (flock.enviro.shared ? flock.enviro.shared.audioSettings.rates.audio : undefined)
             });
         };
 

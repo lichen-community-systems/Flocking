@@ -2700,15 +2700,8 @@ var fluid = fluid || require("infusion"),
         var that = flock.ugen(inputs, output, options);
 
         that.singleBusGen = function (numSamps) {
-            var out = that.output,
-                busNum = that.inputs.bus.output[0] | 0,
-                bus = that.options.audioSettings.buses[busNum],
-                i;
-
-            for (i = 0; i < numSamps; i++) {
-                out[i] = bus[i];
-            }
-
+            flock.ugen.in.readBus(numSamps, that.output, that.inputs.bus,
+                that.options.audioSettings.buses);
             that.mulAdd(numSamps);
         };
 
@@ -2740,6 +2733,16 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
+    flock.ugen.in.readBus = function (numSamps, out, busInput, buses) {
+        var busNum = busInput.output[0] | 0,
+            bus = buses[busNum],
+            i;
+
+        for (i = 0; i < numSamps; i++) {
+            out[i] = bus[i];
+        }
+    };
+
     fluid.defaults("flock.ugen.in", {
         rate: "audio",
         inputs: {
@@ -2749,14 +2752,13 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+
     flock.ugen.audioIn = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
-        // TODO: Complete cut and paste of flock.ugen.in.singleBusGen().
         that.gen = function (numSamps) {
             var out = that.output,
-                busNum = that.inputs.bus.output[0] | 0,
-                bus = that.options.audioSettings.buses[busNum],
+                bus = that.bus,
                 i;
 
             for (i = 0; i < numSamps; i++) {
@@ -2772,7 +2774,9 @@ var fluid = fluid || require("infusion"),
 
         that.init = function () {
             // TODO: Direct reference to the shared environment.
-            flock.enviro.shared.audioStrategy.startReadingAudioInput();
+            var busNum = flock.enviro.shared.audioStrategy.inputDeviceManager.openAudioDevice(options);
+            that.bus = that.options.audioSettings.buses[busNum];
+
             that.onInputChanged();
         };
 
@@ -2783,7 +2787,6 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.audioIn", {
         rate: "audio",
         inputs: {
-            bus: 2,
             mul: null,
             add: null
         }

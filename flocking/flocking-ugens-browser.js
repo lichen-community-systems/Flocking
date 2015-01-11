@@ -325,4 +325,58 @@ var fluid = fluid || require("infusion"),
         rate: "control"
     });
 
+
+    flock.ugen.mediaIn = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var out = that.output,
+                bus = that.bus;
+
+            for (var i = 0; i < numSamps; i++) {
+                out[i] = bus[i];
+            }
+
+            that.mulAdd(numSamps);
+        };
+
+        that.onInputChanged = function () {
+            flock.onMulAddInputChanged(that);
+        };
+
+        that.init = function () {
+            var enviro = flock.enviro.shared,
+                mediaEl = $(that.options.element),
+                // TODO: Direct reference to the shared environment.
+                busNum = enviro.audioStrategy.nativeNodeManager.createMediaElementInput(mediaEl[0]);
+
+            that.bus = that.options.audioSettings.buses[busNum];
+            that.onInputChanged();
+
+            // TODO: Remove this warning when Safari and Android
+            // fix their MediaElementAudioSourceNode implementations.
+            if (flock.platform.browser.safari) {
+                flock.warn("MediaElementSourceNode does not work on Safari. " +
+                    "For more information, see https://bugs.webkit.org/show_bug.cgi?id=84743 " +
+                    "and https://bugs.webkit.org/show_bug.cgi?id=125031");
+            } else if (flock.platform.isAndroid) {
+                flock.warn("MediaElementSourceNode does not work on Android. " +
+                    "For more information, see https://code.google.com/p/chromium/issues/detail?id=419446");
+            }
+        };
+
+        that.init();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.mediaIn", {
+        rate: "audio",
+        inputs: {
+            mul: null,
+            add: null
+        },
+        ugenOptions: {
+            element: "audio"
+        }
+    });
 }());

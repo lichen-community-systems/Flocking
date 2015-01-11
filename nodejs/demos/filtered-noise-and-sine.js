@@ -1,6 +1,9 @@
-var fluid = require("infusion"),
-    loader = fluid.getLoader(__dirname),
-    flock = require(__dirname + "/../index.js"),
+/*jshint node:true*/
+/*global require, __dirname*/
+
+"use strict";
+
+var flock = require(__dirname + "/../index.js"), //jshint ignore:line
     enviro = flock.init();
 
 var synth = flock.synth({
@@ -89,6 +92,7 @@ var synth = flock.synth({
 });
 
 enviro.play();
+console.log("Playing...");
 
 var clock = flock.scheduler.async();
 // Fade out after 10 minutes.

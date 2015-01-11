@@ -255,8 +255,19 @@ var flock = flock || {};
     };
 
     flock.test.arrayEqualBothRounded = function (numDecimals, actual, expected, msg) {
-        var roundedActual = flock.test.makeNewArrayLike(actual),
-            roundedExpected = flock.test.makeNewArrayLike(expected);
+        if (!actual) {
+            ok(false, msg + " - the actual array was undefined.");
+            return;
+        }
+
+        if (actual.length !== expected.length) {
+            ok(false, msg + " - the actual array was a different length (" +
+                actual.length + " instead of " + expected.length + ")");
+            return;
+        }
+
+        var roundedActual = [],
+            roundedExpected = [];
 
         for (var i = 0; i < actual.length; i++) {
             roundedActual[i] = flock.test.roundTo(actual[i], numDecimals);
@@ -459,9 +470,9 @@ var flock = flock || {};
     };
 
 
-    flock.mock = {};
+    fluid.registerNamespace("flock.test.ugen");
 
-    flock.mock.ugen = function (inputs, output, options) {
+    flock.test.ugen.mock = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         if (that.options.buffer) {
             that.output = that.options.buffer;
@@ -474,9 +485,8 @@ var flock = flock || {};
         return that;
     };
 
-    flock.mock.makeMockUGen = function (output, rate, options) {
+    flock.test.ugen.mock.make = function (output, rate, options) {
         options = options || {};
-
         if (typeof (output) === "function") {
             output = flock.generate(64, output);
         }
@@ -484,13 +494,13 @@ var flock = flock || {};
         options.buffer = output;
 
         return flock.parse.ugenForDef({
-            ugen: "flock.mock.ugen",
+            ugen: "flock.test.ugen.mock",
             rate: rate || flock.rates.AUDIO,
             options: options
         });
     };
 
-    flock.mock.makeRandomInputGenerator = function (inputSpec, defaultScale, round) {
+    flock.test.ugen.mock.makeRandomInputGenerator = function (inputSpec, defaultScale, round) {
         defaultScale = defaultScale || 500;
         var scale = typeof (inputSpec) === "string" ? defaultScale : inputSpec.scale,
             val;
@@ -501,4 +511,60 @@ var flock = flock || {};
         };
     };
 
+
+    flock.test.ugen.record = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var recordBuffer = that.recordBuffer,
+                m = that.model,
+                idx = m.idx,
+                source = that.inputs.source.output,
+                out = that.output,
+                i,
+                j,
+                val;
+
+            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.source) {
+                val = source[j];
+                out[i] = val;
+
+                if (idx < recordBuffer.length) {
+                    recordBuffer[idx] = val;
+                    idx++;
+                }
+            }
+
+            m.idx = idx;
+        };
+
+        that.init = function () {
+            var m = that.model,
+                durationSamps = that.options.maxDuration * that.model.sampleRate;
+
+            that.recordBuffer = new Float32Array(durationSamps);
+            m.sampsLeft = durationSamps;
+            m.idx = 0;
+
+            that.onInputChanged();
+        };
+
+        that.init();
+
+        return that;
+    };
+
+    fluid.defaults("flock.test.ugen.record", {
+        inputs: {
+            source: null
+        },
+
+        ugenOptions: {
+            maxDuration: 1, // Seconds.
+            model: {
+                idx: 0
+            },
+            strideInputs: ["source"]
+        }
+    });
 }());

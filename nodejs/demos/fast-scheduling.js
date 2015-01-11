@@ -1,6 +1,10 @@
+/*jshint node:true*/
+/*global require, __dirname, console*/
+
+"use strict";
+
 var fluid = require("infusion"),
-    flock = require(__dirname + "/../index.js"),
-    loader = fluid.getLoader(__dirname),
+    flock = require(__dirname + "/../index.js"), //jshint ignore:line
     enviro = flock.init();
 
 fluid.registerNamespace("flock.demo");
@@ -14,7 +18,7 @@ flock.demo.nodeTest = function () {
     // Creates an array of synths, each playing a degree of the chord specified in "intervals."
     function makeIntervallicSynths (fundamental, intervals) {
         var ampScale = 0.4 / intervals.length;
-        return fluid.transform(intervals, function (interval, idx) {
+        return fluid.transform(intervals, function (interval) {
             return flock.synth({
                 synthDef: {
                     id: "carrier",
@@ -48,6 +52,6 @@ flock.demo.nodeTest = function () {
     return synth;
 };
 
-var synth = flock.demo.nodeTest();
+flock.demo.nodeTest();
 enviro.play();
 console.log("Playing...");

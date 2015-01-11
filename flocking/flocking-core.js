@@ -30,12 +30,19 @@ var fluid = fluid || require("infusion"),
         var enviroOpts = !options ? undefined : {
             audioSettings: options
         };
+
         var enviro = flock.enviro.shared = flock.enviro(enviroOpts);
 
         return enviro;
     };
 
     flock.OUT_UGEN_ID = "flocking-out";
+    flock.MAX_CHANNELS = 32;
+    flock.MIN_BUSES = 2;
+    flock.MAX_INPUT_BUSES = 32;
+    flock.MIN_INPUT_BUSES = 1; // TODO: This constraint should be removed.
+    flock.ALL_CHANNELS = flock.MAX_INPUT_BUSES;
+
     flock.PI = Math.PI;
     flock.TWOPI = 2.0 * Math.PI;
     flock.HALFPI = Math.PI / 2.0;
@@ -112,11 +119,6 @@ var fluid = fluid || require("infusion"),
     fluid.staticEnvironment.audioEngine = fluid.typeTag("flock.platform." + flock.platform.audioEngine);
 
     flock.defaultBufferSizeForPlatform = function () {
-        if (flock.platform.browser.mozilla) {
-            // Strangely terrible performance seems to have cropped up on Firefox in recent versions.
-            return 16384;
-        }
-
         if (flock.platform.isMobile) {
             return 8192;
         }
@@ -444,65 +446,70 @@ var fluid = fluid || require("infusion"),
         "cb": 11
     };
 
-    flock.interpolate = {};
+    flock.interpolate = {
+        /**
+         * Performs simple truncation.
+         */
+        none: function (idx, table) {
+            idx = idx % table.length;
 
-    /**
-     * Performs simple truncation.
-     */
-    flock.interpolate.none = function (idx, table) {
-        idx = idx % table.length;
+            return table[idx | 0];
+        },
 
-        return table[idx | 0];
+        /**
+         * Performs linear interpolation.
+         */
+        linear: function (idx, table) {
+            var len = table.length;
+            idx = idx % len;
+
+            var i1 = idx | 0,
+                i2 = (i1 + 1) % len,
+                frac = idx - i1,
+                y1 = table[i1],
+                y2 = table[i2];
+
+            return y1 + frac * (y2 - y1);
+        },
+
+        /**
+         * Performs Hermite cubic interpolation.
+         *
+         * Based on Laurent De Soras' implementation at:
+         * http://www.musicdsp.org/showArchiveComment.php?ArchiveID=93
+         *
+         * @param idx {Number} an index into the table
+         * @param table {Arrayable} the table from which values around idx should be drawn and interpolated
+         * @return {Number} an interpolated value
+         */
+        hermite: function (idx, table) {
+            var len = table.length,
+                intPortion = Math.floor(idx),
+                i0 = intPortion % len,
+                frac = idx - intPortion,
+                im1 = i0 > 0 ? i0 - 1 : len - 1,
+                i1 = (i0 + 1) % len,
+                i2 = (i0 + 2) % len,
+                xm1 = table[im1],
+                x0 = table[i0],
+                x1 = table[i1],
+                x2 = table[i2],
+                c = (x1 - xm1) * 0.5,
+                v = x0 - x1,
+                w = c + v,
+                a = w + v + (x2 - x0) * 0.5,
+                bNeg = w + a,
+                val = (((a * frac) - bNeg) * frac + c) * frac + x0;
+
+            return val;
+        }
     };
 
-    /**
-     * Performs linear interpolation.
-     */
-    flock.interpolate.linear = function (idx, table) {
-        var len = table.length;
-        idx = idx % len;
+    flock.interpolate.cubic = flock.interpolate.hermite;
 
-        var i1 = idx | 0,
-            i2 = (i1 + 1) % len,
-            frac = idx - i1,
-            y1 = table[i1],
-            y2 = table[i2];
-
-        return y1 + frac * (y2 - y1);
+    flock.warn = function (msg) {
+        fluid.log(fluid.logLevel.WARN, msg);
     };
-
-    /**
-     * Performs cubic interpolation.
-     *
-     * Based on Laurent De Soras' implementation at:
-     * http://www.musicdsp.org/showArchiveComment.php?ArchiveID=93
-     *
-     * @param idx {Number} an index into the table
-     * @param table {Arrayable} the table from which values around idx should be drawn and interpolated
-     * @return {Number} an interpolated value
-     */
-    flock.interpolate.cubic = function (idx, table) {
-        var len = table.length,
-            intPortion = Math.floor(idx),
-            i0 = intPortion % len,
-            frac = idx - intPortion,
-            im1 = i0 > 0 ? i0 - 1 : len - 1,
-            i1 = (i0 + 1) % len,
-            i2 = (i0 + 2) % len,
-            xm1 = table[im1],
-            x0 = table[i0],
-            x1 = table[i1],
-            x2 = table[i2],
-            c = (x1 - xm1) * 0.5,
-            v = x0 - x1,
-            w = c + v,
-            a = w + v + (x2 - x0) * 0.5,
-            bNeg = w + a,
-            val = (((a * frac) - bNeg) * frac + c) * frac + x0;
-
-        return val;
-    };
-
 
     flock.fail = function (msg) {
         if (flock.debug.failHard) {
@@ -801,10 +808,30 @@ var fluid = fluid || require("infusion"),
      ***********************/
 
     fluid.defaults("flock.enviro", {
-        gradeNames: ["fluid.modelComponent", "flock.nodeList", "autoInit"],
-        model: {
-            isPlaying: false
+        gradeNames: ["fluid.standardRelayComponent", "flock.nodeList", "autoInit"],
+
+        members: {
+            audioSettings: "@expand:flock.enviro.clampAudioSettings({that}.options.audioSettings)",
+            buses: {
+                expander: {
+                    funcName: "flock.enviro.createAudioBuffers",
+                    args: ["{that}.audioSettings.numBuses", "{that}.audioSettings.blockSize"]
+                }
+            },
+            buffers: {},
+            bufferSources: {}
         },
+
+        model: {
+            isPlaying: false,
+
+            // TODO: Buses should probably be managed by their own component.
+            nextAvailableBus: {
+                input: 0,
+                interconnect: 0
+            }
+        },
+
         audioSettings: {
             rates: {
                 audio: 48000, // This is only a hint. Some audio backends (such as the Web Audio API)
@@ -816,40 +843,101 @@ var fluid = fluid || require("infusion"),
             },
             blockSize: 64,
             chans: 2,
+            numInputBuses: 2,
             numBuses: 8,
             // This buffer size determines the overall latency of Flocking's audio output.
             // TODO: Replace this with IoC awesomeness.
             bufferSize: flock.defaultBufferSizeForPlatform(),
-
-            // Hints to some audio backends.
-            genPollIntervalFactor: flock.platform.isLinux ? 1 : 20 // Only used on Firefox.
         },
+
         components: {
             asyncScheduler: {
                 type: "flock.scheduler.async"
             },
 
             audioStrategy: {
-                type: "flock.enviro.audioStrategy",
+                type: "flock.audioStrategy.platform",
                 options: {
-                    audioSettings: "{enviro}.options.audioSettings"
+                    audioSettings: "{enviro}.audioSettings"
                 }
+            }
+        },
+
+        invokers: {
+            acquireNextBus: {
+                funcName: "flock.enviro.acquireNextBus",
+                args: [
+                    "{arguments}.0", // The type of bus, either "input" or "interconnect".
+                    "{that}.buses",
+                    "{that}.applier",
+                    "{that}.model",
+                    "{that}.audioSettings"
+                ]
+            }
+        },
+
+        listeners: {
+            onCreate: {
+                funcName: "flock.enviro.calculateControlRate",
+                args: ["{that}.audioSettings"]
             }
         }
     });
 
+    flock.enviro.clampAudioSettings = function (s) {
+        s.numInputBuses = Math.min(s.numInputBuses, flock.MAX_INPUT_BUSES);
+        s.numInputBuses = Math.max(s.numInputBuses, flock.MIN_INPUT_BUSES);
+        s.chans = Math.min(s.chans, flock.MAX_CHANNELS);
+        s.numBuses = Math.max(s.numBuses, s.chans);
+        s.numBuses = Math.max(s.numBuses, flock.MIN_BUSES);
+
+        return s;
+    };
+
+    // TODO: This should be modelized.
+    flock.enviro.calculateControlRate = function (audioSettings) {
+        audioSettings.rates.control = audioSettings.rates.audio / audioSettings.blockSize;
+        return audioSettings;
+    };
+
+    flock.enviro.acquireNextBus = function (type, buses, applier, m, s) {
+        var busNum = m.nextAvailableBus[type];
+
+        if (busNum === undefined) {
+            flock.fail("An invalid bus type was specified when invoking " +
+                "flock.enviro.acquireNextBus(). Type was: " + type);
+            return;
+        }
+
+        // Input buses start immediately after the output buses.
+        var offsetBusNum = busNum + s.chans,
+            offsetBusMax = s.chans + s.numInputBuses;
+
+        // Interconnect buses are after the input buses.
+        if (type === "interconnect") {
+            offsetBusNum += s.numInputBuses;
+            offsetBusMax = buses.length;
+        }
+
+        if (offsetBusNum >= offsetBusMax) {
+            flock.fail("Unable to aquire a bus. There are insufficient buses available. " +
+                "Please use an existing bus or configure additional buses using the enviroment's " +
+                "numBuses and numInputBuses parameters.");
+            return;
+        }
+
+        applier.change("nextAvailableBus." + type, ++busNum);
+
+        return offsetBusNum;
+    };
+
     flock.enviro.preInit = function (that) {
-        that.audioSettings = that.options.audioSettings;
-        that.buses = flock.enviro.createAudioBuffers(that.audioSettings.numBuses,
-                that.audioSettings.blockSize);
-        that.buffers = {};
-        that.bufferSources = {};
 
         /**
          * Starts generating samples from all synths.
          */
         that.play = function () {
-            that.audioStrategy.startGeneratingSamples();
+            that.audioStrategy.start();
             that.model.isPlaying = true;
         };
 
@@ -857,13 +945,17 @@ var fluid = fluid || require("infusion"),
          * Stops generating samples from all synths.
          */
         that.stop = function () {
-            that.audioStrategy.stopGeneratingSamples();
+            that.audioStrategy.stop();
             that.model.isPlaying = false;
         };
 
+        // TODO: This should be factored as an event.
         that.reset = function () {
             that.stop();
             that.asyncScheduler.clearAll();
+            that.applier.change("nextAvailableBus.input", []);
+            that.applier.change("nextAvailableBus.interconnect", []);
+            that.audioStrategy.reset();
             that.clearAll();
         };
 
@@ -884,8 +976,6 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.enviro.finalInit = function (that) {
-        var audioSettings = that.options.audioSettings,
-            rates = audioSettings.rates;
 
         that.gen = function () {
             var evaluator = that.audioStrategy.nodeEvaluator;
@@ -893,10 +983,6 @@ var fluid = fluid || require("infusion"),
             evaluator.gen();
         };
 
-        // TODO: Model-based (with ChangeApplier) sharing of audioSettings
-        rates.audio = that.audioStrategy.options.audioSettings.rates.audio;
-        rates.control = rates.audio / audioSettings.blockSize;
-        audioSettings.chans = that.audioStrategy.options.audioSettings.chans;
     };
 
     flock.enviro.createAudioBuffers = function (numBufs, blockSize) {
@@ -908,8 +994,9 @@ var fluid = fluid || require("infusion"),
         return bufs;
     };
 
-    fluid.defaults("flock.enviro.audioStrategy", {
-        gradeNames: ["fluid.modelComponent"],
+
+    fluid.defaults("flock.audioStrategy", {
+        gradeNames: ["fluid.standardRelayComponent"],
 
         components: {
             nodeEvaluator: {

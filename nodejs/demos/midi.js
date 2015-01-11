@@ -1,7 +1,11 @@
-var fluid = require("infusion"),
-    loader = fluid.getLoader(__dirname),
-    flock = require(__dirname + "/../index.js"),
-    enviro = flock.init();
+/*jshint node:true*/
+/*global require*/
+
+"use strict";
+
+var flock = require(__dirname + "/../index.js"); //jshint ignore:line
+
+flock.init();
 
 var midiBand = flock.band({
     components: {
@@ -17,8 +21,8 @@ var midiBand = flock.band({
                         ugen: "flock.ugen.sinOsc",
                         freq: 1.0,
                         mul: 0.25
-                	}
-            	}
+                    }
+                }
             }
         },
 
@@ -29,7 +33,7 @@ var midiBand = flock.band({
 
                 ports: 0,
 
-            	listeners: {
+                listeners: {
                     onError: {
                         "this": "console",
                         method: "log"
@@ -40,13 +44,13 @@ var midiBand = flock.band({
                         method: "log"
                     },
 
-                	control: {
+                    control: {
                         func: "{synth}.set",
                         args: {
                             "carrier.freq": "@expand:flock.midiFreq({arguments}.0.value)"
                         }
-                	}
-            	}
+                    }
+                }
             }
         }
     }

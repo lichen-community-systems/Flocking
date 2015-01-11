@@ -310,12 +310,46 @@ var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undef
     var $ = fluid.registerNamespace("jQuery"),
         flock = fluid.registerNamespace("flock");
 
+    flock.audio.decode.convertSampleRate = function (buf, originalSampleRate, sampleRate) {
+        var dur = buf.length / originalSampleRate,
+            resampledLen = Math.ceil(dur * sampleRate),
+            resampled = new Float32Array(resampledLen),
+            stepSize = originalSampleRate / sampleRate,
+            step = 0;
+
+        for (var i = 0; i < resampledLen; i++) {
+            resampled[i] = flock.interpolate.hermite(step, buf);
+            step += stepSize;
+        }
+
+        return buf;
+    };
+
+    flock.audio.decode.resample = function (bufDesc, sampleRate) {
+        if (bufDesc.format.sampleRate === sampleRate) {
+            return bufDesc;
+        }
+
+        var originalSampleRate = bufDesc.format.sampleRate,
+            channels = bufDesc.data.channels;
+
+        for (var chan = 0; chan < channels.length; chan++) {
+            channels[chan] = flock.audio.decode.convertSampleRate(channels[chan],
+                originalSampleRate, sampleRate);
+        }
+
+        bufDesc.format.sampleRate = sampleRate;
+
+        return bufDesc;
+    };
+
     /**
      * Synchronously decodes an audio file.
      */
     flock.audio.decode.sync = function (options) {
         try {
             var buffer = flock.audio.decodeArrayBuffer(options.rawData, options.type);
+            flock.audio.decode.resample(buffer, options.sampleRate);
             options.success(buffer, options.type);
         } catch (e) {
             if (options.error) {
@@ -335,6 +369,7 @@ var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undef
             msg = e.data.msg;
 
             if (msg === "afterDecoded") {
+                flock.audio.decode.resample(data.buffer, options.sampleRate);
                 options.success(data.buffer, data.type);
             } else if (msg === "onError") {
                 options.error(data.errorMsg);

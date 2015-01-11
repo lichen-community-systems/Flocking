@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <title>Web Audio API Flocking Unit Tests</title>
+
+        <link rel="stylesheet" media="screen" href="../../third-party/qunit/css/qunit.css" />
+        <script src="../../third-party/qunit/js/qunit.js"></script>
+
+        <script src="../../../third-party/jquery/js/jquery.js"></script>
+        <script src="../../../third-party/infusion/js/Fluid.js"></script>
+        <script src="../../../third-party/infusion/js/FluidIoC.js"></script>
+        <script src="../../../third-party/infusion/js/FluidDebugging.js"></script>
+        <script src="../../../third-party/infusion/js/DataBinding.js"></script>
+
+        <script src="../../../flocking/flocking-core.js"></script>
+        <script src="../../../flocking/flocking-buffers.js"></script>
+        <script src="../../../flocking/flocking-audiofile.js"></script>
+        <script src="../../../flocking/flocking-scheduler.js"></script>
+        <script src="../../../flocking/flocking-webaudio.js"></script>
+        <script src="../../../flocking/flocking-ugens.js"></script>
+        <script src="../../../flocking/flocking-ugens-browser.js"></script>
+        <script src="../../../flocking/flocking-parser.js"></script>
+
+        <script src="../js/flocking-test-utils.js"></script>
+        <script src="../../shared/js/audiofile-dataurls.js"></script>
+        <script src="../js/webaudio-tests.js"></script>
+    </head>
+
+    <body id="body">
+        <h1 id="qunit-header">Web Audio API Flocking Unit Tests</h1>
+        <h2 id="qunit-banner"></h2>
+        <div id="qunit-testrunner-toolbar"></div>
+        <h2 id="qunit-userAgent"></h2>
+        <ol id="qunit-tests"></ol>
+
+        <!-- Test HTML -->
+        <div id="main" style="display: none;">
+            <audio id="audio-1" src="../../shared/audio/long-triangle-int16-44100.wav" controls="true"></audio>
+            <audio id="audio-2" src="../../shared/audio/long-triangle-int16-48000.wav" controls="true"></audio>
+            <audio id="audio-3" src="../../shared/audio/long-triangle-int16-88200.wav" controls="true"></audio>
+            <audio id="audio-4" src="../../shared/audio/long-triangle-int16-96000.wav" controls="true"></audio>
+            <audio id="audio-5" src="../../shared/audio/long-triangle-int16-48000.wav" controls="true"></audio>
+        </div>
+    </body>
+</html>

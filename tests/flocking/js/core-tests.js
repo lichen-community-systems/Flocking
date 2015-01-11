@@ -14,6 +14,8 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
+    fluid.registerNamespace("flock.test.core");
+
     flock.init();
 
     var $ = fluid.registerNamespace("jQuery");
@@ -1317,11 +1319,11 @@ var fluid = fluid || require("infusion"),
         ugen: "flock.ugen.out",
         inputs: {
             sources: {
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 inputs: {
                     gerbil: {
                         id: "gerbil",
-                        ugen: "flock.mock.ugen",
+                        ugen: "flock.test.ugen.mock",
                         inputs: {
                             ear: {
                                 id: "ear",
@@ -1332,10 +1334,10 @@ var fluid = fluid || require("infusion"),
                     },
                     cat: {
                         id: "cat",
-                        ugen: "flock.mock.ugen"
+                        ugen: "flock.test.ugen.mock"
                     },
                     dog: {
-                        ugen: "flock.mock.ugen"
+                        ugen: "flock.test.ugen.mock"
                     }
                 }
             },
@@ -1401,7 +1403,7 @@ var fluid = fluid || require("infusion"),
             expectedInput = synth.namedNodes.ear,
             newUGen = flock.parse.ugenForDef({
                 id: "gerbil",
-                ugen: "flock.mock.ugen"
+                ugen: "flock.test.ugen.mock"
             });
         synth.swapTree(newUGen, toReplace);
 
@@ -1433,7 +1435,7 @@ var fluid = fluid || require("infusion"),
         var synth1 = flock.synth({
             synthDef: {
                 id: "mock",
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 freq: 110,
                 mul: 0.1,
                 options: {
@@ -1447,7 +1449,7 @@ var fluid = fluid || require("infusion"),
         var synth2 = flock.synth({
             synthDef: {
                 id: "mock",
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 freq: 220,
                 mul: 0.2,
                 options: {
@@ -1553,11 +1555,11 @@ var fluid = fluid || require("infusion"),
     test("flock.synth.polyphonic", function () {
         var def = {
             id: "carrier",
-            ugen: "flock.mock.ugen",
+            ugen: "flock.test.ugen.mock",
             freq: 440,
             mul: {
                 id: "env",
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 gate: 0
             }
         };
@@ -1663,15 +1665,15 @@ var fluid = fluid || require("infusion"),
     test("flock.synth() with mix of compressed and expanded ugenDefs", function () {
         var mixedSynthDef = {
             id: "carrier",
-            ugen: "flock.mock.ugen",
+            ugen: "flock.test.ugen.mock",
             freq: {
                 id: "mod",
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 inputs: {
                     freq: 440,
                     phase: {
                         id: "line",
-                        ugen: "flock.mock.ugen",
+                        ugen: "flock.test.ugen.mock",
                         start: 1,
                         end: 10,
                         duration: 2
@@ -1799,7 +1801,99 @@ var fluid = fluid || require("infusion"),
                 cat: new Float32Array([4.4, 5.5, 6.6])
             }
         });
-
     });
 
+    test("Options clamping", function () {
+        var enviro = flock.init({
+            chans: 64,
+            numInputBuses: 128
+        });
+        ok(enviro.audioSettings.chans <= flock.MAX_CHANNELS,
+            "The environment's number of channels should be clamped at " + flock.MAX_CHANNELS);
+        equal(enviro.audioSettings.numInputBuses, flock.MAX_INPUT_BUSES,
+            "The environment's number of input buses should be clamped at " + flock.MAX_INPUT_BUSES);
+        ok(enviro.audioSettings.numInputBuses >= flock.MIN_INPUT_BUSES,
+            "The environment should have at least " + flock.MIN_INPUT_BUSES + " input buses.");
+
+        enviro = flock.init({
+            chans: 1,
+            numBuses: 1
+        });
+        ok(enviro.audioSettings.numBuses >= 2,
+            "The environment should always have two or more buses.");
+
+        enviro = flock.init({
+            chans: 8,
+            numBuses: 4
+        });
+        equal(enviro.audioSettings.numBuses, 8,
+            "The environment should always have at least as many buses as channels.");
+    });
+
+    test("Options merging", function () {
+        var enviro = flock.init({
+            numBuses: 24,
+            chans: 1
+        });
+
+        var expectedNumChans = !flock.platform.browser.safari ? 1 : enviro.audioStrategy.context.destination.channelCount;
+        equal(enviro.audioSettings.chans, expectedNumChans,
+            "The environment should have been configured with the specified chans option (except on Safari).");
+
+        equal(enviro.audioSettings.numBuses, 24,
+            "The environment should have been configured with the specified number of buses");
+
+        equal(enviro.buses.length, 24,
+            "The environment should actually have the specified number of buses.");
+    });
+
+
+    module("Bus tests");
+
+    flock.test.core.runBusTests = function (type, numBuses, enviroOpts, expectedCalcFn) {
+        var enviro = flock.init(enviroOpts),
+            actualBusNum,
+            expectedBusNum;
+
+        for (var i = 0; i < numBuses; i++) {
+            actualBusNum = enviro.acquireNextBus(type);
+            expectedBusNum = expectedCalcFn(i, enviro);
+            equal(actualBusNum, expectedBusNum,
+                "The correct " + type + " bus number should have been returned.");
+        }
+
+        try {
+            enviro.acquireNextBus(type);
+            ok(false, "An error should have been thrown when " +
+                "trying to acquire more than the available number of buses.");
+        } catch (e) {
+            ok(e.message.indexOf("insufficient buses available") > -1,
+                "The correct error should be thrown when trying to acquire " +
+                "more than the available number of buses.");
+        }
+    };
+
+    test("Input bus acquisition", function () {
+        var enviroOpts = {
+            chans: 1,
+            numBuses: 10,
+            numInputBuses: 2
+        };
+
+        flock.test.core.runBusTests("input", 2, enviroOpts, function (runIdx, enviro) {
+            return runIdx + enviro.audioSettings.chans;
+        });
+    });
+
+    test("Interconnect bus acquisition", function () {
+        var enviroOpts = {
+            chans: 2,
+            numBuses: 6,
+            numInputBuses: 2
+        };
+
+        flock.test.core.runBusTests("interconnect", 2, enviroOpts, function (runIdx, enviro) {
+            return runIdx + enviro.audioSettings.chans + enviro.audioSettings.numInputBuses;
+        });
+    });
 }());

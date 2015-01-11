@@ -29,7 +29,7 @@ var fluid = fluid || require("infusion"),
     flock.test.ugen.interpolation.runTests = function (testSpecs) {
         fluid.each(testSpecs, function (testSpec) {
             test(testSpec.interpolator, function () {
-                var ugen = flock.mock.makeMockUGen(new Float32Array(64), undefined, {
+                var ugen = flock.test.ugen.mock.make(new Float32Array(64), undefined, {
                     interpolation: testSpec.interpolator
                 });
 
@@ -84,7 +84,7 @@ var fluid = fluid || require("infusion"),
     };
 
     test("input() data type tests", function () {
-        var mockUGen = flock.mock.makeMockUGen(new Float32Array(64));
+        var mockUGen = flock.test.ugen.mock.make(new Float32Array(64));
 
         // Non-existent input.
         var val = mockUGen.input("cat");
@@ -93,13 +93,13 @@ var fluid = fluid || require("infusion"),
 
         // Setting a previously non-existent input.
         setAndCheckInput(mockUGen, "cat", {
-            ugen: "flock.mock.ugen"
+            ugen: "flock.test.ugen.mock"
         });
 
         // Replacing an existing input with an ugenDef.
         setAndCheckInput(mockUGen, "cat", {
             id: "new-cat",
-            ugen: "flock.mock.ugen"
+            ugen: "flock.test.ugen.mock"
         });
         equal(mockUGen.input("cat").id, "new-cat", "The new input should have the appropriate ID.");
 
@@ -107,11 +107,11 @@ var fluid = fluid || require("infusion"),
         var defs = [
             {
                 id: "first-cat",
-                ugen: "flock.mock.ugen"
+                ugen: "flock.test.ugen.mock"
             },
             {
                 id: "second-cat",
-                ugen: "flock.mock.ugen"
+                ugen: "flock.test.ugen.mock"
             }
         ];
         setAndCheckArrayInput(mockUGen, "cat", defs, function (i, def) {
@@ -250,15 +250,15 @@ var fluid = fluid || require("infusion"),
                     ugen: "flock.tests.mockMultiInputUGen",
                     cats: [
                         {
-                            ugen: "flock.mock.ugen",
+                            ugen: "flock.test.ugen.mock",
                             rate: "audio"
                         },
                         {
-                            ugen: "flock.mock.ugen",
+                            ugen: "flock.test.ugen.mock",
                             rate: "control"
                         },
                         {
-                            ugen: "flock.mock.ugen",
+                            ugen: "flock.test.ugen.mock",
                             rate: "audio"
                         }
                     ]
@@ -315,7 +315,7 @@ var fluid = fluid || require("infusion"),
                     ugen: "flock.tests.mockMultiInputUGen",
                     cats: {
                         id: "mono",
-                        ugen: "flock.mock.ugen",
+                        ugen: "flock.test.ugen.mock",
                         rate: "audio"
                     }
                 }
@@ -644,9 +644,9 @@ var fluid = fluid || require("infusion"),
 
     test("flock.ugen.sum()", function () {
         var addBuffer = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31],
-            one = flock.mock.makeMockUGen(addBuffer),
-            two = flock.mock.makeMockUGen(addBuffer),
-            three = flock.mock.makeMockUGen(addBuffer);
+            one = flock.test.ugen.mock.make(addBuffer),
+            two = flock.test.ugen.mock.make(addBuffer),
+            three = flock.test.ugen.mock.make(addBuffer);
 
         var inputs = {
             sources: [one]
@@ -950,7 +950,7 @@ var fluid = fluid || require("infusion"),
         rate: flock.rates.AUDIO,
         inputs: {
             source: {
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 options: {
                     buffer: flock.generate(64, 1.0)
                 }
@@ -1014,7 +1014,7 @@ var fluid = fluid || require("infusion"),
                 id: "gate",
                 ugen: "flock.ugen.gate",
                 source: {
-                    ugen: "flock.mock.ugen",
+                    ugen: "flock.test.ugen.mock",
                     options: {
                         buffer: flock.test.ascendingBuffer(64, 1)
                     }
@@ -1056,7 +1056,7 @@ var fluid = fluid || require("infusion"),
                     synthDef: {
                         threshold: 0.5,
                         sideChain: {
-                            ugen: "flock.mock.ugen",
+                            ugen: "flock.test.ugen.mock",
                             options: {
                                 buffer: flock.test.ascendingBuffer(64, 0, 0.05)
                             }
@@ -1073,7 +1073,7 @@ var fluid = fluid || require("infusion"),
                     synthDef: {
                         threshold: 1,
                         sideChain: {
-                            ugen: "flock.mock.ugen",
+                            ugen: "flock.test.ugen.mock",
                             options: {
                                 buffer: flock.generate(64, function (i) {
                                     return i % 2 ? 1.0 : 0.0;
@@ -1100,7 +1100,7 @@ var fluid = fluid || require("infusion"),
             bus: 62,
             expand: 1,
             sources: {
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 id: "bufferMock",
                 options: {
                     buffer: flock.test.ascendingBuffer(64, 1)
@@ -1182,7 +1182,7 @@ var fluid = fluid || require("infusion"),
     test("flock.ugen.normalize()", function () {
         var testBuffer = flock.test.ascendingBuffer(64, -31),
             mock = {
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 options: {
                     buffer: testBuffer
                 }
@@ -1426,7 +1426,7 @@ var fluid = fluid || require("infusion"),
         var sourceBuffer = flock.test.ascendingBuffer(64, 1),
             sampGenCount = 0,
             incrementingMock = {
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 options: {
                     buffer: sourceBuffer,
                     gen: function (that, numSamps) {
@@ -1471,142 +1471,6 @@ var fluid = fluid || require("infusion"),
             "The delay's third block should contain the source's second block of samples.");
     });
 
-
-    module("flock.ugen.phasor");
-
-    var loopOneDef =  {
-        ugen: "flock.ugen.phasor",
-        start: 1.0,
-        end: 66,
-        reset: 2.0,
-        step: 1.0
-    };
-
-    var testTriggeredSignals = function (synth, ugen, tests) {
-        for (var i = 0; i < tests.length; i++) {
-            var test = tests[i];
-            if (test.trigger !== undefined) {
-                ugen.input("trigger", test.trigger);
-            }
-            synth.gen();
-            deepEqual(ugen.output, test.value, test.msg);
-        }
-    };
-
-    var testLoopUGen = function (testSpecs) {
-        $.each(testSpecs, function (i, testSpec) {
-            var def = $.extend(true, {rate: testSpec.rate, id: "looper"}, testSpec.def);
-            var synth = flock.synth({
-                synthDef: def
-            });
-            var loop = synth.namedNodes.looper;
-
-            test(testSpec.name, function () {
-                testTriggeredSignals(synth, loop, testSpec.tests);
-            });
-        });
-    };
-
-    var loopTestSpecs = [
-        {
-            name: "audio rate",
-            rate: "audio",
-            def: loopOneDef,
-            tests: [
-                {
-                    value: flock.test.ascendingBuffer(64, 1),
-                    msg: "The loop unit generator should output a signal increasing from 1 to 64"
-                },
-                {
-                    value: flock.generate(64, function (i) {
-                        return i === 0 ? 65 : i;
-                    }),
-                    msg: "Then it should complete the cycle and loop back to the start point."
-                },
-                {
-                    value: flock.generate(64, function (i) {
-                        return i + 2 % 66;
-                    }),
-                    trigger: 1.0,
-                    msg: "When it receives a trigger signal, the loop ugen should move back to the reset point."
-                }
-            ]
-        },
-        {
-            name: "control rate",
-            rate: "control",
-            def: loopOneDef,
-            tests: [
-                {
-                    value: new Float32Array([1.0]),
-                    msg: "The loop unit generator should output a control rate signal containing the first value."
-                },
-                {
-                    value: new Float32Array([2.0]),
-                    msg: "At the next control point, it should have increased by one step value."
-                },
-                {
-                    value: new Float32Array([3.0]),
-                    msg: "At the next control point, it should have continued to increase by one step value."
-                },
-                {
-                    value: new Float32Array([2.0]),
-                    trigger: 1.0,
-                    msg: "When it receives a trigger signal, the loop ugen should move back to the reset point."
-                }
-            ]
-        },
-        {
-            name: "control rate, wraparound",
-            rate: "control",
-            def: {
-                ugen: "flock.ugen.phasor",
-                start: 0.0,
-                end: 2.0,
-                step: 1.0
-            },
-            tests: [
-                {
-                    value: new Float32Array([0.0]),
-                    msg: "The loop unit generator should output a control rate signal containing the first value."
-                },
-                {
-                    value: new Float32Array([1.0]),
-                    msg: "At the next control point, it should increase by one step value."
-                },
-                {
-                    value: new Float32Array([0.0]),
-                    msg: "At the next control point, it should have looped back to the start."
-                },
-                {
-                    value: new Float32Array([1.0]),
-                    msg: "At the next control point, it should increase by one step value."
-                }
-            ]
-        },
-        {
-            name: "control rate, step value is the duration of a sample in seconds.",
-            rate: "control",
-            def: {
-                ugen: "flock.ugen.phasor",
-                start: 0,
-                end: 1.0,
-                step: 1.0 / sampleRate
-            },
-            tests: [
-                {
-                    value: new Float32Array([0]),
-                    msg: "The value at the first control period should be start value."
-                },
-                {
-                    value: flock.generate(1, 1.0 / sampleRate),
-                    msg: "At the second control point, the value should be the duration of 64 samples."
-                }
-            ]
-        }
-    ];
-
-    testLoopUGen(loopTestSpecs);
 
     module("flock.ugen.bufferDuration tests", {
         setup: function () {
@@ -1972,7 +1836,7 @@ var fluid = fluid || require("infusion"),
                     freq: sampleRate
                 },
                 trigger: {
-                    ugen: "flock.mock.ugen",
+                    ugen: "flock.test.ugen.mock",
                     rate: "audio",
                     options: {
                         buffer: flock.generate(64, 0.0)
@@ -1988,7 +1852,7 @@ var fluid = fluid || require("infusion"),
                 },
                 {
                     trigger: {
-                        ugen: "flock.mock.ugen",
+                        ugen: "flock.test.ugen.mock",
                         rate: "audio",
                         options: {
                             buffer: secondTrig
@@ -2000,7 +1864,7 @@ var fluid = fluid || require("infusion"),
                 },
                 {
                     trigger: {
-                        ugen: "flock.mock.ugen",
+                        ugen: "flock.test.ugen.mock",
                         rate: "audio",
                         options: {
                             buffer: thirdTrig
@@ -2214,7 +2078,7 @@ var fluid = fluid || require("infusion"),
             synthDef: {
                 ugen: "flock.ugen.triggerCallback",
                 source: {
-                    ugen: "flock.mock.ugen",
+                    ugen: "flock.test.ugen.mock",
                     options: {
                         buffer: flock.generate(64, function (i) {
                             return i;
@@ -2222,7 +2086,7 @@ var fluid = fluid || require("infusion"),
                     }
                 },
                 trigger: {
-                    ugen: "flock.mock.ugen",
+                    ugen: "flock.test.ugen.mock",
                     options: {
                         buffer: flock.generate(64, function (i) {
                             return i === 31 ? 1.0 : 0.0;
@@ -2360,7 +2224,7 @@ var fluid = fluid || require("infusion"),
                 pan: panVal,
                 source: {
                     id: "mock",
-                    ugen: "flock.mock.ugen",
+                    ugen: "flock.test.ugen.mock",
                     options: {
                         buffer: ones
                     }
