@@ -446,65 +446,66 @@ var fluid = fluid || require("infusion"),
         "cb": 11
     };
 
-    flock.interpolate = {};
+    flock.interpolate = {
+        /**
+         * Performs simple truncation.
+         */
+        none: function (idx, table) {
+            idx = idx % table.length;
 
-    /**
-     * Performs simple truncation.
-     */
-    flock.interpolate.none = function (idx, table) {
-        idx = idx % table.length;
+            return table[idx | 0];
+        },
 
-        return table[idx | 0];
+        /**
+         * Performs linear interpolation.
+         */
+        linear: function (idx, table) {
+            var len = table.length;
+            idx = idx % len;
+
+            var i1 = idx | 0,
+                i2 = (i1 + 1) % len,
+                frac = idx - i1,
+                y1 = table[i1],
+                y2 = table[i2];
+
+            return y1 + frac * (y2 - y1);
+        },
+
+        /**
+         * Performs Hermite cubic interpolation.
+         *
+         * Based on Laurent De Soras' implementation at:
+         * http://www.musicdsp.org/showArchiveComment.php?ArchiveID=93
+         *
+         * @param idx {Number} an index into the table
+         * @param table {Arrayable} the table from which values around idx should be drawn and interpolated
+         * @return {Number} an interpolated value
+         */
+        hermite: function (idx, table) {
+            var len = table.length,
+                intPortion = Math.floor(idx),
+                i0 = intPortion % len,
+                frac = idx - intPortion,
+                im1 = i0 > 0 ? i0 - 1 : len - 1,
+                i1 = (i0 + 1) % len,
+                i2 = (i0 + 2) % len,
+                xm1 = table[im1],
+                x0 = table[i0],
+                x1 = table[i1],
+                x2 = table[i2],
+                c = (x1 - xm1) * 0.5,
+                v = x0 - x1,
+                w = c + v,
+                a = w + v + (x2 - x0) * 0.5,
+                bNeg = w + a,
+                val = (((a * frac) - bNeg) * frac + c) * frac + x0;
+
+            return val;
+        }
     };
 
-    /**
-     * Performs linear interpolation.
-     */
-    flock.interpolate.linear = function (idx, table) {
-        var len = table.length;
-        idx = idx % len;
-
-        var i1 = idx | 0,
-            i2 = (i1 + 1) % len,
-            frac = idx - i1,
-            y1 = table[i1],
-            y2 = table[i2];
-
-        return y1 + frac * (y2 - y1);
-    };
-
-    /**
-     * Performs cubic interpolation.
-     *
-     * Based on Laurent De Soras' implementation at:
-     * http://www.musicdsp.org/showArchiveComment.php?ArchiveID=93
-     *
-     * @param idx {Number} an index into the table
-     * @param table {Arrayable} the table from which values around idx should be drawn and interpolated
-     * @return {Number} an interpolated value
-     */
-    flock.interpolate.cubic = function (idx, table) {
-        var len = table.length,
-            intPortion = Math.floor(idx),
-            i0 = intPortion % len,
-            frac = idx - intPortion,
-            im1 = i0 > 0 ? i0 - 1 : len - 1,
-            i1 = (i0 + 1) % len,
-            i2 = (i0 + 2) % len,
-            xm1 = table[im1],
-            x0 = table[i0],
-            x1 = table[i1],
-            x2 = table[i2],
-            c = (x1 - xm1) * 0.5,
-            v = x0 - x1,
-            w = c + v,
-            a = w + v + (x2 - x0) * 0.5,
-            bNeg = w + a,
-            val = (((a * frac) - bNeg) * frac + c) * frac + x0;
-
-        return val;
-    };
-
+    flock.interpolate.cubic = flock.interpolate.hermite;
 
     flock.warn = function (msg) {
         fluid.log(fluid.logLevel.WARN, msg);
@@ -948,9 +949,12 @@ var fluid = fluid || require("infusion"),
             that.model.isPlaying = false;
         };
 
+        // TODO: This should be factored as an event.
         that.reset = function () {
             that.stop();
             that.asyncScheduler.clearAll();
+            that.applier.change("nextAvailableBus.input", []);
+            that.applier.change("nextAvailableBus.interconnect", []);
             that.audioStrategy.reset();
             that.clearAll();
         };
