@@ -39,6 +39,7 @@ module.exports = function(grunt) {
             "flocking/flocking-scheduler.js",
             "flocking/flocking-webaudio.js",
             "flocking/flocking-ugens.js",
+            "flocking/flocking-ugens-bandlimited.js",
             "flocking/flocking-envelopes.js",
             "flocking/flocking-ugens-browser.js",
             "flocking/flocking-gfx.js",

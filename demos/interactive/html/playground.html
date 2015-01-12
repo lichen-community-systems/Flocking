@@ -33,6 +33,7 @@
         <script src="../../../flocking/flocking-webaudio.js"></script>
         <script src="../../../flocking/flocking-parser.js"></script>
         <script src="../../../flocking/flocking-ugens.js"></script>
+        <script src="../../../flocking/flocking-ugens-bandlimited.js"></script>
         <script src="../../../flocking/flocking-envelopes.js"></script>
         <script src="../../../flocking/flocking-ugens-browser.js"></script>
         <script src="../../../flocking/flocking-gfx.js"></script>
@@ -78,6 +79,7 @@
 		                        <option value="noise_sin">LFNoise &amp; SinOsc</option>
 		                        <option value="noise_impulse">Impulse</option>
 		                        <option value="impulse_phase">Impulse Phase Modulation</option>
+                                <option value="blit">Bandlimited Impulse</option>
 		                    </optgroup>
 		                    <optgroup label="Synthesis Techniques">
 		                        <option value="amp_mod">Amplitude modulation</option>
@@ -688,6 +690,35 @@ var synth = flock.synth({
     ]
 });
         </script>
+
+        <script type="application/flocking" id="blit">var synth = flock.synth({
+    synthDef: [
+        // The left channel aliases alias at high frequencies (you'll hear it wobble).
+        {
+            ugen: "flock.ugen.impulse",
+            freq: {
+                ugen: "flock.ugen.xLine",
+                start: 10000,
+                end: 20,
+                duration: 10
+            },
+            mul: 0.5
+        },
+        // The right channel is bandlimited, so it does not alias.
+        {
+            ugen: "flock.ugen.blit",
+            freq: {
+                ugen: "flock.ugen.xLine",
+                start: 10000,
+                end: 20,
+                duration: 10
+            },
+            mul: 0.5
+        }
+    ]
+});
+        </script>
+
         <script type="application/flocking" id="scope">
 // Dynamic scope: create a synth with a scope ugen
 //at the end of the ugen graph.
