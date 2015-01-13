@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (January 12, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (January 13, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof exports === "object") {
@@ -18971,7 +18971,7 @@ var fluid = fluid || require("infusion"),
     "use strict";
 
     /**
-     * Generates a band-limited impulse train.
+     * A band-limited impulse train.
      *
      * This unit generator is based on the BLIT-FDF method documented in:
      * "Efficient Antialiasing Oscillator Algorithms Using Low-Order Fractional Delay Filters"
@@ -18979,7 +18979,9 @@ var fluid = fluid || require("infusion"),
      * in IEEE Transactions on Audio, Speech, and Language Processing, Vol. 18, No. 4, May 2010.
      *
      * Inputs:
-     *  - freq: the frequency of the impulse train
+     *  - freq: the frequency of the impulse train;
+     *          this can only be modulated every period,
+     *          so there may be a delay before the frequency is updated at low frequencies
      *  - mul: the amplitude of the impulses
      *  - add: the amplitude offset of the impulses
      */
@@ -19041,6 +19043,63 @@ var fluid = fluid || require("infusion"),
 
         inputs: {
             freq: 440.0,
+            mul: null,
+            add: null
+        },
+
+        ugenOptions: {
+            model: {
+                phase: 2.0
+            }
+        }
+    });
+
+    /**
+     * Generates a band-limited sawtooth wavefrom.
+     *
+     * This unit generator is based on the BLIT-FDF method documented in:
+     * "Efficient Antialiasing Oscillator Algorithms Using Low-Order Fractional Delay Filters"
+     * Juhan Nam, Vesa Valimaki, Jonathan S. Able, and Julius O. Smith
+     * in IEEE Transactions on Audio, Speech, and Language Processing, Vol. 18, No. 4, May 2010.
+     *
+     * Inputs:
+     *  - freq: the frequency of the saw;
+     *          this can only be modulated every period,
+     *          so there may be a delay before the frequency is updated at low frequencies
+     *  - leakRate: the leak rate of the leaky integrator (between >0.0 and 1.0)
+     *  - mul: the amplitude of the impulses
+     *  - add: the amplitude offset of the impulses
+     */
+    flock.ugen.saw = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            // * Leaky integrator: y(n) = x(n) + (1 - leakRate) * y(n - 1)
+            // where x(n) is the BLIT
+            // * DC offset at the steady state is 1 / d0
+            // * Initial integrator condition = Initial phase counter condition / d0 - 0.5
+            // * (BLIT - 1 / d0) + (1 - leakRate) * prevVal
+            var i;
+
+            for (i = 0; i < numSamps; i++) {
+
+            }
+        };
+
+        that.init = function () {
+            that.onInputChanged();
+        };
+
+        that.init();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.saw", {
+        rate: "audio",
+
+        inputs: {
+            freq: 440.0,
+            leakRate: 0.5,
             mul: null,
             add: null
         },
