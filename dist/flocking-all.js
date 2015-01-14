@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (January 13, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (January 14, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.1
@@ -28171,6 +28171,11 @@ var fluid = fluid || require("infusion"),
         return d0 < 1.0 ? 1.0 : d0;
     };
 
+    flock.blit.updatePeriodState = function (m, freq) {
+        m.freq = freq < 0.000001 ? 0.000001 : freq;
+        m.d0 = flock.blit.period(m.sampleRate, freq);
+    };
+
     /**
      * A band-limited impulse train.
      *
@@ -28194,14 +28199,13 @@ var fluid = fluid || require("infusion"),
                 out = that.output,
                 freq = that.inputs.freq.output[0],
                 p = m.phase,
-                d0,
                 i;
 
             // TODO: This code can be moved to .onInputChanged() when
             // we have signal graph priming.
             if (p === undefined) {
-                freq = freq < 0.000001 ? 0.000001 : freq;
-                p = flock.blit.period(m.sampleRate, freq);
+                flock.blit.updatePeriodState(m, freq);
+                p = m.d0;
             }
 
             for (i = 0; i < numSamps; i++) {
@@ -28209,9 +28213,8 @@ var fluid = fluid || require("infusion"),
 
                 if (p < -2.0) {
                     // We've hit the end of the period.
-                    freq = freq < 0.000001 ? 0.000001 : freq;
-                    d0 = flock.blit.period(m.sampleRate, freq);
-                    p += d0;
+                    flock.blit.updatePeriodState(m, freq);
+                    p += m.d0;
                 }
 
                 p -= 1.0;
@@ -28271,15 +28274,13 @@ var fluid = fluid || require("infusion"),
                 leak = 1.0 - that.inputs.leakRate.output[0],
                 p = m.phase,
                 prevVal = m.prevVal,
-                d0,
                 i;
 
             // TODO: This code can be moved to .onInputChanged() when
             // we have signal graph priming.
             if (p === undefined) {
-                freq = freq < 0.000001 ? 0.000001 : freq;
-                p = flock.blit.period(m.sampleRate, freq);
-                m.dcOffset = 1.0 / p; // DC offset at steady state is 1 / d0.
+                flock.ugen.saw.updatePeriodState(m, freq);
+                p = m.d0;
             }
 
             for (i = 0; i < numSamps; i++) {
@@ -28288,10 +28289,8 @@ var fluid = fluid || require("infusion"),
 
                 if (p < -2.0) {
                     // We've hit the end of the period.
-                    freq = freq < 0.000001 ? 0.000001 : freq;
-                    d0 = flock.blit.period(m.sampleRate, freq);
-                    m.dcOffset = 1.0 / d0;
-                    p += d0;
+                    flock.ugen.saw.updatePeriodState(m, freq);
+                    p += m.d0;
                 }
 
                 p -= 1.0;
@@ -28308,6 +28307,11 @@ var fluid = fluid || require("infusion"),
 
         that.init();
         return that;
+    };
+
+    flock.ugen.saw.updatePeriodState = function (m, freq) {
+        flock.blit.updatePeriodState(m, freq);
+        m.dcOffset = 1.0 / m.d0; // DC offset at steady state is 1 / d0.
     };
 
     fluid.defaults("flock.ugen.saw", {
