@@ -28197,18 +28197,24 @@ var fluid = fluid || require("infusion"),
                 d0,
                 i;
 
-            freq = freq < 0.000001 ? 0.000001 : freq;
-            d0 = flock.blit.period(m.sampleRate, freq);
+            // TODO: This code can be moved to .onInputChanged() when
+            // we have signal graph priming.
+            if (p === undefined) {
+                freq = freq < 0.000001 ? 0.000001 : freq;
+                p = flock.blit.period(m.sampleRate, freq);
+            }
 
             for (i = 0; i < numSamps; i++) {
                 out[i] = flock.blit(p);
 
                 if (p < -2.0) {
-                    // End of period; reset the phase.
+                    // We've hit the end of the period.
+                    freq = freq < 0.000001 ? 0.000001 : freq;
+                    d0 = flock.blit.period(m.sampleRate, freq);
                     p += d0;
-                } else {
-                    p -= 1.0;
                 }
+
+                p -= 1.0;
             }
 
             m.phase = p;
@@ -28234,7 +28240,7 @@ var fluid = fluid || require("infusion"),
 
         ugenOptions: {
             model: {
-                phase: 2.0
+                phase: undefined
             }
         }
     });
@@ -28259,10 +28265,6 @@ var fluid = fluid || require("infusion"),
         var that = flock.ugen(inputs, output, options);
 
         that.gen = function (numSamps) {
-            // * Leaky integrator: y(n) = x(n) + (1 - leakRate) * y(n - 1)
-            // where x(n) is the BLIT
-            // * DC offset at the steady state is 1 / d0
-            // * (BLIT - dcOffset) + (1 - leakRate) * prevVal
             var m = that.model,
                 out = that.output,
                 freq = that.inputs.freq.output[0],
@@ -28272,11 +28274,12 @@ var fluid = fluid || require("infusion"),
                 d0,
                 i;
 
-            // TODO: This code can be moved to .init() when
+            // TODO: This code can be moved to .onInputChanged() when
             // we have signal graph priming.
             if (p === undefined) {
+                freq = freq < 0.000001 ? 0.000001 : freq;
                 p = flock.blit.period(m.sampleRate, freq);
-                m.dcOffset = 1.0 / p;
+                m.dcOffset = 1.0 / p; // DC offset at steady state is 1 / d0.
             }
 
             for (i = 0; i < numSamps; i++) {
@@ -28284,13 +28287,14 @@ var fluid = fluid || require("infusion"),
                 out[i] = prevVal = flock.blit(p) - m.dcOffset + leak * prevVal;
 
                 if (p < -2.0) {
+                    // We've hit the end of the period.
                     freq = freq < 0.000001 ? 0.000001 : freq;
                     d0 = flock.blit.period(m.sampleRate, freq);
                     m.dcOffset = 1.0 / d0;
                     p += d0;
-                } else {
-                    p -= 1.0;
                 }
+
+                p -= 1.0;
             }
 
             m.phase = p;
@@ -28318,13 +28322,14 @@ var fluid = fluid || require("infusion"),
 
         ugenOptions: {
             model: {
+                // These will be calculated on the fly based on d0.
                 phase: undefined,
                 dcOffset: undefined,
 
-                // Initial leaky integrator state
-                // is initial phase counter / d0 - 0.5
-                // In this case, since the phase will be initialized
-                // to d0, the intial integrator value is 0.5.
+                // The initial state (i.e. y(n-1)) for the leaky integrator
+                // should be the initial phase of the counter / d0 - 0.5.
+                // Since we initialize the phase counter to d0, the
+                // initial leaky intergrator value should be 0.5.
                 prevVal: 0.5
             }
         }

@@ -6,7 +6,7 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, module, expect, test*/
+/*global require, module, deepEqual, test*/
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
@@ -18,34 +18,22 @@ var fluid = fluid || require("infusion"),
 
     flock.init();
 
-    module("flock.ugen.blit tests");
-
-    flock.test.blit.testSpecs = [
+    flock.test.blit.baseTests = [
         {
             name: "440 freq",
             def: {
-                ugen: "flock.ugen.blit",
                 freq: 440
             }
         },
         {
             name: "10000 freq",
             def: {
-                ugen: "flock.ugen.blit",
                 freq: 10000
-            }
-        },
-        {
-            name: "0 freq",
-            def: {
-                ugen: "flock.ugen.blit",
-                freq: 0
             }
         },
         {
             name: "freq modulated",
             def: {
-                ugen: "flock.ugen.blit",
                 freq: {
                     ugen: "flock.ugen.sinOsc",
                     freq: 2,
@@ -56,10 +44,26 @@ var fluid = fluid || require("infusion"),
         }
     ];
 
-    flock.test.blit.runTest = function (testSpec) {
+    flock.test.blit.typeSpecificTests = {
+        "flock.ugen.blit": [
+            {
+                name: "0 freq",
+                def: {
+                    freq: 0
+                },
+                numBlocks: 2,
+                expected: new Float32Array(flock.enviro.shared.audioSettings.blockSize * 2),
+                msg: "The output should be silent."
+            }
+        ],
+        "flock.ugen.saw": []
+    };
+
+    flock.test.blit.runTest = function (testSpec, ugenPath) {
         var numBlocks = testSpec.numBlocks || 750;
 
         testSpec.def.id = "blit";
+        testSpec.def.ugen = ugenPath;
 
         var synth = flock.synth({
             synthDef: testSpec.def
@@ -73,16 +77,25 @@ var fluid = fluid || require("infusion"),
         }
 
         test(testSpec.name, function () {
-            expect(2);
             flock.test.arrayNotNaN(actual, "The ugen should never output NaN.");
             flock.test.arrayWithinRange(actual, -1.0, 1.0,
                 "The ugen should produce output values ranging between -1 and 1.");
+            if (testSpec.expected) {
+                deepEqual(actual, testSpec.expected, testSpec.msg);
+            }
         });
     };
 
-    flock.test.blit.runTests = function (testSpecs) {
-        fluid.each(testSpecs, flock.test.blit.runTest);
+    flock.test.blit.runTests = function (baseTestSpecs, ugens) {
+        fluid.each(ugens, function (typeSpecificTestSpecs, ugenPath) {
+            var testSpecs = baseTestSpecs.concat(typeSpecificTestSpecs);
+
+            module(ugenPath + " tests");
+            fluid.each(testSpecs, function (testSpec) {
+                flock.test.blit.runTest(testSpec, ugenPath);
+            });
+        });
     };
 
-    flock.test.blit.runTests(flock.test.blit.testSpecs);
+    flock.test.blit.runTests(flock.test.blit.baseTests, flock.test.blit.typeSpecificTests);
 }());
