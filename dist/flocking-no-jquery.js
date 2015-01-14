@@ -18970,6 +18970,36 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
+    flock.blit = function (p) {
+        var val,
+            t;
+
+        if (p >= 2.0) {
+            val = 0.0;
+        } else if (p >= 1.0) {
+            t = 2.0 - p;
+            val = 0.16666666666666666 * t * t * t;
+        } else if (p >= 0.0) {
+            t = p * p;
+            val = (0.6666666666666666 - t) + (0.5 * t * p);
+        } else if (p >= -1.0) {
+            t = p * p;
+            val = (0.6666666666666666 - t) - (0.5 * t * p);
+        } else if (p >= -2.0) {
+            t = 2 + p;
+            val = 0.16666666666666666 * t * t * t;
+        } else {
+            val = 0.0;
+        }
+
+        return val;
+    };
+
+    flock.blit.period = function (sampleRate, freq) {
+        var d0 = sampleRate / freq;
+        return d0 < 1.0 ? 1.0 : d0;
+    };
+
     /**
      * A band-limited impulse train.
      *
@@ -18994,40 +19024,24 @@ var fluid = fluid || require("infusion"),
                 freq = that.inputs.freq.output[0],
                 p = m.phase,
                 d0,
-                i,
-                t,
-                val;
+                i;
 
             freq = freq < 0.000001 ? 0.000001 : freq;
-            d0 = m.sampleRate / freq;
-            d0 = d0 < 1.0 ? 1.0 : d0;
+            d0 = flock.blit.period(m.sampleRate, freq);
 
             for (i = 0; i < numSamps; i++) {
-                if (p >= 2.0) {
-                    val = 0.0;
-                } else if (p >= 1.0) {
-                    t = 2.0 - p;
-                    val = 0.16666666666666666 * t * t * t;
-                } else if (p >= 0.0) {
-                    t = p * p;
-                    val = (0.6666666666666666 - t) + (0.5 * t * p);
-                } else if (p >= -1.0) {
-                    t = p * p;
-                    val = (0.6666666666666666 - t) - (0.5 * t * p);
-                } else if (p >= -2.0) {
-                    t = 2 + p;
-                    val = 0.16666666666666666 * t * t * t;
-                } else {
-                    // End of the period.
-                    val = 0.0;
-                    p += d0;
-                }
+                out[i] = flock.blit(p);
 
-                out[i] = val;
-                p -= 1.0;
+                if (p < -2.0) {
+                    // End of period; reset the phase.
+                    p += d0;
+                } else {
+                    p -= 1.0;
+                }
             }
 
             m.phase = p;
+            that.mulAdd(numSamps);
         };
 
         that.init = function () {
@@ -19077,13 +19091,40 @@ var fluid = fluid || require("infusion"),
             // * Leaky integrator: y(n) = x(n) + (1 - leakRate) * y(n - 1)
             // where x(n) is the BLIT
             // * DC offset at the steady state is 1 / d0
-            // * Initial integrator condition = Initial phase counter condition / d0 - 0.5
-            // * (BLIT - 1 / d0) + (1 - leakRate) * prevVal
-            var i;
+            // * (BLIT - dcOffset) + (1 - leakRate) * prevVal
+            var m = that.model,
+                out = that.output,
+                freq = that.inputs.freq.output[0],
+                leak = 1.0 - that.inputs.leakRate.output[0],
+                p = m.phase,
+                prevVal = m.prevVal,
+                d0,
+                i;
+
+            // TODO: This code can be moved to .init() when
+            // we have signal graph priming.
+            if (p === undefined) {
+                p = flock.blit.period(m.sampleRate, freq);
+                m.dcOffset = 1.0 / p;
+            }
 
             for (i = 0; i < numSamps; i++) {
+                // Saw is BLIT - dcOffset + (1 - leakRate) * prevVal
+                out[i] = prevVal = flock.blit(p) - m.dcOffset + leak * prevVal;
 
+                if (p < -2.0) {
+                    freq = freq < 0.000001 ? 0.000001 : freq;
+                    d0 = flock.blit.period(m.sampleRate, freq);
+                    m.dcOffset = 1.0 / d0;
+                    p += d0;
+                } else {
+                    p -= 1.0;
+                }
             }
+
+            m.phase = p;
+            m.prevVal = prevVal;
+            that.mulAdd(numSamps);
         };
 
         that.init = function () {
@@ -19099,14 +19140,21 @@ var fluid = fluid || require("infusion"),
 
         inputs: {
             freq: 440.0,
-            leakRate: 0.5,
+            leakRate: 0.01,
             mul: null,
             add: null
         },
 
         ugenOptions: {
             model: {
-                phase: 2.0
+                phase: undefined,
+                dcOffset: undefined,
+
+                // Initial leaky integrator state
+                // is initial phase counter / d0 - 0.5
+                // In this case, since the phase will be initialized
+                // to d0, the intial integrator value is 0.5.
+                prevVal: 0.5
             }
         }
     });
