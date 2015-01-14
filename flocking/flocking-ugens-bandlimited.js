@@ -218,4 +218,75 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+
+    flock.ugen.square = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                out = that.output,
+                freq = that.inputs.freq.output[0],
+                leak = 1.0 - that.inputs.leakRate.output[0],
+                p = m.phase,
+                prevVal = m.prevVal,
+                i;
+
+            // TODO: This code can be moved to .onInputChanged() when
+            // we have signal graph priming.
+            if (p === undefined) {
+                flock.ugen.square.updatePeriodState(m, freq);
+                p = m.d0 / 2;
+            }
+
+            for (i = 0; i < numSamps; i++) {
+                out[i] = prevVal = (flock.blit(p) * m.sign) + leak * prevVal;
+
+                if (p < -2.0) {
+                    flock.ugen.square.updatePeriodState(m, freq);
+                    // We've hit the end of the period.
+                    p += m.d0 / 2;
+                }
+
+                p -= 1.0;
+            }
+
+            m.phase = p;
+            m.prevVal = prevVal;
+            that.mulAdd(numSamps);
+        };
+
+        that.init = function () {
+            that.onInputChanged();
+        };
+
+        that.init();
+        return that;
+    };
+
+    flock.ugen.square.updatePeriodState = function (m, freq) {
+        flock.blit.updatePeriodState(m, freq);
+
+        // Flip the sign of the output.
+        m.sign *= -1.0;
+    };
+
+    fluid.defaults("flock.ugen.square", {
+        rate: "audio",
+
+        inputs: {
+            freq: 440.0,
+            leakRate: 0.01,
+            mul: null,
+            add: null
+        },
+
+        ugenOptions: {
+            model: {
+                phase: undefined,
+                prevVal: -0.5,
+                sign: 0.5
+            }
+        }
+
+    });
 }());

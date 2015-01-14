@@ -56,7 +56,8 @@ var fluid = fluid || require("infusion"),
                 msg: "The output should be silent."
             }
         ],
-        "flock.ugen.saw": []
+        "flock.ugen.saw": [],
+        "flock.ugen.square": []
     };
 
     flock.test.blit.runTest = function (testSpec, ugenPath) {
