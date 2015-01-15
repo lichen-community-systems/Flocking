@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (January 14, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (January 15, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof exports === "object") {
@@ -19030,23 +19030,15 @@ var fluid = fluid || require("infusion"),
                 p = m.phase,
                 i;
 
-            // TODO: This code can be moved to .onInputChanged() when
-            // we have signal graph priming.
-            if (p === undefined) {
-                flock.blit.updatePeriodState(m, freq);
-                p = m.d0;
-            }
-
             for (i = 0; i < numSamps; i++) {
-                out[i] = flock.blit(p);
-
+                p -= 1.0;
                 if (p < -2.0) {
                     // We've hit the end of the period.
                     flock.blit.updatePeriodState(m, freq);
                     p += m.d0;
                 }
 
-                p -= 1.0;
+                out[i] = flock.blit(p);
             }
 
             m.phase = p;
@@ -19072,7 +19064,7 @@ var fluid = fluid || require("infusion"),
 
         ugenOptions: {
             model: {
-                phase: undefined
+                phase: -2.0
             }
         }
     });
@@ -19084,6 +19076,10 @@ var fluid = fluid || require("infusion"),
      * "Efficient Antialiasing Oscillator Algorithms Using Low-Order Fractional Delay Filters"
      * Juhan Nam, Vesa Valimaki, Jonathan S. Able, and Julius O. Smith
      * in IEEE Transactions on Audio, Speech, and Language Processing, Vol. 18, No. 4, May 2010.
+     *
+     * This unit generator is based on an algorithm that integrates bandlimited impulse trains,
+     * and as a result isn't suitable for low frequency modulation since it can only change
+     * frequencies at the end of each waveform period.
      *
      * Inputs:
      *  - freq: the frequency of the saw;
@@ -19105,24 +19101,16 @@ var fluid = fluid || require("infusion"),
                 prevVal = m.prevVal,
                 i;
 
-            // TODO: This code can be moved to .onInputChanged() when
-            // we have signal graph priming.
-            if (p === undefined) {
-                flock.ugen.saw.updatePeriodState(m, freq);
-                p = m.d0;
-            }
-
             for (i = 0; i < numSamps; i++) {
-                // Saw is BLIT - dcOffset + (1 - leakRate) * prevVal
-                out[i] = prevVal = flock.blit(p) - m.dcOffset + leak * prevVal;
-
+                p -= 1.0;
                 if (p < -2.0) {
                     // We've hit the end of the period.
                     flock.ugen.saw.updatePeriodState(m, freq);
                     p += m.d0;
                 }
 
-                p -= 1.0;
+                // Saw is BLIT - dcOffset + (1 - leakRate) * prevVal
+                out[i] = prevVal = flock.blit(p) - m.dcOffset + leak * prevVal;
             }
 
             m.phase = p;
@@ -19155,8 +19143,7 @@ var fluid = fluid || require("infusion"),
 
         ugenOptions: {
             model: {
-                // These will be calculated on the fly based on d0.
-                phase: undefined,
+                phase: -2.0,
                 dcOffset: undefined,
 
                 // The initial state (i.e. y(n-1)) for the leaky integrator
@@ -19168,7 +19155,26 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-
+    /**
+     * Generates a band-limited square wave.
+     *
+     * This unit generator is based on the BLIT-FDF method documented in:
+     * "Efficient Antialiasing Oscillator Algorithms Using Low-Order Fractional Delay Filters"
+     * Juhan Nam, Vesa Valimaki, Jonathan S. Able, and Julius O. Smith
+     * in IEEE Transactions on Audio, Speech, and Language Processing, Vol. 18, No. 4, May 2010.
+     *
+     * This unit generator is based on an algorithm that integrates bandlimited impulse trains,
+     * and as a result isn't suitable for low frequency modulation since it can only change
+     * frequencies at the end of each waveform period.
+     *
+     * Inputs:
+     *  - freq: the frequency of the square;
+     *          this can only be modulated every period,
+     *          so there may be a delay before the frequency is updated at low frequencies
+     *  - leakRate: the leak rate of the leaky integrator (between >0.0 and 1.0)
+     *  - mul: the amplitude of the impulses
+     *  - add: the amplitude offset of the impulses
+     */
     flock.ugen.square = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
@@ -19181,20 +19187,13 @@ var fluid = fluid || require("infusion"),
                 prevVal = m.prevVal,
                 i;
 
-            // TODO: This code can be moved to .onInputChanged() when
-            // we have signal graph priming.
-            if (p === undefined) {
-                flock.ugen.square.updatePeriodState(m, freq);
-                p = m.d0 / 2;
-            }
-
             for (i = 0; i < numSamps; i++) {
                 out[i] = prevVal = (flock.blit(p) * m.sign) + leak * prevVal;
 
                 if (p < -2.0) {
                     flock.ugen.square.updatePeriodState(m, freq);
                     // We've hit the end of the period.
-                    p += m.d0 / 2;
+                    p += m.phaseResetValue;
                 }
 
                 p -= 1.0;
@@ -19215,7 +19214,7 @@ var fluid = fluid || require("infusion"),
 
     flock.ugen.square.updatePeriodState = function (m, freq) {
         flock.blit.updatePeriodState(m, freq);
-
+        m.phaseResetValue = m.d0 / 2;
         // Flip the sign of the output.
         m.sign *= -1.0;
     };
@@ -19232,12 +19231,108 @@ var fluid = fluid || require("infusion"),
 
         ugenOptions: {
             model: {
-                phase: undefined,
+                phase: -3.0,
                 prevVal: -0.5,
                 sign: 0.5
             }
         }
+    });
 
+
+    /**
+     * Generates a band-limited triangle wave.
+     *
+     * This unit generator is based on the BLIT-FDF method documented in:
+     * "Efficient Antialiasing Oscillator Algorithms Using Low-Order Fractional Delay Filters"
+     * Juhan Nam, Vesa Valimaki, Jonathan S. Able, and Julius O. Smith
+     * in IEEE Transactions on Audio, Speech, and Language Processing, Vol. 18, No. 4, May 2010.
+     *
+     * This unit generator is based on an algorithm that integrates bandlimited impulse trains,
+     * and as a result isn't suitable for low frequency modulation since it can only change
+     * frequencies at the end of each waveform period.
+     *
+     * It will noticeably distort at frequencies above 6000 Hz unless you adjust the
+     * leakRate accordingly.
+     *
+     * Inputs:
+     *  - freq: the frequency of the square;
+     *          this can only be modulated every period,
+     *          so there may be a delay before the frequency is updated at low frequencies
+     *  - leakRate: the leak rate of the leaky integrator (between >0.0 and 1.0)
+     *  - mul: the amplitude of the impulses
+     *  - add: the amplitude offset of the impulses
+     */
+    flock.ugen.tri = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                out = that.output,
+                freq = that.inputs.freq.output[0],
+                leak = 1.0 - that.inputs.leakRate.output[0],
+                p = m.phase,
+                prevVal = m.prevVal,
+                secondPrevVal = m.secondPrevVal,
+                i,
+                firstIntegrate,
+                secondIntegrate;
+
+            for (i = 0; i < numSamps; i++) {
+                p -= 1.0;
+                if (p < -2.0) {
+                    flock.ugen.tri.updatePeriodState(m, freq);
+                    p += m.phaseResetValue;
+                }
+
+                firstIntegrate = (flock.blit(p) * m.sign) + leak * prevVal;
+                prevVal = firstIntegrate;
+                secondIntegrate = firstIntegrate + leak * secondPrevVal;
+                secondPrevVal = secondIntegrate;
+                out[i] = secondIntegrate * m.ampScale;
+            }
+
+            m.phase = p;
+            m.prevVal = prevVal;
+            m.secondPrevVal = secondPrevVal;
+            that.mulAdd(numSamps);
+        };
+
+        that.init = function () {
+            that.onInputChanged();
+        };
+
+        that.init();
+        return that;
+    };
+
+    flock.ugen.tri.updatePeriodState = function (m, freq) {
+        flock.blit.updatePeriodState(m, freq);
+        m.phaseResetValue = m.d0 / 2;
+        m.ampScale = 2 / m.d0;
+        // Flip the sign of the output.
+        m.sign *= -1.0;
+    };
+
+    fluid.defaults("flock.ugen.tri", {
+        rate: "audio",
+
+        inputs: {
+            freq: 440.0,
+            leakRate: 0.01,
+            mul: null,
+            add: null
+        },
+
+        ugenOptions: {
+            model: {
+                phase: -2.0,
+                prevVal: -0.5,
+                secondPrevVal: 0.0,
+                sign: 1.0,
+                ampScale: undefined,
+                phaseResetValue: undefined
+            }
+        }
     });
 }());
 ;/*

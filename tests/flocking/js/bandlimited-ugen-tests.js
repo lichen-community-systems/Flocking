@@ -6,7 +6,7 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, module, deepEqual, test*/
+/*global require, module, test*/
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
@@ -18,18 +18,44 @@ var fluid = fluid || require("infusion"),
 
     flock.init();
 
+    // TODO: Need to add a means by which cases can add
+    // additional assertions to the test case.
+    // e.g. asserting that all the continuous waveform ugens
+    // do in fact produce continuous waveforms.
     flock.test.blit.baseTests = [
         {
             name: "440 freq",
             def: {
                 freq: 440
-            }
+            },
+            assertions: [
+                {
+                    funcName: "flock.test.arrayNotNaN",
+                    msg: "There should be no NaN values"
+                },
+                {
+                    funcName: "flock.test.arrayWithinRange",
+                    args: [-1, 1],
+                    msg: "The array should be within the appropriate amplitude range."
+                }
+            ]
         },
         {
             name: "10000 freq",
             def: {
                 freq: 10000
-            }
+            },
+            assertions: [
+                {
+                    funcName: "flock.test.arrayNotNaN",
+                    msg: "There should be no NaN values"
+                },
+                {
+                    funcName: "flock.test.arrayWithinRange",
+                    args: [-1, 1],
+                    msg: "The array should be within the appropriate amplitude range."
+                }
+            ]
         },
         {
             name: "freq modulated",
@@ -40,7 +66,18 @@ var fluid = fluid || require("infusion"),
                     mul: 440,
                     add: 444
                 }
-            }
+            },
+            assertions: [
+                {
+                    funcName: "flock.test.arrayNotNaN",
+                    msg: "There should be no NaN values"
+                },
+                {
+                    funcName: "flock.test.arrayWithinRange",
+                    args: [-1, 1],
+                    msg: "The array should be within the appropriate amplitude range."
+                }
+            ]
         }
     ];
 
@@ -52,12 +89,21 @@ var fluid = fluid || require("infusion"),
                     freq: 0
                 },
                 numBlocks: 2,
-                expected: new Float32Array(flock.enviro.shared.audioSettings.blockSize * 2),
-                msg: "The output should be silent."
+                assertions: [
+                    {
+                        funcName: "flock.test.arrayNotNaN",
+                        msg: "There should be no NaN values"
+                    },
+                    {
+                        funcName: "deepEqual",
+                        args: [new Float32Array(flock.enviro.shared.audioSettings.blockSize * 2)]
+                    }
+                ]
             }
         ],
         "flock.ugen.saw": [],
-        "flock.ugen.square": []
+        "flock.ugen.square": [],
+        "flock.ugen.tri": []
     };
 
     flock.test.blit.runTest = function (testSpec, ugenPath) {
@@ -78,12 +124,18 @@ var fluid = fluid || require("infusion"),
         }
 
         test(testSpec.name, function () {
-            flock.test.arrayNotNaN(actual, "The ugen should never output NaN.");
-            flock.test.arrayWithinRange(actual, -1.0, 1.0,
-                "The ugen should produce output values ranging between -1 and 1.");
-            if (testSpec.expected) {
-                deepEqual(actual, testSpec.expected, testSpec.msg);
-            }
+            fluid.each(testSpec.assertions, function (assertion) {
+                if (typeof assertion === "string") {
+                    assertion = {
+                        funcName: assertion
+                    };
+                }
+
+                var args = assertion.args ? fluid.copy(assertion.args) : [];
+                args.unshift(actual);
+                args.push(assertion.msg);
+                fluid.invokeGlobalFunction(assertion.funcName, args);
+            });
         });
     };
 
