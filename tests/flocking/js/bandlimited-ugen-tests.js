@@ -43,7 +43,8 @@ var fluid = fluid || require("infusion"),
         {
             name: "10000 freq",
             def: {
-                freq: 10000
+                freq: 10000,
+                leakRate: 0.15
             },
             assertions: [
                 {
