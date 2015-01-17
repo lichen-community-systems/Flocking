@@ -52,7 +52,7 @@ var fluid = fluid || require("infusion"),
 
     flock.blit.updatePeriodState = function (m, freq) {
         m.freq = freq < 0.000001 ? 0.000001 : freq;
-        m.d0 = flock.blit.period(m.sampleRate, freq);
+        m.d0 = flock.blit.period(m.sampleRate, m.freq);
     };
 
     /**
@@ -128,8 +128,7 @@ var fluid = fluid || require("infusion"),
      * in IEEE Transactions on Audio, Speech, and Language Processing, Vol. 18, No. 4, May 2010.
      *
      * This unit generator is based on an algorithm that integrates bandlimited impulse trains,
-     * and as a result isn't suitable for low frequency modulation since it can only change
-     * frequencies at the end of each waveform period.
+     * and as a result can only change frequencies at the end of each waveform period.
      *
      * Inputs:
      *  - freq: the frequency of the saw;
@@ -150,6 +149,13 @@ var fluid = fluid || require("infusion"),
                 p = m.phase,
                 prevVal = m.prevVal,
                 i;
+
+            // TODO: This can be moved to init() when
+            // we have ugen graph priming implemented.
+            if (p === undefined) {
+                flock.ugen.saw.updatePeriodState(m, freq);
+                p = m.d0 / 2;
+            }
 
             for (i = 0; i < numSamps; i++) {
                 p -= 1.0;
@@ -193,14 +199,9 @@ var fluid = fluid || require("infusion"),
 
         ugenOptions: {
             model: {
-                phase: -2.0,
+                phase: undefined,
                 dcOffset: undefined,
-
-                // The initial state (i.e. y(n-1)) for the leaky integrator
-                // should be the initial phase of the counter / d0 - 0.5.
-                // Since we initialize the phase counter to d0, the
-                // initial leaky intergrator value should be 0.5.
-                prevVal: 0.5
+                prevVal: 0
             }
         }
     });
@@ -214,8 +215,7 @@ var fluid = fluid || require("infusion"),
      * in IEEE Transactions on Audio, Speech, and Language Processing, Vol. 18, No. 4, May 2010.
      *
      * This unit generator is based on an algorithm that integrates bandlimited impulse trains,
-     * and as a result isn't suitable for low frequency modulation since it can only change
-     * frequencies at the end of each waveform period.
+     * and as a result can only change frequencies at the end of each waveform period.
      *
      * Inputs:
      *  - freq: the frequency of the square;
@@ -236,6 +236,13 @@ var fluid = fluid || require("infusion"),
                 p = m.phase,
                 prevVal = m.prevVal,
                 i;
+
+            // TODO: This can be moved to init() when
+            // we have ugen graph priming implemented.
+            if (p === undefined) {
+                flock.ugen.square.updatePeriodState(m, freq);
+                p = m.phaseResetValue;
+            }
 
             for (i = 0; i < numSamps; i++) {
                 out[i] = prevVal = (flock.blit(p) * m.sign) + leak * prevVal;
@@ -281,9 +288,9 @@ var fluid = fluid || require("infusion"),
 
         ugenOptions: {
             model: {
-                phase: -3.0,
-                prevVal: -0.5,
-                sign: 0.5
+                phase: undefined,
+                prevVal: 0.5,
+                sign: 1.0
             }
         }
     });
@@ -298,8 +305,7 @@ var fluid = fluid || require("infusion"),
      * in IEEE Transactions on Audio, Speech, and Language Processing, Vol. 18, No. 4, May 2010.
      *
      * This unit generator is based on an algorithm that integrates bandlimited impulse trains,
-     * and as a result isn't suitable for low frequency modulation since it can only change
-     * frequencies at the end of each waveform period.
+     * and as a result can only change frequencies at the end of each waveform period.
      *
      * It will noticeably distort at frequencies above 6000 Hz unless you adjust the
      * leakRate accordingly.
@@ -327,18 +333,25 @@ var fluid = fluid || require("infusion"),
                 firstIntegrate,
                 secondIntegrate;
 
-            for (i = 0; i < numSamps; i++) {
-                p -= 1.0;
-                if (p < -2.0) {
-                    flock.ugen.tri.updatePeriodState(m, freq);
-                    p += m.phaseResetValue;
-                }
+            // TODO: This can be moved to init() when
+            // we have ugen graph priming implemented.
+            if (p === undefined) {
+                flock.ugen.tri.updatePeriodState(m, freq);
+                p = m.d0 / 4;
+            }
 
+            for (i = 0; i < numSamps; i++) {
                 firstIntegrate = (flock.blit(p) * m.sign) + leak * prevVal;
                 prevVal = firstIntegrate;
                 secondIntegrate = firstIntegrate + leak * secondPrevVal;
                 secondPrevVal = secondIntegrate;
                 out[i] = secondIntegrate * m.ampScale;
+
+                p -= 1.0;
+                if (p < -2.0) {
+                    flock.ugen.tri.updatePeriodState(m, freq);
+                    p += m.phaseResetValue;
+                }
             }
 
             m.phase = p;
@@ -375,8 +388,8 @@ var fluid = fluid || require("infusion"),
 
         ugenOptions: {
             model: {
-                phase: -2.0,
-                prevVal: -0.5,
+                phase: undefined,
+                prevVal: 0.5,
                 secondPrevVal: 0.0,
                 sign: 1.0,
                 ampScale: undefined,
