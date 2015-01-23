@@ -356,7 +356,8 @@ var flock = flock || {};
             }
             previous = current;
         }
-        equal(unexpected.length, 0, msg + (unexpected.length ? " Unexpected values: " + unexpected : ""));
+        equal(unexpected.length, 0, msg + (unexpected.length ? " Unexpected values: " +
+            fluid.prettyPrintJSON(unexpected) : ""));
     };
 
     flock.test.rampingArray = function (buffer, isAscending, msg) {
