@@ -109,60 +109,76 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    flock.test.blit.runTest = function (testSpec, ugenPath) {
-        var numBlocks = testSpec.numBlocks || 750;
+    flock.test.blit.runAssertion = function (assertion, actual) {
+        if (typeof assertion === "string") {
+            assertion = {
+                funcName: assertion
+            };
+        }
 
-        testSpec.def.id = "blit";
-        testSpec.def.ugen = ugenPath;
+        var args = assertion.args ? fluid.copy(assertion.args) : [];
+        args.unshift(actual);
+        args.push(assertion.msg);
+        var fn = fluid.getGlobalValue(assertion.funcName);
+        fn.apply(null, args);
+    };
 
-        var synth = flock.synth({
-            synthDef: testSpec.def
+    flock.test.blit.testAssertions = function (testSpec, actual) {
+        test(testSpec.name, function () {
+            fluid.each(testSpec.assertions, function (assertion) {
+                flock.test.blit.runAssertion(assertion, actual);
+            });
         });
+    };
 
+    flock.test.blit.generateOutput = function (synth, testSpec) {
         // Create a buffer that can hold about a second's worth of audio.
         var blockSize = flock.enviro.shared.audioSettings.blockSize,
-            fullSize = blockSize * numBlocks,
+            fullSize = blockSize * testSpec.numBlocks,
             actual = new Float32Array(fullSize);
 
-        for (var i = 0; i < numBlocks; i++) {
+        for (var i = 0; i < testSpec.numBlocks; i++) {
             synth.gen();
             for (var j = 0; j < blockSize; j++) {
                 actual[j + (i * blockSize)] = synth.get("blit").output[j];
             }
         }
 
-        test(testSpec.name, function () {
-            fluid.each(testSpec.assertions, function (assertion) {
-                if (typeof assertion === "string") {
-                    assertion = {
-                        funcName: assertion
-                    };
-                }
+        return actual;
+    };
 
-                var args = assertion.args ? fluid.copy(assertion.args) : [];
-                args.unshift(actual);
-                args.push(assertion.msg);
-                var fn = fluid.getGlobalValue(assertion.funcName);
-                fn.apply(null, args);
-            });
+    flock.test.blit.runTest = function (testSpec, ugenPath) {
+        testSpec = fluid.copy(testSpec);
+
+        testSpec.numBlocks = testSpec.numBlocks || 750;
+        testSpec.def.id = "blit";
+        testSpec.def.ugen = ugenPath;
+
+        var synth = flock.synth({
+            synthDef: testSpec.def
+        });
+        var actual = flock.test.blit.generateOutput(synth, testSpec);
+        flock.test.blit.testAssertions(testSpec, actual);
+    };
+
+    flock.test.blit.runTestModule = function (testSpecs, typeSpecificTestSpecs, ugenPath) {
+        module(ugenPath + " tests");
+        fluid.each(testSpecs, function (testSpec) {
+            if (!testSpec.assertions) {
+                testSpec.assertions = typeSpecificTestSpecs.assertions;
+            }
+
+            flock.test.blit.runTest(testSpec, ugenPath);
         });
     };
 
-    flock.test.blit.runTests = function (baseTestSpecs, ugens) {
-        fluid.each(ugens, function (typeSpecificTestSpecs, ugenPath) {
+    flock.test.blit.runTests = function (baseTestSpecs, typeSpecificTestSpecs) {
+        fluid.each(typeSpecificTestSpecs, function (typeSpecificTestSpec, ugenPath) {
             var testSpecs = fluid.copy(baseTestSpecs);
-            if (typeSpecificTestSpecs.additionalTests) {
-                testSpecs = testSpecs.concat(typeSpecificTestSpecs.additionalTests);
+            if (typeSpecificTestSpec.additionalTests) {
+                testSpecs = testSpecs.concat(typeSpecificTestSpec.additionalTests);
             }
-
-            module(ugenPath + " tests");
-            fluid.each(testSpecs, function (testSpec) {
-                if (!testSpec.assertions) {
-                    testSpec.assertions = typeSpecificTestSpecs.assertions;
-                }
-
-                flock.test.blit.runTest(testSpec, ugenPath);
-            });
+            flock.test.blit.runTestModule(testSpecs, typeSpecificTestSpec, ugenPath);
         });
     };
 
