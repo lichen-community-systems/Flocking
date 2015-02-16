@@ -48,6 +48,7 @@ var fluid = fluid || require("infusion"),
                 }
             }
             m.bufIdx = bufIdx;
+            m.value = that.inputs.source.output[numSamps - 1];
         };
 
         that.onInputChanged = function () {
@@ -127,6 +128,7 @@ var fluid = fluid || require("infusion"),
             }
 
             m.movingAvg = movingAvg;
+            m.value = out[numSamps - 1];
         };
 
         that.linearGen = function (numSamps) {
@@ -151,15 +153,20 @@ var fluid = fluid || require("infusion"),
             }
 
             m.movingAvg = movingAvg;
+            m.value = out[numSamps - 1];
         };
 
         that.noInterpolationGen = function (numSamps) {
-            var val = flock.ugen.mouse.cursor.normalize(that.target, that.model),
+            var m = that.model,
+                out = that.output,
+                val = flock.ugen.mouse.cursor.normalize(that.target, m),
                 i;
 
             for (i = 0; i < numSamps; i++) {
-                that.output[i] = val * that.inputs.mul.output[0] + that.inputs.add.output[0];
+                out[i] = val * that.inputs.mul.output[0] + that.inputs.add.output[0];
             }
+
+            m.value = out[numSamps - 1];
         };
 
         that.moveListener = function (e) {
@@ -273,7 +280,8 @@ var fluid = fluid || require("infusion"),
             interpolation: "linear",
             model: {
                 mousePosition: 0,
-                movingAvg: 0
+                movingAvg: 0,
+                value: 0.0
             }
         }
     });
@@ -288,25 +296,26 @@ var fluid = fluid || require("infusion"),
                 i;
 
             for (i = 0; i < numSamps; i++) {
-                out[i] = m.value;
+                out[i] = m.unscaled;
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.mouseDownListener = function () {
-            that.model.value = 1.0;
+            that.model.unscaled = 1.0;
         };
 
         that.mouseUpListener = function () {
-            that.model.value = 0.0;
+            that.model.unscaled = 0.0;
         };
 
         that.init = function () {
             var m = that.model;
             m.target = typeof (that.options.target) === "string" ?
                 document.querySelector(that.options.target) : that.options.target || window;
-            m.value = 0.0;
+            m.unscaled = 0.0;
             m.target.addEventListener("mousedown", that.mouseDownListener, false);
             m.target.addEventListener("mouseup", that.mouseUpListener, false);
 
@@ -338,6 +347,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            that.model.value = out[numSamps - 1];
         };
 
         that.onInputChanged = function () {

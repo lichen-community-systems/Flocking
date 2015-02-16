@@ -605,8 +605,37 @@ var fluid = fluid || require("infusion"),
         return specialInputs.indexOf(inputName) < 0;
     };
 
+    // TODO: Replace this with a regular expression;
+    // this produces too much garbage!
     flock.input.pathExpander = function (path) {
-        return path.replace(/\.(?![0-9])/g, ".inputs.");
+        var segs = fluid.model.parseEL(path),
+            separator = "inputs",
+            len = segs.length,
+            penIdx = len - 1,
+            togo = [],
+            i;
+
+        for (i = 0; i < penIdx; i++) {
+            var seg = segs[i];
+            var nextSeg = segs[i + 1];
+
+            togo.push(seg);
+
+            if (nextSeg === "model" || nextSeg === "options") {
+                togo = togo.concat(segs.slice(i + 1, penIdx));
+                break;
+            }
+
+            if (!isNaN(Number(nextSeg))) {
+                continue;
+            }
+
+            togo.push(separator);
+        }
+
+        togo.push(segs[penIdx]);
+
+        return togo.join(".");
     };
 
     flock.input.expandPaths = function (paths) {
@@ -633,7 +662,7 @@ var fluid = fluid || require("infusion"),
         var input = flock.get(root, path);
 
         // If the unit generator is a valueType ugen, return its value, otherwise return the ugen itself.
-        return flock.hasTag(input, "flock.ugen.valueType") ? input.model.value : input;
+        return flock.hasTag(input, "flock.ugen.valueType") ? input.inputs.value : input;
     };
 
     flock.input.getValuesForPathArray = function (root, paths) {
@@ -1252,6 +1281,8 @@ var fluid = fluid || require("infusion"),
                     node.gen(node.model.blockSize);
                 }
             }
+
+            that.model.value = node.model.value;
         };
 
         /**
@@ -1380,13 +1411,8 @@ var fluid = fluid || require("infusion"),
 
     flock.synth.value.finalInit = function (that) {
         that.value = function () {
-            var nodes = that.nodes,
-                lastIdx = nodes.length - 1,
-                out = nodes[lastIdx];
-
             that.gen(1);
-
-            return out.model.value;
+            return that.model.value;
         };
     };
 

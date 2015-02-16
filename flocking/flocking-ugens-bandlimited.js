@@ -93,6 +93,7 @@ var fluid = fluid || require("infusion"),
 
             m.phase = p;
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.init = function () {
@@ -114,7 +115,8 @@ var fluid = fluid || require("infusion"),
 
         ugenOptions: {
             model: {
-                phase: -2.0
+                phase: -2.0,
+                value: 0.0
             }
         }
     });
@@ -172,6 +174,7 @@ var fluid = fluid || require("infusion"),
             m.phase = p;
             m.prevVal = prevVal;
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.init = function () {
@@ -201,7 +204,8 @@ var fluid = fluid || require("infusion"),
             model: {
                 phase: undefined,
                 dcOffset: undefined,
-                prevVal: 0
+                prevVal: 0.0,
+                value: 0.0
             }
         }
     });
@@ -259,6 +263,7 @@ var fluid = fluid || require("infusion"),
             m.phase = p;
             m.prevVal = prevVal;
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.init = function () {
@@ -290,6 +295,7 @@ var fluid = fluid || require("infusion"),
             model: {
                 phase: undefined,
                 prevVal: 0.5,
+                value: 0.0,
                 sign: 1.0
             }
         }
@@ -358,6 +364,7 @@ var fluid = fluid || require("infusion"),
             m.prevVal = prevVal;
             m.secondPrevVal = secondPrevVal;
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.init = function () {
@@ -389,6 +396,7 @@ var fluid = fluid || require("infusion"),
         ugenOptions: {
             model: {
                 phase: undefined,
+                value: 0.0,
                 prevVal: 0.5,
                 secondPrevVal: 0.0,
                 sign: 1.0,

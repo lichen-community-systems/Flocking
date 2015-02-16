@@ -306,6 +306,51 @@ var fluid = fluid || require("infusion"),
                 path: "cat27.dog.0.fish42",
                 expected: "cat27.inputs.dog.0.inputs.fish42",
                 msg: "Path segments with numbers should be handled correctly."
+            },
+            {
+                path: "cat.dog.model.value",
+                expected: "cat.inputs.dog.model.value",
+                msg: "The special 'model' keyword should not be expanded"
+            },
+            {
+                path: "cat.dog.options.isAwesome",
+                expected: "cat.inputs.dog.options.isAwesome",
+                msg: "The special 'options' keyword should not be expanded"
+            },
+            {
+                path: "cat.dog.options.model",
+                expected: "cat.inputs.dog.options.model",
+                msg: "Reference to options.model should not be expanded"
+            },
+            {
+                path: "cat.dog.Options.Model",
+                expected: "cat.inputs.dog.inputs.Options.inputs.Model",
+                msg: "The match must be case sensitive"
+            },
+            {
+                path: "fish.modelizedCat.dogoptions.hamster.model.options.model",
+                expected: "fish.inputs.modelizedCat.inputs.dogoptions.inputs.hamster.model.options.model",
+                msg: "Partial matches on the words 'options' or 'model' should be ignored."
+            },
+            {
+                path: "dog.optionsCat.modelDog.value",
+                expected: "dog.inputs.optionsCat.inputs.modelDog.inputs.value",
+                msg: "Partial matches on the words 'options' or 'model' should be ignored."
+            },
+            {
+                path: "sine.freq.model",
+                expected: "sine.inputs.freq.model",
+                msg: "Special segment at the end should be matched"
+            },
+            {
+                path: "sine.freq.options",
+                expected: "sine.inputs.freq.options",
+                msg: "Special segment at the end should be matched"
+            },
+            {
+                path: "model.freq",
+                expected: "model.inputs.freq",
+                msg: "Special segment at the beginning should not be matched"
             }
         ]);
     });
@@ -497,6 +542,20 @@ var fluid = fluid || require("infusion"),
         var ugen = synth.input("mod");
         ok(ugen.gen, "A ugen returned from synth.input() should have a gen() property...");
         equal(typeof (ugen.gen), "function", "...of type function");
+    });
+
+    test("Get input values with special segments (e.g. 'options' and 'model')", function () {
+        var synth = createSynth(simpleSynthDef);
+
+        expect(4);
+        equal(synth.get("sine.freq.model.value"), 440,
+            "Getting the sine oscillator's frequency input's model value should return the current frequency.");
+        equal(synth.get("sine.freq.model"), synth.get("sine").inputs.freq.model,
+            "Getting the sine oscillator's frequency input's model should return the whole model object.");
+        equal(synth.get("sine.options"), synth.get("sine").options,
+            "Getting the sine oscillator's options should return the whole options object.");
+        equal(synth.get("sine.options.sampleRate"), synth.get("sine").options.sampleRate,
+            "Getting the sine oscillator's options should return the whole options object.");
     });
 
     test("Set input values", function () {
@@ -810,7 +869,7 @@ var fluid = fluid || require("infusion"),
 
         // And then that the actual ugen graph was modified.
         equal(direct.inputs.freq.model.value, 880);
-        equal(direct.inputs.mul.inputs.freq.model.value, 1.2);
+        flock.test.equalRounded(7, direct.inputs.mul.inputs.freq.model.value, 1.2);
         equal(direct.inputs.add.inputs.freq.model.value, 7.0);
         equal(direct.inputs.add.id, "add");
     };
@@ -935,24 +994,65 @@ var fluid = fluid || require("infusion"),
 
     });
 
+    var sequenceSynthDef = {
+        id: "seq",
+        ugen: "flock.ugen.sequence",
+        freq: 750,
+        list: [1, 2, 3, 5]
+    };
+
     test("Getting and setting ugen-specified special inputs.", function () {
         var s = flock.synth({
-            synthDef: {
-                id: "seq",
-                ugen: "flock.ugen.sequence",
-                list: [1, 2, 3, 5]
-            }
+            synthDef: sequenceSynthDef
         });
 
-        var seq = s.get("seq");
-        deepEqual(seq.inputs.list, s.options.synthDef.list,
+        var seqUGen = s.get("seq");
+        deepEqual(seqUGen.inputs.list, s.options.synthDef.list,
             "Sanity check: the sequence ugen should be initialized with the same list as specified in the synthDef.");
 
         var newList = [9, 10, 11, 12];
         s.set("seq.list", newList);
-        deepEqual(seq.inputs.list, newList,
+        deepEqual(seqUGen.inputs.list, newList,
             "After setting a 'special input' on a unit generator, it should have been set correctly.");
     });
+
+    var checkModelState = function (synth, genMethodName, numGens) {
+        for (var i = 1; i <= numGens; i++) {
+            synth[genMethodName]();
+            equal(synth.model.value, i,
+                "The model value should have been correctly updated.");
+        }
+    };
+
+    var testSynthModelState = function (testSpecs) {
+        fluid.each(testSpecs, function (testSpec) {
+            test(testSpec.name, function () {
+                var s = fluid.getGlobalValue(testSpec.type)({
+                    synthDef: sequenceSynthDef,
+                    sampleRate: 48000
+                });
+
+                checkModelState(s, testSpec.genMethodName, testSpec.numGens || 3);
+            });
+        });
+    };
+
+    var modelStateTestSpecs = [
+        {
+            name: "flock.synth model state",
+            type: "flock.synth",
+            genMethodName: "gen",
+            numGens: 3
+        },
+        {
+            name: "flock.synth.value",
+            type: "flock.synth.value",
+            genMethodName: "value",
+            numGens: 3
+        }
+    ];
+
+    testSynthModelState(modelStateTestSpecs);
 
 
     module("Buffers");

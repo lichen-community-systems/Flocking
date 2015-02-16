@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (January 23, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (February 16, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof exports === "object") {
@@ -11396,8 +11396,37 @@ var fluid = fluid || require("infusion"),
         return specialInputs.indexOf(inputName) < 0;
     };
 
+    // TODO: Replace this with a regular expression;
+    // this produces too much garbage!
     flock.input.pathExpander = function (path) {
-        return path.replace(/\.(?![0-9])/g, ".inputs.");
+        var segs = fluid.model.parseEL(path),
+            separator = "inputs",
+            len = segs.length,
+            penIdx = len - 1,
+            togo = [],
+            i;
+
+        for (i = 0; i < penIdx; i++) {
+            var seg = segs[i];
+            var nextSeg = segs[i + 1];
+
+            togo.push(seg);
+
+            if (nextSeg === "model" || nextSeg === "options") {
+                togo = togo.concat(segs.slice(i + 1, penIdx));
+                break;
+            }
+
+            if (!isNaN(Number(nextSeg))) {
+                continue;
+            }
+
+            togo.push(separator);
+        }
+
+        togo.push(segs[penIdx]);
+
+        return togo.join(".");
     };
 
     flock.input.expandPaths = function (paths) {
@@ -11424,7 +11453,7 @@ var fluid = fluid || require("infusion"),
         var input = flock.get(root, path);
 
         // If the unit generator is a valueType ugen, return its value, otherwise return the ugen itself.
-        return flock.hasTag(input, "flock.ugen.valueType") ? input.model.value : input;
+        return flock.hasTag(input, "flock.ugen.valueType") ? input.inputs.value : input;
     };
 
     flock.input.getValuesForPathArray = function (root, paths) {
@@ -12043,6 +12072,8 @@ var fluid = fluid || require("infusion"),
                     node.gen(node.model.blockSize);
                 }
             }
+
+            that.model.value = node.model.value;
         };
 
         /**
@@ -12171,13 +12202,8 @@ var fluid = fluid || require("infusion"),
 
     flock.synth.value.finalInit = function (that) {
         that.value = function () {
-            var nodes = that.nodes,
-                lastIdx = nodes.length - 1,
-                out = nodes[lastIdx];
-
             that.gen(1);
-
-            return out.model.value;
+            return that.model.value;
         };
     };
 
@@ -14848,10 +14874,13 @@ var fluid = fluid || require("infusion"),
             inputs: inputs,
             output: output,
             options: options,
-            model: options.model || {},
+            model: options.model || {
+                value: 0.0
+            },
             multiInputs: {},
             tags: ["flock.ugen"]
         };
+        that.lastOutputIdx = that.output.length - 1;
 
         that.get = function (path) {
             return flock.input.get(that.inputs, path);
@@ -15040,22 +15069,27 @@ var fluid = fluid || require("infusion"),
     flock.ugen.value = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
+        that.value = function () {
+            return that.model.value;
+        };
+
         that.dynamicGen = function (numSamps) {
             var out = that.output,
                 m = that.model;
 
             for (var i = 0; i < numSamps; i++) {
-                out[i] = m.value;
+                out[i] = m.unscaled;
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged = function () {
             var inputs = that.inputs,
                 m = that.model;
 
-            m.value = inputs.value;
+            m.unscaled = inputs.value;
 
             if (that.rate !== "constant") {
                 that.gen = that.dynamicGen;
@@ -15081,6 +15115,11 @@ var fluid = fluid || require("infusion"),
         },
 
         ugenOptions: {
+            model: {
+                unscaled: 1.0,
+                value: 1.0
+            },
+
             tags: ["flock.ugen.valueType"]
         }
     });
@@ -15118,10 +15157,10 @@ var fluid = fluid || require("infusion"),
 
             for (; i < numSamps; i++) {
                 out[i] = 0.0;
-
             }
 
             that.mulAdd(numSamps);
+            that.model.value = out[numSamps - 1];
         };
 
         that.onInputChanged();
@@ -15182,6 +15221,7 @@ var fluid = fluid || require("infusion"),
 
             m.samplesLeft = samplesLeft;
             m.crossfadeLevel = crossfadeLevel;
+            m.value = val;
         };
 
         that.onInputChanged = function (inputName) {
@@ -15238,7 +15278,8 @@ var fluid = fluid || require("infusion"),
             model: {
                 samplesLeft: 0.0,
                 crossfadeStepSize: 0,
-                crossfadeLevel: 0.0
+                crossfadeLevel: 0.0,
+                value: 0.0
             },
             strideInputs: ["initial", "target"]
         }
@@ -15261,6 +15302,8 @@ var fluid = fluid || require("infusion"),
                 out[i] = val !== m.prevVal ? 1.0 : 0.0;
                 m.prevVal = val;
             }
+
+            m.value = val;
         };
 
         that.onInputChanged = function (inputName) {
@@ -15285,6 +15328,7 @@ var fluid = fluid || require("infusion"),
         },
         ugenOptions: {
             model: {
+                value: 0.0,
                 prevVal: 0.0
             },
 
@@ -15326,6 +15370,8 @@ var fluid = fluid || require("infusion"),
                     out[i] = 0.0;
                 }
             }
+
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged = function (inputName) {
@@ -15350,6 +15396,7 @@ var fluid = fluid || require("infusion"),
 
         ugenOptions: {
             model: {
+                value: 0.0,
                 prevDuration: 0,
                 remainingOpenSamples: 0
             },
@@ -15398,6 +15445,7 @@ var fluid = fluid || require("infusion"),
             }
 
             m.prevTrig = prevTrig;
+            m.value = sourceVal;
         };
 
         that.onInputChanged = function () {
@@ -15434,6 +15482,7 @@ var fluid = fluid || require("infusion"),
         },
         ugenOptions: {
             model: {
+                value: 0.0,
                 funcName: undefined,
                 lastArgIdx: 0
             },
@@ -15454,28 +15503,40 @@ var fluid = fluid || require("infusion"),
         that.krSourceKrInputGen = function () {
             var op = that.activeInput,
                 input = that.inputs[op],
+                out = that.output,
                 sourceBuf = flock.generate(that.expandedSource, that.inputs.source.output[0]);
-            DSP[op](that.output, sourceBuf, input.output[0]);
+
+            DSP[op](out, sourceBuf, input.output[0]);
+            that.model.value = out[out.length - 1];
         };
 
         that.krSourceArInputGen = function () {
             var op = that.activeInput,
                 input = that.inputs[op],
+                out = that.output,
                 sourceBuf = flock.generate(that.expandedSource, that.inputs.source.output[0]);
-            DSP[op](that.output, sourceBuf, input.output);
+
+            DSP[op](out, sourceBuf, input.output);
+            that.model.value = out[out.length - 1];
         };
 
         that.arSourceKrInputGen = function () {
             var op = that.activeInput,
                 input = that.inputs[op],
+                out = that.output,
                 sourceBuf = that.inputs.source.output;
-            DSP[op](that.output, sourceBuf, input.output[0]);
+
+            DSP[op](out, sourceBuf, input.output[0]);
+            that.model.value = out[out.length - 1];
         };
 
         that.arSourceArInputGen = function () {
             var op = that.activeInput,
-                input = that.inputs[op];
+                input = that.inputs[op],
+                out = that.output;
+
             DSP[op](that.output, that.inputs.source.output, input.output);
+            that.model.value = out[out.length - 1];
         };
 
         that.onInputChanged = function () {
@@ -15546,6 +15607,8 @@ var fluid = fluid || require("infusion"),
                 }
                 out[i] = sum;
             }
+
+            that.model.value = out[numSamps - 1];
         };
 
         that.onInputChanged = function () {
@@ -15610,6 +15673,7 @@ var fluid = fluid || require("infusion"),
 
             m.phase = phase;
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged = function (inputName) {
@@ -15628,7 +15692,6 @@ var fluid = fluid || require("infusion"),
                 m.tableIncHz = m.tableLen / m.sampleRate;
                 m.tableIncRad =  m.tableLen / flock.TWOPI;
             }
-
         };
 
         that.onInputChanged();
@@ -15654,7 +15717,8 @@ var fluid = fluid || require("infusion"),
         ugenOptions: {
             interpolation: "linear",
             model: {
-                phase: 0
+                phase: 0,
+                value: 0.0
             },
             strideInputs: [
                 "freq",
@@ -15709,6 +15773,7 @@ var fluid = fluid || require("infusion"),
 
             m.phase = phase;
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged = function () {
@@ -15729,7 +15794,8 @@ var fluid = fluid || require("infusion"),
         },
         ugenOptions: {
             model: {
-                phase: 0
+                phase: 0,
+                value: 0.0
             },
             strideInputs: [
                 "freq",
@@ -15764,6 +15830,7 @@ var fluid = fluid || require("infusion"),
 
             m.phase = phase;
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged = function () {
@@ -15792,6 +15859,11 @@ var fluid = fluid || require("infusion"),
             add: null
         },
         ugenOptions: {
+            model: {
+                phase: 0.0,
+                freqInc: 1,
+                value: 0.0
+            },
             strideInputs: ["freq"]
         }
     });
@@ -15824,6 +15896,7 @@ var fluid = fluid || require("infusion"),
 
             m.phase = phase;
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged = function () {
@@ -15848,6 +15921,13 @@ var fluid = fluid || require("infusion"),
             width: 0.5,
             mul: null,
             add: null
+        },
+        ugenOptions: {
+            model: {
+                phase: 0.0,
+                freqInc: 1,
+                value: 0.0
+            }
         }
     });
 
@@ -15883,6 +15963,7 @@ var fluid = fluid || require("infusion"),
 
             m.phase = phase - phaseOffset;
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged = function () {
@@ -15909,7 +15990,9 @@ var fluid = fluid || require("infusion"),
         },
         ugenOptions: {
             model: {
-                phase: 0.0
+                phase: 0.0,
+                scale: 0.0,
+                value: 0.0
             },
             strideInputs: ["freq"]
         }
@@ -15936,6 +16019,7 @@ var fluid = fluid || require("infusion"),
             }
 
             m.prevTrig = trig;
+            m.value = out[out.length - 1];
         };
 
         return that;
@@ -15949,7 +16033,8 @@ var fluid = fluid || require("infusion"),
         },
         ugenOptions: {
             model: {
-                prevTrig: 0.0
+                prevTrig: 0.0,
+                value: 0.0
             }
         }
     });
@@ -15979,10 +16064,12 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.krGen = function (numSamps) {
             var m = that.model,
+                out = that.output,
                 currTrig = that.inputs.trigger.output[0],
                 i;
 
@@ -15992,10 +16079,11 @@ var fluid = fluid || require("infusion"),
             m.prevTrig = currTrig;
 
             for (i = 0; i < numSamps; i++) {
-                that.output[i] = m.holdVal;
+                out[i] = m.holdVal;
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged = function () {
@@ -16019,7 +16107,8 @@ var fluid = fluid || require("infusion"),
         ugenOptions: {
             strideInputs: ["source"],
             model: {
-                prevTrig: 0.0
+                prevTrig: 0.0,
+                value: 0.0
             }
         }
     });
@@ -16104,6 +16193,7 @@ var fluid = fluid || require("infusion"),
             m.idx = bufIdx;
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.krSpeedGen = function (numSamps) {
@@ -16142,6 +16232,7 @@ var fluid = fluid || require("infusion"),
 
             m.idx = bufIdx;
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged = function (inputName) {
@@ -16193,6 +16284,7 @@ var fluid = fluid || require("infusion"),
         },
         ugenOptions: {
             model: {
+                value: 0.0,
                 idx: 0,
                 stepSize: 0,
                 prevTrig: 0,
@@ -16239,6 +16331,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged = function (inputName) {
@@ -16270,7 +16363,8 @@ var fluid = fluid || require("infusion"),
 
         ugenOptions: {
             model: {
-                channel: undefined
+                channel: undefined,
+                value: 0.0
             },
             strideInputs: [
                 "phase"
@@ -16305,9 +16399,8 @@ var fluid = fluid || require("infusion"),
             that.onBufferInputChanged(inputName);
         };
 
-        that.onBufferReady = function (buffer) {
-            var chan = that.inputs.channel.output[0];
-            that.output[0] = that.model.value = buffer.data.channels[chan].length / that.buffer.format.sampleRate;
+        that.onBufferReady = function () {
+            that.krGen(1);
         };
 
         that.init = function () {
@@ -16361,9 +16454,8 @@ var fluid = fluid || require("infusion"),
             that.onBufferInputChanged(inputName);
         };
 
-        that.onBufferReady = function (buffer) {
-            var chan = that.inputs.channel.output[0];
-            that.output[0] = that.model.value = buffer.data.channels[chan].length;
+        that.onBufferReady = function () {
+            that.krGen(1);
         };
 
         that.init = function () {
@@ -16394,7 +16486,7 @@ var fluid = fluid || require("infusion"),
 
     /**
      * Outputs a phase step value for playing the specified buffer at its normal playback rate.
-     * This unit generator takes into account any differences betwee the sound file's sample rate and
+     * This unit generator takes into account any differences between the sound file's sample rate and
      * the environment's audio rate.
      *
      * Inputs:
@@ -16482,6 +16574,7 @@ var fluid = fluid || require("infusion"),
 
         that.gen = function (numSamps) {
             var m = that.model,
+                out = that.output,
                 density = inputs.density.output[0], // Density is kr.
                 threshold,
                 scale,
@@ -16499,10 +16592,11 @@ var fluid = fluid || require("infusion"),
 
             for (i = 0; i < numSamps; i++) {
                 val = Math.random();
-                output[i] = (val < threshold) ? val * scale : 0.0;
+                out[i] = (val < threshold) ? val * scale : 0.0;
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged();
@@ -16520,7 +16614,8 @@ var fluid = fluid || require("infusion"),
             model: {
                 density: 0.0,
                 scale: 0.0,
-                threshold: 0.0
+                threshold: 0.0,
+                value: 0.0
             }
         }
     });
@@ -16538,6 +16633,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            that.model.value = out[numSamps - 1];
         };
 
         that.onInputChanged();
@@ -16563,10 +16659,11 @@ var fluid = fluid || require("infusion"),
         var that = flock.ugen(inputs, output, options);
 
         that.gen = function (numSamps) {
-            var state = that.model.state,
+            var m = that.model,
+                state = m.state,
                 a = that.a,
                 p = that.p,
-                offset = that.model.offset,
+                offset = m.offset,
                 out = that.output,
                 i,
                 j,
@@ -16584,6 +16681,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.init = function () {
@@ -16610,6 +16708,8 @@ var fluid = fluid || require("infusion"),
         },
         ugenOptions: {
             model: {
+                state: 0.0,
+                value: 0.0,
                 offset: 0
             },
             coeffs: {
@@ -16637,11 +16737,11 @@ var fluid = fluid || require("infusion"),
                     m.counter = m.sampleRate / freq;
                     m.counter = m.counter > 1 ? m.counter : 1;
                     if (that.options.interpolation === "linear") {
-                        m.start = m.value = m.end;
+                        m.start = m.unscaled = m.end;
                         m.end = Math.random();
                         m.ramp = m.ramp = (m.end - m.start) / m.counter;
                     } else {
-                        m.start = m.value = Math.random();
+                        m.start = m.unscaled = Math.random();
                         m.ramp = 0;
                     }
                 }
@@ -16649,14 +16749,15 @@ var fluid = fluid || require("infusion"),
                 remain -= sampsForLevel;
                 m.counter -= sampsForLevel;
                 for (i = 0; i < sampsForLevel; i++) {
-                    out[currSamp] = m.value;
-                    m.value += m.ramp;
+                    out[currSamp] = m.unscaled;
+                    m.unscaled += m.ramp;
                     currSamp++;
                 }
 
             } while (remain);
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.input = function () {
@@ -16678,7 +16779,9 @@ var fluid = fluid || require("infusion"),
         ugenOptions: {
             model: {
                 counter: 0,
-                level: 0
+                level: 0,
+                unscaled: 0.0,
+                value: 0.0
             }
         }
     });
@@ -16701,6 +16804,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            that.model.value = out[numSamps - 1];
         };
 
         that.onInputChanged = function (inputName) {
@@ -16751,6 +16855,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            that.model.value = out[numSamps - 1];
         };
 
         return that;
@@ -16792,6 +16897,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         return that;
@@ -16834,6 +16940,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         return that;
@@ -16871,6 +16978,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            that.model.value = out[numSamps - 1];
         };
 
         return that;
@@ -16907,6 +17015,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            that.model.value = out[numSamps - 1];
         };
 
         return that;
@@ -16948,6 +17057,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         return that;
@@ -16994,25 +17104,26 @@ var fluid = fluid || require("infusion"),
                 k;
 
             // TODO: Add sample priming to the ugen graph to remove this conditional.
-            if (m.value === undefined) {
-                m.value = inputs.start.output[0];
+            if (m.unscaled === undefined) {
+                m.unscaled = inputs.start.output[0];
             }
 
             for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.trigger, k += m.strides.step) {
                 if ((trig[j] > 0.0 && m.prevTrig <= 0.0)) {
-                    m.value = inputs.reset.output[0];
+                    m.unscaled = inputs.reset.output[0];
                 }
                 m.prevTrig = trig[j];
 
-                if (m.value >= inputs.end.output[0]) {
-                    m.value = inputs.start.output[0];
+                if (m.unscaled >= inputs.end.output[0]) {
+                    m.unscaled = inputs.start.output[0];
                 }
 
-                out[i] = m.value;
-                m.value += step[k];
+                out[i] = m.unscaled;
+                m.unscaled += step[k];
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged();
@@ -17032,6 +17143,11 @@ var fluid = fluid || require("infusion"),
             add: null
         },
         ugenOptions: {
+            model: {
+                unscaled: undefined,
+                value: 0.0
+            },
+
             strideInputs: [
                 "trigger",
                 "step"
@@ -17080,6 +17196,7 @@ var fluid = fluid || require("infusion"),
             m.prevVal = prevVal;
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged();
@@ -17097,7 +17214,8 @@ var fluid = fluid || require("infusion"),
         },
         ugenOptions: {
             model: {
-                prevVal: 0.0
+                prevVal: 0.0,
+                value: 0.0
             }
         }
     });
@@ -17112,6 +17230,7 @@ var fluid = fluid || require("infusion"),
 
             // Note, this normalizes the source input ugen's output buffer directly in place.
             flock.normalize(source, max, out);
+            that.model.value = out[out.length - 1];
         };
 
         that.onInputChanged();
@@ -17172,6 +17291,7 @@ var fluid = fluid || require("infusion"),
 
             m.lastValue = lastValue;
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged = function () {
@@ -17198,6 +17318,7 @@ var fluid = fluid || require("infusion"),
         },
         ugenOptions: {
             model: {
+                value: 0.0,
                 lastValue: 0.0
             },
             holdLastValue: false,
@@ -17244,6 +17365,9 @@ var fluid = fluid || require("infusion"),
             }
 
             // TODO: Add multichannel support for mul/add.
+            var lastIdx = numSamps - 1;
+            m.value[0] = outputs[0][lastIdx];
+            m.value[1] = outputs[1][lastIdx];
         };
 
         that.onInputChanged();
@@ -17259,6 +17383,9 @@ var fluid = fluid || require("infusion"),
         },
 
         ugenOptions: {
+            model: {
+                value: []
+            },
             tags: ["flock.ugen.multiChannelOutput"],
             strideInputs: [
                 "pan"
@@ -17316,6 +17443,11 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+
+            // TODO:Consider how we should handle "value" when the number
+            // of input channels for "sources" can be variable.
+            // In the meantime, we just output the last source's last sample.
+            that.model.value = source.output[outIdx];
         };
 
         that.init = function () {
@@ -17393,9 +17525,12 @@ var fluid = fluid || require("infusion"),
         var that = flock.ugen(inputs, output, options);
 
         that.singleBusGen = function (numSamps) {
-            flock.ugen.in.readBus(numSamps, that.output, that.inputs.bus,
+            var out = that.output;
+
+            flock.ugen.in.readBus(numSamps, out, that.inputs.bus,
                 that.options.audioSettings.buses);
             that.mulAdd(numSamps);
+            that.model.value = out[numSamps - 1];
         };
 
         that.multiBusGen = function (numSamps) {
@@ -17415,6 +17550,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            that.model.value = out[numSamps - 1];
         };
 
         that.onInputChanged = function () {
@@ -17459,6 +17595,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            that.model.value = out[numSamps - 1];
         };
 
         that.onInputChanged = function () {
@@ -17499,6 +17636,7 @@ var fluid = fluid || require("infusion"),
 
         that.gen = function () {
             var m = that.model,
+                out = that.output,
                 inputs = that.inputs,
                 q = inputs.q.output[0],
                 freq = inputs.freq.output[0];
@@ -17507,10 +17645,11 @@ var fluid = fluid || require("infusion"),
                 that.updateCoefficients(m, freq, q);
             }
 
-            that.filterEngine.filter(that.output, that.inputs.source.output);
+            that.filterEngine.filter(out, that.inputs.source.output);
 
             m.prevQ = q;
             m.prevFreq = freq;
+            m.value = out[out.length - 1];
         };
 
         that.init = function () {
@@ -17890,6 +18029,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged();
@@ -17905,21 +18045,22 @@ var fluid = fluid || require("infusion"),
         },
         ugenOptions: {
             model: {
-                in1: 0,
-                in2: 0,
-                in3: 0,
-                in4: 0,
-                out1: 0,
-                out2: 0,
-                out3: 0,
-                out4: 0,
+                in1: 0.0,
+                in2: 0.0,
+                in3: 0.0,
+                in4: 0.0,
+                out1: 0.0,
+                out2: 0.0,
+                out3: 0.0,
+                out4: 0.0,
                 prevCutoff: undefined,
                 prevResonance: undefined,
                 f: undefined,
                 fSq: undefined,
                 fSqSq: undefined,
                 oneMinusF: undefined,
-                fb: undefined
+                fb: undefined,
+                value: 0.0
             },
             strideInputs: ["source", "cutoff", "resonance"]
         }
@@ -17952,6 +18093,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged = function (inputName) {
@@ -17976,7 +18118,8 @@ var fluid = fluid || require("infusion"),
         },
         ugenOptions: {
             model: {
-                pos: 0
+                pos: 0,
+                value: 0.0
             }
         }
     });
@@ -17999,6 +18142,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged = function () {
@@ -18016,7 +18160,8 @@ var fluid = fluid || require("infusion"),
         },
         ugenOptions: {
             model: {
-                prevVal: 0
+                prevVal: 0.0,
+                value: 0.0
             }
         }
     });
@@ -18091,6 +18236,7 @@ var fluid = fluid || require("infusion"),
                 out[i] = ((dry * inp) + (mix * that.filtery_a[0]));
             }
             that.mulAdd(numSamps);
+            that.model.value = out[numSamps - 1];
         };
 
         that.initDelayLines = function () {
@@ -18152,7 +18298,8 @@ var fluid = fluid || require("infusion"),
         },
         ugenOptions: {
             model: {
-                spread: 0
+                spread: 0,
+                value: 0.0
             },
 
             tunings: [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617],
@@ -18174,11 +18321,12 @@ var fluid = fluid || require("infusion"),
         var that = flock.ugen(inputs, output, options);
 
         that.gen = function (numSamps) {
-            var out = that.output,
+            var m = that.model,
+                out = that.output,
                 source = that.inputs.source.output,
-                sourceInc = that.model.strides.source,
+                sourceInc = m.strides.source,
                 gain = that.inputs.gain.output,
-                gainInc = that.model.strides.gain,
+                gainInc = m.strides.gain,
                 val,
                 dist,
                 i,
@@ -18192,6 +18340,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged();
@@ -18224,11 +18373,12 @@ var fluid = fluid || require("infusion"),
         var that = flock.ugen(inputs, output, options);
 
         that.gen = function (numSamps) {
-            var out = that.output,
+            var m = that.model,
+                out = that.output,
                 source = that.inputs.source.output,
-                sourceInc = that.model.strides.source,
+                sourceInc = m.strides.source,
                 amount = that.inputs.amount.output,
-                amountInc = that.model.strides.amount,
+                amountInc = m.strides.amount,
                 x,
                 a,
                 absX,
@@ -18246,6 +18396,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged();
@@ -18278,11 +18429,12 @@ var fluid = fluid || require("infusion"),
         var that = flock.ugen(inputs, output, options);
 
         that.gen = function (numSamps) {
-            var out = that.output,
+            var m = that.model,
+                out = that.output,
                 source = that.inputs.source.output,
-                sourceInc = that.model.strides.source,
+                sourceInc = m.strides.source,
                 amount = that.inputs.amount.output,
-                amountInc = that.model.strides.amount,
+                amountInc = m.strides.amount,
                 x,
                 a,
                 dist,
@@ -18309,6 +18461,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged();
@@ -18340,11 +18493,12 @@ var fluid = fluid || require("infusion"),
         var that = flock.ugen(inputs, output, options);
 
         that.gen = function (numSamps) {
-            var out = that.output,
+            var m = that.model,
+                out = that.output,
                 source = that.inputs.source.output,
-                sourceInc = that.model.strides.source,
+                sourceInc = m.strides.source,
                 gain = that.inputs.gain.output,
-                gainInc = that.model.strides.gain,
+                gainInc = m.strides.gain,
                 val,
                 dist,
                 i,
@@ -18364,6 +18518,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged();
@@ -18412,6 +18567,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged();
@@ -18428,7 +18584,8 @@ var fluid = fluid || require("infusion"),
             model: {
                 time: 0,
                 lastSamp: 0,
-                coeff: 0
+                coeff: 0,
+                value: 0.0
             }
         }
     });
@@ -18528,6 +18685,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onBufferReady = function () {
@@ -18585,6 +18743,7 @@ var fluid = fluid || require("infusion"),
         ugenOptions: {
             grainEnv: flock.fillTable(8192, flock.tableGenerators.hann),
             model: {
+                value: 0.0,
                 maxNumGrains: 512,
                 activeGrains: [],
                 freeGrains: [],
@@ -18695,6 +18854,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.initGrains = function () {
@@ -18742,6 +18902,7 @@ var fluid = fluid || require("infusion"),
             maxDelayDur: 30,
             grainEnv: flock.fillTable(8192, flock.tableGenerators.sinWindow),
             model: {
+                value: 0.0,
                 grainLength: 0,
                 writePos: 0
             }
@@ -18755,6 +18916,7 @@ var fluid = fluid || require("infusion"),
 
         that.gen = function (numSamps) {
             var inputs = that.inputs,
+                out = that.output,
                 m = that.model,
                 label = m.label,
                 chan = inputs.channel,
@@ -18782,8 +18944,10 @@ var fluid = fluid || require("infusion"),
                     m.counter = 0;
                 }
                 m.counter++;
-                that.output[i] = source[i];
+                out[i] = source[i];
             }
+
+            m.value = out[numSamps - 1];
         };
 
         that.init = function () {
@@ -18805,6 +18969,7 @@ var fluid = fluid || require("infusion"),
         },
         ugenOptions: {
             model: {
+                value: 0.0,
                 counter: 0
             },
             strideInputs: ["source"]
@@ -18829,9 +18994,9 @@ var fluid = fluid || require("infusion"),
                 i,
                 j;
 
-            if (m.value === undefined) {
+            if (m.unscaled === undefined) {
                 startItem = list[start];
-                m.value = (startItem === undefined) ? 0.0 : startItem;
+                m.unscaled = (startItem === undefined) ? 0.0 : startItem;
             }
 
             if (m.nextIdx === undefined) {
@@ -18843,12 +19008,12 @@ var fluid = fluid || require("infusion"),
                     if (loop > 0.0) {
                         m.nextIdx = start;
                     } else {
-                        out[i] = m.value;
+                        out[i] = m.unscaled;
                         continue;
                     }
                 }
 
-                out[i] = m.value = list[m.nextIdx];
+                out[i] = m.unscaled = list[m.nextIdx];
                 m.phase += freq[j] * scale;
 
                 if (m.phase >= 1.0) {
@@ -18858,6 +19023,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged = function () {
@@ -18891,6 +19057,8 @@ var fluid = fluid || require("infusion"),
 
         ugenOptions: {
             model: {
+                unscaled: undefined,
+                value: 0.0,
                 phase: 0
             },
 
@@ -18918,6 +19086,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.init = function () {
@@ -18936,6 +19105,7 @@ var fluid = fluid || require("infusion"),
         },
         ugenOptions: {
             model: {
+                value: 0.0,
                 a4: {
                     noteNum: 69,
                     freq: 440
@@ -19043,6 +19213,7 @@ var fluid = fluid || require("infusion"),
 
             m.phase = p;
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.init = function () {
@@ -19064,7 +19235,8 @@ var fluid = fluid || require("infusion"),
 
         ugenOptions: {
             model: {
-                phase: -2.0
+                phase: -2.0,
+                value: 0.0
             }
         }
     });
@@ -19122,6 +19294,7 @@ var fluid = fluid || require("infusion"),
             m.phase = p;
             m.prevVal = prevVal;
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.init = function () {
@@ -19151,7 +19324,8 @@ var fluid = fluid || require("infusion"),
             model: {
                 phase: undefined,
                 dcOffset: undefined,
-                prevVal: 0
+                prevVal: 0.0,
+                value: 0.0
             }
         }
     });
@@ -19209,6 +19383,7 @@ var fluid = fluid || require("infusion"),
             m.phase = p;
             m.prevVal = prevVal;
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.init = function () {
@@ -19240,6 +19415,7 @@ var fluid = fluid || require("infusion"),
             model: {
                 phase: undefined,
                 prevVal: 0.5,
+                value: 0.0,
                 sign: 1.0
             }
         }
@@ -19308,6 +19484,7 @@ var fluid = fluid || require("infusion"),
             m.prevVal = prevVal;
             m.secondPrevVal = secondPrevVal;
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.init = function () {
@@ -19339,6 +19516,7 @@ var fluid = fluid || require("infusion"),
         ugenOptions: {
             model: {
                 phase: undefined,
+                value: 0.0,
                 prevVal: 0.5,
                 secondPrevVal: 0.0,
                 sign: 1.0,
@@ -19655,7 +19833,7 @@ var fluid = fluid || require("infusion"),
             var numSamps = endIdx - startIdx,
                 m = flock.line.fill.model;
 
-            m.value = start;
+            m.unscaled = start;
             m.destination = end;
             m.numSegmentSamps = numSamps - 1;
 
@@ -19686,7 +19864,7 @@ var fluid = fluid || require("infusion"),
             },
 
             gen: function (numSamps, idx, buffer, m) {
-                var val = m.value;
+                var val = m.unscaled;
                 for (var i = idx; i < numSamps + idx; i++) {
                     buffer[i] = val;
                 }
@@ -19702,10 +19880,10 @@ var fluid = fluid || require("infusion"),
 
             gen: function (numSamps, idx, buffer, m) {
                 for (var i = idx; i < numSamps + idx; i++) {
-                    buffer[i] = m.value;
+                    buffer[i] = m.unscaled;
                     if (!m.arrived) {
                         m.arrived = true;
-                        m.value = m.destination;
+                        m.unscaled = m.destination;
                     }
                 }
 
@@ -19715,11 +19893,11 @@ var fluid = fluid || require("infusion"),
 
         linear: {
             init: function (m) {
-                m.stepSize = (m.destination - m.value) / m.numSegmentSamps;
+                m.stepSize = (m.destination - m.unscaled) / m.numSegmentSamps;
             },
 
             gen: function (numSamps, idx, buffer, m) {
-                var val = m.value,
+                var val = m.unscaled,
                     stepSize = m.stepSize;
 
                 for (var i = idx; i < numSamps + idx; i++) {
@@ -19727,7 +19905,7 @@ var fluid = fluid || require("infusion"),
                     val += stepSize;
                 }
 
-                m.value = val;
+                m.unscaled = val;
                 m.stepSize = stepSize;
 
                 return buffer;
@@ -19736,15 +19914,15 @@ var fluid = fluid || require("infusion"),
 
         exponential: {
             init: function (m) {
-                if (m.value === 0) {
-                    m.value = 0.0000000000000001;
+                if (m.unscaled === 0) {
+                    m.unscaled = 0.0000000000000001;
                 }
                 m.stepSize = m.numSegmentSamps === 0 ? 0 :
-                    Math.pow(m.destination / m.value, 1.0 / m.numSegmentSamps);
+                    Math.pow(m.destination / m.unscaled, 1.0 / m.numSegmentSamps);
             },
 
             gen: function (numSamps, idx, buffer, m) {
-                var val = m.value,
+                var val = m.unscaled,
                     stepSize = m.stepSize;
 
                 for (var i = idx; i < numSamps + idx; i++) {
@@ -19752,7 +19930,7 @@ var fluid = fluid || require("infusion"),
                     val *= stepSize;
                 }
 
-                m.value = val;
+                m.unscaled = val;
                 m.stepSize = stepSize;
 
                 return buffer;
@@ -19765,15 +19943,15 @@ var fluid = fluid || require("infusion"),
                     // A curve value this small might as well be linear.
                     return flock.line.linear.init(m);
                 } else {
-                    var a1 = (m.destination - m.value) / (1.0 - Math.exp(m.currentCurve));
-                    m.a2 = m.value + a1;
+                    var a1 = (m.destination - m.unscaled) / (1.0 - Math.exp(m.currentCurve));
+                    m.a2 = m.unscaled + a1;
                     m.b1 = a1;
                     m.stepSize = Math.exp(m.currentCurve / m.numSegmentSamps);
                 }
             },
 
             gen: function (numSamps, idx, buffer, m) {
-                var val = m.value,
+                var val = m.unscaled,
                     b1 = m.b1;
 
                 for (var i = idx; i < numSamps + idx; i++) {
@@ -19782,7 +19960,7 @@ var fluid = fluid || require("infusion"),
                     val = m.a2 - b1;
                 }
 
-                m.value = val;
+                m.unscaled = val;
                 m.b1 = b1;
 
                 return buffer;
@@ -19792,15 +19970,15 @@ var fluid = fluid || require("infusion"),
         sin: {
             init: function (m) {
                 var w = Math.PI / m.numSegmentSamps;
-                m.a2 = (m.destination + m.value) * 0.5;
+                m.a2 = (m.destination + m.unscaled) * 0.5;
                 m.b1 = 2.0 * Math.cos(w);
-                m.y1 = (m.destination - m.value) * 0.5;
+                m.y1 = (m.destination - m.unscaled) * 0.5;
                 m.y2 = m.y1 * Math.sin(flock.HALFPI - w);
-                m.value = m.a2 - m.y1;
+                m.unscaled = m.a2 - m.y1;
             },
 
             gen: function (numSamps, idx, buffer, m) {
-                var val = m.value,
+                var val = m.unscaled,
                     y1 = m.y1,
                     y2 = m.y2,
                     y0;
@@ -19813,7 +19991,7 @@ var fluid = fluid || require("infusion"),
                     y1 = y0;
                 }
 
-                m.value = val;
+                m.unscaled = val;
                 m.y1 = y1;
                 m.y2 = y2;
 
@@ -19828,21 +20006,21 @@ var fluid = fluid || require("infusion"),
 
                 m.b1 = 2.0 * cosW;
 
-                if (m.destination >= m.value) {
-                    m.a2 = m.value;
+                if (m.destination >= m.unscaled) {
+                    m.a2 = m.unscaled;
                     m.y1 = 0.0;
-                    m.y2 = -Math.sin(w) * (m.destination - m.value);
+                    m.y2 = -Math.sin(w) * (m.destination - m.unscaled);
                 } else {
                     m.a2 = m.destination;
-                    m.y1 = m.value - m.destination;
-                    m.y2 = cosW * (m.value - m.destination);
+                    m.y1 = m.unscaled - m.destination;
+                    m.y2 = cosW * (m.unscaled - m.destination);
                 }
 
-                m.value = m.a2 + m.y1;
+                m.unscaled = m.a2 + m.y1;
             },
 
             gen: function (numSamps, idx, buffer, m) {
-                var val = m.value,
+                var val = m.unscaled,
                     y1 = m.y1,
                     y2 = m.y2,
                     y0;
@@ -19855,7 +20033,7 @@ var fluid = fluid || require("infusion"),
                     val = m.a2 + y0;
                 }
 
-                m.value = val;
+                m.unscaled = val;
                 m.y1 = y1;
                 m.y2 = y2;
 
@@ -19865,13 +20043,13 @@ var fluid = fluid || require("infusion"),
 
         squared: {
             init: function (m) {
-                m.y1 = Math.sqrt(m.value);
+                m.y1 = Math.sqrt(m.unscaled);
                 m.y2 = Math.sqrt(m.destination);
                 m.stepSize = (m.y2 - m.y1) / m.numSegmentSamps;
             },
 
             gen: function (numSamps, idx, buffer, m) {
-                var val = m.value,
+                var val = m.unscaled,
                     y1 = m.y1;
 
                 for (var i = idx; i < numSamps + idx; i++) {
@@ -19881,7 +20059,7 @@ var fluid = fluid || require("infusion"),
                 }
 
                 m.y1 = y1;
-                m.value = val;
+                m.unscaled = val;
 
                 return buffer;
             }
@@ -19890,13 +20068,13 @@ var fluid = fluid || require("infusion"),
         cubed: {
             init: function (m) {
                 var third = 0.3333333333333333;
-                m.y1 = Math.pow(m.value, third);
+                m.y1 = Math.pow(m.unscaled, third);
                 m.y2 = Math.pow(m.destination, third);
                 m.stepSize = (m.y2 - m.y1) / m.numSegmentSamps;
             },
 
             gen: function (numSamps, idx, buffer, m) {
-                var val = m.value,
+                var val = m.unscaled,
                     y1 = m.y1;
 
                 for (var i = idx; i < numSamps + idx; i++) {
@@ -19906,7 +20084,7 @@ var fluid = fluid || require("infusion"),
                 }
 
                 m.y1 = y1;
-                m.value = val;
+                m.unscaled = val;
 
                 return buffer;
             }
@@ -19953,6 +20131,7 @@ var fluid = fluid || require("infusion"),
             m.numSteps = numSteps;
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged = function () {
@@ -19985,6 +20164,16 @@ var fluid = fluid || require("infusion"),
             duration: 1.0,
             mul: null,
             add: null
+        },
+        ugenOptions: {
+            model: {
+                start: 0.0,
+                end: 1.0,
+                numSteps: 0,
+                stepSize: 0,
+                level: 0.0,
+                value: 0.0
+            }
         }
     });
 
@@ -20019,6 +20208,7 @@ var fluid = fluid || require("infusion"),
             m.numSteps = numSteps;
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged = function () {
@@ -20050,6 +20240,16 @@ var fluid = fluid || require("infusion"),
             duration: 1.0,
             mul: null,
             add: null
+        },
+        ugenOptions: {
+            model: {
+                start: 0.0,
+                end: 1.0,
+                numSteps: 0,
+                multiplier: 0,
+                level: 0.0,
+                value: 0.0
+            }
         }
     });
 
@@ -20110,6 +20310,7 @@ var fluid = fluid || require("infusion"),
             stage.numSteps = numSteps;
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.init = function () {
@@ -20137,7 +20338,10 @@ var fluid = fluid || require("infusion"),
         },
         ugenOptions: {
             model: {
+                level: 0.0,
+                targetLevel: 0.0,
                 previousGate: 0.0,
+                value: 0.0,
                 stage: {
                     currentStep: 0,
                     stepInc: 0,
@@ -20181,6 +20385,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.arGen = function (numSamps) {
@@ -20203,7 +20408,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
-
+            m.value = out[numSamps - 1];
         };
 
         that.onInputChanged = function (inputName) {
@@ -20233,7 +20438,7 @@ var fluid = fluid || require("infusion"),
         that.lineGen = flock.line.constant;
 
         flock.ugen.envGen.lineGenForStage(that.inputs.timeScale.output[0], envelope, m);
-        m.value = envelope.levels[m.stage];
+        m.unscaled = envelope.levels[m.stage];
 
         return envelope;
     };
@@ -20268,7 +20473,7 @@ var fluid = fluid || require("infusion"),
             // Output a constant value.
             that.lineGen = flock.line.constant;
             m.numSegmentSamps = Infinity;
-            m.destination = m.value;
+            m.destination = m.unscaled;
         } else {
             // Move on to the next breakpoint stage.
             m.stage++;
@@ -20388,6 +20593,7 @@ var fluid = fluid || require("infusion"),
                 }
             }
             m.bufIdx = bufIdx;
+            m.value = that.inputs.source.output[numSamps - 1];
         };
 
         that.onInputChanged = function () {
@@ -20467,6 +20673,7 @@ var fluid = fluid || require("infusion"),
             }
 
             m.movingAvg = movingAvg;
+            m.value = out[numSamps - 1];
         };
 
         that.linearGen = function (numSamps) {
@@ -20491,15 +20698,20 @@ var fluid = fluid || require("infusion"),
             }
 
             m.movingAvg = movingAvg;
+            m.value = out[numSamps - 1];
         };
 
         that.noInterpolationGen = function (numSamps) {
-            var val = flock.ugen.mouse.cursor.normalize(that.target, that.model),
+            var m = that.model,
+                out = that.output,
+                val = flock.ugen.mouse.cursor.normalize(that.target, m),
                 i;
 
             for (i = 0; i < numSamps; i++) {
-                that.output[i] = val * that.inputs.mul.output[0] + that.inputs.add.output[0];
+                out[i] = val * that.inputs.mul.output[0] + that.inputs.add.output[0];
             }
+
+            m.value = out[numSamps - 1];
         };
 
         that.moveListener = function (e) {
@@ -20613,7 +20825,8 @@ var fluid = fluid || require("infusion"),
             interpolation: "linear",
             model: {
                 mousePosition: 0,
-                movingAvg: 0
+                movingAvg: 0,
+                value: 0.0
             }
         }
     });
@@ -20628,25 +20841,26 @@ var fluid = fluid || require("infusion"),
                 i;
 
             for (i = 0; i < numSamps; i++) {
-                out[i] = m.value;
+                out[i] = m.unscaled;
             }
 
             that.mulAdd(numSamps);
+            m.value = out[numSamps - 1];
         };
 
         that.mouseDownListener = function () {
-            that.model.value = 1.0;
+            that.model.unscaled = 1.0;
         };
 
         that.mouseUpListener = function () {
-            that.model.value = 0.0;
+            that.model.unscaled = 0.0;
         };
 
         that.init = function () {
             var m = that.model;
             m.target = typeof (that.options.target) === "string" ?
                 document.querySelector(that.options.target) : that.options.target || window;
-            m.value = 0.0;
+            m.unscaled = 0.0;
             m.target.addEventListener("mousedown", that.mouseDownListener, false);
             m.target.addEventListener("mouseup", that.mouseUpListener, false);
 
@@ -20678,6 +20892,7 @@ var fluid = fluid || require("infusion"),
             }
 
             that.mulAdd(numSamps);
+            that.model.value = out[numSamps - 1];
         };
 
         that.onInputChanged = function () {
