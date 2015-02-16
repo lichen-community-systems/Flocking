@@ -62,17 +62,17 @@ var fluid = fluid || require("infusion"),
     flock.test.ugen.interpolation.runTests(flock.test.ugen.interpolation.testSpecs);
 
 
-    module("ugen.input() tests");
+    module("ugen get/set tests");
 
     var setAndCheckInput = function (ugen, inputName, val) {
         var returnVal = ugen.input(inputName, val);
         ok(returnVal, "Setting a new input should return the input unit generator.");
         ok(ugen.inputs[inputName], "Setting a new input should create a new unit generator with the appropriate name.");
-        equal(ugen.inputs[inputName], returnVal, "The return value when setting an input should be the input unit generator.");
+        equal(returnVal, ugen.inputs[inputName], "The return value when setting an input should be the input unit generator.");
 
         var valType = typeof (val);
         if (valType !== "number" && valType !== "string") {
-            equal(ugen.inputs[inputName], ugen.input(inputName), "The value returned from input() should be the same as the actual input value.");
+            equal(ugen.input(inputName), ugen.inputs[inputName], "The value returned from input() should be the same as the actual input value.");
         }
     };
 
@@ -82,6 +82,33 @@ var fluid = fluid || require("infusion"),
         equal(ugen.input(inputName).length, vals.length, "There should be " + vals.length + " unit generators in the array.");
         $.each(vals, comparisonFn);
     };
+
+    test("Get special path segments", function () {
+        var s = flock.synth({
+            synthDef: {
+                id: "carrier",
+                ugen: "flock.ugen.sinOsc",
+                freq: {
+                    ugen: "flock.ugen.xLine",
+                    start: {
+                        ugen: "flock.ugen.lfNoise",
+                        freq: 1/10
+                    }
+                }
+            }
+        });
+
+        var ugen = s.get("carrier"),
+            actual = ugen.get("freq.start.options");
+
+        expect(2);
+        equal(actual, ugen.inputs.freq.inputs.start.options,
+            "The options object should be correctly returned");
+        equal(ugen.get("freq.start.freq.model.value"),
+            ugen.inputs.freq.inputs.start.inputs.freq.model.value,
+            "The options object should be correctly returned");
+
+    });
 
     test("input() data type tests", function () {
         var mockUGen = flock.test.ugen.mock.make(new Float32Array(64));
