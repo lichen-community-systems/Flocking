@@ -879,6 +879,45 @@ var fluid = fluid || require("infusion"),
         testSetMultiple("input");
     });
 
+    var valueExpressionTestSpecs = [
+        {
+            name: "Value expression resolving into the model",
+            change: {
+                "sine.freq": "${mod.freq.model.value}"
+            },
+            targetUGenName: "mod",
+            expectedPath: "inputs.freq.model.value"
+        },
+        {
+            name: "Value expression resolving to a unit generator instance",
+            change: {
+                "sine.freq": "${mod}"
+            },
+            targetUGenName: "mod"
+        }
+    ];
+
+    var testValueExpressions = function (testSpecs) {
+        fluid.each(testSpecs, function (testSpec) {
+            test(testSpec.name, function () {
+                var synth = createSynth(simpleSynthDef);
+                synth.set(testSpec.change);
+
+                var actual = synth.get(Object.keys(testSpec.change)[0]),
+                    expected = synth.get(testSpec.targetUGenName);
+
+                if (testSpec.expectedPath) {
+                    expected = fluid.get(expected, testSpec.expectedPath);
+                }
+
+                equal(actual, expected,
+                    "The value expression should have been resolved and set at the specified path.");
+            });
+        });
+    };
+
+    testValueExpressions(valueExpressionTestSpecs);
+
     test("Synth.set(): correct node evaluation order", function () {
         var synth = flock.synth({
             synthDef: {

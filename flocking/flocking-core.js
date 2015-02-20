@@ -507,8 +507,14 @@ var fluid = fluid || require("infusion"),
 
     flock.interpolate.cubic = flock.interpolate.hermite;
 
-    flock.warn = function (msg) {
-        fluid.log(fluid.logLevel.WARN, msg);
+    flock.log = {
+        warn: function (msg) {
+            fluid.log(fluid.logLevel.WARN, msg);
+        },
+
+        debug: function (msg) {
+            fluid.log(fluid.logLevel.INFO, msg);
+        }
     };
 
     flock.fail = function (msg) {
@@ -520,7 +526,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.pathParseError = function (root, path, token) {
-        var msg = "Error parsing path: " + path + ". Segment '" + token +
+        var msg = "Error parsing path '" + path + "'. Segment '" + token +
             "' could not be resolved. Root object was: " + fluid.prettyPrintJSON(root);
 
         flock.fail(msg);
@@ -569,8 +575,8 @@ var fluid = fluid || require("infusion"),
             root = root[prop];
             type = typeof root;
             if (type !== "object") {
-                flock.fail("Error while setting a value at path + " + path +
-                    ". A non-container object was found at segment " + prop + ". Value: " + root);
+                flock.fail("Error while setting a value at path '" + path +
+                    "'. A non-container object was found at segment '" + prop + "'. Value: " + root);
 
                 return;
             }
@@ -700,23 +706,47 @@ var fluid = fluid || require("infusion"),
             flock.input.getValuesForPathObject(root, path);
     };
 
+    flock.input.resolveValue = function (root, path, val, target, inputName, previousInput, valueParser) {
+        // Check to see if the value is actually a "get expression"
+        // (i.e. an EL path wrapped in ${}) and resolve it if necessary.
+        if (typeof val === "string") {
+            var extracted = fluid.extractEL(val, flock.input.valueExpressionSpec);
+            if (extracted) {
+                var resolved = flock.input.getValueForPath(root, extracted);
+                if (resolved === undefined) {
+                    flock.log.debug("The value expression '" + val + "' resolved to undefined. " +
+                    "If this isn't expected, check to ensure that your path is valid.");
+                }
+
+                return resolved;
+            }
+        }
+
+        return flock.input.shouldExpand(inputName, target) && valueParser ?
+            valueParser(val, path, target, previousInput) : val;
+    };
+
+    flock.input.valueExpressionSpec = {
+        ELstyle: "${}"
+    };
+
     flock.input.setValueForPath = function (root, path, val, baseTarget, valueParser) {
         path = flock.input.expandPath(path);
 
         var previousInput = flock.get(root, path),
             lastDotIdx = path.lastIndexOf("."),
             inputName = path.slice(lastDotIdx + 1),
-            target = lastDotIdx > -1 ? flock.get(root, path.slice(0, path.lastIndexOf(".inputs"))) : baseTarget,
-            newInput = flock.input.shouldExpand(inputName, target) && valueParser ?
-                valueParser(val, path, target, previousInput) : val;
+            target = lastDotIdx > -1 ? flock.get(root, path.slice(0, path.lastIndexOf(".inputs"))) :
+                baseTarget,
+            resolvedVal = flock.input.resolveValue(root, path, val, target, inputName, previousInput, valueParser);
 
-        flock.set(root, path, newInput);
+        flock.set(root, path, resolvedVal);
 
         if (target && target.onInputChanged) {
             target.onInputChanged(inputName);
         }
 
-        return newInput;
+        return resolvedVal;
     };
 
     flock.input.setValuesForPaths = function (root, valueMap, baseTarget, valueParser) {

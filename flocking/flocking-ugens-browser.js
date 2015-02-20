@@ -366,11 +366,11 @@ var fluid = fluid || require("infusion"),
             // TODO: Remove this warning when Safari and Android
             // fix their MediaElementAudioSourceNode implementations.
             if (flock.platform.browser.safari) {
-                flock.warn("MediaElementSourceNode does not work on Safari. " +
+                flock.log.warn("MediaElementSourceNode does not work on Safari. " +
                     "For more information, see https://bugs.webkit.org/show_bug.cgi?id=84743 " +
                     "and https://bugs.webkit.org/show_bug.cgi?id=125031");
             } else if (flock.platform.isAndroid) {
-                flock.warn("MediaElementSourceNode does not work on Android. " +
+                flock.log.warn("MediaElementSourceNode does not work on Android. " +
                     "For more information, see https://code.google.com/p/chromium/issues/detail?id=419446");
             }
         };
