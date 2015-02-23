@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (February 20, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (February 23, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.1
@@ -21938,6 +21938,91 @@ var fluid = fluid || require("infusion"),
         that.bufferPromise.promise.reject(msg);
 
         return that.bufferPromise.promise;
+    };
+
+    /**
+     * A Buffer Loader is responsible for loading a collection
+     * of buffers asynchronously, and will fire an event when they
+     * are all ready.
+     */
+    fluid.defaults("flock.bufferLoader", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        members: {
+            buffers: []
+        },
+
+        // A list of BufferDef objects to resolve.
+        bufferDefs: [],
+
+        events: {
+            afterBuffersLoaded: null
+        },
+
+        listeners: {
+            onCreate: {
+                funcName: "flock.bufferLoader.loadBuffers",
+                args: ["{that}.options.bufferDefs", "{that}.buffers", "{that}.events.afterBuffersLoaded.fire"]
+            }
+        }
+    });
+
+    flock.bufferLoader.idFromURL = function (url) {
+        var lastSlash = url.lastIndexOf("/"),
+            idStart = lastSlash > -1 ? lastSlash + 1 : 0,
+            ext = url.lastIndexOf("."),
+            idEnd = ext > -1 ? ext : url.length;
+
+        return url.substring(idStart, idEnd);
+    };
+
+    flock.bufferLoader.idsFromURLs = function (urls) {
+        return fluid.transform(urls, flock.bufferLoader.idFromURL);
+    };
+
+    flock.bufferLoader.expandFileSequence = function (fileURLs) {
+        fileURLs = fileURLs || [];
+
+        var bufDefs = [],
+            i,
+            url,
+            id;
+
+        for (i = 0; i < fileURLs.length; i++) {
+            url = fileURLs[i];
+            id = flock.bufferLoader.idFromURL(url);
+            bufDefs.push({
+                id: id,
+                url: url
+            });
+        }
+
+        return bufDefs;
+    };
+
+    flock.bufferLoader.loadBuffers = function (bufferDefs, decodedBuffers, afterBuffersLoaded) {
+        bufferDefs = fluid.makeArray(bufferDefs);
+
+        // TODO: This is a sign that the flock.parse.bufferForDef is still terribly broken.
+        var bufferTarget = {
+            setBuffer: function (decoded) {
+                decodedBuffers.push(decoded);
+
+                if (decodedBuffers.length === bufferDefs.length) {
+                    afterBuffersLoaded(decodedBuffers);
+                }
+            }
+        };
+
+        for (var i = 0; i < bufferDefs.length; i++) {
+            // TODO: Hardcoded reference to the shared environment.
+            var bufDef = bufferDefs[i];
+            if (bufDef.id === undefined && bufDef.url !== undefined) {
+                bufDef.id = flock.bufferLoader.idFromURL(bufDef.url);
+            }
+
+            flock.parse.bufferForDef(bufferDefs[i], bufferTarget, flock.enviro.shared);
+        }
     };
 
 }());
