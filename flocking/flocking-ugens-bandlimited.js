@@ -78,7 +78,8 @@ var fluid = fluid || require("infusion"),
                 out = that.output,
                 freq = that.inputs.freq.output[0],
                 p = m.phase,
-                i;
+                i,
+                val;
 
             for (i = 0; i < numSamps; i++) {
                 p -= 1.0;
@@ -88,12 +89,14 @@ var fluid = fluid || require("infusion"),
                     p += m.d0;
                 }
 
-                out[i] = flock.blit(p);
+                val = flock.blit(p);
+                out[i] = val;
             }
 
             m.phase = p;
+            m.unscaledValue = val;
             that.mulAdd(numSamps);
-            m.value = out[numSamps - 1];
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
         };
 
         that.init = function () {
@@ -116,6 +119,7 @@ var fluid = fluid || require("infusion"),
         ugenOptions: {
             model: {
                 phase: -2.0,
+                unscaledValue: 0.0,
                 value: 0.0
             }
         }
@@ -149,7 +153,7 @@ var fluid = fluid || require("infusion"),
                 freq = that.inputs.freq.output[0],
                 leak = 1.0 - that.inputs.leakRate.output[0],
                 p = m.phase,
-                prevVal = m.prevVal,
+                unscaledValue = m.unscaledValue,
                 i;
 
             // TODO: This can be moved to init() when
@@ -168,13 +172,13 @@ var fluid = fluid || require("infusion"),
                 }
 
                 // Saw is BLIT - dcOffset + (1 - leakRate) * prevVal
-                out[i] = prevVal = flock.blit(p) - m.dcOffset + leak * prevVal;
+                out[i] = unscaledValue = flock.blit(p) - m.dcOffset + leak * unscaledValue;
             }
 
             m.phase = p;
-            m.prevVal = prevVal;
+            m.unscaledValue = unscaledValue;
             that.mulAdd(numSamps);
-            m.value = out[numSamps - 1];
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
         };
 
         that.init = function () {
@@ -204,7 +208,7 @@ var fluid = fluid || require("infusion"),
             model: {
                 phase: undefined,
                 dcOffset: undefined,
-                prevVal: 0.0,
+                unscaledValue: 0.0,
                 value: 0.0
             }
         }
@@ -238,7 +242,7 @@ var fluid = fluid || require("infusion"),
                 freq = that.inputs.freq.output[0],
                 leak = 1.0 - that.inputs.leakRate.output[0],
                 p = m.phase,
-                prevVal = m.prevVal,
+                unscaledValue = m.unscaledValue,
                 i;
 
             // TODO: This can be moved to init() when
@@ -249,7 +253,7 @@ var fluid = fluid || require("infusion"),
             }
 
             for (i = 0; i < numSamps; i++) {
-                out[i] = prevVal = (flock.blit(p) * m.sign) + leak * prevVal;
+                out[i] = unscaledValue = (flock.blit(p) * m.sign) + leak * unscaledValue;
 
                 if (p < -2.0) {
                     flock.ugen.square.updatePeriodState(m, freq);
@@ -261,9 +265,9 @@ var fluid = fluid || require("infusion"),
             }
 
             m.phase = p;
-            m.prevVal = prevVal;
+            m.unscaledValue = unscaledValue;
             that.mulAdd(numSamps);
-            m.value = out[numSamps - 1];
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
         };
 
         that.init = function () {
@@ -294,8 +298,8 @@ var fluid = fluid || require("infusion"),
         ugenOptions: {
             model: {
                 phase: undefined,
-                prevVal: 0.5,
-                value: 0.0,
+                unscaledValue: 0.5,
+                value: 0.5,
                 sign: 1.0
             }
         }
@@ -333,7 +337,7 @@ var fluid = fluid || require("infusion"),
                 freq = that.inputs.freq.output[0],
                 leak = 1.0 - that.inputs.leakRate.output[0],
                 p = m.phase,
-                prevVal = m.prevVal,
+                unscaledValue = m.unscaledValue,
                 secondPrevVal = m.secondPrevVal,
                 i,
                 firstIntegrate,
@@ -347,8 +351,8 @@ var fluid = fluid || require("infusion"),
             }
 
             for (i = 0; i < numSamps; i++) {
-                firstIntegrate = (flock.blit(p) * m.sign) + leak * prevVal;
-                prevVal = firstIntegrate;
+                firstIntegrate = (flock.blit(p) * m.sign) + leak * unscaledValue;
+                unscaledValue = firstIntegrate;
                 secondIntegrate = firstIntegrate + leak * secondPrevVal;
                 secondPrevVal = secondIntegrate;
                 out[i] = secondIntegrate * m.ampScale;
@@ -361,10 +365,10 @@ var fluid = fluid || require("infusion"),
             }
 
             m.phase = p;
-            m.prevVal = prevVal;
+            m.unscaledValue = unscaledValue;
             m.secondPrevVal = secondPrevVal;
             that.mulAdd(numSamps);
-            m.value = out[numSamps - 1];
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
         };
 
         that.init = function () {
@@ -396,8 +400,8 @@ var fluid = fluid || require("infusion"),
         ugenOptions: {
             model: {
                 phase: undefined,
-                value: 0.0,
-                prevVal: 0.5,
+                value: 0.5,
+                unscaledValue: 0.5,
                 secondPrevVal: 0.0,
                 sign: 1.0,
                 ampScale: undefined,

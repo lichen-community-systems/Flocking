@@ -175,7 +175,7 @@ var fluid = fluid || require("infusion"),
             },
             {
                 id: "fish",
-                url: "../../../demos/shared/audio/hillier-full-stereo.wav"
+                url: "../../../demos/shared/audio/hillier-first-chord.wav"
             }
         ];
 

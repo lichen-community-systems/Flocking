@@ -1181,25 +1181,31 @@ var fluid = fluid || require("infusion"),
         var testNodes = [
             {
                 nickName: "1",
+                tags: ["flock.ugen"],
                 inputs: {
                     cat: {
                         nickName: "1.2",
+                        tags: ["flock.ugen"],
                         inputs: {
                             dog: {
-                                nickName: "1.1"
+                                nickName: "1.1",
+                                tags: ["flock.ugen"]
                             }
                         }
                     }
                 }
             },
             {
-                nickName: "2"
+                nickName: "2",
+                tags: ["flock.ugen"]
             },
             {
                 nickName: "3",
+                tags: ["flock.ugen"],
                 inputs: {
                     hamster: {
-                        nickName: 3.1
+                        nickName: 3.1,
+                        tags: ["flock.ugen"]
                     }
                 }
             }
@@ -1265,10 +1271,12 @@ var fluid = fluid || require("infusion"),
             nickName: "4",
             inputs: {
                 giraffe: {
-                    nickName: 4.1
+                    nickName: 4.1,
+                    tags: ["flock.ugen"]
                 },
                 goose: {
-                    nickName: 4.2
+                    nickName: 4.2,
+                    tags: ["flock.ugen"]
                 }
             }
         };
@@ -1290,7 +1298,6 @@ var fluid = fluid || require("infusion"),
             "3": testNodes[2],
             "3.1": testNodes[2].inputs.hamster
         }, "The old node and all its inputs should be replaced by the new one and its inputs.");
-
     });
 
     var testRemoval = function (synthDef, testSpecs) {

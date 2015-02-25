@@ -602,13 +602,8 @@ var fluid = fluid || require("infusion"),
 
     flock.input = {};
 
-    flock.input.shouldExpand = function (inputName, target) {
-        var specialInputs = flock.parse.specialInputs;
-        if (target && target.options && target.options.noExpand) {
-            specialInputs = specialInputs.concat(target.options.noExpand);
-        }
-
-        return specialInputs.indexOf(inputName) < 0;
+    flock.input.shouldExpand = function (inputName) {
+        return flock.parse.specialInputs.indexOf(inputName) < 0;
     };
 
     // TODO: Replace this with a regular expression;
@@ -722,7 +717,7 @@ var fluid = fluid || require("infusion"),
             }
         }
 
-        return flock.input.shouldExpand(inputName, target) && valueParser ?
+        return flock.input.shouldExpand(inputName) && valueParser ?
             valueParser(val, path, target, previousInput) : val;
     };
 
@@ -1146,7 +1141,7 @@ var fluid = fluid || require("infusion"),
 
             for (key in inputs) {
                 input = inputs[key];
-                if (typeof input !== "number") {
+                if (flock.isUGen(input)) {
                     idx = that.insertTree(idx, input);
                     idx++;
                 }
@@ -1301,7 +1296,8 @@ var fluid = fluid || require("infusion"),
          */
         // TODO: This function is marked as unoptimized by the Chrome profiler.
         that.gen = function () {
-            var nodes = that.nodes,
+            var m = that.model,
+                nodes = that.nodes,
                 i,
                 node;
 
@@ -1310,9 +1306,9 @@ var fluid = fluid || require("infusion"),
                 if (node.gen !== undefined) {
                     node.gen(node.model.blockSize);
                 }
-            }
 
-            that.model.value = node.model.value;
+                m.value = node.model.value;
+            }
         };
 
         /**
