@@ -1,7 +1,7 @@
 /*! Flocking 0.1.0 (February 25, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 /*!
- * jQuery JavaScript Library v2.1.1
+ * jQuery JavaScript Library v2.1.3
  * http://jquery.com/
  *
  * Includes Sizzle.js
@@ -11,19 +11,19 @@
  * Released under the MIT license
  * http://jquery.org/license
  *
- * Date: 2014-05-01T17:11Z
+ * Date: 2014-12-18T15:11Z
  */
 
 (function( global, factory ) {
 
 	if ( typeof module === "object" && typeof module.exports === "object" ) {
-		// For CommonJS and CommonJS-like environments where a proper window is present,
-		// execute the factory and get jQuery
-		// For environments that do not inherently posses a window with a document
-		// (such as Node.js), expose a jQuery-making factory as module.exports
-		// This accentuates the need for the creation of a real window
+		// For CommonJS and CommonJS-like environments where a proper `window`
+		// is present, execute the factory and get jQuery.
+		// For environments that do not have a `window` with a `document`
+		// (such as Node.js), expose a factory as module.exports.
+		// This accentuates the need for the creation of a real `window`.
 		// e.g. var jQuery = require("jquery")(window);
-		// See ticket #14549 for more info
+		// See ticket #14549 for more info.
 		module.exports = global.document ?
 			factory( global, true ) :
 			function( w ) {
@@ -39,10 +39,10 @@
 // Pass this if window is not defined yet
 }(typeof window !== "undefined" ? window : this, function( window, noGlobal ) {
 
-// Can't do this because several apps including ASP.NET trace
+// Support: Firefox 18+
+// Can't be in strict mode, several libs including ASP.NET trace
 // the stack via arguments.caller.callee and Firefox dies if
 // you try to trace through "use strict" call chains. (#13335)
-// Support: Firefox 18+
 //
 
 var arr = [];
@@ -69,7 +69,7 @@ var
 	// Use the correct document accordingly with window argument (sandbox)
 	document = window.document,
 
-	version = "2.1.1",
+	version = "2.1.3",
 
 	// Define a local copy of jQuery
 	jQuery = function( selector, context ) {
@@ -187,7 +187,7 @@ jQuery.extend = jQuery.fn.extend = function() {
 	if ( typeof target === "boolean" ) {
 		deep = target;
 
-		// skip the boolean and the target
+		// Skip the boolean and the target
 		target = arguments[ i ] || {};
 		i++;
 	}
@@ -197,7 +197,7 @@ jQuery.extend = jQuery.fn.extend = function() {
 		target = {};
 	}
 
-	// extend jQuery itself if only one argument is passed
+	// Extend jQuery itself if only one argument is passed
 	if ( i === length ) {
 		target = this;
 		i--;
@@ -254,9 +254,6 @@ jQuery.extend({
 
 	noop: function() {},
 
-	// See test/unit/core.js for details concerning isFunction.
-	// Since version 1.3, DOM methods and functions like alert
-	// aren't supported. They return false on IE (#2968).
 	isFunction: function( obj ) {
 		return jQuery.type(obj) === "function";
 	},
@@ -271,7 +268,8 @@ jQuery.extend({
 		// parseFloat NaNs numeric-cast false positives (null|true|false|"")
 		// ...but misinterprets leading-number strings, particularly hex literals ("0x...")
 		// subtraction forces infinities to NaN
-		return !jQuery.isArray( obj ) && obj - parseFloat( obj ) >= 0;
+		// adding 1 corrects loss of precision from parseFloat (#15100)
+		return !jQuery.isArray( obj ) && (obj - parseFloat( obj ) + 1) >= 0;
 	},
 
 	isPlainObject: function( obj ) {
@@ -305,7 +303,7 @@ jQuery.extend({
 		if ( obj == null ) {
 			return obj + "";
 		}
-		// Support: Android < 4.0, iOS < 6 (functionish RegExp)
+		// Support: Android<4.0, iOS<6 (functionish RegExp)
 		return typeof obj === "object" || typeof obj === "function" ?
 			class2type[ toString.call(obj) ] || "object" :
 			typeof obj;
@@ -335,6 +333,7 @@ jQuery.extend({
 	},
 
 	// Convert dashed to camelCase; used by the css and data modules
+	// Support: IE9-11+
 	// Microsoft forgot to hump their vendor prefix (#9572)
 	camelCase: function( string ) {
 		return string.replace( rmsPrefix, "ms-" ).replace( rdashAlpha, fcamelCase );
@@ -550,14 +549,14 @@ function isArraylike( obj ) {
 }
 var Sizzle =
 /*!
- * Sizzle CSS Selector Engine v1.10.19
+ * Sizzle CSS Selector Engine v2.2.0-pre
  * http://sizzlejs.com/
  *
- * Copyright 2013 jQuery Foundation, Inc. and other contributors
+ * Copyright 2008, 2014 jQuery Foundation, Inc. and other contributors
  * Released under the MIT license
  * http://jquery.org/license
  *
- * Date: 2014-04-18
+ * Date: 2014-12-16
  */
 (function( window ) {
 
@@ -584,7 +583,7 @@ var i,
 	contains,
 
 	// Instance-specific data
-	expando = "sizzle" + -(new Date()),
+	expando = "sizzle" + 1 * new Date(),
 	preferredDoc = window.document,
 	dirruns = 0,
 	done = 0,
@@ -599,7 +598,6 @@ var i,
 	},
 
 	// General-purpose constants
-	strundefined = typeof undefined,
 	MAX_NEGATIVE = 1 << 31,
 
 	// Instance methods
@@ -609,12 +607,13 @@ var i,
 	push_native = arr.push,
 	push = arr.push,
 	slice = arr.slice,
-	// Use a stripped-down indexOf if we can't use a native one
-	indexOf = arr.indexOf || function( elem ) {
+	// Use a stripped-down indexOf as it's faster than native
+	// http://jsperf.com/thor-indexof-vs-for/5
+	indexOf = function( list, elem ) {
 		var i = 0,
-			len = this.length;
+			len = list.length;
 		for ( ; i < len; i++ ) {
-			if ( this[i] === elem ) {
+			if ( list[i] === elem ) {
 				return i;
 			}
 		}
@@ -654,6 +653,7 @@ var i,
 		")\\)|)",
 
 	// Leading and non-escaped trailing whitespace, capturing some non-whitespace characters preceding the latter
+	rwhitespace = new RegExp( whitespace + "+", "g" ),
 	rtrim = new RegExp( "^" + whitespace + "+|((?:^|[^\\\\])(?:\\\\.)*)" + whitespace + "+$", "g" ),
 
 	rcomma = new RegExp( "^" + whitespace + "*," + whitespace + "*" ),
@@ -705,6 +705,14 @@ var i,
 				String.fromCharCode( high + 0x10000 ) :
 				// Supplemental Plane codepoint (surrogate pair)
 				String.fromCharCode( high >> 10 | 0xD800, high & 0x3FF | 0xDC00 );
+	},
+
+	// Used for iframes
+	// See setDocument()
+	// Removing the function wrapper causes a "Permission Denied"
+	// error in IE
+	unloadHandler = function() {
+		setDocument();
 	};
 
 // Optimize for push.apply( _, NodeList )
@@ -747,19 +755,18 @@ function Sizzle( selector, context, results, seed ) {
 
 	context = context || document;
 	results = results || [];
+	nodeType = context.nodeType;
 
-	if ( !selector || typeof selector !== "string" ) {
+	if ( typeof selector !== "string" || !selector ||
+		nodeType !== 1 && nodeType !== 9 && nodeType !== 11 ) {
+
 		return results;
 	}
 
-	if ( (nodeType = context.nodeType) !== 1 && nodeType !== 9 ) {
-		return [];
-	}
+	if ( !seed && documentIsHTML ) {
 
-	if ( documentIsHTML && !seed ) {
-
-		// Shortcuts
-		if ( (match = rquickExpr.exec( selector )) ) {
+		// Try to shortcut find operations when possible (e.g., not under DocumentFragment)
+		if ( nodeType !== 11 && (match = rquickExpr.exec( selector )) ) {
 			// Speed-up: Sizzle("#ID")
 			if ( (m = match[1]) ) {
 				if ( nodeType === 9 ) {
@@ -791,7 +798,7 @@ function Sizzle( selector, context, results, seed ) {
 				return results;
 
 			// Speed-up: Sizzle(".CLASS")
-			} else if ( (m = match[3]) && support.getElementsByClassName && context.getElementsByClassName ) {
+			} else if ( (m = match[3]) && support.getElementsByClassName ) {
 				push.apply( results, context.getElementsByClassName( m ) );
 				return results;
 			}
@@ -801,7 +808,7 @@ function Sizzle( selector, context, results, seed ) {
 		if ( support.qsa && (!rbuggyQSA || !rbuggyQSA.test( selector )) ) {
 			nid = old = expando;
 			newContext = context;
-			newSelector = nodeType === 9 && selector;
+			newSelector = nodeType !== 1 && selector;
 
 			// qSA works strangely on Element-rooted queries
 			// We can work around this by specifying an extra ID on the root
@@ -988,7 +995,7 @@ function createPositionalPseudo( fn ) {
  * @returns {Element|Object|Boolean} The input node if acceptable, otherwise a falsy value
  */
 function testContext( context ) {
-	return context && typeof context.getElementsByTagName !== strundefined && context;
+	return context && typeof context.getElementsByTagName !== "undefined" && context;
 }
 
 // Expose support vars for convenience
@@ -1012,9 +1019,8 @@ isXML = Sizzle.isXML = function( elem ) {
  * @returns {Object} Returns the current document
  */
 setDocument = Sizzle.setDocument = function( node ) {
-	var hasCompare,
-		doc = node ? node.ownerDocument || node : preferredDoc,
-		parent = doc.defaultView;
+	var hasCompare, parent,
+		doc = node ? node.ownerDocument || node : preferredDoc;
 
 	// If no document and documentElement is available, return
 	if ( doc === document || doc.nodeType !== 9 || !doc.documentElement ) {
@@ -1024,9 +1030,7 @@ setDocument = Sizzle.setDocument = function( node ) {
 	// Set our document
 	document = doc;
 	docElem = doc.documentElement;
-
-	// Support tests
-	documentIsHTML = !isXML( doc );
+	parent = doc.defaultView;
 
 	// Support: IE>8
 	// If iframe document is assigned to "document" variable and if iframe has been reloaded,
@@ -1035,21 +1039,22 @@ setDocument = Sizzle.setDocument = function( node ) {
 	if ( parent && parent !== parent.top ) {
 		// IE11 does not have attachEvent, so all must suffer
 		if ( parent.addEventListener ) {
-			parent.addEventListener( "unload", function() {
-				setDocument();
-			}, false );
+			parent.addEventListener( "unload", unloadHandler, false );
 		} else if ( parent.attachEvent ) {
-			parent.attachEvent( "onunload", function() {
-				setDocument();
-			});
+			parent.attachEvent( "onunload", unloadHandler );
 		}
 	}
+
+	/* Support tests
+	---------------------------------------------------------------------- */
+	documentIsHTML = !isXML( doc );
 
 	/* Attributes
 	---------------------------------------------------------------------- */
 
 	// Support: IE<8
-	// Verify that getAttribute really returns attributes and not properties (excepting IE8 booleans)
+	// Verify that getAttribute really returns attributes and not properties
+	// (excepting IE8 booleans)
 	support.attributes = assert(function( div ) {
 		div.className = "i";
 		return !div.getAttribute("className");
@@ -1064,17 +1069,8 @@ setDocument = Sizzle.setDocument = function( node ) {
 		return !div.getElementsByTagName("*").length;
 	});
 
-	// Check if getElementsByClassName can be trusted
-	support.getElementsByClassName = rnative.test( doc.getElementsByClassName ) && assert(function( div ) {
-		div.innerHTML = "<div class='a'></div><div class='a i'></div>";
-
-		// Support: Safari<4
-		// Catch class over-caching
-		div.firstChild.className = "i";
-		// Support: Opera<10
-		// Catch gEBCN failure to find non-leading classes
-		return div.getElementsByClassName("i").length === 2;
-	});
+	// Support: IE<9
+	support.getElementsByClassName = rnative.test( doc.getElementsByClassName );
 
 	// Support: IE<10
 	// Check if getElementById returns elements by name
@@ -1088,7 +1084,7 @@ setDocument = Sizzle.setDocument = function( node ) {
 	// ID find and filter
 	if ( support.getById ) {
 		Expr.find["ID"] = function( id, context ) {
-			if ( typeof context.getElementById !== strundefined && documentIsHTML ) {
+			if ( typeof context.getElementById !== "undefined" && documentIsHTML ) {
 				var m = context.getElementById( id );
 				// Check parentNode to catch when Blackberry 4.6 returns
 				// nodes that are no longer in the document #6963
@@ -1109,7 +1105,7 @@ setDocument = Sizzle.setDocument = function( node ) {
 		Expr.filter["ID"] =  function( id ) {
 			var attrId = id.replace( runescape, funescape );
 			return function( elem ) {
-				var node = typeof elem.getAttributeNode !== strundefined && elem.getAttributeNode("id");
+				var node = typeof elem.getAttributeNode !== "undefined" && elem.getAttributeNode("id");
 				return node && node.value === attrId;
 			};
 		};
@@ -1118,14 +1114,20 @@ setDocument = Sizzle.setDocument = function( node ) {
 	// Tag
 	Expr.find["TAG"] = support.getElementsByTagName ?
 		function( tag, context ) {
-			if ( typeof context.getElementsByTagName !== strundefined ) {
+			if ( typeof context.getElementsByTagName !== "undefined" ) {
 				return context.getElementsByTagName( tag );
+
+			// DocumentFragment nodes don't have gEBTN
+			} else if ( support.qsa ) {
+				return context.querySelectorAll( tag );
 			}
 		} :
+
 		function( tag, context ) {
 			var elem,
 				tmp = [],
 				i = 0,
+				// By happy coincidence, a (broken) gEBTN appears on DocumentFragment nodes too
 				results = context.getElementsByTagName( tag );
 
 			// Filter out possible comments
@@ -1143,7 +1145,7 @@ setDocument = Sizzle.setDocument = function( node ) {
 
 	// Class
 	Expr.find["CLASS"] = support.getElementsByClassName && function( className, context ) {
-		if ( typeof context.getElementsByClassName !== strundefined && documentIsHTML ) {
+		if ( documentIsHTML ) {
 			return context.getElementsByClassName( className );
 		}
 	};
@@ -1172,13 +1174,15 @@ setDocument = Sizzle.setDocument = function( node ) {
 			// setting a boolean content attribute,
 			// since its presence should be enough
 			// http://bugs.jquery.com/ticket/12359
-			div.innerHTML = "<select msallowclip=''><option selected=''></option></select>";
+			docElem.appendChild( div ).innerHTML = "<a id='" + expando + "'></a>" +
+				"<select id='" + expando + "-\f]' msallowcapture=''>" +
+				"<option selected=''></option></select>";
 
 			// Support: IE8, Opera 11-12.16
 			// Nothing should be selected when empty strings follow ^= or $= or *=
 			// The test attribute must be unknown in Opera but "safe" for WinRT
 			// http://msdn.microsoft.com/en-us/library/ie/hh465388.aspx#attribute_section
-			if ( div.querySelectorAll("[msallowclip^='']").length ) {
+			if ( div.querySelectorAll("[msallowcapture^='']").length ) {
 				rbuggyQSA.push( "[*^$]=" + whitespace + "*(?:''|\"\")" );
 			}
 
@@ -1188,11 +1192,23 @@ setDocument = Sizzle.setDocument = function( node ) {
 				rbuggyQSA.push( "\\[" + whitespace + "*(?:value|" + booleans + ")" );
 			}
 
+			// Support: Chrome<29, Android<4.2+, Safari<7.0+, iOS<7.0+, PhantomJS<1.9.7+
+			if ( !div.querySelectorAll( "[id~=" + expando + "-]" ).length ) {
+				rbuggyQSA.push("~=");
+			}
+
 			// Webkit/Opera - :checked should return selected option elements
 			// http://www.w3.org/TR/2011/REC-css3-selectors-20110929/#checked
 			// IE8 throws error here and will not see later tests
 			if ( !div.querySelectorAll(":checked").length ) {
 				rbuggyQSA.push(":checked");
+			}
+
+			// Support: Safari 8+, iOS 8+
+			// https://bugs.webkit.org/show_bug.cgi?id=136851
+			// In-page `selector#id sibing-combinator selector` fails
+			if ( !div.querySelectorAll( "a#" + expando + "+*" ).length ) {
+				rbuggyQSA.push(".#.+[+~]");
 			}
 		});
 
@@ -1310,7 +1326,7 @@ setDocument = Sizzle.setDocument = function( node ) {
 
 			// Maintain original order
 			return sortInput ?
-				( indexOf.call( sortInput, a ) - indexOf.call( sortInput, b ) ) :
+				( indexOf( sortInput, a ) - indexOf( sortInput, b ) ) :
 				0;
 		}
 
@@ -1337,7 +1353,7 @@ setDocument = Sizzle.setDocument = function( node ) {
 				aup ? -1 :
 				bup ? 1 :
 				sortInput ?
-				( indexOf.call( sortInput, a ) - indexOf.call( sortInput, b ) ) :
+				( indexOf( sortInput, a ) - indexOf( sortInput, b ) ) :
 				0;
 
 		// If the nodes are siblings, we can do a quick check
@@ -1400,7 +1416,7 @@ Sizzle.matchesSelector = function( elem, expr ) {
 					elem.document && elem.document.nodeType !== 11 ) {
 				return ret;
 			}
-		} catch(e) {}
+		} catch (e) {}
 	}
 
 	return Sizzle( expr, document, null, [ elem ] ).length > 0;
@@ -1619,7 +1635,7 @@ Expr = Sizzle.selectors = {
 			return pattern ||
 				(pattern = new RegExp( "(^|" + whitespace + ")" + className + "(" + whitespace + "|$)" )) &&
 				classCache( className, function( elem ) {
-					return pattern.test( typeof elem.className === "string" && elem.className || typeof elem.getAttribute !== strundefined && elem.getAttribute("class") || "" );
+					return pattern.test( typeof elem.className === "string" && elem.className || typeof elem.getAttribute !== "undefined" && elem.getAttribute("class") || "" );
 				});
 		},
 
@@ -1641,7 +1657,7 @@ Expr = Sizzle.selectors = {
 					operator === "^=" ? check && result.indexOf( check ) === 0 :
 					operator === "*=" ? check && result.indexOf( check ) > -1 :
 					operator === "$=" ? check && result.slice( -check.length ) === check :
-					operator === "~=" ? ( " " + result + " " ).indexOf( check ) > -1 :
+					operator === "~=" ? ( " " + result.replace( rwhitespace, " " ) + " " ).indexOf( check ) > -1 :
 					operator === "|=" ? result === check || result.slice( 0, check.length + 1 ) === check + "-" :
 					false;
 			};
@@ -1761,7 +1777,7 @@ Expr = Sizzle.selectors = {
 							matched = fn( seed, argument ),
 							i = matched.length;
 						while ( i-- ) {
-							idx = indexOf.call( seed, matched[i] );
+							idx = indexOf( seed, matched[i] );
 							seed[ idx ] = !( matches[ idx ] = matched[i] );
 						}
 					}) :
@@ -1800,6 +1816,8 @@ Expr = Sizzle.selectors = {
 				function( elem, context, xml ) {
 					input[0] = elem;
 					matcher( input, null, xml, results );
+					// Don't keep the element (issue #299)
+					input[0] = null;
 					return !results.pop();
 				};
 		}),
@@ -1811,6 +1829,7 @@ Expr = Sizzle.selectors = {
 		}),
 
 		"contains": markFunction(function( text ) {
+			text = text.replace( runescape, funescape );
 			return function( elem ) {
 				return ( elem.textContent || elem.innerText || getText( elem ) ).indexOf( text ) > -1;
 			};
@@ -2232,7 +2251,7 @@ function setMatcher( preFilter, selector, matcher, postFilter, postFinder, postS
 				i = matcherOut.length;
 				while ( i-- ) {
 					if ( (elem = matcherOut[i]) &&
-						(temp = postFinder ? indexOf.call( seed, elem ) : preMap[i]) > -1 ) {
+						(temp = postFinder ? indexOf( seed, elem ) : preMap[i]) > -1 ) {
 
 						seed[temp] = !(results[temp] = elem);
 					}
@@ -2267,13 +2286,16 @@ function matcherFromTokens( tokens ) {
 			return elem === checkContext;
 		}, implicitRelative, true ),
 		matchAnyContext = addCombinator( function( elem ) {
-			return indexOf.call( checkContext, elem ) > -1;
+			return indexOf( checkContext, elem ) > -1;
 		}, implicitRelative, true ),
 		matchers = [ function( elem, context, xml ) {
-			return ( !leadingRelative && ( xml || context !== outermostContext ) ) || (
+			var ret = ( !leadingRelative && ( xml || context !== outermostContext ) ) || (
 				(checkContext = context).nodeType ?
 					matchContext( elem, context, xml ) :
 					matchAnyContext( elem, context, xml ) );
+			// Avoid hanging onto element (issue #299)
+			checkContext = null;
+			return ret;
 		} ];
 
 	for ( ; i < len; i++ ) {
@@ -2523,7 +2545,7 @@ select = Sizzle.select = function( selector, context, results, seed ) {
 // Sort stability
 support.sortStable = expando.split("").sort( sortOrder ).join("") === expando;
 
-// Support: Chrome<14
+// Support: Chrome 14-35+
 // Always assume duplicates if they aren't passed to the comparison function
 support.detectDuplicates = !!hasDuplicate;
 
@@ -2732,7 +2754,7 @@ var rootjQuery,
 				if ( match[1] ) {
 					context = context instanceof jQuery ? context[0] : context;
 
-					// scripts is true for back-compat
+					// Option to run scripts is true for back-compat
 					// Intentionally let the error be thrown if parseHTML is not present
 					jQuery.merge( this, jQuery.parseHTML(
 						match[1],
@@ -2760,8 +2782,8 @@ var rootjQuery,
 				} else {
 					elem = document.getElementById( match[2] );
 
-					// Check parentNode to catch when Blackberry 4.6 returns
-					// nodes that are no longer in the document #6963
+					// Support: Blackberry 4.6
+					// gEBID returns nodes no longer in the document (#6963)
 					if ( elem && elem.parentNode ) {
 						// Inject the element directly into the jQuery object
 						this.length = 1;
@@ -2814,7 +2836,7 @@ rootjQuery = jQuery( document );
 
 
 var rparentsprev = /^(?:parents|prev(?:Until|All))/,
-	// methods guaranteed to produce a unique set when starting from a unique set
+	// Methods guaranteed to produce a unique set when starting from a unique set
 	guaranteedUnique = {
 		children: true,
 		contents: true,
@@ -2894,8 +2916,7 @@ jQuery.fn.extend({
 		return this.pushStack( matched.length > 1 ? jQuery.unique( matched ) : matched );
 	},
 
-	// Determine the position of an element within
-	// the matched set of elements
+	// Determine the position of an element within the set
 	index: function( elem ) {
 
 		// No argument, return index in parent
@@ -2903,7 +2924,7 @@ jQuery.fn.extend({
 			return ( this[ 0 ] && this[ 0 ].parentNode ) ? this.first().prevAll().length : -1;
 		}
 
-		// index in selector
+		// Index in selector
 		if ( typeof elem === "string" ) {
 			return indexOf.call( jQuery( elem ), this[ 0 ] );
 		}
@@ -3319,7 +3340,7 @@ jQuery.extend({
 
 			progressValues, progressContexts, resolveContexts;
 
-		// add listeners to Deferred subordinates; treat others as resolved
+		// Add listeners to Deferred subordinates; treat others as resolved
 		if ( length > 1 ) {
 			progressValues = new Array( length );
 			progressContexts = new Array( length );
@@ -3336,7 +3357,7 @@ jQuery.extend({
 			}
 		}
 
-		// if we're not waiting on anything, resolve the master
+		// If we're not waiting on anything, resolve the master
 		if ( !remaining ) {
 			deferred.resolveWith( resolveContexts, resolveValues );
 		}
@@ -3415,7 +3436,7 @@ jQuery.ready.promise = function( obj ) {
 		readyList = jQuery.Deferred();
 
 		// Catch cases where $(document).ready() is called after the browser event has already occurred.
-		// we once tried to use readyState "interactive" here, but it caused issues like the one
+		// We once tried to use readyState "interactive" here, but it caused issues like the one
 		// discovered by ChrisS here: http://bugs.jquery.com/ticket/12282#comment:15
 		if ( document.readyState === "complete" ) {
 			// Handle it asynchronously to allow scripts the opportunity to delay ready
@@ -3509,7 +3530,7 @@ jQuery.acceptData = function( owner ) {
 
 
 function Data() {
-	// Support: Android < 4,
+	// Support: Android<4,
 	// Old WebKit does not have Object.preventExtensions/freeze method,
 	// return new empty object instead with no [[set]] accessor
 	Object.defineProperty( this.cache = {}, 0, {
@@ -3518,7 +3539,7 @@ function Data() {
 		}
 	});
 
-	this.expando = jQuery.expando + Math.random();
+	this.expando = jQuery.expando + Data.uid++;
 }
 
 Data.uid = 1;
@@ -3546,7 +3567,7 @@ Data.prototype = {
 				descriptor[ this.expando ] = { value: unlock };
 				Object.defineProperties( owner, descriptor );
 
-			// Support: Android < 4
+			// Support: Android<4
 			// Fallback to a less secure definition
 			} catch ( e ) {
 				descriptor[ this.expando ] = unlock;
@@ -3686,17 +3707,16 @@ var data_user = new Data();
 
 
 
-/*
-	Implementation Summary
+//	Implementation Summary
+//
+//	1. Enforce API surface and semantic compatibility with 1.9.x branch
+//	2. Improve the module's maintainability by reducing the storage
+//		paths to a single mechanism.
+//	3. Use the same single mechanism to support "private" and "user" data.
+//	4. _Never_ expose "private" data to user code (TODO: Drop _data, _removeData)
+//	5. Avoid exposing implementation details on user objects (eg. expando properties)
+//	6. Provide a clear path for implementation upgrade to WeakMap in 2014
 
-	1. Enforce API surface and semantic compatibility with 1.9.x branch
-	2. Improve the module's maintainability by reducing the storage
-		paths to a single mechanism.
-	3. Use the same single mechanism to support "private" and "user" data.
-	4. _Never_ expose "private" data to user code (TODO: Drop _data, _removeData)
-	5. Avoid exposing implementation details on user objects (eg. expando properties)
-	6. Provide a clear path for implementation upgrade to WeakMap in 2014
-*/
 var rbrace = /^(?:\{[\w\W]*\}|\[[\w\W]*\])$/,
 	rmultiDash = /([A-Z])/g;
 
@@ -3901,7 +3921,7 @@ jQuery.extend({
 				queue.unshift( "inprogress" );
 			}
 
-			// clear up the last queue stop function
+			// Clear up the last queue stop function
 			delete hooks.stop;
 			fn.call( elem, next, hooks );
 		}
@@ -3911,7 +3931,7 @@ jQuery.extend({
 		}
 	},
 
-	// not intended for public consumption - generates a queueHooks object, or returns the current one
+	// Not public - generate a queueHooks object, or return the current one
 	_queueHooks: function( elem, type ) {
 		var key = type + "queueHooks";
 		return data_priv.get( elem, key ) || data_priv.access( elem, key, {
@@ -3941,7 +3961,7 @@ jQuery.fn.extend({
 			this.each(function() {
 				var queue = jQuery.queue( this, type, data );
 
-				// ensure a hooks for this queue
+				// Ensure a hooks for this queue
 				jQuery._queueHooks( this, type );
 
 				if ( type === "fx" && queue[0] !== "inprogress" ) {
@@ -4008,21 +4028,22 @@ var rcheckableType = (/^(?:checkbox|radio)$/i);
 		div = fragment.appendChild( document.createElement( "div" ) ),
 		input = document.createElement( "input" );
 
-	// #11217 - WebKit loses check when the name is after the checked attribute
+	// Support: Safari<=5.1
+	// Check state lost if the name is set (#11217)
 	// Support: Windows Web Apps (WWA)
-	// `name` and `type` need .setAttribute for WWA
+	// `name` and `type` must use .setAttribute for WWA (#14901)
 	input.setAttribute( "type", "radio" );
 	input.setAttribute( "checked", "checked" );
 	input.setAttribute( "name", "t" );
 
 	div.appendChild( input );
 
-	// Support: Safari 5.1, iOS 5.1, Android 4.x, Android 2.3
-	// old WebKit doesn't clone checked state correctly in fragments
+	// Support: Safari<=5.1, Android<4.2
+	// Older WebKit doesn't clone checked state correctly in fragments
 	support.checkClone = div.cloneNode( true ).cloneNode( true ).lastChild.checked;
 
+	// Support: IE<=11+
 	// Make sure textarea (and checkbox) defaultValue is properly cloned
-	// Support: IE9-IE11+
 	div.innerHTML = "<textarea>x</textarea>";
 	support.noCloneChecked = !!div.cloneNode( true ).lastChild.defaultValue;
 })();
@@ -4400,8 +4421,8 @@ jQuery.event = {
 			j = 0;
 			while ( (handleObj = matched.handlers[ j++ ]) && !event.isImmediatePropagationStopped() ) {
 
-				// Triggered event must either 1) have no namespace, or
-				// 2) have namespace(s) a subset or equal to those in the bound event (both can have no namespace).
+				// Triggered event must either 1) have no namespace, or 2) have namespace(s)
+				// a subset or equal to those in the bound event (both can have no namespace).
 				if ( !event.namespace_re || event.namespace_re.test( handleObj.namespace ) ) {
 
 					event.handleObj = handleObj;
@@ -4551,7 +4572,7 @@ jQuery.event = {
 			event.target = document;
 		}
 
-		// Support: Safari 6.0+, Chrome < 28
+		// Support: Safari 6.0+, Chrome<28
 		// Target should not be a text node (#504, #13143)
 		if ( event.target.nodeType === 3 ) {
 			event.target = event.target.parentNode;
@@ -4656,7 +4677,7 @@ jQuery.Event = function( src, props ) {
 		// by a handler lower down the tree; reflect the correct value.
 		this.isDefaultPrevented = src.defaultPrevented ||
 				src.defaultPrevented === undefined &&
-				// Support: Android < 4.0
+				// Support: Android<4.0
 				src.returnValue === false ?
 			returnTrue :
 			returnFalse;
@@ -4746,8 +4767,8 @@ jQuery.each({
 	};
 });
 
-// Create "bubbling" focus and blur events
 // Support: Firefox, Chrome, Safari
+// Create "bubbling" focus and blur events
 if ( !support.focusinBubbles ) {
 	jQuery.each({ focus: "focusin", blur: "focusout" }, function( orig, fix ) {
 
@@ -4900,7 +4921,7 @@ var
 	// We have to close these tags to support XHTML (#13200)
 	wrapMap = {
 
-		// Support: IE 9
+		// Support: IE9
 		option: [ 1, "<select multiple='multiple'>", "</select>" ],
 
 		thead: [ 1, "<table>", "</table>" ],
@@ -4911,7 +4932,7 @@ var
 		_default: [ 0, "", "" ]
 	};
 
-// Support: IE 9
+// Support: IE9
 wrapMap.optgroup = wrapMap.option;
 
 wrapMap.tbody = wrapMap.tfoot = wrapMap.colgroup = wrapMap.caption = wrapMap.thead;
@@ -5001,7 +5022,7 @@ function getAll( context, tag ) {
 		ret;
 }
 
-// Support: IE >= 9
+// Fix IE bugs, see support tests
 function fixInput( src, dest ) {
 	var nodeName = dest.nodeName.toLowerCase();
 
@@ -5021,8 +5042,7 @@ jQuery.extend({
 			clone = elem.cloneNode( true ),
 			inPage = jQuery.contains( elem.ownerDocument, elem );
 
-		// Support: IE >= 9
-		// Fix Cloning issues
+		// Fix IE cloning issues
 		if ( !support.noCloneChecked && ( elem.nodeType === 1 || elem.nodeType === 11 ) &&
 				!jQuery.isXMLDoc( elem ) ) {
 
@@ -5073,8 +5093,8 @@ jQuery.extend({
 
 				// Add nodes directly
 				if ( jQuery.type( elem ) === "object" ) {
-					// Support: QtWebKit
-					// jQuery.merge because push.apply(_, arraylike) throws
+					// Support: QtWebKit, PhantomJS
+					// push.apply(_, arraylike) throws on ancient WebKit
 					jQuery.merge( nodes, elem.nodeType ? [ elem ] : elem );
 
 				// Convert non-html into a text node
@@ -5096,15 +5116,14 @@ jQuery.extend({
 						tmp = tmp.lastChild;
 					}
 
-					// Support: QtWebKit
-					// jQuery.merge because push.apply(_, arraylike) throws
+					// Support: QtWebKit, PhantomJS
+					// push.apply(_, arraylike) throws on ancient WebKit
 					jQuery.merge( nodes, tmp.childNodes );
 
 					// Remember the top-level container
 					tmp = fragment.firstChild;
 
-					// Fixes #12346
-					// Support: Webkit, IE
+					// Ensure the created nodes are orphaned (#12392)
 					tmp.textContent = "";
 				}
 			}
@@ -5466,7 +5485,7 @@ function actualDisplay( name, doc ) {
 		// getDefaultComputedStyle might be reliably used only on attached element
 		display = window.getDefaultComputedStyle && ( style = window.getDefaultComputedStyle( elem[ 0 ] ) ) ?
 
-			// Use of this method is a temporary fix (more like optmization) until something better comes along,
+			// Use of this method is a temporary fix (more like optimization) until something better comes along,
 			// since it was removed from specification and supported only in FF
 			style.display : jQuery.css( elem[ 0 ], "display" );
 
@@ -5516,7 +5535,14 @@ var rmargin = (/^margin/);
 var rnumnonpx = new RegExp( "^(" + pnum + ")(?!px)[a-z%]+$", "i" );
 
 var getStyles = function( elem ) {
-		return elem.ownerDocument.defaultView.getComputedStyle( elem, null );
+		// Support: IE<=11+, Firefox<=30+ (#15098, #14150)
+		// IE throws on elements created in popups
+		// FF meanwhile throws on frame elements through "defaultView.getComputedStyle"
+		if ( elem.ownerDocument.defaultView.opener ) {
+			return elem.ownerDocument.defaultView.getComputedStyle( elem, null );
+		}
+
+		return window.getComputedStyle( elem, null );
 	};
 
 
@@ -5528,7 +5554,7 @@ function curCSS( elem, name, computed ) {
 	computed = computed || getStyles( elem );
 
 	// Support: IE9
-	// getPropertyValue is only needed for .css('filter') in IE9, see #12537
+	// getPropertyValue is only needed for .css('filter') (#12537)
 	if ( computed ) {
 		ret = computed.getPropertyValue( name ) || computed[ name ];
 	}
@@ -5574,15 +5600,13 @@ function addGetHookIf( conditionFn, hookFn ) {
 	return {
 		get: function() {
 			if ( conditionFn() ) {
-				// Hook not needed (or it's not possible to use it due to missing dependency),
-				// remove it.
-				// Since there are no other hooks for marginRight, remove the whole object.
+				// Hook not needed (or it's not possible to use it due
+				// to missing dependency), remove it.
 				delete this.get;
 				return;
 			}
 
 			// Hook needed; redefine it so that the support test is not executed again.
-
 			return (this.get = hookFn).apply( this, arguments );
 		}
 	};
@@ -5599,6 +5623,8 @@ function addGetHookIf( conditionFn, hookFn ) {
 		return;
 	}
 
+	// Support: IE9-11+
+	// Style of cloned element affects source element cloned (#8908)
 	div.style.backgroundClip = "content-box";
 	div.cloneNode( true ).style.backgroundClip = "";
 	support.clearCloneStyle = div.style.backgroundClip === "content-box";
@@ -5631,6 +5657,7 @@ function addGetHookIf( conditionFn, hookFn ) {
 	if ( window.getComputedStyle ) {
 		jQuery.extend( support, {
 			pixelPosition: function() {
+
 				// This test is executed only once but we still do memoizing
 				// since we can use the boxSizingReliable pre-computing.
 				// No need to check if the test was already performed, though.
@@ -5644,6 +5671,7 @@ function addGetHookIf( conditionFn, hookFn ) {
 				return boxSizingReliableVal;
 			},
 			reliableMarginRight: function() {
+
 				// Support: Android 2.3
 				// Check if div with explicit width and no margin-right incorrectly
 				// gets computed margin-right based on width of container. (#3333)
@@ -5665,6 +5693,7 @@ function addGetHookIf( conditionFn, hookFn ) {
 				ret = !parseFloat( window.getComputedStyle( marginDiv, null ).marginRight );
 
 				docElem.removeChild( container );
+				div.removeChild( marginDiv );
 
 				return ret;
 			}
@@ -5696,8 +5725,8 @@ jQuery.swap = function( elem, options, callback, args ) {
 
 
 var
-	// swappable if display is none or starts with table except "table", "table-cell", or "table-caption"
-	// see here for display values: https://developer.mozilla.org/en-US/docs/CSS/display
+	// Swappable if display is none or starts with table except "table", "table-cell", or "table-caption"
+	// See here for display values: https://developer.mozilla.org/en-US/docs/CSS/display
 	rdisplayswap = /^(none|table(?!-c[ea]).+)/,
 	rnumsplit = new RegExp( "^(" + pnum + ")(.*)$", "i" ),
 	rrelNum = new RegExp( "^([+-])=(" + pnum + ")", "i" ),
@@ -5710,15 +5739,15 @@ var
 
 	cssPrefixes = [ "Webkit", "O", "Moz", "ms" ];
 
-// return a css property mapped to a potentially vendor prefixed property
+// Return a css property mapped to a potentially vendor prefixed property
 function vendorPropName( style, name ) {
 
-	// shortcut for names that are not vendor prefixed
+	// Shortcut for names that are not vendor prefixed
 	if ( name in style ) {
 		return name;
 	}
 
-	// check for vendor prefixed names
+	// Check for vendor prefixed names
 	var capName = name[0].toUpperCase() + name.slice(1),
 		origName = name,
 		i = cssPrefixes.length;
@@ -5751,7 +5780,7 @@ function augmentWidthOrHeight( elem, name, extra, isBorderBox, styles ) {
 		val = 0;
 
 	for ( ; i < 4; i += 2 ) {
-		// both box models exclude margin, so add it if we want it
+		// Both box models exclude margin, so add it if we want it
 		if ( extra === "margin" ) {
 			val += jQuery.css( elem, extra + cssExpand[ i ], true, styles );
 		}
@@ -5762,15 +5791,15 @@ function augmentWidthOrHeight( elem, name, extra, isBorderBox, styles ) {
 				val -= jQuery.css( elem, "padding" + cssExpand[ i ], true, styles );
 			}
 
-			// at this point, extra isn't border nor margin, so remove border
+			// At this point, extra isn't border nor margin, so remove border
 			if ( extra !== "margin" ) {
 				val -= jQuery.css( elem, "border" + cssExpand[ i ] + "Width", true, styles );
 			}
 		} else {
-			// at this point, extra isn't content, so add padding
+			// At this point, extra isn't content, so add padding
 			val += jQuery.css( elem, "padding" + cssExpand[ i ], true, styles );
 
-			// at this point, extra isn't content nor padding, so add border
+			// At this point, extra isn't content nor padding, so add border
 			if ( extra !== "padding" ) {
 				val += jQuery.css( elem, "border" + cssExpand[ i ] + "Width", true, styles );
 			}
@@ -5788,7 +5817,7 @@ function getWidthOrHeight( elem, name, extra ) {
 		styles = getStyles( elem ),
 		isBorderBox = jQuery.css( elem, "boxSizing", false, styles ) === "border-box";
 
-	// some non-html elements return undefined for offsetWidth, so check for null/undefined
+	// Some non-html elements return undefined for offsetWidth, so check for null/undefined
 	// svg - https://bugzilla.mozilla.org/show_bug.cgi?id=649285
 	// MathML - https://bugzilla.mozilla.org/show_bug.cgi?id=491668
 	if ( val <= 0 || val == null ) {
@@ -5803,7 +5832,7 @@ function getWidthOrHeight( elem, name, extra ) {
 			return val;
 		}
 
-		// we need the check for style in case a browser which returns unreliable values
+		// Check for style in case a browser which returns unreliable values
 		// for getComputedStyle silently falls back to the reliable elem.style
 		valueIsBorderBox = isBorderBox &&
 			( support.boxSizingReliable() || val === elem.style[ name ] );
@@ -5812,7 +5841,7 @@ function getWidthOrHeight( elem, name, extra ) {
 		val = parseFloat( val ) || 0;
 	}
 
-	// use the active box-sizing model to add/subtract irrelevant styles
+	// Use the active box-sizing model to add/subtract irrelevant styles
 	return ( val +
 		augmentWidthOrHeight(
 			elem,
@@ -5876,12 +5905,14 @@ function showHide( elements, show ) {
 }
 
 jQuery.extend({
+
 	// Add in style property hooks for overriding the default
 	// behavior of getting and setting a style property
 	cssHooks: {
 		opacity: {
 			get: function( elem, computed ) {
 				if ( computed ) {
+
 					// We should always get a number back from opacity
 					var ret = curCSS( elem, "opacity" );
 					return ret === "" ? "1" : ret;
@@ -5909,12 +5940,12 @@ jQuery.extend({
 	// Add in properties whose names you wish to fix before
 	// setting or getting the value
 	cssProps: {
-		// normalize float css property
 		"float": "cssFloat"
 	},
 
 	// Get and set the style property on a DOM Node
 	style: function( elem, name, value, extra ) {
+
 		// Don't set styles on text and comment nodes
 		if ( !elem || elem.nodeType === 3 || elem.nodeType === 8 || !elem.style ) {
 			return;
@@ -5927,33 +5958,32 @@ jQuery.extend({
 
 		name = jQuery.cssProps[ origName ] || ( jQuery.cssProps[ origName ] = vendorPropName( style, origName ) );
 
-		// gets hook for the prefixed version
-		// followed by the unprefixed version
+		// Gets hook for the prefixed version, then unprefixed version
 		hooks = jQuery.cssHooks[ name ] || jQuery.cssHooks[ origName ];
 
 		// Check if we're setting a value
 		if ( value !== undefined ) {
 			type = typeof value;
 
-			// convert relative number strings (+= or -=) to relative numbers. #7345
+			// Convert "+=" or "-=" to relative numbers (#7345)
 			if ( type === "string" && (ret = rrelNum.exec( value )) ) {
 				value = ( ret[1] + 1 ) * ret[2] + parseFloat( jQuery.css( elem, name ) );
 				// Fixes bug #9237
 				type = "number";
 			}
 
-			// Make sure that null and NaN values aren't set. See: #7116
+			// Make sure that null and NaN values aren't set (#7116)
 			if ( value == null || value !== value ) {
 				return;
 			}
 
-			// If a number was passed in, add 'px' to the (except for certain CSS properties)
+			// If a number, add 'px' to the (except for certain CSS properties)
 			if ( type === "number" && !jQuery.cssNumber[ origName ] ) {
 				value += "px";
 			}
 
-			// Fixes #8908, it can be done more correctly by specifying setters in cssHooks,
-			// but it would mean to define eight (for every problematic property) identical functions
+			// Support: IE9-11+
+			// background-* props affect original clone's values
 			if ( !support.clearCloneStyle && value === "" && name.indexOf( "background" ) === 0 ) {
 				style[ name ] = "inherit";
 			}
@@ -5981,8 +6011,7 @@ jQuery.extend({
 		// Make sure that we're working with the right name
 		name = jQuery.cssProps[ origName ] || ( jQuery.cssProps[ origName ] = vendorPropName( elem.style, origName ) );
 
-		// gets hook for the prefixed version
-		// followed by the unprefixed version
+		// Try prefixed name followed by the unprefixed name
 		hooks = jQuery.cssHooks[ name ] || jQuery.cssHooks[ origName ];
 
 		// If a hook was provided get the computed value from there
@@ -5995,12 +6024,12 @@ jQuery.extend({
 			val = curCSS( elem, name, styles );
 		}
 
-		//convert "normal" to computed value
+		// Convert "normal" to computed value
 		if ( val === "normal" && name in cssNormalTransform ) {
 			val = cssNormalTransform[ name ];
 		}
 
-		// Return, converting to number if forced or a qualifier was provided and val looks numeric
+		// Make numeric if forced or a qualifier was provided and val looks numeric
 		if ( extra === "" || extra ) {
 			num = parseFloat( val );
 			return extra === true || jQuery.isNumeric( num ) ? num || 0 : val;
@@ -6013,8 +6042,9 @@ jQuery.each([ "height", "width" ], function( i, name ) {
 	jQuery.cssHooks[ name ] = {
 		get: function( elem, computed, extra ) {
 			if ( computed ) {
-				// certain elements can have dimension info if we invisibly show them
-				// however, it must have a current display style that would benefit from this
+
+				// Certain elements can have dimension info if we invisibly show them
+				// but it must have a current display style that would benefit
 				return rdisplayswap.test( jQuery.css( elem, "display" ) ) && elem.offsetWidth === 0 ?
 					jQuery.swap( elem, cssShow, function() {
 						return getWidthOrHeight( elem, name, extra );
@@ -6042,8 +6072,6 @@ jQuery.each([ "height", "width" ], function( i, name ) {
 jQuery.cssHooks.marginRight = addGetHookIf( support.reliableMarginRight,
 	function( elem, computed ) {
 		if ( computed ) {
-			// WebKit Bug 13343 - getComputedStyle returns wrong value for margin-right
-			// Work around by temporarily setting element display to inline-block
 			return jQuery.swap( elem, { "display": "inline-block" },
 				curCSS, [ elem, "marginRight" ] );
 		}
@@ -6061,7 +6089,7 @@ jQuery.each({
 			var i = 0,
 				expanded = {},
 
-				// assumes a single number if not a string
+				// Assumes a single number if not a string
 				parts = typeof value === "string" ? value.split(" ") : [ value ];
 
 			for ( ; i < 4; i++ ) {
@@ -6184,17 +6212,18 @@ Tween.propHooks = {
 				return tween.elem[ tween.prop ];
 			}
 
-			// passing an empty string as a 3rd parameter to .css will automatically
-			// attempt a parseFloat and fallback to a string if the parse fails
-			// so, simple values such as "10px" are parsed to Float.
-			// complex values such as "rotate(1rad)" are returned as is.
+			// Passing an empty string as a 3rd parameter to .css will automatically
+			// attempt a parseFloat and fallback to a string if the parse fails.
+			// Simple values such as "10px" are parsed to Float;
+			// complex values such as "rotate(1rad)" are returned as-is.
 			result = jQuery.css( tween.elem, tween.prop, "" );
 			// Empty strings, null, undefined and "auto" are converted to 0.
 			return !result || result === "auto" ? 0 : result;
 		},
 		set: function( tween ) {
-			// use step hook for back compat - use cssHook if its there - use .style if its
-			// available and use plain properties where available
+			// Use step hook for back compat.
+			// Use cssHook if its there.
+			// Use .style if available and use plain properties where available.
 			if ( jQuery.fx.step[ tween.prop ] ) {
 				jQuery.fx.step[ tween.prop ]( tween );
 			} else if ( tween.elem.style && ( tween.elem.style[ jQuery.cssProps[ tween.prop ] ] != null || jQuery.cssHooks[ tween.prop ] ) ) {
@@ -6208,7 +6237,6 @@ Tween.propHooks = {
 
 // Support: IE9
 // Panic based approach to setting things on disconnected nodes
-
 Tween.propHooks.scrollTop = Tween.propHooks.scrollLeft = {
 	set: function( tween ) {
 		if ( tween.elem.nodeType && tween.elem.parentNode ) {
@@ -6264,16 +6292,16 @@ var
 				start = +target || 1;
 
 				do {
-					// If previous iteration zeroed out, double until we get *something*
-					// Use a string for doubling factor so we don't accidentally see scale as unchanged below
+					// If previous iteration zeroed out, double until we get *something*.
+					// Use string for doubling so we don't accidentally see scale as unchanged below
 					scale = scale || ".5";
 
 					// Adjust and apply
 					start = start / scale;
 					jQuery.style( tween.elem, prop, start + unit );
 
-				// Update scale, tolerating zero or NaN from tween.cur()
-				// And breaking the loop if scale is unchanged or perfect, or if we've just had enough
+				// Update scale, tolerating zero or NaN from tween.cur(),
+				// break the loop if scale is unchanged or perfect, or if we've just had enough
 				} while ( scale !== (scale = tween.cur() / target) && scale !== 1 && --maxIterations );
 			}
 
@@ -6305,8 +6333,8 @@ function genFx( type, includeWidth ) {
 		i = 0,
 		attrs = { height: type };
 
-	// if we include width, step value is 1 to do all cssExpand values,
-	// if we don't include width, step value is 2 to skip over Left and Right
+	// If we include width, step value is 1 to do all cssExpand values,
+	// otherwise step value is 2 to skip over Left and Right
 	includeWidth = includeWidth ? 1 : 0;
 	for ( ; i < 4 ; i += 2 - includeWidth ) {
 		which = cssExpand[ i ];
@@ -6328,7 +6356,7 @@ function createTween( value, prop, animation ) {
 	for ( ; index < length; index++ ) {
 		if ( (tween = collection[ index ].call( animation, prop, value )) ) {
 
-			// we're done with this property
+			// We're done with this property
 			return tween;
 		}
 	}
@@ -6343,7 +6371,7 @@ function defaultPrefilter( elem, props, opts ) {
 		hidden = elem.nodeType && isHidden( elem ),
 		dataShow = data_priv.get( elem, "fxshow" );
 
-	// handle queue: false promises
+	// Handle queue: false promises
 	if ( !opts.queue ) {
 		hooks = jQuery._queueHooks( elem, "fx" );
 		if ( hooks.unqueued == null ) {
@@ -6358,8 +6386,7 @@ function defaultPrefilter( elem, props, opts ) {
 		hooks.unqueued++;
 
 		anim.always(function() {
-			// doing this makes sure that the complete handler will be called
-			// before this completes
+			// Ensure the complete handler is called before this completes
 			anim.always(function() {
 				hooks.unqueued--;
 				if ( !jQuery.queue( elem, "fx" ).length ) {
@@ -6369,7 +6396,7 @@ function defaultPrefilter( elem, props, opts ) {
 		});
 	}
 
-	// height/width overflow pass
+	// Height/width overflow pass
 	if ( elem.nodeType === 1 && ( "height" in props || "width" in props ) ) {
 		// Make sure that nothing sneaks out
 		// Record all 3 overflow attributes because IE9-10 do not
@@ -6431,7 +6458,7 @@ function defaultPrefilter( elem, props, opts ) {
 			dataShow = data_priv.access( elem, "fxshow", {} );
 		}
 
-		// store state if its toggle - enables .stop().toggle() to "reverse"
+		// Store state if its toggle - enables .stop().toggle() to "reverse"
 		if ( toggle ) {
 			dataShow.hidden = !hidden;
 		}
@@ -6491,8 +6518,8 @@ function propFilter( props, specialEasing ) {
 			value = hooks.expand( value );
 			delete props[ name ];
 
-			// not quite $.extend, this wont overwrite keys already present.
-			// also - reusing 'index' from above because we have the correct "name"
+			// Not quite $.extend, this won't overwrite existing keys.
+			// Reusing 'index' because we have the correct "name"
 			for ( index in value ) {
 				if ( !( index in props ) ) {
 					props[ index ] = value[ index ];
@@ -6511,7 +6538,7 @@ function Animation( elem, properties, options ) {
 		index = 0,
 		length = animationPrefilters.length,
 		deferred = jQuery.Deferred().always( function() {
-			// don't match elem in the :animated selector
+			// Don't match elem in the :animated selector
 			delete tick.elem;
 		}),
 		tick = function() {
@@ -6520,7 +6547,8 @@ function Animation( elem, properties, options ) {
 			}
 			var currentTime = fxNow || createFxNow(),
 				remaining = Math.max( 0, animation.startTime + animation.duration - currentTime ),
-				// archaic crash bug won't allow us to use 1 - ( 0.5 || 0 ) (#12497)
+				// Support: Android 2.3
+				// Archaic crash bug won't allow us to use `1 - ( 0.5 || 0 )` (#12497)
 				temp = remaining / animation.duration || 0,
 				percent = 1 - temp,
 				index = 0,
@@ -6556,7 +6584,7 @@ function Animation( elem, properties, options ) {
 			},
 			stop: function( gotoEnd ) {
 				var index = 0,
-					// if we are going to the end, we want to run all the tweens
+					// If we are going to the end, we want to run all the tweens
 					// otherwise we skip this part
 					length = gotoEnd ? animation.tweens.length : 0;
 				if ( stopped ) {
@@ -6567,8 +6595,7 @@ function Animation( elem, properties, options ) {
 					animation.tweens[ index ].run( 1 );
 				}
 
-				// resolve when we played the last frame
-				// otherwise, reject
+				// Resolve when we played the last frame; otherwise, reject
 				if ( gotoEnd ) {
 					deferred.resolveWith( elem, [ animation, gotoEnd ] );
 				} else {
@@ -6650,7 +6677,7 @@ jQuery.speed = function( speed, easing, fn ) {
 	opt.duration = jQuery.fx.off ? 0 : typeof opt.duration === "number" ? opt.duration :
 		opt.duration in jQuery.fx.speeds ? jQuery.fx.speeds[ opt.duration ] : jQuery.fx.speeds._default;
 
-	// normalize opt.queue - true/undefined/null -> "fx"
+	// Normalize opt.queue - true/undefined/null -> "fx"
 	if ( opt.queue == null || opt.queue === true ) {
 		opt.queue = "fx";
 	}
@@ -6674,10 +6701,10 @@ jQuery.speed = function( speed, easing, fn ) {
 jQuery.fn.extend({
 	fadeTo: function( speed, to, easing, callback ) {
 
-		// show any hidden elements after setting opacity to 0
+		// Show any hidden elements after setting opacity to 0
 		return this.filter( isHidden ).css( "opacity", 0 ).show()
 
-			// animate to the value specified
+			// Animate to the value specified
 			.end().animate({ opacity: to }, speed, easing, callback );
 	},
 	animate: function( prop, speed, easing, callback ) {
@@ -6740,9 +6767,9 @@ jQuery.fn.extend({
 				}
 			}
 
-			// start the next in the queue if the last step wasn't forced
-			// timers currently will call their complete callbacks, which will dequeue
-			// but only if they were gotoEnd
+			// Start the next in the queue if the last step wasn't forced.
+			// Timers currently will call their complete callbacks, which
+			// will dequeue but only if they were gotoEnd.
 			if ( dequeue || !gotoEnd ) {
 				jQuery.dequeue( this, type );
 			}
@@ -6760,17 +6787,17 @@ jQuery.fn.extend({
 				timers = jQuery.timers,
 				length = queue ? queue.length : 0;
 
-			// enable finishing flag on private data
+			// Enable finishing flag on private data
 			data.finish = true;
 
-			// empty the queue first
+			// Empty the queue first
 			jQuery.queue( this, type, [] );
 
 			if ( hooks && hooks.stop ) {
 				hooks.stop.call( this, true );
 			}
 
-			// look for any active animations, and finish them
+			// Look for any active animations, and finish them
 			for ( index = timers.length; index--; ) {
 				if ( timers[ index ].elem === this && timers[ index ].queue === type ) {
 					timers[ index ].anim.stop( true );
@@ -6778,14 +6805,14 @@ jQuery.fn.extend({
 				}
 			}
 
-			// look for any animations in the old queue and finish them
+			// Look for any animations in the old queue and finish them
 			for ( index = 0; index < length; index++ ) {
 				if ( queue[ index ] && queue[ index ].finish ) {
 					queue[ index ].finish.call( this );
 				}
 			}
 
-			// turn off finishing flag
+			// Turn off finishing flag
 			delete data.finish;
 		});
 	}
@@ -6888,21 +6915,21 @@ jQuery.fn.delay = function( time, type ) {
 
 	input.type = "checkbox";
 
-	// Support: iOS 5.1, Android 4.x, Android 2.3
-	// Check the default checkbox/radio value ("" on old WebKit; "on" elsewhere)
+	// Support: iOS<=5.1, Android<=4.2+
+	// Default value for a checkbox should be "on"
 	support.checkOn = input.value !== "";
 
-	// Must access the parent to make an option select properly
-	// Support: IE9, IE10
+	// Support: IE<=11+
+	// Must access selectedIndex to make default options select
 	support.optSelected = opt.selected;
 
-	// Make sure that the options inside disabled selects aren't marked as disabled
-	// (WebKit marks them as disabled)
+	// Support: Android<=2.3
+	// Options inside disabled selects are incorrectly marked as disabled
 	select.disabled = true;
 	support.optDisabled = !opt.disabled;
 
-	// Check if an input maintains its value after becoming a radio
-	// Support: IE9, IE10
+	// Support: IE<=11+
+	// An input loses its value after becoming a radio
 	input = document.createElement( "input" );
 	input.value = "t";
 	input.type = "radio";
@@ -6999,8 +7026,6 @@ jQuery.extend({
 			set: function( elem, value ) {
 				if ( !support.radioValue && value === "radio" &&
 					jQuery.nodeName( elem, "input" ) ) {
-					// Setting the type on a radio button after the value resets the value in IE6-9
-					// Reset value to default in case type is set after value during creation
 					var val = elem.value;
 					elem.setAttribute( "type", value );
 					if ( val ) {
@@ -7070,7 +7095,7 @@ jQuery.extend({
 		var ret, hooks, notxml,
 			nType = elem.nodeType;
 
-		// don't get/set properties on text, comment and attribute nodes
+		// Don't get/set properties on text, comment and attribute nodes
 		if ( !elem || nType === 3 || nType === 8 || nType === 2 ) {
 			return;
 		}
@@ -7106,8 +7131,6 @@ jQuery.extend({
 	}
 });
 
-// Support: IE9+
-// Selectedness for an option in an optgroup can be inaccurate
 if ( !support.optSelected ) {
 	jQuery.propHooks.selected = {
 		get: function( elem ) {
@@ -7215,7 +7238,7 @@ jQuery.fn.extend({
 						}
 					}
 
-					// only assign if different to avoid unneeded rendering.
+					// Only assign if different to avoid unneeded rendering.
 					finalValue = value ? jQuery.trim( cur ) : "";
 					if ( elem.className !== finalValue ) {
 						elem.className = finalValue;
@@ -7242,14 +7265,14 @@ jQuery.fn.extend({
 
 		return this.each(function() {
 			if ( type === "string" ) {
-				// toggle individual class names
+				// Toggle individual class names
 				var className,
 					i = 0,
 					self = jQuery( this ),
 					classNames = value.match( rnotwhite ) || [];
 
 				while ( (className = classNames[ i++ ]) ) {
-					// check each className given, space separated list
+					// Check each className given, space separated list
 					if ( self.hasClass( className ) ) {
 						self.removeClass( className );
 					} else {
@@ -7264,7 +7287,7 @@ jQuery.fn.extend({
 					data_priv.set( this, "__className__", this.className );
 				}
 
-				// If the element has a class name or if we're passed "false",
+				// If the element has a class name or if we're passed `false`,
 				// then remove the whole classname (if there was one, the above saved it).
 				// Otherwise bring back whatever was previously saved (if anything),
 				// falling back to the empty string if nothing was stored.
@@ -7308,9 +7331,9 @@ jQuery.fn.extend({
 				ret = elem.value;
 
 				return typeof ret === "string" ?
-					// handle most common string cases
+					// Handle most common string cases
 					ret.replace(rreturn, "") :
-					// handle cases where value is null/undef or number
+					// Handle cases where value is null/undef or number
 					ret == null ? "" : ret;
 			}
 
@@ -7418,7 +7441,7 @@ jQuery.extend({
 					}
 				}
 
-				// force browsers to behave consistently when non-matching value is set
+				// Force browsers to behave consistently when non-matching value is set
 				if ( !optionSet ) {
 					elem.selectedIndex = -1;
 				}
@@ -7439,8 +7462,6 @@ jQuery.each([ "radio", "checkbox" ], function() {
 	};
 	if ( !support.checkOn ) {
 		jQuery.valHooks[ this ].get = function( elem ) {
-			// Support: Webkit
-			// "" is returned instead of "on" if a value isn't specified
 			return elem.getAttribute("value") === null ? "on" : elem.value;
 		};
 	}
@@ -7522,10 +7543,6 @@ jQuery.parseXML = function( data ) {
 
 
 var
-	// Document location
-	ajaxLocParts,
-	ajaxLocation,
-
 	rhash = /#.*$/,
 	rts = /([?&])_=[^&]*/,
 	rheaders = /^(.*?):[ \t]*([^\r\n]*)$/mg,
@@ -7554,22 +7571,13 @@ var
 	transports = {},
 
 	// Avoid comment-prolog char sequence (#10098); must appease lint and evade compression
-	allTypes = "*/".concat("*");
+	allTypes = "*/".concat( "*" ),
 
-// #8138, IE may throw an exception when accessing
-// a field from window.location if document.domain has been set
-try {
-	ajaxLocation = location.href;
-} catch( e ) {
-	// Use the href attribute of an A element
-	// since IE will modify it given document.location
-	ajaxLocation = document.createElement( "a" );
-	ajaxLocation.href = "";
-	ajaxLocation = ajaxLocation.href;
-}
+	// Document location
+	ajaxLocation = window.location.href,
 
-// Segment location into parts
-ajaxLocParts = rurl.exec( ajaxLocation.toLowerCase() ) || [];
+	// Segment location into parts
+	ajaxLocParts = rurl.exec( ajaxLocation.toLowerCase() ) || [];
 
 // Base "constructor" for jQuery.ajaxPrefilter and jQuery.ajaxTransport
 function addToPrefiltersOrTransports( structure ) {
@@ -8048,7 +8056,8 @@ jQuery.extend({
 		}
 
 		// We can fire global events as of now if asked to
-		fireGlobals = s.global;
+		// Don't fire events if jQuery.event is undefined in an AMD-usage scenario (#15118)
+		fireGlobals = jQuery.event && s.global;
 
 		// Watch for a new set of requests
 		if ( fireGlobals && jQuery.active++ === 0 ) {
@@ -8121,7 +8130,7 @@ jQuery.extend({
 			return jqXHR.abort();
 		}
 
-		// aborting is no longer a cancellation
+		// Aborting is no longer a cancellation
 		strAbort = "abort";
 
 		// Install callbacks on deferreds
@@ -8233,8 +8242,7 @@ jQuery.extend({
 					isSuccess = !error;
 				}
 			} else {
-				// We extract error from statusText
-				// then normalize statusText and status for non-aborts
+				// Extract error from statusText and normalize for non-aborts
 				error = statusText;
 				if ( status || !statusText ) {
 					statusText = "error";
@@ -8290,7 +8298,7 @@ jQuery.extend({
 
 jQuery.each( [ "get", "post" ], function( i, method ) {
 	jQuery[ method ] = function( url, data, callback, type ) {
-		// shift arguments if data argument was omitted
+		// Shift arguments if data argument was omitted
 		if ( jQuery.isFunction( data ) ) {
 			type = type || callback;
 			callback = data;
@@ -8304,13 +8312,6 @@ jQuery.each( [ "get", "post" ], function( i, method ) {
 			data: data,
 			success: callback
 		});
-	};
-});
-
-// Attach a bunch of functions for handling common AJAX events
-jQuery.each( [ "ajaxStart", "ajaxStop", "ajaxComplete", "ajaxError", "ajaxSuccess", "ajaxSend" ], function( i, type ) {
-	jQuery.fn[ type ] = function( fn ) {
-		return this.on( type, fn );
 	};
 });
 
@@ -8531,8 +8532,9 @@ var xhrId = 0,
 
 // Support: IE9
 // Open requests must be manually aborted on unload (#5280)
-if ( window.ActiveXObject ) {
-	jQuery( window ).on( "unload", function() {
+// See https://support.microsoft.com/kb/2856746 for more info
+if ( window.attachEvent ) {
+	window.attachEvent( "onunload", function() {
 		for ( var key in xhrCallbacks ) {
 			xhrCallbacks[ key ]();
 		}
@@ -8885,6 +8887,16 @@ jQuery.fn.load = function( url, params, callback ) {
 
 
 
+// Attach a bunch of functions for handling common AJAX events
+jQuery.each( [ "ajaxStart", "ajaxStop", "ajaxComplete", "ajaxError", "ajaxSuccess", "ajaxSend" ], function( i, type ) {
+	jQuery.fn[ type ] = function( fn ) {
+		return this.on( type, fn );
+	};
+});
+
+
+
+
 jQuery.expr.filters.animated = function( elem ) {
 	return jQuery.grep(jQuery.timers, function( fn ) {
 		return elem === fn.elem;
@@ -8921,7 +8933,8 @@ jQuery.offset = {
 		calculatePosition = ( position === "absolute" || position === "fixed" ) &&
 			( curCSSTop + curCSSLeft ).indexOf("auto") > -1;
 
-		// Need to be able to calculate position if either top or left is auto and position is either absolute or fixed
+		// Need to be able to calculate position if either
+		// top or left is auto and position is either absolute or fixed
 		if ( calculatePosition ) {
 			curPosition = curElem.position();
 			curTop = curPosition.top;
@@ -8978,8 +8991,8 @@ jQuery.fn.extend({
 			return box;
 		}
 
+		// Support: BlackBerry 5, iOS 3 (original iPhone)
 		// If we don't have gBCR, just use 0,0 rather than error
-		// BlackBerry 5, iOS 3 (original iPhone)
 		if ( typeof elem.getBoundingClientRect !== strundefined ) {
 			box = elem.getBoundingClientRect();
 		}
@@ -9001,7 +9014,7 @@ jQuery.fn.extend({
 
 		// Fixed elements are offset from window (parentOffset = {top:0, left: 0}, because it is its only offset parent
 		if ( jQuery.css( elem, "position" ) === "fixed" ) {
-			// We assume that getBoundingClientRect is available when computed position is fixed
+			// Assume getBoundingClientRect is there when computed position is fixed
 			offset = elem.getBoundingClientRect();
 
 		} else {
@@ -9064,16 +9077,18 @@ jQuery.each( { scrollLeft: "pageXOffset", scrollTop: "pageYOffset" }, function( 
 	};
 });
 
+// Support: Safari<7+, Chrome<37+
 // Add the top/left cssHooks using jQuery.fn.position
 // Webkit bug: https://bugs.webkit.org/show_bug.cgi?id=29084
-// getComputedStyle returns percent when specified for top/left/bottom/right
-// rather than make the css module depend on the offset module, we just check for it here
+// Blink bug: https://code.google.com/p/chromium/issues/detail?id=229280
+// getComputedStyle returns percent when specified for top/left/bottom/right;
+// rather than make the css module depend on the offset module, just check for it here
 jQuery.each( [ "top", "left" ], function( i, prop ) {
 	jQuery.cssHooks[ prop ] = addGetHookIf( support.pixelPosition,
 		function( elem, computed ) {
 			if ( computed ) {
 				computed = curCSS( elem, prop );
-				// if curCSS returns percentage, fallback to offset
+				// If curCSS returns percentage, fallback to offset
 				return rnumnonpx.test( computed ) ?
 					jQuery( elem ).position()[ prop ] + "px" :
 					computed;
@@ -9086,7 +9101,7 @@ jQuery.each( [ "top", "left" ], function( i, prop ) {
 // Create innerHeight, innerWidth, height, width, outerHeight and outerWidth methods
 jQuery.each( { Height: "height", Width: "width" }, function( name, type ) {
 	jQuery.each( { padding: "inner" + name, content: type, "": "outer" + name }, function( defaultExtra, funcName ) {
-		// margin is only for outerHeight, outerWidth
+		// Margin is only for outerHeight, outerWidth
 		jQuery.fn[ funcName ] = function( margin, value ) {
 			var chainable = arguments.length && ( defaultExtra || typeof margin !== "boolean" ),
 				extra = defaultExtra || ( margin === true || value === true ? "margin" : "border" );
@@ -9177,8 +9192,8 @@ jQuery.noConflict = function( deep ) {
 	return jQuery;
 };
 
-// Expose jQuery and $ identifiers, even in
-// AMD (#7102#comment:10, https://github.com/jquery/jquery/pull/557)
+// Expose jQuery and $ identifiers, even in AMD
+// (#7102#comment:10, https://github.com/jquery/jquery/pull/557)
 // and CommonJS for browser emulators (#13566)
 if ( typeof noGlobal === strundefined ) {
 	window.jQuery = window.$ = jQuery;
@@ -9233,8 +9248,16 @@ var fluid = fluid || fluid_2_0;
     fluid.environment = {
         fluid: fluid
     };
-    
+
     fluid.global = fluid.global || window || {};
+
+    // A standard utility to schedule the invocation of a function after the current
+    // stack returns. On browsers this defaults to setTimeout(func, 1) but in
+    // other environments can be customised - e.g. to process.nextTick in node.js
+    // In future, this could be optimised in the browser to not dispatch into the event queue
+    fluid.invokeLater = function (func) {
+        return setTimeout(func, 1);
+    };
 
     // The following flag defeats all logging/tracing activities in the most performance-critical parts of the framework.
     // This should really be performed by a build-time step which eliminates calls to pushActivity/popActivity and fluid.log.
@@ -9640,7 +9663,7 @@ var fluid = fluid || fluid_2_0;
      * the right way round.
      * @param source {Arrayable or Object} The container to be iterated over
      * @param func {Function} A function accepting (value, key) for each iterated
-     * object. This function may return a value to terminate the iteration
+     * object.
      */
     fluid.each = function (source, func) {
         if (fluid.isArrayable(source)) {
@@ -9724,13 +9747,12 @@ var fluid = fluid || fluid_2_0;
      */
     fluid.remove_if = function (source, fn, target) {
         if (fluid.isArrayable(source)) {
-            for (var i = 0; i < source.length; ++i) {
+            for (var i = source.length - 1; i >= 0; --i) {
                 if (fn(source[i], i)) {
                     if (target) {
-                        target.push(source[i]);
+                        target.unshift(source[i]);
                     }
                     source.splice(i, 1);
-                    --i;
                 }
             }
         } else {
@@ -9788,7 +9810,8 @@ var fluid = fluid || fluid_2_0;
 
     /** Accepts an object to be filtered, and a list of keys. Either all keys not present in
      * the list are removed, or only keys present in the list are returned.
-     * @param toFilter {Array|Object} The object to be filtered - this will be modified by the operation
+     * @param toFilter {Array|Object} The object to be filtered - this will be NOT modified by the operation (current implementation
+     * passes through $.extend shallow algorithm)
      * @param keys {Array of String} The list of keys to operate with
      * @param exclude {boolean} If <code>true</code>, the keys listed are removed rather than included
      * @return the filtered object (the same object that was supplied as <code>toFilter</code>
@@ -10182,8 +10205,8 @@ var fluid = fluid || fluid_2_0;
         return fluid_prefix + (fluid_guid++);
     };
 
-    fluid.event.identifyListener = function (listener) {
-        if (typeof(listener) !== "string" && !listener.$$fluid_guid) {
+    fluid.event.identifyListener = function (listener, soft) {
+        if (typeof(listener) !== "string" && !listener.$$fluid_guid && !soft) {
             listener.$$fluid_guid = fluid.allocateGuid();
         }
         return listener.$$fluid_guid;
@@ -10211,11 +10234,18 @@ var fluid = fluid || fluid_2_0;
     // unsupported, NON-API function
     fluid.event.sortListeners = function (listeners) {
         var togo = [];
-        fluid.each(listeners, function (listener) {
-            if (listener.length !== undefined) {
-                togo = togo.concat(listener);
+        fluid.each(listeners, function (oneNamespace) {
+            var headHard; // notify only the first listener with hard namespace - or else all if all are soft
+            for (var i = 0; i < oneNamespace.length; ++ i) {
+                var thisListener = oneNamespace[i];
+                if (!thisListener.softNamespace && !headHard) {
+                    headHard = thisListener;
+                }
+            }
+            if (headHard) {
+                togo.push(headHard);
             } else {
-                togo.push(listener);
+                togo = togo.concat(oneNamespace);
             }
         });
         return togo.sort(fluid.priorityComparator);
@@ -10255,13 +10285,15 @@ var fluid = fluid || fluid_2_0;
      * listeners, to which "events" can be fired. These events consist of an arbitrary
      * function signature. General documentation on the Fluid events system is at
      * http://wiki.fluidproject.org/display/fluid/The+Fluid+Event+System .
-     * @param {Boolean} unicast If <code>true</code>, this is a "unicast" event which may only accept
-     * a single listener.
-     * @param {Boolean} preventable If <code>true</code> the return value of each handler will
+     * @param {Object} options - A structure to configure this event firer. Supported fields:
+     *     {String} name - a name for this firer
+     *     {Boolean} preventable - If <code>true</code> the return value of each handler will
      * be checked for <code>false</code> in which case further listeners will be shortcircuited, and this
      * will be the return value of fire()
      */
-    fluid.makeEventFirer = function (unicast, preventable, name, ownerId) {
+    fluid.makeEventFirer = function (options) {
+        options = options || {};
+        var name = options.name || "<anonymous>";
         var that;
         function fireToListeners(listeners, args, wrapper) {
             if (!listeners || that.destroyed) { return; }
@@ -10276,11 +10308,8 @@ var fluid = fluid || fluid_2_0;
                 }
                 var value;
                 var ret = (wrapper ? wrapper(listener) : listener).apply(null, args);
-                if (preventable && ret === false || that.destroyed) {
+                if (options.preventable && ret === false || that.destroyed) {
                     value = false;
-                }
-                if (unicast) {
-                    value = ret;
                 }
                 if (value !== undefined) {
                     return value;
@@ -10288,7 +10317,6 @@ var fluid = fluid || fluid_2_0;
             }
         }
         var identify = fluid.event.identifyListener;
-
 
         var lazyInit = function () { // Lazy init function to economise on object references for events which are never listened to
             that.listeners = {};
@@ -10301,9 +10329,6 @@ var fluid = fluid || fluid_2_0;
                 if (!listener) {
                     return;
                 }
-                if (unicast) {
-                    namespace = "unicast";
-                }
                 if (typeof(listener) === "string") {
                     listener = {globalName: listener};
                 }
@@ -10314,13 +10339,9 @@ var fluid = fluid || fluid_2_0;
                     softNamespace: softNamespace,
                     priority: fluid.event.mapPriority(priority, that.sortedListeners.length)};
                 that.byId[id] = record;
-                if (softNamespace) {
-                    var thisListeners = (that.listeners[namespace] = fluid.makeArray(that.listeners[namespace]));
-                    thisListeners.push(record);
-                }
-                else {
-                    that.listeners[namespace] = record;
-                }
+
+                var thisListeners = (that.listeners[namespace] = fluid.makeArray(that.listeners[namespace]));
+                thisListeners[softNamespace ? "push" : "unshift"] (record);
 
                 that.sortedListeners = fluid.event.sortListeners(that.listeners);
             };
@@ -10328,8 +10349,8 @@ var fluid = fluid || fluid_2_0;
         };
         that = {
             eventId: fluid.allocateGuid(),
-            ownerId: ownerId,
             name: name,
+            ownerId: options.ownerId,
             typeName: "fluid.event.firer",
             destroy: function () {
                 that.destroyed = true;
@@ -10340,17 +10361,16 @@ var fluid = fluid || fluid_2_0;
 
             removeListener: function (listener) {
                 if (!that.listeners) { return; }
-                var namespace, id;
+                var namespace, id, record;
                 if (typeof (listener) === "string") {
                     namespace = listener;
-                    var record = that.listeners[listener];
+                    record = that.listeners[namespace];
                     if (!record) {
                         return;
                     }
-                    listener = record.length !== undefined ? record : record.listener;
                 }
-                if (typeof(listener) === "function") {
-                    id = identify(listener);
+                else if (typeof(listener) === "function") {
+                    id = identify(listener, true);
                     if (!id) {
                         fluid.fail("Cannot remove unregistered listener function ", listener, " from event " + that.name);
                     }
@@ -10359,19 +10379,23 @@ var fluid = fluid || fluid_2_0;
                 var softNamespace = rec && rec.softNamespace;
                 namespace = namespace || (rec && rec.namespace) || id;
                 delete that.byId[id];
+                record = that.listeners[namespace];
+                if (!record) {
+                    return;
+                }
                 if (softNamespace) {
-                    fluid.remove_if(that.listeners[namespace], function (thisLis) {
+                    fluid.remove_if(record, function (thisLis) {
                         return thisLis.listener.$$fluid_guid === id;
                     });
                 } else {
+                    record.shift();
+                }
+                if (record.length === 0) {
                     delete that.listeners[namespace];
                 }
                 that.sortedListeners = fluid.event.sortListeners(that.listeners);
             },
-            // NB - this method exists currently solely for the convenience of the new,
-            // transactional changeApplier. As it exists it is hard to imagine the function
-            // being helpful to any other client. We need to get more experience on the kinds
-            // of listeners that are useful, and ultimately factor this method away.
+            // NB - this method exists only to support the old ChangeApplier. It will be removed along with it.
             fireToListeners: function (listeners, args, wrapper) {
                 return fireToListeners(listeners, args, wrapper);
             },
@@ -10381,9 +10405,6 @@ var fluid = fluid || fluid_2_0;
         };
         return that;
     };
-
-    // This name will be deprecated in Fluid 1.5 for fluid.makeEventFirer (or fluid.eventFirer)
-    fluid.event.getEventFirer = fluid.makeEventFirer;
 
     /** Fire the specified event with supplied arguments. This call is an optimisation utility
      * which handles the case where the firer has not been instantiated (presumably as a result
@@ -10458,7 +10479,11 @@ var fluid = fluid || fluid_2_0;
                 event = fluid.event.resolveEvent(that, eventKey, eventSpec);
             }
         } else {
-            event = fluid.makeEventFirer(eventSpec === "unicast", eventSpec === "preventable", fluid.event.nameEvent(that, eventKey), that.id);
+            event = fluid.makeEventFirer({
+                name: fluid.event.nameEvent(that, eventKey),
+                preventable: eventSpec === "preventable",
+                ownerId: that.id
+            });
         }
         return event;
     };
@@ -10472,6 +10497,9 @@ var fluid = fluid || fluid_2_0;
 
     // unsupported, NON-API function
     fluid.mergeListenerPolicy = function (target, source, key) {
+        if (typeof (key) !== "string") {
+            fluid.fail("Error in listeners declaration - the keys in this structure must resolve to event names - got " + key + " from ", source);
+        }
         // cf. triage in mergeListeners
         var hasNamespace = key.charAt(0) !== "{" && key.indexOf(".") !== -1;
         return hasNamespace ? (source || target) : fluid.arrayConcatPolicy(target, source);
@@ -10747,7 +10775,7 @@ var fluid = fluid || fluid_2_0;
             } else {
                 fluid.fail("The grade hierarchy of component with typeName " + componentName + " is incomplete - it inherits from the following grade(s): " +
                  blankGrades.join(", ") + " for which the grade definitions are corrupt or missing. Please check the files which might include these " +
-                 " grades and ensure they are readable and have been loaded by this instance of Infusion");
+                 "grades and ensure they are readable and have been loaded by this instance of Infusion");
             }
         }
         var creator = function () {
@@ -11225,6 +11253,29 @@ var fluid = fluid || fluid_2_0;
 
     fluid.defaults("fluid.function", {});
 
+    /** Invoke a global function by name and named arguments. A courtesy to allow declaratively encoded function calls
+     * to use named arguments rather than bare arrays.
+     * @param name {String} A global name which can be resolved to a Function. The defaults for this name must
+     * resolve onto a grade including "fluid.function". The defaults record should also contain an entry
+     * <code>argumentMap</code>, a hash of argument names onto indexes.
+     * @param spec {Object} A named hash holding the argument values to be sent to the function. These will be looked
+     * up in the <code>argumentMap</code> and resolved into a flat list of arguments.
+     * @return {Any} The return value from the function
+     */
+
+    fluid.invokeGradedFunction = function (name, spec) {
+        var defaults = fluid.defaults(name);
+        if (!defaults || !defaults.argumentMap || !fluid.hasGrade(defaults, "fluid.function")) {
+            fluid.fail("Cannot look up name " + name +
+                " to a function with registered argumentMap - got defaults ", defaults);
+        }
+        var args = [];
+        fluid.each(defaults.argumentMap, function (value, key) {
+            args[value] = spec[key];
+        });
+        return fluid.invokeGlobalFunction(name, args);
+    };
+
     fluid.lifecycleFunctions = {
         preInitFunction: true,
         postInitFunction: true,
@@ -11383,7 +11434,7 @@ var fluid = fluid || fluid_2_0;
                 }
             }
             if (value) {
-                that.options[key] = fluid.makeEventFirer(null, null, key, that.id);
+                that.options[key] = fluid.makeEventFirer({name: key, ownerId: that.id});
                 fluid.event.addListenerToFirer(that.options[key], value);
             }
         });
@@ -11422,6 +11473,9 @@ var fluid = fluid || fluid_2_0;
             if (key !== "afterDestroy" && typeof(that.events[key].destroy) === "function") {
                 that.events[key].destroy();
             }
+        }
+        if (that.applier) { // TODO: Break this out into the grade's destroyer
+            that.applier.destroy();
         }
     };
 
@@ -12901,7 +12955,13 @@ var fluid_2_0 = fluid_2_0 || {};
             if (atval === undefined) {
                 // TODO: This check is very expensive - once gingerness is stable, we ought to be able to
                 // eagerly compute and cache the value of options.components - check is also incorrect and will miss injections
-                if (fluid.getForComponent(component, ["options", "components", thisSeg])) {
+                var subRecord = fluid.getForComponent(component, ["options", "components", thisSeg]);
+                if (subRecord) {
+                    if (subRecord.createOnEvent) {
+                        fluid.fail("Error resolving path segment \"" + thisSeg + "\" of path " + segs.join(".") + " since component with record ", subRecord,
+                            " has annotation \"createOnEvent\" - this very likely represents an implementation error. Either alter the reference so it does not " +
+                            " match this component, or alter your workflow to ensure that the component is instantiated by the time this reference resolves");
+                    }
                     fluid.initDependent(component, thisSeg);
                     atval = component[thisSeg];
                 }
@@ -12954,7 +13014,7 @@ var fluid_2_0 = fluid_2_0 || {};
                 return true; // YOUR VISIT IS AT AN END!!
             }
             if (fluid.getForComponent(component, ["options", "components", context, "type"]) && !component[context]) {
-  // This is an expensive guess since we make it for every component up the stack - must apply the WAVE OF EXPLOSION (FLUID-4925) to discover all components first
+  // This is an expensive guess since we make it for every component up the stack - must apply the WAVE OF EXPLOSIONS (FLUID-4925) to discover all components first
   // This line attempts a hopeful construction of components that could be guessed by nickname through finding them unconstructed
   // in options. In the near future we should eagerly BEGIN the process of constructing components, discovering their
   // types and then attaching them to the tree VERY EARLY so that we get consistent results from different strategies.
@@ -13002,6 +13062,7 @@ var fluid_2_0 = fluid_2_0 || {};
 
     // unsupported, non-API function
     fluid.clearListeners = function (shadow) {
+        // TODO: bug here - "afterDestroy" listeners will be unregistered already unless they come from this component
         fluid.each(shadow.listeners, function (rec) {
             rec.event.removeListener(rec.listener);
         });
@@ -13276,8 +13337,13 @@ var fluid_2_0 = fluid_2_0 || {};
     fluid.makeIoCRootDestroy = function (instantiator, that) {
         return function () {
             instantiator.clearComponent(that, "", that, null, true);
-            fluid.doDestroy(that);
-            fluid.fireEvent(that, "events.afterDestroy", [that, "", null]);
+        };
+    };
+    
+    // NON-API function
+    fluid.fabricateDestroyMethod = function (that, name, instantiator, child) {
+        return function () {
+            instantiator.clearComponent(that, name, child);
         };
     };
 
@@ -13489,13 +13555,6 @@ var fluid_2_0 = fluid_2_0 || {};
         return togo;
     };
 
-    // NON-API function
-    fluid.fabricateDestroyMethod = function (that, name, instantiator, child) {
-        return function () {
-            instantiator.clearComponent(that, name, child);
-        };
-    };
-
     /** Instantiate the subcomponent with the supplied name of the supplied top-level component. Although this method
      * is published as part of the Fluid API, it should not be called by general users and may not remain stable. It is
      * currently the only mechanism provided for instantiating components whose definitions are dynamic, and will be
@@ -13593,7 +13652,7 @@ var fluid_2_0 = fluid_2_0 || {};
         fluid.each(components, function (component, name) {
             if (!component.createOnEvent) {
                 var priority = fluid.priorityForComponent(component);
-                componentSort[name] = {key: name, priority: fluid.event.mapPriority(priority, 0)};
+                componentSort[name] = [{key: name, priority: fluid.event.mapPriority(priority, 0)}];
             }
             else {
                 fluid.bindDeferredComponent(that, name, component);
@@ -14068,7 +14127,7 @@ outer:  for (var i = 0; i < exist.length; ++i) {
         // occurred - this was implemented wrongly in 1.4.
         var firer;
         if (isComposite) {
-            firer = fluid.makeEventFirer(null, null, " [composite] " + fluid.event.nameEvent(that, eventName));
+            firer = fluid.makeEventFirer({name: " [composite] " + fluid.event.nameEvent(that, eventName)});
             var dispatcher = fluid.event.dispatchListener(that, firer.fire, eventName, eventSpec, isMultiple);
             if (isMultiple) {
                 fluid.event.listenerEngine(origin, dispatcher, adder);
@@ -15110,7 +15169,7 @@ var fluid_2_0 = fluid_2_0 || {};
         };
         that.forwardApplier = fluid.makeNewChangeApplier(that.forwardHolder);
         that.forwardApplier.isRelayApplier = true; // special annotation so these can be discovered in the transaction record
-        that.invalidator = fluid.makeEventFirer(null, null, "Invalidator for model relay with applier " + that.forwardApplier.applierId);
+        that.invalidator = fluid.makeEventFirer({name: "Invalidator for model relay with applier " + that.forwardApplier.applierId});
         if (sourcePath !== null) {
             that.backwardApplier = fluid.makeNewChangeApplier(that.backwardHolder);
             that.backwardAdapter = function () {
@@ -15212,7 +15271,10 @@ var fluid_2_0 = fluid_2_0 || {};
         allChanges.sort(fluid.priorityComparator);
         for (var i = 0; i < allChanges.length; ++ i) {
             var change = allChanges[i];
-            change.listener.apply(null, change.args);
+            var targetApplier = change.args[5]; // NOTE: This argument gets here via fluid.model.storeExternalChange from fluid.notifyModelChanges
+            if (!targetApplier.destroyed) { // 3rd point of guarding for FLUID-5592
+                change.listener.apply(null, change.args);
+            }
         }
         fluid.clearLinkCounts(transRec, true); // "options" structures for relayCount are aliased
     };
@@ -15355,6 +15417,9 @@ var fluid_2_0 = fluid_2_0 || {};
 
     fluid.resolveModelListener = function (that, record, isNewApplier) {
         var togo = function () {
+            if (fluid.isDestroyed(that)) { // first guarding point to resolve FLUID-5592
+                return;
+            }
             var change = fluid.modelChangedToChange(isNewApplier, arguments);
             var args = [change];
             var localRecord = {change: change, "arguments": args};
@@ -15548,6 +15613,7 @@ var fluid_2_0 = fluid_2_0 || {};
         if (sourceCode === "primitive") {
             if (!fluid.model.isSameValue(targetSlot, source)) {
                 changedValue = source;
+                ++options.unchanged;
             }
         } else if (targetCode !== sourceCode || sourceCode === "array" && source.length !== targetSlot.length) {
             // RH is not primitive - array or object and mismatching or any array rewrite
@@ -15586,7 +15652,7 @@ var fluid_2_0 = fluid_2_0 || {};
     // After the 1.5 release, this will replace the old "applyChangeRequest"
     // Changes: "MERGE" action abolished
     // ADD/DELETE at root can be destructive
-    // changes tracked in optional final argument holding "changeMap: {}, changes: 0"
+    // changes tracked in optional final argument holding "changeMap: {}, changes: 0, unchanged: 0"
     fluid.model.applyHolderChangeRequest = function (holder, request, options) {
         options = fluid.model.defaultAccessorConfig(options);
         options.deltaMap = options.changeMap ? {} : null;
@@ -15623,18 +15689,19 @@ var fluid_2_0 = fluid_2_0 || {};
      * not contain circular links.
      * @param modela The first model to be compared
      * @param modelb The second model to be compared
-     * @param options If supplied, will receive a map and summary of the change content between the objects. It should hold 
-     * {changeMap (Object/String), changes (int)} summarising the number and location of the differences
-     * between the structures. The <code>changeMap</code> is an isomorphic map of the object structures to values "ADD" or "DELETE" indicating
-     * that values have been added/removed at that location. <code>changes</code> counts the number of such changes. The two objects are
-     * identical iff <code>changes === 0</code>. Note that in the case the object structure differs at the root, <code>changeMap</code> will hold
+     * @param options {Object} If supplied, will receive a map and summary of the change content between the objects. Structure is:
+     *     changeMap: {Object/String} An isomorphic map of the object structures to values "ADD" or "DELETE" indicating
+     * that values have been added/removed at that location. Note that in the case the object structure differs at the root, <code>changeMap</code> will hold
      * the plain String value "ADD" or "DELETE"
+     *     changes: {Integer} Counts the number of changes between the objects - The two objects are identical iff <code>changes === 0</code>.
+     *     unchanged: {Integer} Counts the number of leaf (primitive) values at which the two objects are identical. Note that the current implementation will
+     * double-count, this summary should be considered indicative rather than precise.
      * @return <code>true</code> if the models are identical
      */
     // TODO: This algorithm is quite inefficient in that both models will be copied once each
     // supported, PUBLIC API function
     fluid.model.diff = function (modela, modelb, options) {
-        options = options || {changeMap: {}, changes: 0}; // current algorithm can't avoid the expense of changeMap
+        options = options || {changes: 0, unchanged: 0, changeMap: {}}; // current algorithm can't avoid the expense of changeMap
         var typea = fluid.typeCode(modela);
         var typeb = fluid.typeCode(modelb);
         var togo;
@@ -15659,6 +15726,8 @@ var fluid_2_0 = fluid_2_0 || {};
         if (togo === false && options.changes === 0) { // catch all primitive cases
             options.changes = 1;
             options.changeMap = modelb === undefined ? "DELETE" : "ADD";
+        } else if (togo === true && options.unchanged === 0) {
+            options.unchanged = 1;
         }
         return togo;
     };
@@ -15728,6 +15797,9 @@ var fluid_2_0 = fluid_2_0 || {};
             var spec = listeners[i];
             var invalidPaths = fluid.matchChanges(changeMap, spec.segs, newHolder);
             for (var j = 0; j < invalidPaths.length; ++ j) {
+                if (applier.destroyed) { // 2nd guarding point for FLUID-5592
+                    return;
+                }
                 var invalidPath = invalidPaths[j];
                 spec.listener = fluid.event.resolveListener(spec.listener);
                 // TODO: process namespace and softNamespace rules, and propagate "sources" in 4th argument
@@ -15783,8 +15855,8 @@ var fluid_2_0 = fluid_2_0 || {};
             },
             options: options,
             modelChanged: {},
-            preCommit: fluid.makeEventFirer(null, null, "preCommit event for ChangeApplier " + applierId),
-            postCommit: fluid.makeEventFirer(null, null, "postCommit event for ChangeApplier " + applierId)
+            preCommit: fluid.makeEventFirer({name: "preCommit event for ChangeApplier " }),
+            postCommit: fluid.makeEventFirer({name: "postCommit event for ChangeApplier "})
         };
         function preFireChangeRequest(changeRequest) {
             if (!changeRequest.type) {
@@ -15792,6 +15864,11 @@ var fluid_2_0 = fluid_2_0 || {};
             }
             changeRequest.segs = changeRequest.segs || that.parseEL(changeRequest.path);
         }
+        that.destroy = function () {
+            that.preCommit.destroy();
+            that.postCommit.destroy();
+            that.destroyed = true;
+        };
         that.modelChanged.addListener = function (spec, listener, namespace, softNamespace) {
             if (typeof(spec) === "string") {
                 spec = {path: spec};
@@ -15846,6 +15923,7 @@ var fluid_2_0 = fluid_2_0 || {};
                     trans.oldHolder = holder;
                     trans.newHolder = { model: fluid.copy(holder.model) };
                     trans.changeRecord.changes = 0;
+                    trans.changeRecord.unchanged = 0; // just for type consistency - we don't use these values in the ChangeApplier
                     trans.changeRecord.changeMap = {};
                 },
                 commit: function (code) {
@@ -16058,9 +16136,9 @@ var fluid_2_0 = fluid_2_0 || {};
     fluid.makeHolderChangeApplier = function (holder, options) {
         options = fluid.model.defaultAccessorConfig(options);
         var baseEvents = {
-            guards: fluid.event.getEventFirer(false, true, "guard event"),
-            postGuards: fluid.event.getEventFirer(false, true, "postGuard event"),
-            modelChanged: fluid.event.getEventFirer(false, false, "modelChanged event")
+            guards: fluid.makeEventFirer({preventable: true, name: "guard event"}),
+            postGuards: fluid.makeEventFirer({preventable: true, name: "postGuard event"}),
+            modelChanged: fluid.makeEventFirer({name: "modelChanged event"})
         };
         var threadLocal = fluid.threadLocal(function() { return {sources: {}};});
         var that = {
@@ -16068,7 +16146,8 @@ var fluid_2_0 = fluid_2_0 || {};
         // a simple algorithm looking for that field
             applierId: fluid.allocateGuid(),
             holder: holder,
-            options: options
+            options: options,
+            destroy: fluid.identity // dummy function to avoid confusing FLUID-5592 code - we don't support this subtlety for old appliers
         };
 
         function makeGuardWrapper(cullUnchanged) {
@@ -16483,48 +16562,18 @@ var fluid = fluid || fluid_2_0;
         return (val !== undefined) ? val : def;
     };
 
-    // TODO: Incomplete implementation which only checks expected paths
-    fluid.deepEquals = function (expected, actual, stats) {
-        if (fluid.isPrimitive(expected)) {
-            if (expected === actual) {
-                ++stats.matchCount;
-            } else {
-                ++stats.mismatchCount;
-                stats.messages.push("Value mismatch at path " + stats.path + ": expected " + expected + " actual " + actual);
-            }
-        }
-        else {
-            if (typeof(expected) !== typeof(actual)) {
-                ++stats.mismatchCount;
-                stats.messages.push("Type mismatch at path " + stats.path + ": expected " + typeof(expected)  + " actual " + typeof(actual));
-            } else {
-                fluid.each(expected, function (value, key) {
-                    stats.pathOp.push(key);
-                    fluid.deepEquals(expected[key], actual[key], stats);
-                    stats.pathOp.pop(key);
-                });
-            }
-        }
-    };
-
-    fluid.model.transform.matchValue = function (expected, actual) {
-        if (fluid.isPrimitive(expected)) {
-            return expected === actual ? 1 : 0;
-        } else {
-            var stats = {
-                matchCount: 0,
-                mismatchCount: 0,
-                messages: []
-            };
-            stats.pathOp = fluid.model.makePathStack(stats, "path");
-            fluid.deepEquals(expected, actual, stats);
-            return stats.matchCount;
-        }
-    };
-
-    // unsupported, NON-API function
-    fluid.model.transform.compareMatches = function (speca, specb) {
-        return specb.matchCount - speca.matchCount;
+    // Compute a "match score" between two pieces of model material, with 0 indicating a complete mismatch, and
+    // higher values indicating increasingly good matches
+    fluid.model.transform.matchValue = function (expected, actual, partialMatches) {
+        var stats = {changes: 0, unchanged: 0, changeMap: {}};
+        fluid.model.diff(expected, actual, stats);
+        // i) a pair with 0 matches counts for 0 in all cases
+        // ii) without "partial match mode" (the default), we simply count matches, with any mismatch giving 0
+        // iii) with "partial match mode", a "perfect score" in the top 24 bits is
+        // penalised for each mismatch, with a positive score of matches store in the bottom 24 bits
+        return stats.unchanged === 0 ? 0
+            : (partialMatches ? 0xffffff000000 - 0x1000000 * stats.changes + stats.unchanged :
+            (stats.changes ? 0 : 0xffffff000000 + stats.unchanged));
     };
 
     fluid.firstDefined = function (a, b) {
@@ -16594,7 +16643,7 @@ var fluid = fluid || fluid_2_0;
             var expanded = fluid.model.transform.getValue(valueHolder.valuePath, valueHolder.value, transform);
 
             transformArgs.unshift(expanded);
-            //if the function has no input, the result is considered undefined, and this is returned
+            // if the function has no input, the result is considered undefined, and this is returned
             if (expanded === undefined) {
                 return undefined;
             }
@@ -17020,12 +17069,12 @@ var fluid = fluid || fluid_2_0;
 
     fluid.transforms.value = fluid.identity;
 
-    fluid.transforms.value.invert = function (transformSpec, transform) {
+    fluid.transforms.value.invert = function (transformSpec, transformer) {
         var togo = fluid.copy(transformSpec);
         // TODO: this will not behave correctly in the face of compound "value" which contains
         // further transforms
-        togo.inputPath = fluid.model.composePaths(transform.outputPrefix, transformSpec.outputPath);
-        togo.outputPath = fluid.model.composePaths(transform.inputPrefix, transformSpec.inputPath);
+        togo.inputPath = fluid.model.composePaths(transformer.outputPrefix, transformSpec.outputPath);
+        togo.outputPath = fluid.model.composePaths(transformer.inputPrefix, transformSpec.inputPath);
         return togo;
     };
 
@@ -17073,9 +17122,9 @@ var fluid = fluid || fluid_2_0;
         gradeNames: "fluid.transformFunction"
     });
 
-    fluid.transforms["delete"] = function (transformSpec, transform) {
-        var outputPath = fluid.model.composePaths(transform.outputPrefix, transformSpec.outputPath);
-        transform.applier.requestChange(outputPath, null, "DELETE");
+    fluid.transforms["delete"] = function (transformSpec, transformer) {
+        var outputPath = fluid.model.composePaths(transformer.outputPrefix, transformSpec.outputPath);
+        transformer.applier.requestChange(outputPath, null, "DELETE");
     };
 
 
@@ -17083,14 +17132,14 @@ var fluid = fluid || fluid_2_0;
         gradeNames: "fluid.transformFunction"
     });
 
-    fluid.transforms.firstValue = function (transformSpec, transform) {
+    fluid.transforms.firstValue = function (transformSpec, transformer) {
         if (!transformSpec.values || !transformSpec.values.length) {
             fluid.fail("firstValue transformer requires an array of values at path named \"values\", supplied", transformSpec);
         }
         for (var i = 0; i < transformSpec.values.length; i++) {
             var value = transformSpec.values[i];
             // TODO: problem here - all of these transforms will have their side-effects (setValue) even if only one is chosen
-            var expanded = transform.expand(value);
+            var expanded = transformer.expand(value);
             if (expanded !== undefined) {
                 return expanded;
             }
@@ -17120,7 +17169,7 @@ var fluid = fluid || fluid_2_0;
     };
 
     /* TODO: This inversion doesn't work if the value and factors are given as paths in the source model */
-    fluid.transforms.linearScale.invert = function  (transformSpec, transform) {
+    fluid.transforms.linearScale.invert = function  (transformSpec, transformer) {
         var togo = fluid.copy(transformSpec);
 
         if (togo.factor) {
@@ -17131,8 +17180,8 @@ var fluid = fluid || fluid_2_0;
         }
         // TODO: This rubbish should be done by the inversion machinery by itself. We shouldn't have to repeat it in every
         // inversion rule
-        togo.valuePath = fluid.model.composePaths(transform.outputPrefix, transformSpec.outputPath);
-        togo.outputPath = fluid.model.composePaths(transform.inputPrefix, transformSpec.valuePath);
+        togo.valuePath = fluid.model.composePaths(transformer.outputPrefix, transformSpec.outputPath);
+        togo.outputPath = fluid.model.composePaths(transformer.inputPrefix, transformSpec.valuePath);
         return togo;
     };
 
@@ -17160,11 +17209,11 @@ var fluid = fluid || fluid_2_0;
         "||": function (a, b) { return a || b; }
     };
 
-    fluid.transforms.binaryOp = function (inputs, transformSpec, transform) {
+    fluid.transforms.binaryOp = function (inputs, transformSpec, transformer) {
         var left = inputs.left();
         var right = inputs.right();
 
-        var operator = fluid.model.transform.getValue(undefined, transformSpec.operator, transform);
+        var operator = fluid.model.transform.getValue(undefined, transformSpec.operator, transformer);
 
         var fun = fluid.transforms.binaryLookup[operator];
         return (fun === undefined || left === undefined || right === undefined) ?
@@ -17195,37 +17244,40 @@ var fluid = fluid || fluid_2_0;
         invertConfiguration: "fluid.transforms.valueMapper.invert",
         collectInputPaths: "fluid.transforms.valueMapper.collect"
     });
+    
+    
+    // unsupported, NON-API function
+    fluid.model.transform.compareMatches = function (speca, specb) {
+        return specb.matchValue - speca.matchValue;
+    };
 
     // unsupported, NON-API function
-    fluid.model.transform.matchValueMapperFull = function (outerValue, transformSpec, transform) {
+    fluid.model.transform.matchValueMapperFull = function (outerValue, transformSpec, transformer) {
         var o = transformSpec.options;
         if (o.length === 0) {
             fluid.fail("valueMapper supplied empty list of options: ", transformSpec);
         }
-        if (o.length === 1) {
-            return 0;
-        }
         var matchPower = [];
         for (var i = 0; i < o.length; ++i) {
             var option = o[i];
-            var value = fluid.firstDefined(fluid.model.transform.getValue(option.inputPath, undefined, transform),
+            var value = fluid.firstDefined(fluid.model.transform.getValue(option.inputPath, undefined, transformer),
                 outerValue);
-            var matchCount = fluid.model.transform.matchValue(option.undefinedInputValue ? undefined :
-                (option.inputValue === undefined ? transformSpec.defaultInputValue : option.inputValue), value);
-            matchPower[i] = {index: i, matchCount: matchCount};
+            var matchValue = fluid.model.transform.matchValue(option.undefinedInputValue ? undefined :
+                (option.inputValue === undefined ? transformSpec.defaultInputValue : option.inputValue), value, transformSpec.partialMatches || option.partialMatches);
+            matchPower[i] = {index: i, matchValue: matchValue};
         }
         matchPower.sort(fluid.model.transform.compareMatches);
-        return matchPower[0].matchCount === matchPower[1].matchCount ? -1 : matchPower[0].index;
+        return (matchPower[0].matchValue <= 0 || o.length > 1 && matchPower[0].matchValue === matchPower[1].matchValue) ? -1 : matchPower[0].index;
     };
 
-    fluid.transforms.valueMapper = function (transformSpec, transform) {
+    fluid.transforms.valueMapper = function (transformSpec, transformer) {
         if (!transformSpec.options) {
             fluid.fail("valueMapper requires a list or hash of options at path named \"options\", supplied ", transformSpec);
         }
-        var value = fluid.model.transform.getValue(transformSpec.inputPath, undefined, transform);
+        var value = fluid.model.transform.getValue(transformSpec.inputPath, undefined, transformer);
         var deref = fluid.isArrayable(transformSpec.options) ? // long form with list of records
             function (testVal) {
-                var index = fluid.model.transform.matchValueMapperFull(testVal, transformSpec, transform);
+                var index = fluid.model.transform.matchValueMapperFull(testVal, transformSpec, transformer);
                 return index === -1 ? null : transformSpec.options[index];
             } :
             function (testVal) {
@@ -17243,7 +17295,7 @@ var fluid = fluid || fluid_2_0;
         }
 
         var outputPath = indexed.outputPath === undefined ? transformSpec.defaultOutputPath : indexed.outputPath;
-        transform.outputPrefixOp.push(outputPath);
+        transformer.outputPrefixOp.push(outputPath);
         var outputValue;
         if (fluid.isPrimitive(indexed)) {
             outputValue = indexed;
@@ -17253,20 +17305,20 @@ var fluid = fluid || fluid_2_0;
                 outputValue = undefined;
             } else {
                 // get value from outputValue or outputValuePath. If none is found set the outputValue to be that of defaultOutputValue (or undefined)
-                outputValue = fluid.model.transform.resolveParam(indexed, transform, "outputValue", undefined);
+                outputValue = fluid.model.transform.resolveParam(indexed, transformer, "outputValue", undefined);
                 outputValue = (outputValue === undefined) ? transformSpec.defaultOutputValue : outputValue;
             }
         }
         // output if outputPath or defaultOutputPath have been specified and the relevant child hasn't done the outputting
         if (typeof(outputPath) === "string" && outputValue !== undefined) {
-            fluid.model.transform.setValue(undefined, outputValue, transform, transformSpec.merge);
+            fluid.model.transform.setValue(undefined, outputValue, transformer, transformSpec.merge);
             outputValue = undefined;
         }
-        transform.outputPrefixOp.pop();
+        transformer.outputPrefixOp.pop();
         return outputValue;
     };
 
-    fluid.transforms.valueMapper.invert = function (transformSpec, transform) {
+    fluid.transforms.valueMapper.invert = function (transformSpec, transformer) {
         var options = [];
         var togo = {
             type: "fluid.transforms.valueMapper",
@@ -17283,10 +17335,10 @@ var fluid = fluid || fluid_2_0;
         var anyCustomOutput = findCustom("outputPath");
         var anyCustomInput = findCustom("inputPath");
         if (!anyCustomOutput) {
-            togo.inputPath = fluid.model.composePaths(transform.outputPrefix, transformSpec.defaultOutputPath);
+            togo.inputPath = fluid.model.composePaths(transformer.outputPrefix, transformSpec.defaultOutputPath);
         }
         if (!anyCustomInput) {
-            togo.defaultOutputPath = fluid.model.composePaths(transform.inputPrefix, transformSpec.inputPath);
+            togo.defaultOutputPath = fluid.model.composePaths(transformer.inputPrefix, transformSpec.inputPath);
         }
         var def = fluid.firstDefined;
         fluid.each(transformSpec.options, function (option, key) {
@@ -17297,12 +17349,12 @@ var fluid = fluid || fluid_2_0;
             }
             outOption.outputValue = fluid.model.transform.literaliseValue(origInputValue);
             var origOutputValue = def(option.outputValue, transformSpec.defaultOutputValue);
-            outOption.inputValue = fluid.model.transform.getValue(option.outputValuePath, origOutputValue, transform);
+            outOption.inputValue = fluid.model.transform.getValue(option.outputValuePath, origOutputValue, transformer);
             if (anyCustomOutput) {
-                outOption.inputPath = fluid.model.composePaths(transform.outputPrefix, def(option.outputPath, transformSpec.outputPath));
+                outOption.inputPath = fluid.model.composePaths(transformer.outputPrefix, def(option.outputPath, transformSpec.outputPath));
             }
             if (anyCustomInput) {
-                outOption.outputPath = fluid.model.composePaths(transform.inputPrefix, def(option.inputPath, transformSpec.inputPath));
+                outOption.outputPath = fluid.model.composePaths(transformer.inputPrefix, def(option.inputPath, transformSpec.inputPath));
             }
             if (option.outputValuePath) {
                 outOption.inputValuePath = option.outputValuePath;
@@ -17312,11 +17364,11 @@ var fluid = fluid || fluid_2_0;
         return togo;
     };
 
-    fluid.transforms.valueMapper.collect = function (transformSpec, transform) {
+    fluid.transforms.valueMapper.collect = function (transformSpec, transformer) {
         var togo = [];
-        fluid.model.transform.accumulateInputPath(transformSpec.inputPath, transform, togo);
+        fluid.model.transform.accumulateInputPath(transformSpec.inputPath, transformer, togo);
         fluid.each(transformSpec.options, function (option) {
-            fluid.model.transform.accumulateInputPath(option.inputPath, transform, togo);
+            fluid.model.transform.accumulateInputPath(option.inputPath, transformer, togo);
         });
         return togo;
     };
@@ -17329,7 +17381,7 @@ var fluid = fluid || fluid_2_0;
     });
 
 
-    fluid.transforms.arrayToSetMembership = function (value, transformSpec, transform) {
+    fluid.transforms.arrayToSetMembership = function (value, transformSpec, transformer) {
         var options = transformSpec.options;
 
         if (!value || !fluid.isArrayable(value)) {
@@ -17350,19 +17402,19 @@ var fluid = fluid || fluid_2_0;
         fluid.each(options, function (outPath, key) {
             // write to output path given in options the value <presentValue> or <missingValue> depending on whether key is found in user input
             var outVal = ($.inArray(key, value) !== -1) ? transformSpec.presentValue : transformSpec.missingValue;
-            fluid.model.transform.setValue(outPath, outVal, transform);
+            fluid.model.transform.setValue(outPath, outVal, transformer);
         });
         // TODO: Why does this transform make no return?
     };
 
-    fluid.transforms.arrayToSetMembership.invert = function (transformSpec, transform) {
+    fluid.transforms.arrayToSetMembership.invert = function (transformSpec, transformer) {
         var togo = fluid.copy(transformSpec);
         delete togo.inputPath;
         togo.type = "fluid.transforms.setMembershipToArray";
-        togo.outputPath = fluid.model.composePaths(transform.inputPrefix, transformSpec.inputPath);
+        togo.outputPath = fluid.model.composePaths(transformer.inputPrefix, transformSpec.inputPath);
         var newOptions = {};
         fluid.each(transformSpec.options, function (path, oldKey) {
-            var newKey = fluid.model.composePaths(transform.outputPrefix, path);
+            var newKey = fluid.model.composePaths(transformer.outputPrefix, path);
             newOptions[newKey] = oldKey;
         });
         togo.options = newOptions;
@@ -17373,7 +17425,7 @@ var fluid = fluid || fluid_2_0;
         gradeNames: ["fluid.standardOutputTransformFunction"]
     });
 
-    fluid.transforms.setMembershipToArray = function (transformSpec, transform) {
+    fluid.transforms.setMembershipToArray = function (transformSpec, transformer) {
         var options = transformSpec.options;
 
         if (!options) {
@@ -17390,7 +17442,7 @@ var fluid = fluid || fluid_2_0;
 
         var outputArr = [];
         fluid.each(options, function (arrVal, inPath) {
-            var val = fluid.model.transform.getValue(inPath, undefined, transform);
+            var val = fluid.model.transform.getValue(inPath, undefined, transformer);
             if (val === transformSpec.presentValue) {
                 outputArr.push(arrVal);
             }
@@ -17437,16 +17489,16 @@ var fluid = fluid || fluid_2_0;
         }
     };
 
-    fluid.model.transform.expandInnerValues = function (inputPath, outputPath, transform, innerValues) {
-        var inputPrefixOp = transform.inputPrefixOp;
-        var outputPrefixOp = transform.outputPrefixOp;
+    fluid.model.transform.expandInnerValues = function (inputPath, outputPath, transformer, innerValues) {
+        var inputPrefixOp = transformer.inputPrefixOp;
+        var outputPrefixOp = transformer.outputPrefixOp;
         var apply = fluid.model.transform.applyPaths;
 
         apply("push", inputPrefixOp, inputPath);
         apply("push", outputPrefixOp, outputPath);
         var expanded = {};
         fluid.each(innerValues, function (innerValue) {
-            var expandedInner = transform.expand(innerValue);
+            var expandedInner = transformer.expand(innerValue);
             if (!fluid.isPrimitive(expandedInner)) {
                 $.extend(true, expanded, expandedInner);
             } else {
@@ -17465,7 +17517,7 @@ var fluid = fluid || fluid_2_0;
         invertConfiguration: "fluid.transforms.arrayToObject.invert"
     });
 
-    fluid.transforms.arrayToObject = function (arr, transformSpec, transform) {
+    fluid.transforms.arrayToObject = function (arr, transformSpec, transformer) {
         if (transformSpec.key === undefined) {
             fluid.fail("arrayToObject requires a 'key' option.", transformSpec);
         }
@@ -17487,19 +17539,19 @@ var fluid = fluid || fluid_2_0;
             delete content[pivot];
             // fix sub Arrays if needed:
             if (transformSpec.innerValue) {
-                content = fluid.model.transform.expandInnerValues([transform.inputPrefix, transformSpec.inputPath, k.toString()],
-                    [newKey], transform, transformSpec.innerValue);
+                content = fluid.model.transform.expandInnerValues([transformer.inputPrefix, transformSpec.inputPath, k.toString()],
+                    [newKey], transformer, transformSpec.innerValue);
             }
             newHash[newKey] = content;
         });
         return newHash;
     };
 
-    fluid.transforms.arrayToObject.invert = function (transformSpec, transform) {
+    fluid.transforms.arrayToObject.invert = function (transformSpec, transformer) {
         var togo = fluid.copy(transformSpec);
         togo.type = "fluid.transforms.objectToArray";
-        togo.inputPath = fluid.model.composePaths(transform.outputPrefix, transformSpec.outputPath);
-        togo.outputPath = fluid.model.composePaths(transform.inputPrefix, transformSpec.inputPath);
+        togo.inputPath = fluid.model.composePaths(transformer.outputPrefix, transformSpec.outputPath);
+        togo.outputPath = fluid.model.composePaths(transformer.inputPrefix, transformSpec.inputPath);
         // invert transforms from innerValue as well:
         // TODO: The Model Transformations framework should be capable of this, but right now the
         // issue is that we use a "private contract" to operate the "innerValue" slot. We need to
@@ -17522,7 +17574,7 @@ var fluid = fluid || fluid_2_0;
      * Transforms an object into array of objects.
      * This performs the inverse transform of fluid.transforms.arrayToObject.
      */
-    fluid.transforms.objectToArray = function (hash, transformSpec, transform) {
+    fluid.transforms.objectToArray = function (hash, transformSpec, transformer) {
         if (transformSpec.key === undefined) {
             fluid.fail("objectToArray requires a 'key' option.", transformSpec);
         }
@@ -17535,7 +17587,7 @@ var fluid = fluid || fluid_2_0;
             content[pivot] = k;
             if (transformSpec.innerValue) {
                 v = fluid.model.transform.expandInnerValues([transformSpec.inputPath, k], [transformSpec.outputPath, newArray.length.toString()],
-                    transform, transformSpec.innerValue);
+                    transformer, transformSpec.innerValue);
             }
             $.extend(true, content, v);
             newArray.push(content);
@@ -18055,34 +18107,38 @@ var fluid_2_0 = fluid_2_0 || {};
     };
 
     fluid.defaults("fluid.ariaLabeller", {
+        gradeNames: ["fluid.viewComponent", "autoInit"],
         labelAttribute: "aria-label",
-        liveRegionMarkup: "<div class=\"liveRegion fl-offScreen-hidden\" aria-live=\"polite\"></div>",
+        liveRegionMarkup: "<div class=\"liveRegion fl-hidden-accessible\" aria-live=\"polite\"></div>",
         liveRegionId: "fluid-ariaLabeller-liveRegion",
-        events: {
-            generateLiveElement: "unicast"
+        invokers: {
+            generateLiveElement: {
+                funcName: "fluid.ariaLabeller.generateLiveElement",
+                args: "{that}"
+            },
+            update: {
+                funcName: "fluid.ariaLabeller.update",
+                args: ["{that}", "{arguments}.0"]
+            }
         },
         listeners: {
-            generateLiveElement: "fluid.ariaLabeller.generateLiveElement"
+            onCreate: {
+                func: "{that}.update",
+                args: [null]
+            }
         }
     });
-
-    fluid.ariaLabeller = function (element, options) {
-        var that = fluid.initView("fluid.ariaLabeller", element, options);
-
-        that.update = function (newOptions) {
-            newOptions = newOptions || that.options;
-            that.container.attr(that.options.labelAttribute, newOptions.text);
-            if (newOptions.dynamicLabel) {
-                var live = fluid.jById(that.options.liveRegionId);
-                if (live.length === 0) {
-                    live = that.events.generateLiveElement.fire(that);
-                }
-                live.text(newOptions.text);
+    
+    fluid.ariaLabeller.update = function (that, newOptions) {
+        newOptions = newOptions || that.options;
+        that.container.attr(that.options.labelAttribute, newOptions.text);
+        if (newOptions.dynamicLabel) {
+            var live = fluid.jById(that.options.liveRegionId);
+            if (live.length === 0) {
+                live = that.generateLiveElement();
             }
-        };
-
-        that.update();
-        return that;
+            live.text(newOptions.text);
+        }
     };
 
     fluid.ariaLabeller.generateLiveElement = function (that) {
@@ -18279,7 +18335,7 @@ var fluid_2_0 = fluid_2_0 || {};
             fluid.fetchResources.fetchResourcesImpl(that);
         };
         fluid.each(resourceSpecs, function(resourceSpec, key) {
-            resourceSpec.recurseFirer = fluid.event.getEventFirer(null, null, "I/O completion for resource \"" + key + "\"");
+            resourceSpec.recurseFirer = fluid.makeEventFirer({name: "I/O completion for resource \"" + key + "\""});
             resourceSpec.recurseFirer.addListener(that.operate);
             if (resourceSpec.url && !resourceSpec.href) {
                 resourceSpec.href = resourceSpec.url;
@@ -18400,7 +18456,7 @@ var fluid_2_0 = fluid_2_0 || {};
         var cached = resourceCache[canon];
         if (!cached) {
             fluid.log("First request for cached resource with url " + canon);
-            cached = fluid.event.getEventFirer(null, null, "cache notifier for resource URL " + canon);
+            cached = fluid.makeEventFirer({name: "cache notifier for resource URL " + canon});
             cached.$$firer$$ = true;
             resourceCache[canon] = cached;
             var fetchClass = resourceSpec.fetchClass;

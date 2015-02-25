@@ -36,7 +36,7 @@ var fluid_2_0 = fluid_2_0 || {};
             fluid.fetchResources.fetchResourcesImpl(that);
         };
         fluid.each(resourceSpecs, function(resourceSpec, key) {
-            resourceSpec.recurseFirer = fluid.event.getEventFirer(null, null, "I/O completion for resource \"" + key + "\"");
+            resourceSpec.recurseFirer = fluid.makeEventFirer({name: "I/O completion for resource \"" + key + "\""});
             resourceSpec.recurseFirer.addListener(that.operate);
             if (resourceSpec.url && !resourceSpec.href) {
                 resourceSpec.href = resourceSpec.url;
@@ -157,7 +157,7 @@ var fluid_2_0 = fluid_2_0 || {};
         var cached = resourceCache[canon];
         if (!cached) {
             fluid.log("First request for cached resource with url " + canon);
-            cached = fluid.event.getEventFirer(null, null, "cache notifier for resource URL " + canon);
+            cached = fluid.makeEventFirer({name: "cache notifier for resource URL " + canon});
             cached.$$firer$$ = true;
             resourceCache[canon] = cached;
             var fetchClass = resourceSpec.fetchClass;

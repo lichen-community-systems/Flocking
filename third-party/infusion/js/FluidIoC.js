@@ -653,7 +653,13 @@ var fluid_2_0 = fluid_2_0 || {};
             if (atval === undefined) {
                 // TODO: This check is very expensive - once gingerness is stable, we ought to be able to
                 // eagerly compute and cache the value of options.components - check is also incorrect and will miss injections
-                if (fluid.getForComponent(component, ["options", "components", thisSeg])) {
+                var subRecord = fluid.getForComponent(component, ["options", "components", thisSeg]);
+                if (subRecord) {
+                    if (subRecord.createOnEvent) {
+                        fluid.fail("Error resolving path segment \"" + thisSeg + "\" of path " + segs.join(".") + " since component with record ", subRecord,
+                            " has annotation \"createOnEvent\" - this very likely represents an implementation error. Either alter the reference so it does not " +
+                            " match this component, or alter your workflow to ensure that the component is instantiated by the time this reference resolves");
+                    }
                     fluid.initDependent(component, thisSeg);
                     atval = component[thisSeg];
                 }
@@ -706,7 +712,7 @@ var fluid_2_0 = fluid_2_0 || {};
                 return true; // YOUR VISIT IS AT AN END!!
             }
             if (fluid.getForComponent(component, ["options", "components", context, "type"]) && !component[context]) {
-  // This is an expensive guess since we make it for every component up the stack - must apply the WAVE OF EXPLOSION (FLUID-4925) to discover all components first
+  // This is an expensive guess since we make it for every component up the stack - must apply the WAVE OF EXPLOSIONS (FLUID-4925) to discover all components first
   // This line attempts a hopeful construction of components that could be guessed by nickname through finding them unconstructed
   // in options. In the near future we should eagerly BEGIN the process of constructing components, discovering their
   // types and then attaching them to the tree VERY EARLY so that we get consistent results from different strategies.
@@ -754,6 +760,7 @@ var fluid_2_0 = fluid_2_0 || {};
 
     // unsupported, non-API function
     fluid.clearListeners = function (shadow) {
+        // TODO: bug here - "afterDestroy" listeners will be unregistered already unless they come from this component
         fluid.each(shadow.listeners, function (rec) {
             rec.event.removeListener(rec.listener);
         });
@@ -1028,8 +1035,13 @@ var fluid_2_0 = fluid_2_0 || {};
     fluid.makeIoCRootDestroy = function (instantiator, that) {
         return function () {
             instantiator.clearComponent(that, "", that, null, true);
-            fluid.doDestroy(that);
-            fluid.fireEvent(that, "events.afterDestroy", [that, "", null]);
+        };
+    };
+    
+    // NON-API function
+    fluid.fabricateDestroyMethod = function (that, name, instantiator, child) {
+        return function () {
+            instantiator.clearComponent(that, name, child);
         };
     };
 
@@ -1241,13 +1253,6 @@ var fluid_2_0 = fluid_2_0 || {};
         return togo;
     };
 
-    // NON-API function
-    fluid.fabricateDestroyMethod = function (that, name, instantiator, child) {
-        return function () {
-            instantiator.clearComponent(that, name, child);
-        };
-    };
-
     /** Instantiate the subcomponent with the supplied name of the supplied top-level component. Although this method
      * is published as part of the Fluid API, it should not be called by general users and may not remain stable. It is
      * currently the only mechanism provided for instantiating components whose definitions are dynamic, and will be
@@ -1345,7 +1350,7 @@ var fluid_2_0 = fluid_2_0 || {};
         fluid.each(components, function (component, name) {
             if (!component.createOnEvent) {
                 var priority = fluid.priorityForComponent(component);
-                componentSort[name] = {key: name, priority: fluid.event.mapPriority(priority, 0)};
+                componentSort[name] = [{key: name, priority: fluid.event.mapPriority(priority, 0)}];
             }
             else {
                 fluid.bindDeferredComponent(that, name, component);
@@ -1820,7 +1825,7 @@ outer:  for (var i = 0; i < exist.length; ++i) {
         // occurred - this was implemented wrongly in 1.4.
         var firer;
         if (isComposite) {
-            firer = fluid.makeEventFirer(null, null, " [composite] " + fluid.event.nameEvent(that, eventName));
+            firer = fluid.makeEventFirer({name: " [composite] " + fluid.event.nameEvent(that, eventName)});
             var dispatcher = fluid.event.dispatchListener(that, firer.fire, eventName, eventSpec, isMultiple);
             if (isMultiple) {
                 fluid.event.listenerEngine(origin, dispatcher, adder);

@@ -71,20 +71,20 @@ Documentation and Demos
 Getting Started
 ---------------
 
+The latest stable release of Flocking is version 0.1.0. It can be downloaded from the [Flocking releases](https://github.com/colinbdclark/Flocking/releases) page.
+
 Concatenated and minified Flocking builds, suitable for development and production respectively,
-are included in the source code repository in the [dist directory](dist/).
-Flocking can also be built manually using Grunt.
+are included in the [dist directory](dist/). Flocking can also be built manually using Grunt.
 
 Here's how to include Flocking's development file in your HTML page:
 
-    <!-- This includes Flocking and all its dependencies, including jQuery 2.0 and Infusion 1.5 -->
+    <!-- This includes Flocking and all its dependencies, including jQuery 2.1.3 and Infusion -->
     <script src="flocking/dist/flocking-all.js"></script>
 
 
 For more information on using Flocking in a browser,
 read the [Getting Started](docs/getting-started.md) tutorial.
 If module loaders are your thing, Flocking also supports the CommonJS and AMD styles.
-
 
 If you're interested in using Flocking with Node.js,
 read the [Flocking in Node.js](docs/nodejs.md) tutorial.

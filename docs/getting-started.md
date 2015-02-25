@@ -5,10 +5,10 @@
 
 The Flocking source code is hosted on Github, a community for sharing and contributing code using the [Git](http://git-scm.com/) distributed version control system. In the long run, you'll find that learning how to use Github and Git will be very helpful in using Flocking and other open source web toolkits. But it's not required. Here's how to get started with Flocking without using Git or Github.
 
-* Go to the [main Flocking page](http://github.com/colinbdclark/Flocking) on Github
-* Press the "Download ZIP" button to download the Flocking source code to your computer
-* Unzip Flocking and copy the _dist_ directory into your project. You'll probably want to rename it to _flocking_ or the something more descriptive.
-* Link the Flocking JavaScript file _flocking-all.js_ to your web page using a script tag. This file contains all of Flocking packaged up as a single JavaScript file.
+1. Go to the [Flocking releases page](https://github.com/colinbdclark/flocking/releases) on Github
+2. Download the latest stable release
+3. Unzip Flocking and copy the _dist_ directory into your project. You'll probably want to rename it to <code>flocking</code> or the something more descriptive.
+4. Link Flocking's JavaScript file, <code>flocking-all.js</code> to your web page using a script tag. This file contains all of Flocking, along with its dependencies, packaged up as a single file.
 
 Here's how:
 
@@ -121,6 +121,8 @@ If you'd prefer to link to the individual Flocking files during development, the
     <script src="flocking/flocking/flocking-ugens.js"></script>
     <script src="flocking/flocking/flocking-envelopes.js"></script>
     <script src="flocking/flocking/flocking-ugens-browser.js"></script>
+    <script src="flocking/flocking/flocking-ugens-bandlimited.js"></script>
+
 
 In addition, if you're working with audio files, these files are required:
 

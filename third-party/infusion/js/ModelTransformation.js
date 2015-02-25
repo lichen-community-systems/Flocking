@@ -134,48 +134,18 @@ var fluid = fluid || fluid_2_0;
         return (val !== undefined) ? val : def;
     };
 
-    // TODO: Incomplete implementation which only checks expected paths
-    fluid.deepEquals = function (expected, actual, stats) {
-        if (fluid.isPrimitive(expected)) {
-            if (expected === actual) {
-                ++stats.matchCount;
-            } else {
-                ++stats.mismatchCount;
-                stats.messages.push("Value mismatch at path " + stats.path + ": expected " + expected + " actual " + actual);
-            }
-        }
-        else {
-            if (typeof(expected) !== typeof(actual)) {
-                ++stats.mismatchCount;
-                stats.messages.push("Type mismatch at path " + stats.path + ": expected " + typeof(expected)  + " actual " + typeof(actual));
-            } else {
-                fluid.each(expected, function (value, key) {
-                    stats.pathOp.push(key);
-                    fluid.deepEquals(expected[key], actual[key], stats);
-                    stats.pathOp.pop(key);
-                });
-            }
-        }
-    };
-
-    fluid.model.transform.matchValue = function (expected, actual) {
-        if (fluid.isPrimitive(expected)) {
-            return expected === actual ? 1 : 0;
-        } else {
-            var stats = {
-                matchCount: 0,
-                mismatchCount: 0,
-                messages: []
-            };
-            stats.pathOp = fluid.model.makePathStack(stats, "path");
-            fluid.deepEquals(expected, actual, stats);
-            return stats.matchCount;
-        }
-    };
-
-    // unsupported, NON-API function
-    fluid.model.transform.compareMatches = function (speca, specb) {
-        return specb.matchCount - speca.matchCount;
+    // Compute a "match score" between two pieces of model material, with 0 indicating a complete mismatch, and
+    // higher values indicating increasingly good matches
+    fluid.model.transform.matchValue = function (expected, actual, partialMatches) {
+        var stats = {changes: 0, unchanged: 0, changeMap: {}};
+        fluid.model.diff(expected, actual, stats);
+        // i) a pair with 0 matches counts for 0 in all cases
+        // ii) without "partial match mode" (the default), we simply count matches, with any mismatch giving 0
+        // iii) with "partial match mode", a "perfect score" in the top 24 bits is
+        // penalised for each mismatch, with a positive score of matches store in the bottom 24 bits
+        return stats.unchanged === 0 ? 0
+            : (partialMatches ? 0xffffff000000 - 0x1000000 * stats.changes + stats.unchanged :
+            (stats.changes ? 0 : 0xffffff000000 + stats.unchanged));
     };
 
     fluid.firstDefined = function (a, b) {
@@ -245,7 +215,7 @@ var fluid = fluid || fluid_2_0;
             var expanded = fluid.model.transform.getValue(valueHolder.valuePath, valueHolder.value, transform);
 
             transformArgs.unshift(expanded);
-            //if the function has no input, the result is considered undefined, and this is returned
+            // if the function has no input, the result is considered undefined, and this is returned
             if (expanded === undefined) {
                 return undefined;
             }

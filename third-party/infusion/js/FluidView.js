@@ -476,34 +476,38 @@ var fluid_2_0 = fluid_2_0 || {};
     };
 
     fluid.defaults("fluid.ariaLabeller", {
+        gradeNames: ["fluid.viewComponent", "autoInit"],
         labelAttribute: "aria-label",
-        liveRegionMarkup: "<div class=\"liveRegion fl-offScreen-hidden\" aria-live=\"polite\"></div>",
+        liveRegionMarkup: "<div class=\"liveRegion fl-hidden-accessible\" aria-live=\"polite\"></div>",
         liveRegionId: "fluid-ariaLabeller-liveRegion",
-        events: {
-            generateLiveElement: "unicast"
+        invokers: {
+            generateLiveElement: {
+                funcName: "fluid.ariaLabeller.generateLiveElement",
+                args: "{that}"
+            },
+            update: {
+                funcName: "fluid.ariaLabeller.update",
+                args: ["{that}", "{arguments}.0"]
+            }
         },
         listeners: {
-            generateLiveElement: "fluid.ariaLabeller.generateLiveElement"
+            onCreate: {
+                func: "{that}.update",
+                args: [null]
+            }
         }
     });
-
-    fluid.ariaLabeller = function (element, options) {
-        var that = fluid.initView("fluid.ariaLabeller", element, options);
-
-        that.update = function (newOptions) {
-            newOptions = newOptions || that.options;
-            that.container.attr(that.options.labelAttribute, newOptions.text);
-            if (newOptions.dynamicLabel) {
-                var live = fluid.jById(that.options.liveRegionId);
-                if (live.length === 0) {
-                    live = that.events.generateLiveElement.fire(that);
-                }
-                live.text(newOptions.text);
+    
+    fluid.ariaLabeller.update = function (that, newOptions) {
+        newOptions = newOptions || that.options;
+        that.container.attr(that.options.labelAttribute, newOptions.text);
+        if (newOptions.dynamicLabel) {
+            var live = fluid.jById(that.options.liveRegionId);
+            if (live.length === 0) {
+                live = that.generateLiveElement();
             }
-        };
-
-        that.update();
-        return that;
+            live.text(newOptions.text);
+        }
     };
 
     fluid.ariaLabeller.generateLiveElement = function (that) {
