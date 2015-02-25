@@ -27,7 +27,7 @@ you'll feel at home with Flocking.
 
 To learn more about Flocking's architecture and approach, please see:
 
-Clark, C. and Tindale, Adam. "[Flocking: A Framework for Declarative Music-Making on the Web](https://github.com/colinbdclark/flocking-papers/blob/master/icmc-2014/flockingicmc2014.pdf)"
+Clark, C. and Tindale, Adam. "[Flocking: A Framework for Declarative Music-Making on the Web](https://github.com/colinbdclark/flocking-papers/blob/master/icmc-2014/flockingicmc2014.pdf?raw=true)"
 in Georgaki, A. and Kouroupetroglou (eds.). _The Joint Proceedings of the ICMC and SMC_, (2014).
 _[slides](colinclark.org/presentations/flocking-icmc-2014-slides.pdf)_
 

@@ -2,65 +2,59 @@
 
 <html lang="en">
     <head>
+        <meta charset="UTF-8">
         <title>Flocking: Creative Audio Synthesis for the Web!</title>
-        <link rel="stylesheet" type="text/css" href="demos/demos.css" />
+        <link rel="stylesheet" type="text/css" href="flocking-website.css" />
         <link rel="shortcut icon" href="favicon.ico" />
-        
-        <style>
-           body {
-                margin-left: 5%;
-                width: 80%;
-                font-family: sans-serif;
-                line-height: 1.75em;
-            }
-
-            h2 {
-                margin-top: 4%;
-                margin-bottom: 2%;
-            }
-        
-            li {
-               width: 50%;
-            }
-        </style>
     </head>
     <body>
         <img src="images/flocking-tentative-logo.png" alt="Flocking logo" />
-        
+
         <h2>What is Flocking?</h2>
-        
-        <p>Flocking is an audio synthesis toolkit that runs inside your Web browser. It doesn't require Flash or any other 
-        proprietary plugins. Written entirely in JavaScript, Flocking is designed for artists and musicians building 
-        creative Web-based sound projects. It works in Firefox, Chrome, Safari, and Node.js on Mac OS X, Windows, Linux, iOS, 
-        and Android.</p>
-    
-        <p>Unlike comparable synthesis libraries, Flocking is declarative. Its goal is to promote a uniquely community-minded
-        approach to instrument design and composition. In Flocking, unit generators are wired together using a simple 
-        JSON-based specification, making it easy to save, share, and manipulate your synthesis algorithms. Send your synths 
-        via Ajax, save them for later using HTML5 local data storage, or algorithmically produce new instruments on the 
-        fly.</p>
 
-        <p>Because it's just JSON, every instrument you build using Flocking can be easily modified and extended by 
-        others without forcing them to fork or cut and paste your code. This declarative approach will also help make it 
-        easier to create new authoring, performance, and social tools on top of Flocking.</p>
+        <p>Flocking is a JavaScript audio synthesis framework designed for artists and musicians
+        who are building creative and experimental Web-based sound projects.
+        It runs in Firefox, Chrome, Safari, and Node.js on
+        Mac OS X, Windows, Linux, iOS, and Android.</p>
 
-        <p>Flocking was inspired by the <a href="http://supercollider.sourceforge.net/">SuperCollider</a> 
-        desktop synthesis environment. If you're familiar with SuperCollider, you'll feel at home with Flocking.</p>
-        
-        <p>Flocking is distributed under both the MIT and GPL licenses.</p>
-        
-        <h2>Resources</h2>
-        <ul class="button-list">
+        <p>Flocking is different. Its goal is to promote a uniquely
+        community-minded approach to instrument design and composition.
+        In Flocking, unit generators and synths are specified declaratively as JSON,
+        making it easy to save, share, and manipulate your synthesis algorithms.
+        Send your synths via Ajax, save them for later using HTML5 local data storage,
+        or algorithmically produce new instruments on the fly.</p>
+
+        <p>Because it's just JSON, every instrument you build using Flocking can be easily modified
+        and extended by others without forcing them to fork or cut and paste your code.
+        This declarative approach will also help make it easier to create new authoring,
+        performance, metaprogramming, and social tools on top of Flocking.</p>
+
+        <p>Flocking was inspired by the <a href="http://supercollider.sourceforge.net/">SuperCollider</a>
+        desktop synthesis environment. If you're familiar with SuperCollider,
+        you'll feel at home with Flocking.</p>
+
+        <p>To learn more about Flocking's architecture and approach, see Clark, C. and Tindale, Adam. &quot;<a href="https://github.com/colinbdclark/flocking-papers/blob/master/icmc-2014/flockingicmc2014.pdf?raw=true">Flocking:
+        A Framework for Declarative Music-Making on the Web</a>&quot;
+        in Georgaki, A. and Kouroupetroglou (eds.). <em>The Joint Proceedings of the ICMC and SMC</em>,
+        (2014).</p>
+
+        <p>The latest stable release of Flocking is
+        <a href="https://github.com/colinbdclark/Flocking/releases/tag/0.1.0">version 0.1.0</a>.
+        It is distributed under both the MIT and GPL licenses.</p>
+
+        <ul class="nav-menu">
            <li>
-               <a href="demos/index.html">See it in action</a>
+               <a href="demos/interactive/html/playground.html">Try Flocking</a>
            </li>
+          <li>
+              <a href="https://github.com/colinbdclark/Flocking/releases/tag/0.1.0">Download v0.1.0</a>
+          </li>
            <li>
                <a href="http://github.com/colinbdclark/flocking">Source Code</a>
            </li>
            <li>
-                <a href="http://lists.flockingjs.org/listinfo.cgi/">Mailing Lists</a>
+                <a href="https://github.com/colinbdclark/Flocking/blob/master/README.md">Documentation</a>
            </li>
         </ul>
     </body>
 </html>
-
