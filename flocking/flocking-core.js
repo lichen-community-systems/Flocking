@@ -63,10 +63,6 @@ var fluid = fluid || require("infusion"),
         CONSTANT: "constant"
     };
 
-    flock.sampleFormats = {
-        FLOAT32NE: "float32NE"
-    };
-
     fluid.registerNamespace("flock.debug");
     flock.debug.failHard = true;
 
@@ -120,7 +116,7 @@ var fluid = fluid || require("infusion"),
     flock.platform.isMobile = flock.platform.isAndroid || flock.platform.isIOS;
     flock.platform.browser = flock.browser();
     flock.platform.isWebAudio = typeof AudioContext !== "undefined" || typeof webkitAudioContext !== "undefined";
-    flock.platform.audioEngine = flock.platform.isBrowser ? (flock.platform.isWebAudio ? "webAudio" : "moz") : "nodejs";
+    flock.platform.audioEngine = flock.platform.isBrowser ? "webAudio" : "nodejs";
     fluid.staticEnvironment.audioEngine = fluid.typeTag("flock.platform." + flock.platform.audioEngine);
 
     flock.defaultBufferSizeForPlatform = function () {
@@ -1729,16 +1725,6 @@ var fluid = fluid || require("infusion"),
         return parsed;
     };
 
-    /**
-     * Makes a new synth.
-     * Deprecated. Use flock.synth instead. This is provided for semi-backwards-compatibility with
-     * previous version of Flocking where flock.synth had a multi-argument signature.
-     */
-    flock.synth.make = function (def, options) {
-        options = options || {};
-        options.synthDef = def;
-        return flock.synth(options);
-    };
 
     fluid.defaults("flock.synth.value", {
         gradeNames: ["flock.synth", "autoInit"],
