@@ -115,6 +115,10 @@ In app.js (or whatever files you want to use), you'll define your Flocking code:
     fluid.defaults("myStuff.beepy.app", {
         gradeNames: ["fluid.eventedComponent", "fluid.modelComponent", "autoInit"],
 
+        members: {
+            enviro: "@expand:flock.init()"
+        },
+
         components: {
 
             // Define your synth as a component of your application.
@@ -163,10 +167,10 @@ In app.js (or whatever files you want to use), you'll define your Flocking code:
         listeners: {
             onCreate: [
                 {
-                    funcName: "{environment}.play"
+                    func: "{environment}.play"
                 },
                 {
-                    funcName: "{scheduler}.schedule",
+                    func: "{scheduler}.schedule",
                     args: ["{app}.options.score"]
                 }
             ]

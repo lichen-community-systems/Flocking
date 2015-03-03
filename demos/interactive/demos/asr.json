@@ -4,7 +4,7 @@
         "ugen": "flock.ugen.sinOsc",
         "freq": 440,
         "mul": {
-            "ugen": "flock.ugen.env.simpleASR",
+            "ugen": "flock.ugen.asr",
             "start": 0.0,
             "attack": 0.25,
             "sustain": 0.25,

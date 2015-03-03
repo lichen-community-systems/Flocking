@@ -575,7 +575,7 @@ var fluid_2_0 = fluid_2_0 || {};
         };
         that.forwardApplier = fluid.makeNewChangeApplier(that.forwardHolder);
         that.forwardApplier.isRelayApplier = true; // special annotation so these can be discovered in the transaction record
-        that.invalidator = fluid.makeEventFirer(null, null, "Invalidator for model relay with applier " + that.forwardApplier.applierId);
+        that.invalidator = fluid.makeEventFirer({name: "Invalidator for model relay with applier " + that.forwardApplier.applierId});
         if (sourcePath !== null) {
             that.backwardApplier = fluid.makeNewChangeApplier(that.backwardHolder);
             that.backwardAdapter = function () {
@@ -677,7 +677,10 @@ var fluid_2_0 = fluid_2_0 || {};
         allChanges.sort(fluid.priorityComparator);
         for (var i = 0; i < allChanges.length; ++ i) {
             var change = allChanges[i];
-            change.listener.apply(null, change.args);
+            var targetApplier = change.args[5]; // NOTE: This argument gets here via fluid.model.storeExternalChange from fluid.notifyModelChanges
+            if (!targetApplier.destroyed) { // 3rd point of guarding for FLUID-5592
+                change.listener.apply(null, change.args);
+            }
         }
         fluid.clearLinkCounts(transRec, true); // "options" structures for relayCount are aliased
     };
@@ -820,6 +823,9 @@ var fluid_2_0 = fluid_2_0 || {};
 
     fluid.resolveModelListener = function (that, record, isNewApplier) {
         var togo = function () {
+            if (fluid.isDestroyed(that)) { // first guarding point to resolve FLUID-5592
+                return;
+            }
             var change = fluid.modelChangedToChange(isNewApplier, arguments);
             var args = [change];
             var localRecord = {change: change, "arguments": args};
@@ -1013,6 +1019,7 @@ var fluid_2_0 = fluid_2_0 || {};
         if (sourceCode === "primitive") {
             if (!fluid.model.isSameValue(targetSlot, source)) {
                 changedValue = source;
+                ++options.unchanged;
             }
         } else if (targetCode !== sourceCode || sourceCode === "array" && source.length !== targetSlot.length) {
             // RH is not primitive - array or object and mismatching or any array rewrite
@@ -1051,7 +1058,7 @@ var fluid_2_0 = fluid_2_0 || {};
     // After the 1.5 release, this will replace the old "applyChangeRequest"
     // Changes: "MERGE" action abolished
     // ADD/DELETE at root can be destructive
-    // changes tracked in optional final argument holding "changeMap: {}, changes: 0"
+    // changes tracked in optional final argument holding "changeMap: {}, changes: 0, unchanged: 0"
     fluid.model.applyHolderChangeRequest = function (holder, request, options) {
         options = fluid.model.defaultAccessorConfig(options);
         options.deltaMap = options.changeMap ? {} : null;
@@ -1088,18 +1095,19 @@ var fluid_2_0 = fluid_2_0 || {};
      * not contain circular links.
      * @param modela The first model to be compared
      * @param modelb The second model to be compared
-     * @param options If supplied, will receive a map and summary of the change content between the objects. It should hold 
-     * {changeMap (Object/String), changes (int)} summarising the number and location of the differences
-     * between the structures. The <code>changeMap</code> is an isomorphic map of the object structures to values "ADD" or "DELETE" indicating
-     * that values have been added/removed at that location. <code>changes</code> counts the number of such changes. The two objects are
-     * identical iff <code>changes === 0</code>. Note that in the case the object structure differs at the root, <code>changeMap</code> will hold
+     * @param options {Object} If supplied, will receive a map and summary of the change content between the objects. Structure is:
+     *     changeMap: {Object/String} An isomorphic map of the object structures to values "ADD" or "DELETE" indicating
+     * that values have been added/removed at that location. Note that in the case the object structure differs at the root, <code>changeMap</code> will hold
      * the plain String value "ADD" or "DELETE"
+     *     changes: {Integer} Counts the number of changes between the objects - The two objects are identical iff <code>changes === 0</code>.
+     *     unchanged: {Integer} Counts the number of leaf (primitive) values at which the two objects are identical. Note that the current implementation will
+     * double-count, this summary should be considered indicative rather than precise.
      * @return <code>true</code> if the models are identical
      */
     // TODO: This algorithm is quite inefficient in that both models will be copied once each
     // supported, PUBLIC API function
     fluid.model.diff = function (modela, modelb, options) {
-        options = options || {changeMap: {}, changes: 0}; // current algorithm can't avoid the expense of changeMap
+        options = options || {changes: 0, unchanged: 0, changeMap: {}}; // current algorithm can't avoid the expense of changeMap
         var typea = fluid.typeCode(modela);
         var typeb = fluid.typeCode(modelb);
         var togo;
@@ -1124,6 +1132,8 @@ var fluid_2_0 = fluid_2_0 || {};
         if (togo === false && options.changes === 0) { // catch all primitive cases
             options.changes = 1;
             options.changeMap = modelb === undefined ? "DELETE" : "ADD";
+        } else if (togo === true && options.unchanged === 0) {
+            options.unchanged = 1;
         }
         return togo;
     };
@@ -1193,6 +1203,9 @@ var fluid_2_0 = fluid_2_0 || {};
             var spec = listeners[i];
             var invalidPaths = fluid.matchChanges(changeMap, spec.segs, newHolder);
             for (var j = 0; j < invalidPaths.length; ++ j) {
+                if (applier.destroyed) { // 2nd guarding point for FLUID-5592
+                    return;
+                }
                 var invalidPath = invalidPaths[j];
                 spec.listener = fluid.event.resolveListener(spec.listener);
                 // TODO: process namespace and softNamespace rules, and propagate "sources" in 4th argument
@@ -1248,8 +1261,8 @@ var fluid_2_0 = fluid_2_0 || {};
             },
             options: options,
             modelChanged: {},
-            preCommit: fluid.makeEventFirer(null, null, "preCommit event for ChangeApplier " + applierId),
-            postCommit: fluid.makeEventFirer(null, null, "postCommit event for ChangeApplier " + applierId)
+            preCommit: fluid.makeEventFirer({name: "preCommit event for ChangeApplier " }),
+            postCommit: fluid.makeEventFirer({name: "postCommit event for ChangeApplier "})
         };
         function preFireChangeRequest(changeRequest) {
             if (!changeRequest.type) {
@@ -1257,6 +1270,11 @@ var fluid_2_0 = fluid_2_0 || {};
             }
             changeRequest.segs = changeRequest.segs || that.parseEL(changeRequest.path);
         }
+        that.destroy = function () {
+            that.preCommit.destroy();
+            that.postCommit.destroy();
+            that.destroyed = true;
+        };
         that.modelChanged.addListener = function (spec, listener, namespace, softNamespace) {
             if (typeof(spec) === "string") {
                 spec = {path: spec};
@@ -1311,6 +1329,7 @@ var fluid_2_0 = fluid_2_0 || {};
                     trans.oldHolder = holder;
                     trans.newHolder = { model: fluid.copy(holder.model) };
                     trans.changeRecord.changes = 0;
+                    trans.changeRecord.unchanged = 0; // just for type consistency - we don't use these values in the ChangeApplier
                     trans.changeRecord.changeMap = {};
                 },
                 commit: function (code) {
@@ -1523,9 +1542,9 @@ var fluid_2_0 = fluid_2_0 || {};
     fluid.makeHolderChangeApplier = function (holder, options) {
         options = fluid.model.defaultAccessorConfig(options);
         var baseEvents = {
-            guards: fluid.event.getEventFirer(false, true, "guard event"),
-            postGuards: fluid.event.getEventFirer(false, true, "postGuard event"),
-            modelChanged: fluid.event.getEventFirer(false, false, "modelChanged event")
+            guards: fluid.makeEventFirer({preventable: true, name: "guard event"}),
+            postGuards: fluid.makeEventFirer({preventable: true, name: "postGuard event"}),
+            modelChanged: fluid.makeEventFirer({name: "modelChanged event"})
         };
         var threadLocal = fluid.threadLocal(function() { return {sources: {}};});
         var that = {
@@ -1533,7 +1552,8 @@ var fluid_2_0 = fluid_2_0 || {};
         // a simple algorithm looking for that field
             applierId: fluid.allocateGuid(),
             holder: holder,
-            options: options
+            options: options,
+            destroy: fluid.identity // dummy function to avoid confusing FLUID-5592 code - we don't support this subtlety for old appliers
         };
 
         function makeGuardWrapper(cullUnchanged) {

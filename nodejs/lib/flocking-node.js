@@ -1,8 +1,8 @@
 /*
-* Flocking Node.js-Specific Code
+* Flocking Node.js Adaptor
 * http://github.com/colinbdclark/flocking
 *
-* Copyright 2013, Colin Clark
+* Copyright 2013-2014, Colin Clark
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
@@ -51,7 +51,8 @@ var fs = require("fs"),
             fs.stat(path, function (error, stats) {
                 fs.open(path, "r", function (error, fd) {
                     var buf = new Buffer(stats.size);
-                    fs.read(fd, buf, 0, buf.length, null, function (error, bytesRead) {
+
+                    fs.read(fd, buf, 0, buf.length, null, function () {
                         var type = flock.file.parseFileExtension(path);
                         var arr = new Int8Array(buf);
                         options.success(arr.buffer, type);
@@ -123,12 +124,12 @@ var fs = require("fs"),
         },
 
         invokers: {
-            startGeneratingSamples: {
+            start: {
                 funcName: "flock.audioStrategy.nodejs.startGeneratingSamples",
                 args: ["{that}.outputStream", "{that}.speaker", "{that}.writeSamples"]
             },
 
-            stopGeneratingSamples: {
+            stop: {
                 funcName: "flock.audioStrategy.nodejs.stopGeneratingSamples",
                 args: ["{that}.outputStream", "{that}.speaker"]
             },
@@ -145,16 +146,20 @@ var fs = require("fs"),
             },
 
             stopReadingAudioInput: "{that}.startReadingAudioInput"
+        },
+
+        listeners: {
+            onReset: [
+                {
+                    func: "{that}.stop"
+                }
+            ]
         }
     });
 
     flock.audioStrategy.nodejs.calcBlockBytes = function (audioSettings, bytesPerSample) {
-        // TODO: This can go when audioSettings has been modelized.
-        audioSettings.rates.control = audioSettings.rates.audio / audioSettings.blockSize;
-
         return audioSettings.blockSize * audioSettings.chans * bytesPerSample;
     };
-
 
     flock.audioStrategy.nodejs.createSpeaker = function (audioSettings) {
         return new Speaker({
@@ -190,9 +195,6 @@ var fs = require("fs"),
             chans = settings.chans,
             krPeriods = numBytes / m.bytesPerBlock,
             evaluator = that.nodeEvaluator,
-            buses = evaluator.buses,
-            nodes = evaluator.nodes,
-            numBuses = settings.numBuses,
             outputStream = that.outputStream,
             out = new Buffer(numBytes);
 
@@ -205,8 +207,8 @@ var fs = require("fs"),
             flock.generate.silence(out);
         } else {
             for (var i = 0, offset = 0; i < krPeriods; i++, offset += m.bytesPerBlock) {
-                flock.enviro.nodeEvaluator.clearBuses(numBuses, blockSize, buses);
-                flock.enviro.nodeEvaluator.gen(numBuses, blockSize, nodes, buses);
+                evaluator.clearBuses();
+                evaluator.gen();
 
                 // Interleave each output channel.
                 for (var chan = 0; chan < chans; chan++) {

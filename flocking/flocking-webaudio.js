@@ -6,7 +6,7 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global require*/
+/*global require, MediaStreamTrack, jQuery*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,
@@ -20,8 +20,86 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    flock.shim.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia ||
-        navigator.mozGetUserMedia || navigator.msGetUserMedia;
+    fluid.registerNamespace("flock.webAudio");
+
+    flock.webAudio.createNode = function (context, type, args, params) {
+        // Second argument is a NodeSpec object.
+        if (typeof type !== "string") {
+            args = type.args;
+            params = type.params;
+            type = type.node;
+        }
+
+        args = args === undefined || args === null ? [] :
+            fluid.isArrayable(args) ? args : [args];
+
+        var creatorName = "create" + type,
+            nodeStrIdx = creatorName.indexOf("Node");
+
+        // Trim off "Node" if it is present.
+        if (nodeStrIdx > -1) {
+            creatorName = creatorName.substring(0, nodeStrIdx);
+        }
+
+        var node = context[creatorName].apply(context, args);
+        flock.webAudio.initializeNodeInputs(node, params);
+
+        return node;
+    };
+
+    // TODO: Add support for other types of AudioParams.
+    flock.webAudio.initializeNodeInputs = function (node, paramSpec) {
+        if (!node || !paramSpec) {
+            return;
+        }
+
+        for (var inputName in paramSpec) {
+            node[inputName].value = paramSpec[inputName];
+        }
+
+        return node;
+    };
+
+
+    // TODO: Remove this when Chrome implements navigator.getMediaDevices().
+    fluid.registerNamespace("flock.webAudio.chrome");
+
+    flock.webAudio.chrome.getSources = function (callback) {
+        return MediaStreamTrack.getSources(function (infoSpecs) {
+            var normalized = fluid.transform(infoSpecs, function (infoSpec) {
+                infoSpec.deviceId = infoSpec.id;
+                return infoSpec;
+            });
+
+            callback(normalized);
+        });
+    };
+
+    flock.webAudio.mediaStreamFailure = function () {
+        flock.fail("Media Capture and Streams are not supported on this browser.");
+    };
+
+    var webAudioShims = {
+        AudioContext: window.AudioContext || window.webkitAudioContext,
+
+        getUserMediaImpl: navigator.getUserMedia || navigator.webkitGetUserMedia ||
+            navigator.mozGetUserMedia || navigator.msGetUserMedia || flock.webAudio.mediaStreamFailure,
+
+        getUserMedia: function () {
+            flock.shim.getUserMediaImpl.apply(navigator, arguments);
+        },
+
+        getMediaDevicesImpl: navigator.getMediaDevices ? navigator.getMediaDevices :
+            typeof window.MediaStreamTrack !== "undefined" ?
+            flock.webAudio.chrome.getSources : flock.webAudio.mediaStreamFailure,
+
+        getMediaDevice: function () {
+            flock.shim.getMediaDevicesImpl.apply(navigator, arguments);
+        }
+    };
+
+    jQuery.extend(flock.shim, webAudioShims);
+
 
     /**
      * Web Audio API Audio Strategy
@@ -30,74 +108,60 @@ var fluid = fluid || require("infusion"),
         gradeNames: ["flock.audioStrategy", "autoInit"],
 
         model: {
-            // TODO: Resolve this with the isPlaying model field in flock.enviro.
             isGenerating: false,
-            hasInput: false,
-            krPeriods: "@expand:flock.audioStrategy.web.calcNumBlocks({that}.options.audioSettings)"
+            shouldInitIOS: flock.platform.isIOS,
+            krPeriods: {
+                expander: {
+                    funcName: "flock.audioStrategy.web.calcNumBlocks",
+                    args: "{enviro}.options.audioSettings"
+                }
+            }
         },
 
         members: {
-            context: "@expand:flock.audioStrategy.web.createAudioContext()",
-            jsNode: {
+            context: "{contextWrapper}.context",
+            sampleRate: "{that}.context.sampleRate",
+            chans: {
                 expander: {
-                    funcName: "flock.audioStrategy.web.createScriptNode",
-                    args: ["{that}.context", "{that}.options.audioSettings"]
+                    funcName: "flock.audioStrategy.web.calculateChannels",
+                    args: ["{contextWrapper}.context", "{enviro}.options.audioSettings.chans"]
                 }
             },
-            postNode: "{that}.jsNode",
-            preNode: null
+            jsNode: {
+                expander: {
+                    funcName: "flock.audioStrategy.web.createScriptProcessor",
+                    args: [
+                        "{contextWrapper}.context",
+                        "{enviro}.options.audioSettings.bufferSize",
+                        "{enviro}.options.audioSettings.numInputBuses",
+                        "{that}.chans"
+                    ]
+                }
+            }
         },
 
         invokers: {
-            // TODO: Rename to "start"
-            startGeneratingSamples: {
-                funcName: "flock.audioStrategy.web.start",
-                args: [
-                    "{that}.applier",
-                    "{that}.context",
-                    "{that}.jsNode",
-                    "{that}.preNode",
-                    "{that}.postNode",
-                    "{that}.events.onStart.fire"
-                ]
+            start: {
+                func: "{that}.events.onStart.fire"
             },
 
-            // TODO: Rename to "stop"
-            stopGeneratingSamples: {
-                funcName: "flock.audioStrategy.web.stop",
-                args: [
-                    "{that}.applier",
-                    "{that}.jsNode",
-                    "{that}.preNode",
-                    "{that}.postNode",
-                    "{that}.events.onStop.fire"
-                ]
+            stop: {
+                func: "{that}.events.onStop.fire"
+            }
+        },
+
+        components: {
+            contextWrapper: {
+                type: "flock.webAudio.contextWrapper"
             },
 
-            writeSamples: {
-                funcName: "flock.audioStrategy.web.writeSamples",
-                args: [
-                    "{arguments}.0", // The onprocessaudio event.
-                    "{that}"
-                ]
+            nativeNodeManager: {
+                type: "flock.webAudio.nativeNodeManager"
             },
 
-            // TODO: Rename, de-thatify.
-            insertInputNode: "flock.audioStrategy.web.insertInputNode({arguments}.0, {that})",
-
-            // TODO: De-thatify.
-            removeInputNode: "flock.audioStrategy.web.removeInputNode({that})",
-
-            // TODO: Rename, de-thatify.
-            insertOutputNode: "flock.audioStrategy.web.insertOutputNode({arguments}.0, {that})",
-
-            // TODO: De-thatify.
-            removeOutputNode: "flock.audioStrategy.web.removeOutputNode({that})",
-
-            // TODO: De-thatify.
-            startReadingAudioInput: "flock.audioStrategy.web.startReadingAudioInput({that})",
-
-            stopReadingAudioInput: "{that}.removeInputNode()"
+            inputDeviceManager: {
+                type: "flock.webAudio.inputDeviceManager"
+            }
         },
 
         events: {
@@ -108,117 +172,128 @@ var fluid = fluid || require("infusion"),
         listeners: {
             onCreate: [
                 {
-                    funcName: "flock.audioStrategy.web.bindAudioProcessEvent",
-                    args: ["{that}.jsNode", "{that}.writeSamples"]
+                    funcName: "flock.audioStrategy.web.setChannelState",
+                    args: ["{that}.chans", "{contextWrapper}.context.destination"]
                 },
                 {
-                    // TODO: Replace this with progressive enhancement.
-                    func: "{that}.applier.change",
-                    args: ["shouldInitIOS", flock.platform.isIOS]
+                    funcName: "flock.audioStrategy.web.pushAudioSettings",
+                    args: ["{that}.sampleRate", "{that}.chans", "{enviro}.options.audioSettings"]
+                },
+                {
+                    funcName: "flock.audioStrategy.web.bindWriter",
+                    args: [
+                        "{that}.jsNode",
+                        "{nodeEvaluator}",
+                        "{nativeNodeManager}",
+                        "{that}.model",
+                        "{enviro}.options.audioSettings"
+                    ]
                 }
             ],
 
-            onStart: {
-                funcName: "flock.audioStrategy.web.initIOS",
-                args: ["{that}.model", "{that}.applier", "{that}.context", "{that}.jsNode"]
-            }
+            onStart: [
+                {
+                    func: "{that}.applier.change",
+                    args: ["isGenerating", true]
+                },
+                {
+                    // TODO: Replace this with some progressive enhancement action.
+                    funcName: "flock.audioStrategy.web.iOSStart",
+                    args: ["{that}.model", "{that}.applier", "{contextWrapper}.context", "{that}.jsNode"]
+                },
+                {
+                    func: "{nativeNodeManager}.connect"
+                }
+            ],
+
+            onStop: [
+                {
+                    func: "{that}.applier.change",
+                    args: ["isGenerating", false]
+                },
+                {
+                    func: "{nativeNodeManager}.disconnect"
+                }
+            ],
+
+            onReset: [
+                {
+                    func: "{that}.stop"
+                },
+                {
+                    func: "{nativeNodeManager}.removeAllInputs"
+                }
+            ]
         }
     });
 
-    flock.audioStrategy.web.createAudioContext = function () {
-        // Singleton AudioContext since the WebKit implementation
-        // freaks if we try to instantiate a new one.
-        if (!flock.audioStrategy.web.audioContext) {
-            flock.audioStrategy.web.audioContext = new flock.audioStrategy.web.contextConstructor();
-        }
-
-        return flock.audioStrategy.web.audioContext;
+    flock.audioStrategy.web.calculateChannels = function (context, chans) {
+        // TODO: Remove this conditional when Safari adds support for multiple channels.
+        return flock.platform.browser.safari ?  context.destination.channelCount :
+            Math.min(chans, context.destination.maxChannelCount);
     };
 
-    flock.audioStrategy.web.setupChannels = function (context, audioSettings) {
-        // TODO: This reduces the user's ability to easily control how many
-        // channels of their device are actually used. They can control
-        // how many non-silent channels there are by using the "expand"
-        // input of flock.ugen.output, but there will still be some extra
-        // overhead. The best way to solve this is to not override settings.chans,
-        // but to instead offer some kind of controls in the playground for adjusting this,
-        // or by providing some kind of "max channels" flag as a parameter to chans.
+    // TODO: Refactor into a shared environment-level model property.
+    flock.audioStrategy.web.pushAudioSettings = function (sampleRate, chans, audioSettings) {
+        audioSettings.rates.audio = sampleRate;
+        audioSettings.chans = chans;
+    };
 
+    flock.audioStrategy.web.setChannelState = function (chans, destinationNode) {
+        // Safari will throw an InvalidStateError DOM Exception 11 when
+        // attempting to set channelCount on the audioContext's destination.
+        // TODO: Remove this conditional when Safari adds support for multiple channels.
         if (!flock.platform.browser.safari) {
-            // TODO: Fix this temporary workaround for the fact that iOS won't
-            // allow us to access the destination node until the user has
-            // touched something.
-            audioSettings.chans = context.destination.maxChannelCount;
-            context.destination.channelCount = audioSettings.chans;
+            destinationNode.channelCount = chans;
+            destinationNode.channelCountMode = "explicit";
+            destinationNode.channelInterpretation = "discrete";
         }
     };
 
-    flock.audioStrategy.web.calcNumBlocks = function (audioSettings) {
-        return audioSettings.bufferSize / audioSettings.blockSize;
+    flock.audioStrategy.web.calcNumBlocks = function (s) {
+        return s.bufferSize / s.blockSize;
     };
 
-    flock.audioStrategy.web.updateSampleRate = function (context, audioSettings) {
-        // Override audio settings based on the capabilities of the environment.
-        // These values are "pulled" by the enviro in a hacky sort of way.
-        // TODO: Fix this by modelizing audioSettings.
-        audioSettings.rates.audio = context.sampleRate;
+    flock.audioStrategy.web.createScriptProcessor = function (ctx, bufferSize, numInputs, chans) {
+        var jsNodeName = ctx.createScriptProcessor ? "createScriptProcessor" : "createJavaScriptNode",
+            jsNode = ctx[jsNodeName](bufferSize, numInputs, chans);
+
+        jsNode.channelCountMode = "explicit";
+
+        return jsNode;
     };
 
-    flock.audioStrategy.web.initIOS = function (model, applier, context, jsNode) {
-        // Work around a bug in iOS Safari where it now requires a noteOn()
-        // message to be invoked before sound will work at all. Just connecting a
-        // ScriptProcessorNode inside a user event handler isn't sufficient.
-        if (model.shouldInitIOS) {
-            var s = context.createBufferSource();
-            s.connect(jsNode);
-            s.start(0);
-            s.stop(0);
-            s.disconnect(0);
-            applier.change("shouldInitIOS", false);
-        }
+    flock.audioStrategy.web.bindWriter = function (jsNode, nodeEvaluator, nativeNodeManager, model, audioSettings) {
+        jsNode.model = model;
+        jsNode.evaluator = nodeEvaluator;
+        jsNode.audioSettings = audioSettings;
+        jsNode.inputNodes = nativeNodeManager.inputNodes;
+        jsNode.onaudioprocess = flock.audioStrategy.web.writeSamples;
     };
 
-    flock.audioStrategy.web.start = function (applier, context, jsNode, preNode, postNode, onStart) {
-        if (preNode) {
-            preNode.connect(jsNode);
-        }
-
-        postNode.connect(context.destination);
-        if (postNode !== jsNode) {
-            jsNode.connect(postNode);
-        }
-
-        onStart();
-        applier.change("isGenerating", true);
-    };
-
-    flock.audioStrategy.web.stop = function (applier, jsNode, preNode, postNode, onStop) {
-        jsNode.disconnect(0);
-        postNode.disconnect(0);
-        if (preNode) {
-            preNode.disconnect(0);
-        }
-
-        onStop();
-        applier.change("isGenerating", false);
-    };
-
-    // TODO: Break into multiple functions.
-    flock.audioStrategy.web.writeSamples = function (evt, that) {
-        var m = that.model,
-            hasInput = m.hasInput,
+    /**
+     * Writes samples to the audio strategy's ScriptProcessorNode.
+     *
+     * This function must be bound as a listener to the node's
+     * onaudioprocess event. It expects to be called in the context
+     * of a "this" instance containing the following properties:
+     *  - model: the strategy's model object
+     *  - inputNodes: a list of native input nodes to be read into input buses
+     *  - nodeEvaluator: a nodeEvaluator instance
+     *  - audioSettings: the enviornment's audio settings
+     */
+    flock.audioStrategy.web.writeSamples = function (e) {
+        var m = this.model,
+            numInputNodes = this.inputNodes.length,
+            evaluator = this.evaluator,
+            s = this.audioSettings,
+            inBufs = e.inputBuffer,
+            outBufs = e.outputBuffer,
             krPeriods = m.krPeriods,
-            evaluator = that.nodeEvaluator,
             buses = evaluator.buses,
-            nodes = evaluator.nodes,
-            audioSettings = that.options.audioSettings,
-            numBuses = audioSettings.numBuses,
-            blockSize = audioSettings.blockSize,
-            playState = m.playState,
-            chans = audioSettings.chans,
-            inBufs = evt.inputBuffer,
-            inChans = evt.inputBuffer.numberOfChannels,
-            outBufs = evt.outputBuffer,
+            blockSize = s.blockSize,
+            chans = s.chans,
+            inChans = inBufs.numberOfChannels,
             chan,
             i,
             samp;
@@ -236,11 +311,11 @@ var fluid = fluid || require("infusion"),
         for (i = 0; i < krPeriods; i++) {
             var offset = i * blockSize;
 
-            flock.enviro.nodeEvaluator.clearBuses(numBuses, blockSize, buses);
+            evaluator.clearBuses(); // TODO: De-thatify.
 
             // Read this ScriptProcessorNode's input buffers
             // into the environment.
-            if (hasInput) {
+            if (numInputNodes > 0) {
                 for (chan = 0; chan < inChans; chan++) {
                     var inBuf = inBufs.getChannelData(chan),
                         inBusNumber = chans + chan, // Input buses are located after output buses.
@@ -252,7 +327,7 @@ var fluid = fluid || require("infusion"),
                 }
             }
 
-            flock.enviro.nodeEvaluator.gen(numBuses, blockSize, nodes, buses);
+            evaluator.gen(); // TODO: De-thatify.
 
             // Output the environment's signal
             // to this ScriptProcessorNode's output channels.
@@ -266,89 +341,416 @@ var fluid = fluid || require("infusion"),
                 }
             }
         }
+    };
 
-        playState.written += audioSettings.bufferSize * chans;
-        if (playState.written >= playState.total) {
-            that.stopGeneratingSamples();
+    flock.audioStrategy.web.iOSStart = function (model, applier, ctx, jsNode) {
+        // Work around a bug in iOS Safari where it now requires a noteOn()
+        // message to be invoked before sound will work at all. Just connecting a
+        // ScriptProcessorNode inside a user event handler isn't sufficient.
+        if (model.shouldInitIOS) {
+            var s = ctx.createBufferSource();
+            s.connect(jsNode);
+            s.start(0);
+            s.stop(0);
+            s.disconnect(0);
+            applier.change("shouldInitIOS", false);
         }
     };
 
-    flock.audioStrategy.web.insertInputNode = function (node, that) {
-        var m = that.model;
 
-        if (that.preNode) {
-            that.removeInputNode(that.preNode);
+    /**
+     * An Infusion component wrapper for a Web Audio API AudioContext instance.
+     */
+    // TODO: Refactor this into an "audio system" component (with cross-platform base grade)
+    // that serves as the canonical source for shared audio settings such as
+    // sample rate, number of channels, etc.
+    fluid.defaults("flock.webAudio.contextWrapper", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        members: {
+            context: "@expand:flock.webAudio.contextWrapper.create()"
+        },
+
+        listeners: {
+            onCreate: [
+                {
+                    funcName: "flock.webAudio.contextWrapper.registerSingleton",
+                    args: ["{that}"]
+                }
+            ]
+        }
+    });
+
+    flock.webAudio.contextWrapper.create = function () {
+        var singleton = fluid.staticEnvironment.webAudioContextWrapper;
+        return singleton ? singleton.context : new flock.shim.AudioContext();
+    };
+
+    flock.webAudio.contextWrapper.registerSingleton = function (that) {
+        fluid.staticEnvironment.webAudioContextWrapper = that;
+    };
+
+
+    /**
+     * Manages a collection of input nodes and an output node,
+     * with a JS node in between.
+     *
+     * Note: this component is slated for removal when Web Audio
+     * "islands" are implemented.
+     */
+    fluid.defaults("flock.webAudio.nativeNodeManager", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        audioSettings: "{enviro}.options.audioSettings",
+
+        members: {
+            outputNode: undefined,
+            inputNodes: [],
+            merger: {
+                expander: {
+                    funcName: "flock.webAudio.nativeNodeManager.createInputMerger",
+                    args: [
+                        "{contextWrapper}.context",
+                        "{enviro}.options.audioSettings.numInputBuses",
+                        "{web}.jsNode"
+                    ]
+                }
+            }
+        },
+
+        invokers: {
+            connect: {
+                funcName: "flock.webAudio.nativeNodeManager.connect",
+                args: [
+                    "{that}.merger",
+                    "{web}.jsNode",
+                    "{that}.outputNode",
+                    "{contextWrapper}.context.destination"
+                ]
+            },
+
+            createNode: {
+                funcName: "flock.webAudio.createNode",
+                args: [
+                    "{contextWrapper}.context",
+                    "{arguments}.0", // Node type.
+                    "{arguments}.1", // Constructor args.
+                    "{arguments}.2"  // AudioParam connections.
+                ]
+            },
+
+            createInputNode: {
+                funcName: "flock.webAudio.nativeNodeManager.createInputNode",
+                args: [
+                    "{that}",
+                    "{arguments}.0", // Node type.
+                    "{arguments}.1", // Constructor args.
+                    "{arguments}.2", // AudioParam connections.
+                    "{arguments}.3"  // {optional} The input bus number to insert it at.
+                ]
+            },
+
+            createMediaStreamInput: {
+                funcName: "flock.webAudio.nativeNodeManager.createInputNode",
+                args: [
+                    "{that}",
+                    "MediaStreamSource",
+                    "{arguments}.0", // The MediaStream,
+                    undefined,
+                    "{arguments}.1"  // {optional} The input bus number to insert it at.
+                ]
+            },
+
+            createMediaElementInput: {
+                funcName: "flock.webAudio.nativeNodeManager.createInputNode",
+                args: [
+                    "{that}",
+                    "MediaElementSource",
+                    "{arguments}.0", // The HTMLMediaElement
+                    undefined,
+                    "{arguments}.1"  // {optional} The input bus number to insert it at.
+                ]
+            },
+
+            createOutputNode: {
+                funcName: "flock.webAudio.nativeNodeManager.createOutputNode",
+                args: [
+                    "{that}",
+                    "{arguments}.0", // Node type.
+                    "{arguments}.1", // Constructor args.
+                    "{arguments}.2"  // AudioParam connections.
+                ]
+            },
+
+            disconnect: {
+                funcName: "flock.webAudio.nativeNodeManager.disconnect",
+                args: ["{that}.merger", "{web}.jsNode", "{that}.outputNode"]
+            },
+
+            insertInput: {
+                funcName: "flock.webAudio.nativeNodeManager.insertInput",
+                args: [
+                    "{that}",
+                    "{enviro}",
+                    "{arguments}.0", // The node to insert.
+                    "{arguments}.1"  // {optional} The bus number to insert it at.
+                ]
+            },
+
+            removeInput: {
+                funcName: "flock.webAudio.nativeNodeManager.removeInput",
+                args: ["{arguments}.0", "{that}.inputNodes"]
+            },
+
+            removeAllInputs: {
+                funcName: "flock.webAudio.nativeNodeManager.removeAllInputs",
+                args: "{that}.inputNodes"
+            },
+
+            insertOutput: {
+                funcName: "flock.webAudio.nativeNodeManager.insertOutput",
+                args: ["{that}", "{arguments}.0"]
+            },
+
+            removeOutput: {
+                funcName: "flock.webAudio.nativeNodeManager.removeOutput",
+                args: ["{web}.jsNode"]
+            }
+        },
+
+        listeners: {
+            onCreate: {
+                func: "{that}.insertOutput",
+                args: "{web}.jsNode"
+            }
+        }
+    });
+
+    flock.webAudio.nativeNodeManager.createInputNode = function (that, type, args, params, busNum) {
+        var node = that.createNode(type, args, params);
+        return that.insertInput(node, busNum);
+    };
+
+    flock.webAudio.nativeNodeManager.createOutputNode = function (that, type, args, params) {
+        var node = that.createNode(type, args, params);
+        return that.insertOutput(node);
+    };
+
+    flock.webAudio.nativeNodeManager.createInputMerger = function (ctx, numInputBuses, jsNode) {
+        var merger = ctx.createChannelMerger(numInputBuses);
+        merger.channelInterpretation = "discrete";
+        merger.connect(jsNode);
+
+        return merger;
+    };
+
+    flock.webAudio.nativeNodeManager.connect = function (merger, jsNode, outputNode, destination) {
+        merger.connect(jsNode);
+        outputNode.connect(destination);
+        if (jsNode !== outputNode) {
+            jsNode.connect(outputNode);
+        }
+    };
+
+    flock.webAudio.nativeNodeManager.disconnect = function (merger, jsNode, outputNode) {
+        merger.disconnect(0);
+        jsNode.disconnect(0);
+        outputNode.disconnect(0);
+    };
+
+    flock.webAudio.nativeNodeManager.removeAllInputs = function (inputNodes) {
+        for (var i = 0; i < inputNodes.length; i++) {
+            var node = inputNodes[i];
+            node.disconnect(0);
+        }
+        inputNodes.length = 0;
+    };
+
+    flock.webAudio.nativeNodeManager.insertInput = function (that, enviro, node, busNum) {
+        var maxInputs = that.options.audioSettings.numInputBuses;
+        if (that.inputNodes.length >= maxInputs) {
+            flock.fail("There are too many input nodes connected to Flocking. " +
+                "The maximum number of input buses is currently set to " + maxInputs + ". " +
+                "Either remove an existing input node or increase Flockings numInputBuses option.");
+
+            return;
         }
 
-        that.preNode = node;
-        m.hasInput = true;
+        busNum = busNum === undefined ? enviro.acquireNextBus("input") : busNum;
+        var idx = busNum - enviro.audioSettings.chans;
 
-        if (m.isGenerating) {
-            that.preNode.connect(that.jsNode);
+        that.inputNodes.push(node);
+        node.connect(that.merger, 0, idx);
+
+        return busNum;
+    };
+
+    flock.webAudio.nativeNodeManager.removeInput = function (node, inputNodes) {
+        var idx = inputNodes.indexOf(node);
+        if (idx > -1) {
+            inputNodes.splice(idx, 1);
         }
+
+        node.disconnect(0);
     };
 
-    flock.audioStrategy.web.insertOutputNode = function (node, that) {
-        if (that.postNode) {
-            that.removeOutputNode(that.postNode);
+    flock.webAudio.nativeNodeManager.insertOutput = function (that, node) {
+        if (that.outputNode) {
+            that.outputNode.disconnect(0);
         }
 
-        that.postNode = node;
+        that.outputNode = node;
+
+        return node;
     };
 
-    flock.audioStrategy.web.removeInputNode = function (that) {
-        flock.audioStrategy.web.disconnectNode(that.preNode);
-        that.preNode = null;
-        that.model.hasInput = false;
+    flock.webAudio.nativeNodeManager.removeOutput = function (jsNode) {
+        // Replace the current output node with the jsNode.
+        flock.webAudio.nativeNodeManager.insertOutput(jsNode);
     };
 
-    flock.audioStrategy.web.removeOutputNode = function (that) {
-        flock.audioStrategy.web.disconnectNode(that.postNode);
-        that.postNode = that.jsNode;
+
+    /**
+     * Manages audio input devices using the Web Audio API.
+     */
+    // Add a means for disconnecting audio input nodes.
+    fluid.defaults("flock.webAudio.inputDeviceManager", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        members: {
+            context: "{contextWrapper}.context"
+        },
+
+        invokers: {
+            /**
+             * Opens the specified audio device.
+             * If no device is specified, the default device is opened.
+             *
+             * @param {Object} deviceSpec a device spec containing, optionally, an 'id' or 'label' parameter
+             */
+            openAudioDevice: {
+                funcName: "flock.webAudio.inputDeviceManager.openAudioDevice",
+                args: [
+                    "{arguments}.0",
+                    "{that}.openAudioDeviceWithId",
+                    "{that}.openFirstAudioDeviceWithLabel",
+                    "{that}.openAudioDeviceWithConstraints"
+                ]
+            },
+
+            /**
+             * Opens an audio device with the specified WebRTC constraints.
+             * If no constraints are specified, the default audio device is opened.
+             *
+             * @param {Object} constraints a WebRTC-compatible constraints object
+             */
+            openAudioDeviceWithConstraints: {
+                funcName: "flock.webAudio.inputDeviceManager.openAudioDeviceWithConstraints",
+                args: [
+                    "{that}.context",
+                    "{enviro}",
+                    "{nativeNodeManager}.createMediaStreamInput",
+                    "{arguments}.0"
+                ]
+            },
+
+            /**
+             * Opens an audio device with the specified WebRTC device id.
+             *
+             * @param {string} id a device identifier
+             */
+            openAudioDeviceWithId: {
+                funcName: "flock.webAudio.inputDeviceManager.openAudioDeviceWithId",
+                args: ["{arguments}.0", "{that}.openAudioDeviceWithConstraints"]
+            },
+
+            /**
+             * Opens the first audio device found with the specified label.
+             * The label must be an exact, case-insensitive match.
+             *
+             * @param {string} label a device label
+             */
+            openFirstAudioDeviceWithLabel: {
+                funcName: "flock.webAudio.inputDeviceManager.openFirstAudioDeviceWithLabel",
+                args: ["{arguments}.0", "{that}.openAudioDeviceWithId"]
+            }
+        }
+    });
+
+    flock.webAudio.inputDeviceManager.openAudioDevice = function (sourceSpec, idOpener, labelOpener, specOpener) {
+        if (sourceSpec) {
+            if (sourceSpec.id) {
+                return idOpener(sourceSpec.id);
+            } else if (sourceSpec.label) {
+                return labelOpener(sourceSpec.label);
+            }
+        }
+
+        return specOpener();
     };
 
-    flock.audioStrategy.web.startReadingAudioInput = function (that) {
-        flock.shim.getUserMedia.call(navigator, {
+
+    flock.webAudio.inputDeviceManager.openAudioDeviceWithId = function (id, deviceOpener) {
+        var options = {
+            audio: {
+                optional: [
+                    {
+                        sourceId: id
+                    }
+                ]
+            }
+        };
+
+        deviceOpener(options);
+    };
+
+    flock.webAudio.inputDeviceManager.openFirstAudioDeviceWithLabel = function (label, deviceOpener) {
+        if (!label) {
+            return;
+        }
+
+        // TODO: Can't access device labels until the user agrees
+        // to allow access to the current device.
+        flock.shim.getMediaDevices(function (deviceInfoSpecs) {
+            var matches = deviceInfoSpecs.filter(function (device) {
+                if (device.label.toLowerCase() === label.toLowerCase()) {
+                    return true;
+                }
+            });
+
+            if (matches.length > 0) {
+                deviceOpener(matches[0].deviceId);
+            } else {
+                fluid.log(fluid.logLevel.IMPORTANT,
+                    "An audio device named '" + label + "' could not be found.");
+            }
+        });
+    };
+
+    flock.webAudio.inputDeviceManager.openAudioDeviceWithConstraints = function (context, enviro, openMediaStream, options) {
+        options = options || {
             audio: true
-        },
-        function success (mediaStream) {
-            var mic = that.context.createMediaStreamSource(mediaStream);
-            that.insertInputNode(mic);
-        },
+        };
+
+        // Acquire an input bus ahead of time so we can synchronously
+        // notify the client where its output will be.
+        var busNum = enviro.acquireNextBus("input");
+
         function error (err) {
             fluid.log(fluid.logLevel.IMPORTANT,
                 "An error occurred while trying to access the user's microphone. " +
                 err);
-        });
+        }
+
+        function success (mediaStream) {
+            openMediaStream(mediaStream, busNum);
+        }
+
+
+        flock.shim.getUserMedia(options, success, error);
+
+        return busNum;
     };
-
-    flock.audioStrategy.web.createScriptNode = function (context, audioSettings) {
-        // TODO: Define an event for script process creation and factor this behaviour out.
-        flock.audioStrategy.web.updateSampleRate(context, audioSettings);
-        flock.audioStrategy.web.setupChannels(context, audioSettings);
-
-        // Create the script processor and setup the audio context's
-        // destination to the appropriate number of channels.
-        var chans = audioSettings.chans,
-            creatorName = context.createScriptProcessor ?
-                "createScriptProcessor" : "createJavaScriptNode";
-
-        var jsNode = context[creatorName](audioSettings.bufferSize, chans, chans);
-        jsNode.channelCountMode = "explicit";
-        jsNode.channelCount = chans;
-
-        return jsNode;
-    };
-
-    flock.audioStrategy.web.bindAudioProcessEvent = function (jsNode, writerFn) {
-        jsNode.onaudioprocess = writerFn;
-    };
-
-    flock.audioStrategy.web.disconnectNode = function (node) {
-        node.disconnect(0);
-    };
-
-    flock.audioStrategy.web.contextConstructor = window.AudioContext || window.webkitAudioContext;
 
     fluid.demands("flock.audioStrategy.platform", "flock.platform.webAudio", {
         funcName: "flock.audioStrategy.web"

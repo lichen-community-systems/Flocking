@@ -1,5 +1,5 @@
 {
-    "description": "Tracks the mouse's vertical and horizontal movement within the editor area only. Maps the y axis to amplitude and its x axis to pitch.",
+    "description": "Tracks the mouse's vertical and horizontal movement within the editor area only. Maps the y axis to amplitude and the x axis to pitch.",
     "synthDef": {
         "ugen": "flock.ugen.sinOsc",
         "freq": {
@@ -10,7 +10,7 @@
             "options": {
                 "axis": "width",
                 "interpolation": "exponential",
-                "target": "#source-view"
+                "target": ".CodeMirror"
             }
         },
         "mul": {
@@ -18,7 +18,7 @@
             "rate": "control",
             "options": {
                 "axis": "height",
-                "target": "#source-view"
+                "target": ".CodeMirror"
             },
             "mul": 0.5
         }

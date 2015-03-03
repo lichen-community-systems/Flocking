@@ -17,21 +17,62 @@ var fluid = fluid || require("infusion"),
     var $ = fluid.registerNamespace("jQuery");
     fluid.registerNamespace("flock.test");
 
+
     flock.init();
 
     var sampleRate = flock.environment.audioSettings.rates.audio;
 
-    module("ugen.input() tests");
+    module("UGen interpolation configuration tests");
+
+    fluid.registerNamespace("flock.test.ugen.interpolation");
+
+    flock.test.ugen.interpolation.runTests = function (testSpecs) {
+        fluid.each(testSpecs, function (testSpec) {
+            test(testSpec.interpolator, function () {
+                var ugen = flock.test.ugen.mock.make(new Float32Array(64), undefined, {
+                    interpolation: testSpec.interpolator
+                });
+
+                equal(ugen.interpolate, testSpec.expected,
+                    "The ugen should have been assigned the " + testSpec.interpolator + " interpolator.");
+
+            });
+        });
+    };
+
+    flock.test.ugen.interpolation.testSpecs = [
+        {
+            interpolator: "cubic",
+            expected: flock.interpolate.cubic
+        },
+        {
+            interpolator: "linear",
+            expected: flock.interpolate.linear
+        },
+        {
+            interpolator: "none",
+            expected: flock.interpolate.none
+        },
+        {
+            interpolator: "nonExistent",
+            expected: flock.interpolate.none
+        }
+    ];
+
+    flock.test.ugen.interpolation.runTests(flock.test.ugen.interpolation.testSpecs);
+
+
+    module("ugen get/set tests");
 
     var setAndCheckInput = function (ugen, inputName, val) {
         var returnVal = ugen.input(inputName, val);
         ok(returnVal, "Setting a new input should return the input unit generator.");
         ok(ugen.inputs[inputName], "Setting a new input should create a new unit generator with the appropriate name.");
-        equal(ugen.inputs[inputName], returnVal, "The return value when setting an input should be the input unit generator.");
+        equal(returnVal, ugen.inputs[inputName], "The return value when setting an input should be the input unit generator.");
 
         var valType = typeof (val);
         if (valType !== "number" && valType !== "string") {
-            equal(ugen.inputs[inputName], ugen.input(inputName), "The value returned from input() should be the same as the actual input value.");
+            equal(ugen.input(inputName), ugen.inputs[inputName], "The value returned from input() should be the same as the actual input value.");
         }
     };
 
@@ -42,8 +83,35 @@ var fluid = fluid || require("infusion"),
         $.each(vals, comparisonFn);
     };
 
+    test("Get special path segments", function () {
+        var s = flock.synth({
+            synthDef: {
+                id: "carrier",
+                ugen: "flock.ugen.sinOsc",
+                freq: {
+                    ugen: "flock.ugen.xLine",
+                    start: {
+                        ugen: "flock.ugen.lfNoise",
+                        freq: 1/10
+                    }
+                }
+            }
+        });
+
+        var ugen = s.get("carrier"),
+            actual = ugen.get("freq.start.options");
+
+        expect(2);
+        equal(actual, ugen.inputs.freq.inputs.start.options,
+            "The options object should be correctly returned");
+        equal(ugen.get("freq.start.freq.model.value"),
+            ugen.inputs.freq.inputs.start.inputs.freq.model.value,
+            "The options object should be correctly returned");
+
+    });
+
     test("input() data type tests", function () {
-        var mockUGen = flock.mock.makeMockUGen(new Float32Array(64));
+        var mockUGen = flock.test.ugen.mock.make(new Float32Array(64));
 
         // Non-existent input.
         var val = mockUGen.input("cat");
@@ -52,13 +120,13 @@ var fluid = fluid || require("infusion"),
 
         // Setting a previously non-existent input.
         setAndCheckInput(mockUGen, "cat", {
-            ugen: "flock.mock.ugen"
+            ugen: "flock.test.ugen.mock"
         });
 
         // Replacing an existing input with an ugenDef.
         setAndCheckInput(mockUGen, "cat", {
             id: "new-cat",
-            ugen: "flock.mock.ugen"
+            ugen: "flock.test.ugen.mock"
         });
         equal(mockUGen.input("cat").id, "new-cat", "The new input should have the appropriate ID.");
 
@@ -66,11 +134,11 @@ var fluid = fluid || require("infusion"),
         var defs = [
             {
                 id: "first-cat",
-                ugen: "flock.mock.ugen"
+                ugen: "flock.test.ugen.mock"
             },
             {
                 id: "second-cat",
-                ugen: "flock.mock.ugen"
+                ugen: "flock.test.ugen.mock"
             }
         ];
         setAndCheckArrayInput(mockUGen, "cat", defs, function (i, def) {
@@ -92,7 +160,8 @@ var fluid = fluid || require("infusion"),
     // TODO: Create these graphs declaratively!
     module("Output tests", {
         setup: function () {
-            flock.environment = flock.enviro();
+            // TODO: This should be accomplishable via IoC references
+            fluid.staticEnvironment.environment = flock.environment = flock.enviro();
         }
     });
 
@@ -209,15 +278,15 @@ var fluid = fluid || require("infusion"),
                     ugen: "flock.tests.mockMultiInputUGen",
                     cats: [
                         {
-                            ugen: "flock.mock.ugen",
+                            ugen: "flock.test.ugen.mock",
                             rate: "audio"
                         },
                         {
-                            ugen: "flock.mock.ugen",
+                            ugen: "flock.test.ugen.mock",
                             rate: "control"
                         },
                         {
-                            ugen: "flock.mock.ugen",
+                            ugen: "flock.test.ugen.mock",
                             rate: "audio"
                         }
                     ]
@@ -274,7 +343,7 @@ var fluid = fluid || require("infusion"),
                     ugen: "flock.tests.mockMultiInputUGen",
                     cats: {
                         id: "mono",
-                        ugen: "flock.mock.ugen",
+                        ugen: "flock.test.ugen.mock",
                         rate: "audio"
                     }
                 }
@@ -603,9 +672,9 @@ var fluid = fluid || require("infusion"),
 
     test("flock.ugen.sum()", function () {
         var addBuffer = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31],
-            one = flock.mock.makeMockUGen(addBuffer),
-            two = flock.mock.makeMockUGen(addBuffer),
-            three = flock.mock.makeMockUGen(addBuffer);
+            one = flock.test.ugen.mock.make(addBuffer),
+            two = flock.test.ugen.mock.make(addBuffer),
+            three = flock.test.ugen.mock.make(addBuffer);
 
         var inputs = {
             sources: [one]
@@ -913,164 +982,6 @@ var fluid = fluid || require("infusion"),
     });
 
 
-    module("flock.ugen.line() tests");
-
-    var lineDef = {
-        ugen: "flock.ugen.line",
-        rate: flock.rates.AUDIO,
-        inputs: {
-            duration: 64 / sampleRate, // 64 samples.
-            start: 0,
-            end: 64
-        }
-    };
-
-    test("flock.ugen.line()", function () {
-        var line = flock.parse.ugenForDef(lineDef);
-
-        line.gen(64);
-        var expected = flock.test.fillBuffer(0, 63);
-        deepEqual(line.output, expected, "Line should generate all samples for its duration but one.");
-
-        line.gen(64);
-        expected = flock.generate(64, 64);
-        deepEqual(line.output, expected, "After the line's duration is finished, it should constantly output the end value.");
-    });
-
-    test("flock.ugen.line() partial generation.", function () {
-        var line = flock.parse.ugenForDef(lineDef);
-
-        line.gen(32);
-
-        // It's a 64 sample buffer, so split it in half to test it.
-        deepEqual(flock.copyBuffer(line.output, 0, 32), flock.test.fillBuffer(0, 31),
-            "The first half of the line's values should but generated.");
-        deepEqual(flock.copyBuffer(line.output, 32), flock.generate(32, 0),
-            "The last 32 samples of the buffer should be empty.");
-
-        line.gen(32);
-        deepEqual(flock.copyBuffer(line.output, 0, 32), flock.test.fillBuffer(32, 63),
-            "The second half of the line's values should be generated.");
-        deepEqual(flock.copyBuffer(line.output, 32), flock.generate(32, 0),
-            "The last 32 samples of the buffer should be empty.");
-
-        line.gen(32);
-        deepEqual(flock.copyBuffer(line.output, 0, 32), flock.generate(32, 64),
-            "After the line's duration is finished, it should constantly output the end value.");
-    });
-
-
-    module("flock.ugen.env.simpleASR tests");
-
-    var simpleASRDef = {
-        ugen: "flock.ugen.env.simpleASR",
-        rate: flock.rates.AUDIO,
-        inputs: {
-            start: 0.0,
-            attack: 1 / (sampleRate / 63), // 64 Samples, in seconds
-            sustain: 1.0,
-            release: 1 / (sampleRate / 63) // 128 Samples
-        }
-    };
-
-    var testEnvelopeStage = function (buffer, numSamps, expectedStart, expectedEnd, stageName) {
-        equal(buffer[0], expectedStart,
-            "During the " + stageName + " stage, the starting level should be " + expectedStart + ".");
-        equal(buffer[numSamps - 1], expectedEnd,
-            "At the end of the " + stageName + " stage, the expected end level should have been reached.");
-        flock.test.arrayUnbroken(buffer, "The output should not contain any dropouts.");
-        flock.test.arrayWithinRange(buffer, 0.0, 1.0,
-            "The output should always remain within the range between " + expectedStart + " and " + expectedEnd + ".");
-        flock.test.continuousArray(buffer, 0.02, "The buffer should move continuously within its range.");
-
-        var isClimbing = expectedStart < expectedEnd;
-        var directionText = isClimbing ? "climb" : "fall";
-        flock.test.rampingArray(buffer, isClimbing,
-            "The buffer should " + directionText + " steadily from " + expectedStart + " to " + expectedEnd + ".");
-    };
-
-    test("simpleASR constant values for all inputs", function () {
-        var asr = flock.parse.ugenForDef(simpleASRDef);
-
-        // Until the gate is closed, the ugen should just output silence.
-        asr.gen(64);
-        deepEqual(asr.output, flock.generate(64, 0.0),
-            "When the gate is open at the beginning, the envelope's output should be 0.0.");
-
-        // Trigger the attack stage.
-        asr.input("gate", 1.0);
-        asr.gen(64);
-        testEnvelopeStage(asr.output, 64, 0.0, 1.0, "attack");
-
-        // Output a full control period of the sustain value.
-        asr.gen(64);
-        deepEqual(asr.output, flock.generate(64, 1.0),
-            "While the gate is open, the envelope should hold at the sustain level.");
-
-        // Release the gate and test the release stage.
-        asr.input("gate", 0.0);
-        asr.gen(64);
-        testEnvelopeStage(asr.output, 64, 1.0, 0.0, "release");
-
-        // Test a full control period of the end value.
-        asr.gen(64);
-        deepEqual(asr.output, flock.generate(64, 0.0),
-            "When the gate is closed and the release stage has completed, the envelope's output should be 0.0.");
-
-        // Trigger the attack stage again.
-        asr.input("gate", 1.0);
-        asr.gen(64);
-        testEnvelopeStage(asr.output, 64, 0.0, 1.0, "second attack");
-
-        // And the release stage again.
-        asr.input("gate", 0.0);
-        asr.gen(64);
-        testEnvelopeStage(asr.output, 64, 1.0, 0.0, "second release");
-    });
-
-    test("simpleASR release midway through attack", function () {
-        var asr = flock.parse.ugenForDef(simpleASRDef);
-        asr.input("gate", 1.0);
-        asr.gen(32);
-        testEnvelopeStage(asr.output.subarray(0, 32), 32, 0.0, 0.4920634925365448, "halfway through the attack");
-
-        // If the gate closes during the attack stage, the remaining portion of the attack stage should be output before the release stage starts.
-        asr.input("gate", 0.0);
-        asr.gen(32);
-        testEnvelopeStage(asr.output.subarray(0, 32), 32, 0.5079365372657776, 1.0, "rest of the attack");
-
-        // After the attack stage has hit 1.0, it should immediately start the release phase.
-        asr.gen(64);
-        testEnvelopeStage(asr.output, 64, 1.0, 0.0, "release");
-    });
-
-    test("simpleASR attack midway through release", function () {
-        var asr = flock.parse.ugenForDef(simpleASRDef);
-
-        // Trigger the attack stage, then the release stage immediately.
-        asr.input("gate", 1.0);
-        asr.gen(64);
-        testEnvelopeStage(asr.output, 64, 0.0, 1.0, "attack");
-        asr.input("gate", 0.0);
-        asr.gen(32);
-        testEnvelopeStage(flock.copyBuffer(asr.output, 0, 32), 32, 1.0, 0.5079365372657776, "halfway release");
-
-        // Then trigger a new attack halfway through the release stage.
-        // The envelope should immediately pick up the attack phase from the current level
-        // TODO: Note that there will be a one-increment lag before turning direction to the attack phase in this case. Is this a noteworthy bug?
-        asr.input("gate", 1.0);
-        asr.gen(32);
-        testEnvelopeStage(flock.copyBuffer(asr.output, 0, 32), 32, 0.4920634925365448, 0.7420005202293396, "attack after halfway release");
-
-        // Generate another control period of samples, which should be at the sustain level.
-        asr.gen(64);
-        testEnvelopeStage(flock.copyBuffer(asr.output, 0, 32), 32, 0.7500630021095276, 1.0, "second half of the attack after halfway release second half.");
-        deepEqual(flock.copyBuffer(asr.output, 32), flock.generate(32, 1.0),
-            "While the gate remains open after a mid-release attack, the envelope should hold at the sustain level.");
-
-    });
-
-
     module("flock.ugen.amplitude() tests");
 
     var ampConstSignalDef = {
@@ -1078,7 +989,7 @@ var fluid = fluid || require("infusion"),
         rate: flock.rates.AUDIO,
         inputs: {
             source: {
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 options: {
                     buffer: flock.generate(64, 1.0)
                 }
@@ -1096,7 +1007,7 @@ var fluid = fluid || require("infusion"),
             "The unit generator's output should not have any major value jumps in it.");
     };
 
-    test("flock.ugen.amplitude() with constant value.", function () {
+    test("Constant value source input.", function () {
         var tracker = flock.parse.ugenForDef(ampConstSignalDef);
         generateAndTestContinuousSamples(tracker, 64);
         // TODO: Why does an attack time of 0.00001 result in a ramp-up time of three samples, instead of just less than half a sample?
@@ -1119,7 +1030,7 @@ var fluid = fluid || require("infusion"),
         attack: 0.00001
     };
 
-    test("flock.ugen.amplitude() with changing value.", function () {
+    test("Changing value source input.", function () {
         var tracker = flock.parse.ugenForDef(ampDescendingLine);
 
         var controlPeriods = Math.round(sampleRate / 64),
@@ -1128,7 +1039,8 @@ var fluid = fluid || require("infusion"),
         for (i = 0; i < controlPeriods; i++) {
             tracker.inputs.source.gen(64);
             generateAndTestContinuousSamples(tracker, 64);
-            flock.test.rampingArray(tracker.output, true, "The amplitude tracker should follow the contour of its source.");
+            flock.test.rampingArray(tracker.output, true,
+                "The amplitude tracker should follow the contour of its source.");
         }
     });
 
@@ -1141,7 +1053,7 @@ var fluid = fluid || require("infusion"),
                 id: "gate",
                 ugen: "flock.ugen.gate",
                 source: {
-                    ugen: "flock.mock.ugen",
+                    ugen: "flock.test.ugen.mock",
                     options: {
                         buffer: flock.test.ascendingBuffer(64, 1)
                     }
@@ -1183,7 +1095,7 @@ var fluid = fluid || require("infusion"),
                     synthDef: {
                         threshold: 0.5,
                         sideChain: {
-                            ugen: "flock.mock.ugen",
+                            ugen: "flock.test.ugen.mock",
                             options: {
                                 buffer: flock.test.ascendingBuffer(64, 0, 0.05)
                             }
@@ -1200,7 +1112,7 @@ var fluid = fluid || require("infusion"),
                     synthDef: {
                         threshold: 1,
                         sideChain: {
-                            ugen: "flock.mock.ugen",
+                            ugen: "flock.test.ugen.mock",
                             options: {
                                 buffer: flock.generate(64, function (i) {
                                     return i % 2 ? 1.0 : 0.0;
@@ -1233,10 +1145,10 @@ var fluid = fluid || require("infusion"),
         ugen: "flock.ugen.out",
         rate: "audio",
         inputs: {
-            bus: 3,
+            bus: 62,
             expand: 1,
             sources: {
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 id: "bufferMock",
                 options: {
                     buffer: flock.test.ascendingBuffer(64, 1)
@@ -1246,19 +1158,29 @@ var fluid = fluid || require("infusion"),
     };
 
     var inSynthDef = {
-        ugen: "flock.ugen.out",
-        expand: 1,
-        sources: {
-            id: "in",
-            ugen: "flock.ugen.in",
-            rate: "audio",
-            inputs: {
-                bus: 3
-            }
+        id: "in",
+        ugen: "flock.ugen.in",
+        rate: "audio",
+        inputs: {
+            bus: 62
+        }
+    };
+
+    // TODO: We're using 64 buses here so we don't run into
+    // legitimate output buses when running tests while plugged into a multichannel
+    // audio interface. This illustrates why we should have some kind of separation between
+    // interconnect buses and output buses.
+    var inEnviroOptions = {
+        audioSettings: {
+            numBuses: 64
         }
     };
 
     test("flock.ugen.in() single bus input", function () {
+        // TODO: This is a major bug!
+        // This should be accomplishable solely with IoC references.
+        fluid.staticEnvironment.environment = flock.environment = flock.enviro(inEnviroOptions);
+
         var outSynth = flock.synth({
             synthDef: outSynthDef
         });
@@ -1268,21 +1190,23 @@ var fluid = fluid || require("infusion"),
 
         inSynth.enviro.gen();
         var actual = inSynth.namedNodes["in"].output;
-        deepEqual(actual, inSynth.enviro.buses[3],
-            "With a single source input, the output of flock.ugen.in should a copy of the bus referenced.");
+        deepEqual(actual, inSynth.enviro.buses[62],
+            "With a single source input, the output of flock.ugen.in should make a copy of the bus referenced.");
         deepEqual(actual, outSynth.get("bufferMock").options.buffer,
             "And it should reflect exactly the output of the flock.ugen.out that is writing to the buffer.");
     });
 
     test("flock.ugen.in() multiple bus input", function () {
+        fluid.staticEnvironment.environment = flock.environment = flock.enviro(inEnviroOptions);
+
         var bus4Def = $.extend(true, {}, outSynthDef, {
             inputs: {
-                bus: 4
+                bus: 63
             }
         });
 
         var multiInDef = $.extend(true, {}, inSynthDef);
-        multiInDef.sources.inputs.bus = [3, 4];
+        multiInDef.inputs.bus = [62, 63];
 
         flock.synth({
             synthDef: outSynthDef
@@ -1310,7 +1234,7 @@ var fluid = fluid || require("infusion"),
     test("flock.ugen.normalize()", function () {
         var testBuffer = flock.test.ascendingBuffer(64, -31),
             mock = {
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 options: {
                     buffer: testBuffer
                 }
@@ -1554,7 +1478,7 @@ var fluid = fluid || require("infusion"),
         var sourceBuffer = flock.test.ascendingBuffer(64, 1),
             sampGenCount = 0,
             incrementingMock = {
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 options: {
                     buffer: sourceBuffer,
                     gen: function (that, numSamps) {
@@ -1599,142 +1523,6 @@ var fluid = fluid || require("infusion"),
             "The delay's third block should contain the source's second block of samples.");
     });
 
-
-    module("flock.ugen.phasor");
-
-    var loopOneDef =  {
-        ugen: "flock.ugen.phasor",
-        start: 1.0,
-        end: 66,
-        reset: 2.0,
-        step: 1.0
-    };
-
-    var testTriggeredSignals = function (synth, ugen, tests) {
-        for (var i = 0; i < tests.length; i++) {
-            var test = tests[i];
-            if (test.trigger !== undefined) {
-                ugen.input("trigger", test.trigger);
-            }
-            synth.gen();
-            deepEqual(ugen.output, test.value, test.msg);
-        }
-    };
-
-    var testLoopUGen = function (testSpecs) {
-        $.each(testSpecs, function (i, testSpec) {
-            var def = $.extend(true, {rate: testSpec.rate, id: "looper"}, testSpec.def);
-            var synth = flock.synth({
-                synthDef: def
-            });
-            var loop = synth.namedNodes.looper;
-
-            test(testSpec.name, function () {
-                testTriggeredSignals(synth, loop, testSpec.tests);
-            });
-        });
-    };
-
-    var loopTestSpecs = [
-        {
-            name: "audio rate",
-            rate: "audio",
-            def: loopOneDef,
-            tests: [
-                {
-                    value: flock.test.ascendingBuffer(64, 1),
-                    msg: "The loop unit generator should output a signal increasing from 1 to 64"
-                },
-                {
-                    value: flock.generate(64, function (i) {
-                        return i === 0 ? 65 : i;
-                    }),
-                    msg: "Then it should complete the cycle and loop back to the start point."
-                },
-                {
-                    value: flock.generate(64, function (i) {
-                        return i + 2 % 66;
-                    }),
-                    trigger: 1.0,
-                    msg: "When it receives a trigger signal, the loop ugen should move back to the reset point."
-                }
-            ]
-        },
-        {
-            name: "control rate",
-            rate: "control",
-            def: loopOneDef,
-            tests: [
-                {
-                    value: new Float32Array([1.0]),
-                    msg: "The loop unit generator should output a control rate signal containing the first value."
-                },
-                {
-                    value: new Float32Array([2.0]),
-                    msg: "At the next control point, it should have increased by one step value."
-                },
-                {
-                    value: new Float32Array([3.0]),
-                    msg: "At the next control point, it should have continued to increase by one step value."
-                },
-                {
-                    value: new Float32Array([2.0]),
-                    trigger: 1.0,
-                    msg: "When it receives a trigger signal, the loop ugen should move back to the reset point."
-                }
-            ]
-        },
-        {
-            name: "control rate, wraparound",
-            rate: "control",
-            def: {
-                ugen: "flock.ugen.phasor",
-                start: 0.0,
-                end: 2.0,
-                step: 1.0
-            },
-            tests: [
-                {
-                    value: new Float32Array([0.0]),
-                    msg: "The loop unit generator should output a control rate signal containing the first value."
-                },
-                {
-                    value: new Float32Array([1.0]),
-                    msg: "At the next control point, it should increase by one step value."
-                },
-                {
-                    value: new Float32Array([0.0]),
-                    msg: "At the next control point, it should have looped back to the start."
-                },
-                {
-                    value: new Float32Array([1.0]),
-                    msg: "At the next control point, it should increase by one step value."
-                }
-            ]
-        },
-        {
-            name: "control rate, step value is the duration of a sample in seconds.",
-            rate: "control",
-            def: {
-                ugen: "flock.ugen.phasor",
-                start: 0,
-                end: 1.0,
-                step: 1.0 / sampleRate
-            },
-            tests: [
-                {
-                    value: new Float32Array([0]),
-                    msg: "The value at the first control period should be start value."
-                },
-                {
-                    value: flock.generate(1, 1.0 / sampleRate),
-                    msg: "At the second control point, the value should be the duration of 64 samples."
-                }
-            ]
-        }
-    ];
-
-    testLoopUGen(loopTestSpecs);
 
     module("flock.ugen.bufferDuration tests", {
         setup: function () {
@@ -2100,7 +1888,7 @@ var fluid = fluid || require("infusion"),
                     freq: sampleRate
                 },
                 trigger: {
-                    ugen: "flock.mock.ugen",
+                    ugen: "flock.test.ugen.mock",
                     rate: "audio",
                     options: {
                         buffer: flock.generate(64, 0.0)
@@ -2116,7 +1904,7 @@ var fluid = fluid || require("infusion"),
                 },
                 {
                     trigger: {
-                        ugen: "flock.mock.ugen",
+                        ugen: "flock.test.ugen.mock",
                         rate: "audio",
                         options: {
                             buffer: secondTrig
@@ -2128,7 +1916,7 @@ var fluid = fluid || require("infusion"),
                 },
                 {
                     trigger: {
-                        ugen: "flock.mock.ugen",
+                        ugen: "flock.test.ugen.mock",
                         rate: "audio",
                         options: {
                             buffer: thirdTrig
@@ -2342,7 +2130,7 @@ var fluid = fluid || require("infusion"),
             synthDef: {
                 ugen: "flock.ugen.triggerCallback",
                 source: {
-                    ugen: "flock.mock.ugen",
+                    ugen: "flock.test.ugen.mock",
                     options: {
                         buffer: flock.generate(64, function (i) {
                             return i;
@@ -2350,7 +2138,7 @@ var fluid = fluid || require("infusion"),
                     }
                 },
                 trigger: {
-                    ugen: "flock.mock.ugen",
+                    ugen: "flock.test.ugen.mock",
                     options: {
                         buffer: flock.generate(64, function (i) {
                             return i === 31 ? 1.0 : 0.0;
@@ -2488,7 +2276,7 @@ var fluid = fluid || require("infusion"),
                 pan: panVal,
                 source: {
                     id: "mock",
-                    ugen: "flock.mock.ugen",
+                    ugen: "flock.test.ugen.mock",
                     options: {
                         buffer: ones
                     }

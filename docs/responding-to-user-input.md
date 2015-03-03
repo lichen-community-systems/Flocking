@@ -129,7 +129,8 @@ We want our example to work on all devices. iOS has a restrict that sounds can o
 To do so, we will bind a one-time click handler on our button. It will start the Flocking Environment by calling its `play` method. We'll use jQuery's `one()` method to register a handler that automatically gets removed after it has fired once. Here's the code for it:
 
     $(container).one("click", function () {
-        flock.environment.play();
+        var enviro = flock.init();
+        enviro.play();
     });
 
 Next, we'll register a click handler on the button that will randomly change the frequency of the modulator every time the user clicks the button. We'll use jQuery again for this, and call `Synth.set()` to change the _modulator.freq_ input:

@@ -9,7 +9,7 @@ var polySynth = flock.synth.polyphonic({
         freq: fundamental,
         mul: {
             id: "env",
-            ugen: "flock.ugen.env.simpleASR",
+            ugen: "flock.ugen.asr",
             attack: 0.25,
             sustain: 1.0,
             release: 0.5

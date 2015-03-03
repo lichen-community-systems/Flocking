@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Media Element Input Demo</title>
+        <meta charset="UTF-8" />
+        <link rel="stylesheet" type="text/css" href="../shared/css/demos.css" />
+
+        <script src="../../third-party/jquery/js/jquery.js"></script>
+
+        <script src="../../third-party/infusion/js/Fluid.js"></script>
+        <script src="../../third-party/infusion/js/FluidDocument.js"></script>
+        <script src="../../third-party/infusion/js/FluidIoC.js"></script>
+        <script src="../../third-party/infusion/js/DataBinding.js"></script>
+        <script src="../../third-party/infusion/js/FluidDOMUtilities.js"></script>
+        <script src="../../third-party/infusion/js/FluidDebugging.js"></script>
+        <script src="../../third-party/infusion/js/FluidIoC.js"></script>
+        <script src="../../third-party/infusion/js/DataBinding.js"></script>
+        <script src="../../third-party/infusion/js/FluidView.js"></script>
+
+        <script src="../../flocking/flocking-core.js"></script>
+        <script src="../../flocking/flocking-scheduler.js"></script>
+        <script src="../../flocking/flocking-buffers.js"></script>
+        <script src="../../flocking/flocking-webaudio.js"></script>
+        <script src="../../flocking/flocking-parser.js"></script>
+        <script src="../../flocking/flocking-ugens.js"></script>
+        <script src="../../flocking/flocking-ugens-browser.js"></script>
+
+        <script src="js/media-element-input.js"></script>
+    </head>
+
+    <body>
+        <h1>Processing Audio from an HTML5 Media Element</h1>
+
+        <div id="sounds">
+            <div>
+                <audio id="regular" src="../shared/audio/hillier-first-chord.wav" loop="true" controls="true" autoplay></audio>
+            </div>
+            <div>
+                <audio id="slow" src="../shared/audio/hillier-first-chord.wav" loop="true" controls="true" autoplay></audio>
+            </div>
+        </div>
+        <script>
+            window.demo = flock.demo.mediaElementInput("#sounds");
+        </script>
+    </body>
+</html>

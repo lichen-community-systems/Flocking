@@ -12,7 +12,7 @@
         },
         "q": 3.0,
         "source": {
-            "ugen": "flock.ugen.lfSaw",
+            "ugen": "flock.ugen.saw",
             "freq": 200,
             "mul": 0.1
         }

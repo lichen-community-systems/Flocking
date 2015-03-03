@@ -11,10 +11,12 @@
         <script src="../../../third-party/infusion/js/FluidIoC.js"></script>
         <script src="../../../third-party/infusion/js/DataBinding.js"></script>
 
+        <script src="../../../third-party/dspapi/js/dspapi.js"></script>
         <script src="../../../flocking/flocking-core.js"></script>
         <script src="../../../flocking/flocking-scheduler.js"></script>
         <script src="../../../flocking/flocking-webaudio.js"></script>
         <script src="../../../flocking/flocking-ugens.js"></script>
+        <script src="../../../flocking/flocking-envelopes.js"></script>
         <script src="../../../flocking/flocking-parser.js"></script>
 
         <script src="../../flocking/js/flocking-test-utils.js"></script>
@@ -56,6 +58,34 @@
                     ugen: "flock.ugen.lfNoise",
                     freq: 99,
                     mul: 0.1
+                }
+            }, audioAndControl, oneSecondBlocks);
+
+            flock.test.timeSynthDefs("flock.ugen.change(), both inputs running at ", {
+                ugen: "flock.ugen.change",
+                initial: {
+                    ugen: "flock.ugen.sinOsc",
+                    freq: 440
+                },
+                target: {
+                    ugen: "flock.ugen.sinOsc",
+                    freq: 220
+                },
+                time: 10,
+                crossfade: 2
+            }, [flock.rates.AUDIO], oneSecondBlocks);
+
+            flock.test.timeSynthDefs("Sine wave with flock.ugen.envGen() amplitude modulating gate input at ", {
+                ugen: "flock.ugen.sinOsc",
+                mul: {
+                    ugen: "flock.ugen.envGen",
+                    envelope: "flock.envelope.adsr",
+                    gate: {
+                        ugen: "flock.ugen.lfPulse",
+                        width: 0.5,
+                        freq: 1/10
+                    },
+                    timeScale: 1.0
                 }
             }, audioAndControl, oneSecondBlocks);
         </script>

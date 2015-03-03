@@ -1,7 +1,7 @@
 /*global flock*/
 
 // Frequency Stair Stepping Demo
-var clock = flock.enviro.shared.asyncScheduler,
+var clock = flock.environment.asyncScheduler,
     synth = flock.synth({
         nickName: "sin-synth",
         synthDef: {
@@ -47,5 +47,3 @@ clock.schedule([
         }
     }
 ]);
-
-synth;

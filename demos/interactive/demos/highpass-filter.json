@@ -16,7 +16,7 @@
             "add": 4000
         },
         "source": {
-            "ugen": "flock.ugen.lfSaw",
+            "ugen": "flock.ugen.saw",
             "freq": 200,
             "mul": 0.1
         }

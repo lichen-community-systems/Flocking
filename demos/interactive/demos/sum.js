@@ -4,7 +4,7 @@
 var harmonics = [1, 3, 5, 7, 11, 13, 15, 17, 19, 21],
     ugenTypes = ["flock.ugen.sin", "flock.ugen.lfSaw", "flock.ugen.lfPulse", "flock.ugen.lfNoise"],
     fundamentalMultiplier = 440,
-    maxFreq = flock.enviro.shared.audioSettings.rates.audio / 4; // Highest harmonic shouldn't be more than a quarter of the Nyquist frequency.
+    maxFreq = flock.environment.audioSettings.rates.audio / 4; // Highest harmonic shouldn't be more than a quarter of the Nyquist frequency.
 
 var makeHarmonic = function (ugenTypes, fundamental, harmonic, octave, maxAmp) {
     var freqScale = (harmonic * octave),

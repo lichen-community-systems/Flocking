@@ -34,7 +34,7 @@ var fluid = fluid || require("infusion"),
         var enviro = flock.enviro(enviroOpts);
         fluid.staticEnvironment.environment = flock.environment = enviro;
 
-        // flock.environment is deprecated. Use "flock.environment"
+        // flock.enviro.shared is deprecated. Use "flock.environment"
         // or an IoC reference to {environment} instead
         flock.enviro.shared = enviro;
 
@@ -42,6 +42,12 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.OUT_UGEN_ID = "flocking-out";
+    flock.MAX_CHANNELS = 32;
+    flock.MIN_BUSES = 2;
+    flock.MAX_INPUT_BUSES = 32;
+    flock.MIN_INPUT_BUSES = 1; // TODO: This constraint should be removed.
+    flock.ALL_CHANNELS = flock.MAX_INPUT_BUSES;
+
     flock.PI = Math.PI;
     flock.TWOPI = 2.0 * Math.PI;
     flock.HALFPI = Math.PI / 2.0;
@@ -141,6 +147,8 @@ var fluid = fluid || require("infusion"),
      * Utilities *
      *************/
 
+    flock.noOp = function () {};
+
     flock.isIterable = function (o) {
         var type = typeof o;
         return o && o.length !== undefined && type !== "string" && type !== "function";
@@ -153,6 +161,9 @@ var fluid = fluid || require("infusion"),
         return obj.tags && obj.tags.indexOf(tag) > -1;
     };
 
+    // TODO: Chrome profiler marks this function as unoptimized.
+    // This should probably be factored into separate functions for
+    // new and existing arrays. (e.g. "generate" vs. "fill")
     flock.generate = function (bufOrSize, generator) {
         var buf = typeof bufOrSize === "number" ? new Float32Array(bufOrSize) : bufOrSize,
             isFunc = typeof generator === "function",
@@ -440,70 +451,75 @@ var fluid = fluid || require("infusion"),
         "cb": 11
     };
 
-    flock.interpolate = {};
+    flock.interpolate = {
+        /**
+         * Performs simple truncation.
+         */
+        none: function (idx, table) {
+            idx = idx % table.length;
 
-    /**
-     * Performs simple truncation.
-     */
-    flock.interpolate.none = function (idx, table) {
-        return table[idx | 0];
+            return table[idx | 0];
+        },
+
+        /**
+         * Performs linear interpolation.
+         */
+        linear: function (idx, table) {
+            var len = table.length;
+            idx = idx % len;
+
+            var i1 = idx | 0,
+                i2 = (i1 + 1) % len,
+                frac = idx - i1,
+                y1 = table[i1],
+                y2 = table[i2];
+
+            return y1 + frac * (y2 - y1);
+        },
+
+        /**
+         * Performs Hermite cubic interpolation.
+         *
+         * Based on Laurent De Soras' implementation at:
+         * http://www.musicdsp.org/showArchiveComment.php?ArchiveID=93
+         *
+         * @param idx {Number} an index into the table
+         * @param table {Arrayable} the table from which values around idx should be drawn and interpolated
+         * @return {Number} an interpolated value
+         */
+        hermite: function (idx, table) {
+            var len = table.length,
+                intPortion = Math.floor(idx),
+                i0 = intPortion % len,
+                frac = idx - intPortion,
+                im1 = i0 > 0 ? i0 - 1 : len - 1,
+                i1 = (i0 + 1) % len,
+                i2 = (i0 + 2) % len,
+                xm1 = table[im1],
+                x0 = table[i0],
+                x1 = table[i1],
+                x2 = table[i2],
+                c = (x1 - xm1) * 0.5,
+                v = x0 - x1,
+                w = c + v,
+                a = w + v + (x2 - x0) * 0.5,
+                bNeg = w + a,
+                val = (((a * frac) - bNeg) * frac + c) * frac + x0;
+
+            return val;
+        }
     };
 
-    /**
-     * Performs linear interpolation.
-     */
-    flock.interpolate.linear = function (idx, table) {
-        var len = table.length;
-        if (len < 1) {
-            return 0;
+    flock.interpolate.cubic = flock.interpolate.hermite;
+
+    flock.log = {
+        warn: function (msg) {
+            fluid.log(fluid.logLevel.WARN, msg);
+        },
+
+        debug: function (msg) {
+            fluid.log(fluid.logLevel.INFO, msg);
         }
-
-        idx = idx % len;
-
-        var i1 = idx | 0,
-            i2 = (i1 + 1) % len,
-            frac = idx - i1,
-            y1 = table[i1],
-            y2 = table[i2];
-
-        return y1 + frac * (y2 - y1);
-    };
-
-    /**
-     * Performs cubic interpolation.
-     *
-     * Based on Laurent De Soras' implementation at:
-     * http://www.musicdsp.org/showArchiveComment.php?ArchiveID=93
-     *
-     * @param idx {Number} an index into the table
-     * @param table {Arrayable} the table from which values around idx should be drawn and interpolated
-     * @return {Number} an interpolated value
-     */
-    flock.interpolate.cubic = function (idx, table) {
-        var len = table.length;
-
-        if (len < 1) {
-            return 0;
-        }
-
-        var intPortion = Math.floor(idx),
-            i0 = intPortion % len,
-            frac = idx - intPortion,
-            im1 = i0 > 0 ? i0 - 1 : len - 1,
-            i1 = (i0 + 1) % len,
-            i2 = (i0 + 2) % len,
-            xm1 = table[im1],
-            x0 = table[i0],
-            x1 = table[i1],
-            x2 = table[i2],
-            c = (x1 - xm1) * 0.5,
-            v = x0 - x1,
-            w = c + v,
-            a = w + v + (x2 - x0) * 0.5,
-            bNeg = w + a,
-            val = (((a * frac) - bNeg) * frac + c) * frac + x0;
-
-        return val;
     };
 
     flock.fail = function (msg) {
@@ -515,7 +531,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.pathParseError = function (root, path, token) {
-        var msg = "Error parsing path: " + path + ". Segment '" + token +
+        var msg = "Error parsing path '" + path + "'. Segment '" + token +
             "' could not be resolved. Root object was: " + fluid.prettyPrintJSON(root);
 
         flock.fail(msg);
@@ -564,8 +580,8 @@ var fluid = fluid || require("infusion"),
             root = root[prop];
             type = typeof root;
             if (type !== "object") {
-                flock.fail("Error while setting a value at path + " + path +
-                    ". A non-container object was found at segment " + prop + ". Value: " + root);
+                flock.fail("Error while setting a value at path '" + path +
+                    "'. A non-container object was found at segment '" + prop + "'. Value: " + root);
 
                 return;
             }
@@ -591,17 +607,41 @@ var fluid = fluid || require("infusion"),
 
     flock.input = {};
 
-    flock.input.shouldExpand = function (inputName, target) {
-        var specialInputs = flock.parse.specialInputs;
-        if (target && target.options && target.options.noExpand) {
-            specialInputs = specialInputs.concat(target.options.noExpand);
-        }
-
-        return specialInputs.indexOf(inputName) < 0;
+    flock.input.shouldExpand = function (inputName) {
+        return flock.parse.specialInputs.indexOf(inputName) < 0;
     };
 
+    // TODO: Replace this with a regular expression;
+    // this produces too much garbage!
     flock.input.pathExpander = function (path) {
-        return path.replace(/\.(?![0-9])/g, ".inputs.");
+        var segs = fluid.model.parseEL(path),
+            separator = "inputs",
+            len = segs.length,
+            penIdx = len - 1,
+            togo = [],
+            i;
+
+        for (i = 0; i < penIdx; i++) {
+            var seg = segs[i];
+            var nextSeg = segs[i + 1];
+
+            togo.push(seg);
+
+            if (nextSeg === "model" || nextSeg === "options") {
+                togo = togo.concat(segs.slice(i + 1, penIdx));
+                break;
+            }
+
+            if (!isNaN(Number(nextSeg))) {
+                continue;
+            }
+
+            togo.push(separator);
+        }
+
+        togo.push(segs[penIdx]);
+
+        return togo.join(".");
     };
 
     flock.input.expandPaths = function (paths) {
@@ -628,7 +668,7 @@ var fluid = fluid || require("infusion"),
         var input = flock.get(root, path);
 
         // If the unit generator is a valueType ugen, return its value, otherwise return the ugen itself.
-        return flock.hasTag(input, "flock.ugen.valueType") ? input.model.value : input;
+        return flock.hasTag(input, "flock.ugen.valueType") ? input.inputs.value : input;
     };
 
     flock.input.getValuesForPathArray = function (root, paths) {
@@ -666,23 +706,47 @@ var fluid = fluid || require("infusion"),
             flock.input.getValuesForPathObject(root, path);
     };
 
+    flock.input.resolveValue = function (root, path, val, target, inputName, previousInput, valueParser) {
+        // Check to see if the value is actually a "get expression"
+        // (i.e. an EL path wrapped in ${}) and resolve it if necessary.
+        if (typeof val === "string") {
+            var extracted = fluid.extractEL(val, flock.input.valueExpressionSpec);
+            if (extracted) {
+                var resolved = flock.input.getValueForPath(root, extracted);
+                if (resolved === undefined) {
+                    flock.log.debug("The value expression '" + val + "' resolved to undefined. " +
+                    "If this isn't expected, check to ensure that your path is valid.");
+                }
+
+                return resolved;
+            }
+        }
+
+        return flock.input.shouldExpand(inputName) && valueParser ?
+            valueParser(val, path, target, previousInput) : val;
+    };
+
+    flock.input.valueExpressionSpec = {
+        ELstyle: "${}"
+    };
+
     flock.input.setValueForPath = function (root, path, val, baseTarget, valueParser) {
         path = flock.input.expandPath(path);
 
         var previousInput = flock.get(root, path),
             lastDotIdx = path.lastIndexOf("."),
             inputName = path.slice(lastDotIdx + 1),
-            target = lastDotIdx > -1 ? flock.get(root, path.slice(0, path.lastIndexOf(".inputs"))) : baseTarget,
-            newInput = flock.input.shouldExpand(inputName, target) && valueParser ?
-                valueParser(val, path, target, previousInput) : val;
+            target = lastDotIdx > -1 ? flock.get(root, path.slice(0, path.lastIndexOf(".inputs"))) :
+                baseTarget,
+            resolvedVal = flock.input.resolveValue(root, path, val, target, inputName, previousInput, valueParser);
 
-        flock.set(root, path, newInput);
+        flock.set(root, path, resolvedVal);
 
         if (target && target.onInputChanged) {
             target.onInputChanged(inputName);
         }
 
-        return newInput;
+        return resolvedVal;
     };
 
     flock.input.setValuesForPaths = function (root, valueMap, baseTarget, valueParser) {
@@ -889,23 +953,71 @@ var fluid = fluid || require("infusion"),
      * Synths and Playback *
      ***********************/
 
-
     fluid.defaults("flock.audioStrategy", {
-        gradeNames: ["fluid.standardComponent", "autoInit"],
+        gradeNames: ["fluid.standardRelayComponent"],
 
         components: {
             nodeEvaluator: {
-                type: "flock.enviro.nodeEvaluator"
+                type: "flock.enviro.nodeEvaluator",
+                options: {
+                    numBuses: "{enviro}.options.audioSettings.numBuses",
+                    blockSize: "{enviro}.options.audioSettings.blockSize",
+                    members: {
+                        buses: "{enviro}.buses",
+                        nodes: "{enviro}.nodes"
+                    }
+                }
             }
+        },
+
+        invokers: {
+            reset: {
+                func: "{that}.events.onReset.fire"
+            }
+        },
+
+        events: {
+            onReset: null
         }
     });
 
 
     fluid.defaults("flock.enviro", {
-        gradeNames: ["fluid.standardComponent", "flock.nodeList", "autoInit"],
+        gradeNames: ["fluid.standardRelayComponent", "flock.nodeList", "autoInit"],
+
+        members: {
+            audioSettings: "@expand:flock.enviro.clampAudioSettings({that}.options.audioSettings)",
+            buses: {
+                expander: {
+                    funcName: "flock.enviro.createAudioBuffers",
+                    args: ["{that}.audioSettings.numBuses", "{that}.audioSettings.blockSize"]
+                }
+            },
+            buffers: {},
+            bufferSources: {}
+        },
+
+        components: {
+            asyncScheduler: {
+                type: "flock.scheduler.async"
+            },
+
+            audioStrategy: {
+                type: "flock.audioStrategy.platform",
+                options: {
+                    audioSettings: "{enviro}.audioSettings"
+                }
+            }
+        },
 
         model: {
-            isPlaying: false
+            isPlaying: false,
+
+            // TODO: Buses should probably be managed by their own component.
+            nextAvailableBus: {
+                input: 0,
+                interconnect: 0
+            }
         },
 
         audioSettings: {
@@ -919,26 +1031,11 @@ var fluid = fluid || require("infusion"),
             },
             blockSize: 64,
             chans: 2,
+            numInputBuses: 2,
             numBuses: 8,
             // This buffer size determines the overall latency of Flocking's audio output.
             // TODO: Replace this with IoC awesomeness.
             bufferSize: flock.defaultBufferSizeForPlatform(),
-
-            // Hints to some audio backends.
-            genPollIntervalFactor: flock.platform.isLinux ? 1 : 20 // Only used on Firefox.
-        },
-
-        members: {
-            // TODO: Modelize.
-            audioSettings: "{that}.options.audioSettings",
-            buses: {
-                expander: {
-                    funcName: "flock.enviro.createAudioBuffers",
-                    args: ["{that}.audioSettings.numBuses", "{that}.audioSettings.blockSize"]
-                }
-            },
-            buffers: {},
-            bufferSources: {}
         },
 
         invokers: {
@@ -955,9 +1052,7 @@ var fluid = fluid || require("infusion"),
             play: {
                 funcName: "flock.enviro.play",
                 args: [
-                    "{that}.model",
                     "{that}.applier",
-                    "{that}.audioSettings",
                     "{that}.events.onPlay.fire"
                 ]
             },
@@ -992,7 +1087,19 @@ var fluid = fluid || require("infusion"),
              *
              * @param {String|BufferDesc} bufDesc the buffer description (or string id) to release
              */
-            releaseBuffer: "flock.enviro.releaseBuffer({arguments}.0, {that}.buffers)"
+            releaseBuffer: "flock.enviro.releaseBuffer({arguments}.0, {that}.buffers)",
+
+            // Unsupported non-API method.
+            acquireNextBus: {
+                funcName: "flock.enviro.acquireNextBus",
+                args: [
+                    "{arguments}.0", // The type of bus, either "input" or "interconnect".
+                    "{that}.buses",
+                    "{that}.applier",
+                    "{that}.model",
+                    "{that}.audioSettings"
+                ]
+            }
         },
 
         events: {
@@ -1002,53 +1109,86 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onPlay: "{audioStrategy}.startGeneratingSamples()",
+            onPlay: "{audioStrategy}.start()",
 
-            onStop: "{audioStrategy}.stopGeneratingSamples()",
+            onStop: "{audioStrategy}.stop()",
 
             onReset: [
                 "{that}.stop()",
                 "{asyncScheduler}.clearAll()",
+                {
+                    func: "{that}.applier.change",
+                    args: ["nextAvailableBus.input", []]
+                },
+                {
+                    func: "{that}.applier.change",
+                    args: ["nextAvailableBus.interconnect", []]
+                },
+                "{audioStrategy}.reset()",
                 "{that}.clearAll()"
             ],
 
             onCreate: {
-                funcName: "flock.enviro.initAudioSettings",
-                args: ["{that}.audioSettings", "{audioStrategy}.options.audioSettings"]
-            }
-        },
-
-        components: {
-            asyncScheduler: {
-                type: "flock.scheduler.async"
-            },
-
-            audioStrategy: {
-                type: "flock.audioStrategy.platform",
-                options: {
-                    audioSettings: "{enviro}.audioSettings",
-                    model: {
-                        playState: "{enviro}.model.playState"
-                    }
-                }
+                funcName: "flock.enviro.calculateControlRate",
+                args: ["{that}.audioSettings"]
             }
         }
     });
 
-    flock.enviro.initAudioSettings = function (audioSettings, audioStrategySettings) {
-        var rates = audioSettings.rates;
+    flock.enviro.clampAudioSettings = function (s) {
+        s.numInputBuses = Math.min(s.numInputBuses, flock.MAX_INPUT_BUSES);
+        s.numInputBuses = Math.max(s.numInputBuses, flock.MIN_INPUT_BUSES);
+        s.chans = Math.min(s.chans, flock.MAX_CHANNELS);
+        s.numBuses = Math.max(s.numBuses, s.chans);
+        s.numBuses = Math.max(s.numBuses, flock.MIN_BUSES);
 
-        // TODO: Model-based (with ChangeApplier) sharing of audioSettings
-        rates.audio = audioStrategySettings.rates.audio;
-        rates.control = rates.audio / audioSettings.blockSize;
-        audioSettings.chans = audioStrategySettings.chans;
+        return s;
     };
 
-    flock.enviro.play = function (model, applier, audioSettings, onPlay) {
+    // TODO: This should be modelized.
+    flock.enviro.calculateControlRate = function (audioSettings) {
+        audioSettings.rates.control = audioSettings.rates.audio / audioSettings.blockSize;
+        return audioSettings;
+    };
+
+    flock.enviro.acquireNextBus = function (type, buses, applier, m, s) {
+        var busNum = m.nextAvailableBus[type];
+
+        if (busNum === undefined) {
+            flock.fail("An invalid bus type was specified when invoking " +
+                "flock.enviro.acquireNextBus(). Type was: " + type);
+            return;
+        }
+
+        // Input buses start immediately after the output buses.
+        var offsetBusNum = busNum + s.chans,
+            offsetBusMax = s.chans + s.numInputBuses;
+
+        // Interconnect buses are after the input buses.
+        if (type === "interconnect") {
+            offsetBusNum += s.numInputBuses;
+            offsetBusMax = buses.length;
+        }
+
+        if (offsetBusNum >= offsetBusMax) {
+            flock.fail("Unable to aquire a bus. There are insufficient buses available. " +
+                "Please use an existing bus or configure additional buses using the enviroment's " +
+                "numBuses and numInputBuses parameters.");
+            return;
+        }
+
+        applier.change("nextAvailableBus." + type, ++busNum);
+
+        return offsetBusNum;
+    };
+
+    // TODO: This can be made declarative.
+    flock.enviro.play = function (applier, onPlay) {
         applier.requestChange("isPlaying", true);
         onPlay();
     };
 
+    // TODO: This can be made declarative.
     flock.enviro.stop = function (applier, onStop) {
         applier.requestChange("isPlaying", false);
         onStop();
@@ -1099,12 +1239,7 @@ var fluid = fluid || require("infusion"),
         invokers: {
             gen: {
                 funcName: "flock.enviro.nodeEvaluator.gen",
-                args: [
-                    "{enviro}.options.audioSettings.numBuses",
-                    "{enviro}.options.audioSettings.blockSize",
-                    "{that}.nodes",
-                    "{that}.buses"
-                ]
+                args: ["{that}.nodes"]
             },
 
             clearBuses: {
@@ -1118,7 +1253,7 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    flock.enviro.nodeEvaluator.gen = function (numBuses, busLen, nodes) {
+    flock.enviro.nodeEvaluator.gen = function (nodes) {
         var i,
             node;
 
@@ -1156,7 +1291,7 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.node", {
-        gradeNames: ["flock.autoEnviro", "fluid.standardComponent", "autoInit"],
+        gradeNames: ["flock.autoEnviro", "fluid.standardRelayComponent", "autoInit"],
         model: {}
     });
 
@@ -1252,7 +1387,7 @@ var fluid = fluid || require("infusion"),
 
         for (key in inputs) {
             input = inputs[key];
-            if (typeof input !== "number") {
+            if (flock.isUGen(input)) {
                 idx = flock.ugenNodeList.insertTree(idx, input, insertFn);
                 idx++;
             }
@@ -1268,7 +1403,7 @@ var fluid = fluid || require("infusion"),
 
         for (key in inputs) {
             input = inputs[key];
-            if (typeof input !== "number") {
+            if (flock.isUGen(input)) {
                 flock.ugenNodeList.removeTree(input, removeFn);
             }
         }
@@ -1341,7 +1476,7 @@ var fluid = fluid || require("infusion"),
                 expander: {
                     "this": "jQuery",
                     method: "extend",
-                    args: ["{that}.enviro.audioSettings", "{that}.options.audioSettings"]
+                    args: [true, {}, "{that}.enviro.audioSettings", "{that}.options.audioSettings"]
                 }
             },
 
@@ -1358,6 +1493,10 @@ var fluid = fluid || require("infusion"),
                     ]
                 }
             }
+        },
+
+        components: {
+            enviro: "{environment}"
         },
 
         model: {
@@ -1433,7 +1572,7 @@ var fluid = fluid || require("infusion"),
              */
             gen: {
                 funcName: "flock.synth.gen",
-                args: ["{that}.nodes"]
+                args: ["{that}.nodes", "{that}.model"]
             },
 
             /**
@@ -1486,7 +1625,8 @@ var fluid = fluid || require("infusion"),
 
     flock.synth.play = function (synth, enviro, addToEnviroFn) {
         if (enviro.nodes.indexOf(synth) === -1) {
-            addToEnviroFn();
+            var position = synth.options.addToEnvironment || "tail";
+            addToEnviroFn(position);
         }
 
         // TODO: This behaviour is confusing
@@ -1508,15 +1648,17 @@ var fluid = fluid || require("infusion"),
         });
     };
 
-    flock.synth.gen = function (nodes) {
+    flock.synth.gen = function (nodes, m) {
         var i,
             node;
 
         for (i = 0; i < nodes.length; i++) {
             node = nodes[i];
             if (node.gen !== undefined) {
-                node.gen(node.model.blockSize);
+                node.gen(node.model.blockSize); // TODO: De-thatify.
             }
+
+            m.value = node.model.value;
         }
     };
 
@@ -1608,18 +1750,14 @@ var fluid = fluid || require("infusion"),
         invokers: {
             value: {
                 funcName: "flock.synth.value.genValue",
-                args: ["{that}.nodes", "{that}.gen"]
+                args: ["{that}.model", "{that}.gen"]
             }
         }
     });
 
-    flock.synth.value.genValue = function (nodes, genFn) {
-        var lastIdx = nodes.length - 1,
-            out = nodes[lastIdx];
-
+    flock.synth.value.genValue = function (m, genFn) {
         genFn(1);
-
-        return out.model.value;
+        return m.value;
     };
 
 

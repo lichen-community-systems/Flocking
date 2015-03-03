@@ -1,13 +1,18 @@
-var fluid = require("infusion"),
-    loader = fluid.getLoader(__dirname),
-    flock = require(__dirname + "/../index.js");
+/*jshint node:true*/
+/*global require, __dirname*/
 
-var synth = flock.synth({
+"use strict";
+
+var currentDir = __dirname, //jshint ignore:line
+    flock = require(currentDir + "/../index.js"),
+    enviro = flock.init();
+
+flock.synth({
     synthDef: {
         ugen: "flock.ugen.playBuffer",
         buffer: {
             id: "hillier-first-chord",
-            url: __dirname + "/../../demos/shared/audio/hillier-first-chord.wav"
+            url: currentDir + "/../../demos/shared/audio/hillier-first-chord.wav"
         },
         loop: 1,
         speed: {
@@ -31,4 +36,4 @@ var synth = flock.synth({
     }
 });
 
-synth.play();
+enviro.play();

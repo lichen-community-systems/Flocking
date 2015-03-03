@@ -15,7 +15,7 @@
             "add": 1.5
         },
         "source": {
-            "ugen": "flock.ugen.lfSaw",
+            "ugen": "flock.ugen.saw",
             "freq": {
                 "ugen": "flock.ugen.sequence",
                 "freq": 0.5,

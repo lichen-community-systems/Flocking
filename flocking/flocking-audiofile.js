@@ -221,7 +221,9 @@ var fluid = fluid || require("infusion"),
                 rawData: rawData,
                 type: type,
                 success: success,
-                error: options.error
+                error: options.error,
+                sampleRate: options.sampleRate ||
+                    (flock.environment ? flock.environment.audioSettings.rates.audio : undefined)
             });
         };
 
@@ -234,7 +236,7 @@ var fluid = fluid || require("infusion"),
      * the browser's Web Audio Context.
      */
     flock.audio.decode.webAudio = function (o) {
-        var ctx = flock.enviro.shared.audioStrategy.context,
+        var ctx = flock.environment.audioStrategy.context,
             success = function (audioBuffer) {
                 var bufDesc = flock.bufferDesc.fromAudioBuffer(audioBuffer);
                 o.success(bufDesc);

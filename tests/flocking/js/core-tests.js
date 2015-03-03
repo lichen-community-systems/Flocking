@@ -14,6 +14,8 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
+    fluid.registerNamespace("flock.test.core");
+
     flock.init();
 
     var $ = fluid.registerNamespace("jQuery");
@@ -304,6 +306,51 @@ var fluid = fluid || require("infusion"),
                 path: "cat27.dog.0.fish42",
                 expected: "cat27.inputs.dog.0.inputs.fish42",
                 msg: "Path segments with numbers should be handled correctly."
+            },
+            {
+                path: "cat.dog.model.value",
+                expected: "cat.inputs.dog.model.value",
+                msg: "The special 'model' keyword should not be expanded"
+            },
+            {
+                path: "cat.dog.options.isAwesome",
+                expected: "cat.inputs.dog.options.isAwesome",
+                msg: "The special 'options' keyword should not be expanded"
+            },
+            {
+                path: "cat.dog.options.model",
+                expected: "cat.inputs.dog.options.model",
+                msg: "Reference to options.model should not be expanded"
+            },
+            {
+                path: "cat.dog.Options.Model",
+                expected: "cat.inputs.dog.inputs.Options.inputs.Model",
+                msg: "The match must be case sensitive"
+            },
+            {
+                path: "fish.modelizedCat.dogoptions.hamster.model.options.model",
+                expected: "fish.inputs.modelizedCat.inputs.dogoptions.inputs.hamster.model.options.model",
+                msg: "Partial matches on the words 'options' or 'model' should be ignored."
+            },
+            {
+                path: "dog.optionsCat.modelDog.value",
+                expected: "dog.inputs.optionsCat.inputs.modelDog.inputs.value",
+                msg: "Partial matches on the words 'options' or 'model' should be ignored."
+            },
+            {
+                path: "sine.freq.model",
+                expected: "sine.inputs.freq.model",
+                msg: "Special segment at the end should be matched"
+            },
+            {
+                path: "sine.freq.options",
+                expected: "sine.inputs.freq.options",
+                msg: "Special segment at the end should be matched"
+            },
+            {
+                path: "model.freq",
+                expected: "model.inputs.freq",
+                msg: "Special segment at the beginning should not be matched"
             }
         ]);
     });
@@ -495,6 +542,20 @@ var fluid = fluid || require("infusion"),
         var ugen = synth.input("mod");
         ok(ugen.gen, "A ugen returned from synth.input() should have a gen() property...");
         equal(typeof (ugen.gen), "function", "...of type function");
+    });
+
+    test("Get input values with special segments (e.g. 'options' and 'model')", function () {
+        var synth = createSynth(simpleSynthDef);
+
+        expect(4);
+        equal(synth.get("sine.freq.model.value"), 440,
+            "Getting the sine oscillator's frequency input's model value should return the current frequency.");
+        equal(synth.get("sine.freq.model"), synth.get("sine").inputs.freq.model,
+            "Getting the sine oscillator's frequency input's model should return the whole model object.");
+        equal(synth.get("sine.options"), synth.get("sine").options,
+            "Getting the sine oscillator's options should return the whole options object.");
+        equal(synth.get("sine.options.sampleRate"), synth.get("sine").options.sampleRate,
+            "Getting the sine oscillator's options should return the whole options object.");
     });
 
     test("Set input values", function () {
@@ -808,7 +869,7 @@ var fluid = fluid || require("infusion"),
 
         // And then that the actual ugen graph was modified.
         equal(direct.inputs.freq.model.value, 880);
-        equal(direct.inputs.mul.inputs.freq.model.value, 1.2);
+        flock.test.equalRounded(7, direct.inputs.mul.inputs.freq.model.value, 1.2);
         equal(direct.inputs.add.inputs.freq.model.value, 7.0);
         equal(direct.inputs.add.id, "add");
     };
@@ -817,6 +878,45 @@ var fluid = fluid || require("infusion"),
         testSetMultiple("set");
         testSetMultiple("input");
     });
+
+    var valueExpressionTestSpecs = [
+        {
+            name: "Value expression resolving into the model",
+            change: {
+                "sine.freq": "${mod.freq.model.value}"
+            },
+            targetUGenName: "mod",
+            expectedPath: "inputs.freq.model.value"
+        },
+        {
+            name: "Value expression resolving to a unit generator instance",
+            change: {
+                "sine.freq": "${mod}"
+            },
+            targetUGenName: "mod"
+        }
+    ];
+
+    var testValueExpressions = function (testSpecs) {
+        fluid.each(testSpecs, function (testSpec) {
+            test(testSpec.name, function () {
+                var synth = createSynth(simpleSynthDef);
+                synth.set(testSpec.change);
+
+                var actual = synth.get(Object.keys(testSpec.change)[0]),
+                    expected = synth.get(testSpec.targetUGenName);
+
+                if (testSpec.expectedPath) {
+                    expected = fluid.get(expected, testSpec.expectedPath);
+                }
+
+                equal(actual, expected,
+                    "The value expression should have been resolved and set at the specified path.");
+            });
+        });
+    };
+
+    testValueExpressions(valueExpressionTestSpecs);
 
     test("Synth.set(): correct node evaluation order", function () {
         var synth = flock.synth({
@@ -1028,167 +1128,65 @@ var fluid = fluid || require("infusion"),
         runAddToEnvironmentTests(testSpecs);
     });
 
+    var sequenceSynthDef = {
+        id: "seq",
+        ugen: "flock.ugen.sequence",
+        freq: 750,
+        list: [1, 2, 3, 5]
+    };
+
     test("Getting and setting ugen-specified special inputs.", function () {
         var s = flock.synth({
-            synthDef: {
-                id: "seq",
-                ugen: "flock.ugen.sequence",
-                list: [1, 2, 3, 5]
-            }
+            synthDef: sequenceSynthDef
         });
 
-        var seq = s.get("seq");
-        deepEqual(seq.inputs.list, s.options.synthDef.list,
+        var seqUGen = s.get("seq");
+        deepEqual(seqUGen.inputs.list, s.options.synthDef.list,
             "Sanity check: the sequence ugen should be initialized with the same list as specified in the synthDef.");
 
         var newList = [9, 10, 11, 12];
         s.set("seq.list", newList);
-        deepEqual(seq.inputs.list, newList,
+        deepEqual(seqUGen.inputs.list, newList,
             "After setting a 'special input' on a unit generator, it should have been set correctly.");
     });
 
+    var checkModelState = function (synth, genMethodName, numGens) {
+        for (var i = 1; i <= numGens; i++) {
+            synth[genMethodName]();
+            equal(synth.model.value, i,
+                "The model value should have been correctly updated.");
+        }
+    };
 
-    module("Buffers");
+    var testSynthModelState = function (testSpecs) {
+        fluid.each(testSpecs, function (testSpec) {
+            test(testSpec.name, function () {
+                var s = fluid.getGlobalValue(testSpec.type)({
+                    synthDef: sequenceSynthDef,
+                    sampleRate: 48000
+                });
 
-    var unwrappedSampleData = new Float32Array([1, 2, 3, 4, 5]);
-    var testDesc = {
-        format: {
-            numChannels: 1
+                checkModelState(s, testSpec.genMethodName, testSpec.numGens || 3);
+            });
+        });
+    };
+
+    var modelStateTestSpecs = [
+        {
+            name: "flock.synth model state",
+            type: "flock.synth",
+            genMethodName: "gen",
+            numGens: 3
         },
-        data: {
-            channels: unwrappedSampleData
+        {
+            name: "flock.synth.value",
+            type: "flock.synth.value",
+            genMethodName: "value",
+            numGens: 3
         }
-    };
+    ];
 
-    test("BufferDesc expansion: single channel raw sample array", function () {
-        var bufferDesc = fluid.copy(testDesc);
-        var actual = flock.bufferDesc(bufferDesc);
-        deepEqual(actual.data.channels, [unwrappedSampleData],
-            "A raw buffer of samples should be wrapped in an array if we know we have a single channel.");
-    });
-
-    test("BufferDesc expansion: mismatched channel data", function () {
-        var bufferDesc = fluid.copy(testDesc);
-        bufferDesc.format.numChannels = 2;
-
-        var thrown = false;
-
-        try {
-            flock.bufferDesc(bufferDesc);
-            thrown = false;
-        } catch (e) {
-            thrown = true;
-        }
-
-        ok(thrown, "An exception should have been thrown when mismatching sample data was provided.");
-    });
-
-    var bufferTestSynthDef = {
-        id: "play",
-        ugen: "flock.ugen.playBuffer",
-        buffer: flock.bufferDesc({
-            data: {
-                channels : [new Float32Array([1, 2, 3, 4, 5])]
-            }
-        })
-    };
-
-    flock.test.mockBufferUGen = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
-        flock.ugen.buffer(that);
-
-        that.onBufferReady = function () {
-            options.assertion(that);
-            start();
-        };
-
-        that.onInputChanged = function (inputName) {
-            that.onBufferInputChanged(inputName);
-        };
-
-        return that;
-    };
-
-    asyncTest("Setting a bufferDef", function () {
-        var s = flock.synth({
-            synthDef: {
-                id: "play",
-                ugen: "flock.test.mockBufferUGen",
-                options: {
-                    assertion: function (ugen) {
-                        deepEqual(ugen.buffer, s.enviro.buffers.hamster,
-                            "After setting a bufferDef, the buffer should have been correctly delivered to the ugen.");
-                    }
-                }
-            }
-        });
-
-        s.set("play.buffer", {
-            id: "hamster",
-            src: flock.test.audio.triangleInt16WAV
-        });
-    });
-
-    test("Setting a bufferDesc", function () {
-        var s = flock.synth({
-            synthDef: bufferTestSynthDef
-        });
-        var play = s.get("play");
-
-        // Set a bufferDesc.
-        var hamsterDesc = flock.bufferDesc({
-            data: {
-                channels: [new Float32Array([10, 11, 12, 13, 14, 15])]
-            }
-        });
-        s.set("play.buffer", hamsterDesc);
-        deepEqual(play.inputs.buffer, hamsterDesc,
-            "After setting a bufferDesc, the input should reflect the value actually set.");
-        deepEqual(play.buffer, hamsterDesc,
-            "And the actual buffer should be the correct bufferDesc from the environment.");
-    });
-
-    test("Setting a buffer id reference", function () {
-        var s = flock.synth({
-            synthDef: bufferTestSynthDef
-        });
-        var play = s.get("play");
-
-        // TODO: We should expose this functionality as a method on the environment.
-        var catBuffer = flock.bufferDesc({
-            id: "cat",
-            data: {
-                channels: [new Float32Array([10, 11, 12, 13, 14, 15])]
-            }
-        });
-
-        var dogBuffer = flock.bufferDesc({
-            id: "dog",
-            data: {
-                channels: [new Float32Array([22, 23, 24, 25, 26, 27])]
-            }
-        });
-
-        flock.parse.bufferForDef.resolveBuffer(catBuffer, undefined, s.enviro);
-        flock.parse.bufferForDef.resolveBuffer(dogBuffer, undefined, s.enviro);
-
-        // Set a full id reference.
-        var catIdBufDef = {
-            id: "cat"
-        };
-        s.set("play.buffer", catIdBufDef);
-        deepEqual(play.inputs.buffer, catIdBufDef,
-            "After setting an object id reference, the actual input should reflect the bufDef.");
-        deepEqual(play.buffer, s.enviro.buffers.cat,
-            "And the actual buffer should be the correct bufferDesc from the environment.");
-
-        // Set a raw id reference.
-        s.set("play.buffer", "dog");
-        equal(play.inputs.buffer, "dog",
-            "After setting a raw id reference, the actual input should reflect the value actually set.");
-        deepEqual(play.buffer, s.enviro.buffers.dog,
-            "And the actual buffer should be the correct bufferDesc from the environment.");
-    });
+    testSynthModelState(modelStateTestSpecs);
 
 
     module("nodeList and ugenNodeList");
@@ -1299,25 +1297,31 @@ var fluid = fluid || require("infusion"),
         var testNodes = [
             {
                 nickName: "1",
+                tags: ["flock.ugen"],
                 inputs: {
                     cat: {
                         nickName: "1.2",
+                        tags: ["flock.ugen"],
                         inputs: {
                             dog: {
-                                nickName: "1.1"
+                                nickName: "1.1",
+                                tags: ["flock.ugen"]
                             }
                         }
                     }
                 }
             },
             {
-                nickName: "2"
+                nickName: "2",
+                tags: ["flock.ugen"]
             },
             {
                 nickName: "3",
+                tags: ["flock.ugen"],
                 inputs: {
                     hamster: {
-                        nickName: 3.1
+                        nickName: 3.1,
+                        tags: ["flock.ugen"]
                     }
                 }
             }
@@ -1383,10 +1387,12 @@ var fluid = fluid || require("infusion"),
             nickName: "4",
             inputs: {
                 giraffe: {
-                    nickName: 4.1
+                    nickName: 4.1,
+                    tags: ["flock.ugen"]
                 },
                 goose: {
-                    nickName: 4.2
+                    nickName: 4.2,
+                    tags: ["flock.ugen"]
                 }
             }
         };
@@ -1408,7 +1414,6 @@ var fluid = fluid || require("infusion"),
             "3": testNodes[2],
             "3.1": testNodes[2].inputs.hamster
         }, "The old node and all its inputs should be replaced by the new one and its inputs.");
-
     });
 
     var testRemoval = function (synthDef, testSpecs) {
@@ -1433,11 +1438,11 @@ var fluid = fluid || require("infusion"),
         ugen: "flock.ugen.out",
         inputs: {
             sources: {
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 inputs: {
                     gerbil: {
                         id: "gerbil",
-                        ugen: "flock.mock.ugen",
+                        ugen: "flock.test.ugen.mock",
                         inputs: {
                             ear: {
                                 id: "ear",
@@ -1448,10 +1453,10 @@ var fluid = fluid || require("infusion"),
                     },
                     cat: {
                         id: "cat",
-                        ugen: "flock.mock.ugen"
+                        ugen: "flock.test.ugen.mock"
                     },
                     dog: {
-                        ugen: "flock.mock.ugen"
+                        ugen: "flock.test.ugen.mock"
                     }
                 }
             },
@@ -1517,7 +1522,7 @@ var fluid = fluid || require("infusion"),
             expectedInput = synth.namedNodes.ear,
             newUGen = flock.parse.ugenForDef({
                 id: "gerbil",
-                ugen: "flock.mock.ugen"
+                ugen: "flock.test.ugen.mock"
             });
         synth.swapTree(newUGen, toReplace);
 
@@ -1549,7 +1554,7 @@ var fluid = fluid || require("infusion"),
         var synth1 = flock.synth({
             synthDef: {
                 id: "mock",
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 freq: 110,
                 mul: 0.1,
                 options: {
@@ -1563,7 +1568,7 @@ var fluid = fluid || require("infusion"),
         var synth2 = flock.synth({
             synthDef: {
                 id: "mock",
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 freq: 220,
                 mul: 0.2,
                 options: {
@@ -1672,11 +1677,11 @@ var fluid = fluid || require("infusion"),
     test("flock.synth.polyphonic", function () {
         var def = {
             id: "carrier",
-            ugen: "flock.mock.ugen",
+            ugen: "flock.test.ugen.mock",
             freq: 440,
             mul: {
                 id: "env",
-                ugen: "flock.mock.ugen",
+                ugen: "flock.test.ugen.mock",
                 gate: 0
             }
         };
@@ -1782,15 +1787,15 @@ var fluid = fluid || require("infusion"),
     test("flock.synth() with mix of compressed and expanded ugenDefs", function () {
         var mixedSynthDef = {
             id: "carrier",
-            ugen: "flock.ugen.sinOsc",
+            ugen: "flock.test.ugen.mock",
             freq: {
                 id: "mod",
-                ugen: "flock.ugen.sinOsc",
+                ugen: "flock.test.ugen.mock",
                 inputs: {
                     freq: 440,
                     phase: {
                         id: "line",
-                        ugen: "flock.ugen.xLine",
+                        ugen: "flock.test.ugen.mock",
                         start: 1,
                         end: 10,
                         duration: 2
@@ -1969,4 +1974,97 @@ var fluid = fluid || require("infusion"),
             "as the environment itself.");
     });
 
+    test("Options clamping", function () {
+        var enviro = flock.init({
+            chans: 64,
+            numInputBuses: 128
+        });
+        ok(enviro.audioSettings.chans <= flock.MAX_CHANNELS,
+            "The environment's number of channels should be clamped at " + flock.MAX_CHANNELS);
+        equal(enviro.audioSettings.numInputBuses, flock.MAX_INPUT_BUSES,
+            "The environment's number of input buses should be clamped at " + flock.MAX_INPUT_BUSES);
+        ok(enviro.audioSettings.numInputBuses >= flock.MIN_INPUT_BUSES,
+            "The environment should have at least " + flock.MIN_INPUT_BUSES + " input buses.");
+
+        enviro = flock.init({
+            chans: 1,
+            numBuses: 1
+        });
+        ok(enviro.audioSettings.numBuses >= 2,
+            "The environment should always have two or more buses.");
+
+        enviro = flock.init({
+            chans: 8,
+            numBuses: 4
+        });
+        equal(enviro.audioSettings.numBuses, 8,
+            "The environment should always have at least as many buses as channels.");
+    });
+
+    test("Options merging", function () {
+        var enviro = flock.init({
+            numBuses: 24,
+            chans: 1
+        });
+
+        var expectedNumChans = !flock.platform.browser.safari ? 1 : enviro.audioStrategy.context.destination.channelCount;
+        equal(enviro.audioSettings.chans, expectedNumChans,
+            "The environment should have been configured with the specified chans option (except on Safari).");
+
+        equal(enviro.audioSettings.numBuses, 24,
+            "The environment should have been configured with the specified number of buses");
+
+        equal(enviro.buses.length, 24,
+            "The environment should actually have the specified number of buses.");
+    });
+
+
+    module("Bus tests");
+
+    flock.test.core.runBusTests = function (type, numBuses, enviroOpts, expectedCalcFn) {
+        var enviro = flock.init(enviroOpts),
+            actualBusNum,
+            expectedBusNum;
+
+        for (var i = 0; i < numBuses; i++) {
+            actualBusNum = enviro.acquireNextBus(type);
+            expectedBusNum = expectedCalcFn(i, enviro);
+            equal(actualBusNum, expectedBusNum,
+                "The correct " + type + " bus number should have been returned.");
+        }
+
+        try {
+            enviro.acquireNextBus(type);
+            ok(false, "An error should have been thrown when " +
+                "trying to acquire more than the available number of buses.");
+        } catch (e) {
+            ok(e.message.indexOf("insufficient buses available") > -1,
+                "The correct error should be thrown when trying to acquire " +
+                "more than the available number of buses.");
+        }
+    };
+
+    test("Input bus acquisition", function () {
+        var enviroOpts = {
+            chans: 1,
+            numBuses: 10,
+            numInputBuses: 2
+        };
+
+        flock.test.core.runBusTests("input", 2, enviroOpts, function (runIdx, enviro) {
+            return runIdx + enviro.audioSettings.chans;
+        });
+    });
+
+    test("Interconnect bus acquisition", function () {
+        var enviroOpts = {
+            chans: 2,
+            numBuses: 6,
+            numInputBuses: 2
+        };
+
+        flock.test.core.runBusTests("interconnect", 2, enviroOpts, function (runIdx, enviro) {
+            return runIdx + enviro.audioSettings.chans + enviro.audioSettings.numInputBuses;
+        });
+    });
 }());

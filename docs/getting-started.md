@@ -5,10 +5,10 @@
 
 The Flocking source code is hosted on Github, a community for sharing and contributing code using the [Git](http://git-scm.com/) distributed version control system. In the long run, you'll find that learning how to use Github and Git will be very helpful in using Flocking and other open source web toolkits. But it's not required. Here's how to get started with Flocking without using Git or Github.
 
-* Go to the [main Flocking page](http://github.com/colinbdclark/Flocking) on Github
-* Press the "Download ZIP" button to download the Flocking source code to your computer
-* Unzip Flocking and copy the _dist_ directory into your project. You'll probably want to rename it to _flocking_ or the something more descriptive.
-* Link the Flocking JavaScript file _flocking-all.js_ to your web page using a script tag. This file contains all of Flocking packaged up as a single JavaScript file.
+1. Go to the [Flocking releases page](https://github.com/colinbdclark/flocking/releases) on Github
+2. Download the latest stable release
+3. Unzip Flocking and copy the _dist_ directory into your project. You'll probably want to rename it to <code>flocking</code> or the something more descriptive.
+4. Link Flocking's JavaScript file, <code>flocking-all.js</code> to your web page using a script tag. This file contains all of Flocking, along with its dependencies, packaged up as a single file.
 
 Here's how:
 
@@ -23,6 +23,7 @@ Here is an example of an HTML page that uses Flocking, which you can use as a te
 
     <html lang="en">
         <head>
+            <meta charset="UTF-8">
             <title>A Flocking Project</title>
 
             <script src="flocking/flocking-all.js"></script>
@@ -52,6 +53,8 @@ And an example JavaScript file:
         // You should change this to a namespace that is appropriate for your project.
         fluid.registerNamespace("myStuff");
 
+        var enviro = flock.init();
+
         // Expose any public functions or constructors as properties on your namesapce.
         myStuff.play = function () {
             var mySynth = flock.synth({
@@ -70,7 +73,7 @@ And an example JavaScript file:
             // If you're on iOS, you will need to call in a listener for
             // some kind of user input action, such a button click or touch handler.
             // This is because iOS will only play sound if the user initiated it.
-            flock.environment.play();
+            enviro.play();
         };
 
     }());
@@ -116,16 +119,28 @@ If you'd prefer to link to the individual Flocking files during development, the
     <script src="flocking/flocking/flocking-webaudio.js"></script>
     <script src="flocking/flocking/flocking-parser.js"></script>
     <script src="flocking/flocking/flocking-ugens.js"></script>
+    <script src="flocking/flocking/flocking-envelopes.js"></script>
     <script src="flocking/flocking/flocking-ugens-browser.js"></script>
+    <script src="flocking/flocking/flocking-ugens-bandlimited.js"></script>
 
-In addition, if you're working with WAV or AIFF files, these files are required:
+
+In addition, if you're working with audio files, these files are required:
 
     <script src="../../../flocking/flocking-buffers.js"></script>
     <script src="../../../flocking/flocking-audiofile.js"></script>
 
+If you need to use AIFF files, which aren't supported in some browsers, you can include:
+
+    <script src="../../../flocking/flocking-audiofile-compatibility.js"></script>
+
 If you're using the flock.ugen.scope unit generator, you'll also need:
 
     <script src="../../../flocking/flocking-gfx.js"></script>
+
+If you want to use a MIDI controller with Flocking (currently only in Chrome), you'll need:
+
+    <script src="../../../flocking/flocking-webmidi.js"></script>
+
 
 ## Using Flocking with Infusion ##
 
@@ -161,6 +176,10 @@ Fluid components are created by defining JSON "component trees", which are manag
         fluid.defaults("myStuff.composition", {
 
             gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+            members: {
+                enviro: "@expand:flock.init"
+            },
 
             // This composition has two components:
             //  1. our sinewaver instrument (defined above)
@@ -235,10 +254,10 @@ Fluid components are created by defining JSON "component trees", which are manag
             listeners: {
                 onCreate: [
                     {
-                        funcName: "{environment}.play"
+                        func: "{environment}.play"
                     },
                     {
-                        funcName: "{clock}.schedule",
+                        func: "{clock}.schedule",
                         args: ["{composition}.options.score"]
                     }
                 ]
@@ -252,6 +271,7 @@ And here's the HTML page to go with it:
 
     <html lang="en">
         <head>
+            <meta charset="UTF-8">
             <title>A Flocking Project</title>
 
             <script src="flocking/flocking-all.js"></script>

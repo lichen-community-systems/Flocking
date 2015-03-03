@@ -115,7 +115,8 @@ var fluid = fluid || require("infusion"),
             name: "int 16 WAV file",
             bitDepth: 16,
             dataSize: eightBitSampleSize * 2,
-            src: flock.test.audio.triangleInt16WAV
+            src: flock.test.audio.triangleInt16WAV,
+            sampleRate: flock.environment.audioSettings.rates.audio
         }
     ]);
 })();

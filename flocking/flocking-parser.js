@@ -116,7 +116,7 @@ var fluid = fluid || require("infusion"),
 
 
     flock.parse.reservedWords = ["id", "ugen", "rate", "inputs", "options"];
-    flock.parse.specialInputs = ["value", "buffer", "table"];
+    flock.parse.specialInputs = ["value", "buffer", "list", "table", "envelope"];
 
     flock.parse.expandInputs = function (ugenDef) {
         if (ugenDef.inputs) {
@@ -346,6 +346,10 @@ var fluid = fluid || require("infusion"),
         };
 
         var error = function (msg) {
+            if (!msg && source.model.src && source.model.src.indexOf(".aif")) {
+                msg = "if this is an AIFF file, you might need to include" +
+                " flocking-audiofile-compatibility.js in some browsers.";
+            }
             throw new Error("Error while resolving buffer " + source.model.src + ": " + msg);
         };
 

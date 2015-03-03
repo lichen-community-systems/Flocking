@@ -160,6 +160,10 @@ var fluid = fluid || require("infusion"),
 
                     model: {
                         synthSpec: "{playground}.model.activeSynthSpec"
+                    },
+
+                    modelListeners: {
+                        "synthSpec": "{synthDefRenderer}.refreshView()"
                     }
                 }
             }
@@ -167,10 +171,6 @@ var fluid = fluid || require("infusion"),
 
         events: {
             onReady: "{jsPlumb}.events.onReady"
-        },
-
-        modelListeners: {
-            "synthSpec": "{synthDefRenderer}.refreshView()"
         }
     });
 

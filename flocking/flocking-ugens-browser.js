@@ -33,13 +33,14 @@ var fluid = fluid || require("infusion"),
 
         that.gen = function (numSamps) {
             var m = that.model,
+                source = that.inputs.source.output,
                 spf = m.spf,
                 bufIdx = m.bufIdx,
                 buf = m.scope.values,
                 i;
 
             for (i = 0; i < numSamps; i++) {
-                buf[bufIdx] = that.inputs.source.output[i];
+                buf[bufIdx] = source[i];
                 if (bufIdx < spf) {
                     bufIdx += 1;
                 } else {
@@ -47,7 +48,9 @@ var fluid = fluid || require("infusion"),
                     that.scopeView.refreshView();
                 }
             }
+
             m.bufIdx = bufIdx;
+            m.value = m.unscaledValue = flock.ugen.lastOutputValue(numSamps, source);
         };
 
         that.onInputChanged = function () {
@@ -127,6 +130,7 @@ var fluid = fluid || require("infusion"),
             }
 
             m.movingAvg = movingAvg;
+            m.value = m.unscaledValue = movingAvg;
         };
 
         that.linearGen = function (numSamps) {
@@ -150,16 +154,21 @@ var fluid = fluid || require("infusion"),
                 out[i] = movingAvg * mul + add;
             }
 
-            m.movingAvg = movingAvg;
+            m.movingAvg = m.unscaledValue = movingAvg;
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
         };
 
         that.noInterpolationGen = function (numSamps) {
-            var val = flock.ugen.mouse.cursor.normalize(that.target, that.model),
+            var m = that.model,
+                out = that.output,
+                val = flock.ugen.mouse.cursor.normalize(that.target, m),
                 i;
 
             for (i = 0; i < numSamps; i++) {
-                that.output[i] = val * that.inputs.mul.output[0] + that.inputs.add.output[0];
+                out[i] = val * that.inputs.mul.output[0] + that.inputs.add.output[0];
             }
+
+            m.value = m.unscaledValue = flock.ugen.lastOutputValue(numSamps, out);
         };
 
         that.moveListener = function (e) {
@@ -273,7 +282,8 @@ var fluid = fluid || require("infusion"),
             interpolation: "linear",
             model: {
                 mousePosition: 0,
-                movingAvg: 0
+                movingAvg: 0,
+                value: 0.0
             }
         }
     });
@@ -288,25 +298,25 @@ var fluid = fluid || require("infusion"),
                 i;
 
             for (i = 0; i < numSamps; i++) {
-                out[i] = m.value;
+                out[i] = m.unscaledValue;
             }
 
             that.mulAdd(numSamps);
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
         };
 
         that.mouseDownListener = function () {
-            that.model.value = 1.0;
+            that.model.unscaledValue = 1.0;
         };
 
         that.mouseUpListener = function () {
-            that.model.value = 0.0;
+            that.model.unscaledValue = 0.0;
         };
 
         that.init = function () {
             var m = that.model;
             m.target = typeof (that.options.target) === "string" ?
                 document.querySelector(that.options.target) : that.options.target || window;
-            m.value = 0.0;
             m.target.addEventListener("mousedown", that.mouseDownListener, false);
             m.target.addEventListener("mouseup", that.mouseUpListener, false);
 
@@ -325,4 +335,62 @@ var fluid = fluid || require("infusion"),
         rate: "control"
     });
 
+
+    flock.ugen.mediaIn = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                out = that.output,
+                bus = that.bus,
+                val;
+
+            for (var i = 0; i < numSamps; i++) {
+                out[i] = val = bus[i];
+            }
+
+            m.unscaledValue = val;
+            that.mulAdd(numSamps);
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
+        };
+
+        that.onInputChanged = function () {
+            flock.onMulAddInputChanged(that);
+        };
+
+        that.init = function () {
+            var enviro = flock.environment,
+                mediaEl = $(that.options.element),
+                // TODO: Direct reference to the shared environment.
+                busNum = enviro.audioStrategy.nativeNodeManager.createMediaElementInput(mediaEl[0]);
+
+            that.bus = that.options.audioSettings.buses[busNum];
+            that.onInputChanged();
+
+            // TODO: Remove this warning when Safari and Android
+            // fix their MediaElementAudioSourceNode implementations.
+            if (flock.platform.browser.safari) {
+                flock.log.warn("MediaElementSourceNode does not work on Safari. " +
+                    "For more information, see https://bugs.webkit.org/show_bug.cgi?id=84743 " +
+                    "and https://bugs.webkit.org/show_bug.cgi?id=125031");
+            } else if (flock.platform.isAndroid) {
+                flock.log.warn("MediaElementSourceNode does not work on Android. " +
+                    "For more information, see https://code.google.com/p/chromium/issues/detail?id=419446");
+            }
+        };
+
+        that.init();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.mediaIn", {
+        rate: "audio",
+        inputs: {
+            mul: null,
+            add: null
+        },
+        ugenOptions: {
+            element: "audio"
+        }
+    });
 }());

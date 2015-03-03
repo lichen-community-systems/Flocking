@@ -19,8 +19,14 @@ var fluid = fluid || require("infusion");
             groups: [
                 "{osc}.options.demos",
                 "{noise}.options.demos",
+                "{synthesis}.options.demos",
                 "{granular}.options.demos",
+                "{buffers}.options.demos",
+                "{filters}.options.demos",
+                "{envelopes}.options.demos",
+                "{triggers}.options.demos",
                 "{browser}.options.demos",
+                "{multichannel}.options.demos",
                 "{scheduling}.options.demos"
             ],
             defaultOption: "am"
@@ -35,12 +41,37 @@ var fluid = fluid || require("infusion");
                 type: "flock.playground.demos.noise"
             },
 
+            synthesis: {
+                type: "flock.playground.demos.synthesis"
+            },
+
             granular: {
                 type: "flock.playground.demos.granular"
             },
 
+            buffers: {
+                type: "flock.playground.demos.buffers"
+            },
+
+
+            filters: {
+                type: "flock.playground.demos.filters"
+            },
+
+            envelopes: {
+                type: "flock.playground.demos.envelopes"
+            },
+
+            triggers: {
+                type: "flock.playground.demos.triggers"
+            },
+
             browser: {
                 type: "flock.playground.demos.browser"
+            },
+
+            multichannel: {
+                type: "flock.playground.demos.multichannel"
             },
 
             scheduling: {
@@ -71,11 +102,7 @@ var fluid = fluid || require("infusion");
                 {
                     id: "saw",
                     name: "Saw"
-                },
-                // {
-                //     id: "stereo",
-                //     name: "Stereo"
-                // }
+                }
             ]
         }
     });
@@ -109,11 +136,42 @@ var fluid = fluid || require("infusion");
                 {
                     id: "impulse",
                     name: "Impulse"
+                },
+                {
+                    id: "impulse-pm",
+                    name: "Impulse Phase Modulation"
+                },
+                {
+                    id: "bandlimited-impulse",
+                    name: "Bandlimited impulse"
                 }
-                // {
-                //     id: "impulse-pm",
-                //     name: "Impulse Phase Modulation"
-                // }
+            ]
+        }
+    });
+
+    fluid.defaults("flock.playground.demos.synthesis", {
+        gradeNames: ["fluid.littleComponent", "autoInit"],
+
+        demos: {
+            name: "Synthesis Techniques",
+            options: [
+                {
+                    id: "am",
+                    name: "Amplitude modulation"
+                },
+                {
+                    id: "fm",
+                    name: "Frequency modulation"
+                },
+                {
+                    id: "pm",
+                    name: "Phase modulation"
+                },
+                {
+                    id: "sum",
+                    name: "Additive synthesis",
+                    fileExt: "js"
+                }
             ]
         }
     });
@@ -122,11 +180,141 @@ var fluid = fluid || require("infusion");
         gradeNames: ["fluid.littleComponent", "autoInit"],
 
         demos: {
-            name: "Granular synthesis",
+            name: "Granular Synthesis",
             options: [
                 {
                     id: "granulator",
                     name: "Granulator"
+                }
+            ]
+        }
+    });
+
+    fluid.defaults("flock.playground.demos.buffers", {
+        gradeNames: ["fluid.littleComponent", "autoInit"],
+
+        demos: {
+            name: "Audio Buffers",
+            options: [
+                {
+                    id: "play-buffer",
+                    name: "Play a buffer"
+                },
+                {
+                    id: "playbuffer-trigger",
+                    name: "Trigger buffer playback"
+                },
+                {
+                    id: "readBuffer",
+                    name: "Read buffer"
+                },
+                {
+                    id: "readBuffer-phasor",
+                    name: "Read buffer with phasor"
+                },
+                {
+                    id: "audio-in",
+                    name: "Live audio input"
+                },
+                {
+                    id: "audio-in-granulated",
+                    name: "Granulated live audio"
+                }
+            ]
+        }
+    });
+
+    fluid.defaults("flock.playground.demos.filters", {
+        gradeNames: ["fluid.littleComponent", "autoInit"],
+
+        demos: {
+            name: "Filters",
+            options: [
+                {
+                    id: "lowpass-filter",
+                    name: "Low pass filter"
+                },
+                {
+                    id: "highpass-filter",
+                    name: "High pass filter"
+                },
+                {
+                    id: "bandpass-filter",
+                    name: "Band pass filter"
+                },
+                {
+                    id: "bandreject-filter",
+                    name: "Band pass filter"
+                },
+                {
+                    id: "delay",
+                    name: "Delay"
+                },
+                {
+                    id: "latch",
+                    name: "Sample and hold"
+                },
+                {
+                    id: "moog",
+                    name: "Moog VCF"
+                }
+            ]
+        }
+    });
+
+    fluid.defaults("flock.playground.demos.envelopes", {
+        gradeNames: ["fluid.littleComponent", "autoInit"],
+
+        demos: {
+            name: "Envelopes",
+            options: [
+                {
+                    id: "asr",
+                    name: "Attack/Sustain/Release"
+                },
+                {
+                    id: "adsr",
+                    name: "ADSR Envelope Generator"
+                },
+                {
+                    id: "custom-envelope",
+                    name: "Custom Envelope"
+                },
+                {
+                    id: "for-ann-rising",
+                    name: "For Ann (Rising) by James Tenney",
+                    fileExt: "js"
+                },
+                {
+                    id: "decay",
+                    name: "Decay"
+                },
+                {
+                    id: "glissando",
+                    name: "Glissando"
+                },
+                {
+                    id: "line-fm",
+                    name: "Frequency modulation with a line"
+                },
+                {
+                    id: "line-pm",
+                    name: "Phase modulation with a line"
+                }
+            ]
+        }
+    });
+
+    fluid.defaults("flock.playground.demos.triggers", {
+        gradeNames: ["fluid.littleComponent", "autoInit"],
+
+        demos: {
+            name: "Triggers",
+            options: [
+                {
+                    id: "trigger-callback",
+                    name: "Trigger a callback",
+                    fileExt: "js"
                 }
             ]
         }
@@ -154,25 +342,44 @@ var fluid = fluid || require("infusion");
                     id: "mouse-xy",
                     name: "Mouse X and Y axes"
                 },
-                // {
-                //     id: "mouse-click",
-                //     name: "Mouse click"
-                // },
                 {
-                    id: "trigger-callback",
-                    name: "Trigger a callback",
-                    fileExt: "js"
+                    id: "mouse-click",
+                    name: "Mouse click"
                 }
             ]
         }
     });
 
+    fluid.defaults("flock.playground.demos.multichannel", {
+        gradeNames: ["fluid.littleComponent", "autoInit"],
+
+        demos: {
+            name: "Multiple Channels",
+            options: [
+                {
+                    id: "stereo",
+                    name: "Stereo"
+                },
+                {
+                    id: "quadraphonic",
+                    name: "Four channels",
+                    fileExt: "js"
+                }
+            ]
+        }
+    });
+    
     fluid.defaults("flock.playground.demos.scheduling", {
         gradeNames: ["fluid.littleComponent", "autoInit"],
 
         demos: {
             name: "Synths and scheduling",
             options: [
+                {
+                    id: "multiple-synths",
+                    name: "Multiple synths",
+                    fileExt: "js"
+                },
                 {
                     id: "polyphonicSynth",
                     name: "Polyphonic synth",
@@ -190,63 +397,4 @@ var fluid = fluid || require("infusion");
             ]
         }
     });
-
-        /*<optgroup label="Simple Waveforms">
-            <option value="simple_sin">Sine</option>
-            <option value="simple_triangle">Triangle</option>
-            <option value="simple_square">Square</option>
-            <option value="simple_saw">Saw</option>
-            <option value="stereo">Stereo</option>
-        </optgroup>
-        <optgroup label="Noise">
-            <option value="noise_white">White noise</option>
-            <option value="noise_pink">Pink noise</option>
-            <option value="noise_dust">Dust</option>
-            <option value="noise_lf">LFNoise</option>
-            <option value="noise_sin">LFNoise &amp; SinOsc</option>
-            <option value="noise_impulse">Impulse</option>
-            <option value="impulse_phase">Impulse Phase Modulation</option>
-        </optgroup>
-        <optgroup label="Synthesis Techniques">
-            <option value="amp_mod" selected="selected">Amplitude modulation</option>
-            <option value="freq_mod">Frequency modulation</option>
-            <option value="phase_mod">Phase modulation</option>
-            <option value="sum">Additive Synthesis</option>
-        </optgroup>
-        <optgroup label="Granular Synthesis">
-            <option value="granulator">Granulator</option>
-        </optgroup>
-        <optgroup label="Audio Buffers">
-            <option value="playBuffer">Play a buffer</option>
-            <option value="playBufferTrigger">Trigger buffer playback</option>
-            <option value="readBuffer">Read buffer</option>
-            <option value="readBufferPhasor">Read buffer with phasor</option>
-        </optgroup>
-        <optgroup label="Filters">
-            <option value="lowpass">Low pass filter</option>
-            <option value="highpass">High pass filter</option>
-            <option value="bandpass">Band pass filter</option>
-            <option value="bandreject">Band reject filter</option>
-            <option value="delay">Delay</option>
-            <option value="latch">Sample and Hold</option>
-        </optgroup>
-        <optgroup label="Envelopes">
-            <option value="simpleASR">Simple Attack/Sustain/Release</option>
-            <option value="decay">Decay</option>
-            <option value="line_freq">SinOsc Freq</option>
-            <option value="line_mod">Mod SinOsc Freq</option>
-            <option value="line_phase">SinOsc Phase</option>
-        </optgroup>
-        <optgroup label="DOM UGens">
-            <option value="scope">Scope</option>
-            <option value="mouse_x">Mouse X</option>
-            <option value="mouse_y">Mouse Y</option>
-            <option value="mouse_xy">Mouse X &amp; Y</option>
-            <option value="mouse_click">Mouse click</option>
-        </optgroup>
-        <optgroup label="Synths and Scheduling">
-            <option value="multipleSynths">Multiple Synths</option>
-            <option value="polyphonicSynth">Polyphonic Synth</option>
-            <option value="declarativeScheduling">Declarative Scheduling</option>
-        </optgroup>*/
 }());

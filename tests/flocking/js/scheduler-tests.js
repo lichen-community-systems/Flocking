@@ -115,8 +115,8 @@ var fluid = fluid || require("infusion"),
             runs: 10,
             interval: "once",
             time: 100,
-            maxOutlier: 50,
-            averageDrift: 6,
+            maxOutlier: 65,
+            averageDrift: 10,
             scheduler: {
                 type: "flock.scheduler.async",
                 options: {
@@ -181,7 +181,7 @@ var fluid = fluid || require("infusion"),
             numRuns = 100,
             runs = 0,
             lastFired = 0,
-            mistimingTolerance = 50, // TODO: This value is excessively high.
+            mistimingTolerance = 60, // TODO: This value is excessively high.
             callback;
 
         expect(2 * numRuns);
