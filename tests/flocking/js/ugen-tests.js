@@ -900,7 +900,7 @@ var fluid = fluid || require("infusion"),
     });
 
 
-    module("flock.ugen.playBuffer() tests", {
+    module("flock.ugen.playBuffer", {
         setup: function () {
             var bufDesc = flock.bufferDesc({
                 id: playbackDef.inputs.buffer.id,
@@ -926,7 +926,7 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    test("flock.ugen.playBuffer, speed: 1.0", function () {
+    test("speed: constant rate 1.0", function () {
         var player = flock.parse.ugenForDef(playbackDef);
 
         player.gen(64);
@@ -943,7 +943,7 @@ var fluid = fluid || require("infusion"),
         deepEqual(player.output, expected, "With looping turned on, the output buffer should repeat the source buffer from the beginning.");
     });
 
-    test("flock.ugen.playBuffer, speed: 2.0", function () {
+    test("speed: constant rate 2.0", function () {
         var player = flock.parse.ugenForDef(playbackDef),
             expected = new Float32Array(64),
             expectedFirst = new Float32Array([1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63]),
@@ -969,6 +969,39 @@ var fluid = fluid || require("infusion"),
             "At double speed with looping on, the output buffer should contain two repetitions of the odd values from the source buffer.");
     });
 
+    test("speed: constant rate -1.0 not looping", function () {
+        var player = flock.parse.ugenForDef(playbackDef),
+            expected = flock.test.fillBuffer(64, 1);
+
+        player.input("speed", -1.0);
+        player.gen(64);
+        deepEqual(player.output, expected, "The buffer should be read in reverse");
+
+        player.gen(64);
+        deepEqual(player.output, flock.test.silentBlock64, "Playback should not loop.");
+
+        player.input("loop", 1.0);
+        player.gen(64);
+        deepEqual(player.output, expected,
+            "With looping turned on, the buffer should again be read in reverse");
+    });
+
+    test("triggers: originally closed", function () {
+        var player = flock.parse.ugenForDef(playbackDef);
+
+        player.set("trigger", 0.0);
+        player.gen(64);
+
+        deepEqual(player.output, flock.test.silentBlock64,
+            "When not looping, and before the trigger has fired, the unit generator should output silence.");
+
+        player.set("loop", 1.0);
+        player.gen(64);
+
+        deepEqual(player.output, flock.test.silentBlock64,
+            "When looping, but before the trigger has fired, the unit generator should output silence.");
+
+    });
 
     module("flock.ugen.amplitude() tests");
 

@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (February 25, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (March 7, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.3
@@ -20203,6 +20203,33 @@ var fluid = fluid || require("infusion"),
     };
 
     /**
+     * Performs an in-place reversal of all items in the array.
+     *
+     * @arg {Iterable} b a buffer or array to reverse
+     * @return {Iterable} the buffer, reversed
+     */
+    flock.reverse = function (b) {
+        if (!b || !flock.isIterable(b) || b.length < 2) {
+            return b;
+        }
+
+        // A native implementation of reverse() exists for regular JS arrays
+        // and is partially implemented for TypedArrays. Use it if possible.
+        if (typeof b.reverse === "function") {
+            return b.reverse();
+        }
+
+        var t;
+        for (var l = 0, r = b.length - 1; l < r; l++, r--) {
+            t = b[l];
+            b[l] = b[r];
+            b[r] = t;
+        }
+
+        return b;
+    };
+
+    /**
      * Randomly selects an index from the specified array.
      */
     flock.randomIndex = function (arr) {
@@ -25546,38 +25573,35 @@ var fluid = fluid || require("infusion"),
     flock.ugen.playBuffer = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
-        // Optimized gen function for constant regular-speed playback.
-        that.crRegularSpeedGen = function (numSamps) {
+        that.defaultKrTriggerGen = function (numSamps) {
             var m = that.model,
                 out = that.output,
                 chan = that.inputs.channel.output[0],
                 source = that.buffer.data.channels[chan],
-                trig = inputs.trigger.output,
                 bufIdx = m.idx,
-                bufLen = source.length,
                 loop = that.inputs.loop.output[0],
-                start = (that.inputs.start.output[0] * bufLen) | 0,
-                end = (that.inputs.end.output[0] * bufLen) | 0,
+                trigVal = inputs.trigger.output[0],
                 i,
-                j,
                 samp;
 
-            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.trigger) {
-                if (trig[j] > 0.0 && m.prevTrig <= 0.0) {
-                    bufIdx = start;
-                } else if (bufIdx >= end) {
-                    if (loop > 0) {
-                        bufIdx = start;
+            if (trigVal > 0.0 && m.prevTrig <= 0.0) {
+                bufIdx = 0;
+            }
+            m.prevTrig = trigVal;
+
+            for (i = 0; i < numSamps; i++) {
+                if (bufIdx > m.lastIdx) {
+                    if (loop > 0.0 && trigVal > 0.0) {
+                        bufIdx = 0;
                     } else {
                         out[i] = samp = 0.0;
                         continue;
                     }
                 }
-                m.prevTrig = trig[j];
 
                 samp = that.interpolate(bufIdx, source);
                 out[i] = samp;
-                bufIdx += m.stepSize;
+                bufIdx++;
             }
 
             m.idx = bufIdx;
@@ -25586,28 +25610,33 @@ var fluid = fluid || require("infusion"),
             m.value = flock.ugen.lastOutputValue(numSamps, out);
         };
 
-        that.krSpeedGen = function (numSamps) {
+        that.otherwiseGen = function (numSamps) {
             var m = that.model,
                 out = that.output,
                 chan = that.inputs.channel.output[0],
-                speedInc = that.inputs.speed.output[0],
+                speed = that.inputs.speed.output,
                 source = that.buffer.data.channels[chan],
                 trig = inputs.trigger.output,
                 bufIdx = m.idx,
-                bufLen = source.length,
                 loop = that.inputs.loop.output[0],
-                start = (that.inputs.start.output[0] * bufLen) | 0,
-                end = (that.inputs.end.output[0] * bufLen) | 0,
+                start = (that.inputs.start.output[0] * m.lastIdx) | 0,
+                end = (that.inputs.end.output[0] * m.lastIdx) | 0,
                 i,
                 j,
+                k,
+                trigVal,
+                speedVal,
                 samp;
 
-            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.trigger) {
-                if (trig[j] > 0.0 && m.prevTrig <= 0.0) {
-                    bufIdx = start;
-                } else if (bufIdx >= end) {
-                    if (loop > 0) {
-                        bufIdx = start;
+            for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.trigger, k += m.strides.speed) {
+                trigVal = trig[j];
+                speedVal = speed[k];
+
+                if (trigVal > 0.0 && m.prevTrig <= 0.0) {
+                    bufIdx = flock.ugen.playBuffer.resetIndex(speedVal, start, end);
+                } else if (bufIdx < start || bufIdx > end) {
+                    if (loop > 0.0 && trigVal > 0.0) {
+                        bufIdx = flock.ugen.playBuffer.resetIndex(speedVal, start, end);
                     } else {
                         out[i] = samp = 0.0;
                         continue;
@@ -25617,7 +25646,7 @@ var fluid = fluid || require("infusion"),
 
                 samp = that.interpolate(bufIdx, source);
                 out[i] = samp;
-                bufIdx += m.stepSize * speedInc;
+                bufIdx += m.stepSize * speedVal;
             }
 
             m.idx = bufIdx;
@@ -25628,13 +25657,19 @@ var fluid = fluid || require("infusion"),
 
         that.onInputChanged = function (inputName) {
             var inputs = that.inputs,
-                speed = inputs.speed;
+                speed = inputs.speed,
+                start = inputs.start,
+                end = inputs.end,
+                trig = inputs.trigger;
 
             that.onBufferInputChanged(inputName);
 
             // TODO: Optimize for non-regular speed constant rate input.
-            that.gen = (speed.rate === flock.rates.CONSTANT && speed.output[0] === 1.0) ?
-                that.crRegularSpeedGen : that.krSpeedGen;
+            that.gen = (speed.rate === flock.rates.CONSTANT && speed.output[0] === 1.0) &&
+                (start.rate === flock.rates.CONSTANT && start.output[0] === 0.0) &&
+                (end.rate === flock.rates.CONSTANT && end.output[0] === 1.0) &&
+                (trig.rate !== flock.rates.AUDIO) ?
+                that.defaultKrTriggerGen : that.otherwiseGen;
 
             that.calculateStrides();
             flock.onMulAddInputChanged(that);
@@ -25644,9 +25679,11 @@ var fluid = fluid || require("infusion"),
             var m = that.model,
                 end = that.inputs.end.output[0],
                 chan = that.inputs.channel.output[0],
-                buf = that.buffer.data.channels[chan];
+                buf = that.buffer.data.channels[chan],
+                len = buf.length;
 
-            m.idx = (end * buf.length) | 0;
+            m.idx = (end * len) | 0;
+            m.lastIdx = len - 1;
             m.stepSize = that.buffer.format.sampleRate / m.sampleRate;
         };
 
@@ -25658,6 +25695,10 @@ var fluid = fluid || require("infusion"),
 
         that.init();
         return that;
+    };
+
+    flock.ugen.playBuffer.resetIndex = function (speed, start, end) {
+        return speed > 0 ? start : end;
     };
 
     fluid.defaults("flock.ugen.playBuffer", {
@@ -25675,6 +25716,7 @@ var fluid = fluid || require("infusion"),
         },
         ugenOptions: {
             model: {
+                finished: false,
                 unscaledValue: 0.0,
                 value: 0.0,
                 idx: 0,
@@ -25682,9 +25724,7 @@ var fluid = fluid || require("infusion"),
                 prevTrig: 0,
                 channel: undefined
             },
-            strideInputs: [
-                "trigger"
-            ],
+            strideInputs: ["trigger", "speed"],
             interpolation: "linear"
         }
     });
