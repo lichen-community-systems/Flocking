@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (March 7, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (March 9, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.3
@@ -28637,7 +28637,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.midiFreq", {
         rate: "control",
         inputs: {
-            source: null
+            source: null // TODO: This input should be named "note"
         },
         ugenOptions: {
             model: {

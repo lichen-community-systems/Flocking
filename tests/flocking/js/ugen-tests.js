@@ -926,82 +926,125 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    test("speed: constant rate 1.0", function () {
-        var player = flock.parse.ugenForDef(playbackDef);
 
-        player.gen(64);
-        var expected = flock.enviro.shared.buffers[playbackDef.inputs.buffer.id].data.channels[0];
-        deepEqual(player.output, expected, "With a playback speed of 1.0, the output buffer should be identical to the source buffer.");
+    fluid.each(["audio", "control", "constant"], function (rate) {
+        test("Normal speed, " + rate + " rate", function () {
+            var def = fluid.copy(playbackDef);
+            def.inputs.speed = {
+                ugen: "flock.ugen.value",
+                value: 1.0,
+                rate: rate
+            };
 
-        player.gen(64);
-        expected = flock.generate(64, 0.0);
-        deepEqual(player.output, expected, "With looping turned off, the output buffer should be silent once we hit the end of the source buffer.");
+            var player = flock.parse.ugenForDef(def);
 
-        player.input("loop", 1.0);
-        player.gen(64);
-        expected = flock.enviro.shared.buffers[playbackDef.inputs.buffer.id].data.channels[0];
-        deepEqual(player.output, expected, "With looping turned on, the output buffer should repeat the source buffer from the beginning.");
+            // Make sure to generate the input's signal if necessary.
+            if (player.inputs.speed.rate !== flock.rates.CONSTANT) {
+                player.inputs.speed.gen(64);
+            }
+
+            player.gen(64);
+            var expected = flock.enviro.shared.buffers[playbackDef.inputs.buffer.id].data.channels[0];
+            deepEqual(player.output, expected, "With a playback speed of 1.0, the output buffer should be identical to the source buffer.");
+
+            player.gen(64);
+            expected = flock.generate(64, 0.0);
+            deepEqual(player.output, expected, "With looping turned off, the output buffer should be silent once we hit the end of the source buffer.");
+
+            player.input("loop", 1.0);
+            player.gen(64);
+            expected = flock.enviro.shared.buffers[playbackDef.inputs.buffer.id].data.channels[0];
+            deepEqual(player.output, expected, "With looping turned on, the output buffer should repeat the source buffer from the beginning.");
+        });
+
+        test("Double speed, " + rate + " rate", function () {
+            var def = fluid.copy(playbackDef);
+            def.inputs.speed = {
+                ugen: "flock.ugen.value",
+                value: 2.0,
+                rate: rate
+            };
+
+            var player = flock.parse.ugenForDef(def),
+                expected = new Float32Array(64),
+                expectedFirst = new Float32Array([1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63]),
+                expectedSecond = flock.generate(32, 0);
+
+            // Make sure to generate the input's signal if necessary.
+            if (player.inputs.speed.rate !== flock.rates.CONSTANT) {
+                player.inputs.speed.gen(64);
+            }
+
+            player.gen(64);
+            expected.set(expectedFirst);
+            expected.set(expectedSecond, 32);
+            deepEqual(player.output, expected,
+                "At double speed, the output buffer contain odd values from the source buffer, padded with zeros.");
+
+            player.gen(64);
+            expected = flock.generate(64, 0.0);
+            deepEqual(player.output, expected, "With looping turned off, the output buffer should be silent once we hit the end of the source buffer.");
+
+            player.input("loop", 1.0);
+            player.gen(64);
+            expected.set(expectedFirst);
+            expected.set(expectedFirst, 32);
+            deepEqual(player.output, expected,
+                "At double speed with looping on, the output buffer should contain two repetitions of the odd values from the source buffer.");
+        });
+
+        test("backward speed at " + rate + " rate", function () {
+            var player = flock.parse.ugenForDef(playbackDef),
+                expected = flock.test.fillBuffer(64, 1);
+
+            player.input("speed", {
+                ugen: "flock.ugen.value",
+                value: -1.0,
+                rate: rate
+            });
+
+            // Make sure to generate the input's signal if necessary.
+            if (player.inputs.speed.rate !== flock.rates.CONSTANT) {
+                player.inputs.speed.gen(64);
+            }
+
+            player.gen(64);
+            deepEqual(player.output, expected, "The buffer should be read in reverse");
+
+            player.gen(64);
+            deepEqual(player.output, flock.test.silentBlock64, "Playback should not loop.");
+
+            player.input("loop", 1.0);
+            player.gen(64);
+            deepEqual(player.output, expected,
+                "With looping turned on, the buffer should again be read in reverse");
+        });
+
+        test("trigger " + rate + " rate, initially closed", function () {
+            var player = flock.parse.ugenForDef(playbackDef);
+
+            player.set("trigger", {
+                ugen: "flock.ugen.value",
+                value: 0.0,
+                rate: rate
+            });
+            player.gen(64);
+
+            deepEqual(player.output, flock.test.silentBlock64,
+                "When not looping, and before the trigger has fired, the unit generator should output silence.");
+
+            player.set("loop", {
+                ugen: "flock.ugen.value",
+                value: 1.0,
+                rate: rate
+            });
+            player.gen(64);
+
+            deepEqual(player.output, flock.test.silentBlock64,
+                "When looping, but before the trigger has fired, the unit generator should output silence.");
+        });
     });
 
-    test("speed: constant rate 2.0", function () {
-        var player = flock.parse.ugenForDef(playbackDef),
-            expected = new Float32Array(64),
-            expectedFirst = new Float32Array([1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63]),
-            expectedSecond = flock.generate(32, 0);
-
-        player.input("speed", 2.0);
-
-        player.gen(64);
-        expected.set(expectedFirst);
-        expected.set(expectedSecond, 32);
-        deepEqual(player.output, expected,
-            "At double speed, the output buffer contain odd values from the source buffer, padded with zeros.");
-
-        player.gen(64);
-        expected = flock.generate(64, 0.0);
-        deepEqual(player.output, expected, "With looping turned off, the output buffer should be silent once we hit the end of the source buffer.");
-
-        player.input("loop", 1.0);
-        player.gen(64);
-        expected.set(expectedFirst);
-        expected.set(expectedFirst, 32);
-        deepEqual(player.output, expected,
-            "At double speed with looping on, the output buffer should contain two repetitions of the odd values from the source buffer.");
-    });
-
-    test("speed: constant rate -1.0 not looping", function () {
-        var player = flock.parse.ugenForDef(playbackDef),
-            expected = flock.test.fillBuffer(64, 1);
-
-        player.input("speed", -1.0);
-        player.gen(64);
-        deepEqual(player.output, expected, "The buffer should be read in reverse");
-
-        player.gen(64);
-        deepEqual(player.output, flock.test.silentBlock64, "Playback should not loop.");
-
-        player.input("loop", 1.0);
-        player.gen(64);
-        deepEqual(player.output, expected,
-            "With looping turned on, the buffer should again be read in reverse");
-    });
-
-    test("triggers: originally closed", function () {
-        var player = flock.parse.ugenForDef(playbackDef);
-
-        player.set("trigger", 0.0);
-        player.gen(64);
-
-        deepEqual(player.output, flock.test.silentBlock64,
-            "When not looping, and before the trigger has fired, the unit generator should output silence.");
-
-        player.set("loop", 1.0);
-        player.gen(64);
-
-        deepEqual(player.output, flock.test.silentBlock64,
-            "When looping, but before the trigger has fired, the unit generator should output silence.");
-
-    });
 
     module("flock.ugen.amplitude() tests");
 

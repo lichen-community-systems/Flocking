@@ -4553,7 +4553,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.midiFreq", {
         rate: "control",
         inputs: {
-            source: null
+            source: null // TODO: This input should be named "note"
         },
         ugenOptions: {
             model: {
