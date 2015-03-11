@@ -15,15 +15,19 @@ var flock = flock || {};
 
     fluid.registerNamespace("flock.test");
 
-    flock.test.fillBuffer = function (start, end, skip) {
-        var buf = [],
-            count = 0,
-            val;
-        skip = skip !== undefined ? skip : 1;
+    flock.test.silentBlock64 = new Float32Array(64);
 
-        for (val = start; val <= end; val += skip) {
-            buf[count] = val;
-            count++;
+    flock.test.fillBuffer = function (start, end, skip) {
+        skip = skip || 1;
+
+        var buf = [],
+            numVals = Math.abs((end - start) / skip),
+            inc = (end - start) > 0 ? skip : -skip,
+            val = start;
+
+        for (var i = 0; i <= numVals; i++) {
+            buf.push(val);
+            val += inc;
         }
 
         return new Float32Array(buf);

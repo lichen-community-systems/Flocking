@@ -30,7 +30,28 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    test("BufferDesc expansion: single channel raw sample array", function () {
+    test("BufferDesc expansion: raw sample array", function () {
+        var actual = flock.bufferDesc(unwrappedSampleData);
+        var expected = {
+            container: {},
+            format: {
+                numChannels: 1,
+                numSampleFrames: 5,
+                sampleRate: 44100,
+                duration: 5 / 44100
+            },
+            data: {
+                channels: [
+                    unwrappedSampleData
+                ]
+            }
+        };
+
+        deepEqual(actual, expected,
+            "A raw buffer of samples should be wrapped buffer desc.");
+    });
+
+    test("BufferDesc expansion: single channel sample array with numChannels specified", function () {
         var bufferDesc = fluid.copy(testDesc);
         var actual = flock.bufferDesc(bufferDesc);
         deepEqual(actual.data.channels, [unwrappedSampleData],
