@@ -903,7 +903,7 @@ var fluid = fluid || require("infusion"),
     module("flock.ugen.playBuffer", {
         setup: function () {
             var bufDesc = flock.bufferDesc({
-                id: playbackDef.inputs.buffer.id,
+                id: flock.test.ugen.playBuffer.playbackDef.inputs.buffer.id,
                 format: {
                     sampleRate: sampleRate
                 },
@@ -915,7 +915,9 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    var playbackDef = {
+    fluid.registerNamespace("flock.test.ugen.playBuffer");
+
+    flock.test.ugen.playBuffer.playbackDef = {
         ugen: "flock.ugen.playBuffer",
         inputs: {
             buffer: {
@@ -926,10 +928,9 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-
     fluid.each(["audio", "control", "constant"], function (rate) {
         test("Normal speed, " + rate + " rate", function () {
-            var def = fluid.copy(playbackDef);
+            var def = fluid.copy(flock.test.ugen.playBuffer.playbackDef);
             def.inputs.speed = {
                 ugen: "flock.ugen.value",
                 value: 1.0,
@@ -944,7 +945,7 @@ var fluid = fluid || require("infusion"),
             }
 
             player.gen(64);
-            var expected = flock.enviro.shared.buffers[playbackDef.inputs.buffer.id].data.channels[0];
+            var expected = flock.enviro.shared.buffers[def.inputs.buffer.id].data.channels[0];
             deepEqual(player.output, expected, "With a playback speed of 1.0, the output buffer should be identical to the source buffer.");
 
             player.gen(64);
@@ -953,12 +954,12 @@ var fluid = fluid || require("infusion"),
 
             player.input("loop", 1.0);
             player.gen(64);
-            expected = flock.enviro.shared.buffers[playbackDef.inputs.buffer.id].data.channels[0];
+            expected = flock.enviro.shared.buffers[def.inputs.buffer.id].data.channels[0];
             deepEqual(player.output, expected, "With looping turned on, the output buffer should repeat the source buffer from the beginning.");
         });
 
         test("Double speed, " + rate + " rate", function () {
-            var def = fluid.copy(playbackDef);
+            var def = fluid.copy(flock.test.ugen.playBuffer.playbackDef);
             def.inputs.speed = {
                 ugen: "flock.ugen.value",
                 value: 2.0,
@@ -994,7 +995,7 @@ var fluid = fluid || require("infusion"),
         });
 
         test("backward speed at " + rate + " rate", function () {
-            var player = flock.parse.ugenForDef(playbackDef),
+            var player = flock.parse.ugenForDef(flock.test.ugen.playBuffer.playbackDef),
                 expected = flock.test.fillBuffer(64, 1);
 
             player.input("speed", {
@@ -1021,7 +1022,7 @@ var fluid = fluid || require("infusion"),
         });
 
         test("trigger " + rate + " rate, initially closed", function () {
-            var player = flock.parse.ugenForDef(playbackDef);
+            var player = flock.parse.ugenForDef(flock.test.ugen.playBuffer.playbackDef);
 
             player.set("trigger", {
                 ugen: "flock.ugen.value",
@@ -1044,6 +1045,52 @@ var fluid = fluid || require("infusion"),
                 "When looping, but before the trigger has fired, the unit generator should output silence.");
         });
     });
+
+
+    flock.test.ugen.playBuffer.rawBufferArray = new Float32Array([
+        0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
+        0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0,
+        -0.1, -0.2, -0.3, -0.4, -0.5, -0.6, -0.7, -0.8, -0.9, -1.0,
+        -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, -0.0
+    ]);
+
+    flock.test.ugen.playBuffer.bufDefTestSpecs = [
+        {
+            name: "Raw buffer specified as the buffer input",
+            buffer: flock.test.ugen.playBuffer.rawBufferArray
+        },
+        {
+            name: "BufferDesc specified as the buffer input",
+            buffer: {
+                data: {
+                    channels: [flock.test.ugen.playBuffer.rawBufferArray]
+                },
+                format: {
+                    numChannels: 1
+                }
+            }
+        }
+    ];
+
+    flock.test.ugen.playBuffer.testBufferInput = function (testSpec) {
+        test(testSpec.name, function () {
+            var s = flock.synth({
+                synthDef: {
+                    id: "player",
+                    ugen: "flock.ugen.playBuffer",
+                    trigger: 1.0,
+                    loop: 1.0,
+                    buffer: testSpec.buffer
+                }
+            });
+
+            s.gen();
+            flock.test.unbrokenInRangeSignal(s.get("player").output, -1.0, 1.0);
+        });
+    };
+
+    fluid.each(flock.test.ugen.playBuffer.bufDefTestSpecs,
+        flock.test.ugen.playBuffer.testBufferInput);
 
 
     module("flock.ugen.amplitude() tests");

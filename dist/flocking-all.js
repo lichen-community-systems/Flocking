@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (March 9, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (March 11, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.3
@@ -21826,36 +21826,61 @@ var fluid = fluid || require("infusion"),
     // and should be clearly named as such.
     flock.bufferDesc = function (data) {
         var fn = flock.platform.isWebAudio && data instanceof AudioBuffer ?
-            flock.bufferDesc.fromAudioBuffer : flock.bufferDesc.fromRawData;
+            flock.bufferDesc.fromAudioBuffer : flock.isIterable(data) ?
+            flock.bufferDesc.fromChannelArray : flock.bufferDesc.expand;
 
         return fn(data);
     };
 
-    flock.bufferDesc.fromRawData = function (data) {
-        data.container = data.container || {};
-        data.format = data.format || {};
+    flock.bufferDesc.inferFormat = function (bufDesc) {
+        var format = bufDesc.format,
+            data = bufDesc.data;
 
-        data.format.numChannels = data.format.numChannels || data.data.channels.length;
+        format.sampleRate = format.sampleRate || 44100;
+        format.numSampleFrames = format.numSampleFrames || data.channels[0].length;
+        format.duration = format.numSampleFrames / format.sampleRate;
 
-        if (data.data && data.data.channels) {
+        return bufDesc;
+    };
+
+    flock.bufferDesc.fromChannelArray = function (arr, sampleRate) {
+        var bufDesc = {
+            container: {},
+
+            format: {
+                numChannels: 1,
+                sampleRate: sampleRate
+            },
+
+            data: {
+                channels: [arr]
+            }
+        };
+
+        return flock.bufferDesc.inferFormat(bufDesc);
+    };
+
+    flock.bufferDesc.expand = function (bufDesc) {
+        bufDesc.container = bufDesc.container || {};
+        bufDesc.format = bufDesc.format || {};
+
+        bufDesc.format.numChannels = bufDesc.format.numChannels || bufDesc.data.channels.length;
+
+        if (bufDesc.data && bufDesc.data.channels) {
             // Special case for an unwrapped single-channel array.
-            if (data.format.numChannels === 1 && data.data.channels.length !== 1) {
-                data.data.channels = [data.data.channels];
+            if (bufDesc.format.numChannels === 1 && bufDesc.data.channels.length !== 1) {
+                bufDesc.data.channels = [bufDesc.data.channels];
             }
 
-            if (data.format.numChannels !== data.data.channels.length) {
+            if (bufDesc.format.numChannels !== bufDesc.data.channels.length) {
                 throw new Error("The specified number of channels does not match " +
                     "the actual channel data. " +
-                    "numChannels was: " + data.format.numChannels +
-                    " but the sample data contains " + data.data.channels.length + " channels.");
+                    "numChannels was: " + bufDesc.format.numChannels +
+                    " but the sample data contains " + bufDesc.data.channels.length + " channels.");
             }
         }
 
-        data.format.sampleRate = data.format.sampleRate || 44100;
-        data.format.numSampleFrames = data.format.numSampleFrames || data.data.channels[0].length;
-        data.format.duration = data.format.numSampleFrames / data.format.sampleRate;
-
-        return data;
+        return flock.bufferDesc.inferFormat(bufDesc);
     };
 
     flock.bufferDesc.fromAudioBuffer = function (audioBuffer) {
@@ -22394,19 +22419,9 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.parse.expandBufferDef = function (bufDef) {
-        if (flock.isIterable(bufDef)) {
-            // If we get a direct array reference, wrap it up in a buffer description.
-            return flock.bufferDesc({
-                data: {
-                    channels: bufDef // TODO: What about bare single-channel arrays?
-                }
-            });
-        }
-
-        // If we get a bare string, interpret it as an id reference.
-        return typeof (bufDef) !== "string" ? bufDef : {
-            id: bufDef
-        };
+        return typeof bufDef === "string" ? {id: bufDef} :
+            (flock.isIterable(bufDef) || bufDef.data || bufDef.format) ?
+            flock.bufferDesc(bufDef) : bufDef;
     };
 
     flock.parse.bufferForDef = function (bufDef, ugen, enviro) {
