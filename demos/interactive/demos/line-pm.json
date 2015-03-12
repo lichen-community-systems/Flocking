@@ -1,0 +1,19 @@
+{
+    "description": "Line modulating the phase of a sine oscillator.",
+    "synthDef": {
+        "ugen": "flock.ugen.sinOsc",
+        "freq": 800,
+        "phase": {
+            "ugen": "flock.ugen.sinOsc",
+            "freq": {
+                "ugen": "flock.ugen.xLine",
+                "rate": "control",
+                "start": 1,
+                "end": 1000,
+                "duration": 9
+            },
+            "mul": 6.28318531
+        },
+        "mul": 0.25
+    }
+}

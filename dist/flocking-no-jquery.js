@@ -1,4 +1,4 @@
-/*! Flocking 0.1.0 (March 3, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.0 (March 11, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof exports === "object") {
@@ -15209,11 +15209,13 @@ var fluid = fluid || require("infusion"),
         var m = this.model,
             numInputNodes = this.inputNodes.length,
             evaluator = this.evaluator,
+            nodes = evaluator.nodes,
             s = this.audioSettings,
             inBufs = e.inputBuffer,
             outBufs = e.outputBuffer,
             krPeriods = m.krPeriods,
             buses = evaluator.buses,
+            numBuses = s.numBuses,
             blockSize = s.blockSize,
             chans = s.chans,
             inChans = inBufs.numberOfChannels,
@@ -15234,7 +15236,7 @@ var fluid = fluid || require("infusion"),
         for (i = 0; i < krPeriods; i++) {
             var offset = i * blockSize;
 
-            evaluator.clearBuses(); // TODO: De-thatify.
+            flock.enviro.nodeEvaluator.clearBuses(numBuses, blockSize, buses);
 
             // Read this ScriptProcessorNode's input buffers
             // into the environment.
@@ -15250,7 +15252,7 @@ var fluid = fluid || require("infusion"),
                 }
             }
 
-            evaluator.gen(); // TODO: De-thatify.
+            flock.enviro.nodeEvaluator.gen(nodes);
 
             // Output the environment's signal
             // to this ScriptProcessorNode's output channels.

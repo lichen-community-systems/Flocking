@@ -9,7 +9,7 @@
                 "freq": {
                     "ugen": "flock.ugen.mouse.cursor",
                     "mul": 124,
-                    "add": 62,
+                    "add": 62
                 },
                 "mul": {
                     "ugen": "flock.ugen.mouse.cursor",

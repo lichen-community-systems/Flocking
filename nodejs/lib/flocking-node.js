@@ -188,13 +188,15 @@ var fs = require("fs"),
     };
 
     flock.audioStrategy.nodejs.writeSamples = function (numBytes, that) {
-        var settings = that.options.audioSettings,
+        var s = that.options.audioSettings,
             m = that.model,
             bytesPerSample = that.options.bytesPerSample,
-            blockSize = settings.blockSize,
-            chans = settings.chans,
+            blockSize = s.blockSize,
+            chans = s.chans,
             krPeriods = numBytes / m.bytesPerBlock,
             evaluator = that.nodeEvaluator,
+            buses = evaluator.buses,
+            nodes = evaluator.nodes,
             outputStream = that.outputStream,
             out = new Buffer(numBytes);
 
@@ -207,8 +209,8 @@ var fs = require("fs"),
             flock.generate.silence(out);
         } else {
             for (var i = 0, offset = 0; i < krPeriods; i++, offset += m.bytesPerBlock) {
-                evaluator.clearBuses();
-                evaluator.gen();
+                flock.enviro.nodeEvaluator.clearBuses(s.numBuses, s.blockSize, buses);
+                flock.enviro.nodeEvaluator.gen(nodes);
 
                 // Interleave each output channel.
                 for (var chan = 0; chan < chans; chan++) {
