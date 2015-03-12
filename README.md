@@ -71,7 +71,7 @@ Documentation and Demos
 Getting Started
 ---------------
 
-The latest stable release of Flocking is version 0.1.0. It can be downloaded from the [Flocking releases](https://github.com/colinbdclark/Flocking/releases) page.
+The latest stable release of Flocking is version 0.1.1. It can be downloaded from the [Flocking releases](https://github.com/colinbdclark/Flocking/releases) page.
 
 Concatenated and minified Flocking builds, suitable for development and production respectively,
 are included in the [dist directory](dist/). Flocking can also be built manually using Grunt.

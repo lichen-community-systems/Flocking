@@ -186,6 +186,33 @@ var fluid = fluid || require("infusion"),
     };
 
     /**
+     * Performs an in-place reversal of all items in the array.
+     *
+     * @arg {Iterable} b a buffer or array to reverse
+     * @return {Iterable} the buffer, reversed
+     */
+    flock.reverse = function (b) {
+        if (!b || !flock.isIterable(b) || b.length < 2) {
+            return b;
+        }
+
+        // A native implementation of reverse() exists for regular JS arrays
+        // and is partially implemented for TypedArrays. Use it if possible.
+        if (typeof b.reverse === "function") {
+            return b.reverse();
+        }
+
+        var t;
+        for (var l = 0, r = b.length - 1; l < r; l++, r--) {
+            t = b[l];
+            b[l] = b[r];
+            b[r] = t;
+        }
+
+        return b;
+    };
+
+    /**
      * Randomly selects an index from the specified array.
      */
     flock.randomIndex = function (arr) {

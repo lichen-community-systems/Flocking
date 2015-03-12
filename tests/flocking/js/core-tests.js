@@ -390,6 +390,33 @@ var fluid = fluid || require("infusion"),
         deepEqual(actual, expected, "Buffer normalized to " + normal + ".");
     };
 
+    test("flock.reverse()", function () {
+        expect(5);
+
+        var forwardRaw = [1, 2, 3, 4, 5],
+            forwardTyped = new Float32Array(forwardRaw),
+            reverseRaw = [5, 4, 3, 2, 1],
+            reverseTyped = new Float32Array(reverseRaw),
+            actual = flock.reverse(forwardTyped);
+
+        deepEqual(actual, reverseTyped, "A typed array should be reversed as expected.");
+
+        actual = flock.reverse(forwardRaw);
+        deepEqual(actual, reverseRaw, "A plain JS array should be reversed as expected.");
+
+        var empty = [];
+        actual = flock.reverse(empty);
+        equal(actual, empty, "An empty array should be returned as is.");
+
+        var oneItemList = ["Cat"];
+        actual = flock.reverse(oneItemList);
+        equal(actual, oneItemList, "A single-item list should be returned as is.");
+
+        var nonArray = {a: "cat", b: new Float32Array([1, 2, 3])};
+        actual = flock.reverse(nonArray);
+        equal(actual, nonArray, "A non array argument should be returned as is.");
+    });
+
     test("flock.normalize()", function () {
         expect(6);
         var unnormalized = [0.0, 0.5, 1.0, 1.5, 2.0];

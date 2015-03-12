@@ -295,19 +295,9 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.parse.expandBufferDef = function (bufDef) {
-        if (flock.isIterable(bufDef)) {
-            // If we get a direct array reference, wrap it up in a buffer description.
-            return flock.bufferDesc({
-                data: {
-                    channels: bufDef // TODO: What about bare single-channel arrays?
-                }
-            });
-        }
-
-        // If we get a bare string, interpret it as an id reference.
-        return typeof (bufDef) !== "string" ? bufDef : {
-            id: bufDef
-        };
+        return typeof bufDef === "string" ? {id: bufDef} :
+            (flock.isIterable(bufDef) || bufDef.data || bufDef.format) ?
+            flock.bufferDesc(bufDef) : bufDef;
     };
 
     flock.parse.bufferForDef = function (bufDef, ugen, enviro) {
