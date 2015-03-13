@@ -36,11 +36,15 @@ _[slides](colinclark.org/presentations/flocking-icmc-2014-slides.pdf)_
 Community
 ---------
 
-Flocking has an inclusive and supportive community.
-The [flocking-users](http://lists.flockingjs.org/listinfo.cgi/users-flockingjs.org) mailing list
+Flocking has an inclusive and supportive community with several forums where you can ask for help
+and share the projects you're working on.
+
+### Mailing List
+The [flocking mailing list](http://lists.idrc.ocadu.ca/mailman/listinfo/flocking)
 is the place to ask questions, share code, and request new features.
 
-There is also an IRC channel, <code>#flocking</code> on <code>irc.freenode.net</code>.
+### Chat
+Flocking has an IRC channel. Join <code>#flocking</code> on <code>irc.freenode.net</code>.
 
 
 Status and Roadmap
