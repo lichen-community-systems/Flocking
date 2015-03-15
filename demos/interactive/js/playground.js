@@ -332,10 +332,20 @@ var fluid = fluid || require("infusion"),
 
         events: {
             onSelect: "{selectBox}.events.onSelect",    // Fires when the user selects a demo.
+            onURLHashChange: null,
             afterDemoLoaded: null                       // Fires after a demo file has been loaded.
         },
 
         listeners: {
+            onCreate: {
+                funcName: "flock.playground.demoSelector.listenForHashChanges",
+                args: ["{that}.events.onURLHashChange.fire"]
+            },
+
+            onURLHashChange: {
+                func: "{that}.loadDemoFromURL"
+            },
+
             onSelect: [
                 {
                     funcName: "{that}.updateURL",
@@ -348,6 +358,10 @@ var fluid = fluid || require("infusion"),
             ]
         }
     });
+
+    flock.playground.demoSelector.listenForHashChanges = function (onURLHashChange) {
+        $(window).bind("hashchange", onURLHashChange);
+    };
 
     flock.playground.demoSelector.updateURLHash = function (id) {
         if (id) {
