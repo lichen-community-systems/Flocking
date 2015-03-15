@@ -1,55 +1,76 @@
 /*global flock*/
 
-// A bank of oscillators added together.
-var harmonics = [1, 3, 5, 7, 11, 13, 15, 17, 19, 21],
-    ugenTypes = ["flock.ugen.sin", "flock.ugen.lfSaw", "flock.ugen.lfPulse", "flock.ugen.lfNoise"],
-    fundamentalMultiplier = 440,
-    maxFreq = flock.environment.audioSettings.rates.audio / 4; // Highest harmonic shouldn't be more than a quarter of the Nyquist frequency.
-
-var makeHarmonic = function (ugenTypes, fundamental, harmonic, octave, maxAmp) {
-    var freqScale = (harmonic * octave),
-        ugen = flock.choose(ugenTypes);
-
-    return {
-        ugen: ugen,
-        freq: fundamental * freqScale,
-        mul: maxAmp / freqScale
-    };
-};
-
-var makeHarmonics = function (fundamental) {
-    var sources = [],
-        freqs = [];
-
-    $.each(harmonics, function (i, harmonic) {
-        var freq = fundamental,
-            octave = 1;
-
-        while (freq <= maxFreq) {
-            var ugenDef = makeHarmonic(ugenTypes, fundamental, harmonic, octave, 0.1);
-            freq = ugenDef.freq;
-            if (freq <= maxFreq && freqs.indexOf(freq) === -1) {
-                freqs.push(freq);
-                sources.push(ugenDef);
-            }
-            octave++;
+// Adds together a bank of sine oscillators to make
+// a rudimentary clarinet tone with additive synthesis.
+var fundamental = 440,
+    harmonics = [1, 3, 5, 7, 9, 13, 15], // Clarinets only have odd partials.
+    baseHarmonicDef = {
+        ugen: "flock.ugen.saw",
+        freq: 440,
+        mul: {
+            ugen: "flock.ugen.envGen",
+            envelope: {
+                type: "flock.envelope.adsr",
+                attack: 0.1,
+                decay: 0.05,
+                sustain: 0.75,
+                release: 0.2
+            },
+            gate: {
+                id: "gate",
+                ugen: "flock.ugen.inputChangeTrigger",
+                source: 1.0,
+                duration: 0.8
+            },
+            mul: 1.0
         }
-    });
+    };
 
-    return sources;
-};
+function expandHarmonics(fundamental, harmonics) {
+    return fluid.transform(harmonics, function (harmonic, i) {
+        var partialNum = i + 1;
+
+        // Merge together the base ugenDef for all harmonics
+        // with the parameters for this specific harmonic.
+        return $.extend(true, {}, baseHarmonicDef, {
+            freq: fundamental * harmonic,
+            mul: {
+                // Amplitude for a clarient should be the
+                // inverse of the partial number. Then we scale
+                // the amplitude for the number of partials
+                // so that we don't clip.
+                mul: (1 / partialNum) / harmonics.length
+            }
+        });
+    });
+}
+
+function updateHarmonics(fundamental, harmonics, ugens) {
+    fluid.each(harmonics, function (harmonic, i) {
+        var ugen = ugens[i],
+            freq = fundamental * harmonic;
+
+        ugen.set({
+            "freq": freq,
+            "mul.gate.source": 1.0
+        });
+    });
+}
 
 var synth = flock.synth({
     synthDef: {
-        id: "adder",
-        ugen: "flock.ugen.sum",
-        sources: makeHarmonics(fundamentalMultiplier)
+        ugen: "flock.ugen.filter.biquad.bp",
+        freq: 500,
+        q: 3.0,
+        source: {
+            id: "sum",
+            ugen: "flock.ugen.sum",
+            sources: expandHarmonics(fundamental, harmonics)
+        }
     }
 });
 
-synth.enviro.asyncScheduler.repeat(0.5, function () {
-    var fundamental = (fundamentalMultiplier * Math.random()) + 60;
-    synth.input("adder.sources", makeHarmonics(fundamental));
+flock.enviro.shared.asyncScheduler.repeat(1.0, function () {
+    var fundamental = Math.random() * 1000 + 100;
+	updateHarmonics(fundamental, harmonics, synth.get("sum.sources"));
 });
-
-synth;

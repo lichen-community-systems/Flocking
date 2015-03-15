@@ -368,7 +368,7 @@ var fluid = fluid || require("infusion");
             ]
         }
     });
-    
+
     fluid.defaults("flock.playground.demos.scheduling", {
         gradeNames: ["fluid.littleComponent", "autoInit"],
 
@@ -379,6 +379,10 @@ var fluid = fluid || require("infusion");
                     id: "multiple-synths",
                     name: "Multiple synths",
                     fileExt: "js"
+                },
+                {
+                    id: "band",
+                    name: "Band"
                 },
                 {
                     id: "polyphonicSynth",

@@ -92,9 +92,13 @@ label {
 
 .mainPanel {
     height: 100%;
-    width: 50%;
+    width: 100%;
     padding-top: 3.1em;
     background-color: #272822;
+}
+
+.mainPanel.split {
+    width: 50%;
 }
 
 #source-view {

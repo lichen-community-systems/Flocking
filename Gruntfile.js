@@ -66,7 +66,7 @@ module.exports = function(grunt) {
                 "tests/**/*.js",
                 "nodejs/**/*.js",
                 "!**/third-party/**",
-                                
+
                 // TODO: Temporary until all playground files are ready for linting.
                 "!demos/interactive/demos/*.js"
             ],

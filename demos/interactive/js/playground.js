@@ -30,11 +30,13 @@ var fluid = fluid || require("infusion"),
         defaultComponentType: "flock.band",
 
         model: {
-            activeSynth: {},
+            activeSynthSpec: {},
             isDeclarative: false
         },
 
         components: {
+            enviro: "{environment}",
+
             demos: {
                 type: "flock.playground.demos"
             },
@@ -76,7 +78,10 @@ var fluid = fluid || require("infusion"),
                 container: "{that}.dom.playButton",
                 options: {
                     listeners: {
-                        onPause: "{playground}.clearPlayableComponent()"
+                        onPause: [
+                            "{playground}.clearPlayableComponent()",
+                            "{enviro}.reset"
+                        ]
                     }
                 }
             }
@@ -172,7 +177,6 @@ var fluid = fluid || require("infusion"),
             last = trimmed[trimmed.length - 1],
             isJSON = (first === "[" && last === "]") || (first === "{" && last === "}");
 
-        applier.change("activeSynthSpec", null);
         applier.change("isDeclarative", isJSON);
     };
 
@@ -198,46 +202,58 @@ var fluid = fluid || require("infusion"),
         applier.change("activeSynthSpec", synthSpec);
     };
 
-    flock.playground.isSynthSpec = function (o) {
-        return o.synthDef ? o : undefined;
+    flock.playground.matchSynthSpec = function (o) {
+        return o && o.synthDef ? o : undefined;
     };
 
-    flock.playground.findRecursive = function (o, fn) {
+    flock.playground.findInArray = function (arr, fn) {
         var ret,
             match;
 
-        if (fluid.isPrimitive(o)) {
-            return fn(o);
-        } else if (flock.isIterable(o)) {
-            for (var i = 0; i < o.length; i++) {
-                ret = fn(o[i], i);
-                if (ret) {
-                    return ret;
-                } else {
-                    match = flock.playground.findRecursive(o[i], fn);
-                    if (match) {
-                        return match;
-                    }
-                }
-            }
-        } else {
-            for (var key in o) {
-                ret = fn(o[key], key);
-                if (ret) {
-                    return ret;
-                } else {
-                    match = flock.playground.findRecursive(o[key], fn);
-                    if (match) {
-                        return match;
-                    }
+        for (var i = 0; i < arr.length; i++) {
+            ret = fn(arr[i], i);
+            if (ret) {
+                return ret;
+            } else {
+                match = flock.playground.findRecursive(arr[i], fn);
+                if (match) {
+                    return match;
                 }
             }
         }
     };
 
+    flock.playground.findInObject = function (o, fn) {
+        var ret,
+            match;
+
+        for (var key in o) {
+            ret = fn(o[key], key);
+            if (ret) {
+                return ret;
+            } else {
+                match = flock.playground.findRecursive(o[key], fn);
+                if (match) {
+                    return match;
+                }
+            }
+        }
+    };
+
+    flock.playground.findRecursive = function (o, fn) {
+        if (fluid.isPrimitive(o)) {
+            return fn(o);
+        }
+
+        var findFn = flock.isIterable(o) ? flock.playground.findInArray :
+            flock.playground.findInObject;
+
+        return findFn(o, fn);
+    };
+
     flock.playground.findFirstSynthSpec = function (componentDef) {
-        return flock.playground.isSynthSpec(componentDef) ? componentDef :
-            flock.playground.findRecursive(componentDef, flock.playground.isSynthSpec);
+        return flock.playground.matchSynthSpec(componentDef) ? componentDef :
+            flock.playground.findRecursive(componentDef, flock.playground.matchSynthSpec);
     };
 
     flock.playground.evaluateCode = function (source) {
@@ -245,7 +261,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.playground.makePlayableComponent = function (that, componentDef, defaultType) {
-        if (!componentDef) {
+        if (!componentDef || !that.model.isDeclarative) {
             return;
         }
 
