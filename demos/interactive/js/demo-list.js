@@ -1,6 +1,6 @@
 /*
  * Flocking Playground Demos
- *   Copyright 2014, Colin Clark
+ *   Copyright 2014-15, Colin Clark
  *
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
