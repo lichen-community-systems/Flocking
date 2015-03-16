@@ -451,6 +451,11 @@ var fluid = fluid || require("infusion"),
         },
 
         invokers: {
+            gen: {
+                funcName: "flock.test.genReportSynth.gen",
+                args: "{that}.applier"
+            },
+
             reset: {
                 func: "{that}.applier.change",
                 args: ["didGen", false]
@@ -458,10 +463,8 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    flock.test.genReportSynth.finalInit = function (that) {
-        that.gen = function () {
-            that.applier.change("didGen", true);
-        };
+    flock.test.genReportSynth.gen = function (that) {
+        that.applier.change("didGen", true);
     };
 
     var testEnviroGraph = function (fn) {
@@ -1579,30 +1582,36 @@ var fluid = fluid || require("infusion"),
             addToEnvironment: false
         };
         var synth1 = flock.synth({
+            members: {
+                genFn: function () {
+                    synth1DidGen = true;
+                }
+            },
+
             synthDef: {
                 id: "mock",
                 ugen: "flock.test.ugen.mock",
                 freq: 110,
                 mul: 0.1,
                 options: {
-                    buffer: flock.generate(64, 1),
-                    gen: function () {
-                        synth1DidGen = true;
-                    }
+                    buffer: flock.generate(64, 1)
                 }
             }
         }, synthOpts);
         var synth2 = flock.synth({
+            members: {
+                genFn: function () {
+                    synth2DidGen = true;
+                }
+            },
+
             synthDef: {
                 id: "mock",
                 ugen: "flock.test.ugen.mock",
                 freq: 220,
                 mul: 0.2,
                 options: {
-                    buffer: flock.generate(64, 2),
-                    gen: function () {
-                        synth2DidGen = true;
-                    }
+                    buffer: flock.generate(64, 2)
                 }
             }
         }, synthOpts);

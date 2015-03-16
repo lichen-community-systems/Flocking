@@ -21301,7 +21301,7 @@ var fluid = fluid || require("infusion"),
         // Now evaluate each node.
         for (i = 0; i < nodes.length; i++) {
             node = nodes[i];
-            node.gen(node.model.blockSize);
+            node.genFn(node);
         }
     };
 
@@ -21533,7 +21533,9 @@ var fluid = fluid || require("infusion"),
                         "{that}.tail"
                     ]
                 }
-            }
+            },
+
+            genFn: "@expand:fluid.getGlobalValue({that}.options.invokers.gen.funcName)"
         },
 
         components: {
@@ -21613,7 +21615,7 @@ var fluid = fluid || require("infusion"),
              */
             gen: {
                 funcName: "flock.synth.gen",
-                args: ["{that}.nodes", "{that}.model"]
+                args: "{that}"
             },
 
             /**
@@ -21689,8 +21691,10 @@ var fluid = fluid || require("infusion"),
         });
     };
 
-    flock.synth.gen = function (nodes, m) {
-        var i,
+    flock.synth.gen = function (that) {
+        var nodes = that.nodes,
+            m = that.model,
+            i,
             node;
 
         for (i = 0; i < nodes.length; i++) {
@@ -21817,7 +21821,7 @@ var fluid = fluid || require("infusion"),
         gradeNames: ["flock.synth", "autoInit"],
 
         members: {
-            out: null
+            out: null,
         },
 
         methodEventMap: {
@@ -21836,7 +21840,10 @@ var fluid = fluid || require("infusion"),
                 funcName: "flock.synth.group.input",
                 args: ["{arguments}", "{that}.get", "{that}.events.onSet.fire"]
             },
-            gen: "{that}.events.onGen.fire"
+            gen: {
+                funcName: "flock.synth.group.gen",
+                args: "{that}"
+            }
         },
 
         events: {
@@ -21877,6 +21884,10 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
+
+    flock.synth.group.gen = function (that) {
+        flock.enviro.nodeEvaluator.gen(that.nodes);
+    };
 
     flock.synth.group.get = function (args, nodes) {
         var tailIdx = nodes.length - 1,
