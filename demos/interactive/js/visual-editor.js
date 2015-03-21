@@ -20,7 +20,7 @@ var fluid = fluid || require("infusion"),
      *****************************/
 
     fluid.defaults("flock.playground.jsPlumb", {
-        gradeNames: ["fluid.viewComponent", "autoInit"],
+        gradeNames: ["fluid.viewRelayComponent", "autoInit"],
 
         jsPlumbSettings: {},
 
@@ -182,7 +182,7 @@ var fluid = fluid || require("infusion"),
     fluid.registerNamespace("flock.ui.nodeRenderers");
 
     fluid.defaults("flock.ui.nodeRenderers.ugen", {
-        gradeNames: ["fluid.viewComponent", "autoInit"],
+        gradeNames: ["fluid.viewRelayComponent", "autoInit"],
 
         model: {
             ugenDef: {}, // A ugenDef.

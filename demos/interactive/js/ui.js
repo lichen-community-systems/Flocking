@@ -95,7 +95,7 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.ui.toggleButton", {
-        gradeNames: ["fluid.viewComponent", "autoInit"],
+        gradeNames: ["fluid.viewRelayComponent", "autoInit"],
 
         selfRender: false,
 
