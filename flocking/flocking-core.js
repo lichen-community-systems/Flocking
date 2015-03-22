@@ -1112,6 +1112,21 @@ var fluid = fluid || require("infusion"),
              */
             releaseBuffer: "flock.enviro.releaseBuffer({arguments}.0, {that}.buffers)",
 
+            /**
+             * Saves a buffer to the user's computer.
+             *
+             * @param {String|BufferDesc} id the id of the buffer to save
+             * @param {String} path the path to save the buffer to (if relevant)
+             */
+            saveBuffer: {
+                funcName: "flock.enviro.saveBuffer",
+                args: [
+                    "{arguments}.0",
+                    "{that}.buffers",
+                    "{audioStrategy}"
+                ]
+            },
+
             // Unsupported non-API method.
             acquireNextBus: {
                 funcName: "flock.enviro.acquireNextBus",
@@ -1230,6 +1245,26 @@ var fluid = fluid || require("infusion"),
 
         var id = typeof bufDesc === "string" ? bufDesc : bufDesc.id;
         delete buffers[id];
+    };
+
+    flock.enviro.saveBuffer = function (o, buffers, audioStrategy) {
+        if (typeof o === "string") {
+            o = {
+                buffer: o
+            };
+        }
+
+        if (typeof o.buffer === "string") {
+            var id = o.buffer;
+            o.buffer = buffers[id];
+            o.buffer.id = id;
+        }
+
+        o.type = o.type || "wav";
+        o.path = o.path || o.buffer.id + "." + o.type;
+        o.format = o.format || "int16";
+
+        return audioStrategy.saveBuffer(o, o.buffer);
     };
 
     flock.enviro.gen = function (nodeEvaluator) {

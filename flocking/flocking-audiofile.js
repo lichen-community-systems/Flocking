@@ -268,5 +268,4 @@ var fluid = fluid || require("infusion"),
 
         flock.audio.decoderStrategies[type] = strategy;
     };
-
 }());

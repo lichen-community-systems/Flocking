@@ -34,6 +34,7 @@ module.exports = function(grunt) {
             "flocking/flocking-buffers.js",
             "flocking/flocking-parser.js",
             "flocking/flocking-audiofile.js",
+            "flocking/flocking-audiofile-encoder.js",
             // flocking-audiofile-compatibility.js is intentionally omitted
             // to reduce the size of the default Flocking build.
             "flocking/flocking-scheduler.js",

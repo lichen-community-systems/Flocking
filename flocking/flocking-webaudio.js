@@ -141,13 +141,9 @@ var fluid = fluid || require("infusion"),
         },
 
         invokers: {
-            start: {
-                func: "{that}.events.onStart.fire"
-            },
-
-            stop: {
-                func: "{that}.events.onStop.fire"
-            }
+            start: "{that}.events.onStart.fire()",
+            stop: "{that}.events.onStop.fire()",
+            saveBuffer: "flock.audioStrategy.web.saveBuffer({arguments}.0)"
         },
 
         components: {
@@ -357,6 +353,46 @@ var fluid = fluid || require("infusion"),
             s.disconnect(0);
             applier.change("shouldInitIOS", false);
         }
+    };
+
+    flock.audioStrategy.web.saveBuffer = function (o) {
+        try {
+            var encoded = flock.audio.encode.wav(o.buffer, o.format),
+                blob = new Blob([encoded], {
+                    type: "audio/wav"
+                });
+
+            flock.audioStrategy.web.download(o.path, blob);
+
+            if (o.success) {
+                o.success(encoded);
+            }
+
+            return encoded;
+        } catch (e) {
+            if (!o.error) {
+                flock.fail("There was an error while trying to download the buffer named " +
+                    o.buffer.id + ". Error: " + e);
+            } else {
+                o.error(e);
+            }
+        }
+    };
+
+    flock.audioStrategy.web.download = function (fileName, blob) {
+        var dataURL = flock.shim.URL.createObjectURL(blob),
+            a = window.document.createElement("a"),
+            click = document.createEvent("Event");
+
+        // TODO: This approach currently only works in Chrome.
+        // Although Firefox apparently supports it, this method of
+        // programmatically clicking the link doesn't seem to have an
+        // effect in it.
+        // http://caniuse.com/#feat=download
+        a.href = dataURL;
+        a.download = fileName;
+        click.initEvent("click", true, true);
+        a.dispatchEvent(click);
     };
 
 

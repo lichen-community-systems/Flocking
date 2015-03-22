@@ -1,4 +1,4 @@
-/*! Flocking 0.1.1 (March 21, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.1 (March 22, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof exports === "object") {
@@ -11944,6 +11944,21 @@ var fluid = fluid || require("infusion"),
              */
             releaseBuffer: "flock.enviro.releaseBuffer({arguments}.0, {that}.buffers)",
 
+            /**
+             * Saves a buffer to the user's computer.
+             *
+             * @param {String|BufferDesc} id the id of the buffer to save
+             * @param {String} path the path to save the buffer to (if relevant)
+             */
+            saveBuffer: {
+                funcName: "flock.enviro.saveBuffer",
+                args: [
+                    "{arguments}.0",
+                    "{that}.buffers",
+                    "{audioStrategy}"
+                ]
+            },
+
             // Unsupported non-API method.
             acquireNextBus: {
                 funcName: "flock.enviro.acquireNextBus",
@@ -12062,6 +12077,26 @@ var fluid = fluid || require("infusion"),
 
         var id = typeof bufDesc === "string" ? bufDesc : bufDesc.id;
         delete buffers[id];
+    };
+
+    flock.enviro.saveBuffer = function (o, buffers, audioStrategy) {
+        if (typeof o === "string") {
+            o = {
+                buffer: o
+            };
+        }
+
+        if (typeof o.buffer === "string") {
+            var id = o.buffer;
+            o.buffer = buffers[id];
+            o.buffer.id = id;
+        }
+
+        o.type = o.type || "wav";
+        o.path = o.path || o.buffer.id + "." + o.type;
+        o.format = o.format || "int16";
+
+        return audioStrategy.saveBuffer(o, o.buffer);
     };
 
     flock.enviro.gen = function (nodeEvaluator) {
@@ -13111,47 +13146,61 @@ var fluid = fluid || require("infusion"),
 
     // TODO: This is actually part of the interpreter's expansion process
     // and should be clearly named as such.
-    flock.bufferDesc = function (data) {
+    flock.bufferDesc = function (data, sampleRate, numChannels) {
         var fn = flock.platform.isWebAudio && data instanceof AudioBuffer ?
             flock.bufferDesc.fromAudioBuffer : flock.isIterable(data) ?
             flock.bufferDesc.fromChannelArray : flock.bufferDesc.expand;
 
-        return fn(data);
+        return fn(data, sampleRate, numChannels);
     };
 
-    flock.bufferDesc.inferFormat = function (bufDesc) {
+    flock.bufferDesc.inferFormat = function (bufDesc, sampleRate, numChannels) {
         var format = bufDesc.format,
             data = bufDesc.data;
 
-        format.sampleRate = format.sampleRate || 44100;
-        format.numSampleFrames = format.numSampleFrames || data.channels[0].length;
+        format.sampleRate = sampleRate || format.sampleRate || 44100;
+        format.numChannels = numChannels || format.numChannels || bufDesc.data.channels.length;
+        format.numSampleFrames = format.numSampleFrames ||
+            data.channels.length > 0 ? data.channels[0].length : 0;
         format.duration = format.numSampleFrames / format.sampleRate;
 
         return bufDesc;
     };
 
-    flock.bufferDesc.fromChannelArray = function (arr, sampleRate) {
+    flock.bufferDesc.fromChannelArray = function (arr, sampleRate, numChannels) {
+        if (!numChannels || numChannels === 1) {
+            numChannels = 1;
+            arr = [arr];
+        }
+
         var bufDesc = {
             container: {},
 
             format: {
-                numChannels: 1,
-                sampleRate: sampleRate
+                numChannels: numChannels,
+                sampleRate: sampleRate,
+                numSampleFrames: arr[0].length
             },
 
             data: {
-                channels: [arr]
+                channels: arr
             }
         };
 
-        return flock.bufferDesc.inferFormat(bufDesc);
+        return flock.bufferDesc.inferFormat(bufDesc, sampleRate, numChannels);
     };
 
-    flock.bufferDesc.expand = function (bufDesc) {
+    flock.bufferDesc.expand = function (bufDesc, sampleRate, numChannels) {
+        bufDesc = bufDesc || {
+            data: {
+                channels: []
+            }
+        };
+
         bufDesc.container = bufDesc.container || {};
         bufDesc.format = bufDesc.format || {};
-
-        bufDesc.format.numChannels = bufDesc.format.numChannels || bufDesc.data.channels.length;
+        bufDesc.format.numChannels = numChannels ||
+            bufDesc.format.numChannels || bufDesc.data.channels.length; // TODO: Duplication with inferFormat.
 
         if (bufDesc.data && bufDesc.data.channels) {
             // Special case for an unwrapped single-channel array.
@@ -13167,7 +13216,7 @@ var fluid = fluid || require("infusion"),
             }
         }
 
-        return flock.bufferDesc.inferFormat(bufDesc);
+        return flock.bufferDesc.inferFormat(bufDesc, sampleRate, numChannels);
     };
 
     flock.bufferDesc.fromAudioBuffer = function (audioBuffer) {
@@ -14053,7 +14102,253 @@ var fluid = fluid || require("infusion"),
 
         flock.audio.decoderStrategies[type] = strategy;
     };
+}());
+;/*
+ * Flocking Audio Encoders
+ * http://github.com/colinbdclark/flocking
+ *
+ * Copyright 2015, Colin Clark
+ * Dual licensed under the MIT and GPL Version 2 licenses.
+ */
 
+/*global require, ArrayBuffer, Uint8Array */
+/*jshint white: false, newcap: true, regexp: true, browser: true,
+forin: false, nomen: true, bitwise: false, maxerr: 100,
+indent: 4, plusplus: false, curly: true, eqeqeq: true,
+freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
+unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
+funcscope: false*/
+
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
+
+(function () {
+
+    "use strict";
+
+    fluid.registerNamespace("flock.audio.encode");
+
+    flock.audio.interleave = function (bufDesc) {
+        var numFrames = bufDesc.format.numSampleFrames,
+            chans = bufDesc.data.channels,
+            numChans = bufDesc.format.numChannels,
+            numSamps = numFrames * numChans,
+            out = new Float32Array(numSamps),
+            outIdx = 0,
+            frame,
+            chan;
+
+        for (frame = 0; frame < numFrames; frame++) {
+            for (chan = 0; chan < numChans; chan++) {
+                out[outIdx] = chans[chan][frame];
+                outIdx++;
+            }
+        }
+
+        return out;
+    };
+
+    flock.audio.encode = function (bufDesc, type, format) {
+        type = type || "wav";
+        if (type.toLowerCase() !== "wav") {
+            flock.fail("Flocking currently only supports encoding WAVE files.");
+        }
+
+        return flock.audio.encode.wav(bufDesc, format);
+    };
+
+    flock.audio.encode.writeFloat32Array = function (offset, dv, buf) {
+        for (var i = 0; i < buf.length; i++) {
+            dv.setFloat32(offset, buf[i], true);
+            offset += 4;
+        }
+
+        return dv;
+    };
+
+    flock.audio.encode.setString = function (dv, offset, str){
+        for (var i = 0; i < str.length; i++){
+            dv.setUint8(offset + i, str.charCodeAt(i));
+        }
+    };
+
+    flock.audio.encode.setBytes = function (dv, offset, bytes) {
+        for (var i = 0; i < bytes.length; i++) {
+            dv.setUint8(offset + i, bytes[i]);
+        }
+    };
+
+
+    flock.audio.encode.writeAsPCM = function (formatSpec, offset, dv, buf) {
+        if (formatSpec.setter === "setFloat32" && buf instanceof Float32Array) {
+            return flock.audio.encode.writeFloat32Array(offset, dv, buf);
+        }
+
+        for (var i = 0; i < buf.length; i++) {
+            // Clamp to within bounds.
+            var s = Math.min(1.0, buf[i]);
+            s = Math.max(-1.0, s);
+
+            // Scale to the otuput number format.
+            s = s < 0 ? s * formatSpec.scaleNeg : s * formatSpec.scalePos;
+
+            // Write the sample to the DataView.
+            dv[formatSpec.setter](offset, s, true);
+            offset += formatSpec.width;
+        }
+
+        return dv;
+    };
+
+    flock.audio.pcm = {
+        int16: {
+            scalePos: 32767,
+            scaleNeg: 32768,
+            setter: "setInt16",
+            width: 2
+        },
+
+        int32: {
+            scalePos: 2147483647,
+            scaleNeg: 2147483648,
+            setter: "setInt32",
+            width: 4
+        },
+
+        float32: {
+            scalePos: 1,
+            scaleNeg: 1,
+            setter: "setFloat32",
+            width: 4
+        }
+    };
+
+    flock.audio.encode.wav = function (bufDesc, format) {
+        format = format || flock.audio.pcm.int16;
+
+        var formatSpec = typeof format === "string" ? flock.audio.pcm[format] : format;
+        if (!formatSpec) {
+            flock.fail("Flocking does not support encoding " + format + " format PCM wave files.");
+        }
+
+        var interleaved = flock.audio.interleave(bufDesc),
+            numChans = bufDesc.format.numChannels,
+            sampleRate = bufDesc.format.sampleRate,
+            isPCM = formatSpec.setter !== "setFloat32",
+            riffHeaderSize = 8,
+            formatHeaderSize = 12,
+            formatBodySize = 16,
+            formatTag = 1,
+            dataHeaderSize = 8,
+            dataBodySize = interleaved.length * formatSpec.width,
+            dataChunkSize = dataHeaderSize + dataBodySize,
+            bitsPerSample = 8 * formatSpec.width;
+
+        if (numChans > 2 || !isPCM) {
+            var factHeaderSize = 8,
+                factBodySize = 4,
+                factChunkSize = factHeaderSize + factBodySize;
+
+            formatBodySize += factChunkSize;
+
+            if (numChans > 2) {
+                formatBodySize += 24;
+                formatTag = 0xFFFE; // Extensible.
+            } else {
+                formatBodySize += 2;
+                formatTag = 3; // Two-channel IEEE float.
+            }
+        }
+
+        var formatChunkSize = formatHeaderSize + formatBodySize,
+            riffBodySize = formatChunkSize + dataChunkSize,
+            numBytes = riffHeaderSize + riffBodySize,
+            out = new ArrayBuffer(numBytes),
+            dv = new DataView(out);
+
+        // RIFF chunk header.
+        flock.audio.encode.setString(dv, 0, "RIFF"); // ckID
+        dv.setUint32(4, riffBodySize, true); // cksize
+
+        // Format Header
+        flock.audio.encode.setString(dv, 8, "WAVE"); // WAVEID
+        flock.audio.encode.setString(dv, 12, "fmt "); // ckID
+        dv.setUint32(16, formatBodySize, true); // cksize, length of the format chunk.
+
+        // Format Body
+        dv.setUint16(20, formatTag, true); // wFormatTag
+        dv.setUint16(22, numChans, true); // nChannels
+        dv.setUint32(24, sampleRate, true); // nSamplesPerSec
+        dv.setUint32(28, sampleRate * 4, true); // nAvgBytesPerSec (sample rate * block align)
+        dv.setUint16(32, numChans * formatSpec.width, true); //nBlockAlign (channel count * bytes per sample)
+        dv.setUint16(34, bitsPerSample, true); // wBitsPerSample
+
+        var offset = 36;
+        if (formatTag === 3) {
+            // IEEE Float. Write out a fact chunk.
+            dv.setUint16(offset, 0, true); // cbSize: size of the extension
+            offset += 2;
+            offset = flock.audio.encode.wav.writeFactChunk(dv, offset, bufDesc.format.numSampleFrames);
+        } else if (formatTag === 0xFFFE) {
+            // Extensible format (i.e. > 2 channels).
+            // Write out additional format fields and fact chunk.
+            dv.setUint16(offset, 22, true); // cbSize: size of the extension
+            offset += 2;
+
+            // Additional format fields.
+            offset = flock.audio.encode.wav.additionalFormat(offset, dv, bitsPerSample, isPCM);
+
+            // Fact chunk.
+            offset = flock.audio.encode.wav.writeFactChunk(dv, offset, bufDesc.format.numSampleFrames);
+        }
+
+        flock.audio.encode.wav.writeDataChunk(formatSpec, offset, dv, interleaved, dataBodySize);
+
+        return dv.buffer;
+    };
+
+    flock.audio.encode.wav.subformats = {
+        pcm: new Uint8Array([1, 0, 0, 0, 0, 0, 16, 0, 128, 0, 0, 170, 0, 56, 155, 113]),
+        float: new Uint8Array([3, 0, 0, 0, 0, 0, 16, 0, 128, 0, 0, 170, 0, 56, 155, 113])
+    };
+
+    flock.audio.encode.wav.additionalFormat = function (offset, dv, bitsPerSample, isPCM) {
+        dv.setUint16(offset, bitsPerSample, true); // wValidBitsPerSample
+        offset += 2;
+
+        dv.setUint32(offset, 0x80000000, true); // dwChannelMask, hardcoded to SPEAKER_RESERVED
+        offset += 4;
+
+        // Subformat GUID.
+        var subformat = flock.audio.encode.wav.subformats[isPCM ? "pcm" : "float"];
+        flock.audio.encode.setBytes(dv, offset, subformat);
+        offset += 16;
+
+        return offset;
+    };
+
+    flock.audio.encode.wav.writeFactChunk = function (dv, offset, numSampleFrames) {
+        flock.audio.encode.setString(dv, offset, "fact"); // ckID
+        offset += 4;
+
+        dv.setUint32(offset, 4, true); //cksize
+        offset += 4;
+
+        dv.setUint32(offset, numSampleFrames, true); // dwSampleLength
+        offset += 4;
+
+        return offset;
+    };
+
+    flock.audio.encode.wav.writeDataChunk = function (formatSpec, offset, dv, interleaved, numSampleBytes) {
+        // Data chunk Header
+        flock.audio.encode.setString(dv, offset, "data");
+        offset += 4;
+        dv.setUint32(offset, numSampleBytes, true); // Length of the datahunk.
+        offset += 4;
+
+        flock.audio.encode.writeAsPCM(formatSpec, offset, dv, interleaved);
+    };
 }());
 ;/*
 * Flocking Scheduler
@@ -15117,13 +15412,9 @@ var fluid = fluid || require("infusion"),
         },
 
         invokers: {
-            start: {
-                func: "{that}.events.onStart.fire"
-            },
-
-            stop: {
-                func: "{that}.events.onStop.fire"
-            }
+            start: "{that}.events.onStart.fire()",
+            stop: "{that}.events.onStop.fire()",
+            saveBuffer: "flock.audioStrategy.web.saveBuffer({arguments}.0)"
         },
 
         components: {
@@ -15333,6 +15624,46 @@ var fluid = fluid || require("infusion"),
             s.disconnect(0);
             applier.change("shouldInitIOS", false);
         }
+    };
+
+    flock.audioStrategy.web.saveBuffer = function (o) {
+        try {
+            var encoded = flock.audio.encode.wav(o.buffer, o.format),
+                blob = new Blob([encoded], {
+                    type: "audio/wav"
+                });
+
+            flock.audioStrategy.web.download(o.path, blob);
+
+            if (o.success) {
+                o.success(encoded);
+            }
+
+            return encoded;
+        } catch (e) {
+            if (!o.error) {
+                flock.fail("There was an error while trying to download the buffer named " +
+                    o.buffer.id + ". Error: " + e);
+            } else {
+                o.error(e);
+            }
+        }
+    };
+
+    flock.audioStrategy.web.download = function (fileName, blob) {
+        var dataURL = flock.shim.URL.createObjectURL(blob),
+            a = window.document.createElement("a"),
+            click = document.createEvent("Event");
+
+        // TODO: This approach currently only works in Chrome.
+        // Although Firefox apparently supports it, this method of
+        // programmatically clicking the link doesn't seem to have an
+        // effect in it.
+        // http://caniuse.com/#feat=download
+        a.href = dataURL;
+        a.download = fileName;
+        click.initEvent("click", true, true);
+        a.dispatchEvent(click);
     };
 
 

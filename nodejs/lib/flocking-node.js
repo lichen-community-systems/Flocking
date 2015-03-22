@@ -145,7 +145,9 @@ var fs = require("fs"),
                 args: "Audio input is not currently supported on Node.js"
             },
 
-            stopReadingAudioInput: "{that}.startReadingAudioInput"
+            stopReadingAudioInput: "{that}.startReadingAudioInput",
+
+            saveBuffer: "flock.audioStrategy.nodejs.saveBuffer({arguments}.0)"
         },
 
         listeners: {
@@ -224,6 +226,27 @@ var fs = require("fs"),
         }
 
         outputStream.push(out);
+    };
+
+    flock.audioStrategy.nodejs.saveBuffer = function (o) {
+        var encoded = flock.audio.encode.wav(o.buffer);
+
+        fs.writeFile(o.path, encoded, function (err) {
+            if (err) {
+                if (!o.error) {
+                    flock.fail("There was an error while writing a buffer named " +
+                        o.buffer.id + " with the file path " + fileName + ". Error was: " + err);
+                } else {
+                    o.error(err);
+                }
+
+                return;
+            }
+
+            if (o.success) {
+                o.success(encoded);
+            }
+        });
     };
 
 

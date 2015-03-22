@@ -6,7 +6,7 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, module, asyncTest, equal, deepEqual, start*/
+/*global require, module, test, asyncTest, ok, equal, deepEqual, start*/
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
@@ -119,4 +119,64 @@ var fluid = fluid || require("infusion"),
             sampleRate: flock.environment.audioSettings.rates.audio
         }
     ]);
+
+    module("Audio encoding");
+
+    test("flock.audio.interleave", function () {
+        var bufDesc = flock.bufferDesc.fromChannelArray([
+            new Float32Array([1, 3, 5, 7, 9, 11, 13, 15]),
+            new Float32Array([2, 4, 6, 8, 10, 12, 14, 16])
+        ], 44100, 2);
+
+        var interleaved = flock.audio.interleave(bufDesc);
+        deepEqual(interleaved, new Float32Array([
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+        ]), "The bufferDesc should have been correctly interleaved.");
+    });
+
+    flock.test.audioFile.encodeThenDecode = function (original, encodedFormat) {
+        var afterRedecoded = function (redecoded) {
+            deepEqual(redecoded.format, original.format,
+                "The buffer's format metadata should be the same as the original.");
+
+            flock.test.arrayEqualBothRounded(3,
+                redecoded.data.channels[0],
+                original.data.channels[0],
+                "The channel data should be the same as the original after being decoded.");
+            start();
+        };
+
+        var encoded = flock.audio.encode.wav(original, encodedFormat);
+        ok(encoded instanceof ArrayBuffer, "The encoded buffer should be an array buffer");
+
+        flock.audio.decode.webAudio({
+            rawData: encoded,
+            success: afterRedecoded,
+            error: function (msg) {
+                ok(false, "There was a decoding error while decoding the encoded buffer. " + msg);
+                start();
+            }
+        });
+    };
+
+    flock.test.audioFile.testEncodeDecode = function (formats) {
+        fluid.each(formats, function (format) {
+            asyncTest("Encode in " + format + " format, then decode it again.", function () {
+                flock.audio.decode({
+                    src: "../../shared/audio/long-triangle-int16-44100.wav",
+                    success: function (original) {
+                        flock.test.audioFile.encodeThenDecode(original, format);
+                    },
+                    error: function (msg) {
+                        ok(false, "There was an error while decoding the original audio file. " + msg);
+                        start();
+                    }
+                });
+            });
+        });
+    };
+
+    // Only Safari seems to support decoding WAVE files at higher bit depths.
+    var formats = flock.platform.browser.safari ? ["int16", "int32", "float32"] : ["int16"];
+    flock.test.audioFile.testEncodeDecode(formats);
 })();
