@@ -141,8 +141,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.bufferDesc.fromChannelArray = function (arr, sampleRate, numChannels) {
-        if (!numChannels || numChannels === 1) {
-            numChannels = 1;
+        if (arr instanceof Float32Array) {
             arr = [arr];
         }
 

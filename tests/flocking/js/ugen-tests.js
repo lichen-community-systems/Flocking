@@ -671,23 +671,30 @@ var fluid = fluid || require("infusion"),
     module("flock.ugen.sum() tests");
 
     test("flock.ugen.sum()", function () {
-        var addBuffer = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31],
+        var addBuffer = flock.test.fillBuffer(0, 31),
             one = flock.test.ugen.mock.make(addBuffer),
             two = flock.test.ugen.mock.make(addBuffer),
             three = flock.test.ugen.mock.make(addBuffer);
 
+        one.gen(32);
+        two.gen(32);
+        three.gen(32);
+
         var inputs = {
             sources: [one]
         };
+
         var summer = flock.ugen.sum(inputs, new Float32Array(addBuffer.length));
         summer.gen(32);
-        deepEqual(summer.output, new Float32Array(addBuffer), "With a single source, the output should be identical to the source input.");
+        deepEqual(summer.output, new Float32Array(addBuffer),
+            "With a single source, the output should be identical to the source input.");
 
         inputs.sources = [one, two, three];
-        var expected = [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 57, 60, 63, 66, 69, 72, 75, 78, 81, 84, 87, 90, 93];
+        var expected = flock.test.fillBuffer(0, 93, 3);
         summer.inputs = inputs;
         summer.gen(32);
-        deepEqual(summer.output, new Float32Array(expected), "With three sources, the output consist of the inputs added together.");
+        deepEqual(summer.output, new Float32Array(expected),
+            "With three sources, the output consist of the inputs added together.");
     });
 
 
@@ -1096,6 +1103,129 @@ var fluid = fluid || require("infusion"),
         flock.test.ugen.playBuffer.testBufferInput);
 
 
+    module("flock.ugen.writeBuffer");
+
+    fluid.registerNamespace("flock.test.ugen.writeBuffer");
+
+    flock.test.ugen.writeBuffer.makeMockDef = function (id, buffer) {
+        return {
+            id: id,
+            ugen: "flock.test.ugen.mock",
+            options: {
+                model: {
+                    writeIdx: 0
+                },
+                buffer: buffer,
+                gen: function (that, numSamps) {
+                    for (var i = 0; i < numSamps; i++) {
+                        that.output[i] = that.options.buffer[that.model.writeIdx];
+                        that.model.writeIdx++;
+                    }
+                }
+            }
+        };
+    };
+
+    flock.test.ugen.writeBuffer.makeSynth = function () {
+        var expected = flock.test.fillBuffer(1, 256);
+
+        var synth = flock.synth({
+            synthDef: {
+                id: "writer",
+                ugen: "flock.ugen.writeBuffer",
+                options: {
+                    numOutputs: 1
+                },
+                buffer: {
+                    id: "cats"
+                },
+                sources: flock.test.ugen.writeBuffer.makeMockDef("input", expected)
+            }
+        });
+
+        return synth;
+    };
+
+    test("Buffer is created and registered with the environment", function () {
+        var synth = flock.test.ugen.writeBuffer.makeSynth();
+        equal(synth.enviro.buffers.cats, synth.get("writer").buffer,
+            "The buffer should have been created and registered with the environment.");
+    });
+
+    flock.test.ugen.writeBuffer.testOutput = function (numBlocks, numChannels, bufferName, synth) {
+        var samplesGenerated = 0,
+            writerUGen = synth.get("writer"),
+            sources = synth.get("writer.sources"),
+            enviroBuffer = synth.enviro.buffers[bufferName],
+            humanChannelNum,
+            source,
+            actual,
+            expected;
+
+        equal(enviroBuffer.data.channels.length, numChannels,
+            "A " + numChannels + " channel buffer should have been created.");
+        equal(writerUGen.output.length, numChannels,
+            numChannels + " output channels should have been created.");
+
+        if (numChannels > 1) {
+            equal(writerUGen.inputs.sources.length, numChannels,
+                "The unit generator should have " + numChannels + " inputs.");
+        } else {
+            ok(!flock.isIterable(writerUGen.inputs.sources),
+                "The unit generator should have one input.");
+        }
+
+        for (var i = 0; i < 4; i++) {
+            synth.gen();
+            samplesGenerated += 64;
+
+            for (var j = 0; j < numChannels; j++) {
+                humanChannelNum = j + 1;
+                source = numChannels > 1 ? sources[j] : sources;
+                actual = enviroBuffer.data.channels[j].subarray(0, samplesGenerated);
+                expected = source.options.buffer.subarray(0, samplesGenerated);
+
+                deepEqual(actual, expected,
+                    "Channel #" + humanChannelNum + " should have been written to the buffer.");
+                deepEqual(writerUGen.output[j], source.output,
+                    "The synth's output #" + humanChannelNum +
+                    " should pass through input #" + humanChannelNum +".");
+            }
+        }
+    };
+
+    test("Single input written to buffer", function () {
+        var synth = flock.test.ugen.writeBuffer.makeSynth();
+        flock.test.ugen.writeBuffer.testOutput(4, 1, "cats", synth);
+    });
+
+    test("Four inputs written to buffer", function () {
+        var synth = flock.synth({
+            synthDef: {
+                id: "writer",
+                ugen: "flock.ugen.writeBuffer",
+                buffer: "hamsters",
+                options: {
+                    duration: 180,
+                    numOutputs: 4
+                },
+                sources: [
+                    flock.test.ugen.writeBuffer.makeMockDef("one", flock.test.fillBuffer(1, 256)),
+                    flock.test.ugen.writeBuffer.makeMockDef("two", flock.test.fillBuffer(1000, 1256)),
+                    flock.test.ugen.writeBuffer.makeMockDef("three", flock.test.fillBuffer(2000, 2256)),
+                    flock.test.ugen.writeBuffer.makeMockDef("four", flock.test.fillBuffer(3000, 3256))
+                ]
+            }
+        });
+
+        flock.test.ugen.writeBuffer.testOutput(4, 4, "hamsters", synth);
+    });
+
+    // TODO: > duration, no loop
+    // TODO: > duration, loop
+    // TODO: numOutputs < numInputs
+
+
     module("flock.ugen.amplitude() tests");
 
     var ampConstSignalDef = {
@@ -1113,6 +1243,7 @@ var fluid = fluid || require("infusion"),
     };
 
     var generateAndTestContinuousSamples = function (ugen, numSamps) {
+        ugen.inputs.source.gen(64);
         ugen.gen(numSamps);
         flock.test.arrayNotNaN(ugen.output, "The unit generator's output should not contain NaN.");
         flock.test.arrayNotSilent(ugen.output,
@@ -1151,7 +1282,6 @@ var fluid = fluid || require("infusion"),
             i;
 
         for (i = 0; i < controlPeriods; i++) {
-            tracker.inputs.source.gen(64);
             generateAndTestContinuousSamples(tracker, 64);
             flock.test.rampingArray(tracker.output, true,
                 "The amplitude tracker should follow the contour of its source.");
@@ -1598,7 +1728,7 @@ var fluid = fluid || require("infusion"),
                     gen: function (that, numSamps) {
                         var i;
                         for (i = 0; i < numSamps; i++) {
-                            that.output[i] = that.output[i] + sampGenCount;
+                            that.output[i] = that.options.buffer[i] + sampGenCount;
                         }
                         sampGenCount += numSamps;
                     }

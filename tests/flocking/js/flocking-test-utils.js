@@ -489,12 +489,14 @@ var flock = flock || {};
 
     flock.test.ugen.mock = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        if (that.options.buffer) {
-            that.output = that.options.buffer;
-        }
+
         that.gen = function (numSamps) {
             if (that.options.gen) {
                 that.options.gen(that, numSamps);
+            } else if (that.options.buffer){
+                for (var i = 0; i < numSamps; i++) {
+                    that.output[i] = that.options.buffer[i];
+                }
             }
         };
         return that;

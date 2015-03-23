@@ -1,4 +1,4 @@
-/*! Flocking 0.1.1 (March 22, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.1 (March 23, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.3
@@ -22354,8 +22354,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.bufferDesc.fromChannelArray = function (arr, sampleRate, numChannels) {
-        if (!numChannels || numChannels === 1) {
-            numChannels = 1;
+        if (arr instanceof Float32Array) {
             arr = [arr];
         }
 
@@ -26976,6 +26975,146 @@ var fluid = fluid || require("infusion"),
             interpolation: "linear"
         }
     });
+
+    /**
+     * Writes input into a buffer.
+     *
+     * Inputs:
+     *
+     *   sources: the inputs to write to the buffer,
+     *   buffer: a bufferDef to write to; the buffer will be created if it doesn't already exist
+     *   start: the index into the buffer to start writing at; defaults to 0
+     *   loop: a flag specifying if the unit generator should loop back to the beginning
+     *         of the buffer when it reaches the end; defaults to 0.
+     */
+    flock.ugen.writeBuffer = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                out = that.output,
+                inputs = that.inputs,
+                buffer = that.buffer,
+                sources = that.multiInputs.sources,
+                numChans = sources.length,
+                bufferChannels = buffer.data.channels,
+                numFrames = buffer.format.numSampleFrames,
+                startIdx = inputs.start.output[0],
+                loop = inputs.loop.output[0],
+                i,
+                channelWriteIdx,
+                j;
+
+            if (m.prevStart !== startIdx) {
+                m.prevStart = startIdx;
+                m.writeIdx = Math.floor(startIdx);
+            }
+
+            for (i = 0; i < numChans; i++) {
+                var inputChannel = sources[i].output;
+                var bufferChannel = bufferChannels[i];
+                var outputChannel = out[i];
+                channelWriteIdx = m.writeIdx;
+
+                for (j = 0; j < numSamps; j++) {
+                    var samp = inputChannel[j];
+                    outputChannel[j] = samp;
+
+                    if (channelWriteIdx < numFrames) {
+                        bufferChannel[channelWriteIdx] = samp;
+                    } else if (loop > 0) {
+                        channelWriteIdx = Math.floor(startIdx);
+                        bufferChannel[channelWriteIdx] = samp;
+                    }
+                    channelWriteIdx++;
+                }
+            }
+
+            m.writeIdx = channelWriteIdx;
+            that.mulAdd(numSamps);
+        };
+
+        that.createBuffer = function (that, bufDef) {
+            var s = that.options.audioSettings,
+                numChans = that.multiInputs.sources.length,
+                duration = Math.round(that.options.duration * s.rates.audio),
+                channels = new Array(numChans),
+                i;
+
+            // We need to make a new buffer.
+            for (i = 0; i < numChans; i++) {
+                channels[i] = new Float32Array(duration);
+            }
+
+            var buffer = flock.bufferDesc(channels, s.rates.audio, numChans);
+
+            if (bufDef.id) {
+                buffer.id = bufDef.id;
+                s.buffers[bufDef.id] = buffer;
+            }
+
+            return buffer;
+        };
+
+        that.setupBuffer = function (bufDef) {
+            bufDef = typeof bufDef === "string" ? {id: bufDef} : bufDef;
+
+            var existingBuffer;
+            if (bufDef.id) {
+                // Check for an existing environment buffer.
+                existingBuffer = that.options.audioSettings.buffers[bufDef.id];
+            }
+
+            that.buffer = existingBuffer || that.createBuffer(that, bufDef);
+
+            return that.buffer;
+        };
+
+        that.onInputChanged = function (inputName) {
+            if (!inputName) {
+                that.collectMultiInputs();
+                that.setupBuffer(that.inputs.buffer);
+            } else if (inputName === "sources") {
+                that.collectMultiInputs();
+            } else if (inputName === "buffer") {
+                that.setupBuffer(that.inputs.buffer);
+            }
+
+            flock.onMulAddInputChanged(that);
+        };
+
+        that.init = function () {
+            that.onInputChanged();
+        };
+
+        that.init();
+
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.writeBuffer", {
+        rate: "audio",
+
+        inputs: {
+            sources: null,
+            buffer: null,
+            start: 0,
+            loop: 0
+        },
+
+        ugenOptions: {
+            model: {
+                prevStart: undefined,
+                writeIdx: 0
+            },
+
+            tags: ["flock.ugen.multiChannelOutput"],
+            numOutputs: 2, // TODO: Should be dynamically set to sources.length; user has to override.
+            multiInputNames: ["sources"],
+            duration: 600 // In seconds. Default is 10 minutes.
+        }
+    });
+
 
     /**
      * Outputs the duration of the specified buffer. Runs at either constant or control rate.
