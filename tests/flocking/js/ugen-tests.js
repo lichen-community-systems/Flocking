@@ -1134,6 +1134,7 @@ var fluid = fluid || require("infusion"),
                 id: "writer",
                 ugen: "flock.ugen.writeBuffer",
                 options: {
+                    duration: 1,
                     numOutputs: 1
                 },
                 buffer: {
@@ -1152,7 +1153,7 @@ var fluid = fluid || require("infusion"),
             "The buffer should have been created and registered with the environment.");
     });
 
-    flock.test.ugen.writeBuffer.testOutput = function (numBlocks, numChannels, bufferName, synth) {
+    flock.test.ugen.writeBuffer.testOutput = function (numBlocks, numInputs, numOutputs, bufferName, synth) {
         var samplesGenerated = 0,
             writerUGen = synth.get("writer"),
             sources = synth.get("writer.sources"),
@@ -1162,14 +1163,14 @@ var fluid = fluid || require("infusion"),
             actual,
             expected;
 
-        equal(enviroBuffer.data.channels.length, numChannels,
-            "A " + numChannels + " channel buffer should have been created.");
-        equal(writerUGen.output.length, numChannels,
-            numChannels + " output channels should have been created.");
+        equal(enviroBuffer.data.channels.length, numInputs,
+            "A " + numInputs + " channel buffer should have been created.");
+        equal(writerUGen.output.length, numOutputs,
+            numOutputs + " output channels should have been created.");
 
-        if (numChannels > 1) {
-            equal(writerUGen.inputs.sources.length, numChannels,
-                "The unit generator should have " + numChannels + " inputs.");
+        if (numInputs > 1) {
+            equal(writerUGen.inputs.sources.length, numInputs,
+                "The unit generator should have " + numInputs + " inputs.");
         } else {
             ok(!flock.isIterable(writerUGen.inputs.sources),
                 "The unit generator should have one input.");
@@ -1179,51 +1180,102 @@ var fluid = fluid || require("infusion"),
             synth.gen();
             samplesGenerated += 64;
 
-            for (var j = 0; j < numChannels; j++) {
+            for (var j = 0; j < numInputs; j++) {
                 humanChannelNum = j + 1;
-                source = numChannels > 1 ? sources[j] : sources;
+                source = numInputs > 1 ? sources[j] : sources;
                 actual = enviroBuffer.data.channels[j].subarray(0, samplesGenerated);
                 expected = source.options.buffer.subarray(0, samplesGenerated);
 
                 deepEqual(actual, expected,
                     "Channel #" + humanChannelNum + " should have been written to the buffer.");
-                deepEqual(writerUGen.output[j], source.output,
+            }
+
+            for (var k = 0; k < numOutputs; k++) {
+                humanChannelNum = k + 1;
+                source = numInputs > 1 ? sources[k] : sources;
+
+                deepEqual(writerUGen.output[k], source.output,
                     "The synth's output #" + humanChannelNum +
                     " should pass through input #" + humanChannelNum +".");
             }
         }
     };
 
-    test("Single input written to buffer", function () {
+    test("One input", function () {
         var synth = flock.test.ugen.writeBuffer.makeSynth();
-        flock.test.ugen.writeBuffer.testOutput(4, 1, "cats", synth);
+        flock.test.ugen.writeBuffer.testOutput(4, 1, 1, "cats", synth);
     });
 
-    test("Four inputs written to buffer", function () {
+    flock.test.ugen.writeBuffer.fourChannelDef = {
+        id: "writer",
+        ugen: "flock.ugen.writeBuffer",
+        buffer: "hamsters",
+        options: {
+            duration: 1,
+            numOutputs: 4
+        },
+        sources: [
+            flock.test.ugen.writeBuffer.makeMockDef("one", flock.test.fillBuffer(1, 256)),
+            flock.test.ugen.writeBuffer.makeMockDef("two", flock.test.fillBuffer(1000, 1256)),
+            flock.test.ugen.writeBuffer.makeMockDef("three", flock.test.fillBuffer(2000, 2256)),
+            flock.test.ugen.writeBuffer.makeMockDef("four", flock.test.fillBuffer(3000, 3256))
+        ]
+    };
+
+    test("Four inputs", function () {
         var synth = flock.synth({
-            synthDef: {
-                id: "writer",
-                ugen: "flock.ugen.writeBuffer",
-                buffer: "hamsters",
-                options: {
-                    duration: 180,
-                    numOutputs: 4
-                },
-                sources: [
-                    flock.test.ugen.writeBuffer.makeMockDef("one", flock.test.fillBuffer(1, 256)),
-                    flock.test.ugen.writeBuffer.makeMockDef("two", flock.test.fillBuffer(1000, 1256)),
-                    flock.test.ugen.writeBuffer.makeMockDef("three", flock.test.fillBuffer(2000, 2256)),
-                    flock.test.ugen.writeBuffer.makeMockDef("four", flock.test.fillBuffer(3000, 3256))
-                ]
-            }
+            synthDef: flock.test.ugen.writeBuffer.fourChannelDef
         });
 
-        flock.test.ugen.writeBuffer.testOutput(4, 4, "hamsters", synth);
+        flock.test.ugen.writeBuffer.testOutput(4, 4, 4, "hamsters", synth);
     });
 
-    // TODO: > duration, no loop
-    // TODO: > duration, loop
-    // TODO: numOutputs < numInputs
+    test("Fewer outputs than inputs", function () {
+        var synth = flock.synth({
+            synthDef: $.extend(true, {}, flock.test.ugen.writeBuffer.fourChannelDef, {
+                buffer: "gerbils",
+                options: {
+                    duration: 1,
+                    numOutputs: 1
+                }
+            })
+        });
+
+        flock.test.ugen.writeBuffer.testOutput(4, 4, 1, "gerbils", synth);
+    });
+
+    flock.test.ugen.writeBuffer.testLooping = function (shouldLoop) {
+        var synth = flock.synth({
+            synthDef: $.extend(true, {}, flock.test.ugen.writeBuffer.fourChannelDef, {
+                sources: flock.test.ugen.writeBuffer.makeMockDef("one", flock.test.fillBuffer(1, 256)),
+                buffer: "giraffes",
+                loop: shouldLoop ? 1.0 : 0.0,
+                options: {
+                    duration: 128 / flock.environment.audioSettings.rates.audio
+                }
+            })
+        });
+
+        for (var i = 0; i < 4; i++) {
+            synth.gen(64);
+        }
+
+        var actual = synth.enviro.buffers.giraffes.data.channels[0],
+            expected = shouldLoop ? flock.test.fillBuffer(129, 256) : flock.test.fillBuffer(1, 128);
+
+        deepEqual(actual,expected,
+            "The unit generator should " + (shouldLoop ? "" : "not ") +
+            "have looped around to the beginning.");
+
+    };
+
+    test("Write past duration, no loop", function () {
+        flock.test.ugen.writeBuffer.testLooping(false);
+    });
+
+    test("Write past duration, loop", function () {
+        flock.test.ugen.writeBuffer.testLooping(true);
+    });
 
 
     module("flock.ugen.amplitude() tests");

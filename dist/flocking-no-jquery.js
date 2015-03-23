@@ -17832,7 +17832,11 @@ var fluid = fluid || require("infusion"),
 
                 for (j = 0; j < numSamps; j++) {
                     var samp = inputChannel[j];
-                    outputChannel[j] = samp;
+
+                    // TODO: Remove this conditional by being smarter about dynamic outputs.
+                    if (outputChannel) {
+                        outputChannel[j] = samp;
+                    }
 
                     if (channelWriteIdx < numFrames) {
                         bufferChannel[channelWriteIdx] = samp;
