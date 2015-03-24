@@ -693,7 +693,7 @@ var fluid = fluid || require("infusion"),
             // Any change in input value will restart the line.
             m.start = that.inputs.start.output[0];
             if (m.start === 0.0) {
-                m.start = Number.MIN_VALUE; // Guard against divide by zero by using the smallest possible number.
+                m.start = 1e-101; // Guard against divide by zero.
             }
 
             m.end = that.inputs.end.output[0];
