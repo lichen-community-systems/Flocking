@@ -66,10 +66,7 @@ module.exports = function(grunt) {
                 "demos/**/*.js",
                 "tests/**/*.js",
                 "nodejs/**/*.js",
-                "!**/third-party/**",
-
-                // TODO: Temporary until all playground files are ready for linting.
-                "!demos/interactive/demos/*.js"
+                "!**/third-party/**"
             ],
             options: {
                 jshintrc: true

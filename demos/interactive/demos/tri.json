@@ -1,7 +1,0 @@
-{
-    "description": "Non-band limited triangle oscillator",
-    "synthDef": {
-        "ugen": "flock.ugen.tri",
-        "freq": 440
-    }
-}
