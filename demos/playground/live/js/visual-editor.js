@@ -54,48 +54,6 @@ var fluid = fluid || require("infusion"),
     };
 
 
-    /***********************************
-     * Graph/Source View Taggle Button *
-     ***********************************/
-
-    fluid.defaults("flock.playground.editorModeToggle", {
-        gradeNames: ["flock.ui.toggleButton", "autoInit"],
-
-        model: {
-            isEnabled: true
-        },
-
-        listeners: {
-            onEnabled: [
-                {
-                    "this": "{playground}.dom.editor",
-                    method: "hide"
-                },
-                {
-                    "this": "{playground}.dom.visual",
-                    method: "show"
-                }
-            ],
-
-            onDisabled: [
-                {
-                    "this": "{playground}.dom.visual",
-                    method: "hide"
-                },
-                {
-                    "this": "{playground}.dom.editor",
-                    method: "show"
-                }
-            ]
-        },
-
-        strings: {
-            enabled: "Source",
-            disabled: "Graph"
-        }
-    });
-
-
     /*********************
      * Visual Playground *
      *********************/
@@ -118,10 +76,17 @@ var fluid = fluid || require("infusion"),
         components: {
             editor: {
                 options: {
-                    mode: "application/json"
+                    mode: "application/json",
+                    listeners: {
+                        onValidChange: "{visual}.events.onSourceUpdated.fire()"
+                    }
                 }
             },
-            
+
+            evaluator: {
+                type: "flock.sourceEvaluator.json"
+            },
+
             visualView: {
                 type: "flock.playground.visualView",
                 container: "#visual-view"

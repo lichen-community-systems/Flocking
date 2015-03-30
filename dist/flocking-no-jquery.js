@@ -1,4 +1,4 @@
-/*! Flocking 0.1.1 (March 25, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.1 (March 30, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof exports === "object") {
@@ -11368,6 +11368,10 @@ var fluid = fluid || require("infusion"),
     flock.interpolate.cubic = flock.interpolate.hermite;
 
     flock.log = {
+        fail: function (msg) {
+            fluid.log(fluid.logLevel.FAIL, msg);
+        },
+
         warn: function (msg) {
             fluid.log(fluid.logLevel.WARN, msg);
         },
@@ -11381,7 +11385,7 @@ var fluid = fluid || require("infusion"),
         if (flock.debug.failHard) {
             throw new Error(msg);
         } else {
-            fluid.log(fluid.logLevel.FAIL, msg);
+            flock.log.fail(msg);
         }
     };
 

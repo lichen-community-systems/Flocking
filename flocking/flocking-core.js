@@ -536,6 +536,10 @@ var fluid = fluid || require("infusion"),
     flock.interpolate.cubic = flock.interpolate.hermite;
 
     flock.log = {
+        fail: function (msg) {
+            fluid.log(fluid.logLevel.FAIL, msg);
+        },
+
         warn: function (msg) {
             fluid.log(fluid.logLevel.WARN, msg);
         },
@@ -549,7 +553,7 @@ var fluid = fluid || require("infusion"),
         if (flock.debug.failHard) {
             throw new Error(msg);
         } else {
-            fluid.log(fluid.logLevel.FAIL, msg);
+            flock.log.fail(msg);
         }
     };
 

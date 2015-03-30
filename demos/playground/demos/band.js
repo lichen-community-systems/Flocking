@@ -11,7 +11,8 @@ flock.band({
                         loop: 1,
                         freq: 3,
                         mul: 440
-                    }
+                    },
+                    mul: 0.5
                 }
             }
         },
@@ -27,7 +28,8 @@ flock.band({
                         loop: 1,
                         freq: 2,
                         mul: 220
-                    }
+                    },
+                    mul: 0.5
                 }
             }
         }
