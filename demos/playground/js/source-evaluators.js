@@ -26,7 +26,7 @@ var fluid = fluid || require("infusion"),
             if (ret) {
                 return ret;
             } else {
-                match = flock.playground.findRecursive(arr[i], fn);
+                match = flock.findRecursive(arr[i], fn);
                 if (match) {
                     return match;
                 }
@@ -43,7 +43,7 @@ var fluid = fluid || require("infusion"),
             if (ret) {
                 return ret;
             } else {
-                match = flock.playground.findRecursive(o[key], fn);
+                match = flock.findRecursive(o[key], fn);
                 if (match) {
                     return match;
                 }
@@ -56,8 +56,8 @@ var fluid = fluid || require("infusion"),
             return fn(o);
         }
 
-        var findFn = flock.isIterable(o) ? flock.playground.findInArray :
-            flock.playground.findInObject;
+        var findFn = flock.isIterable(o) ? flock.findInArray :
+            flock.findInObject;
 
         return findFn(o, fn);
     };
@@ -107,7 +107,7 @@ var fluid = fluid || require("infusion"),
 
         model: {
             parsed: {},
-            activeSynthDef: {}
+            activeSynthSpec: {}
         },
 
         invokers: {
@@ -124,8 +124,8 @@ var fluid = fluid || require("infusion"),
 
         modelListeners: {
             parsed: {
-                funcName: "flock.sourceEvaluator.json.updateActiveSynthDef",
-                args: ["{change}.value", "{applier}"]
+                funcName: "flock.sourceEvaluator.json.updateActiveSynthSpec",
+                args: ["{change}.value", "{that}.applier"]
             }
         }
     });
@@ -138,7 +138,7 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    flock.sourceEvaluator.json.parse = function (source, applier, afterParsed, onParseError) {
+    flock.sourceEvaluator.json.parse = function (source, applier, onParseError) {
         var parsed = flock.sourceEvaluator.json.tryParse(source, onParseError);
         if (!parsed) {
             return;
@@ -148,7 +148,7 @@ var fluid = fluid || require("infusion"),
         applier.change("parsed", parsed);
     };
 
-    flock.sourceEvaluator.json.updateActiveSynthDef = function (parsed, applier) {
+    flock.sourceEvaluator.json.updateActiveSynthSpec = function (parsed, applier) {
         var activeSynthSpec = flock.sourceEvaluator.json.findFirstSynthSpec(parsed);
 
         if (activeSynthSpec) {
@@ -162,8 +162,8 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.sourceEvaluator.json.findFirstSynthSpec = function (parsed) {
-        return flock.playground.matchSynthSpec(parsed) ? parsed :
-            flock.playground.findRecursive(parsed, flock.playground.matchSynthSpec);
+        var matcher = flock.sourceEvaluator.json.matchSynthSpec;
+        return matcher(parsed) ? parsed : flock.findRecursive(parsed, matcher);
     };
 
     flock.sourceEvaluator.json.tryMakePlayable = function (type, options, onEvaluationError) {

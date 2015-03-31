@@ -15,6 +15,7 @@ var fluid = fluid || require("infusion"),
 
     // TODO: Declarativize.
     flock.init();
+    flock.debug.failHard = false;
 
     /**************
      * Playground *
@@ -46,9 +47,9 @@ var fluid = fluid || require("infusion"),
             evaluator: {
                 type: "flock.sourceEvaluator.code",
                 options: {
-                    listeners: {
-                        onParseError: "flock.fail({arguments}.0)",
-                        onEvaluationError: "flock.fail({arguments}.0)"
+                    events: {
+                        onParseError: "{playground}.events.onError",
+                        onEvaluationError: "{playground}.events.onError"
                     }
                 }
             },
@@ -81,21 +82,28 @@ var fluid = fluid || require("infusion"),
             }
         },
 
+        invokers: {
+            parse: "flock.playground.parseSource({editor}, {evaluator})"
+        },
+
         events: {
             onSourceUpdated: null,
-            onEvaluateDemo: "{playButton}.events.onPlay"
+            onEvaluateDemo: "{playButton}.events.onPlay",
+            onError: null
         },
 
         listeners: {
             onCreate: [
-                {
-                    funcName: "{demoSelector}.loadDemoFromURL"
-                }
+                "{demoSelector}.loadDemoFromURL()"
             ],
 
             onEvaluateDemo: [
-                "flock.playground.parseSource({editor}, {evaluator})",
+                "{that}.parse()",
                 "{evaluator}.evaluate()"
+            ],
+
+            onError: [
+                "flock.fail({arguments}.0)"
             ]
         },
 

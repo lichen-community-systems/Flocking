@@ -76,10 +76,7 @@ var fluid = fluid || require("infusion"),
         components: {
             editor: {
                 options: {
-                    mode: "application/json",
-                    listeners: {
-                        onValidChange: "{visual}.events.onSourceUpdated.fire()"
-                    }
+                    mode: "application/json"
                 }
             },
 
@@ -89,7 +86,20 @@ var fluid = fluid || require("infusion"),
 
             visualView: {
                 type: "flock.playground.visualView",
-                container: "#visual-view"
+                container: "#visual-view",
+                options: {
+                    listeners: {
+                        // TODO: This toggling works inconsistently.
+                        onRender: {
+                            "this": "{playButton}.container",
+                            method: "hide"
+                        },
+                        afterRender: {
+                            "this": "{playButton}.container",
+                            method: "show"
+                        }
+                    }
+                }
             },
 
             demos: {
@@ -97,30 +107,21 @@ var fluid = fluid || require("infusion"),
             }
         },
 
+        events: {
+            onSourceUpdated: "{editor}.events.onValidChange"
+        },
+
         selectors: {
             visual: "#visual-view",
             synthSelector: ".playSynth"
         },
 
-        modelListeners: {
-            isDeclarative: {
-                funcName: "flock.playground.visual.updateVisualView",
-                args: ["{change}.value", "{that}.dom.visual"]
-            }
+        listeners: {
+            onSourceUpdated: [
+                "{that}.parse()"
+            ]
         }
     });
-
-    flock.playground.visual.updateVisualView = function (isActive, visualView) {
-        if (isActive) {
-            visualView.show();
-        } else {
-            visualView.hide();
-        }
-    };
-
-    flock.playground.visual.updateToggleButton = function (isDeclarative, button) {
-        button.attr("disabled", !isDeclarative);
-    };
 
 
     /***************
@@ -146,18 +147,26 @@ var fluid = fluid || require("infusion"),
                     },
 
                     model: {
-                        synthSpec: "{playground}.model.activeSynthSpec"
+                        // TODO: Rename this to be consistent with the evaluator.
+                        synthSpec: "{evaluator}.model.activeSynthSpec"
                     },
 
                     modelListeners: {
                         "synthSpec": "{synthDefRenderer}.refreshView()"
+                    },
+
+                    events: {
+                        onRender: "{visualView}.events.onRender",
+                        afterRender: "{visualView}.events.afterRender"
                     }
                 }
             }
         },
 
         events: {
-            onReady: "{jsPlumb}.events.onReady"
+            onReady: "{jsPlumb}.events.onReady",
+            onRender: null,
+            afterRender: null
         }
     });
 
@@ -233,7 +242,8 @@ var fluid = fluid || require("infusion"),
         // Other ugens will be displayed with their last path segment (tail).
         // TODO: This should become an option for all unit generators.
         var isValueUGen = flock.ui.nodeRenderers.ugen.hasTag(ugenDef.ugen, "flock.ugen.valueType"),
-            displayName = isValueUGen ? ugenDef.inputs.value : fluid.pathUtil.getTailPath(ugenDef.ugen);
+            displayName = isValueUGen ? ugenDef.inputs.value : ugenDef.ugen ?
+                fluid.pathUtil.getTailPath(ugenDef.ugen) : "";
 
         // TODO: We should have some other ID that represents the view, not the model.
         // TODO: and this is the wrong time to do this.
@@ -263,13 +273,7 @@ var fluid = fluid || require("infusion"),
         invokers: {
             refreshView: {
                 funcName: "flock.ui.nodeRenderers.synth.refreshView",
-                args: [
-                    "{that}",
-                    "{that}.applier",
-                    "{that}.container",
-                    "{that}.model.synthSpec",
-                    "{that}.events.afterRender.fire"
-                ],
+                args: ["{that}"],
                 dynamic: true
             },
 
@@ -280,7 +284,9 @@ var fluid = fluid || require("infusion"),
         },
 
         events: {
-            afterRender: null
+            onRender: null,
+            afterRender: null,
+            onRenderError: null
         },
 
         listeners: {
@@ -345,6 +351,10 @@ var fluid = fluid || require("infusion"),
             inputDef,
             renderer;
 
+        // TODO: Handle arrays correctly here.
+
+        ugen.id = ugen.id || fluid.allocateGuid();
+
         for (inputName in inputDefs) {
             inputDef = inputDefs[inputName];
 
@@ -352,7 +362,6 @@ var fluid = fluid || require("infusion"),
                 flock.ui.nodeRenderers.synth.accumulateRenderers(inputDef, container, renderers);
             }
 
-            ugen.id = ugen.id || fluid.allocateGuid(); // TODO: This is already elsewhere.
             if (inputName !== "value") {
                 inputDef.id = inputDef.id || fluid.allocateGuid();
                 edges.push({
@@ -373,14 +382,18 @@ var fluid = fluid || require("infusion"),
         renderers.push(renderer);
     };
 
-    flock.ui.nodeRenderers.synth.renderGraph = function (renderers) {
+    flock.ui.nodeRenderers.synth.renderGraph = function (that) {
         var graphSpec = {
             nodes: {},
             edges: []
         };
 
-        fluid.each(renderers, function (renderer) {
+        fluid.each(that.ugenRenderers, function (renderer) {
             renderer.refreshView();
+
+            if (!renderer.node) {
+                return;
+            }
 
             graphSpec.nodes[renderer.model.ugenDef.id] = {
                 width: renderer.node.innerWidth(),
@@ -393,7 +406,7 @@ var fluid = fluid || require("infusion"),
         return graphSpec;
     };
 
-    flock.ui.nodeRenderers.synth.layoutGraph = function (container, graphSpec) {
+    flock.ui.nodeRenderers.synth.layoutGraph = function (graphSpec) {
         // TODO: Wrap Dagre as a component.
         var g = new dagre.Digraph();
 
@@ -418,6 +431,8 @@ var fluid = fluid || require("infusion"),
                 "left": graphNode.x
             });
         });
+
+        return outputGraph;
     };
 
     flock.ui.nodeRenderers.synth.clear = function (jsPlumb, container, ugenRenderers) {
@@ -435,32 +450,40 @@ var fluid = fluid || require("infusion"),
         ugenRenderers.length = 0;
     };
 
-    flock.ui.nodeRenderers.synth.render = function (jsPlumb, synthDef, container, ugenRenderers) {
-        if (!jsPlumb) {
+    flock.ui.nodeRenderers.synth.render = function (synthDef, that) {
+        if (!that.jsPlumb) {
             return;
         }
 
         var expanded = flock.ui.nodeRenderers.synth.expandDef(synthDef);
-        flock.ui.nodeRenderers.synth.accumulateRenderers(expanded, container, ugenRenderers);
+        flock.ui.nodeRenderers.synth.accumulateRenderers(expanded, that.container, that.ugenRenderers);
 
-        var graph = flock.ui.nodeRenderers.synth.renderGraph(ugenRenderers);
-        flock.ui.nodeRenderers.synth.layoutGraph(container, graph);
-        flock.ui.nodeRenderers.synth.renderEdges(jsPlumb.plumb, graph.edges);
+        var graph = flock.ui.nodeRenderers.synth.renderGraph(that);
+        flock.ui.nodeRenderers.synth.layoutGraph(graph);
+        flock.ui.nodeRenderers.synth.renderEdges(that.jsPlumb.plumb, graph.edges);
     };
 
-    flock.ui.nodeRenderers.synth.refreshView = function (that, applier, container, synthSpec, afterRender) {
+    flock.ui.nodeRenderers.synth.refreshView = function (that) {
+        var synthSpec = that.model.synthSpec;
         if (!synthSpec || !synthSpec.synthDef || $.isEmptyObject(synthSpec.synthDef)) {
             return;
         }
 
-        flock.ui.nodeRenderers.synth.clear(that.jsPlumb, container, that.ugenRenderers);
-        flock.ui.nodeRenderers.synth.render(that.jsPlumb, synthSpec.synthDef, container, that.ugenRenderers);
+        that.events.onRender.fire();
 
-        afterRender();
+        flock.ui.nodeRenderers.synth.clear(that.jsPlumb,that. container, that.ugenRenderers);
+        flock.ui.nodeRenderers.synth.render(synthSpec.synthDef, that);
+
+        that.events.afterRender.fire();
     };
 
     flock.ui.nodeRenderers.synth.renderEdges = function (plumb, edges) {
         fluid.each(edges, function (edge, idx) {
+            // TODO: Get rid of this conditional.
+            if (!document.getElementById(edge.target) || !document.getElementById(edge.source)) {
+                return;
+            }
+
             plumb.connect({
                 source: plumb.addEndpoint(edge.target, {
                     anchor: "Bottom",

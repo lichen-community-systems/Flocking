@@ -1,35 +1,49 @@
+fluid.defaults("flock.demo.sequencedSine", {
+    gradeNames: ["flock.synth", "autoInit"],
+    synthDef: {
+        ugen: "flock.ugen.out",
+        expand: 1,
+        sources: {
+            ugen: "flock.ugen.sinOsc",
+            freq: {
+                ugen: "flock.ugen.sequence",
+                loop: 1
+            },
+            mul: 0.5
+        }
+    }
+});
+
 flock.band({
     components: {
         left: {
-            type: "flock.synth",
+            type: "flock.demo.sequencedSine",
             options: {
                 synthDef: {
-                    ugen: "flock.ugen.sinOsc",
-                    freq: {
-                        ugen: "flock.ugen.sequence",
-                        list: [1, 4/3, 5/4],
-                        loop: 1,
-                        freq: 3,
-                        mul: 440
-                    },
-                    mul: 0.5
+                    bus: 0,
+                    sources: {
+                        freq: {
+                            list: [1, 4/3, 5/4],
+                            freq: 3,
+                            mul: 440
+                        }
+                    }
                 }
             }
         },
 
         right: {
-            type: "flock.synth",
+            type: "flock.demo.sequencedSine",
             options: {
                 synthDef: {
-                    ugen: "flock.ugen.sinOsc",
-                    freq: {
-                        ugen: "flock.ugen.sequence",
-                        list: [1, 3/2],
-                        loop: 1,
-                        freq: 2,
-                        mul: 220
-                    },
-                    mul: 0.5
+                    bus: 1,
+                    sources: {
+                        freq: {
+                            list: [1, 3/2],
+                            freq: 2,
+                            mul: 220
+                        }
+                    }
                 }
             }
         }
