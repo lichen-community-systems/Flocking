@@ -97,11 +97,6 @@ var fluid = fluid || require("infusion"),
                 "{demoSelector}.loadDemoFromURL()"
             ],
 
-            onEvaluateDemo: [
-                "{that}.parse()",
-                "{evaluator}.evaluate()"
-            ],
-
             onError: [
                 "flock.fail({arguments}.0)"
             ]
@@ -118,4 +113,15 @@ var fluid = fluid || require("infusion"),
         var source = editor.getSource();
         evaluator.parse(source);
     };
+
+    fluid.defaults("flock.playground.code", {
+        gradeNames: ["flock.playground", "autoInit"],
+
+        listeners: {
+            onEvaluateDemo: [
+                "{that}.parse()",
+                "{evaluator}.evaluate()"
+            ]
+        }
+    });
 }());

@@ -115,6 +115,10 @@ var fluid = fluid || require("infusion"),
         listeners: {
             onSourceUpdated: [
                 "{that}.parse()"
+            ],
+
+            onEvaluateDemo: [
+                "{evaluator}.evaluate()"
             ]
         }
     });
@@ -144,11 +148,7 @@ var fluid = fluid || require("infusion"),
 
                     model: {
                         // TODO: Rename this to be consistent with the evaluator.
-                        synthSpec: "{evaluator}.model.activeSynthSpec"
-                    },
-
-                    modelListeners: {
-                        "synthSpec": "{synthDefRenderer}.refreshView()"
+                        activeSynthSpec: "{evaluator}.model.activeSynthSpec"
                     },
 
                     events: {
@@ -364,7 +364,7 @@ var fluid = fluid || require("infusion"),
         },
 
         model: {
-            synthSpec: {}
+            activeSynthSpec: {}
         },
 
         invokers: {
@@ -393,7 +393,7 @@ var fluid = fluid || require("infusion"),
         },
 
         modelListeners: {
-            "synthSpec": {
+            "activeSynthSpec": {
                 func: "{that}.refreshView"
             }
         }
@@ -594,15 +594,15 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.ui.nodeRenderer.synth.refreshView = function (that) {
-        var synthSpec = that.model.synthSpec;
-        if (!synthSpec || !synthSpec.synthDef || $.isEmptyObject(synthSpec.synthDef)) {
+        var activeSynthSpec = that.model.activeSynthSpec;
+        if (!activeSynthSpec || !activeSynthSpec.synthDef || $.isEmptyObject(activeSynthSpec.synthDef)) {
             return;
         }
 
         that.events.onRender.fire();
 
         flock.ui.nodeRenderer.synth.clear(that.jsPlumb,that. container, that.ugenRenderers);
-        flock.ui.nodeRenderer.synth.render(synthSpec.synthDef, that);
+        flock.ui.nodeRenderer.synth.render(activeSynthSpec.synthDef, that);
 
         that.events.afterRender.fire();
     };
