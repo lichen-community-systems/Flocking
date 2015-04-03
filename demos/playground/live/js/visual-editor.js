@@ -100,10 +100,6 @@ var fluid = fluid || require("infusion"),
                         }
                     }
                 }
-            },
-
-            demos: {
-                type: "flock.playground.demos.live"
             }
         },
 
@@ -139,7 +135,7 @@ var fluid = fluid || require("infusion"),
 
             synthDefRenderer: {
                 createOnEvent: "onReady",
-                type: "flock.ui.nodeRenderers.synth",
+                type: "flock.ui.nodeRenderer.synth",
                 container: "{that}.container",
                 options: {
                     components: {
@@ -175,53 +171,91 @@ var fluid = fluid || require("infusion"),
      * Node Renderers *
      ******************/
 
-    fluid.registerNamespace("flock.ui.nodeRenderers");
-
-    fluid.defaults("flock.ui.nodeRenderers.ugen", {
+    fluid.defaults("flock.ui.nodeRenderer", {
         gradeNames: ["fluid.viewRelayComponent", "autoInit"],
 
+        nodeType: "",
+
         model: {
-            ugenDef: {}, // A ugenDef.
-            edges: {}
+            node: {
+                id: "@expand:fluid.allocateGuid()",
+                def: {},
+                nodeType: "{that}.options.nodeType",
+                displayName: "{that}.options.nodeType"
+            },
+            edges: []
         },
 
         invokers: {
-            refreshView: {
-                funcName: "flock.ui.nodeRenderers.ugen.refreshView",
-                args: [
-                    "{that}",
-                    "{that}.container",
-                    "{that}.options.markup.node",
-                    "{that}.model.ugenDef",
-                    "{that}.events.afterRender.fire"
-                ],
-                dynamic: true
-            }
+            prepareRenderModel: "fluid.identity({that}.model.node)",
+            render: "flock.ui.nodeRenderer.render({that})",
+            refreshView: "{that}.events.onRender.fire"
         },
 
         events: {
+            onRender: null,
             afterRender: null
         },
 
+        listeners: {
+            onRender: [
+                "{that}.prepareRenderModel()",
+                "{that}.render()"
+            ]
+        },
+
         markup: {
-            node: "<div id='%id' class='node %type'><div class='label'>%displayName</div></div>"
+            node: "<div id='%id' class='node %nodeType'><div class='label'>%displayName</div></div>"
         }
     });
 
-    flock.ui.nodeRenderers.ugen.refreshView = function (that, container, nodeMarkup, ugenDef, afterRender) {
-        var strings = flock.ui.nodeRenderers.ugen.prepareStrings(ugenDef),
-            renderedMarkup = fluid.stringTemplate(nodeMarkup, strings),
-            node = $(renderedMarkup);
+    flock.ui.nodeRenderer.render = function (that) {
+        var renderedMarkup = fluid.stringTemplate(that.options.markup.node, that.model.node),
+            el = $(renderedMarkup);
 
-        container.append(node);
-        that.node = node;
-
-        if (afterRender) {
-            afterRender(node, ugenDef);
-        }
+        that.container.append(el);
+        that.element = el;
+        that.events.afterRender.fire(el, that.model.node);
     };
 
-    flock.ui.nodeRenderers.ugen.hasTag = function (ugenName, tagName) {
+    flock.ui.nodeRenderer.rendererCreatorForInput = function (inputName, inputDef) {
+        if (typeof inputDef === "number" || inputDef.ugen) {
+            return flock.ui.nodeRenderer.ugen;
+        }
+
+        var creator = flock.ui.nodeRenderer[inputName];
+        if (!creator) {
+            flock.fail("No renderer was found for an input of type " + inputName);
+        }
+
+        return creator;
+    };
+
+    flock.ui.nodeRenderer.create = function (inputName, def, container) {
+        var creator = flock.ui.nodeRenderer.rendererCreatorForInput(inputName, def);
+
+        return creator(container, {
+            model: {
+                node: {
+                    def: def
+                }
+            }
+        });
+    };
+
+
+    fluid.defaults("flock.ui.nodeRenderer.ugen", {
+        gradeNames: ["flock.ui.nodeRenderer", "autoInit"],
+
+        invokers: {
+            prepareRenderModel: {
+                funcName: "flock.ui.nodeRenderer.ugen.prepareRenderModel",
+                args: "{that}"
+            }
+        }
+    });
+
+    flock.ui.nodeRenderer.ugen.hasTag = function (ugenName, tagName) {
         if (!ugenName) {
             return false;
         }
@@ -236,30 +270,70 @@ var fluid = fluid || require("infusion"),
         return defaultUGenOpts && defaultUGenOpts.tags && defaultUGenOpts.tags.indexOf(tagName) > -1;
     };
 
-    flock.ui.nodeRenderers.ugen.prepareStrings = function (ugenDef) {
+    flock.ui.nodeRenderer.ugen.prepareRenderModel = function (that) {
+        var ugenDef = that.model.node.def;
+
         // Come up with a display name for each unit generator.
         // For value ugens, this will be its actual value.
         // Other ugens will be displayed with their last path segment (tail).
         // TODO: This should become an option for all unit generators.
-        var isValueUGen = flock.ui.nodeRenderers.ugen.hasTag(ugenDef.ugen, "flock.ugen.valueType"),
-            displayName = isValueUGen ? ugenDef.inputs.value : ugenDef.ugen ?
-                fluid.pathUtil.getTailPath(ugenDef.ugen) : "";
+        var type = ugenDef.ugen,
+            isValueUGen = flock.ui.nodeRenderer.ugen.hasTag(type, "flock.ugen.valueType"),
+            displayName = isValueUGen ? ugenDef.inputs.value : type ?
+                fluid.pathUtil.getTailPath(type) : "";
 
-        // TODO: We should have some other ID that represents the view, not the model.
-        // TODO: and this is the wrong time to do this.
-        if (!ugenDef.id) {
-            ugenDef.id = fluid.allocateGuid();
-        }
-
-        return {
-            id: ugenDef.id,
-            type: ugenDef.ugen,
-            displayName: displayName
-        };
+        that.applier.change("node.displayName", displayName);
+        that.applier.change("node.nodeType", type);
     };
 
 
-    fluid.defaults("flock.ui.nodeRenderers.synth", {
+    fluid.defaults("flock.ui.nodeRenderer.buffer", {
+        gradeNames: ["flock.ui.nodeRenderer", "autoInit"],
+
+        nodeType: "flock.buffer",
+
+        invokers: {
+            prepareRenderModel: "flock.ui.nodeRenderer.buffer.prepareRenderModel({that})"
+        }
+    });
+
+    flock.ui.nodeRenderer.buffer.prepareRenderModel = function (that) {
+        var buffer = that.model.node.def,
+            bufId = typeof buffer !== "string" && !buffer.id ? "<buffer>" :
+                "#" + (buffer.id || buffer);
+
+        that.applier.change("node.displayName", bufId);
+    };
+
+
+    fluid.defaults("flock.ui.nodeRenderer.list", {
+        gradeNames: ["flock.ui.nodeRenderer", "autoInit"],
+
+        nodeType: "flock.list",
+
+        invokers: {
+            prepareRenderModel: "flock.ui.nodeRenderer.list.prepareRenderModel({that})"
+        }
+    });
+
+    flock.ui.nodeRenderer.list.prepareRenderModel = function (that) {
+        var displayName = JSON.stringify(that.model.node.def);
+        that.applier.change("node.displayName", displayName);
+    };
+
+
+    fluid.defaults("flock.ui.nodeRenderer.table", {
+        gradeNames: ["flock.ui.nodeRenderer", "autoInit"],
+        nodeType: "table"
+    });
+
+    fluid.defaults("flock.ui.nodeRenderer.envelope", {
+        gradeNames: ["flock.ui.nodeRenderer", "autoInit"],
+        nodeType: "envelope"
+    });
+
+
+    fluid.defaults("flock.ui.nodeRenderer.synth", {
         gradeNames: ["fluid.viewRelayComponent", "autoInit"],
 
         members: {
@@ -272,13 +346,13 @@ var fluid = fluid || require("infusion"),
 
         invokers: {
             refreshView: {
-                funcName: "flock.ui.nodeRenderers.synth.refreshView",
+                funcName: "flock.ui.nodeRenderer.synth.refreshView",
                 args: ["{that}"],
                 dynamic: true
             },
 
             clear: {
-                funcName: "flock.ui.nodeRenderers.synth.clear",
+                funcName: "flock.ui.nodeRenderer.synth.clear",
                 args: ["{that}.jsPlumb", "{that}.container", "{that}.ugenRenderers"]
             }
         },
@@ -302,14 +376,14 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    flock.ui.nodeRenderers.synth.expandInputs = function (ugenDef) {
+    flock.ui.nodeRenderer.synth.expandInputs = function (ugenDef) {
         // Expand scalar values into value unit generators.
         var expanded = flock.parse.expandValueDef(ugenDef);
         return flock.parse.expandInputs(expanded);
     };
 
-    flock.ui.nodeRenderers.synth.expandAllInputs = function (ugenDef, options) {
-        ugenDef = flock.ui.nodeRenderers.synth.expandInputs(ugenDef);
+    flock.ui.nodeRenderer.synth.expandAllInputs = function (ugenDef, options) {
+        ugenDef = flock.ui.nodeRenderer.synth.expandInputs(ugenDef);
 
         var inputDefs = ugenDef.inputs,
             inputName,
@@ -319,13 +393,13 @@ var fluid = fluid || require("infusion"),
             // Create ugens for all inputs except special inputs.
             inputDef = inputDefs[inputName];
             inputDefs[inputName] = flock.input.shouldExpand(inputName, ugenDef) ?
-                flock.ui.nodeRenderers.synth.expandAllInputs(inputDef, options) : inputDef;
+                flock.ui.nodeRenderer.synth.expandAllInputs(inputDef, options) : inputDef;
         }
 
         return ugenDef;
     };
 
-    flock.ui.nodeRenderers.synth.expandDef = function (synthDef) {
+    flock.ui.nodeRenderer.synth.expandDef = function (synthDef) {
         // TODO: Copy pasted from flock.parser.ugenForDef. It needs refactoring.
         // TODO: should this be sourced elsewhere in this context?
         var options = {
@@ -340,64 +414,83 @@ var fluid = fluid || require("infusion"),
             synthDef = flock.parse.synthDef.makeOutUGen(synthDef, options);
         }
 
-        return flock.ui.nodeRenderers.synth.expandAllInputs(synthDef, options);
+        return flock.ui.nodeRenderer.synth.expandAllInputs(synthDef, options);
     };
 
-    // TODO: use dynamic components instead.
-    flock.ui.nodeRenderers.synth.accumulateRenderers = function (ugen, container, renderers) {
-        var inputDefs = ugen.inputs,
-            edges = [],
-            inputName,
-            inputDef,
-            renderer;
+    flock.ui.nodeRenderer.synth.accumulateRenderer = function (name, def, that) {
+        var renderer = flock.ui.nodeRenderer.create(name, def, that.container);
+        that.ugenRenderers.push(renderer);
 
-        // TODO: Handle arrays correctly here.
+        return renderer;
+    };
 
-        ugen.id = ugen.id || fluid.allocateGuid();
+    flock.ui.nodeRenderer.synth.nodeForInput = function (inputName, inputDef, that) {
+        var renderer;
 
-        for (inputName in inputDefs) {
-            inputDef = inputDefs[inputName];
-
-            if (flock.input.shouldExpand(inputName, inputDef)) {
-                flock.ui.nodeRenderers.synth.accumulateRenderers(inputDef, container, renderers);
+        if (flock.input.shouldExpand(inputName, inputDef)) {
+            // TODO: Handle arrays of unit generators properly.
+            if (flock.isIterable(inputDef)) {
+                return;
             }
 
-            if (inputName !== "value") {
-                inputDef.id = inputDef.id || fluid.allocateGuid();
-                edges.push({
-                    source: ugen.id,
-                    target: inputDef.id,
-                    label: inputName
-                });
-            }
+            renderer = flock.ui.nodeRenderer.synth.accumulateRenderers(inputName, inputDef, that);
+        } else {
+            renderer = flock.ui.nodeRenderer.synth.accumulateRenderer(inputName, inputDef, that);
         }
 
-        renderer = flock.ui.nodeRenderers.ugen(container, {
-            model: {
-                ugenDef: ugen,
-                edges: edges
+        return renderer.model.node;
+    };
+
+    flock.ui.nodeRenderer.synth.addInputEdges = function (inputName, inputNodeDef, parentRenderer) {
+        if (!inputNodeDef) {
+            return;
+        }
+
+        var nodeDef = parentRenderer.model.node,
+            edges = parentRenderer.model.edges;
+
+        edges.push({
+            source: nodeDef.id,
+            target: inputNodeDef.id,
+            label: inputName
+        });
+
+        parentRenderer.applier.change("edges", edges);
+    };
+
+    flock.ui.nodeRenderer.synth.accumulateRenderers = function (ugenInputName, ugen, that) {
+        var inputDefs = ugen.inputs,
+            parentRenderer = flock.ui.nodeRenderer.synth.accumulateRenderer(ugenInputName, ugen, that);
+
+        fluid.each(inputDefs, function (inputDef, inputName) {
+            // TODO: Refactor value unit generators so they don't have inputs.
+            if (inputName !== "value") {
+                var inputNodeDef = flock.ui.nodeRenderer.synth.nodeForInput(inputName, inputDef, that);
+                flock.ui.nodeRenderer.synth.addInputEdges(inputName, inputNodeDef, parentRenderer);
             }
         });
 
-        renderers.push(renderer);
+        return parentRenderer;
     };
 
-    flock.ui.nodeRenderers.synth.renderGraph = function (that) {
+    flock.ui.nodeRenderer.synth.renderGraph = function (that) {
         var graphSpec = {
             nodes: {},
             edges: []
         };
 
+        // TODO: This whole workflow should be event-driven rather
+        // than depending on imperative iteration.
         fluid.each(that.ugenRenderers, function (renderer) {
             renderer.refreshView();
 
-            if (!renderer.node) {
+            if (!renderer.element) {
                 return;
             }
 
-            graphSpec.nodes[renderer.model.ugenDef.id] = {
-                width: renderer.node.innerWidth(),
-                height: renderer.node.innerHeight()
+            graphSpec.nodes[renderer.model.node.id] = {
+                width: renderer.element.innerWidth(),
+                height: renderer.element.innerHeight()
             };
 
             graphSpec.edges = graphSpec.edges.concat(renderer.model.edges);
@@ -406,14 +499,18 @@ var fluid = fluid || require("infusion"),
         return graphSpec;
     };
 
-    flock.ui.nodeRenderers.synth.layoutGraph = function (graphSpec) {
+    flock.ui.nodeRenderer.synth.layoutGraph = function (graphSpec) {
         // TODO: Wrap Dagre as a component.
         var g = new dagre.Digraph();
 
+        // TODO: This whole workflow should be event-driven rather
+        // than depending on imperative iteration.
         fluid.each(graphSpec.nodes, function (node, id) {
             g.addNode(id, node);
         });
 
+        // TODO: This whole workflow should be event-driven rather
+        // than depending on imperative iteration.
         fluid.each(graphSpec.edges, function (edge) {
             g.addEdge(null, edge.source, edge.target);
         });
@@ -421,6 +518,8 @@ var fluid = fluid || require("infusion"),
         var outputGraph = dagre.layout().rankDir("BT").rankSep(100).nodeSep(25).run(g);
 
         // Position the nodes.
+        // TODO: This whole workflow should be event-driven rather
+        // than depending on imperative iteration.
         outputGraph.eachNode(function (id, graphNode) {
             var nodeEl = $("#" + id);
             nodeEl.css({
@@ -435,7 +534,7 @@ var fluid = fluid || require("infusion"),
         return outputGraph;
     };
 
-    flock.ui.nodeRenderers.synth.clear = function (jsPlumb, container, ugenRenderers) {
+    flock.ui.nodeRenderer.synth.clear = function (jsPlumb, container, ugenRenderers) {
         if (!jsPlumb) {
             return;
         }
@@ -450,20 +549,20 @@ var fluid = fluid || require("infusion"),
         ugenRenderers.length = 0;
     };
 
-    flock.ui.nodeRenderers.synth.render = function (synthDef, that) {
+    flock.ui.nodeRenderer.synth.render = function (synthDef, that) {
         if (!that.jsPlumb) {
             return;
         }
 
-        var expanded = flock.ui.nodeRenderers.synth.expandDef(synthDef);
-        flock.ui.nodeRenderers.synth.accumulateRenderers(expanded, that.container, that.ugenRenderers);
+        var expanded = flock.ui.nodeRenderer.synth.expandDef(synthDef);
+        flock.ui.nodeRenderer.synth.accumulateRenderers(undefined, expanded, that);
 
-        var graph = flock.ui.nodeRenderers.synth.renderGraph(that);
-        flock.ui.nodeRenderers.synth.layoutGraph(graph);
-        flock.ui.nodeRenderers.synth.renderEdges(that.jsPlumb.plumb, graph.edges);
+        var graph = flock.ui.nodeRenderer.synth.renderGraph(that);
+        flock.ui.nodeRenderer.synth.layoutGraph(graph);
+        flock.ui.nodeRenderer.synth.renderEdges(that.jsPlumb.plumb, graph.edges);
     };
 
-    flock.ui.nodeRenderers.synth.refreshView = function (that) {
+    flock.ui.nodeRenderer.synth.refreshView = function (that) {
         var synthSpec = that.model.synthSpec;
         if (!synthSpec || !synthSpec.synthDef || $.isEmptyObject(synthSpec.synthDef)) {
             return;
@@ -471,13 +570,13 @@ var fluid = fluid || require("infusion"),
 
         that.events.onRender.fire();
 
-        flock.ui.nodeRenderers.synth.clear(that.jsPlumb,that. container, that.ugenRenderers);
-        flock.ui.nodeRenderers.synth.render(synthSpec.synthDef, that);
+        flock.ui.nodeRenderer.synth.clear(that.jsPlumb,that. container, that.ugenRenderers);
+        flock.ui.nodeRenderer.synth.render(synthSpec.synthDef, that);
 
         that.events.afterRender.fire();
     };
 
-    flock.ui.nodeRenderers.synth.renderEdges = function (plumb, edges) {
+    flock.ui.nodeRenderer.synth.renderEdges = function (plumb, edges) {
         fluid.each(edges, function (edge, idx) {
             // TODO: Get rid of this conditional.
             if (!document.getElementById(edge.target) || !document.getElementById(edge.source)) {

@@ -33,11 +33,26 @@
     height: 1em;
     font-family: monospace;
     font-weight: normal;
-    font-size: 1em;
     background-color: #272822;
     font-size: 0.75em;
     border: 0.2em solid #999;
     overflow: hidden;
+}
+
+.node.flock\.buffer {
+    width: 6em,
+    font-family: monospace;
+    font-weight: normal;
+    background-color: #272822;
+    border: 0.2em solid #999;
+    overflow: hidden;
+}
+
+.node.flock\.list {
+    font-family: monospace;
+    font-weight: normal;
+    background-color: #272822;
+    font-size: 0.75em;
 }
 
 ._jsPlumb_overlay {
