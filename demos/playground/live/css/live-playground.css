@@ -40,7 +40,7 @@
 }
 
 .node.flock\.buffer {
-    width: 6em,
+    width: 6em;
     font-family: monospace;
     font-weight: normal;
     background-color: #272822;
@@ -53,6 +53,13 @@
     font-weight: normal;
     background-color: #272822;
     font-size: 0.75em;
+}
+
+.node.flock\.envelope {
+    width: 6em;
+    font-family: monospace;
+    font-weight: normal;
+    background-color: #272822;
 }
 
 ._jsPlumb_overlay {

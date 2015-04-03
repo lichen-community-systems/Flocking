@@ -292,6 +292,12 @@ var fluid = fluid || require("infusion"),
 
         nodeType: "flock.buffer",
 
+        model: {
+            node: {
+                displayName: "&lt;buffer&gt;"
+            }
+        },
+
         invokers: {
             prepareRenderModel: "flock.ui.nodeRenderer.buffer.prepareRenderModel({that})"
         }
@@ -299,10 +305,17 @@ var fluid = fluid || require("infusion"),
 
     flock.ui.nodeRenderer.buffer.prepareRenderModel = function (that) {
         var buffer = that.model.node.def,
-            bufId = typeof buffer !== "string" && !buffer.id ? "<buffer>" :
-                "#" + (buffer.id || buffer);
+            bufId;
 
-        that.applier.change("node.displayName", bufId);
+        if (typeof buffer === "string") {
+            bufId = buffer;
+        } else if (buffer.id) {
+            bufId = buffer.id;
+        }
+
+        if (bufId) {
+            that.applier.change("node.displayName", "#" + bufId);
+        }
     };
 
 
@@ -324,12 +337,22 @@ var fluid = fluid || require("infusion"),
 
     fluid.defaults("flock.ui.nodeRenderer.table", {
         gradeNames: ["flock.ui.nodeRenderer", "autoInit"],
-        nodeType: "table"
+        nodeType: "flock.table",
+        model: {
+            node: {
+                displayName: "&lt;table&gt;"
+            }
+        }
     });
 
     fluid.defaults("flock.ui.nodeRenderer.envelope", {
         gradeNames: ["flock.ui.nodeRenderer", "autoInit"],
-        nodeType: "envelope"
+        nodeType: "flock.envelope",
+        model: {
+            node: {
+                displayName: "&lt;envelope&gt;"
+            }
+        }
     });
 
 
@@ -382,7 +405,17 @@ var fluid = fluid || require("infusion"),
         return flock.parse.expandInputs(expanded);
     };
 
+    flock.ui.nodeRenderer.synth.expandMultiInput = function (ugenDefs, options) {
+        return fluid.transform(ugenDefs, function (ugenDef) {
+            return flock.ui.nodeRenderer.synth.expandAllInputs(ugenDef, options);
+        });
+    };
+
     flock.ui.nodeRenderer.synth.expandAllInputs = function (ugenDef, options) {
+        if (flock.isIterable(ugenDef)) {
+            return flock.ui.nodeRenderer.synth.expandMultiInput(ugenDef, options);
+        }
+
         ugenDef = flock.ui.nodeRenderer.synth.expandInputs(ugenDef);
 
         var inputDefs = ugenDef.inputs,
@@ -424,38 +457,29 @@ var fluid = fluid || require("infusion"),
         return renderer;
     };
 
-    flock.ui.nodeRenderer.synth.nodeForInput = function (inputName, inputDef, that) {
-        var renderer;
-
-        if (flock.input.shouldExpand(inputName, inputDef)) {
-            // TODO: Handle arrays of unit generators properly.
-            if (flock.isIterable(inputDef)) {
-                return;
-            }
-
-            renderer = flock.ui.nodeRenderer.synth.accumulateRenderers(inputName, inputDef, that);
-        } else {
-            renderer = flock.ui.nodeRenderer.synth.accumulateRenderer(inputName, inputDef, that);
-        }
-
-        return renderer.model.node;
-    };
-
-    flock.ui.nodeRenderer.synth.addInputEdges = function (inputName, inputNodeDef, parentRenderer) {
-        if (!inputNodeDef) {
+    flock.ui.nodeRenderer.synth.addEdges = function (inputName, inputRenderers, parentRenderer) {
+        if (!inputRenderers) {
             return;
         }
+        inputRenderers = fluid.makeArray(inputRenderers);
 
-        var nodeDef = parentRenderer.model.node,
-            edges = parentRenderer.model.edges;
-
-        edges.push({
-            source: nodeDef.id,
-            target: inputNodeDef.id,
-            label: inputName
+        var inputEdges = fluid.transform(inputRenderers, function (inputRenderer) {
+            return {
+                source: parentRenderer.model.node.id,
+                target: inputRenderer.model.node.id,
+                label: inputName
+            };
         });
 
-        parentRenderer.applier.change("edges", edges);
+        var allEdges = parentRenderer.model.edges.concat(inputEdges);
+        parentRenderer.applier.change("edges", allEdges);
+    };
+
+
+    flock.ui.nodeRenderer.synth.accumulateMultiInputRenderers = function (inputName, inputDefs, that) {
+        return fluid.transform(inputDefs, function (inputDef) {
+            return flock.ui.nodeRenderer.synth.accumulateRenderers(inputName, inputDef, that);
+        });
     };
 
     flock.ui.nodeRenderer.synth.accumulateRenderers = function (ugenInputName, ugen, that) {
@@ -464,10 +488,17 @@ var fluid = fluid || require("infusion"),
 
         fluid.each(inputDefs, function (inputDef, inputName) {
             // TODO: Refactor value unit generators so they don't have inputs.
-            if (inputName !== "value") {
-                var inputNodeDef = flock.ui.nodeRenderer.synth.nodeForInput(inputName, inputDef, that);
-                flock.ui.nodeRenderer.synth.addInputEdges(inputName, inputNodeDef, parentRenderer);
+            if (inputName === "value") {
+                return;
             }
+
+            var shouldExpand = flock.input.shouldExpand(inputName, inputDef),
+                fn = !shouldExpand ? flock.ui.nodeRenderer.synth.accumulateRenderer :
+                    flock.isIterable(inputDef) ? flock.ui.nodeRenderer.synth.accumulateMultiInputRenderers :
+                    flock.ui.nodeRenderer.synth.accumulateRenderers;
+
+            var inputRenderers = fn(inputName, inputDef, that);
+            flock.ui.nodeRenderer.synth.addEdges(inputName, inputRenderers, parentRenderer);
         });
 
         return parentRenderer;
