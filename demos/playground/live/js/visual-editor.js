@@ -54,6 +54,43 @@ var fluid = fluid || require("infusion"),
     };
 
 
+    /**
+     * Toggles the state of the play button based on
+     * evaluation and rendering process.
+     *
+     * This helps ensure that dropouts don't occur while JSPlumb
+     * is tediously doing its job rendering.
+     */
+    fluid.defaults("flock.playground.playToggler", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        listeners: {
+            "{visualView}.events.afterRender": {
+                func: "{that}.enablePlay",
+                priority: "last"
+            },
+
+            "{demoSelector}.events.onSelect": {
+                func: "{that}.disablePlay",
+                priority: "first"
+            }
+        },
+
+        invokers: {
+            enablePlay: "flock.playground.enablePlay({playButton})",
+            disablePlay: "flock.playground.disablePlay({playButton})"
+        }
+    });
+
+    flock.playground.disablePlay = function (playButton) {
+        playButton.container.prop("disabled", true);
+    };
+
+    flock.playground.enablePlay = function (playButton) {
+        playButton.container.prop("disabled", false);
+    };
+
+
     /*********************
      * Visual Playground *
      *********************/
@@ -86,20 +123,11 @@ var fluid = fluid || require("infusion"),
 
             visualView: {
                 type: "flock.playground.visualView",
-                container: "#visual-view",
-                options: {
-                    listeners: {
-                        // TODO: This toggling works inconsistently.
-                        onRender: {
-                            "this": "{playButton}.container",
-                            method: "hide"
-                        },
-                        afterRender: {
-                            "this": "{playButton}.container",
-                            method: "show"
-                        }
-                    }
-                }
+                container: "{that}.dom.visualPanel"
+            },
+
+            playButtonManager: {
+                type: "flock.playground.playToggler"
             }
         },
 
@@ -108,7 +136,7 @@ var fluid = fluid || require("infusion"),
         },
 
         selectors: {
-            visual: "#visual-view",
+            visualPanel: "#visual-view",
             synthSelector: ".playSynth"
         },
 
@@ -147,7 +175,6 @@ var fluid = fluid || require("infusion"),
                     },
 
                     model: {
-                        // TODO: Rename this to be consistent with the evaluator.
                         activeSynthSpec: "{evaluator}.model.activeSynthSpec"
                     },
 
@@ -232,7 +259,8 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.ui.nodeRenderer.create = function (inputName, def, container) {
-        var creator = flock.ui.nodeRenderer.rendererCreatorForInput(inputName, def);
+        var creator = flock.ui.nodeRenderer.rendererCreatorForInput(inputName, def) ||
+             flock.ui.nodeRenderer;
 
         return creator(container, {
             model: {
@@ -600,10 +628,8 @@ var fluid = fluid || require("infusion"),
         }
 
         that.events.onRender.fire();
-
         flock.ui.nodeRenderer.synth.clear(that.jsPlumb,that. container, that.ugenRenderers);
         flock.ui.nodeRenderer.synth.render(activeSynthSpec.synthDef, that);
-
         that.events.afterRender.fire();
     };
 

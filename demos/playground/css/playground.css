@@ -79,6 +79,10 @@ label {
     padding-right: 0.45em;
 }
 
+.playButton:disabled {
+    color: #999;
+}
+
 .playSynth button {
     float: right;
     width: 4.5em;
