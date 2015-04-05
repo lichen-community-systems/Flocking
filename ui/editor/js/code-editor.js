@@ -35,7 +35,8 @@ var fluid = fluid || require("infusion"),
             "smartIndent",
             "matchBrackets",
             "lineWrapping",
-            "keyMap"
+            "keyMap",
+            "extraKeys"
         ],
 
         mode: "application/json",
@@ -48,6 +49,9 @@ var fluid = fluid || require("infusion"),
         lineNumbers: true,
         keyMap: "sublime",
         gutters: ["CodeMirror-lint-markers"],
+        extraKeys: {
+            "Cmd-/": "toggleComment"
+        },
 
         changeEventDelay: 250,
 
