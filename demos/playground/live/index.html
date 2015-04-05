@@ -10,7 +10,8 @@
         <link rel="stylesheet" href="../../../bower_components/codemirror/lib/codemirror.css" />
         <link rel="stylesheet" href="../../../bower_components/codemirror/addon/lint/lint.css" />
         <link rel="stylesheet" href="../../../bower_components/codemirror/addon/dialog/dialog.css" />
-        <link rel="stylesheet" type="text/css" href="../../../ui/editor/css/flockingcm.css" />
+        <link rel="stylesheet" type="text/css" href="../../../ui/editor/css/editor.css" />
+        <link rel="stylesheet" type="text/css" href="../../../ui/play-button/css/play-button.css" />
         <link rel="stylesheet" type="text/css" href="../../../ui/shared/css/flocking-icon-font.css" />
         <link rel="stylesheet" type="text/css" href="../css/playground.css" />
         <link rel="stylesheet" type="text/css" href="css/live-playground.css" />
@@ -66,9 +67,9 @@
         <script src="../../../flocking/flocking-gfx.js"></script>
         <script src="../../../flocking/flocking-webmidi.js"></script>
         <script src="../../../ui/selectbox/js/selectbox.js"></script>
-        <script src="../../../ui/editor/js/code-editor.js"></script>
+        <script src="../../../ui/editor/js/editor.js"></script>
+        <script src="../../../ui/play-button/js/play-button.js"></script>
 
-        <script src="../js/ui.js"></script>
         <script src="../js/demo-selector.js"></script>
         <script src="../js/playground.js"></script>
         <script src="../js/source-evaluators.js"></script>
@@ -87,7 +88,7 @@
                 <!-- Control for playing/pausing the active synth. -->
                 <div class="playSynth">
                     <!-- Play Button -->
-                    <button id="playButton" class="playButton paused icon-">Play</button>
+                    <button id="playButton" class="paused icon-">Play</button>
                 </div>
                 <!-- Waveform View -->
                 <div id="gfxContainer" class="right">

@@ -59,43 +59,6 @@ label {
     border-radius: 1em;
 }
 
-.playSynth .playButton {
-    height: 1.75em;
-    width: 1.75em;
-    padding: 0;
-    border: 0 none;
-    border-radius: 2em;
-    font-size: 125%;
-    float: left;
-    background-color: #777;
-    color: #fff;
-    text-align: center;
-    margin-left: 0.5em;
-    margin-top: 0;
-}
-
-.playButton.paused {
-    padding-left: 0.45em;
-    padding-right: 0.45em;
-}
-
-.playButton:disabled {
-    color: #999;
-}
-
-.playSynth button {
-    float: right;
-    width: 4.5em;
-    padding: 0.5em;
-    border: 0 none;
-    border-radius: 0.3em;
-    font-size: 75%;
-    background-color: #777;
-    color: #fff;
-    text-align: center;
-    margin-top: 0.35em;
-}
-
 .mainPanel {
     height: 100%;
     width: 100%;

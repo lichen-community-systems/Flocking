@@ -1,6 +1,6 @@
 /*
- * Flocking UI Components
- *   Copyright 2014, Colin Clark
+ * Flocking UI Play Button
+ *   Copyright 2014-2015, Colin Clark
  *
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
@@ -176,12 +176,23 @@ var fluid = fluid || require("infusion"),
             onPause: "{that}.events.onDisabled"
         },
 
+        listeners: {
+            onCreate: [
+                {
+                    "this": "{that}.container",
+                    method: "addClass",
+                    args: "{that}.options.styles.playButton"
+                }
+            ]
+        },
+
         strings: {
             enabled: "Pause",
             disabled: "Play"
         },
 
         styles: {
+            playButton: "flock-playButton",
             enabled: "playing",
             disabled: "paused"
         }
