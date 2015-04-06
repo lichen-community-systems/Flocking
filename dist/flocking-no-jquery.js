@@ -11908,24 +11908,13 @@ var fluid = fluid || require("infusion"),
              *
              * @param {Number} dur optional duration to play in seconds
              */
-            play: {
-                funcName: "flock.enviro.play",
-                args: [
-                    "{that}.applier",
-                    "{that}.events.onPlay.fire"
-                ]
-            },
+            play: "{that}.events.onPlay.fire()",
 
             /**
              * Stops generating samples.
              */
-            stop: {
-                funcName: "flock.enviro.stop",
-                args: [
-                    "{that}.applier",
-                    "{that}.events.onStop.fire"
-                ]
-            },
+            stop: "{that}.events.onStop.fire()",
+
 
             /**
              * Fully resets the state of the environment.
@@ -11983,9 +11972,15 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onPlay: "{audioStrategy}.start()",
+            onPlay: [
+                "{that}.applier.change(isPlaying, true)",
+                "{audioStrategy}.start()"
+            ],
 
-            onStop: "{audioStrategy}.stop()",
+            onStop: [
+                "{audioStrategy}.stop()",
+                "{that}.applier.change(isPlaying, false)"
+            ],
 
             onReset: [
                 "{that}.stop()",
@@ -12054,18 +12049,6 @@ var fluid = fluid || require("infusion"),
         applier.change("nextAvailableBus." + type, ++busNum);
 
         return offsetBusNum;
-    };
-
-    // TODO: This can be made declarative.
-    flock.enviro.play = function (applier, onPlay) {
-        applier.requestChange("isPlaying", true);
-        onPlay();
-    };
-
-    // TODO: This can be made declarative.
-    flock.enviro.stop = function (applier, onStop) {
-        applier.requestChange("isPlaying", false);
-        onStop();
     };
 
     flock.enviro.registerBuffer = function (bufDesc, buffers) {
