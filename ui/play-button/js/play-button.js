@@ -32,12 +32,12 @@ var fluid = fluid || require("infusion"),
             },
 
             on: {
-                func: "{that}.applier.requestChange",
+                func: "{that}.applier.change",
                 args: ["isOn", true]
             },
 
             off: {
-                func: "{that}.applier.requestChange",
+                func: "{that}.applier.change",
                 args: ["isOn", false]
             },
 
@@ -69,9 +69,6 @@ var fluid = fluid || require("infusion"),
                     "this": "{that}.container",
                     method: "click",
                     args: "{that}.toggle"
-                },
-                {
-                    func: "{that}.refreshView"
                 }
             ],
 
@@ -114,7 +111,8 @@ var fluid = fluid || require("infusion"),
 
         modelListeners: {
             "isOn": {
-                func: "{that}.refreshView"
+                func: "{that}.refreshView",
+                priority: "first"
             },
 
             "isEnabled": {
@@ -228,7 +226,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ui.enviroPlayButton", {
         gradeNames: ["flock.ui.playButton", "autoInit"],
 
-        fadeDuration: 0.1,
+        fadeDuration: 0.5,
         resetDelay: 0.0,
 
         members: {
@@ -253,8 +251,8 @@ var fluid = fluid || require("infusion"),
 
         listeners: {
             onFadeIn: [
-                "{fader}.fadeIn(1.0)",
-                "{enviro}.play()"
+                "{enviro}.play()",
+                "{fader}.fadeIn(1.0)"
             ],
 
             onFadeOut: [
@@ -271,7 +269,7 @@ var fluid = fluid || require("infusion"),
             isOn: {
                 funcName: "flock.ui.enviroPlayButton.handleStateChange",
                 args: ["{change}", "{that}.events.onFadeIn.fire", "{that}.events.onFadeOut.fire"],
-                priority: "first"
+                priority: "last"
             }
         }
     });

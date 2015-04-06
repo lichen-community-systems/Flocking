@@ -42,19 +42,28 @@ var fluid = fluid || require("infusion"),
         }
 
         var node = context[creatorName].apply(context, args);
-        flock.webAudio.initializeNodeInputs(node, params);
+        flock.webAudio.initializeNodeInputs(context, node, params);
 
         return node;
     };
 
+    flock.webAudio.setAudioParamValue = function (context, value, param, atTime) {
+        atTime = atTime || 0.0;
+        var scheduledTime = context.currentTime + atTime;
+        param.setValueAtTime(value, scheduledTime);
+    };
+
     // TODO: Add support for other types of AudioParams.
-    flock.webAudio.initializeNodeInputs = function (node, paramSpec) {
+    flock.webAudio.initializeNodeInputs = function (context, node, paramSpec) {
         if (!node || !paramSpec) {
             return;
         }
 
         for (var inputName in paramSpec) {
-            node[inputName].value = paramSpec[inputName];
+            var param = node[inputName],
+                value = paramSpec[inputName];
+
+            flock.webAudio.setAudioParamValue(context, value, param);
         }
 
         return node;
@@ -826,10 +835,11 @@ var fluid = fluid || require("infusion"),
 
     flock.webAudio.outputFader.createGainNode = function (enviro) {
         var gainNode = enviro.audioStrategy.nativeNodeManager.createOutputNode({
-            node: "Gain"
+            node: "Gain",
+            params: {
+                gain: 0.0
+            }
         });
-
-        gainNode.gain.value = 0;
 
         return gainNode;
     };
@@ -841,7 +851,7 @@ var fluid = fluid || require("infusion"),
             endTime = now + duration;
 
         // Set the current value now, then ramp to the target.
-        gainNode.gain.setValueAtTime(start, now);
+        flock.webAudio.setAudioParamValue(context, start, gainNode.gain);
         gainNode.gain.linearRampToValueAtTime(end, endTime);
     };
 

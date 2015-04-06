@@ -122,6 +122,8 @@ var fluid = fluid || require("infusion"),
     flock.defaultBufferSizeForPlatform = function () {
         if (flock.platform.isMobile) {
             return 8192;
+        } else if (flock.platform.browser.mozilla) {
+            return 2048;
         }
 
         return 1024;
