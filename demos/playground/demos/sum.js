@@ -71,7 +71,7 @@ var synth = flock.synth({
     }
 });
 
-flock.enviroment.asyncScheduler.repeat(1.0, function () {
+flock.environment.asyncScheduler.repeat(1.0, function () {
     var fundamental = Math.random() * 1000 + 100;
 	updateHarmonics(fundamental, harmonics, synth.get("sum.sources"));
 });

@@ -66,29 +66,16 @@ var fluid = fluid || require("infusion"),
 
         listeners: {
             "{visualView}.events.afterRender": {
-                func: "{that}.enablePlay",
+                func: "{playButton}.enable",
                 priority: "last"
             },
 
             "{demoSelector}.events.onSelect": {
-                func: "{that}.disablePlay",
+                func: "{playButton}.disable",
                 priority: "first"
             }
-        },
-
-        invokers: {
-            enablePlay: "flock.playground.enablePlay({playButton})",
-            disablePlay: "flock.playground.disablePlay({playButton})"
         }
     });
-
-    flock.playground.disablePlay = function (playButton) {
-        playButton.container.prop("disabled", true);
-    };
-
-    flock.playground.enablePlay = function (playButton) {
-        playButton.container.prop("disabled", false);
-    };
 
 
     /*********************

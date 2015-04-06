@@ -1,4 +1,4 @@
-/*! Flocking 0.1.1 (April 4, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.1 (April 6, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.3
@@ -25249,6 +25249,70 @@ var fluid = fluid || require("infusion"),
 
         return busNum;
     };
+
+
+    fluid.defaults("flock.webAudio.outputFader", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        fadeDuration: 0.5,
+
+        members: {
+            gainNode: "@expand:flock.webAudio.outputFader.createGainNode({environment})",
+            context: "{environment}.audioStrategy.context"
+        },
+
+        invokers: {
+            fadeIn: {
+                funcName: "flock.webAudio.outputFader.fadeIn",
+                args: [
+                    "{that}.context",
+                    "{that}.gainNode",
+                    "{arguments}.0", // Target amplitude
+                    "{that}.options.fadeDuration"
+                ]
+            },
+
+            fadeTo: {
+                funcName: "flock.webAudio.outputFader.fadeTo",
+                args: [
+                    "{that}.context",
+                    "{that}.gainNode",
+                    "{arguments}.0", // Target amplitude
+                    "{that}.options.fadeDuration"
+                ]
+            }
+        }
+    });
+
+    flock.webAudio.outputFader.createGainNode = function (enviro) {
+        var gainNode = enviro.audioStrategy.nativeNodeManager.createOutputNode({
+            node: "Gain"
+        });
+
+        gainNode.gain.value = 0;
+
+        return gainNode;
+    };
+
+    flock.webAudio.outputFader.fade = function (context, gainNode, start, end, duration) {
+        duration = duration || 0.0;
+
+        var now = context.currentTime,
+            endTime = now + duration;
+
+        // Set the current value now, then ramp to the target.
+        gainNode.gain.setValueAtTime(start, now);
+        gainNode.gain.linearRampToValueAtTime(end, endTime);
+    };
+
+    flock.webAudio.outputFader.fadeTo = function (context, gainNode, end, duration) {
+        flock.webAudio.outputFader.fade(context, gainNode, gainNode.gain.value, end, duration);
+    };
+
+    flock.webAudio.outputFader.fadeIn = function (context, gainNode, end, duration) {
+        flock.webAudio.outputFader.fade(context, gainNode, 0, end, duration);
+    };
+
 
     fluid.demands("flock.audioStrategy.platform", "flock.platform.webAudio", {
         funcName: "flock.audioStrategy.web"

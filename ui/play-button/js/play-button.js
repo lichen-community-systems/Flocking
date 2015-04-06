@@ -21,7 +21,8 @@ var fluid = fluid || require("infusion"),
         selfRender: false,
 
         model: {
-            isEnabled: false
+            isOn: false,
+            isEnabled: true
         },
 
         invokers: {
@@ -30,25 +31,31 @@ var fluid = fluid || require("infusion"),
                 args: ["{that}.model", "{that}.applier"]
             },
 
-            enable: {
-                func: "{that}.applier.requestChange", //"{that}.events.onEnabled.fire"
-                args: ["isEnabled", true]
+            on: {
+                func: "{that}.applier.requestChange",
+                args: ["isOn", true]
             },
 
-            disable: {
-                func: "{that}.applier.requestChange", //"{that}.events.onDisabled.fire"
-                args: ["isEnabled", false]
+            off: {
+                func: "{that}.applier.requestChange",
+                args: ["isOn", false]
             },
+
+            enable: "{that}.applier.requestChange(isEnabled, true)",
+
+            disable: "{that}.applier.requestChange(isEnabled, false)",
 
             refreshView: {
                 funcName: "flock.ui.toggleButton.refreshView",
-                args: ["{that}.model.isEnabled", "{that}.events.onEnabled.fire", "{that}.events.onDisabled.fire"]
+                args: ["{that}.model.isOn", "{that}.events.on.fire", "{that}.events.off.fire"]
             }
         },
 
         events: {
-            onEnabled: null,
-            onDisabled: null
+            on: null,
+            off: null,
+            enabled: null,
+            disabled: null
         },
 
         listeners: {
@@ -68,52 +75,62 @@ var fluid = fluid || require("infusion"),
                 }
             ],
 
-            onEnabled: [
+            on: [
                 {
                     "this": "{that}.container",
                     method: "addClass",
-                    args: ["{that}.options.styles.enabled"]
+                    args: ["{that}.options.styles.on"]
                 },
                 {
                     "this": "{that}.container",
                     method: "removeClass",
-                    args: ["{that}.options.styles.disabled"]
+                    args: ["{that}.options.styles.off"]
                 },
                 {
                     "this": "{that}.container",
                     method: "html",
-                    args: "{that}.options.strings.enabled"
+                    args: "{that}.options.strings.on"
                 }
             ],
 
-            onDisabled: [
+            off: [
                 {
                     "this": "{that}.container",
                     method: "addClass",
-                    args: ["{that}.options.styles.disabled"]
+                    args: ["{that}.options.styles.off"]
                 },
                 {
                     "this": "{that}.container",
                     method: "removeClass",
-                    args: ["{that}.options.styles.enabled"]
+                    args: ["{that}.options.styles.on"]
                 },
                 {
                     "this": "{that}.container",
                     method: "html",
-                    args: "{that}.options.strings.disabled"
+                    args: "{that}.options.strings.off"
                 }
             ]
         },
 
         modelListeners: {
-            "isEnabled": {
+            "isOn": {
                 func: "{that}.refreshView"
+            },
+
+            "isEnabled": {
+                funcName: "flock.ui.toggleButton.updateEnabled",
+                args: [
+                    "{change}.value",
+                    "{that}.container",
+                    "{that}.events.enabled.fire",
+                    "{that}.events.disabled.fire"
+                ]
             }
         },
 
         strings: {
-            enabled: "On",
-            disabled: "Off",
+            on: "On",
+            off: "Off",
         },
 
         markup: {
@@ -121,8 +138,8 @@ var fluid = fluid || require("infusion"),
         },
 
         styles: {
-            enabled: "on",
-            disabled: "off"
+            on: "on",
+            off: "off"
         }
     });
 
@@ -131,9 +148,8 @@ var fluid = fluid || require("infusion"),
             return;
         }
 
-        // TODO: This is all very shady.
         var renderedMarkup = fluid.stringTemplate(that.options.markup.button, {
-            label: that.options.strings.disabled
+            label: that.options.strings.on
         });
 
         var button = $(renderedMarkup);
@@ -142,10 +158,20 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.ui.toggleButton.toggleModelState = function (model, applier) {
-        applier.requestChange("isEnabled", !model.isEnabled);
+        applier.requestChange("isOn", !model.isOn);
     };
 
-    flock.ui.toggleButton.refreshView = function (isEnabled, onEnabled, onDisabled) {
+    flock.ui.toggleButton.refreshView = function (isOn, fireOn, fireOff) {
+        if (isOn) {
+            fireOn();
+        } else {
+            fireOff();
+        }
+    };
+
+    flock.ui.toggleButton.updateEnabled = function (isEnabled, container, onEnabled, onDisabled) {
+        container.prop("disabled", !isEnabled);
+
         if (isEnabled) {
             onEnabled();
         } else {
@@ -163,17 +189,17 @@ var fluid = fluid || require("infusion"),
 
         invokers: {
             play: {
-                func: "{that}.enable"
+                func: "{that}.on"
             },
 
             pause: {
-                func: "{that}.disable"
+                func: "{that}.off"
             }
         },
 
         events: {
-            onPlay: "{that}.events.onEnabled",
-            onPause: "{that}.events.onDisabled"
+            onPlay: "{that}.events.on",
+            onPause: "{that}.events.off"
         },
 
         listeners: {
@@ -187,30 +213,100 @@ var fluid = fluid || require("infusion"),
         },
 
         strings: {
-            enabled: "Pause",
-            disabled: "Play"
+            on: "Pause",
+            off: "Play"
         },
 
         styles: {
             playButton: "flock-playButton",
-            enabled: "playing",
-            disabled: "paused"
+            on: "playing",
+            off: "paused"
         }
     });
+
 
     fluid.defaults("flock.ui.enviroPlayButton", {
         gradeNames: ["flock.ui.playButton", "autoInit"],
 
+        fadeDuration: 0.1,
+        resetDelay: 0.0,
+
+        members: {
+            resetTime: "@expand:flock.ui.enviroPlayButton.calcResetTime({that}.options)"
+        },
+
+        components: {
+            enviro: "{environment}",
+
+            fader: {
+                type: "flock.webAudio.outputFader",
+                options: {
+                    fadeDuration: "{enviroPlayButton}.options.fadeDuration"
+                }
+            }
+        },
+
+        events: {
+            onFadeOut: null,
+            onFadeIn: null
+        },
+
         listeners: {
-            onEnabled: {
-                funcName: "flock.enviro.shared.play",
-                priority: "last"
-            },
-            onDisabled: {
-                funcName: "flock.enviro.shared.reset",
+            onFadeIn: [
+                "{fader}.fadeIn(1.0)",
+                "{enviro}.play()"
+            ],
+
+            onFadeOut: [
+                "{fader}.fadeTo(0.0)",
+                "flock.ui.enviroPlayButton.disableForFadeOut({that}.model, {that}.applier)",
+                {
+                    funcName: "flock.ui.enviroPlayButton.renableAfterFadeOutDelay",
+                    args: ["{enviro}", "{that}.model", "{that}.applier", "{that}.resetTime"]
+                }
+            ]
+        },
+
+        modelListeners: {
+            isOn: {
+                funcName: "flock.ui.enviroPlayButton.handleStateChange",
+                args: ["{change}", "{that}.events.onFadeIn.fire", "{that}.events.onFadeOut.fire"],
                 priority: "first"
             }
         }
     });
+
+    flock.ui.enviroPlayButton.calcResetTime = function (o) {
+        return o.fadeDuration + o.resetDelay;
+    };
+
+    flock.ui.enviroPlayButton.handleStateChange = function (change, onFadeIn, onFadeOut) {
+        if (!change.value) {
+            // If we're in the initial model state, don't do anything.
+            if (change.oldValue === undefined) {
+                return;
+            }
+
+            onFadeOut();
+        } else {
+            onFadeIn();
+        }
+    };
+
+    flock.ui.enviroPlayButton.disableForFadeOut = function (model, applier) {
+        var didSelfDisable = model.isEnabled;
+        applier.change("didSelfDisable", didSelfDisable);
+        applier.change("isEnabled", false);
+    };
+
+    flock.ui.enviroPlayButton.renableAfterFadeOutDelay = function (enviro, model, applier, resetTime) {
+        enviro.asyncScheduler.once(resetTime, function () {
+            enviro.reset();
+
+            if (model.didSelfDisable) {
+                applier.change("isEnabled", true);
+            }
+        });
+    };
 
 }());

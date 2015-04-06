@@ -70,15 +70,7 @@ var fluid = fluid || require("infusion"),
 
             playButton: {
                 type: "flock.ui.enviroPlayButton",
-                container: "{that}.dom.playButton",
-                options: {
-                    listeners: {
-                        onPause: [
-                            "{evaluator}.clearPlayable()",
-                            "{enviro}.reset"
-                        ]
-                    }
-                }
+                container: "{that}.dom.playButton"
             }
         },
 
