@@ -1054,14 +1054,6 @@ var fluid = fluid || require("infusion"),
         ]
     });
 
-    flock.audioSystem.calcControlRate = function (audioRate, blockSize) {
-        return audioRate / blockSize;
-    };
-
-    flock.audioSystem.calcNumBlocks = function (bufferSize, blockSize) {
-        return bufferSize / blockSize;
-    };
-
     flock.audioSystem.defaultBufferSize = function () {
         return flock.platform.isMobile ? 8192 :
             flock.platform.browser.mozilla ? 2048 : 1024;
@@ -1149,7 +1141,7 @@ var fluid = fluid || require("infusion"),
             buses: {
                 expander: {
                     funcName: "flock.enviro.createAudioBuffers",
-                    args: ["{that}.audioSettings.numBuses", "{that}.audioSettings.blockSize"]
+                    args: ["{audioSystem}.model.numBuses", "{audioSystem}.model.blockSize"]
                 }
             },
             buffers: {},

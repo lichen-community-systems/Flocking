@@ -99,7 +99,7 @@ var fluid = fluid || require("infusion"),
         listeners: {
             onCreate: [
                 "flock.webAudio.audioSystem.registerContextSingleton({that})",
-                "flock.webAudio.audioSystem.setChannelState({that}.context, {that}.model.chans)"
+                "flock.webAudio.audioSystem.configureDestination({that}.context, {that}.model.chans)"
             ]
         }
     });
@@ -118,7 +118,7 @@ var fluid = fluid || require("infusion"),
             destination.maxChannelCount;
     };
 
-    flock.webAudio.audioSystem.setChannelState = function (context, chans) {
+    flock.webAudio.audioSystem.configureDestination = function (context, chans) {
         // Safari will throw an InvalidStateError DOM Exception 11 when
         // attempting to set channelCount on the audioContext's destination.
         // TODO: Remove this conditional when Safari adds support for multiple channels.
@@ -130,9 +130,10 @@ var fluid = fluid || require("infusion"),
     };
 
 
-
     fluid.defaults("flock.webAudio.scriptProcessor", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
+
+        model: "{audioSystem}.model",
 
         members: {
             node: "@expand:flock.webAudio.createNode({audioSystem}.context, {that}.options.nodeSpec)"
@@ -141,9 +142,9 @@ var fluid = fluid || require("infusion"),
         nodeSpec: {
             node: "ScriptProcessor",
             args: [
-                "{audioSystem}.model.bufferSize",
-                "{audioSystem}.model.numInputs",
-                "{audioSystem}.model.chans"
+                "{that}.model.bufferSize",
+                "{that}.model.numInputs",
+                "{that}.model.chans"
             ],
             params: {},
             properties: {
