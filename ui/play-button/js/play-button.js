@@ -279,6 +279,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.ui.enviroPlayButton.handleStateChange = function (change, onFadeIn, onFadeOut) {
+        // TODO: Replace this with an excludeSource: "init" directive.
         if (!change.value) {
             // If we're in the initial model state, don't do anything.
             if (change.oldValue === undefined) {

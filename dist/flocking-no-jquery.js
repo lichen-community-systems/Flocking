@@ -10860,7 +10860,13 @@ var fluid = fluid || require("infusion"),
 
     flock.init = function (options) {
         var enviroOpts = !options ? undefined : {
-            audioSettings: options
+            components: {
+                audioSystem: {
+                    options: {
+                        model: options
+                    }
+                }
+            }
         };
 
         var enviro = flock.enviro(enviroOpts);
@@ -10873,12 +10879,8 @@ var fluid = fluid || require("infusion"),
         return enviro;
     };
 
+    flock.ALL_CHANNELS = 32; // TODO: This should go.
     flock.OUT_UGEN_ID = "flocking-out";
-    flock.MAX_CHANNELS = 32;
-    flock.MIN_BUSES = 2;
-    flock.MAX_INPUT_BUSES = 32;
-    flock.MIN_INPUT_BUSES = 1; // TODO: This constraint should be removed.
-    flock.ALL_CHANNELS = flock.MAX_INPUT_BUSES;
 
     flock.PI = Math.PI;
     flock.TWOPI = 2.0 * Math.PI;
@@ -10950,16 +10952,6 @@ var fluid = fluid || require("infusion"),
     flock.platform.isWebAudio = typeof AudioContext !== "undefined" || typeof webkitAudioContext !== "undefined";
     flock.platform.audioEngine = flock.platform.isBrowser ? "webAudio" : "nodejs";
     fluid.staticEnvironment.audioEngine = fluid.typeTag("flock.platform." + flock.platform.audioEngine);
-
-    flock.defaultBufferSizeForPlatform = function () {
-        if (flock.platform.isMobile) {
-            return 8192;
-        } else if (flock.platform.browser.mozilla) {
-            return 2048;
-        }
-
-        return 1024;
-    };
 
     flock.shim = {
         URL: flock.platform.isBrowser ? (window.URL || window.webkitURL || window.msURL) : undefined
@@ -11814,20 +11806,151 @@ var fluid = fluid || require("infusion"),
      * Synths and Playback *
      ***********************/
 
+    fluid.defaults("flock.audioSystem", {
+        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
+
+        channelRange: {
+            min: 1,
+            max: 32
+        },
+
+        maxNumBuses: 1024,
+
+        inputBusRange: {
+            min: 1, // TODO: This constraint should be removed.
+            max: 32
+        },
+
+        model: {
+            rates: {
+                audio: 48000,
+                control: {
+                    expander: {
+                        funcName: "flock.audioSystem.calcControlRate",
+                        args: ["{that}.model.rates.audio", "{that}.model.blockSize)"]
+                    }
+                },
+                scheduled: 0,
+                demand: 0,
+                constant: 0
+            },
+            blockSize: 64,
+            numBlocks: {
+                expander: {
+                    funcName: "flock.audioSystem.calcNumBlocks",
+                    args: ["{that}.model.bufferSize", "{that}.model.blockSize"]
+                }
+            },
+            chans: 2,
+            numInputBuses: 2,
+            numBuses: 8,
+            bufferSize: "@expand:flock.audioSystem.defaultBufferSize()"
+        },
+
+        modelRelay: [
+            {
+                target: "chans",
+                singleTransform: {
+                    type: "fluid.transforms.limitRange",
+                    input: "{that}.model.chans",
+                    min: "{that}.options.channelRange.min",
+                    max: "{that}.options.channelRange.max"
+                }
+            },
+            {
+                target: "numInputBuses",
+                singleTransform: {
+                    type: "fluid.transforms.limitRange",
+                    input: "{that}.model.numInputBuses",
+                    min: "{that}.options.inputBusRange.min",
+                    max: "{that}.options.inputBusRange.max"
+                }
+            },
+            {
+                target: "numBuses",
+                singleTransform: {
+                    type: "fluid.transforms.limitRange",
+                    input: "{that}.model.numBuses",
+                    min: "{that}.model.chans",
+                    max: "{that}.options.maxNumBuses"
+                }
+            }
+        ]
+    });
+
+    flock.audioSystem.calcControlRate = function (audioRate, blockSize) {
+        return audioRate / blockSize;
+    };
+
+    flock.audioSystem.calcNumBlocks = function (bufferSize, blockSize) {
+        return bufferSize / blockSize;
+    };
+
+    flock.audioSystem.defaultBufferSize = function () {
+        return flock.platform.isMobile ? 8192 :
+            flock.platform.browser.mozilla ? 2048 : 1024;
+    };
+
+
+    /*****************
+     * Node Evalutor *
+     *****************/
+
+    fluid.defaults("flock.nodeEvaluator", {
+        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
+
+        model: "{audioSystem}.model",
+
+        members: {
+            nodes: "{enviro}.nodes",
+            buses: "{enviro}.buses"
+        },
+
+        invokers: {
+            gen: {
+                funcName: "flock.nodeEvaluator.gen",
+                args: ["{that}.nodes"]
+            },
+
+            clearBuses: {
+                funcName: "flock.nodeEvaluator.clearBuses",
+                args: [
+                    "{that}.model.numBuses",
+                    "{that}.model.blockSize",
+                    "{that}.buses"
+                ]
+            }
+        }
+    });
+
+    flock.nodeEvaluator.gen = function (nodes) {
+        var i,
+            node;
+
+        // Now evaluate each node.
+        for (i = 0; i < nodes.length; i++) {
+            node = nodes[i];
+            node.genFn(node);
+        }
+    };
+
+
+    flock.nodeEvaluator.clearBuses = function (numBuses, busLen, buses) {
+        for (var i = 0; i < numBuses; i++) {
+            var bus = buses[i];
+            for (var j = 0; j < busLen; j++) {
+                bus[j] = 0;
+            }
+        }
+    };
+
+
     fluid.defaults("flock.audioStrategy", {
         gradeNames: ["fluid.standardRelayComponent"],
 
         components: {
             nodeEvaluator: {
-                type: "flock.enviro.nodeEvaluator",
-                options: {
-                    numBuses: "{enviro}.options.audioSettings.numBuses",
-                    blockSize: "{enviro}.options.audioSettings.blockSize",
-                    members: {
-                        buses: "{enviro}.buses",
-                        nodes: "{enviro}.nodes"
-                    }
-                }
+                type: "flock.nodeEvaluator"
             }
         },
 
@@ -11847,7 +11970,6 @@ var fluid = fluid || require("infusion"),
         gradeNames: ["fluid.standardRelayComponent", "flock.nodeList", "autoInit"],
 
         members: {
-            audioSettings: "@expand:flock.enviro.clampAudioSettings({that}.options.audioSettings)",
             buses: {
                 expander: {
                     funcName: "flock.enviro.createAudioBuffers",
@@ -11863,10 +11985,14 @@ var fluid = fluid || require("infusion"),
                 type: "flock.scheduler.async"
             },
 
+            audioSystem: {
+                type: "flock.audioSystem.platform"
+            },
+
             audioStrategy: {
                 type: "flock.audioStrategy.platform",
                 options: {
-                    audioSettings: "{enviro}.audioSettings"
+                    audioSettings: "{audioSystem}.model"
                 }
             }
         },
@@ -11879,24 +12005,6 @@ var fluid = fluid || require("infusion"),
                 input: 0,
                 interconnect: 0
             }
-        },
-
-        audioSettings: {
-            rates: {
-                audio: 48000, // This is only a hint. Some audio backends (such as the Web Audio API)
-                              // may define the sample rate themselves.
-                control: undefined, // Control rate is calculated dynamically based on the audio rate and the block size.
-                scheduled: undefined, // The scheduled rate is a user-specified parameter.
-                demand: 0,
-                constant: 0
-            },
-            blockSize: 64,
-            chans: 2,
-            numInputBuses: 2,
-            numBuses: 8,
-            // This buffer size determines the overall latency of Flocking's audio output.
-            // TODO: Replace this with IoC awesomeness.
-            bufferSize: flock.defaultBufferSizeForPlatform(),
         },
 
         invokers: {
@@ -11962,7 +12070,8 @@ var fluid = fluid || require("infusion"),
                     "{that}.buses",
                     "{that}.applier",
                     "{that}.model",
-                    "{that}.audioSettings"
+                    "{audioSystem}.model.chans",
+                    "{audioSystem}.model.numInputBuses"
                 ]
             }
         },
@@ -11997,32 +12106,12 @@ var fluid = fluid || require("infusion"),
                 },
                 "{audioStrategy}.reset()",
                 "{that}.clearAll()"
-            ],
-
-            onCreate: {
-                funcName: "flock.enviro.calculateControlRate",
-                args: ["{that}.audioSettings"]
-            }
+            ]
         }
     });
 
-    flock.enviro.clampAudioSettings = function (s) {
-        s.numInputBuses = Math.min(s.numInputBuses, flock.MAX_INPUT_BUSES);
-        s.numInputBuses = Math.max(s.numInputBuses, flock.MIN_INPUT_BUSES);
-        s.chans = Math.min(s.chans, flock.MAX_CHANNELS);
-        s.numBuses = Math.max(s.numBuses, s.chans);
-        s.numBuses = Math.max(s.numBuses, flock.MIN_BUSES);
 
-        return s;
-    };
-
-    // TODO: This should be modelized.
-    flock.enviro.calculateControlRate = function (audioSettings) {
-        audioSettings.rates.control = audioSettings.rates.audio / audioSettings.blockSize;
-        return audioSettings;
-    };
-
-    flock.enviro.acquireNextBus = function (type, buses, applier, m, s) {
+    flock.enviro.acquireNextBus = function (type, buses, applier, m, chans, numInputBuses) {
         var busNum = m.nextAvailableBus[type];
 
         if (busNum === undefined) {
@@ -12032,12 +12121,12 @@ var fluid = fluid || require("infusion"),
         }
 
         // Input buses start immediately after the output buses.
-        var offsetBusNum = busNum + s.chans,
-            offsetBusMax = s.chans + s.numInputBuses;
+        var offsetBusNum = busNum + chans,
+            offsetBusMax = chans + numInputBuses;
 
         // Interconnect buses are after the input buses.
         if (type === "interconnect") {
-            offsetBusNum += s.numInputBuses;
+            offsetBusNum += numInputBuses;
             offsetBusMax = buses.length;
         }
 
@@ -12102,56 +12191,6 @@ var fluid = fluid || require("infusion"),
         return bufs;
     };
 
-
-    /*****************
-     * Node Evalutor *
-     *****************/
-
-    fluid.defaults("flock.enviro.nodeEvaluator", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
-
-        members: {
-            nodes: "{enviro}.nodes",
-            buses: "{enviro}.buses"
-        },
-
-        invokers: {
-            gen: {
-                funcName: "flock.enviro.nodeEvaluator.gen",
-                args: ["{that}.nodes"]
-            },
-
-            clearBuses: {
-                funcName: "flock.enviro.nodeEvaluator.clearBuses",
-                args: [
-                    "{enviro}.options.audioSettings.numBuses",
-                    "{enviro}.options.audioSettings.blockSize",
-                    "{that}.buses"
-                ]
-            }
-        }
-    });
-
-    flock.enviro.nodeEvaluator.gen = function (nodes) {
-        var i,
-            node;
-
-        // Now evaluate each node.
-        for (i = 0; i < nodes.length; i++) {
-            node = nodes[i];
-            node.genFn(node);
-        }
-    };
-
-
-    flock.enviro.nodeEvaluator.clearBuses = function (numBuses, busLen, buses) {
-        for (var i = 0; i < numBuses; i++) {
-            var bus = buses[i];
-            for (var j = 0; j < busLen; j++) {
-                bus[j] = 0;
-            }
-        }
-    };
 
     fluid.defaults("flock.autoEnviro", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
@@ -12350,22 +12389,13 @@ var fluid = fluid || require("infusion"),
         members: {
             rate: "{that}.options.rate",
 
-            // TODO: Remove this when audioSettings is modelized.
-            audioSettings: {
-                expander: {
-                    "this": "jQuery",
-                    method: "extend",
-                    args: [true, {}, "{that}.enviro.audioSettings", "{that}.options.audioSettings"]
-                }
-            },
-
             out: {
                 expander: {
                     funcName: "flock.synth.parseSynthDef",
                     args: [
                         "{that}.options.synthDef",
                         "{that}.rate",
-                        "{that}.audioSettings",
+                        "{audioSystem}.model",
                         "{that}.enviro.buffers",
                         "{that}.enviro.buses",
                         "{that}.tail"
@@ -12381,7 +12411,7 @@ var fluid = fluid || require("infusion"),
         },
 
         model: {
-            blockSize: "@expand:flock.synth.calcBlockSize({that}.rate, {that}.audioSettings)"
+            blockSize: "@expand:flock.synth.calcBlockSize({that}.rate, {audioSystem}.model)"
         },
 
         invokers: {
@@ -15281,12 +15311,13 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.webAudio");
 
-    flock.webAudio.createNode = function (context, type, args, params) {
+    flock.webAudio.createNode = function (context, type, args, params, props) {
         // Second argument is a NodeSpec object.
         if (typeof type !== "string") {
             args = type.args;
             params = type.params;
             type = type.node;
+            props = type.properties;
         }
 
         args = args === undefined || args === null ? [] :
@@ -15301,7 +15332,8 @@ var fluid = fluid || require("infusion"),
         }
 
         var node = context[creatorName].apply(context, args);
-        flock.webAudio.initializeNodeInputs(context, node, params);
+        flock.webAudio.initNodeInputs(context, node, params);
+        flock.webAudio.initNodeProperties(node, props);
 
         return node;
     };
@@ -15313,7 +15345,7 @@ var fluid = fluid || require("infusion"),
     };
 
     // TODO: Add support for other types of AudioParams.
-    flock.webAudio.initializeNodeInputs = function (context, node, paramSpec) {
+    flock.webAudio.initNodeInputs = function (context, node, paramSpec) {
         if (!node || !paramSpec) {
             return;
         }
@@ -15327,6 +15359,87 @@ var fluid = fluid || require("infusion"),
 
         return node;
     };
+
+    flock.webAudio.initNodeProperties = function (node, props) {
+        for (var propName in props) {
+            var value = props[propName];
+            node[propName] = value;
+        }
+    };
+
+
+    fluid.defaults("flock.webAudio.audioSystem", {
+        gradeNames: ["flock.audioSystem", "autoInit"],
+
+        channelRange: {
+            max: "@expand:flock.webAudio.audioSystem.calcMaxChannels({that}.context.destination)"
+        },
+
+        members: {
+            context: "@expand:flock.webAudio.audioSystem.createContext()"
+        },
+
+        model: {
+            rates: {
+                audio: "{that}.context.sampleRate"
+            }
+        },
+
+        listeners: {
+            onCreate: [
+                "flock.webAudio.audioSystem.registerContextSingleton({that})",
+                "flock.webAudio.audioSystem.setChannelState({that}.context, {that}.model.chans)"
+            ]
+        }
+    });
+
+    flock.webAudio.audioSystem.createContext = function () {
+        var singleton = fluid.staticEnvironment.audioSystem;
+        return singleton ? singleton.context : new flock.shim.AudioContext();
+    };
+
+    flock.webAudio.audioSystem.registerContextSingleton = function (that) {
+        fluid.staticEnvironment.audioSystem = that;
+    };
+
+    flock.webAudio.audioSystem.calcMaxChannels = function (destination) {
+        return flock.platform.browser.safari ? destination.channelCount :
+            destination.maxChannelCount;
+    };
+
+    flock.webAudio.audioSystem.setChannelState = function (context, chans) {
+        // Safari will throw an InvalidStateError DOM Exception 11 when
+        // attempting to set channelCount on the audioContext's destination.
+        // TODO: Remove this conditional when Safari adds support for multiple channels.
+        if (!flock.platform.browser.safari) {
+            context.destination.channelCount = chans;
+            context.destination.channelCountMode = "explicit";
+            context.destination.channelInterpretation = "discrete";
+        }
+    };
+
+
+
+    fluid.defaults("flock.webAudio.scriptProcessor", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        members: {
+            node: "@expand:flock.webAudio.createNode({audioSystem}.context, {that}.options.nodeSpec)"
+        },
+
+        nodeSpec: {
+            node: "ScriptProcessor",
+            args: [
+                "{audioSystem}.model.bufferSize",
+                "{audioSystem}.model.numInputs",
+                "{audioSystem}.model.chans"
+            ],
+            params: {},
+            properties: {
+                channelCountMode: "explicit"
+            }
+        }
+    });
 
 
     // TODO: Remove this when Chrome implements navigator.getMediaDevices().
@@ -15377,35 +15490,7 @@ var fluid = fluid || require("infusion"),
 
         model: {
             isGenerating: false,
-            shouldInitIOS: flock.platform.isIOS,
-            krPeriods: {
-                expander: {
-                    funcName: "flock.audioStrategy.web.calcNumBlocks",
-                    args: "{enviro}.options.audioSettings"
-                }
-            }
-        },
-
-        members: {
-            context: "{contextWrapper}.context",
-            sampleRate: "{that}.context.sampleRate",
-            chans: {
-                expander: {
-                    funcName: "flock.audioStrategy.web.calculateChannels",
-                    args: ["{contextWrapper}.context", "{enviro}.options.audioSettings.chans"]
-                }
-            },
-            jsNode: {
-                expander: {
-                    funcName: "flock.audioStrategy.web.createScriptProcessor",
-                    args: [
-                        "{contextWrapper}.context",
-                        "{enviro}.options.audioSettings.bufferSize",
-                        "{enviro}.options.audioSettings.numInputBuses",
-                        "{that}.chans"
-                    ]
-                }
-            }
+            shouldInitIOS: flock.platform.isIOS
         },
 
         invokers: {
@@ -15415,8 +15500,8 @@ var fluid = fluid || require("infusion"),
         },
 
         components: {
-            contextWrapper: {
-                type: "flock.webAudio.contextWrapper"
+            scriptProcessor: {
+                type: "flock.webAudio.scriptProcessor"
             },
 
             nativeNodeManager: {
@@ -15436,21 +15521,13 @@ var fluid = fluid || require("infusion"),
         listeners: {
             onCreate: [
                 {
-                    funcName: "flock.audioStrategy.web.setChannelState",
-                    args: ["{that}.chans", "{contextWrapper}.context.destination"]
-                },
-                {
-                    funcName: "flock.audioStrategy.web.pushAudioSettings",
-                    args: ["{that}.sampleRate", "{that}.chans", "{enviro}.options.audioSettings"]
-                },
-                {
                     funcName: "flock.audioStrategy.web.bindWriter",
                     args: [
-                        "{that}.jsNode",
+                        "{scriptProcessor}.node",
                         "{nodeEvaluator}",
                         "{nativeNodeManager}",
                         "{that}.model",
-                        "{enviro}.options.audioSettings"
+                        "{audioSystem}.model"
                     ]
                 }
             ],
@@ -15463,7 +15540,12 @@ var fluid = fluid || require("infusion"),
                 {
                     // TODO: Replace this with some progressive enhancement action.
                     funcName: "flock.audioStrategy.web.iOSStart",
-                    args: ["{that}.model", "{that}.applier", "{contextWrapper}.context", "{that}.jsNode"]
+                    args: [
+                        "{that}.model",
+                        "{that}.applier",
+                        "{audioSystem}.context",
+                        "{scriptProcessor}.node"
+                    ]
                 },
                 {
                     func: "{nativeNodeManager}.connect"
@@ -15491,41 +15573,6 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    flock.audioStrategy.web.calculateChannels = function (context, chans) {
-        // TODO: Remove this conditional when Safari adds support for multiple channels.
-        return flock.platform.browser.safari ?  context.destination.channelCount :
-            Math.min(chans, context.destination.maxChannelCount);
-    };
-
-    // TODO: Refactor into a shared environment-level model property.
-    flock.audioStrategy.web.pushAudioSettings = function (sampleRate, chans, audioSettings) {
-        audioSettings.rates.audio = sampleRate;
-        audioSettings.chans = chans;
-    };
-
-    flock.audioStrategy.web.setChannelState = function (chans, destinationNode) {
-        // Safari will throw an InvalidStateError DOM Exception 11 when
-        // attempting to set channelCount on the audioContext's destination.
-        // TODO: Remove this conditional when Safari adds support for multiple channels.
-        if (!flock.platform.browser.safari) {
-            destinationNode.channelCount = chans;
-            destinationNode.channelCountMode = "explicit";
-            destinationNode.channelInterpretation = "discrete";
-        }
-    };
-
-    flock.audioStrategy.web.calcNumBlocks = function (s) {
-        return s.bufferSize / s.blockSize;
-    };
-
-    flock.audioStrategy.web.createScriptProcessor = function (ctx, bufferSize, numInputs, chans) {
-        var jsNodeName = ctx.createScriptProcessor ? "createScriptProcessor" : "createJavaScriptNode",
-            jsNode = ctx[jsNodeName](bufferSize, numInputs, chans);
-
-        jsNode.channelCountMode = "explicit";
-
-        return jsNode;
-    };
 
     flock.audioStrategy.web.bindWriter = function (jsNode, nodeEvaluator, nativeNodeManager, model, audioSettings) {
         jsNode.model = model;
@@ -15547,14 +15594,13 @@ var fluid = fluid || require("infusion"),
      *  - audioSettings: the enviornment's audio settings
      */
     flock.audioStrategy.web.writeSamples = function (e) {
-        var m = this.model,
-            numInputNodes = this.inputNodes.length,
+        var numInputNodes = this.inputNodes.length,
             evaluator = this.evaluator,
             nodes = evaluator.nodes,
             s = this.audioSettings,
             inBufs = e.inputBuffer,
             outBufs = e.outputBuffer,
-            krPeriods = m.krPeriods,
+            numBlocks = s.numBlocks,
             buses = evaluator.buses,
             numBuses = s.numBuses,
             blockSize = s.blockSize,
@@ -15574,10 +15620,10 @@ var fluid = fluid || require("infusion"),
 
         // TODO: Make a formal distinction between input buses,
         // output buses, and interconnect buses in the environment!
-        for (i = 0; i < krPeriods; i++) {
+        for (i = 0; i < numBlocks; i++) {
             var offset = i * blockSize;
 
-            flock.enviro.nodeEvaluator.clearBuses(numBuses, blockSize, buses);
+            flock.nodeEvaluator.clearBuses(numBuses, blockSize, buses);
 
             // Read this ScriptProcessorNode's input buffers
             // into the environment.
@@ -15593,7 +15639,7 @@ var fluid = fluid || require("infusion"),
                 }
             }
 
-            flock.enviro.nodeEvaluator.gen(nodes);
+            flock.nodeEvaluator.gen(nodes);
 
             // Output the environment's signal
             // to this ScriptProcessorNode's output channels.
@@ -15665,39 +15711,6 @@ var fluid = fluid || require("infusion"),
 
 
     /**
-     * An Infusion component wrapper for a Web Audio API AudioContext instance.
-     */
-    // TODO: Refactor this into an "audio system" component (with cross-platform base grade)
-    // that serves as the canonical source for shared audio settings such as
-    // sample rate, number of channels, etc.
-    fluid.defaults("flock.webAudio.contextWrapper", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
-
-        members: {
-            context: "@expand:flock.webAudio.contextWrapper.create()"
-        },
-
-        listeners: {
-            onCreate: [
-                {
-                    funcName: "flock.webAudio.contextWrapper.registerSingleton",
-                    args: ["{that}"]
-                }
-            ]
-        }
-    });
-
-    flock.webAudio.contextWrapper.create = function () {
-        var singleton = fluid.staticEnvironment.webAudioContextWrapper;
-        return singleton ? singleton.context : new flock.shim.AudioContext();
-    };
-
-    flock.webAudio.contextWrapper.registerSingleton = function (that) {
-        fluid.staticEnvironment.webAudioContextWrapper = that;
-    };
-
-
-    /**
      * Manages a collection of input nodes and an output node,
      * with a JS node in between.
      *
@@ -15705,9 +15718,7 @@ var fluid = fluid || require("infusion"),
      * "islands" are implemented.
      */
     fluid.defaults("flock.webAudio.nativeNodeManager", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
-
-        audioSettings: "{enviro}.options.audioSettings",
+        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
 
         members: {
             outputNode: undefined,
@@ -15716,9 +15727,9 @@ var fluid = fluid || require("infusion"),
                 expander: {
                     funcName: "flock.webAudio.nativeNodeManager.createInputMerger",
                     args: [
-                        "{contextWrapper}.context",
-                        "{enviro}.options.audioSettings.numInputBuses",
-                        "{web}.jsNode"
+                        "{audioSystem}.context",
+                        "{audioSystem}.model.numInputBuses",
+                        "{scriptProcessor}.node"
                     ]
                 }
             }
@@ -15729,16 +15740,16 @@ var fluid = fluid || require("infusion"),
                 funcName: "flock.webAudio.nativeNodeManager.connect",
                 args: [
                     "{that}.merger",
-                    "{web}.jsNode",
+                    "{scriptProcessor}.node",
                     "{that}.outputNode",
-                    "{contextWrapper}.context.destination"
+                    "{audioSystem}.context.destination"
                 ]
             },
 
             createNode: {
                 funcName: "flock.webAudio.createNode",
                 args: [
-                    "{contextWrapper}.context",
+                    "{audioSystem}.context",
                     "{arguments}.0", // Node type.
                     "{arguments}.1", // Constructor args.
                     "{arguments}.2"  // AudioParam connections.
@@ -15790,7 +15801,7 @@ var fluid = fluid || require("infusion"),
 
             disconnect: {
                 funcName: "flock.webAudio.nativeNodeManager.disconnect",
-                args: ["{that}.merger", "{web}.jsNode", "{that}.outputNode"]
+                args: ["{that}.merger", "{scriptProcessor}.node", "{that}.outputNode"]
             },
 
             insertInput: {
@@ -15820,14 +15831,14 @@ var fluid = fluid || require("infusion"),
 
             removeOutput: {
                 funcName: "flock.webAudio.nativeNodeManager.removeOutput",
-                args: ["{web}.jsNode"]
+                args: ["{scriptProcessor}.node"]
             }
         },
 
         listeners: {
             onCreate: {
                 func: "{that}.insertOutput",
-                args: "{web}.jsNode"
+                args: "{scriptProcessor}.node"
             }
         }
     });
@@ -15873,7 +15884,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.webAudio.nativeNodeManager.insertInput = function (that, enviro, node, busNum) {
-        var maxInputs = that.options.audioSettings.numInputBuses;
+        var maxInputs = that.model.numInputBuses;
         if (that.inputNodes.length >= maxInputs) {
             flock.fail("There are too many input nodes connected to Flocking. " +
                 "The maximum number of input buses is currently set to " + maxInputs + ". " +
@@ -15883,7 +15894,7 @@ var fluid = fluid || require("infusion"),
         }
 
         busNum = busNum === undefined ? enviro.acquireNextBus("input") : busNum;
-        var idx = busNum - enviro.audioSettings.chans;
+        var idx = busNum - that.model.audioSettings.chans;
 
         that.inputNodes.push(node);
         node.connect(that.merger, 0, idx);
@@ -15923,10 +15934,6 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.webAudio.inputDeviceManager", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
 
-        members: {
-            context: "{contextWrapper}.context"
-        },
-
         invokers: {
             /**
              * Opens the specified audio device.
@@ -15953,7 +15960,7 @@ var fluid = fluid || require("infusion"),
             openAudioDeviceWithConstraints: {
                 funcName: "flock.webAudio.inputDeviceManager.openAudioDeviceWithConstraints",
                 args: [
-                    "{that}.context",
+                    "{audioSystem}.context",
                     "{enviro}",
                     "{nativeNodeManager}.createMediaStreamInput",
                     "{arguments}.0"
@@ -16065,8 +16072,8 @@ var fluid = fluid || require("infusion"),
         fadeDuration: 0.5,
 
         members: {
-            gainNode: "@expand:flock.webAudio.outputFader.createGainNode({environment})",
-            context: "{environment}.audioStrategy.context"
+            gainNode: "@expand:flock.webAudio.outputFader.createGainNode({enviro})",
+            context: "{audioSystem}.context"
         },
 
         invokers: {
@@ -16122,6 +16129,10 @@ var fluid = fluid || require("infusion"),
         flock.webAudio.outputFader.fade(context, gainNode, 0, end, duration);
     };
 
+
+    fluid.demands("flock.audioSystem.platform", "flock.platform.webAudio", {
+        funcName: "flock.webAudio.audioSystem"
+    });
 
     fluid.demands("flock.audioStrategy.platform", "flock.platform.webAudio", {
         funcName: "flock.audioStrategy.web"
