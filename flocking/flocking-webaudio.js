@@ -143,7 +143,7 @@ var fluid = fluid || require("infusion"),
             node: "ScriptProcessor",
             args: [
                 "{that}.model.bufferSize",
-                "{that}.model.numInputs",
+                "{that}.model.numInputBuses",
                 "{that}.model.chans"
             ],
             params: {},

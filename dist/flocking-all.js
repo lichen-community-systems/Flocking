@@ -1,4 +1,4 @@
-/*! Flocking 0.1.1 (April 6, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.1 (April 7, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.3
@@ -24618,7 +24618,7 @@ var fluid = fluid || require("infusion"),
             node: "ScriptProcessor",
             args: [
                 "{that}.model.bufferSize",
-                "{that}.model.numInputs",
+                "{that}.model.numInputBuses",
                 "{that}.model.chans"
             ],
             params: {},
