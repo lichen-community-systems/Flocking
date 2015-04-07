@@ -11824,23 +11824,13 @@ var fluid = fluid || require("infusion"),
         model: {
             rates: {
                 audio: 48000,
-                control: {
-                    expander: {
-                        funcName: "flock.audioSystem.calcControlRate",
-                        args: ["{that}.model.rates.audio", "{that}.model.blockSize)"]
-                    }
-                },
+                control: 750,
                 scheduled: 0,
                 demand: 0,
                 constant: 0
             },
             blockSize: 64,
-            numBlocks: {
-                expander: {
-                    funcName: "flock.audioSystem.calcNumBlocks",
-                    args: ["{that}.model.bufferSize", "{that}.model.blockSize"]
-                }
-            },
+            numBlocks: 16,
             chans: 2,
             numInputBuses: 2,
             numBuses: 8,
@@ -11848,6 +11838,24 @@ var fluid = fluid || require("infusion"),
         },
 
         modelRelay: [
+            {
+                target: "{that}.model.rates.control",
+                singleTransform: {
+                    type: "fluid.transforms.binaryOp",
+                    left: "{that}.model.rates.audio",
+                    operator: "/",
+                    right: "{that}.model.blockSize"
+                }
+            },
+            {
+                target: "numBlocks",
+                singleTransform: {
+                    type: "fluid.transforms.binaryOp",
+                    left: "{that}.model.bufferSize",
+                    operator: "/",
+                    right: "{that}.model.blockSize"
+                }
+            },
             {
                 target: "chans",
                 singleTransform: {
