@@ -226,7 +226,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ui.enviroPlayButton", {
         gradeNames: ["flock.ui.playButton", "autoInit"],
 
-        fadeDuration: 0.5,
+        fadeDuration: 0.3,
         resetDelay: 0.0,
 
         members: {
