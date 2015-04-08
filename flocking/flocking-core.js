@@ -982,7 +982,10 @@ var fluid = fluid || require("infusion"),
             max: 32
         },
 
-        maxNumBuses: 1024,
+        outputBusRange: {
+            min: 2,
+            max: 1024
+        },
 
         inputBusRange: {
             min: 1, // TODO: This constraint should be removed.
@@ -1007,7 +1010,7 @@ var fluid = fluid || require("infusion"),
 
         modelRelay: [
             {
-                target: "{that}.model.rates.control",
+                target: "rates.control",
                 singleTransform: {
                     type: "fluid.transforms.binaryOp",
                     left: "{that}.model.rates.audio",
@@ -1045,14 +1048,20 @@ var fluid = fluid || require("infusion"),
             {
                 target: "numBuses",
                 singleTransform: {
-                    type: "fluid.transforms.limitRange",
-                    input: "{that}.model.numBuses",
-                    min: "{that}.model.chans",
-                    max: "{that}.options.maxNumBuses"
+                    type: "fluid.transforms.free",
+                    func: "flock.audioSystem.clampNumBuses",
+                    args: ["{that}.model.numBuses", "{that}.options.outputBusRange", "{that}.model.chans"]
                 }
             }
         ]
     });
+
+    flock.audioSystem.clampNumBuses = function (numBuses, outputBusRange, chans) {
+        numBuses = Math.max(numBuses, Math.max(chans, outputBusRange.min));
+        numBuses = Math.min(numBuses, outputBusRange.max);
+
+        return numBuses;
+    };
 
     flock.audioSystem.defaultBufferSize = function () {
         return flock.platform.isMobile ? 8192 :
@@ -1129,7 +1138,10 @@ var fluid = fluid || require("infusion"),
         },
 
         events: {
-            onReset: null
+            // TODO: Harmonize event names.
+            onStart: "{enviro}.events.onPlay",
+            onStop: "{enviro}.events.onStop",
+            onReset: "{enviro}.events.onReset"
         }
     });
 
@@ -1197,9 +1209,7 @@ var fluid = fluid || require("infusion"),
             /**
              * Fully resets the state of the environment.
              */
-            reset: {
-                func: "{that}.events.onReset.fire"
-            },
+            reset: "{that}.events.onReset.fire()",
 
             /**
              * Registers a shared buffer.
@@ -1253,11 +1263,9 @@ var fluid = fluid || require("infusion"),
         listeners: {
             onPlay: [
                 "{that}.applier.change(isPlaying, true)",
-                "{audioStrategy}.start()"
             ],
 
             onStop: [
-                "{audioStrategy}.stop()",
                 "{that}.applier.change(isPlaying, false)"
             ],
 
@@ -1272,7 +1280,6 @@ var fluid = fluid || require("infusion"),
                     func: "{that}.applier.change",
                     args: ["nextAvailableBus.interconnect", []]
                 },
-                "{audioStrategy}.reset()",
                 "{that}.clearAll()"
             ]
         }
@@ -1556,7 +1563,7 @@ var fluid = fluid || require("infusion"),
 
         members: {
             rate: "{that}.options.rate",
-
+            audioSettings: "{audioSystem}.model", // TODO: Move this.
             out: {
                 expander: {
                     funcName: "flock.synth.parseSynthDef",
@@ -1922,7 +1929,7 @@ var fluid = fluid || require("infusion"),
     });
 
     flock.synth.group.gen = function (that) {
-        flock.enviro.nodeEvaluator.gen(that.nodes);
+        flock.nodeEvaluator.gen(that.nodes);
     };
 
     flock.synth.group.get = function (args, nodes) {

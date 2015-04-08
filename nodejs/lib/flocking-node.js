@@ -249,6 +249,9 @@ var fs = require("fs"),
         });
     };
 
+    fluid.demands("flock.audioSystem.platform", "flock.platform.webAudio", {
+        funcName: "flock.audioSystem"
+    });
 
     fluid.demands("flock.audioStrategy.platform", "flock.platform.nodejs", {
         funcName: "flock.audioStrategy.nodejs"

@@ -17,7 +17,7 @@ var fluid = fluid || require("infusion"),
     var $ = fluid.registerNamespace("jQuery");
     flock.init();
 
-    var sampleRate = flock.enviro.shared.audioSettings.rates.audio;
+    var sampleRate = flock.environment.audioSystem.model.rates.audio;
 
 
     /*****************************
@@ -95,13 +95,15 @@ var fluid = fluid || require("infusion"),
             "At the end of the " + stageName + " stage, the expected end level should have been reached.");
         flock.test.arrayUnbroken(buffer, "The output should not contain any dropouts.");
         flock.test.arrayWithinRange(buffer, 0.0, 1.0,
-            "The output should always remain within the range between " + expectedStart + " and " + expectedEnd + ".");
+            "The output should always remain within the range between " + expectedStart +
+            " and " + expectedEnd + ".");
         flock.test.continuousArray(buffer, 0.02, "The buffer should move continuously within its range.");
 
         var isClimbing = expectedStart < expectedEnd;
         var directionText = isClimbing ? "climb" : "fall";
         flock.test.rampingArray(buffer, isClimbing,
-            "The buffer should " + directionText + " steadily from " + expectedStart + " to " + expectedEnd + ".");
+            "The buffer should " + directionText + " steadily from " + expectedStart + " to " +
+            expectedEnd + ".");
     };
 
     test("Constant values for all inputs", function () {

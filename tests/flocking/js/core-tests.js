@@ -468,7 +468,7 @@ var fluid = fluid || require("infusion"),
     };
 
     var testEnviroGraph = function (fn) {
-        var audioSettings = flock.environment.audioSettings;
+        var audioSettings = flock.environment.audioSystem.model;
 
         setTimeout(function () {
             fn();
@@ -506,7 +506,7 @@ var fluid = fluid || require("infusion"),
         var synth = flock.test.genReportSynth();
         flock.environment.play();
 
-        var audioSettings = flock.environment.audioSettings,
+        var audioSettings = flock.environment.audioSystem.model,
             waitDur = (audioSettings.bufferSize / audioSettings.rates.audio) * 1000 * 2;
 
         setTimeout(function () {
@@ -531,7 +531,7 @@ var fluid = fluid || require("infusion"),
 
     asyncTest("destroy() removes a synth from the environment", function () {
         var synth = flock.test.genReportSynth();
-        var audioSettings = flock.environment.audioSettings,
+        var audioSettings = flock.environment.audioSystem.model,
             waitDur = (audioSettings.bufferSize / audioSettings.rates.audio) * 1000 * 2;
 
         flock.environment.play();
@@ -957,7 +957,7 @@ var fluid = fluid || require("infusion"),
                 source: {
                     ugen: "flock.ugen.sequence",
                     rate: "audio",
-                    freq: flock.environment.audioSettings.rates.audio,
+                    freq: flock.environment.audioSystem.model.rates.audio,
                     list: flock.test.fillBuffer(1, 64)
                 }
             }
@@ -971,7 +971,7 @@ var fluid = fluid || require("infusion"),
         synth.set("pass.source", {
             ugen: "flock.ugen.sequence",
             rate: "audio",
-            freq: flock.environment.audioSettings.rates.audio,
+            freq: flock.environment.audioSystem.model.rates.audio,
             list: flock.test.fillBuffer(64, 127)
         });
         synth.gen();
@@ -988,7 +988,7 @@ var fluid = fluid || require("infusion"),
         synth.set("pass.source", {
             ugen: "flock.ugen.sequence",
             rate: "audio",
-            freq: flock.environment.audioSettings.rates.audio,
+            freq: flock.environment.audioSystem.model.rates.audio,
             list: flock.test.fillBuffer(128, 191)
         });
         synth.gen();
@@ -2015,25 +2015,29 @@ var fluid = fluid || require("infusion"),
             chans: 64,
             numInputBuses: 128
         });
-        ok(enviro.audioSettings.chans <= flock.MAX_CHANNELS,
-            "The environment's number of channels should be clamped at " + flock.MAX_CHANNELS);
-        equal(enviro.audioSettings.numInputBuses, flock.MAX_INPUT_BUSES,
-            "The environment's number of input buses should be clamped at " + flock.MAX_INPUT_BUSES);
-        ok(enviro.audioSettings.numInputBuses >= flock.MIN_INPUT_BUSES,
-            "The environment should have at least " + flock.MIN_INPUT_BUSES + " input buses.");
+
+        var audioSystemDefaults = fluid.defaults("flock.audioSystem"),
+            defaultInputBusRange = audioSystemDefaults.inputBusRange,
+            defaultMaxChans = audioSystemDefaults.channelRange.max;
+        ok(enviro.audioSystem.model.chans <= defaultMaxChans,
+            "The environment's number of channels should be clamped at " + defaultMaxChans);
+        equal(enviro.audioSystem.model.numInputBuses, defaultInputBusRange.max,
+            "The environment's number of input buses should be clamped at " + defaultInputBusRange.max);
+        ok(enviro.audioSystem.model.numInputBuses >= defaultInputBusRange.min,
+            "The environment should have at least " + defaultInputBusRange.min + " input buses.");
 
         enviro = flock.init({
             chans: 1,
             numBuses: 1
         });
-        ok(enviro.audioSettings.numBuses >= 2,
+        ok(enviro.audioSystem.model.numBuses >= 2,
             "The environment should always have two or more buses.");
 
         enviro = flock.init({
             chans: 8,
             numBuses: 4
         });
-        equal(enviro.audioSettings.numBuses, 8,
+        ok(enviro.audioSystem.model.numBuses >= enviro.audioSystem.model.chans,
             "The environment should always have at least as many buses as channels.");
     });
 
@@ -2043,11 +2047,11 @@ var fluid = fluid || require("infusion"),
             chans: 1
         });
 
-        var expectedNumChans = !flock.platform.browser.safari ? 1 : enviro.audioStrategy.context.destination.channelCount;
-        equal(enviro.audioSettings.chans, expectedNumChans,
+        var expectedNumChans = !flock.platform.browser.safari ? 1 : enviro.audioSystem.context.destination.channelCount;
+        equal(enviro.audioSystem.model.chans, expectedNumChans,
             "The environment should have been configured with the specified chans option (except on Safari).");
 
-        equal(enviro.audioSettings.numBuses, 24,
+        equal(enviro.audioSystem.model.numBuses, 24,
             "The environment should have been configured with the specified number of buses");
 
         equal(enviro.buses.length, 24,
@@ -2088,7 +2092,7 @@ var fluid = fluid || require("infusion"),
         };
 
         flock.test.core.runBusTests("input", 2, enviroOpts, function (runIdx, enviro) {
-            return runIdx + enviro.audioSettings.chans;
+            return runIdx + enviro.audioSystem.model.chans;
         });
     });
 
@@ -2100,7 +2104,7 @@ var fluid = fluid || require("infusion"),
         };
 
         flock.test.core.runBusTests("interconnect", 2, enviroOpts, function (runIdx, enviro) {
-            return runIdx + enviro.audioSettings.chans + enviro.audioSettings.numInputBuses;
+            return runIdx + enviro.audioSystem.model.chans + enviro.audioSystem.model.numInputBuses;
         });
     });
 }());

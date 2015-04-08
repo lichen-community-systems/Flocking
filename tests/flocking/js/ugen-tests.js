@@ -20,7 +20,7 @@ var fluid = fluid || require("infusion"),
 
     flock.init();
 
-    var sampleRate = flock.environment.audioSettings.rates.audio;
+    var sampleRate = flock.environment.audioSystem.model.rates.audio;
 
     module("UGen interpolation configuration tests");
 
@@ -1251,7 +1251,7 @@ var fluid = fluid || require("infusion"),
                 buffer: "giraffes",
                 loop: shouldLoop ? 1.0 : 0.0,
                 options: {
-                    duration: 128 / flock.environment.audioSettings.rates.audio
+                    duration: 128 / flock.environment.audioSystem.model.rates.audio
                 }
             })
         });
@@ -1462,20 +1462,14 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    // TODO: We're using 64 buses here so we don't run into
-    // legitimate output buses when running tests while plugged into a multichannel
-    // audio interface. This illustrates why we should have some kind of separation between
-    // interconnect buses and output buses.
-    var inEnviroOptions = {
-        audioSettings: {
-            numBuses: 64
-        }
-    };
-
     test("flock.ugen.in() single bus input", function () {
-        // TODO: This is a major bug!
-        // This should be accomplishable solely with IoC references.
-        fluid.staticEnvironment.environment = flock.environment = flock.enviro(inEnviroOptions);
+        // TODO: We're using 64 buses here so we don't run into
+        // legitimate output buses when running tests while plugged into a multichannel
+        // audio interface. This illustrates why we should have some kind of separation between
+        // interconnect buses and output buses.
+        flock.init({
+            numBuses: 64
+        });
 
         var outSynth = flock.synth({
             synthDef: outSynthDef
@@ -1493,7 +1487,9 @@ var fluid = fluid || require("infusion"),
     });
 
     test("flock.ugen.in() multiple bus input", function () {
-        fluid.staticEnvironment.environment = flock.environment = flock.enviro(inEnviroOptions);
+        flock.init({
+            numBuses: 64
+        });
 
         var bus4Def = $.extend(true, {}, outSynthDef, {
             inputs: {
@@ -2298,26 +2294,24 @@ var fluid = fluid || require("infusion"),
             time: 1/750
         };
 
-        function makeChangeSynth(synthDef) {
-            return flock.synth({
+        function makeChangeUGen(changeDef) {
+            return flock.parse.ugenForDef(changeDef, {
                 audioSettings: {
                     rates: {
                         audio: 48000
                     }
-                },
-
-                synthDef: synthDef
+                }
             });
         }
 
         test("Change at specified time", function () {
-            var synth = makeChangeSynth(changeDef),
-                changer = synth.get("changer");
+            var changer = makeChangeUGen(changeDef);
 
-            synth.gen();
+            flock.test.evaluateUGen(changer);
             deepEqual(changer.output, flock.generate(64, 1),
                 "For the first sample block, the output should be the initial input's output.");
-            synth.gen();
+
+            flock.test.evaluateUGen(changer);
             deepEqual(changer.output, flock.generate(64, 2),
                 "For the second sample block, the output should be the target input's output.");
         });
@@ -2327,27 +2321,26 @@ var fluid = fluid || require("infusion"),
                 crossfade: 1/750
             });
 
-            var synth = makeChangeSynth(crossFadeDef),
-                changer = synth.get("changer"),
+            var changer = makeChangeUGen(crossFadeDef),
                 crossfadeBuffer = flock.generate(64, function (i) {
                     var targetLevel = i / 64,
                         initialLevel = 1 - targetLevel;
                     return (1 * initialLevel) + (2 * targetLevel);
                 });
 
-            synth.gen();
+            flock.test.evaluateUGen(changer);
             deepEqual(changer.output, flock.generate(64, 1),
                 "For the first sample block, the output should be the initial input's output.");
-            synth.gen();
+
+            flock.test.evaluateUGen(changer);
             deepEqual(changer.output, crossfadeBuffer,
                 "For the second sample block, the output should crossfade from the initial to the target input.");
-            synth.gen();
+
+            flock.test.evaluateUGen(changer);
             deepEqual(changer.output, flock.generate(64, 2),
                 "For the third sample block, the output should be the target input's output.");
         });
-
     }());
-
 
 
     module("flock.ugen.t2a");

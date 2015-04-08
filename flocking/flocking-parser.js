@@ -90,8 +90,8 @@ var fluid = fluid || require("infusion"),
             }
         });
         // TODO: When we switch to Infusion options merging, these should have a mergePolicy of preserve.
-        ugenDef.options.audioSettings.buffers = options.buffers;
-        ugenDef.options.audioSettings.buses = options.buses;
+        ugenDef.options.buffers = options.buffers;
+        ugenDef.options.buses = options.buses;
 
         var outputBufferSize = ugenDef.rate === flock.rates.AUDIO ? blockSize : 1,
             outputBuffers;
@@ -228,7 +228,7 @@ var fluid = fluid || require("infusion"),
      */
     flock.parse.ugenForDef = function (ugenDef, options) {
         options = $.extend(true, {
-            audioSettings: flock.environment.options.audioSettings,
+            audioSettings: flock.environment.audioSystem.model,
             buses: flock.environment.buses,
             buffers: flock.environment.buffers
         }, options);
