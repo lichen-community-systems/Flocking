@@ -21012,8 +21012,8 @@ var fluid = fluid || require("infusion"),
 
         model: {
             rates: {
-                audio: 48000,
-                control: 750,
+                audio: 44100,
+                control: 689.0625,
                 scheduled: 0,
                 demand: 0,
                 constant: 0
@@ -21581,14 +21581,14 @@ var fluid = fluid || require("infusion"),
 
         members: {
             rate: "{that}.options.rate",
-            audioSettings: "{audioSystem}.model", // TODO: Move this.
+            audioSettings: "{enviro}.audioSystem.model", // TODO: Move this.
             out: {
                 expander: {
                     funcName: "flock.synth.parseSynthDef",
                     args: [
                         "{that}.options.synthDef",
                         "{that}.rate",
-                        "{audioSystem}.model",
+                        "{enviro}.audioSystem.model",
                         "{that}.enviro.buffers",
                         "{that}.enviro.buses",
                         "{that}.tail"
@@ -21604,7 +21604,7 @@ var fluid = fluid || require("infusion"),
         },
 
         model: {
-            blockSize: "@expand:flock.synth.calcBlockSize({that}.rate, {audioSystem}.model)"
+            blockSize: "@expand:flock.synth.calcBlockSize({that}.rate, {enviro}.audioSystem.model)"
         },
 
         invokers: {
@@ -24587,6 +24587,7 @@ var fluid = fluid || require("infusion"),
         gradeNames: ["flock.audioSystem", "autoInit"],
 
         channelRange: {
+            min: "@expand:flock.webAudio.audioSystem.calcMinChannels()",
             max: "@expand:flock.webAudio.audioSystem.calcMaxChannels({that}.context.destination)"
         },
 
@@ -24620,6 +24621,10 @@ var fluid = fluid || require("infusion"),
     flock.webAudio.audioSystem.calcMaxChannels = function (destination) {
         return flock.platform.browser.safari ? destination.channelCount :
             destination.maxChannelCount;
+    };
+
+    flock.webAudio.audioSystem.calcMinChannels = function () {
+        return flock.platform.browser.safari ? 2 : 1;
     };
 
     flock.webAudio.audioSystem.configureDestination = function (context, chans) {

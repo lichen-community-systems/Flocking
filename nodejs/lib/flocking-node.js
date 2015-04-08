@@ -105,20 +105,21 @@ var fs = require("fs"),
         bytesPerSample: 4, // Flocking uses Float32s, hence 4 bytes.
 
         model: {
+            audioSettings: "{audioSystem}.model",
             bytesPerBlock: {
                 expander: {
                     funcName: "flock.audioStrategy.nodejs.calcBlockBytes",
-                    args: ["{that}.options.audioSettings", "{that}.options.bytesPerSample"]
+                    args: ["{audioSystem}.model", "{that}.options.bytesPerSample"]
                 }
             }
         },
 
         members: {
-            speaker: "@expand:flock.audioStrategy.nodejs.createSpeaker({that}.options.audioSettings)",
+            speaker: "@expand:flock.audioStrategy.nodejs.createSpeaker({that}.model.audioSettings)",
             outputStream: {
                 expander: {
                     funcName: "flock.audioStrategy.nodejs.createOutputStream",
-                    args: "{that}.options.audioSettings"
+                    args: "{that}.model.audioSettings"
                 }
             }
         },
@@ -151,11 +152,8 @@ var fs = require("fs"),
         },
 
         listeners: {
-            onReset: [
-                {
-                    func: "{that}.stop"
-                }
-            ]
+            onStart: ["{that}.start"],
+            onStop: ["{that}.stop"]
         }
     });
 
@@ -190,7 +188,7 @@ var fs = require("fs"),
     };
 
     flock.audioStrategy.nodejs.writeSamples = function (numBytes, that) {
-        var s = that.options.audioSettings,
+        var s = that.model.audioSettings,
             m = that.model,
             bytesPerSample = that.options.bytesPerSample,
             blockSize = s.blockSize,
@@ -211,8 +209,8 @@ var fs = require("fs"),
             flock.generate.silence(out);
         } else {
             for (var i = 0, offset = 0; i < krPeriods; i++, offset += m.bytesPerBlock) {
-                flock.enviro.nodeEvaluator.clearBuses(s.numBuses, s.blockSize, buses);
-                flock.enviro.nodeEvaluator.gen(nodes);
+                flock.nodeEvaluator.clearBuses(s.numBuses, s.blockSize, buses);
+                flock.nodeEvaluator.gen(nodes);
 
                 // Interleave each output channel.
                 for (var chan = 0; chan < chans; chan++) {
@@ -249,7 +247,7 @@ var fs = require("fs"),
         });
     };
 
-    fluid.demands("flock.audioSystem.platform", "flock.platform.webAudio", {
+    fluid.demands("flock.audioSystem.platform", "flock.platform.nodejs", {
         funcName: "flock.audioSystem"
     });
 

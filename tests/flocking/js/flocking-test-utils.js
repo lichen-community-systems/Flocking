@@ -586,11 +586,14 @@ var flock = flock || {};
     });
 
     flock.test.evaluateUGen = function (ugen) {
-        fluid.each(ugen.inputs, function (input) {
-            flock.test.evaluateUGen(input);
-        });
+        if (ugen.inputs && Object.keys(ugen.inputs) > 0) {
+            for (var inputName in ugen.inputs) {
+                var input = ugen.inputs[inputName];
+                flock.test.evaluateUGen(input);
+            }
+        }
 
-        if (ugen.gen) {
+        if (typeof ugen.gen === "function") {
             ugen.gen(ugen.model.blockSize);
         }
     };

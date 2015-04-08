@@ -105,6 +105,7 @@ var fluid = fluid || require("infusion"),
         gradeNames: ["flock.audioSystem", "autoInit"],
 
         channelRange: {
+            min: "@expand:flock.webAudio.audioSystem.calcMinChannels()",
             max: "@expand:flock.webAudio.audioSystem.calcMaxChannels({that}.context.destination)"
         },
 
@@ -138,6 +139,10 @@ var fluid = fluid || require("infusion"),
     flock.webAudio.audioSystem.calcMaxChannels = function (destination) {
         return flock.platform.browser.safari ? destination.channelCount :
             destination.maxChannelCount;
+    };
+
+    flock.webAudio.audioSystem.calcMinChannels = function () {
+        return flock.platform.browser.safari ? 2 : 1;
     };
 
     flock.webAudio.audioSystem.configureDestination = function (context, chans) {
