@@ -1,9 +1,5 @@
 // James Tenney's For Ann Rising.
 
-flock.init({
-    bufferSize: 8192
-});
-
 var sked = flock.enviro.shared.asyncScheduler,
     numSynths = 240,
     synths = [],

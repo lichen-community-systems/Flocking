@@ -14,7 +14,9 @@ var fluid = fluid || require("infusion"),
     "use strict";
 
     // TODO: Declarativize.
-    flock.init();
+    flock.init({
+        chans: flock.ALL_CHANNELS
+    });
     flock.debug.failHard = false;
 
     /**************

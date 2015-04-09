@@ -24509,9 +24509,9 @@ var fluid = fluid || require("infusion"),
         if (typeof type !== "string") {
             args = type.args;
             params = type.params;
-            type = type.node;
             props = type.properties;
             inputs = type.inputs;
+            type = type.node;
         }
 
         args = args === undefined || args === null ? [] :
@@ -24645,7 +24645,24 @@ var fluid = fluid || require("infusion"),
             node: "@expand:flock.webAudio.createNode({audioSystem}.context, {that}.options.nodeSpec)"
         },
 
-        nodeSpec: {}
+        nodeSpec: {
+            args: [],
+            params: {},
+            properties: {}
+        }
+    });
+
+
+    fluid.defaults("flock.webAudio.gain", {
+        gradeNames: ["flock.webAudio.node", "autoInit"],
+
+        members: {
+            node: "@expand:flock.webAudio.createNode({audioSystem}.context, {that}.options.nodeSpec)"
+        },
+
+        nodeSpec: {
+            node: "Gain"
+        }
     });
 
 
@@ -25332,8 +25349,21 @@ var fluid = fluid || require("infusion"),
 
         fadeDuration: 0.5,
 
+        gainSpec: {
+            node: "Gain",
+
+            params: {
+                gain: 0.0
+            },
+
+            properties: {
+                channelCount: "{audioSystem}.model.chans",
+                channelCountMode: "explicit"
+            }
+        },
+
         members: {
-            gainNode: "@expand:flock.webAudio.outputFader.createGainNode({enviro})",
+            gainNode: "@expand:flock.webAudio.outputFader.createGainNode({enviro}, {that}.options.gainSpec)",
             context: "{audioSystem}.context"
         },
 
@@ -25360,13 +25390,8 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    flock.webAudio.outputFader.createGainNode = function (enviro) {
-        var gainNode = enviro.audioStrategy.nativeNodeManager.createOutputNode({
-            node: "Gain",
-            params: {
-                gain: 0.0
-            }
-        });
+    flock.webAudio.outputFader.createGainNode = function (enviro, gainSpec) {
+        var gainNode = enviro.audioStrategy.nativeNodeManager.createOutputNode(gainSpec);
 
         return gainNode;
     };

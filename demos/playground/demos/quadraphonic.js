@@ -3,10 +3,6 @@
 // otherwise you'll only hear the first two.
 // At the moment, Firefox and Safari don't support more than two channels, so try this with Chrome.
 
-flock.init({
-    chans: 4
-});
-
 flock.synth({
     synthDef: [
         {
