@@ -1,4 +1,4 @@
-/*! Flocking 0.1.1 (April 8, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.1 (April 10, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.3
@@ -24556,11 +24556,29 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.webAudio.initNodeProperties = function (node, props) {
+        if (!props) {
+            return;
+        }
+
         for (var propName in props) {
             var value = props[propName];
-            node[propName] = value;
+
+            if (flock.webAudio.shouldSetProperty(propName)) {
+                node[propName] = value;
+            }
         }
     };
+
+    flock.webAudio.shouldSetProperty = function (propName) {
+        return flock.platform.browser.safari ?
+            flock.webAudio.safariPropertyProhibitions.indexOf(propName) < 0 :
+            true;
+    };
+
+    flock.webAudio.safariPropertyProhibitions = [
+        "channelCount",
+        "channelCountMode"
+    ];
 
     flock.webAudio.connectInput = function (node, inputNum, input, outputNum) {
         input.connect(node, outputNum, inputNum);
