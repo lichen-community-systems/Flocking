@@ -48,8 +48,11 @@
                 numInputBuses: 4
             });
 
-            enviro.audioStrategy.nativeNodeManager.createOutputNode("Gain", undefined, {
-                gain: 0.0
+            enviro.audioStrategy.nativeNodeManager.createOutputNode({
+                node: "Gain",
+                params: {
+                    gain: 0.0
+                }
             });
         }
     });

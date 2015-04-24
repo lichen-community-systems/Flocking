@@ -1,4 +1,4 @@
-/*! Flocking 0.1.1 (April 10, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.1 (April 24, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof exports === "object") {
@@ -15318,20 +15318,10 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.webAudio");
 
-    flock.webAudio.createNode = function (context, type, args, params, props, inputs) {
-        // Second argument is a NodeSpec object.
-        if (typeof type !== "string") {
-            args = type.args;
-            params = type.params;
-            props = type.properties;
-            inputs = type.inputs;
-            type = type.node;
-        }
+    flock.webAudio.createNode = function (context, nodeSpec) {
+        nodeSpec.args = nodeSpec.args ? fluid.makeArray(nodeSpec.args) : undefined;
 
-        args = args === undefined || args === null ? [] :
-            fluid.isArrayable(args) ? args : [args];
-
-        var creatorName = "create" + type,
+        var creatorName = "create" + nodeSpec.node,
             nodeStrIdx = creatorName.indexOf("Node");
 
         // Trim off "Node" if it is present.
@@ -15339,37 +15329,51 @@ var fluid = fluid || require("infusion"),
             creatorName = creatorName.substring(0, nodeStrIdx);
         }
 
-        var node = context[creatorName].apply(context, args);
-        flock.webAudio.initNodeParams(context, node, params);
-        flock.webAudio.initNodeProperties(node, props);
-        flock.webAudio.initNodeInputs(node, inputs);
+        var node = context[creatorName].apply(context, nodeSpec.args);
+        flock.webAudio.initNodeParams(context, node, nodeSpec);
+        flock.webAudio.initNodeProperties(node, nodeSpec);
+        flock.webAudio.initNodeInputs(node, nodeSpec);
 
         return node;
     };
 
-    flock.webAudio.setAudioParamValue = function (context, value, param, atTime) {
+    flock.webAudio.setAudioParamValue = function (context, param, value, atTime) {
         atTime = atTime || 0.0;
         var scheduledTime = context.currentTime + atTime;
         param.setValueAtTime(value, scheduledTime);
     };
 
     // TODO: Add support for other types of AudioParams.
-    flock.webAudio.initNodeParams = function (context, node, paramSpec) {
-        if (!node || !paramSpec) {
+    flock.webAudio.initNodeParams = function (context, node, nodeSpec) {
+        var params = nodeSpec.params;
+
+        if (!node || !params) {
             return;
         }
 
-        for (var paramName in paramSpec) {
+        for (var paramName in params) {
             var param = node[paramName],
-                value = paramSpec[paramName];
+                value = params[paramName];
 
-            flock.webAudio.setAudioParamValue(context, value, param);
+            flock.webAudio.setAudioParamValue(context, param, value);
         }
 
         return node;
     };
 
-    flock.webAudio.initNodeProperties = function (node, props) {
+    flock.webAudio.safariPropertyProhibitions = [
+        "channelCount",
+        "channelCountMode"
+    ];
+
+    flock.webAudio.shouldSetProperty = function (propName) {
+        return flock.platform.browser.safari ?
+            flock.webAudio.safariPropertyProhibitions.indexOf(propName) < 0 :
+            true;
+    };
+
+    flock.webAudio.initNodeProperties = function (node, nodeSpec) {
+        var props = nodeSpec.props;
         if (!props) {
             return;
         }
@@ -15381,18 +15385,9 @@ var fluid = fluid || require("infusion"),
                 node[propName] = value;
             }
         }
-    };
 
-    flock.webAudio.shouldSetProperty = function (propName) {
-        return flock.platform.browser.safari ?
-            flock.webAudio.safariPropertyProhibitions.indexOf(propName) < 0 :
-            true;
+        return node;
     };
-
-    flock.webAudio.safariPropertyProhibitions = [
-        "channelCount",
-        "channelCountMode"
-    ];
 
     flock.webAudio.connectInput = function (node, inputNum, input, outputNum) {
         input.connect(node, outputNum, inputNum);
@@ -15400,10 +15395,12 @@ var fluid = fluid || require("infusion"),
 
     // TODO: Add the ability to specify the output channel of the connection.
     // TODO: Unify this with AudioParams so they all just look like "inputs".
-    flock.webAudio.initNodeInputs = function (node, inputs) {
-        for (var inputKey in inputs) {
-            var inputNodes = inputs[inputKey],
-                inputNum = parseInt(inputKey, 10);
+    flock.webAudio.initNodeInputs = function (node, nodeSpec) {
+        var inputs = nodeSpec.inputs;
+
+        for (var inputName in inputs) {
+            var inputNodes = inputs[inputName],
+                inputNum = parseInt(inputName, 10);
 
             inputNodes = fluid.makeArray(inputNodes);
 
@@ -15807,9 +15804,7 @@ var fluid = fluid || require("infusion"),
                 funcName: "flock.webAudio.createNode",
                 args: [
                     "{audioSystem}.context",
-                    "{arguments}.0", // Node type.
-                    "{arguments}.1", // Constructor args.
-                    "{arguments}.2"  // AudioParam connections.
+                    "{arguments}.0" // The nodeSpec
                 ]
             },
 
@@ -15817,31 +15812,33 @@ var fluid = fluid || require("infusion"),
                 funcName: "flock.webAudio.nativeNodeManager.createInputNode",
                 args: [
                     "{that}",
-                    "{arguments}.0", // Node type.
-                    "{arguments}.1", // Constructor args.
-                    "{arguments}.2", // AudioParam connections.
-                    "{arguments}.3"  // {optional} The input bus number to insert it at.
+                    "{arguments}.0", // The nodeSpec.
+                    "{arguments}.1", // {optional} The input bus number to insert it at.
                 ]
             },
 
             createMediaStreamInput: {
                 funcName: "flock.webAudio.nativeNodeManager.createInputNode",
+                dynamic: true,
                 args: [
                     "{that}",
-                    "MediaStreamSource",
-                    "{arguments}.0", // The MediaStream,
-                    undefined,
+                    {
+                        node: "MediaStreamSource",
+                        args: ["{arguments}.0"] // The MediaStream
+                    },
                     "{arguments}.1"  // {optional} The input bus number to insert it at.
                 ]
             },
 
             createMediaElementInput: {
                 funcName: "flock.webAudio.nativeNodeManager.createInputNode",
+                dynamic: true,
                 args: [
                     "{that}",
-                    "MediaElementSource",
-                    "{arguments}.0", // The HTMLMediaElement
-                    undefined,
+                    {
+                        node: "MediaElementSource",
+                        args: ["{arguments}.0"] // The HTMLMediaElement
+                    },
                     "{arguments}.1"  // {optional} The input bus number to insert it at.
                 ]
             },
@@ -15850,9 +15847,7 @@ var fluid = fluid || require("infusion"),
                 funcName: "flock.webAudio.nativeNodeManager.createOutputNode",
                 args: [
                     "{that}",
-                    "{arguments}.0", // Node type.
-                    "{arguments}.1", // Constructor args.
-                    "{arguments}.2"  // AudioParam connections.
+                    "{arguments}.0" // The nodeSpec
                 ]
             },
 
@@ -15969,13 +15964,13 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    flock.webAudio.nativeNodeManager.createInputNode = function (that, type, args, params, busNum) {
-        var node = that.createNode(type, args, params);
+    flock.webAudio.nativeNodeManager.createInputNode = function (that, nodeSpec, busNum) {
+        var node = that.createNode(nodeSpec);
         return that.insertInput(node, busNum);
     };
 
-    flock.webAudio.nativeNodeManager.createOutputNode = function (that, type, args, params) {
-        var node = that.createNode(type, args, params);
+    flock.webAudio.nativeNodeManager.createOutputNode = function (that, nodeSpec) {
+        var node = that.createNode(nodeSpec);
         return that.insertOutput(node);
     };
 
@@ -16235,7 +16230,7 @@ var fluid = fluid || require("infusion"),
             endTime = now + duration;
 
         // Set the current value now, then ramp to the target.
-        flock.webAudio.setAudioParamValue(context, start, gainNode.gain);
+        flock.webAudio.setAudioParamValue(context, gainNode.gain, start);
         gainNode.gain.linearRampToValueAtTime(end, endTime);
     };
 
