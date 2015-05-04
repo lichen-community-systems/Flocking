@@ -1,4 +1,4 @@
-/*! Flocking 0.1.1 (March 24, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.1 (May 4, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof exports === "object") {
@@ -21400,7 +21400,7 @@ var fluid = fluid || require("infusion"),
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
 
-/*global require*/
+/*global require, Promise*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,
@@ -21633,7 +21633,7 @@ var fluid = fluid || require("infusion"),
 
             onAccessError: {
                 funcName: "fluid.log",
-                args: [fluid.logLevel.WARN, "{arguments}.0"]
+                args: [fluid.logLevel.WARN, "MIDI Access Error: ", "{arguments}.0"]
             }
         }
     });
@@ -21681,6 +21681,7 @@ var fluid = fluid || require("infusion"),
                 args: [
                     "{system}.ports",
                     "{that}.options.ports",
+                    "{that}.events.onReady.fire",
                     "{that}.events.raw.fire",
                     "{that}.events.onSendMessage"
                 ]
@@ -21699,18 +21700,16 @@ var fluid = fluid || require("infusion"),
             system: {
                 type: "flock.midi.system",
                 options: {
-                    listeners: {
-                        onReady: {
-                            funcName: "flock.midi.connection.autoOpen",
-                            args: ["{connection}.options.openImmediately", "{connection}.open"]
-                        }
+                    events: {
+                        onReady: "{connection}.events.onPortsAvailable"
                     }
                 }
             }
         },
 
         events: {
-            onReady: "{system}.events.onReady",
+            onPortsAvailable: null, //"{system}.events.onReady",
+            onReady: null,
             onError: null,
             onSendMessage: null,
 
@@ -21726,6 +21725,13 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
+            onPortsAvailable: {
+                funcName: "flock.midi.connection.autoOpen",
+                args: [
+                    "{connection}.options.openImmediately", "{connection}.open"
+                ]
+            },
+
             onError: {
                 funcName: "fluid.log",
                 args: [fluid.logLevel.WARN, "{arguments}.0"]
@@ -21846,42 +21852,71 @@ var fluid = fluid || require("infusion"),
         });
     };
 
-    flock.midi.connection.listen = function (port, onRaw) {
+    flock.midi.connection.openPort = function (port, openPromises) {
+        // Remove this conditional when Chrome 43 has been released.
+        if (port.open) {
+            var p = port.open();
+            openPromises.push(p);
+        }
+
+        return openPromises;
+    };
+
+    flock.midi.connection.listen = function (port, onRaw, openPromises) {
         flock.midi.findPorts.eachPortOfType(port, "input", function (port) {
+            flock.midi.connection.openPort(port, openPromises);
             port.addEventListener("midimessage", onRaw, false);
         });
+
+        return openPromises;
     };
 
     flock.midi.connection.stopListening = function (port, onRaw) {
         flock.midi.findPorts.eachPortOfType(port, "input", function (port) {
+            port.close();
             port.removeEventListener("midimessage", onRaw, false);
         });
     };
 
-    flock.midi.connection.bindSender = function (port, onSendMessage) {
+    flock.midi.connection.bindSender = function (port, onSendMessage, openPromises) {
         var ports = fluid.makeArray(port);
+
         fluid.each(ports, function (port) {
+            flock.midi.connection.openPort(port, openPromises);
             onSendMessage.addListener(port.send.bind(port));
         });
+
+        return openPromises;
     };
 
-    flock.midi.connection.bind = function (ports, portSpec, onRaw, onSendMessage) {
+    flock.midi.connection.fireReady = function (openPromises, onReady) {
+        if (!openPromises || openPromises.length < 1) {
+            return;
+        }
+
+        Promise.all(openPromises).then(onReady);
+    };
+
+    flock.midi.connection.bind = function (ports, portSpec, onReady, onRaw, onSendMessage) {
         portSpec = flock.midi.connection.expandPortSpec(portSpec);
 
         var input = flock.midi.findPorts(ports.inputs, portSpec.input),
-            output = flock.midi.findPorts(ports.outputs, portSpec.output);
+            output = flock.midi.findPorts(ports.outputs, portSpec.output),
+            openPromises = [];
 
         if (input && input.length > 0) {
-            flock.midi.connection.listen(input, onRaw);
+            flock.midi.connection.listen(input, onRaw, openPromises);
         } else if (portSpec.input !== undefined) {
             flock.midi.connection.logNoMatchedPorts("input", portSpec);
         }
 
         if (output && output.length > 0) {
-            flock.midi.connection.bindSender(output, onSendMessage);
+            flock.midi.connection.bindSender(output, onSendMessage, openPromises);
         } else if (portSpec.output !== undefined) {
             flock.midi.connection.logNoMatchedPorts("output", portSpec);
         }
+
+        flock.midi.connection.fireReady(openPromises, onReady);
     };
 
     flock.midi.connection.close = function (ports, onRaw) {

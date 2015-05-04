@@ -3,7 +3,8 @@
 
 "use strict";
 
-var flock = require(__dirname + "/../index.js"); //jshint ignore:line
+var fluid = require("infusion"),
+    flock = require(__dirname + "/../index.js"); //jshint ignore:line
 
 flock.init();
 
@@ -31,7 +32,9 @@ var midiBand = flock.band({
             options: {
                 openImmediately: true,
 
-                ports: 0,
+                ports: {
+                    input: "*"
+                },
 
                 listeners: {
                     onError: {
@@ -56,4 +59,10 @@ var midiBand = flock.band({
     }
 });
 
+var inputPorts = midiBand.midiConnection.system.ports.inputs,
+    portSummary = fluid.transform(inputPorts, function (port) {
+        return port.name;
+    });
+
+console.log("Available MIDI Inputs:", fluid.prettyPrintJSON(portSummary));
 midiBand.play();
