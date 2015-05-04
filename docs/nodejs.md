@@ -167,7 +167,7 @@ In app.js (or whatever files you want to use), you'll define your Flocking code:
         listeners: {
             onCreate: [
                 {
-                    funcName: "{that}.enviro.play"
+                    funcName: "{that}.enviro.start"
                 },
                 {
                     funcName: "{scheduler}.schedule",
