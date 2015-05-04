@@ -584,4 +584,18 @@ var flock = flock || {};
             strideInputs: ["source"]
         }
     });
+
+    flock.test.evaluateUGen = function (ugen) {
+        if (ugen.inputs && Object.keys(ugen.inputs) > 0) {
+            for (var inputName in ugen.inputs) {
+                var input = ugen.inputs[inputName];
+                flock.test.evaluateUGen(input);
+            }
+        }
+
+        if (typeof ugen.gen === "function") {
+            ugen.gen(ugen.model.blockSize);
+        }
+    };
+
 }());

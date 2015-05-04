@@ -364,7 +364,7 @@ var fluid = fluid || require("infusion"),
                 // TODO: Direct reference to the shared environment.
                 busNum = enviro.audioStrategy.nativeNodeManager.createMediaElementInput(mediaEl[0]);
 
-            that.bus = that.options.audioSettings.buses[busNum];
+            that.bus = that.options.buses[busNum];
             that.onInputChanged();
 
             // TODO: Remove this warning when Safari and Android

@@ -453,9 +453,9 @@ var fluid = fluid || require("infusion"),
         var options = {
             // TODO: This is hardcoded to audio rate, which is fine until we can edit value synths.
             rate: flock.rates.AUDIO,
-            audioSettings: flock.enviro.shared.options.audioSettings,
-            buses: flock.enviro.shared.buses,
-            buffers: flock.enviro.shared.buffers
+            audioSettings: flock.environment.audioSystem.model,
+            buses: flock.environment.buses,
+            buffers: flock.environment.buffers
         };
 
         if (!flock.parse.synthDef.hasOutUGen(synthDef)) {

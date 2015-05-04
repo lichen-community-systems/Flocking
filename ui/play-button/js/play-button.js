@@ -226,7 +226,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ui.enviroPlayButton", {
         gradeNames: ["flock.ui.playButton", "autoInit"],
 
-        fadeDuration: 0.5,
+        fadeDuration: 0.3,
         resetDelay: 0.0,
 
         members: {
@@ -279,6 +279,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.ui.enviroPlayButton.handleStateChange = function (change, onFadeIn, onFadeOut) {
+        // TODO: Replace this with an excludeSource: "init" directive.
         if (!change.value) {
             // If we're in the initial model state, don't do anything.
             if (change.oldValue === undefined) {

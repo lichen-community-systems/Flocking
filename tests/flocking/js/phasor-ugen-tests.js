@@ -15,7 +15,7 @@
     var $ = fluid.registerNamespace("jQuery");
 
     flock.init();
-    var sampleRate = flock.environment.audioSettings.rates.audio;
+    var sampleRate = flock.environment.audioSystem.model.rates.audio;
 
     module("flock.ugen.phasor");
 

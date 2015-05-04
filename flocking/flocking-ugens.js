@@ -195,8 +195,8 @@ var fluid = fluid || require("infusion"),
 
                 return flock.parse.ugenDef(ugenDef, {
                     audioSettings: that.options.audioSettings,
-                    buses: that.options.audioSettings.buses,
-                    buffers: that.options.audioSettings.buffers
+                    buses: that.options.buses,
+                    buffers: that.options.buffers
                 });
             });
         };
@@ -292,7 +292,7 @@ var fluid = fluid || require("infusion"),
                 that.tags.push(tags[i]);
             }
 
-            s = o.audioSettings = o.audioSettings || flock.environment.audioSettings;
+            s = o.audioSettings = o.audioSettings || flock.environment.audioSystem.model;
             m.sampleRate = o.sampleRate || s.rates[that.rate];
             m.nyquistRate = m.sampleRate;
             m.blockSize = that.rate === flock.rates.AUDIO ? s.blockSize : 1;
@@ -1786,7 +1786,9 @@ var fluid = fluid || require("infusion"),
         };
 
         that.createBuffer = function (that, bufDef) {
-            var s = that.options.audioSettings,
+            var o = that.options,
+                s = o.audioSettings,
+                buffers = o.buffers,
                 numChans = that.multiInputs.sources.length,
                 duration = Math.round(that.options.duration * s.rates.audio),
                 channels = new Array(numChans),
@@ -1801,7 +1803,7 @@ var fluid = fluid || require("infusion"),
 
             if (bufDef.id) {
                 buffer.id = bufDef.id;
-                s.buffers[bufDef.id] = buffer;
+                buffers[bufDef.id] = buffer;
             }
 
             return buffer;
@@ -1813,7 +1815,7 @@ var fluid = fluid || require("infusion"),
             var existingBuffer;
             if (bufDef.id) {
                 // Check for an existing environment buffer.
-                existingBuffer = that.options.audioSettings.buffers[bufDef.id];
+                existingBuffer = that.options.buffers[bufDef.id];
             }
 
             that.buffer = existingBuffer || that.createBuffer(that, bufDef);
@@ -1990,7 +1992,7 @@ var fluid = fluid || require("infusion"),
     /**
      * Outputs a phase step value for playing the specified buffer at its normal playback rate.
      * This unit generator takes into account any differences between the sound file's sample rate and
-     * the environment's audio rate.
+     * the AudioSystem's audio rate.
      *
      * Inputs:
      *  buffer: a bufDef object specifying the buffer to track
@@ -2057,7 +2059,7 @@ var fluid = fluid || require("infusion"),
     });
 
     /**
-     * Constant-rate unit generator that outputs the environment's current audio sample rate.
+     * Constant-rate unit generator that outputs the AudioSystem's current audio sample rate.
      */
     flock.ugen.sampleRate = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options),
@@ -2956,7 +2958,7 @@ var fluid = fluid || require("infusion"),
         that.gen = function (numSamps) {
             var m = that.model,
                 sources = that.multiInputs.sources,
-                buses = that.options.audioSettings.buses,
+                buses = that.options.buses,
                 bufStart = that.inputs.bus.output[0],
                 expand = that.inputs.expand.output[0],
                 numSources,
@@ -3084,7 +3086,7 @@ var fluid = fluid || require("infusion"),
                 out = that.output;
 
             flock.ugen.in.readBus(numSamps, out, that.inputs.bus,
-                that.options.audioSettings.buses);
+                that.options.buses);
 
             m.unscaledValue = flock.ugen.lastOutputValue(numSamps, out);
             that.mulAdd(numSamps);
@@ -3094,7 +3096,7 @@ var fluid = fluid || require("infusion"),
         that.multiBusGen = function (numSamps) {
             var m = that.model,
                 busesInput = that.inputs.bus,
-                enviroBuses = that.options.audioSettings.buses,
+                enviroBuses = that.options.buses,
                 out = that.output,
                 i,
                 j,
@@ -3170,7 +3172,7 @@ var fluid = fluid || require("infusion"),
         that.init = function () {
             // TODO: Direct reference to the shared environment.
             var busNum = flock.environment.audioStrategy.inputDeviceManager.openAudioDevice(options);
-            that.bus = that.options.audioSettings.buses[busNum];
+            that.bus = that.options.buses[busNum];
             that.onInputChanged();
         };
 

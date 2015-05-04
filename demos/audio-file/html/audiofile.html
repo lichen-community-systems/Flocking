@@ -11,6 +11,8 @@
         <script src="../../../third-party/infusion/js/Fluid.js"></script>
         <script src="../../../third-party/infusion/js/FluidIoC.js"></script>
         <script src="../../../third-party/infusion/js/DataBinding.js"></script>
+        <script src="../../../third-party/infusion/js/ModelTransformation.js"></script>
+        <script src="../../../third-party/infusion/js/ModelTransformationTransforms.js"></script>
 
         <script src="../../../flocking/flocking-core.js"></script>
         <script src="../../../flocking/flocking-scheduler.js"></script>
@@ -55,7 +57,8 @@
         </div>
 
         <script>
-
+            var enviro = flock.init();
+            
             var synth = flock.synth({
                 synthDef: {
                     ugen: "flock.ugen.scope",
