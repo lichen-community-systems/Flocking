@@ -1,4 +1,4 @@
-/*! Flocking 0.1.1 (May 4, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.2 (May 4, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.3
@@ -21035,15 +21035,28 @@ var fluid = fluid || require("infusion"),
         /**
          * Starts generating samples from all synths.
          */
-        that.play = function () {
+        that.start = function () {
+            if (that.model.isPlaying) {
+                return;
+            }
+
             that.audioStrategy.start();
             that.model.isPlaying = true;
         };
 
         /**
+         * Deprecated. Use start() instead.
+         */
+        that.play = that.start;
+
+        /**
          * Stops generating samples from all synths.
          */
         that.stop = function () {
+            if (!that.model.isPlaying) {
+                return;
+            }
+
             that.audioStrategy.stop();
             that.model.isPlaying = false;
         };
@@ -30422,10 +30435,10 @@ var fluid = fluid || require("infusion"),
 
         that.init = function () {
             var m = that.model;
-            m.target = typeof (that.options.target) === "string" ?
-                document.querySelector(that.options.target) : that.options.target || window;
-            m.target.addEventListener("mousedown", that.mouseDownListener, false);
-            m.target.addEventListener("mouseup", that.mouseUpListener, false);
+            m.target = !that.options.target ? $(window) : $(that.options.target);
+
+            m.target.mousedown(that.mouseDownListener);
+            m.target.mouseup(that.mouseUpListener);
 
             that.onInputChanged();
         };

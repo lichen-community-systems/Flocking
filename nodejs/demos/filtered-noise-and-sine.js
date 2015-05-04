@@ -91,7 +91,7 @@ var synth = flock.synth({
     }
 });
 
-enviro.play();
+enviro.start();
 console.log("Playing...");
 
 var clock = flock.scheduler.async();

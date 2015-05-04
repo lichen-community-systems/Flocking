@@ -1,6 +1,6 @@
 {
   "name": "flocking",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Creative audio synthesis for the Web and Node.js",
   "author": "Colin Clark",
   "homepage": "http://flockingjs.org/",

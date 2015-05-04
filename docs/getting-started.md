@@ -73,7 +73,7 @@ And an example JavaScript file:
             // If you're on iOS, you will need to call in a listener for
             // some kind of user input action, such a button click or touch handler.
             // This is because iOS will only play sound if the user initiated it.
-            enviro.play();
+            enviro.start();
         };
 
     }());
@@ -254,7 +254,7 @@ Fluid components are created by defining JSON "component trees", which are manag
             listeners: {
                 onCreate: [
                     {
-                        func: "{that}.enviro.play"
+                        func: "{that}.enviro.start"
                     },
                     {
                         funcName: "{clock}.schedule",

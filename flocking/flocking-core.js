@@ -1017,15 +1017,28 @@ var fluid = fluid || require("infusion"),
         /**
          * Starts generating samples from all synths.
          */
-        that.play = function () {
+        that.start = function () {
+            if (that.model.isPlaying) {
+                return;
+            }
+
             that.audioStrategy.start();
             that.model.isPlaying = true;
         };
 
         /**
+         * Deprecated. Use start() instead.
+         */
+        that.play = that.start;
+
+        /**
          * Stops generating samples from all synths.
          */
         that.stop = function () {
+            if (!that.model.isPlaying) {
+                return;
+            }
+
             that.audioStrategy.stop();
             that.model.isPlaying = false;
         };
