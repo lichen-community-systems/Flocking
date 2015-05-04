@@ -130,7 +130,7 @@ To do so, we will bind a one-time click handler on our button. It will start the
 
     $(container).one("click", function () {
         var enviro = flock.init();
-        enviro.play();
+        enviro.start();
     });
 
 Next, we'll register a click handler on the button that will randomly change the frequency of the modulator every time the user clicks the button. We'll use jQuery again for this, and call `Synth.set()` to change the _modulator.freq_ input:

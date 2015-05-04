@@ -53,5 +53,5 @@ flock.demo.nodeTest = function () {
 };
 
 flock.demo.nodeTest();
-enviro.play();
+enviro.start();
 console.log("Playing...");

@@ -75,7 +75,7 @@ Documentation and Demos
 Getting Started
 ---------------
 
-The latest stable release of Flocking is version 0.1.1. It can be downloaded from the [Flocking releases](https://github.com/colinbdclark/Flocking/releases) page.
+The latest stable release of Flocking is version 0.1.2. It can be downloaded from the [Flocking releases](https://github.com/colinbdclark/Flocking/releases) page.
 
 Concatenated and minified Flocking builds, suitable for development and production respectively,
 are included in the [dist directory](dist/). Flocking can also be built manually using Grunt.
@@ -223,15 +223,16 @@ control of a scheduler instead of the sample output clock.
 An Environment represents a whole "audio system" or "context" in Flocking.
 It is responsible for evaluating all Synths instances and outputting their samples to the
 current audio output strategy. An environment manages a list of Synth instances and evaluates them in order.
+You should instantiate only one <code>flock.enviro</code> for your entire application.
 
 The Flocking _shared environment_ is created by calling <code>flock.init()</code>:
 
     var enviro = flock.init();
 
-Before you'll hear any sound, the environment needs to be started.
-This is done using the <code>play()</code> method:
+Before you'll hear any sound, the environment needs to be started. You only need to start the environment once.
+This is done using the <code>start()</code> method:
 
-    enviro.play();
+    enviro.start();
 
 To stop the environment from generating samples, use the <code>stop()</code> method:
 

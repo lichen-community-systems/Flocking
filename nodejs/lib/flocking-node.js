@@ -315,7 +315,6 @@ var fs = require("fs"),
     p.addEventListener = function (evtName, fn) {
         flock.midi.nodejs.throwIfNotMIDIMessage(evtName);
         this.midi.on("message", flock.midi.nodejs.wrapMessageListener(this, fn));
-        this.midi.openPort(this.portNum);
     };
 
     p.removeEventListener = function (evtName, fn) {
@@ -331,6 +330,10 @@ var fs = require("fs"),
         // TODO: Should we close the port when we have no listeners?
     };
 
+    p.open = function () {
+        this.midi.openPort(this.portNum);
+    };
+
     p.send = function (data) {
         if (this.type !== "output") {
             throw new Error("An input port can't be used to send MIDI messages.");
@@ -338,6 +341,7 @@ var fs = require("fs"),
 
         this.midi.sendMessage(data);
     };
+
 
     flock.midi.nodejs.throwIfNotMIDIMessage = function (evtName) {
         if (evtName !== "midimessage") {
@@ -375,7 +379,13 @@ var fs = require("fs"),
         }
     };
 
+    flock.midi.nodejs.openPort = function (port) {
+        port.open();
+    };
+
+
     // TODO: Replace this with something more civilized!
     flock.midi.requestAccess = flock.midi.nodejs.requestAccess;
+    flock.midi.connection.openPort = flock.midi.nodejs.openPort;
 
 }());

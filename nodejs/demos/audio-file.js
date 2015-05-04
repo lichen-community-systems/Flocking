@@ -36,4 +36,4 @@ flock.synth({
     }
 });
 
-enviro.play();
+enviro.start();

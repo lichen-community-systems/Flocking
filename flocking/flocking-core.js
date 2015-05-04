@@ -1138,8 +1138,7 @@ var fluid = fluid || require("infusion"),
         },
 
         events: {
-            // TODO: Harmonize event names.
-            onStart: "{enviro}.events.onPlay",
+            onStart: "{enviro}.events.onStart",
             onStop: "{enviro}.events.onStop",
             onReset: "{enviro}.events.onReset"
         }
@@ -1198,12 +1197,17 @@ var fluid = fluid || require("infusion"),
              *
              * @param {Number} dur optional duration to play in seconds
              */
-            play: "{that}.events.onPlay.fire()",
+            start: "flock.enviro.start({that}.model, {that}.events.onStart.fire)",
+
+            /**
+             * Deprecated. Use start() instead.
+             */
+            play: "{that}.start",
 
             /**
              * Stops generating samples.
              */
-            stop: "{that}.events.onStop.fire()",
+            stop: "flock.enviro.stop({that}.model, {that}.events.onStop.fire)",
 
 
             /**
@@ -1255,13 +1259,14 @@ var fluid = fluid || require("infusion"),
         },
 
         events: {
-            onPlay: null,
+            onStart: null,
+            onPlay: "{that}.events.onStart", // Deprecated. Use onStart instead.
             onStop: null,
             onReset: null
         },
 
         listeners: {
-            onPlay: [
+            onStart: [
                 "{that}.applier.change(isPlaying, true)",
             ],
 
@@ -1355,6 +1360,18 @@ var fluid = fluid || require("infusion"),
     flock.enviro.gen = function (nodeEvaluator) {
         nodeEvaluator.clearBuses();
         nodeEvaluator.gen();
+    };
+
+    flock.enviro.start = function (model, onStart) {
+        if (!model.isPlaying) {
+            onStart();
+        }
+    };
+
+    flock.enviro.stop = function (model, onStop) {
+        if (model.isPlaying) {
+            onStop();
+        }
     };
 
     flock.enviro.createAudioBuffers = function (numBufs, blockSize) {
