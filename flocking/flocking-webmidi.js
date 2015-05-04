@@ -239,7 +239,7 @@ var fluid = fluid || require("infusion"),
 
             onAccessError: {
                 funcName: "fluid.log",
-                args: [fluid.logLevel.WARN, "{arguments}.0"]
+                args: [fluid.logLevel.WARN, "MIDI Access Error: ", "{arguments}.0"]
             }
         }
     });
@@ -304,12 +304,17 @@ var fluid = fluid || require("infusion"),
 
         components: {
             system: {
-                type: "flock.midi.system"
+                type: "flock.midi.system",
+                options: {
+                    events: {
+                        onReady: "{connection}.events.onPortsAvailable"
+                    }
+                }
             }
         },
 
         events: {
-            onPortsAvailable: "{system}.events.onReady",
+            onPortsAvailable: null, //"{system}.events.onReady",
             onReady: null,
             onError: null,
             onSendMessage: null,
