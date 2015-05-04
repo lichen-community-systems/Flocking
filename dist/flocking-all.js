@@ -30435,10 +30435,10 @@ var fluid = fluid || require("infusion"),
 
         that.init = function () {
             var m = that.model;
-            m.target = typeof (that.options.target) === "string" ?
-                document.querySelector(that.options.target) : that.options.target || window;
-            m.target.addEventListener("mousedown", that.mouseDownListener, false);
-            m.target.addEventListener("mouseup", that.mouseUpListener, false);
+            m.target = !that.options.target ? $(window) : $(that.options.target);
+
+            m.target.mousedown(that.mouseDownListener);
+            m.target.mouseup(that.mouseUpListener);
 
             that.onInputChanged();
         };
