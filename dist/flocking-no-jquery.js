@@ -1,4 +1,4 @@
-/*! Flocking 0.1.2 (May 4, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.2 (May 13, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof exports === "object") {

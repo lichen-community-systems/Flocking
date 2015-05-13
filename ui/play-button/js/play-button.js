@@ -246,7 +246,8 @@ var fluid = fluid || require("infusion"),
 
         events: {
             onFadeOut: null,
-            onFadeIn: null
+            onFadeIn: null,
+            afterFadeOut: null
         },
 
         listeners: {
@@ -260,8 +261,18 @@ var fluid = fluid || require("infusion"),
                 "flock.ui.enviroPlayButton.disableForFadeOut({that}.model, {that}.applier)",
                 {
                     funcName: "flock.ui.enviroPlayButton.renableAfterFadeOutDelay",
-                    args: ["{enviro}", "{that}.model", "{that}.applier", "{that}.resetTime"]
+                    args: [
+                        "{enviro}",
+                        "{that}.model",
+                        "{that}.applier",
+                        "{that}.resetTime",
+                        "{that}.events.afterFadeOut.fire"
+                    ]
                 }
+            ],
+
+            afterFadeOut: [
+                "{that}.enviro.reset()"
             ]
         },
 
@@ -298,9 +309,9 @@ var fluid = fluid || require("infusion"),
         applier.change("isEnabled", false);
     };
 
-    flock.ui.enviroPlayButton.renableAfterFadeOutDelay = function (enviro, model, applier, resetTime) {
+    flock.ui.enviroPlayButton.renableAfterFadeOutDelay = function (enviro, model, applier, resetTime, afterFadeOut) {
         enviro.asyncScheduler.once(resetTime, function () {
-            enviro.reset();
+            afterFadeOut();
 
             if (model.didSelfDisable) {
                 applier.change("isEnabled", true);
