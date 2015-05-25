@@ -702,7 +702,7 @@ var fluid = fluid || require("infusion"),
             return;
         }
 
-        busNum = busNum === undefined ? enviro.acquireNextBus("input") : busNum;
+        busNum = busNum === undefined ? enviro.busManager.acquireNextBus("input") : busNum;
         var idx = busNum - audioSettings.chans;
 
         that.inputNodes.push(node);
@@ -856,7 +856,7 @@ var fluid = fluid || require("infusion"),
 
         // Acquire an input bus ahead of time so we can synchronously
         // notify the client where its output will be.
-        var busNum = enviro.acquireNextBus("input");
+        var busNum = enviro.busManager.acquireNextBus("input");
 
         function error (err) {
             fluid.log(fluid.logLevel.IMPORTANT,

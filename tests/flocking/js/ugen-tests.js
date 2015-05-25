@@ -176,7 +176,7 @@ var fluid = fluid || require("infusion"),
     var testOutputs = function (numRuns, defs, bus, expectedOutput, msg) {
         var synths = [],
             i,
-            env = flock.environment;
+            enviro = flock.environment;
 
         defs = $.makeArray(defs);
         $.each(defs, function (i, def) {
@@ -187,12 +187,12 @@ var fluid = fluid || require("infusion"),
         });
 
         for (i = 0; i < numRuns; i++) {
-            env.gen();
-            deepEqual(env.buses[bus], expectedOutput, i + ": " + msg);
+            enviro.gen();
+            deepEqual(enviro.busManager.buses[bus], expectedOutput, i + ": " + msg);
         }
 
         $.each(synths, function (i, synth) {
-            env.remove(synth);
+            enviro.remove(synth);
         });
 
         return synths;
@@ -1479,7 +1479,7 @@ var fluid = fluid || require("infusion"),
 
         inSynth.enviro.gen();
         var actual = inSynth.namedNodes["in"].output;
-        deepEqual(actual, inSynth.enviro.buses[62],
+        deepEqual(actual, inSynth.enviro.busManager.buses[62],
             "With a single source input, the output of flock.ugen.in should make a copy of the bus referenced.");
         deepEqual(actual, outSynth.get("bufferMock").options.buffer,
             "And it should reflect exactly the output of the flock.ugen.out that is writing to the buffer.");

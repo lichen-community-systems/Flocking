@@ -1,4 +1,4 @@
-/*! Flocking 0.1.2 (May 13, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.2 (May 25, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.3
@@ -21098,7 +21098,7 @@ var fluid = fluid || require("infusion"),
 
         members: {
             nodes: "{enviro}.nodes",
-            buses: "{enviro}.buses"
+            buses: "{busManager}.buses"
         },
 
         invokers: {
@@ -21162,9 +21162,18 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+    // TODO: Refactor how buses work so that they're clearly
+    // delineated into types--input, output, and interconnect.
+    // TODO: Get rid of the concept of buses altogether.
+    fluid.defaults("flock.busManager", {
+        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
 
-    fluid.defaults("flock.enviro", {
-        gradeNames: ["fluid.standardRelayComponent", "flock.nodeList", "autoInit"],
+        model: {
+            nextAvailableBus: {
+                input: 0,
+                interconnect: 0
+            }
+        },
 
         members: {
             buses: {
@@ -21172,7 +21181,60 @@ var fluid = fluid || require("infusion"),
                     funcName: "flock.enviro.createAudioBuffers",
                     args: ["{audioSystem}.model.numBuses", "{audioSystem}.model.blockSize"]
                 }
-            },
+            }
+        },
+
+        invokers: {
+            acquireNextBus: {
+                funcName: "flock.busManager.acquireNextBus",
+                args: [
+                    "{arguments}.0", // The type of bus, either "input" or "interconnect".
+                    "{that}.buses",
+                    "{that}.applier",
+                    "{that}.model",
+                    "{audioSystem}.model.chans",
+                    "{audioSystem}.model.numInputBuses"
+                ]
+            }
+        }
+    });
+
+    flock.busManager.acquireNextBus = function (type, buses, applier, m, chans, numInputBuses) {
+        var busNum = m.nextAvailableBus[type];
+
+        if (busNum === undefined) {
+            flock.fail("An invalid bus type was specified when invoking " +
+                "flock.busManager.acquireNextBus(). Type was: " + type);
+            return;
+        }
+
+        // Input buses start immediately after the output buses.
+        var offsetBusNum = busNum + chans,
+            offsetBusMax = chans + numInputBuses;
+
+        // Interconnect buses are after the input buses.
+        if (type === "interconnect") {
+            offsetBusNum += numInputBuses;
+            offsetBusMax = buses.length;
+        }
+
+        if (offsetBusNum >= offsetBusMax) {
+            flock.fail("Unable to aquire a bus. There are insufficient buses available. " +
+                "Please use an existing bus or configure additional buses using the enviroment's " +
+                "numBuses and numInputBuses parameters.");
+            return;
+        }
+
+        applier.change("nextAvailableBus." + type, ++busNum);
+
+        return offsetBusNum;
+    };
+
+
+    fluid.defaults("flock.enviro", {
+        gradeNames: ["fluid.standardRelayComponent", "flock.nodeList", "autoInit"],
+
+        members: {
             buffers: {},
             bufferSources: {}
         },
@@ -21191,17 +21253,15 @@ var fluid = fluid || require("infusion"),
                 options: {
                     audioSettings: "{audioSystem}.model"
                 }
+            },
+
+            busManager: {
+                type: "flock.busManager"
             }
         },
 
         model: {
-            isPlaying: false,
-
-            // TODO: Buses should probably be managed by their own component.
-            nextAvailableBus: {
-                input: 0,
-                interconnect: 0
-            }
+            isPlaying: false
         },
 
         invokers: {
@@ -21260,19 +21320,6 @@ var fluid = fluid || require("infusion"),
                     "{that}.buffers",
                     "{audioStrategy}"
                 ]
-            },
-
-            // Unsupported non-API method.
-            acquireNextBus: {
-                funcName: "flock.enviro.acquireNextBus",
-                args: [
-                    "{arguments}.0", // The type of bus, either "input" or "interconnect".
-                    "{that}.buses",
-                    "{that}.applier",
-                    "{that}.model",
-                    "{audioSystem}.model.chans",
-                    "{audioSystem}.model.numInputBuses"
-                ]
             }
         },
 
@@ -21307,38 +21354,6 @@ var fluid = fluid || require("infusion"),
             ]
         }
     });
-
-
-    flock.enviro.acquireNextBus = function (type, buses, applier, m, chans, numInputBuses) {
-        var busNum = m.nextAvailableBus[type];
-
-        if (busNum === undefined) {
-            flock.fail("An invalid bus type was specified when invoking " +
-                "flock.enviro.acquireNextBus(). Type was: " + type);
-            return;
-        }
-
-        // Input buses start immediately after the output buses.
-        var offsetBusNum = busNum + chans,
-            offsetBusMax = chans + numInputBuses;
-
-        // Interconnect buses are after the input buses.
-        if (type === "interconnect") {
-            offsetBusNum += numInputBuses;
-            offsetBusMax = buses.length;
-        }
-
-        if (offsetBusNum >= offsetBusMax) {
-            flock.fail("Unable to aquire a bus. There are insufficient buses available. " +
-                "Please use an existing bus or configure additional buses using the enviroment's " +
-                "numBuses and numInputBuses parameters.");
-            return;
-        }
-
-        applier.change("nextAvailableBus." + type, ++busNum);
-
-        return offsetBusNum;
-    };
 
     flock.enviro.registerBuffer = function (bufDesc, buffers) {
         if (bufDesc.id) {
@@ -21607,7 +21622,7 @@ var fluid = fluid || require("infusion"),
                         "{that}.rate",
                         "{enviro}.audioSystem.model",
                         "{that}.enviro.buffers",
-                        "{that}.enviro.buses",
+                        "{that}.enviro.busManager.buses",
                         "{that}.tail"
                     ]
                 }
@@ -25201,7 +25216,7 @@ var fluid = fluid || require("infusion"),
             return;
         }
 
-        busNum = busNum === undefined ? enviro.acquireNextBus("input") : busNum;
+        busNum = busNum === undefined ? enviro.busManager.acquireNextBus("input") : busNum;
         var idx = busNum - audioSettings.chans;
 
         that.inputNodes.push(node);
@@ -25355,7 +25370,7 @@ var fluid = fluid || require("infusion"),
 
         // Acquire an input bus ahead of time so we can synchronously
         // notify the client where its output will be.
-        var busNum = enviro.acquireNextBus("input");
+        var busNum = enviro.busManager.acquireNextBus("input");
 
         function error (err) {
             fluid.log(fluid.logLevel.IMPORTANT,

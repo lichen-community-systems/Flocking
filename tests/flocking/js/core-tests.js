@@ -468,12 +468,10 @@ var fluid = fluid || require("infusion"),
     };
 
     var testEnviroGraph = function (fn) {
-        var audioSettings = flock.environment.audioSystem.model;
-
         setTimeout(function () {
             fn();
             start();
-        }, (audioSettings.bufferSize / audioSettings.rates.audio) * 2000);
+        }, 2000);
     };
 
     asyncTest("Auto add to the environment", function () {
@@ -2054,7 +2052,7 @@ var fluid = fluid || require("infusion"),
         equal(enviro.audioSystem.model.numBuses, 24,
             "The environment should have been configured with the specified number of buses");
 
-        equal(enviro.buses.length, 24,
+        equal(enviro.busManager.buses.length, 24,
             "The environment should actually have the specified number of buses.");
     });
 
@@ -2067,14 +2065,14 @@ var fluid = fluid || require("infusion"),
             expectedBusNum;
 
         for (var i = 0; i < numBuses; i++) {
-            actualBusNum = enviro.acquireNextBus(type);
+            actualBusNum = enviro.busManager.acquireNextBus(type);
             expectedBusNum = expectedCalcFn(i, enviro);
             equal(actualBusNum, expectedBusNum,
                 "The correct " + type + " bus number should have been returned.");
         }
 
         try {
-            enviro.acquireNextBus(type);
+            enviro.busManager.acquireNextBus(type);
             ok(false, "An error should have been thrown when " +
                 "trying to acquire more than the available number of buses.");
         } catch (e) {

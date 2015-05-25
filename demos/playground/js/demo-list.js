@@ -156,7 +156,7 @@ var fluid = fluid || require("infusion");
                         },
                         {
                             "id": "bandreject-filter",
-                            "name": "Band pass filter"
+                            "name": "Band reject filter"
                         },
                         {
                             "id": "delay",

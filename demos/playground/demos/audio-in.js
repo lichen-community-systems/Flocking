@@ -3,7 +3,6 @@
 
 flock.synth({
     synthDef: {
-        ugen: "flock.ugen.audioIn",
-        bus: flock.enviro.shared.audioSettings.chans
+        ugen: "flock.ugen.audioIn"
     }
 });
