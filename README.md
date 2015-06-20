@@ -293,7 +293,7 @@ Here's an example of the declarative powers of the Flocking scheduler:
                         synthDef: {   // Synth that generate values by iterating through the list.
                             ugen: "flock.ugen.sequence",
                             loop: 1.0,
-                            buffer: [110, 220, 330, 440, 550, 660, 880]
+                            list: [110, 220, 330, 440, 550, 660, 880]
                         }
                     }
                 }
