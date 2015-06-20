@@ -411,7 +411,7 @@ var fluid = fluid || require("infusion"),
     flock.bufferLoader.loadBuffers = function (bufferDefs, decodedBuffers, afterBuffersLoaded) {
         bufferDefs = fluid.makeArray(bufferDefs);
 
-        // TODO: This is a sign that the flock.parse.bufferForDef is still terribly broken.
+        // TODO: This is a sign that flock.parse.bufferForDef is still terribly broken.
         var bufferTarget = {
             setBuffer: function (decoded) {
                 decodedBuffers.push(decoded);
@@ -423,12 +423,12 @@ var fluid = fluid || require("infusion"),
         };
 
         for (var i = 0; i < bufferDefs.length; i++) {
-            // TODO: Hardcoded reference to the shared environment.
             var bufDef = bufferDefs[i];
             if (bufDef.id === undefined && bufDef.url !== undefined) {
                 bufDef.id = flock.bufferLoader.idFromURL(bufDef.url);
             }
 
+            // TODO: Hardcoded reference to the shared environment.
             flock.parse.bufferForDef(bufferDefs[i], bufferTarget, flock.environment);
         }
     };
