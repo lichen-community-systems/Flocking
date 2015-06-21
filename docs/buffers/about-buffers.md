@@ -3,7 +3,7 @@
 Flocking has a number of features that help make working with sound files and buffers easier.
 Audio can be loaded automatically by the Flocking framework using declarative _Buffer Definition_ objects, which can be supplied directly as an input to some unit generators.
 
-If more control is needed, the _Buffer Loader_ component can be used to load collections of buffer definitions. It provides an event, which fires when all buffers have successfully loaded.
+If more control is needed, the _Buffer Loader_ component can be used to load collections of buffer definitions. It provides an event that will fire when all buffers have successfully loaded.
 
 Flocking also provides a set of low-level abstractions on top of the Web Audio API's decoders, as well as its own custom decoder for certain edge cases.
 
