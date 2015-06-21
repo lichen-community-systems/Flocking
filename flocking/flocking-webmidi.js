@@ -6,7 +6,7 @@
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
 
-/*global require, Promise*/
+/*global require, Promise, console*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,
@@ -47,6 +47,47 @@ var fluid = fluid || require("infusion"),
         portCollector("outputs", access, ports);
 
         return ports;
+    };
+
+    flock.midi.requestPorts = function (success, error) {
+        function wrappedSuccess (access) {
+            var ports = flock.midi.getPorts(access);
+            success(ports);
+        }
+
+        flock.midi.requestAccess(false, wrappedSuccess, error);
+    };
+
+    flock.midi.createPortViews = function (portsArray) {
+        return fluid.transform(portsArray, function (port) {
+            return {
+                id: port.id,
+                name: port.name,
+                manufacturer: port.manufacturer,
+                state: port.state,
+                connection: port.connection
+            };
+        });
+    };
+
+    flock.midi.prettyPrintPorts = function (ports) {
+        return fluid.prettyPrintJSON({
+            inputs: flock.midi.createPortViews(ports.inputs),
+            outputs: flock.midi.createPortViews(ports.outputs)
+        });
+    };
+
+    flock.midi.logPorts = function () {
+        function success (ports) {
+            var printed = flock.midi.prettyPrintPorts(ports);
+            console.log(printed);
+        }
+
+        function error (err) {
+            console.log(err);
+        }
+
+        flock.midi.requestPorts(success, error);
     };
 
     flock.midi.collectPorts = function (type, access, ports) {
