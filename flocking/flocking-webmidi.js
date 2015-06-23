@@ -227,6 +227,7 @@ var fluid = fluid || require("infusion"),
      * including references to all the available MIDI ports
      * and the MIDIAccess object.
      */
+    // TODO: This should be a model component!
     fluid.defaults("flock.midi.system", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
 
@@ -249,14 +250,15 @@ var fluid = fluid || require("infusion"),
 
             refreshPorts: {
                 funcName: "flock.midi.system.refreshPorts",
-                args: ["{that}", "{that}.access"]
+                args: ["{that}", "{that}.access", "{that}.events.onPortsAvailable.fire"]
             }
         },
 
         events: {
             onAccessGranted: null,
             onAccessError: null,
-            onReady: null
+            onReady: null,
+            onPortsAvailable: null
         },
 
         listeners: {
@@ -265,17 +267,9 @@ var fluid = fluid || require("infusion"),
             },
 
             onAccessGranted: [
-                {
-                    funcName: "flock.midi.system.setAccess",
-                    args: ["{that}", "{arguments}.0"]
-                },
-                {
-                    func: "{that}.refreshPorts"
-                },
-                {
-                    func: "{that}.events.onReady.fire",
-                    args: "{that}.ports"
-                }
+                "flock.midi.system.setAccess({that}, {arguments}.0)",
+                "{that}.refreshPorts()",
+                "{that}.events.onReady.fire({that}.ports)"
             ],
 
             onAccessError: {
@@ -289,9 +283,31 @@ var fluid = fluid || require("infusion"),
         that.access = access;
     };
 
-    flock.midi.system.refreshPorts = function (that, access) {
+    flock.midi.system.refreshPorts = function (that, access, onPortsAvailable) {
         that.ports = flock.midi.getPorts(access);
+        onPortsAvailable(that.ports);
     };
+
+
+    /**
+     * An abstract grade that the defines the event names
+     * for receiving MIDI messages
+     */
+    fluid.defaults("flock.midi.receiver", {
+        gradeNames: ["fluid.eventedComponent"],
+
+        events: {
+            raw: null,
+            message: null,
+            note: null,
+            noteOn: null,
+            noteOff: null,
+            control: null,
+            program: null,
+            aftertouch: null,
+            pitchbend: null
+        }
+    });
 
 
     /*
@@ -300,7 +316,7 @@ var fluid = fluid || require("infusion"),
      */
     // TODO: Handle port disconnection events.
     fluid.defaults("flock.midi.connection", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["flock.midi.receiver", "autoInit"],
 
         openImmediately: false,
 
@@ -355,20 +371,10 @@ var fluid = fluid || require("infusion"),
         },
 
         events: {
-            onPortsAvailable: null, //"{system}.events.onReady",
+            onPortsAvailable: null,
             onReady: null,
             onError: null,
-            onSendMessage: null,
-
-            raw: null,
-            message: null,
-            note: null,
-            noteOn: null,
-            noteOff: null,
-            control: null,
-            program: null,
-            aftertouch: null,
-            pitchbend: null
+            onSendMessage: null
         },
 
         listeners: {
@@ -387,7 +393,11 @@ var fluid = fluid || require("infusion"),
             raw: {
                 funcName: "flock.midi.connection.fireEvent",
                 args: ["{arguments}.0", "{that}.events"]
-            }
+            },
+
+            onDestroy: [
+                "{that}.close()"
+            ]
         }
     });
 
@@ -423,13 +433,8 @@ var fluid = fluid || require("infusion"),
             };
         }
 
-        if (portSpec.id) {
-            return function (ports) {
-                ports.find(flock.midi.findPorts.idMatcher(portSpec.id));
-            };
-        }
-
-        var matcher = portSpec.manufacturer && portSpec.name ?
+        var matcher = portSpec.id ? flock.midi.findPorts.idMatcher(portSpec.id) :
+            portSpec.manufacturer && portSpec.name ?
             flock.midi.findPorts.bothMatcher(portSpec.manufacturer, portSpec.name) :
             portSpec.manufacturer ? flock.midi.findPorts.manufacturerMatcher(portSpec.manufacturer) :
             flock.midi.findPorts.nameMatcher(portSpec.name);

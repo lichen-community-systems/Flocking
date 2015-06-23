@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <title>Flocking MIDI Demo</title>
+
+        <link rel="stylesheet" type="text/css" href="../../ui/shared/css/flocking-icon-font.css" />
+
+        <script src="../../third-party/jquery/js/jquery.js"></script>
+
+        <script src="../../third-party/infusion/js/Fluid.js"></script>
+        <script src="../../third-party/infusion/js/FluidDocument.js"></script>
+        <script src="../../third-party/infusion/js/FluidDOMUtilities.js"></script>
+        <script src="../../third-party/infusion/js/FluidDebugging.js"></script>
+        <script src="../../third-party/infusion/js/FluidIoC.js"></script>
+        <script src="../../third-party/infusion/js/DataBinding.js"></script>
+        <script src="../../third-party/infusion/js/ModelTransformation.js"></script>
+        <script src="../../third-party/infusion/js/ModelTransformationTransforms.js"></script>
+        <script src="../../third-party/infusion/js/FluidView.js"></script>
+
+        <script src="../../third-party/dspapi/js/dspapi.js"></script>
+        <script src="../../third-party/simjs/js/random-0.26.js"></script>
+
+        <script src="../../flocking/flocking-core.js"></script>
+        <script src="../../flocking/flocking-buffers.js"></script>
+        <script src="../../flocking/flocking-audiofile.js"></script>
+        <script src="../../flocking/flocking-audiofile-encoder.js"></script>
+        <script src="../../flocking/flocking-scheduler.js"></script>
+        <script src="../../flocking/flocking-webaudio.js"></script>
+        <script src="../../flocking/flocking-parser.js"></script>
+        <script src="../../flocking/flocking-ugens.js"></script>
+        <script src="../../flocking/flocking-ugens-bandlimited.js"></script>
+        <script src="../../flocking/flocking-envelopes.js"></script>
+        <script src="../../flocking/flocking-ugens-browser.js"></script>
+        <script src="../../flocking/flocking-gfx.js"></script>
+        <script src="../../flocking/flocking-webmidi.js"></script>
+        <script src="../../ui/selectbox/js/selectbox.js"></script>
+        <script src="../../ui/midi/midi-input-selector/js/midi-input-selector.js"></script>
+        <script src="../../ui/midi/midi-connector/js/midi-connector.js"></script>
+
+        <script src="midi-demo.js"></script>
+    </head>
+
+    <body>
+        <main>
+            <p>This demo allows you to select a MIDI controller from the dropdown menu.
+            Note events from the selected controller will trigger the envelope of a Flocking synth.</p>
+        </main>
+
+        <script>
+            window.midiDemo = flock.midiDemo("main");
+        </script>
+    </body>
+</html>

@@ -4725,13 +4725,13 @@ var fluid = fluid || require("infusion"),
                 a4Freq = a4.freq,
                 a4NoteNum = a4.noteNum,
                 notesPerOctave = m.notesPerOctave,
-                noteNum = that.inputs.source.output,
+                noteNum = that.inputs.note.output,
                 out = that.output,
                 i,
                 j,
                 val;
 
-            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.source) {
+            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.note) {
                 out[i] = val = flock.midiFreq(noteNum[j], a4Freq, a4NoteNum, notesPerOctave);
             }
 
@@ -4752,7 +4752,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.midiFreq", {
         rate: "control",
         inputs: {
-            source: null // TODO: This input should be named "note"
+            note: 69
         },
         ugenOptions: {
             model: {
@@ -4765,8 +4765,51 @@ var fluid = fluid || require("infusion"),
                 notesPerOctave: 12
             },
             strideInputs: [
-                "source"
+                "note"
             ]
+        }
+    });
+
+
+    flock.ugen.midiAmp = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                velocity = that.inputs.velocity.output,
+                out = that.output,
+                i,
+                j,
+                val;
+
+            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.velocity) {
+                out[i] = val = velocity[j] / 127;
+            }
+
+            m.unscaledValue = val;
+            that.mulAdd(numSamps);
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
+        };
+
+        that.init = function () {
+            that.onInputChanged();
+        };
+
+        that.init();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.midiAmp", {
+        rate: "control",
+        inputs: {
+            velocity: 0
+        },
+        ugenOptions: {
+            model: {
+                unscaledValue: 0.0,
+                value: 0.0
+            },
+            strideInputs: ["velocity"]
         }
     });
 }());

@@ -1,4 +1,4 @@
-/*! Flocking 0.1.2 (June 21, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.2 (June 23, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.3
@@ -30197,13 +30197,13 @@ var fluid = fluid || require("infusion"),
                 a4Freq = a4.freq,
                 a4NoteNum = a4.noteNum,
                 notesPerOctave = m.notesPerOctave,
-                noteNum = that.inputs.source.output,
+                noteNum = that.inputs.note.output,
                 out = that.output,
                 i,
                 j,
                 val;
 
-            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.source) {
+            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.note) {
                 out[i] = val = flock.midiFreq(noteNum[j], a4Freq, a4NoteNum, notesPerOctave);
             }
 
@@ -30224,7 +30224,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.midiFreq", {
         rate: "control",
         inputs: {
-            source: null // TODO: This input should be named "note"
+            note: 69
         },
         ugenOptions: {
             model: {
@@ -30237,8 +30237,51 @@ var fluid = fluid || require("infusion"),
                 notesPerOctave: 12
             },
             strideInputs: [
-                "source"
+                "note"
             ]
+        }
+    });
+
+
+    flock.ugen.midiAmp = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                velocity = that.inputs.velocity.output,
+                out = that.output,
+                i,
+                j,
+                val;
+
+            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.velocity) {
+                out[i] = val = velocity[j] / 127;
+            }
+
+            m.unscaledValue = val;
+            that.mulAdd(numSamps);
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
+        };
+
+        that.init = function () {
+            that.onInputChanged();
+        };
+
+        that.init();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.midiAmp", {
+        rate: "control",
+        inputs: {
+            velocity: 0
+        },
+        ugenOptions: {
+            model: {
+                unscaledValue: 0.0,
+                value: 0.0
+            },
+            strideInputs: ["velocity"]
         }
     });
 }());
@@ -32379,6 +32422,7 @@ var fluid = fluid || require("infusion"),
      * including references to all the available MIDI ports
      * and the MIDIAccess object.
      */
+    // TODO: This should be a model component!
     fluid.defaults("flock.midi.system", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
 
@@ -32401,14 +32445,15 @@ var fluid = fluid || require("infusion"),
 
             refreshPorts: {
                 funcName: "flock.midi.system.refreshPorts",
-                args: ["{that}", "{that}.access"]
+                args: ["{that}", "{that}.access", "{that}.events.onPortsAvailable.fire"]
             }
         },
 
         events: {
             onAccessGranted: null,
             onAccessError: null,
-            onReady: null
+            onReady: null,
+            onPortsAvailable: null
         },
 
         listeners: {
@@ -32417,17 +32462,9 @@ var fluid = fluid || require("infusion"),
             },
 
             onAccessGranted: [
-                {
-                    funcName: "flock.midi.system.setAccess",
-                    args: ["{that}", "{arguments}.0"]
-                },
-                {
-                    func: "{that}.refreshPorts"
-                },
-                {
-                    func: "{that}.events.onReady.fire",
-                    args: "{that}.ports"
-                }
+                "flock.midi.system.setAccess({that}, {arguments}.0)",
+                "{that}.refreshPorts()",
+                "{that}.events.onReady.fire({that}.ports)"
             ],
 
             onAccessError: {
@@ -32441,9 +32478,31 @@ var fluid = fluid || require("infusion"),
         that.access = access;
     };
 
-    flock.midi.system.refreshPorts = function (that, access) {
+    flock.midi.system.refreshPorts = function (that, access, onPortsAvailable) {
         that.ports = flock.midi.getPorts(access);
+        onPortsAvailable(that.ports);
     };
+
+
+    /**
+     * An abstract grade that the defines the event names
+     * for receiving MIDI messages
+     */
+    fluid.defaults("flock.midi.receiver", {
+        gradeNames: ["fluid.eventedComponent"],
+
+        events: {
+            raw: null,
+            message: null,
+            note: null,
+            noteOn: null,
+            noteOff: null,
+            control: null,
+            program: null,
+            aftertouch: null,
+            pitchbend: null
+        }
+    });
 
 
     /*
@@ -32452,7 +32511,7 @@ var fluid = fluid || require("infusion"),
      */
     // TODO: Handle port disconnection events.
     fluid.defaults("flock.midi.connection", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["flock.midi.receiver", "autoInit"],
 
         openImmediately: false,
 
@@ -32507,20 +32566,10 @@ var fluid = fluid || require("infusion"),
         },
 
         events: {
-            onPortsAvailable: null, //"{system}.events.onReady",
+            onPortsAvailable: null,
             onReady: null,
             onError: null,
-            onSendMessage: null,
-
-            raw: null,
-            message: null,
-            note: null,
-            noteOn: null,
-            noteOff: null,
-            control: null,
-            program: null,
-            aftertouch: null,
-            pitchbend: null
+            onSendMessage: null
         },
 
         listeners: {
@@ -32539,7 +32588,11 @@ var fluid = fluid || require("infusion"),
             raw: {
                 funcName: "flock.midi.connection.fireEvent",
                 args: ["{arguments}.0", "{that}.events"]
-            }
+            },
+
+            onDestroy: [
+                "{that}.close()"
+            ]
         }
     });
 
@@ -32575,13 +32628,8 @@ var fluid = fluid || require("infusion"),
             };
         }
 
-        if (portSpec.id) {
-            return function (ports) {
-                ports.find(flock.midi.findPorts.idMatcher(portSpec.id));
-            };
-        }
-
-        var matcher = portSpec.manufacturer && portSpec.name ?
+        var matcher = portSpec.id ? flock.midi.findPorts.idMatcher(portSpec.id) :
+            portSpec.manufacturer && portSpec.name ?
             flock.midi.findPorts.bothMatcher(portSpec.manufacturer, portSpec.name) :
             portSpec.manufacturer ? flock.midi.findPorts.manufacturerMatcher(portSpec.manufacturer) :
             flock.midi.findPorts.nameMatcher(portSpec.name);

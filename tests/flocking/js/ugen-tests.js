@@ -1998,11 +1998,11 @@ var fluid = fluid || require("infusion"),
 
     var testNoteControl = function (ugen, midiNote, expected, msg) {
         if (midiNote) {
-            ugen.set("source", midiNote);
+            ugen.set("note", midiNote);
         }
 
-        if (ugen.get("source").gen) {
-            ugen.get("source").gen(1);
+        if (ugen.get("note").gen) {
+            ugen.get("note").gen(1);
         }
         ugen.gen(1);
         flock.test.equalRounded(2, ugen.output[0], expected, msg);
@@ -2017,7 +2017,7 @@ var fluid = fluid || require("infusion"),
     test("12TET/A440, constant rate input", function () {
         var midiFreq = flock.parse.ugenDef({
             ugen: "flock.ugen.midiFreq",
-            source: 60
+            note: 60
         });
 
         testNotesControl(midiFreq, [
@@ -2042,7 +2042,7 @@ var fluid = fluid || require("infusion"),
     test("12TET/A440, control rate input", function () {
         var midiFreq = flock.parse.ugenDef({
             ugen: "flock.ugen.midiFreq",
-            source: {
+            note: {
                 ugen: "flock.ugen.sequence",
                 rate: "control",
                 list: [21, 22, 23],
