@@ -2871,6 +2871,84 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+    /**
+     * A triggerable timed gate.
+     *
+     * This unit generator will output 1.0 for the specified
+     * duration whenever it is triggered.
+     *
+     * Inputs:
+     *     duration: the duration (in seconds) to remain open
+     *     trigger: a trigger signal that will cause the gate to open
+     */
+    // TODO: Unit tests!
+    flock.ugen.timedGate = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                out = that.output,
+                trigger = that.inputs.trigger.output,
+                duration = that.inputs.duration.output[0],
+                currentTrig,
+                i,
+                j,
+                val;
+
+            if (duration !== m.duration) {
+                m.duration = duration;
+                m.durationSamps = Math.floor(duration * m.sampleRate);
+            }
+
+            for (i = j = 0; i < numSamps; i++, j += m.strides.trigger) {
+                currentTrig = trigger[j];
+                if (currentTrig > 0.0 && m.prevTrigger <= 0.0) {
+                    // If we're already open, close the gate for one sample.
+                    val = that.options.resetOnTrigger && m.sampsRemaining > 0 ? 0.0 : 1.0;
+                    m.sampsRemaining = m.durationSamps;
+                } else {
+                    val = m.sampsRemaining > 0 ? 1.0 : 0.0;
+                }
+
+                out[i] = val;
+                m.sampsRemaining--;
+
+                m.prevTrigger = currentTrig;
+            }
+
+            m.unscaledValue = val;
+            that.mulAdd(numSamps);
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
+        };
+
+        that.init = function () {
+            that.onInputChanged();
+        };
+
+        that.init();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.timedGate", {
+        rate: "audio",
+        inputs: {
+            trigger: 0.0,
+            duration: 1.0
+        },
+        ugenOptions: {
+            model: {
+                unscaledValue: 0.0,
+                value: 0.0,
+                prevTrigger: 0.0,
+                sampsRemaining: 0,
+                durationSamps: 0,
+                duration: 0.0
+            },
+            resetOnTrigger: true,
+            strideInputs: ["trigger"]
+        }
+    });
+
 
     /**
      * An equal power stereo panner.
