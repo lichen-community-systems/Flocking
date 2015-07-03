@@ -277,6 +277,10 @@ var fluid = fluid || require("infusion");
                             "name": "Polyphonic synth",
                         },
                         {
+                            "id": "sequencer",
+                            "name": "Sequencer"
+                        },
+                        {
                             "id": "declarative-scheduling",
                             "name": "Declarative scheduling",
                         },

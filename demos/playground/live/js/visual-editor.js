@@ -349,6 +349,13 @@ var fluid = fluid || require("infusion"),
         that.applier.change("node.displayName", displayName);
     };
 
+    fluid.defaults("flock.ui.nodeRenderer.values", {
+        gradeNames: ["flock.ui.nodeRenderer.list", "autoInit"]
+    });
+
+    fluid.defaults("flock.ui.nodeRenderer.durations", {
+        gradeNames: ["flock.ui.nodeRenderer.list", "autoInit"]
+    });
 
     fluid.defaults("flock.ui.nodeRenderer.table", {
         gradeNames: ["flock.ui.nodeRenderer", "autoInit"],

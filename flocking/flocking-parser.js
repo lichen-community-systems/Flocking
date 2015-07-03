@@ -116,7 +116,7 @@ var fluid = fluid || require("infusion"),
 
 
     flock.parse.reservedWords = ["id", "ugen", "rate", "inputs", "options"];
-    flock.parse.specialInputs = ["value", "buffer", "list", "table", "envelope"];
+    flock.parse.specialInputs = ["value", "buffer", "list", "table", "envelope", "durations", "values"];
 
     flock.parse.expandInputs = function (ugenDef) {
         if (ugenDef.inputs) {

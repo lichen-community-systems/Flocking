@@ -1,4 +1,4 @@
-/*! Flocking 0.1.2 (July 2, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.2 (July 3, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.3
@@ -22823,7 +22823,7 @@ var fluid = fluid || require("infusion"),
 
 
     flock.parse.reservedWords = ["id", "ugen", "rate", "inputs", "options"];
-    flock.parse.specialInputs = ["value", "buffer", "list", "table", "envelope"];
+    flock.parse.specialInputs = ["value", "buffer", "list", "table", "envelope", "durations", "values"];
 
     flock.parse.expandInputs = function (ugenDef) {
         if (ugenDef.inputs) {
@@ -26181,6 +26181,7 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+
     flock.ugen.triggerCallback = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
@@ -28349,6 +28350,8 @@ var fluid = fluid || require("infusion"),
      * This unit generator will output 1.0 for the specified
      * duration whenever it is triggered.
      *
+     * Similar to SuperCollider's Trig1 unit generator.
+     *
      * Inputs:
      *     duration: the duration (in seconds) to remain open
      *     trigger: a trigger signal that will cause the gate to open
@@ -28418,6 +28421,140 @@ var fluid = fluid || require("infusion"),
             },
             resetOnTrigger: true,
             strideInputs: ["trigger"]
+        }
+    });
+
+    /**
+     * A Sequencer unit generator outputs a sequence of values
+     * for the specified sequence of durations.
+     *
+     * Optionally, when the resetOnNext flag is set,
+     * the sequencer will reset its value to 0.0 for one sample
+     * prior to moving to the next duration.
+     * This is useful for sequencing envelope gates, for example.
+     *
+     * Inputs:
+     *     durations: an array of durations (in seconds) to hold each value
+     *     values: an array of values to output
+     *     loop: if > 0, the unit generator will loop back to the beginning
+     *         of the lists when it reaches the end; defaults to 0.
+     */
+    // TODO: Unit Tests!
+    flock.ugen.sequencer = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                o = that.options,
+                resetOnNext = o.resetOnNext,
+                out = that.output,
+                loop = that.inputs.loop.output[0],
+                durations = that.inputs.durations,
+                values = that.inputs.values,
+                i,
+                val;
+
+            for (i = 0; i < numSamps; i++) {
+                if (values.length === 0 || durations.length === 0) {
+                    // Nothing to output.
+                    out[i] = val = 0.0;
+                    continue;
+                }
+
+                if (m.samplesRemaining <= 0) {
+                    // We've hit the end of a stage.
+                    if (m.idx < durations.length - 1) {
+                        // Continue to the next value/duration pair.
+                        m.idx++;
+                        val = flock.ugen.sequencer.nextStage(durations, values, resetOnNext, m);
+                    } else if (loop > 0.0) {
+                        // Loop back to the first value/duration pair.
+                        m.idx = 0;
+                        val = flock.ugen.sequencer.nextStage(durations, values, resetOnNext, m);
+                    } else {
+                        // Nothing left to do.
+                        val = o.holdLastValue ? m.unscaledValue : 0.0;
+                    }
+                } else {
+                    // Still in the midst of a stage.
+                    val = values[m.idx];
+                    m.samplesRemaining--;
+                }
+
+                out[i] = val;
+            }
+
+            m.unscaledValue = val;
+            that.mulAdd(numSamps);
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
+        };
+
+        that.onInputChanged = function (inputName) {
+            var inputs = that.inputs;
+
+            if (!inputName || inputName === "durations") {
+                flock.ugen.sequencer.calcDurationsSamps(inputs.durations, that.model);
+                flock.ugen.sequencer.failOnMissingInput("durations", that);
+            }
+
+            if (!inputName || inputName === "values") {
+                flock.ugen.sequencer.failOnMissingInput("values", that);
+            }
+
+            if (inputs.durations.length !== inputs.values.length) {
+                flock.fail("Mismatched durations and values array lengths for flock.ugen.sequencer: " +
+                    fluid.prettyPrintJSON(that.options.ugenDef));
+            }
+
+            flock.onMulAddInputChanged(that);
+        };
+
+        that.init = function () {
+            that.onInputChanged();
+        };
+
+        that.init();
+        return that;
+    };
+
+    flock.ugen.sequencer.failOnMissingInput = function (inputName, that) {
+        var input = that.inputs[inputName];
+        if (!input || !flock.isIterable(input)) {
+            flock.fail("No " + inputName + " array input was specified for flock.ugen.sequencer: " +
+                fluid.prettyPrintJSON(that.options.ugenDef));
+        }
+    };
+
+    flock.ugen.sequencer.calcDurationsSamps = function (durations, m) {
+        m.samplesRemaining = Math.floor(durations[m.idx] * m.sampleRate);
+    };
+
+    flock.ugen.sequencer.nextStage = function (durations, values, resetOnNext, m) {
+        flock.ugen.sequencer.calcDurationsSamps(durations, m);
+        m.samplesRemaining--;
+        return resetOnNext ? 0.0 : values[m.idx];
+    };
+
+    fluid.defaults("flock.ugen.sequencer", {
+        rate: "audio",
+        inputs: {
+            // TODO: start,
+            // TODO: end,
+            // TODO: skip
+            // TODO: direction,
+            durations: [],
+            values: [],
+            loop: 0.0
+        },
+        ugenOptions: {
+            model: {
+                idx: 0,
+                samplesRemaining: 0,
+                unscaledValue: 0.0,
+                value: 0.0
+            },
+            resetOnNext: false,
+            holdLastvalue: false
         }
     });
 
