@@ -155,7 +155,7 @@ In app.js (or whatever files you want to use), you'll define your Flocking code:
                             // the specified list in a loop.
                             synthDef: {
                                 ugen: "flock.ugen.sequence",
-                                list: [200, 210, 190, 100, 60, 70, 990],
+                                values: [200, 210, 190, 100, 60, 70, 990],
                                 loop: 1.0
                             }
                         }

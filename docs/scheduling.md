@@ -45,7 +45,7 @@ Here's an example of using the Infusion style to create a very simple drum machi
                             "trig.source": {
                                 synthDef: {
                                     ugen: "flock.ugen.sequence",
-                                    list: [1, 1, 0, 1, 1, 0, 1, 0],
+                                    values: [1, 1, 0, 1, 1, 0, 1, 0],
                                     loop: 1
                                 }
                             }

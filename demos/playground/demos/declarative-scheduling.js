@@ -25,7 +25,7 @@ flock.environment.asyncScheduler.schedule([
                 "carrier.freq": {
                     synthDef: {
                         ugen: "flock.ugen.sequence",
-                        list: [330, 440, 550, 660, 880, 990, 1100, 1210]
+                        values: [330, 440, 550, 660, 880, 990, 1100, 1210]
                     }
                 }
             }

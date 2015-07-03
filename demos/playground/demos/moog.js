@@ -21,7 +21,7 @@ flock.synth({
                 ugen: "flock.ugen.sequence",
                 freq: 1/2,
                 loop: 1,
-                list: [220, 220 * 5/4, 220, 220 * 3/2, 220 * 4/3, 220],
+                values: [220, 220 * 5/4, 220, 220 * 3/2, 220 * 4/3, 220],
                 options: {
                     interpolation: "linear"
                 }

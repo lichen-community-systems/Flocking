@@ -218,7 +218,7 @@ Fluid components are created by defining JSON "component trees", which are manag
                                 // the specified list.
                                 synthDef: {
                                     ugen: "flock.ugen.sequence",
-                                    list: [330, 440, 550, 660, 880, 990, 1100, 1210]
+                                    values: [330, 440, 550, 660, 880, 990, 1100, 1210]
                                 }
                             }
                         }

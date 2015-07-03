@@ -30318,7 +30318,7 @@ var fluid = fluid || require("infusion"),
         var that = flock.ugen(inputs, output, options);
 
         that.gen = function (numSamps) {
-            var list = that.inputs.list,
+            var values = that.inputs.values,
                 inputs = that.inputs,
                 freq = inputs.freq.output,
                 loop = inputs.loop.output[0],
@@ -30326,13 +30326,13 @@ var fluid = fluid || require("infusion"),
                 scale = m.scale,
                 out = that.output,
                 start = inputs.start ? Math.round(inputs.start.output[0]) : 0,
-                end = inputs.end ? Math.round(inputs.end.output[0]) : list.length,
+                end = inputs.end ? Math.round(inputs.end.output[0]) : values.length,
                 startItem,
                 i,
                 j;
 
             if (m.unscaledValue === undefined) {
-                startItem = list[start];
+                startItem = values[start];
                 m.unscaledValue = (startItem === undefined) ? 0.0 : startItem;
             }
 
@@ -30350,7 +30350,7 @@ var fluid = fluid || require("infusion"),
                     }
                 }
 
-                out[i] = m.unscaledValue = list[m.nextIdx];
+                out[i] = m.unscaledValue = values[m.nextIdx];
                 m.phase += freq[j] * scale;
 
                 if (m.phase >= 1.0) {
@@ -30366,8 +30366,13 @@ var fluid = fluid || require("infusion"),
         that.onInputChanged = function () {
             that.model.scale = that.rate !== flock.rates.DEMAND ? that.model.sampleDur : 1;
 
-            if (!that.inputs.list) {
-                that.inputs.list = [];
+            if ((!that.inputs.values || that.inputs.values.length === 0) && that.inputs.list) {
+                flock.log.warn("The 'list' input to flock.ugen.sequence is deprecated. Use 'values' instead.");
+                that.inputs.values = that.inputs.list;
+            }
+
+            if (!that.inputs.values) {
+                that.inputs.values = [];
             }
 
             that.calculateStrides();
@@ -30389,7 +30394,7 @@ var fluid = fluid || require("infusion"),
             start: 0,
             freq: 1.0,
             loop: 0.0,
-            list: []
+            values: []
         },
 
         ugenOptions: {

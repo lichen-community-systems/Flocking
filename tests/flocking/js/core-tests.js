@@ -956,7 +956,7 @@ var fluid = fluid || require("infusion"),
                     ugen: "flock.ugen.sequence",
                     rate: "audio",
                     freq: flock.environment.audioSystem.model.rates.audio,
-                    list: flock.test.fillBuffer(1, 64)
+                    values: flock.test.fillBuffer(1, 64)
                 }
             }
         });
@@ -987,7 +987,7 @@ var fluid = fluid || require("infusion"),
             ugen: "flock.ugen.sequence",
             rate: "audio",
             freq: flock.environment.audioSystem.model.rates.audio,
-            list: flock.test.fillBuffer(128, 191)
+            values: flock.test.fillBuffer(128, 191)
         });
         synth.gen();
         deepEqual(passThrough.output, flock.test.fillBuffer(128, 191),

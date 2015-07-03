@@ -23,7 +23,7 @@ flock.band({
                     bus: 0,
                     sources: {
                         freq: {
-                            list: [1, 4/3, 5/4],
+                            values: [1, 4/3, 5/4],
                             freq: 3,
                             mul: 440
                         }
@@ -39,7 +39,7 @@ flock.band({
                     bus: 1,
                     sources: {
                         freq: {
-                            list: [1, 3/2],
+                            values: [1, 3/2],
                             freq: 2,
                             mul: 220
                         }
