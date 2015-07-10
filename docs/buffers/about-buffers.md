@@ -119,8 +119,11 @@ The <code>flock.bufferLoader</code> component can be used to load one or more bu
             }
         ],
         listeners: {
-            onBuffersLoaded: function (bufferDescriptions) {
+            afterBuffersLoaded: function (bufferDescriptions) {
                 // Do something once all buffers are ready.
+                // Buffers are also available once they've been loaded
+                // by accessing the "buffers" member of a BufferLoader instance
+                // or via buffers id references into the global environment (e.g. "squeak")
             }
         }
     });
