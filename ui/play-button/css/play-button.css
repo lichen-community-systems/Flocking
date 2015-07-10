@@ -21,3 +21,13 @@
 .flock-playButton:disabled {
     color: #888;
 }
+
+.flock-playButton:focus {
+    padding-left: 0.3em;
+    border: 0.1em solid #ddd;
+    outline: none;
+}
+
+.flock-playButton.playing:focus {
+    padding-left: 0em;
+}

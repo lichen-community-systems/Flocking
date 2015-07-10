@@ -157,6 +157,7 @@ var fluid = fluid || require("infusion"),
 
     flock.ui.toggleButton.toggleModelState = function (model, applier) {
         applier.requestChange("isOn", !model.isOn);
+        return false;
     };
 
     flock.ui.toggleButton.refreshView = function (isOn, fireOn, fireOff) {
@@ -206,6 +207,11 @@ var fluid = fluid || require("infusion"),
                     "this": "{that}.container",
                     method: "addClass",
                     args: "{that}.options.styles.playButton"
+                },
+                {
+                    "this": "{that}.container",
+                    method: "addClass",
+                    args: "{that}.options.styles.iconFont"
                 }
             ]
         },
@@ -217,6 +223,7 @@ var fluid = fluid || require("infusion"),
 
         styles: {
             playButton: "flock-playButton",
+            iconFont: "icon-",
             on: "playing",
             off: "paused"
         }
