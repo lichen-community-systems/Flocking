@@ -218,7 +218,7 @@ Fluid components are created by defining JSON "component trees", which are manag
                                 // the specified list.
                                 synthDef: {
                                     ugen: "flock.ugen.sequence",
-                                    list: [330, 440, 550, 660, 880, 990, 1100, 1210]
+                                    values: [330, 440, 550, 660, 880, 990, 1100, 1210]
                                 }
                             }
                         }
@@ -254,10 +254,10 @@ Fluid components are created by defining JSON "component trees", which are manag
             listeners: {
                 onCreate: [
                     {
-                        func: "{that}.enviro.start"
+                        func: "{environment}.start"
                     },
                     {
-                        funcName: "{clock}.schedule",
+                        func: "{clock}.schedule",
                         args: ["{composition}.options.score"]
                     }
                 ]

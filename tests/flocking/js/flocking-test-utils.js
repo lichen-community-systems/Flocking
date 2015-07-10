@@ -425,11 +425,21 @@ var flock = flock || {};
     flock.test.arrayContainsOnlyValues = function (buffer, values, msg) {
         var outlierVals = [],
             outlierIndices = [],
-            i;
+            i,
+            j;
 
         for (i = 0; i < buffer.length; i++) {
-            var val = buffer[i];
-            if (values.indexOf(val) === -1) {
+            var val = buffer[i],
+                match = false;
+
+            for (j = 0; j < values.length; j++) {
+                if (val === values[j]) {
+                    match = true;
+                    break;
+                }
+            }
+
+            if (!match) {
                 outlierVals.push(val);
                 outlierIndices.push(i);
             }
@@ -479,12 +489,14 @@ var flock = flock || {};
 
     flock.test.ugen.mock = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        if (that.options.buffer) {
-            that.output = that.options.buffer;
-        }
+
         that.gen = function (numSamps) {
             if (that.options.gen) {
                 that.options.gen(that, numSamps);
+            } else if (that.options.buffer){
+                for (var i = 0; i < numSamps; i++) {
+                    that.output[i] = that.options.buffer[i];
+                }
             }
         };
         return that;
@@ -572,4 +584,18 @@ var flock = flock || {};
             strideInputs: ["source"]
         }
     });
+
+    flock.test.evaluateUGen = function (ugen) {
+        if (ugen.inputs && Object.keys(ugen.inputs) > 0) {
+            for (var inputName in ugen.inputs) {
+                var input = ugen.inputs[inputName];
+                flock.test.evaluateUGen(input);
+            }
+        }
+
+        if (typeof ugen.gen === "function") {
+            ugen.gen(ugen.model.blockSize);
+        }
+    };
+
 }());

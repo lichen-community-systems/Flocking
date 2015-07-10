@@ -1,0 +1,41 @@
+{
+    "synthDef": {
+        "ugen": "flock.ugen.sinOsc",
+        "freq": 270,
+        "phase": {
+            "ugen": "flock.ugen.sinOsc",
+            "freq": {
+                "ugen": "flock.ugen.envGen",
+                "rate": "control",
+                "envelope": {
+                    "levels": [0, 1, 0.4, 1.0, 0.6, 0],
+                    "times": [0.5, 0.3, 0.5, 0.3, 0.5],
+                    "curve": ["sin", "exponential", "linear", "welsh", 3]
+                },
+                "mul": 473,
+                "gate": {
+                    "ugen": "flock.ugen.lfPulse",
+                    "rate": "control",
+                    "freq": 0.39,
+                    "width": 0.5
+                }
+            }
+        },
+        "mul": {
+            "ugen": "flock.ugen.envGen",
+            "rate": "control",
+            "envelope": {
+                "levels": [0, 1, 0.4, 1.0, 0.6, 0],
+                "times": [0.5, 0.3, 0.5, 0.3, 0.5],
+                "curve": ["sin", "exponential", "linear", "welsh", 3]
+            },
+            "mul": 0.5,
+            "gate": {
+                "ugen": "flock.ugen.lfPulse",
+                "rate": "control",
+                "freq": 0.39,
+                "width": 0.5
+            }
+        }
+    }
+}

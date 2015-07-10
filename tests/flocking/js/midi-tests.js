@@ -106,21 +106,4 @@
 
     runMatchTests(matchTestSpecs);
 
-
-    // test(, function () {
-    //     var matchSpec = ;
-    // });
-    //
-    // test("Case mismatch match", function () {
-    //
-    // });
-    //
-    // test("Partial match", function () {
-    //
-    // });
-    //
-    // test("Wildcart match", function () {
-    //
-    // });
-
 }());

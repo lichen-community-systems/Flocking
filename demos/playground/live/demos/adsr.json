@@ -1,0 +1,115 @@
+{
+    "synthDef": {
+        "ugen": "flock.ugen.sum",
+        "sources": [
+            {
+                "ugen": "flock.ugen.sinOsc",
+                "freq": 440,
+                "mul": {
+                    "ugen": "flock.ugen.envGen",
+                    "envelope": {
+                        "type": "flock.envelope.adsr",
+                        "attack": 1.0,
+                        "decay": 0.5,
+                        "peak": 0.15,
+                        "sutain": 0.1,
+                        "release": 1.0
+                    },
+                    "gate": {
+                        "ugen": "flock.ugen.mouse.click"
+                    }
+                }
+            },
+            {
+                "ugen": "flock.ugen.sinOsc",
+                "freq": 880,
+                "mul": {
+                    "ugen": "flock.ugen.envGen",
+                    "envelope": {
+                        "type": "flock.envelope.adsr",
+                        "attack": 2,
+                        "decay": 1,
+                        "peak": 0.15,
+                        "sustain": 0.1,
+                        "release": 2
+                    },
+                    "gate": {
+                        "ugen": "flock.ugen.mouse.click"
+                    }
+                }
+            },
+            {
+                "ugen": "flock.ugen.sinOsc",
+                "freq": 660,
+                "mul": {
+                    "ugen": "flock.ugen.envGen",
+                    "envelope": {
+                        "type": "flock.envelope.adsr",
+                        "attack": 1.5,
+                        "decay": 0.75,
+                        "peak": 0.15,
+                        "sustain": 0.1,
+                        "release": 1.5
+                    },
+                    "gate": {
+                        "ugen": "flock.ugen.mouse.click"
+                    }
+                }
+            },
+            {
+                "ugen": "flock.ugen.sinOsc",
+                "freq": 586.666666,
+                "mul": {
+                    "ugen": "flock.ugen.envGen",
+                    "envelope": {
+                        "type": "flock.envelope.adsr",
+                        "attack": 1.33333333,
+                        "decay": 0.66666667,
+                        "peak": 0.15,
+                        "sustain": 0.1,
+                        "release": 1.33333333
+                    },
+                    "gate": {
+                        "ugen": "flock.ugen.mouse.click"
+                    }
+                }
+            },
+            {
+                "ugen": "flock.ugen.sinOsc",
+                "freq": 550,
+                "mul": {
+                    "ugen": "flock.ugen.envGen",
+                    "envelope": {
+                        "type": "flock.envelope.adsr",
+                        "attack": 1.25,
+                        "decay": 0.625,
+                        "peak": 0.15,
+                        "sustain": 0.1,
+                        "release": 1.25
+                    },
+                    "gate": {
+                        "ugen": "flock.ugen.mouse.click"
+                    }
+                }
+            },
+            {
+                "ugen": "flock.ugen.sinOsc",
+                "freq": 513.333333,
+                "mul": {
+                    "ugen": "flock.ugen.envGen",
+                    "envelope": {
+                        "type": "flock.envelope.adsr",
+                        "attack": 1.16666667,
+                        "decay": 0.58333333,
+                        "peak": 0.15,
+                        "sustain": 0.1,
+                        "release": 1.16666667
+                    },
+                    "gate": {
+                        "ugen": "flock.ugen.mouse.click"
+                    }
+                }
+            }
+        ]
+    }
+}

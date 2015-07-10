@@ -30,19 +30,7 @@ var fluid = fluid || require("infusion"),
 
         if (!flock.parse.synthDef.hasOutUGen(ugenDef)) {
             // We didn't get an out ugen specified, so we need to make one.
-            ugenDef = {
-                id: flock.OUT_UGEN_ID,
-                ugen: "flock.ugen.valueOut",
-                inputs: {
-                    sources: ugenDef
-                }
-            };
-
-            if (options.rate === flock.rates.AUDIO) {
-                ugenDef.ugen = "flock.ugen.out";
-                ugenDef.inputs.bus = 0;
-                ugenDef.inputs.expand = options.audioSettings.chans;
-            }
+            ugenDef = flock.parse.synthDef.makeOutUGen(ugenDef, options);
         }
 
         return flock.parse.ugenForDef(ugenDef, options);
@@ -55,6 +43,24 @@ var fluid = fluid || require("infusion"),
             synthDef.ugen === "flock.ugen.out" ||
             synthDef.ugen === "flock.ugen.valueOut"
         );
+    };
+
+    flock.parse.synthDef.makeOutUGen = function (ugenDef, options) {
+        ugenDef = {
+            id: flock.OUT_UGEN_ID,
+            ugen: "flock.ugen.valueOut",
+            inputs: {
+                sources: ugenDef
+            }
+        };
+
+        if (options.rate === flock.rates.AUDIO) {
+            ugenDef.ugen = "flock.ugen.out";
+            ugenDef.inputs.bus = 0;
+            ugenDef.inputs.expand = options.audioSettings.chans;
+        }
+
+        return ugenDef;
     };
 
     flock.parse.makeUGen = function (ugenDef, parsedInputs, options) {
@@ -84,8 +90,8 @@ var fluid = fluid || require("infusion"),
             }
         });
         // TODO: When we switch to Infusion options merging, these should have a mergePolicy of preserve.
-        ugenDef.options.audioSettings.buffers = options.buffers;
-        ugenDef.options.audioSettings.buses = options.buses;
+        ugenDef.options.buffers = options.buffers;
+        ugenDef.options.buses = options.buses;
 
         var outputBufferSize = ugenDef.rate === flock.rates.AUDIO ? blockSize : 1,
             outputBuffers;
@@ -110,9 +116,13 @@ var fluid = fluid || require("infusion"),
 
 
     flock.parse.reservedWords = ["id", "ugen", "rate", "inputs", "options"];
-    flock.parse.specialInputs = ["value", "buffer", "list", "table", "envelope"];
+    flock.parse.specialInputs = ["value", "buffer", "list", "table", "envelope", "durations", "values"];
 
-    flock.parse.expandUGenDef = function (ugenDef) {
+    flock.parse.expandInputs = function (ugenDef) {
+        if (ugenDef.inputs) {
+            return ugenDef;
+        }
+
         var inputs = {},
             prop;
 
@@ -218,9 +228,9 @@ var fluid = fluid || require("infusion"),
      */
     flock.parse.ugenForDef = function (ugenDef, options) {
         options = $.extend(true, {
-            audioSettings: flock.enviro.shared.options.audioSettings,
-            buses: flock.enviro.shared.buses,
-            buffers: flock.enviro.shared.buffers
+            audioSettings: flock.environment.audioSystem.model,
+            buses: flock.environment.buses,
+            buffers: flock.environment.buffers
         }, options);
 
         var o = options,
@@ -235,9 +245,7 @@ var fluid = fluid || require("infusion"),
             return flock.parse.ugensForDefs(ugenDef, options);
         }
 
-        if (!ugenDef.inputs) {
-            ugenDef = flock.parse.expandUGenDef(ugenDef);
-        }
+        ugenDef = flock.parse.expandInputs(ugenDef);
 
         flock.parse.expandRate(ugenDef, options);
         ugenDef = flock.parse.ugenDef.mergeOptions(ugenDef, options);

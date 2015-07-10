@@ -1,0 +1,83 @@
+.mainPanel.split-large {
+    width: 60%;
+}
+
+.mainPanel.split-small {
+    width: 40%;
+}
+
+#visual-view {
+    color: #fff;
+    overflow: auto;
+    position: relative;
+    float: right;
+}
+
+.node {
+    width: 6em;
+    height: 1em;
+    background-color: #999;
+    color: #fff;
+    border-radius: 0.5em;
+    border: 0.1em solid #999;
+    padding-bottom: 2.2em;
+    padding-top: 1.5em;
+    text-align: center;
+    letter-spacing: 0.1em;
+    z-index: 1;
+    font-size: 0.75em;
+}
+
+.node.flock\.ugen\.value {
+    width: 5em;
+    height: 1em;
+    font-family: monospace;
+    font-weight: normal;
+    background-color: #272822;
+    font-size: 0.75em;
+    border: 0.2em solid #999;
+    overflow: hidden;
+}
+
+.node.flock\.buffer {
+    width: 6em;
+    font-family: monospace;
+    font-weight: normal;
+    background-color: #272822;
+    border: 0.2em solid #999;
+    overflow: hidden;
+}
+
+.node.flock\.list {
+    font-family: monospace;
+    font-weight: normal;
+    background-color: #272822;
+    font-size: 0.75em;
+}
+
+.node.flock\.envelope {
+    width: 6em;
+    font-family: monospace;
+    font-weight: normal;
+    background-color: #272822;
+}
+
+._jsPlumb_overlay {
+    border-radius: 0.5em;
+    background-color: rgba(68, 85, 102, 1);
+    color: #fff;
+    padding: 0.5em 0.5em;
+    font-size: 0.75em;
+    z-index: 2;
+    letter-spacing: 0.1em;
+}
+
+._jsPlumb_endpoint {
+    z-index: 1;
+}
+
+._jsPlumb_endpoint circle {
+    fill: #272822;
+    z-index: 1;
+    stroke: #999;
+}

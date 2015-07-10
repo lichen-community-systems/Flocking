@@ -51,11 +51,50 @@ var fluid = fluid || require("infusion"),
             "A raw buffer of samples should be wrapped buffer desc.");
     });
 
+    test("BufferDesc expansion: raw multiple channels", function () {
+        var channels = [new Float32Array(), new Float32Array()],
+            actual = flock.bufferDesc(channels, 44100, 2),
+            expected = {
+                container: {},
+                format: {
+                    numChannels: 2,
+                    numSampleFrames: 0,
+                    sampleRate: 44100,
+                    duration: 0
+                },
+                data: {
+                    channels: channels
+                }
+            };
+
+        deepEqual(actual, expected,
+            "When an array of channel data is provided, the correct bufDesc should be returned.");
+    });
+
     test("BufferDesc expansion: single channel sample array with numChannels specified", function () {
         var bufferDesc = fluid.copy(testDesc);
         var actual = flock.bufferDesc(bufferDesc);
         deepEqual(actual.data.channels, [unwrappedSampleData],
             "A raw buffer of samples should be wrapped in an array if we know we have a single channel.");
+    });
+
+    test("BufferDesc expansion: empty buffer description", function () {
+        var actual = flock.bufferDesc(),
+            expected = {
+                container: {},
+                format: {
+                    numChannels: 0,
+                    numSampleFrames: 0,
+                    sampleRate: 44100,
+                    duration: 0
+                },
+                data: {
+                    channels: []
+                }
+            };
+
+        deepEqual(actual, expected,
+            "A valid but empty bufferDesc should be returned when no arguments are provided to flock.bufferDesc().");
     });
 
     test("BufferDesc expansion: mismatched channel data", function () {

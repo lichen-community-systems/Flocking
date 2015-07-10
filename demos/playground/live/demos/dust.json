@@ -1,0 +1,8 @@
+{
+    "description": "Using dust to generate random audio noise.",
+    "synthDef": {
+        "ugen": "flock.ugen.dust",
+        "density": 200,
+        "mul": 0.25
+    }
+}

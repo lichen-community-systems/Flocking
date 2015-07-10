@@ -227,6 +227,7 @@ var fluid = fluid || require("infusion"),
      * including references to all the available MIDI ports
      * and the MIDIAccess object.
      */
+    // TODO: This should be a model component!
     fluid.defaults("flock.midi.system", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
 
@@ -249,14 +250,15 @@ var fluid = fluid || require("infusion"),
 
             refreshPorts: {
                 funcName: "flock.midi.system.refreshPorts",
-                args: ["{that}", "{that}.access"]
+                args: ["{that}", "{that}.access", "{that}.events.onPortsAvailable.fire"]
             }
         },
 
         events: {
             onAccessGranted: null,
             onAccessError: null,
-            onReady: null
+            onReady: null,
+            onPortsAvailable: null
         },
 
         listeners: {
@@ -265,17 +267,9 @@ var fluid = fluid || require("infusion"),
             },
 
             onAccessGranted: [
-                {
-                    funcName: "flock.midi.system.setAccess",
-                    args: ["{that}", "{arguments}.0"]
-                },
-                {
-                    func: "{that}.refreshPorts"
-                },
-                {
-                    func: "{that}.events.onReady.fire",
-                    args: "{that}.ports"
-                }
+                "flock.midi.system.setAccess({that}, {arguments}.0)",
+                "{that}.refreshPorts()",
+                "{that}.events.onReady.fire({that}.ports)"
             ],
 
             onAccessError: {
@@ -289,9 +283,31 @@ var fluid = fluid || require("infusion"),
         that.access = access;
     };
 
-    flock.midi.system.refreshPorts = function (that, access) {
+    flock.midi.system.refreshPorts = function (that, access, onPortsAvailable) {
         that.ports = flock.midi.getPorts(access);
+        onPortsAvailable(that.ports);
     };
+
+
+    /**
+     * An abstract grade that the defines the event names
+     * for receiving MIDI messages
+     */
+    fluid.defaults("flock.midi.receiver", {
+        gradeNames: ["fluid.eventedComponent"],
+
+        events: {
+            raw: null,
+            message: null,
+            note: null,
+            noteOn: null,
+            noteOff: null,
+            control: null,
+            program: null,
+            aftertouch: null,
+            pitchbend: null
+        }
+    });
 
 
     /*
@@ -300,7 +316,7 @@ var fluid = fluid || require("infusion"),
      */
     // TODO: Handle port disconnection events.
     fluid.defaults("flock.midi.connection", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["flock.midi.receiver", "autoInit"],
 
         openImmediately: false,
 
@@ -355,20 +371,10 @@ var fluid = fluid || require("infusion"),
         },
 
         events: {
-            onPortsAvailable: null, //"{system}.events.onReady",
+            onPortsAvailable: null,
             onReady: null,
             onError: null,
-            onSendMessage: null,
-
-            raw: null,
-            message: null,
-            note: null,
-            noteOn: null,
-            noteOff: null,
-            control: null,
-            program: null,
-            aftertouch: null,
-            pitchbend: null
+            onSendMessage: null
         },
 
         listeners: {
@@ -387,7 +393,11 @@ var fluid = fluid || require("infusion"),
             raw: {
                 funcName: "flock.midi.connection.fireEvent",
                 args: ["{arguments}.0", "{that}.events"]
-            }
+            },
+
+            onDestroy: [
+                "{that}.close()"
+            ]
         }
     });
 
@@ -423,13 +433,8 @@ var fluid = fluid || require("infusion"),
             };
         }
 
-        if (portSpec.id) {
-            return function (ports) {
-                ports.find(flock.midi.findPorts.idMatcher(portSpec.id));
-            };
-        }
-
-        var matcher = portSpec.manufacturer && portSpec.name ?
+        var matcher = portSpec.id ? flock.midi.findPorts.idMatcher(portSpec.id) :
+            portSpec.manufacturer && portSpec.name ?
             flock.midi.findPorts.bothMatcher(portSpec.manufacturer, portSpec.name) :
             portSpec.manufacturer ? flock.midi.findPorts.manufacturerMatcher(portSpec.manufacturer) :
             flock.midi.findPorts.nameMatcher(portSpec.name);
@@ -615,6 +620,167 @@ var fluid = fluid || require("infusion"),
 
         if (eventForType) {
             eventForType.fire(model);
+        }
+    };
+
+
+    fluid.defaults("flock.midi.controller", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        members: {
+            controlMap: "@expand:flock.midi.controller.optimizeControlMap({that}.options.controlMap)",
+            noteMap: "{that}.options.noteMap"
+        },
+
+        controlMap: {},                       // Control and note maps
+        noteMap: {},                          // need to be specified by the user.
+
+        components: {
+            synthContext: {                   // Also user-specified. Typically a flock.band instance,
+                type: "flock.band"            // but can be anything that has a set of named synths,
+            },                                // including a synth itself.
+
+            connection: {
+                type: "flock.midi.connection",
+                options: {
+                    ports: {
+                        input: "*"              // Connect to the first available input port.
+                    },
+
+                    openImmediately: true,    // Immediately upon instantiating the connection.
+
+                    listeners: {
+                        control: {
+                            func: "{controller}.mapControl"
+                        },
+                        note: {
+                            func: "{controller}.mapNote"
+                        }
+                    }
+                }
+            }
+        },
+
+        invokers: {
+            mapControl: {
+                funcName: "flock.midi.controller.mapControl",
+                args: ["{arguments}.0", "{that}.synthContext", "{that}.controlMap"]
+            },
+
+            mapNote: {
+                funcName: "flock.midi.controller.mapNote",
+                args: ["{arguments}.0", "{that}.synthContext", "{that}.noteMap"]
+            }
+        }
+    });
+
+    flock.midi.controller.optimizeControlMap = function (controlMap) {
+        var controlMapArray = new Array(127);
+        fluid.each(controlMap, function (mapSpec, controlNum) {
+            var idx = Number(controlNum);
+            controlMapArray[idx] = mapSpec;
+        });
+
+        return controlMapArray;
+    };
+
+    flock.midi.controller.expandControlMapSpec = function (valueUGenID, mapSpec) {
+        mapSpec.transform.id = valueUGenID;
+
+        // TODO: The key "valuePath" is confusing;
+        // it actually points to the location in the
+        // transform synth where the value will be set.
+        mapSpec.valuePath = mapSpec.valuePath || "value";
+
+        if (!mapSpec.transform.ugen) {
+            mapSpec.transform.ugen = "flock.ugen.value";
+        }
+
+        return mapSpec;
+    };
+
+    flock.midi.controller.makeValueSynth = function (value, id, mapSpec) {
+        mapSpec = flock.midi.controller.expandControlMapSpec(id, mapSpec);
+
+        var transform = mapSpec.transform,
+            valuePath = mapSpec.valuePath;
+
+        flock.set(transform, valuePath, value);
+
+        // Instantiate the new value synth.
+        var valueSynth = flock.synth.value({
+            synthDef: transform
+        });
+
+        // Update the value path so we can quickly update the synth's input value.
+        mapSpec.valuePath = id + "." + valuePath;
+
+        return valueSynth;
+    };
+
+    flock.midi.controller.transformValue = function (value, mapSpec) {
+        var transform = mapSpec.transform,
+            type = typeof transform;
+
+        if (type === "function") {
+            return transform(value);
+        }
+        // TODO: Add support for string-based transforms
+        // that bind to globally-defined synths
+        // (e.g. "flock.synth.midiFreq" or "flock.synth.midiAmp")
+        // TODO: Factor this into a separate function.
+        if (!mapSpec.transformSynth) {
+            // We have a raw synthDef.
+            // Instantiate a value synth to transform incoming control values.
+
+            // TODO: In order to support multiple inputs (e.g. a multi-arg OSC message),
+            // this special path needs to be scoped to the argument name. In the case of MIDI,
+            // this would be the CC number. In the case of OSC, it would be a combination of
+            // OSC message address and argument index.
+            mapSpec.transformSynth = flock.midi.controller.makeValueSynth(
+                value, "flock-midi-controller-in", mapSpec);
+        } else {
+            // TODO: When the new node architecture is in in place, we can directly connect this
+            // synth to the target synth at instantiation time.
+            // TODO: Add support for arrays of values, such as multi-arg OSC messages.
+            mapSpec.transformSynth.set(mapSpec.valuePath, value);
+        }
+
+        return mapSpec.transformSynth.value();
+    };
+
+    flock.midi.controller.setMappedValue = function (value, map, synthContext) {
+        if (!map) {
+            return;
+        }
+
+        value = map.transform ? flock.midi.controller.transformValue(value, map) : value;
+        var synth = synthContext[map.synth] || synthContext;
+
+        synth.set(map.input, value);
+    };
+
+    flock.midi.controller.mapControl = function (midiMsg, synthContext, controlMap) {
+        var map = controlMap[midiMsg.number],
+            value = midiMsg.value;
+
+        flock.midi.controller.setMappedValue(value, map, synthContext);
+    };
+
+    // TODO: Add support for defining listener filters or subsets
+    // of all midi notes (e.g. for controllers like the Quneo).
+    flock.midi.controller.mapNote = function (midiMsg, synthContext, noteMap) {
+        var keyMap = noteMap.note,
+            key = midiMsg.note,
+            velMap = noteMap.velocity,
+            vel = midiMsg.velocity;
+
+        if (keyMap) {
+            flock.midi.controller.setMappedValue(key, keyMap, synthContext);
+        }
+
+        if (velMap) {
+            flock.midi.controller.setMappedValue(vel, velMap, synthContext);
         }
     };
 

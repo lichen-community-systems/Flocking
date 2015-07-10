@@ -41,7 +41,7 @@
                     decoder: config.decoder,
                     success: function (decoded) {
                         flock.test.audioFile.testTriangleBuffer(decoded,
-                            flock.enviro.shared.audioSettings.rates.audio);
+                            flock.environment.audioSystem.model.rates.audio);
                         start();
                     }
                 });

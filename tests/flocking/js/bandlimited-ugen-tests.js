@@ -91,7 +91,7 @@ var fluid = fluid || require("infusion"),
                         },
                         {
                             funcName: "deepEqual",
-                            args: [new Float32Array(flock.enviro.shared.audioSettings.blockSize * 2)]
+                            args: [new Float32Array(flock.environment.audioSystem.model.blockSize * 2)]
                         }
                     ]
                 }
@@ -133,7 +133,7 @@ var fluid = fluid || require("infusion"),
 
     flock.test.blit.generateOutput = function (synth, testSpec) {
         // Create a buffer that can hold about a second's worth of audio.
-        var blockSize = flock.enviro.shared.audioSettings.blockSize,
+        var blockSize = flock.environment.audioSystem.model.blockSize,
             fullSize = blockSize * testSpec.numBlocks,
             actual = new Float32Array(fullSize);
 

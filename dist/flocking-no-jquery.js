@@ -1,4 +1,4 @@
-/*! Flocking 0.1.2 (June 21, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.2 (July 3, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof exports === "object") {
@@ -10860,20 +10860,27 @@ var fluid = fluid || require("infusion"),
 
     flock.init = function (options) {
         var enviroOpts = !options ? undefined : {
-            audioSettings: options
+            components: {
+                audioSystem: {
+                    options: {
+                        model: options
+                    }
+                }
+            }
         };
 
-        var enviro = flock.enviro.shared = flock.enviro(enviroOpts);
+        var enviro = flock.enviro(enviroOpts);
+        fluid.staticEnvironment.environment = flock.environment = enviro;
+
+        // flock.enviro.shared is deprecated. Use "flock.environment"
+        // or an IoC reference to {environment} instead
+        flock.enviro.shared = enviro;
 
         return enviro;
     };
 
+    flock.ALL_CHANNELS = 32; // TODO: This should go.
     flock.OUT_UGEN_ID = "flocking-out";
-    flock.MAX_CHANNELS = 32;
-    flock.MIN_BUSES = 2;
-    flock.MAX_INPUT_BUSES = 32;
-    flock.MIN_INPUT_BUSES = 1; // TODO: This constraint should be removed.
-    flock.ALL_CHANNELS = flock.MAX_INPUT_BUSES;
 
     flock.PI = Math.PI;
     flock.TWOPI = 2.0 * Math.PI;
@@ -10888,10 +10895,6 @@ var fluid = fluid || require("infusion"),
         SCHEDULED: "scheduled",
         DEMAND: "demand",
         CONSTANT: "constant"
-    };
-
-    flock.sampleFormats = {
-        FLOAT32NE: "float32NE"
     };
 
     fluid.registerNamespace("flock.debug");
@@ -10947,16 +10950,8 @@ var fluid = fluid || require("infusion"),
     flock.platform.isMobile = flock.platform.isAndroid || flock.platform.isIOS;
     flock.platform.browser = flock.browser();
     flock.platform.isWebAudio = typeof AudioContext !== "undefined" || typeof webkitAudioContext !== "undefined";
-    flock.platform.audioEngine = flock.platform.isBrowser ? (flock.platform.isWebAudio ? "webAudio" : "moz") : "nodejs";
+    flock.platform.audioEngine = flock.platform.isBrowser ? "webAudio" : "nodejs";
     fluid.staticEnvironment.audioEngine = fluid.typeTag("flock.platform." + flock.platform.audioEngine);
-
-    flock.defaultBufferSizeForPlatform = function () {
-        if (flock.platform.isMobile) {
-            return 8192;
-        }
-
-        return 1024;
-    };
 
     flock.shim = {
         URL: flock.platform.isBrowser ? (window.URL || window.webkitURL || window.msURL) : undefined
@@ -11367,6 +11362,10 @@ var fluid = fluid || require("infusion"),
     flock.interpolate.cubic = flock.interpolate.hermite;
 
     flock.log = {
+        fail: function (msg) {
+            fluid.log(fluid.logLevel.FAIL, msg);
+        },
+
         warn: function (msg) {
             fluid.log(fluid.logLevel.WARN, msg);
         },
@@ -11380,7 +11379,7 @@ var fluid = fluid || require("infusion"),
         if (flock.debug.failHard) {
             throw new Error(msg);
         } else {
-            fluid.log(fluid.logLevel.FAIL, msg);
+            flock.log.fail(msg);
         }
     };
 
@@ -11633,86 +11632,173 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.nodeList", {
-        gradeNames: ["fluid.littleComponent", "autoInit"],
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
         members: {
             nodes: [],
             namedNodes: {}
+        },
+
+        invokers: {
+            insert: {
+                funcName: "flock.nodeList.insert",
+                // TODO: Backwards arguments?
+                args: [
+                    "{arguments}.0", // The index to insert it at.
+                    "{arguments}.1", // The node to insert.
+                    "{that}.nodes",
+                    "{that}.events.onInsert.fire"
+                ]
+            },
+
+            head: {
+                func: "{that}.insert",
+                args: [0, "{arguments}.0"]
+            },
+
+            tail: {
+                funcName: "flock.nodeList.tail",
+                args: ["{arguments}.0", "{that}.nodes", "{that}.insert"]
+            },
+
+            before: {
+                funcName: "flock.nodeList.before",
+                args: [
+                    "{arguments}.0", // Reference node.
+                    "{arguments}.1", // Node to add.
+                    "{that}.nodes",
+                    "{that}.insert"
+                ]
+            },
+
+            after: {
+                funcName: "flock.nodeList.after",
+                args: [
+                    "{arguments}.0", // Reference node.
+                    "{arguments}.1", // Node to add.
+                    "{that}.nodes",
+                    "{that}.insert"
+                ]
+            },
+
+            remove: {
+                funcName: "flock.nodeList.remove",
+                args: [
+                    "{arguments}.0", // Node to remove.
+                    "{that}.nodes",
+                    "{that}.events.onRemove.fire"
+                ]
+            },
+
+            replace: {
+                funcName: "flock.nodeList.replace",
+                args: [
+                    // TODO: Backwards arguments?
+                    "{arguments}.0", // New node.
+                    "{arguments}.1", // Old node.
+                    "{that}.nodes",
+                    "{that}.head",
+                    "{that}.events.onRemove.fire",
+                    "{that}.events.onInsert.fire"
+                ]
+            },
+
+            clearAll: {
+                func: "{that}.events.onClearAll.fire"
+            }
+        },
+
+        events: {
+            onInsert: null,
+            onRemove: null,
+            onClearAll: null
+        },
+
+        listeners: {
+            onClearAll: [
+                {
+                    func: "fluid.clear",
+                    args: "{that}.nodes"
+                },
+                {
+                    func: "fluid.clear",
+                    args: "{that}.namedNodes"
+                }
+            ],
+
+            onInsert: {
+                funcName: "flock.nodeList.registerNode",
+                args: ["{arguments}.0", "{that}.namedNodes"]
+            },
+
+            onRemove: {
+                funcName: "flock.nodeList.unregisterNode",
+                args: ["{arguments}.0", "{that}.namedNodes"]
+            }
         }
     });
 
-    flock.nodeList.preInit = function (that) {
-        that.head = function (node) {
-            that.nodes.unshift(node);
-            if (node.nickName) {
-                that.namedNodes[node.nickName] = node;
-            }
-            return 0;
-        };
+    flock.nodeList.insert = function (idx, node, nodes, onInsert) {
+        if (idx < 0) {
+            idx = 0;
+        }
 
-        that.before = function (refNode, node) {
-            var refIdx = that.nodes.indexOf(refNode);
-            that.insert(refIdx, node);
-            return refIdx;
-        };
+        nodes.splice(idx, 0, node);
+        onInsert(node, idx);
 
-        that.after = function (refNode, node) {
-            var refIdx = that.nodes.indexOf(refNode),
-                atIdx = refIdx + 1;
-            that.insert(atIdx, node);
-            return atIdx;
-        };
+        return idx;
+    };
 
-        that.insert = function (idx, node) {
-            if (idx < 0) {
-                return that.head(node);
-            }
+    flock.nodeList.registerNode = function (node, namedNodes) {
+        if (!node.nickName) {
+            return;
+        }
 
-            that.nodes.splice(idx, 0, node);
-            if (node.nickName) {
-                that.namedNodes[node.nickName] = node;
-            }
-            return idx;
-        };
+        namedNodes[node.nickName] = node;
+    };
 
-        that.tail = function (node) {
-            that.nodes.push(node);
-            if (node.nickName) {
-                that.namedNodes[node.nickName] = node;
-            }
-            return that.nodes.length;
-        };
+    flock.nodeList.before = function (refNode, node, nodes, insertFn) {
+        var refIdx = nodes.indexOf(refNode);
+        return insertFn(refIdx, node);
+    };
 
-        that.remove = function (node) {
-            var idx = that.nodes.indexOf(node);
-            if (idx < 0) {
-                return idx;
-            }
+    flock.nodeList.after = function (refNode, node, nodes, insertFn) {
+        var refIdx = nodes.indexOf(refNode),
+            atIdx = refIdx + 1;
 
-            that.nodes.splice(idx, 1);
-            delete that.namedNodes[node.nickName];
-            return idx;
-        };
+        return insertFn(atIdx, node);
+    };
 
-        that.replace = function (newNode, oldNode) {
-            var idx = that.nodes.indexOf(oldNode);
-            if (idx < 0) {
-                return that.head(newNode);
-            }
+    flock.nodeList.tail = function (node, nodes, insertFn) {
+        var idx = nodes.length;
+        return insertFn(idx, node);
+    };
 
-            that.nodes[idx] = newNode;
-            delete that.namedNodes[oldNode.nickName];
+    flock.nodeList.remove = function (node, nodes, onRemove) {
+        var idx = nodes.indexOf(node);
+        if (idx > -1) {
+            nodes.splice(idx, 1);
+            onRemove(node);
+        }
 
-            if (newNode.nickName) {
-                that.namedNodes[newNode.nickName] = newNode;
-            }
-            return idx;
-        };
+        return idx;
+    };
 
-        that.clearAll = function () {
-            while (that.nodes.length > 0) {
-                that.nodes.pop();
-            }
-        };
+    flock.nodeList.unregisterNode = function (node, namedNodes) {
+        delete namedNodes[node.nickName];
+    };
+
+    flock.nodeList.replace = function (newNode, oldNode, nodes, notFoundFn, onRemove, onInsert) {
+        var idx = nodes.indexOf(oldNode);
+        if (idx < 0) {
+            return notFoundFn(newNode);
+        }
+
+        nodes[idx] = newNode;
+        onRemove(oldNode);
+        onInsert(newNode);
+
+        return idx;
     };
 
 
@@ -11720,115 +11806,229 @@ var fluid = fluid || require("infusion"),
      * Synths and Playback *
      ***********************/
 
-    fluid.defaults("flock.enviro", {
-        gradeNames: ["fluid.standardRelayComponent", "flock.nodeList", "autoInit"],
+    fluid.defaults("flock.audioSystem", {
+        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
 
-        members: {
-            audioSettings: "@expand:flock.enviro.clampAudioSettings({that}.options.audioSettings)",
-            buses: {
-                expander: {
-                    funcName: "flock.enviro.createAudioBuffers",
-                    args: ["{that}.audioSettings.numBuses", "{that}.audioSettings.blockSize"]
-                }
-            },
-            buffers: {},
-            bufferSources: {}
+        channelRange: {
+            min: 1,
+            max: 32
+        },
+
+        outputBusRange: {
+            min: 2,
+            max: 1024
+        },
+
+        inputBusRange: {
+            min: 1, // TODO: This constraint should be removed.
+            max: 32
         },
 
         model: {
-            isPlaying: false,
+            rates: {
+                audio: 44100,
+                control: 689.0625,
+                scheduled: 0,
+                demand: 0,
+                constant: 0
+            },
+            blockSize: 64,
+            numBlocks: 16,
+            chans: 2,
+            numInputBuses: 2,
+            numBuses: 8,
+            bufferSize: "@expand:flock.audioSystem.defaultBufferSize()"
+        },
 
-            // TODO: Buses should probably be managed by their own component.
+        modelRelay: [
+            {
+                target: "rates.control",
+                singleTransform: {
+                    type: "fluid.transforms.binaryOp",
+                    left: "{that}.model.rates.audio",
+                    operator: "/",
+                    right: "{that}.model.blockSize"
+                }
+            },
+            {
+                target: "numBlocks",
+                singleTransform: {
+                    type: "fluid.transforms.binaryOp",
+                    left: "{that}.model.bufferSize",
+                    operator: "/",
+                    right: "{that}.model.blockSize"
+                }
+            },
+            {
+                target: "chans",
+                singleTransform: {
+                    type: "fluid.transforms.limitRange",
+                    input: "{that}.model.chans",
+                    min: "{that}.options.channelRange.min",
+                    max: "{that}.options.channelRange.max"
+                }
+            },
+            {
+                target: "numInputBuses",
+                singleTransform: {
+                    type: "fluid.transforms.limitRange",
+                    input: "{that}.model.numInputBuses",
+                    min: "{that}.options.inputBusRange.min",
+                    max: "{that}.options.inputBusRange.max"
+                }
+            },
+            {
+                target: "numBuses",
+                singleTransform: {
+                    type: "fluid.transforms.free",
+                    func: "flock.audioSystem.clampNumBuses",
+                    args: ["{that}.model.numBuses", "{that}.options.outputBusRange", "{that}.model.chans"]
+                }
+            }
+        ]
+    });
+
+    flock.audioSystem.clampNumBuses = function (numBuses, outputBusRange, chans) {
+        numBuses = Math.max(numBuses, Math.max(chans, outputBusRange.min));
+        numBuses = Math.min(numBuses, outputBusRange.max);
+
+        return numBuses;
+    };
+
+    flock.audioSystem.defaultBufferSize = function () {
+        return flock.platform.isMobile ? 8192 :
+            flock.platform.browser.mozilla ? 2048 : 1024;
+    };
+
+
+    /*****************
+     * Node Evalutor *
+     *****************/
+
+    fluid.defaults("flock.nodeEvaluator", {
+        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
+
+        model: "{audioSystem}.model",
+
+        members: {
+            nodes: "{enviro}.nodes",
+            buses: "{busManager}.buses"
+        },
+
+        invokers: {
+            gen: {
+                funcName: "flock.nodeEvaluator.gen",
+                args: ["{that}.nodes"]
+            },
+
+            clearBuses: {
+                funcName: "flock.nodeEvaluator.clearBuses",
+                args: [
+                    "{that}.model.numBuses",
+                    "{that}.model.blockSize",
+                    "{that}.buses"
+                ]
+            }
+        }
+    });
+
+    flock.nodeEvaluator.gen = function (nodes) {
+        var i,
+            node;
+
+        // Now evaluate each node.
+        for (i = 0; i < nodes.length; i++) {
+            node = nodes[i];
+            node.genFn(node);
+        }
+    };
+
+
+    flock.nodeEvaluator.clearBuses = function (numBuses, busLen, buses) {
+        for (var i = 0; i < numBuses; i++) {
+            var bus = buses[i];
+            for (var j = 0; j < busLen; j++) {
+                bus[j] = 0;
+            }
+        }
+    };
+
+
+    fluid.defaults("flock.audioStrategy", {
+        gradeNames: ["fluid.standardRelayComponent"],
+
+        components: {
+            nodeEvaluator: {
+                type: "flock.nodeEvaluator"
+            }
+        },
+
+        invokers: {
+            reset: {
+                func: "{that}.events.onReset.fire"
+            }
+        },
+
+        events: {
+            onStart: "{enviro}.events.onStart",
+            onStop: "{enviro}.events.onStop",
+            onReset: "{enviro}.events.onReset"
+        }
+    });
+
+    // TODO: Refactor how buses work so that they're clearly
+    // delineated into types--input, output, and interconnect.
+    // TODO: Get rid of the concept of buses altogether.
+    fluid.defaults("flock.busManager", {
+        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
+
+        model: {
             nextAvailableBus: {
                 input: 0,
                 interconnect: 0
             }
         },
 
-        audioSettings: {
-            rates: {
-                audio: 48000, // This is only a hint. Some audio backends (such as the Web Audio API)
-                              // may define the sample rate themselves.
-                control: undefined, // Control rate is calculated dynamically based on the audio rate and the block size.
-                scheduled: undefined, // The scheduled rate is a user-specified parameter.
-                demand: 0,
-                constant: 0
-            },
-            blockSize: 64,
-            chans: 2,
-            numInputBuses: 2,
-            numBuses: 8,
-            // This buffer size determines the overall latency of Flocking's audio output.
-            // TODO: Replace this with IoC awesomeness.
-            bufferSize: flock.defaultBufferSizeForPlatform(),
-        },
-
-        components: {
-            asyncScheduler: {
-                type: "flock.scheduler.async"
-            },
-
-            audioStrategy: {
-                type: "flock.audioStrategy.platform",
-                options: {
-                    audioSettings: "{enviro}.audioSettings"
+        members: {
+            buses: {
+                expander: {
+                    funcName: "flock.enviro.createAudioBuffers",
+                    args: ["{audioSystem}.model.numBuses", "{audioSystem}.model.blockSize"]
                 }
             }
         },
 
         invokers: {
             acquireNextBus: {
-                funcName: "flock.enviro.acquireNextBus",
+                funcName: "flock.busManager.acquireNextBus",
                 args: [
                     "{arguments}.0", // The type of bus, either "input" or "interconnect".
                     "{that}.buses",
                     "{that}.applier",
                     "{that}.model",
-                    "{that}.audioSettings"
+                    "{audioSystem}.model.chans",
+                    "{audioSystem}.model.numInputBuses"
                 ]
-            }
-        },
-
-        listeners: {
-            onCreate: {
-                funcName: "flock.enviro.calculateControlRate",
-                args: ["{that}.audioSettings"]
             }
         }
     });
 
-    flock.enviro.clampAudioSettings = function (s) {
-        s.numInputBuses = Math.min(s.numInputBuses, flock.MAX_INPUT_BUSES);
-        s.numInputBuses = Math.max(s.numInputBuses, flock.MIN_INPUT_BUSES);
-        s.chans = Math.min(s.chans, flock.MAX_CHANNELS);
-        s.numBuses = Math.max(s.numBuses, s.chans);
-        s.numBuses = Math.max(s.numBuses, flock.MIN_BUSES);
-
-        return s;
-    };
-
-    // TODO: This should be modelized.
-    flock.enviro.calculateControlRate = function (audioSettings) {
-        audioSettings.rates.control = audioSettings.rates.audio / audioSettings.blockSize;
-        return audioSettings;
-    };
-
-    flock.enviro.acquireNextBus = function (type, buses, applier, m, s) {
+    flock.busManager.acquireNextBus = function (type, buses, applier, m, chans, numInputBuses) {
         var busNum = m.nextAvailableBus[type];
 
         if (busNum === undefined) {
             flock.fail("An invalid bus type was specified when invoking " +
-                "flock.enviro.acquireNextBus(). Type was: " + type);
+                "flock.busManager.acquireNextBus(). Type was: " + type);
             return;
         }
 
         // Input buses start immediately after the output buses.
-        var offsetBusNum = busNum + s.chans,
-            offsetBusMax = s.chans + s.numInputBuses;
+        var offsetBusNum = busNum + chans,
+            offsetBusMax = chans + numInputBuses;
 
         // Interconnect buses are after the input buses.
         if (type === "interconnect") {
-            offsetBusNum += s.numInputBuses;
+            offsetBusNum += numInputBuses;
             offsetBusMax = buses.length;
         }
 
@@ -11844,71 +12044,181 @@ var fluid = fluid || require("infusion"),
         return offsetBusNum;
     };
 
-    flock.enviro.preInit = function (that) {
 
-        /**
-         * Starts generating samples from all synths.
-         */
-        that.start = function () {
-            if (that.model.isPlaying) {
-                return;
+    fluid.defaults("flock.enviro", {
+        gradeNames: ["fluid.standardRelayComponent", "flock.nodeList", "autoInit"],
+
+        members: {
+            buffers: {},
+            bufferSources: {}
+        },
+
+        components: {
+            asyncScheduler: {
+                type: "flock.scheduler.async"
+            },
+
+            audioSystem: {
+                type: "flock.audioSystem.platform"
+            },
+
+            audioStrategy: {
+                type: "flock.audioStrategy.platform",
+                options: {
+                    audioSettings: "{audioSystem}.model"
+                }
+            },
+
+            busManager: {
+                type: "flock.busManager"
             }
+        },
 
-            that.audioStrategy.start();
-            that.model.isPlaying = true;
-        };
+        model: {
+            isPlaying: false
+        },
 
-        /**
-         * Deprecated. Use start() instead.
-         */
-        that.play = that.start;
+        invokers: {
+            /**
+             * Generates a block of samples by evaluating all registered nodes.
+             */
+            gen: "flock.enviro.gen({audioStrategy}.nodeEvaluator)",
 
-        /**
-         * Stops generating samples from all synths.
-         */
-        that.stop = function () {
-            if (!that.model.isPlaying) {
-                return;
+            /**
+             * Starts generating samples from all synths.
+             *
+             * @param {Number} dur optional duration to play in seconds
+             */
+            start: "flock.enviro.start({that}.model, {that}.events.onStart.fire)",
+
+            /**
+             * Deprecated. Use start() instead.
+             */
+            play: "{that}.start",
+
+            /**
+             * Stops generating samples.
+             */
+            stop: "flock.enviro.stop({that}.model, {that}.events.onStop.fire)",
+
+
+            /**
+             * Fully resets the state of the environment.
+             */
+            reset: "{that}.events.onReset.fire()",
+
+            /**
+             * Registers a shared buffer.
+             *
+             * @param {BufferDesc} bufDesc the buffer description object to register
+             */
+            registerBuffer: "flock.enviro.registerBuffer({arguments}.0, {that}.buffers)",
+
+            /**
+             * Releases a shared buffer.
+             *
+             * @param {String|BufferDesc} bufDesc the buffer description (or string id) to release
+             */
+            releaseBuffer: "flock.enviro.releaseBuffer({arguments}.0, {that}.buffers)",
+
+            /**
+             * Saves a buffer to the user's computer.
+             *
+             * @param {String|BufferDesc} id the id of the buffer to save
+             * @param {String} path the path to save the buffer to (if relevant)
+             */
+            saveBuffer: {
+                funcName: "flock.enviro.saveBuffer",
+                args: [
+                    "{arguments}.0",
+                    "{that}.buffers",
+                    "{audioStrategy}"
+                ]
             }
+        },
 
-            that.audioStrategy.stop();
-            that.model.isPlaying = false;
-        };
+        events: {
+            onStart: null,
+            onPlay: "{that}.events.onStart", // Deprecated. Use onStart instead.
+            onStop: null,
+            onReset: null
+        },
 
-        // TODO: This should be factored as an event.
-        that.reset = function () {
-            that.stop();
-            that.asyncScheduler.clearAll();
-            that.applier.change("nextAvailableBus.input", []);
-            that.applier.change("nextAvailableBus.interconnect", []);
-            that.audioStrategy.reset();
-            that.clearAll();
-        };
+        listeners: {
+            onStart: [
+                "{that}.applier.change(isPlaying, true)",
+            ],
 
-        that.registerBuffer = function (bufDesc) {
-            if (bufDesc.id) {
-                that.buffers[bufDesc.id] = bufDesc;
-            }
-        };
+            onStop: [
+                "{that}.applier.change(isPlaying, false)"
+            ],
 
-        that.releaseBuffer = function (bufDesc) {
-            if (!bufDesc) {
-                return;
-            }
+            onReset: [
+                "{that}.stop()",
+                "{asyncScheduler}.clearAll()",
+                {
+                    func: "{that}.applier.change",
+                    args: ["nextAvailableBus.input", []]
+                },
+                {
+                    func: "{that}.applier.change",
+                    args: ["nextAvailableBus.interconnect", []]
+                },
+                "{that}.clearAll()"
+            ]
+        }
+    });
 
-            var id = typeof bufDesc === "string" ? bufDesc : bufDesc.id;
-            delete that.buffers[id];
-        };
+    flock.enviro.registerBuffer = function (bufDesc, buffers) {
+        if (bufDesc.id) {
+            buffers[bufDesc.id] = bufDesc;
+        }
     };
 
-    flock.enviro.finalInit = function (that) {
+    flock.enviro.releaseBuffer = function (bufDesc, buffers) {
+        if (!bufDesc) {
+            return;
+        }
 
-        that.gen = function () {
-            var evaluator = that.audioStrategy.nodeEvaluator;
-            evaluator.clearBuses();
-            evaluator.gen();
-        };
+        var id = typeof bufDesc === "string" ? bufDesc : bufDesc.id;
+        delete buffers[id];
+    };
 
+    flock.enviro.saveBuffer = function (o, buffers, audioStrategy) {
+        if (typeof o === "string") {
+            o = {
+                buffer: o
+            };
+        }
+
+        if (typeof o.buffer === "string") {
+            var id = o.buffer;
+            o.buffer = buffers[id];
+            o.buffer.id = id;
+        }
+
+        o.type = o.type || "wav";
+        o.path = o.path || o.buffer.id + "." + o.type;
+        o.format = o.format || "int16";
+
+        return audioStrategy.saveBuffer(o, o.buffer);
+    };
+
+    flock.enviro.gen = function (nodeEvaluator) {
+        nodeEvaluator.clearBuses();
+        nodeEvaluator.gen();
+    };
+
+    flock.enviro.start = function (model, onStart) {
+        if (!model.isPlaying) {
+            onStart();
+        }
+    };
+
+    flock.enviro.stop = function (model, onStop) {
+        if (model.isPlaying) {
+            onStop();
+        }
     };
 
     flock.enviro.createAudioBuffers = function (numBufs, blockSize) {
@@ -11921,194 +12231,227 @@ var fluid = fluid || require("infusion"),
     };
 
 
-    fluid.defaults("flock.audioStrategy", {
-        gradeNames: ["fluid.standardRelayComponent"],
+    fluid.defaults("flock.autoEnviro", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
 
-        components: {
-            nodeEvaluator: {
-                type: "flock.enviro.nodeEvaluator",
-                options: {
-                    numBuses: "{enviro}.options.audioSettings.numBuses",
-                    blockSize: "{enviro}.options.audioSettings.blockSize",
-                    members: {
-                        buses: "{enviro}.buses",
-                        nodes: "{enviro}.nodes"
-                    }
-                }
-            }
+        members: {
+            enviro: "@expand:flock.autoEnviro.initEnvironment()"
         }
     });
 
-    /*****************
-     * Node Evalutor *
-     *****************/
-
-    fluid.defaults("flock.enviro.nodeEvaluator", {
-        gradeNames: ["fluid.littleComponent", "autoInit"]
-    });
-
-    flock.enviro.nodeEvaluator.finalInit = function (that) {
-        that.clearBuses = function () {
-            var numBuses = that.options.numBuses,
-                busLen = that.options.blockSize,
-                i,
-                bus,
-                j;
-
-            for (i = 0; i < numBuses; i++) {
-                bus = that.buses[i];
-                for (j = 0; j < busLen; j++) {
-                    bus[j] = 0;
-                }
-            }
-        };
-
-        that.gen = function () {
-            var nodes = that.nodes,
-                i,
-                node;
-
-            for (i = 0; i < nodes.length; i++) {
-                node = nodes[i];
-                node.gen(node.model.blockSize);
-            }
-        };
-    };
-
-
-    fluid.defaults("flock.autoEnviro", {
-        gradeNames: ["fluid.littleComponent", "autoInit"]
-    });
-
-    flock.autoEnviro.preInit = function () {
-        if (!flock.enviro.shared) {
+    flock.autoEnviro.initEnvironment = function () {
+        if (!flock.environment) {
             flock.init();
         }
+
+        return flock.environment;
     };
 
-
     fluid.defaults("flock.node", {
-        gradeNames: ["flock.autoEnviro", "fluid.modelComponent", "autoInit"]
+        gradeNames: ["flock.autoEnviro", "fluid.standardRelayComponent", "autoInit"],
+        model: {}
     });
 
     fluid.defaults("flock.ugenNodeList", {
-        gradeNames: ["flock.nodeList", "autoInit"]
+        gradeNames: ["flock.nodeList", "autoInit"],
+
+        invokers: {
+            /**
+             * Inserts a unit generator and all its inputs into the node list,
+             * starting at the specified index.
+             *
+             * Note that the node itself will not be inserted into the list at this index;
+             * its inputs must must be ahead of it in the list.
+             *
+             * @param {Number} idx the index to start adding the new node and its inputs at
+             * @param {UGen} node the node to add, along with its inputs
+             * @return {Number} the index at which the specified node was inserted
+             */
+            insertTree: {
+                funcName: "flock.ugenNodeList.insertTree",
+                args: [
+                    "{arguments}.0", // The index at whcih to add the new node.
+                    "{arguments}.1", // The node to add.
+                    "{that}.insert"
+                ]
+            },
+
+            /**
+             * Removes the specified unit generator and all its inputs from the node list.
+             *
+             * @param {UGen} node the node to remove along with its inputs
+             * @return {Number} the index at which the node was removed
+             */
+            removeTree: {
+                funcName: "flock.ugenNodeList.removeTree",
+                args: [
+                    "{arguments}.0", // The node to remove.
+                    "{that}.remove"
+                ]
+            },
+
+            /**
+             * Replaces one node and all its inputs with a new node and its inputs.
+             *
+             * @param {UGen} newNode the node to add to the list
+             * @param {UGen} oldNode the node to remove from the list
+             * @return {Number} idx the index at which the new node was added
+             */
+            //flock.ugenNodeList.replaceTree = function (newNode, oldNode, insertFn, removeFn) {
+            replaceTree: {
+                funcName: "flock.ugenNodeList.replaceTree",
+                args: [
+                    "{arguments}.0", // The node to add.
+                    "{arguments}.1", // The node to replace.
+                    "{that}.nodes",
+                    "{that}.insert",
+                    "{that}.remove"
+                ]
+            },
+
+            /**
+             * Swaps one node in the list for another in place, attaching the previous unit generator's
+             * inputs to the new one. If a list of inputsToReattach is specified, only these inputs will
+             * be swapped.
+             *
+             * Note that this function will directly modify the nodes in question.
+             *
+             * @param {UGen} newNode the node to add to the list, swapping it in place for the old one
+             * @param {UGen} oldNode the node remove from the list
+             * @param {Array} inputsToReattach a list of inputNames to attach to the new node from the old one
+             * @return the index at which the new node was inserted
+             */
+            //flock.ugenNodeList.swapTree = function (newNode, oldNode, inputsToReattach, removeFn, replaceTreeFn, replaceFn) {
+
+            swapTree: {
+                funcName: "flock.ugenNodeList.swapTree",
+                args: [
+                    "{arguments}.0", // The node to add.
+                    "{arguments}.1", // The node to replace.
+                    "{arguments}.2", // A list of inputs to attach to the new node from the old.
+                    "{that}.remove",
+                    "{that}.replaceTree",
+                    "{that}.replace"
+                ]
+            }
+        }
     });
 
-    flock.ugenNodeList.finalInit = function (that) {
+    flock.ugenNodeList.insertTree = function (idx, node, insertFn) {
+        var inputs = node.inputs,
+            key,
+            input;
 
-        /**
-         * Inserts a unit generator and all its inputs into the node list, starting at the specified index.
-         * Note that the node itself will not be insert into the list at this index--its inputs must
-         * must be ahead of it in the list.
-         *
-         * @param {Number} idx the index to start adding the new node and its inputs at
-         * @param {UGen} node the node to add, along with its inputs
-         * @return {Number} the index at which the specified node was inserted
-         */
-        that.insertTree = function (idx, node) {
-            var inputs = node.inputs,
-                key,
-                input;
-
-            for (key in inputs) {
-                input = inputs[key];
-                if (flock.isUGen(input)) {
-                    idx = that.insertTree(idx, input);
-                    idx++;
-                }
+        for (key in inputs) {
+            input = inputs[key];
+            if (flock.isUGen(input)) {
+                idx = flock.ugenNodeList.insertTree(idx, input, insertFn);
+                idx++;
             }
+        }
 
-            return that.insert(idx, node);
-        };
-
-        /**
-         * Removes the specified unit generator and all its inputs from the node list.
-         *
-         * @param {UGen} node the node to remove along with its inputs
-         * @return {Number} the index at which the node was removed
-         */
-        that.removeTree = function (node) {
-            var inputs = node.inputs,
-                key,
-                input;
-
-            for (key in inputs) {
-                input = inputs[key];
-                if (typeof input !== "number") {
-                    that.removeTree(input);
-                }
-            }
-
-            return that.remove(node);
-        };
-
-        /**
-         * Replaces one node and all its inputs with a new node and its inputs.
-         *
-         * @param {UGen} newNode the node to add to the list
-         * @param {UGen} oldNode the node to remove from the list
-         * @return {Number} idx the index at which the new node was added
-         */
-        that.replaceTree = function (newNode, oldNode) {
-            if (!oldNode) {
-                 // Can't use .tail() because it won't recursively add inputs.
-                return that.insertTree(that.nodes.length, newNode);
-            }
-
-            var idx = that.removeTree(oldNode);
-            that.insertTree(idx, newNode);
-
-            return idx;
-        };
-
-        /**
-         * Swaps one node in the list for another in place, attaching the previous unit generator's
-         * inputs to the new one. If a list of inputsToReattach is specified, only these inputs will
-         * be swapped.
-         *
-         * Note that this function will directly modify the nodes in question.
-         *
-         * @param {UGen} newNode the node to add to the list, swapping it in place for the old one
-         * @param {UGen} oldNode the node remove from the list
-         * @param {Array} inputsToReattach a list of inputNames to attach to the new node from the old one
-         * @return the index at which the new node was inserted
-         */
-        that.swapTree = function (newNode, oldNode, inputsToReattach) {
-            var inputName;
-
-            if (!inputsToReattach) {
-                newNode.inputs = oldNode.inputs;
-            } else {
-                for (inputName in oldNode.inputs) {
-                    if (inputsToReattach.indexOf(inputName) < 0) {
-                        that.removeTree(oldNode.inputs[inputName]);
-                    } else {
-                        newNode.inputs[inputName] = oldNode.inputs[inputName];
-                    }
-                }
-
-                for (inputName in newNode.inputs) {
-                    if (inputsToReattach.indexOf(inputName) < 0) {
-                        that.replaceTree(newNode.inputs[inputName], oldNode.inputs[inputName]);
-                    }
-                }
-            }
-
-            return that.replace(newNode, oldNode);
-        };
+        return insertFn(idx, node);
     };
 
-    fluid.defaults("flock.synth", {
-        gradeNames: [
-            "fluid.eventedComponent",
-            "fluid.modelComponent",
-            "flock.node",
-            "flock.ugenNodeList",
-            "autoInit"
-        ],
+    flock.ugenNodeList.removeTree = function (node, removeFn) {
+        var inputs = node.inputs,
+            key,
+            input;
 
+        for (key in inputs) {
+            input = inputs[key];
+            if (flock.isUGen(input)) {
+                flock.ugenNodeList.removeTree(input, removeFn);
+            }
+        }
+
+        return removeFn(node);
+    };
+
+    flock.ugenNodeList.replaceTree = function (newNode, oldNode, nodes, insertFn, removeFn) {
+        if (!oldNode) {
+             // Can't use .tail() because it won't recursively add inputs.
+            return flock.ugenNodeList.insertTree(nodes.length, newNode, insertFn);
+        }
+
+        var idx = flock.ugenNodeList.removeTree(oldNode, removeFn);
+        flock.ugenNodeList.insertTree(idx, newNode, insertFn);
+
+        return idx;
+    };
+
+    flock.ugenNodeList.swapTree = function (newNode, oldNode, inputsToReattach, removeFn, replaceTreeFn, replaceFn) {
+        if (!inputsToReattach) {
+            newNode.inputs = oldNode.inputs;
+        } else {
+            flock.ugenNodeList.reattachInputs(newNode, oldNode, inputsToReattach, removeFn);
+            flock.ugenNodeList.replaceInputs(newNode, oldNode, inputsToReattach, replaceTreeFn);
+        }
+
+        return replaceFn(newNode, oldNode);
+    };
+
+    flock.ugenNodeList.reattachInputs = function (newNode, oldNode, inputsToReattach, removeFn) {
+        for (var inputName in oldNode.inputs) {
+            if (inputsToReattach.indexOf(inputName) < 0) {
+                flock.ugenNodeList.removeTree(oldNode.inputs[inputName], removeFn);
+            } else {
+                newNode.inputs[inputName] = oldNode.inputs[inputName];
+            }
+        }
+    };
+
+    flock.ugenNodeList.replaceInputs = function (newNode, oldNode, inputsToReattach, replaceTreeFn) {
+        for (var inputName in newNode.inputs) {
+            if (inputsToReattach.indexOf(inputName) < 0) {
+                replaceTreeFn(
+                    newNode.inputs[inputName],
+                    oldNode.inputs[inputName]
+                );
+            }
+        }
+    };
+
+
+    /**
+     * Synths represent a collection of signal-generating units,
+     * wired together to form an instrument.
+     * They are created with a synthDef object, which is a declarative structure
+     * that describes the synth's unit generator graph.
+     */
+    fluid.defaults("flock.synth", {
+        gradeNames: ["flock.node", "flock.ugenNodeList", "autoInit"],
+
+        addToEnvironment: "tail",
         rate: flock.rates.AUDIO,
+
+        members: {
+            rate: "{that}.options.rate",
+            audioSettings: "{enviro}.audioSystem.model", // TODO: Move this.
+            out: {
+                expander: {
+                    funcName: "flock.synth.parseSynthDef",
+                    args: [
+                        "{that}.options.synthDef",
+                        "{that}.rate",
+                        "{enviro}.audioSystem.model",
+                        "{that}.enviro.buffers",
+                        "{that}.enviro.busManager.buses",
+                        "{that}.tail"
+                    ]
+                }
+            },
+
+            genFn: "@expand:fluid.getGlobalValue({that}.options.invokers.gen.funcName)"
+        },
+
+        components: {
+            enviro: "{environment}"
+        },
+
+        model: {
+            blockSize: "@expand:flock.synth.calcBlockSize({that}.rate, {enviro}.audioSystem.model)"
+        },
 
         invokers: {
             /**
@@ -12119,7 +12462,7 @@ var fluid = fluid || require("infusion"),
              */
             play: {
                 funcName: "flock.synth.play",
-                args: ["{that}", "{that}.enviro"]
+                args: ["{that}", "{that}.enviro", "{that}.addToEnvironment"]
             },
 
             /**
@@ -12129,128 +12472,178 @@ var fluid = fluid || require("infusion"),
             pause: {
                 funcName: "flock.synth.pause",
                 args: ["{that}", "{that}.enviro"]
+            },
+
+            /**
+             * Sets the value of the ugen at the specified path.
+             *
+             * @param {String} path the ugen's path within the synth graph
+             * @param {Number || UGenDef} val a scalar value (for Value ugens) or a UGenDef object
+             * @param {Boolean} swap ??
+             * @return {UGen} the newly created UGen that was set at the specified path
+             */
+            set: {
+                funcName: "flock.synth.set",
+                args: ["{that}", "{that}.namedNodes", "{arguments}.0", "{arguments}.1", "{arguments}.2"]
+            },
+
+            /**
+             * Gets the value of the ugen at the specified path.
+             *
+             * @param {String} path the ugen's path within the synth graph
+             * @return {Number|UGen} a scalar value in the case of a value ugen, otherwise the ugen itself
+             */
+            get: {
+                funcName: "flock.input.get",
+                args: ["{that}.namedNodes", "{arguments}.0"]
+            },
+
+            /**
+             * Deprecated.
+             *
+             * Gets or sets the value of a ugen at the specified path
+             *
+             * @param {String} path the ugen's path within the synth graph
+             * @param {Number || UGenDef || Array} val an optional value to to set--a scalar value, a UGenDef object, or an array of UGenDefs
+             * @param {Boolean || Object} swap specifies if the existing inputs should be swapped onto the new value
+             * @return {Number || UGenDef || Array} the value that was set or retrieved
+             */
+            input: {
+                funcName: "flock.synth.input",
+                args: [
+                    "{arguments}",
+                    "{that}.get",
+                    "{that}.set"
+                ]
+            },
+
+            /**
+             * Generates one block of audio rate signal by evaluating this synth's unit generator graph.
+             */
+            gen: {
+                funcName: "flock.synth.gen",
+                args: "{that}"
+            },
+
+            /**
+             * Adds the synth to its environment's list of active nodes.
+             *
+             * @param {String || Boolean || Number} position the place to insert the node at;
+             *     if undefined, the synth's addToEnvironment option will be used.
+             */
+            addToEnvironment: {
+                funcName: "flock.synth.addToEnvironment",
+                args: ["{that}", "{arguments}.0", "{that}.options", "{that}.enviro"]
             }
         },
 
         listeners: {
+            onCreate: {
+                funcName: "flock.synth.addToEnvironment",
+                args: ["{that}", undefined, "{that}.options", "{that}.enviro"]
+            },
+
             onDestroy: {
                 "func": "{that}.pause"
             }
         }
     });
 
-    flock.synth.play = function (that, en) {
-        if (en.nodes.indexOf(that) === -1) {
-            en.head(that);
+    flock.synth.calcBlockSize = function (rate, audioSettings) {
+        return rate === flock.rates.AUDIO ? audioSettings.blockSize : 1;
+    };
+
+    flock.synth.parseSynthDef = function (synthDef, rate, audioSettings, buffers, buses, tailFn) {
+        if (!synthDef) {
+            fluid.log(fluid.logLevel.IMPORTANT,
+                "Warning: Instantiating a flock.synth instance with an empty synth def.");
         }
 
-        if (!en.model.isPlaying) {
-            en.play();
+        // At demand or schedule rates, override the rate of all non-constant ugens.
+        var overrideRate = rate === flock.rates.SCHEDULED || rate === flock.rates.DEMAND;
+
+        // Parse the synthDef into a graph of unit generators.
+        return flock.parse.synthDef(synthDef, {
+            rate: rate,
+            overrideRate: overrideRate,
+            visitors: tailFn,
+            buffers: buffers,
+            buses: buses,
+            audioSettings: audioSettings
+        });
+    };
+
+    flock.synth.play = function (synth, enviro, addToEnviroFn) {
+        if (enviro.nodes.indexOf(synth) === -1) {
+            var position = synth.options.addToEnvironment || "tail";
+            addToEnviroFn(position);
+        }
+
+        // TODO: This behaviour is confusing
+        // since calling mySynth.play() will cause
+        // all synths in the environment to be played.
+        // This functionality should be removed.
+        if (!enviro.model.isPlaying) {
+            enviro.play();
         }
     };
 
-    flock.synth.pause = function (that, en) {
-        en.remove(that);
+    flock.synth.pause = function (synth, enviro) {
+        enviro.remove(synth);
     };
 
-    /**
-     * Synths represent a collection of signal-generating units, wired together to form an instrument.
-     * They are created with a synthDef object, a declarative structure describing the synth's unit generator graph.
-     */
-    flock.synth.finalInit = function (that) {
-        that.rate = that.options.rate;
-        that.enviro = that.enviro || flock.enviro.shared;
-        that.audioSettings = $.extend(true, {}, that.enviro.audioSettings, that.options.audioSettings);
-        that.model.blockSize = that.rate === flock.rates.AUDIO ? that.audioSettings.blockSize : 1;
-
-        /**
-         * Generates one block of audio rate signal by evaluating this synth's unit generator graph.
-         */
-        // TODO: This function is marked as unoptimized by the Chrome profiler.
-        that.gen = function () {
-            var m = that.model,
-                nodes = that.nodes,
-                i,
-                node;
-
-            for (i = 0; i < nodes.length; i++) {
-                node = nodes[i];
-                if (node.gen !== undefined) {
-                    node.gen(node.model.blockSize);
-                }
-
-                m.value = node.model.value;
-            }
-        };
-
-        /**
-         * Gets the value of the ugen at the specified path.
-         *
-         * @param {String} path the ugen's path within the synth graph
-         * @return {Number|UGen} a scalar value in the case of a value ugen, otherwise the ugen itself
-         */
-        that.get = function (path) {
-            return flock.input.get(that.namedNodes, path);
-        };
-
-
-        /**
-         * Sets the value of the ugen at the specified path.
-         *
-         * @param {String} path the ugen's path within the synth graph
-         * @param {Number || UGenDef} val a scalar value (for Value ugens) or a UGenDef object
-         * @return {UGen} the newly created UGen that was set at the specified path
-         */
-        that.set = function (path, val, swap) {
-            return flock.input.set(that.namedNodes, path, val, undefined, function (ugenDef, path, target, prev) {
-                return flock.synth.ugenValueParser(that, ugenDef, prev, swap);
-            });
-        };
-
-        /**
-         * Gets or sets the value of a ugen at the specified path
-         *
-         * @param {String} path the ugen's path within the synth graph
-         * @param {Number || UGenDef || Array} val an optional value to to set--a scalar value, a UGenDef object, or an array of UGenDefs
-         * @param {Boolean || Object} swap specifies if the existing inputs should be swapped onto the new value
-         * @return {Number || UGenDef || Array} the value that was set or retrieved
-         */
-        that.input = function (path, val, swap) {
-            return !path ? undefined : typeof path === "string" ?
-                arguments.length < 2 ? that.get(path) : that.set(path, val, swap) :
-                flock.isIterable(path) ? that.get(path) : that.set(path, val, swap);
-        };
-
-        that.init = function () {
-            var o = that.options,
-                // At demand or schedule rates, override the rate of all non-constant ugens.
-                overrideRate = o.rate === flock.rates.SCHEDULED || o.rate === flock.rates.DEMAND;
-
-            if (!o.synthDef) {
-                fluid.log(fluid.logLevel.IMPORTANT,
-                    "Warning: Instantiating a flock.synth instance with an empty synth def.");
-            }
-
-            // Parse the synthDef into a graph of unit generators.
-            that.out = flock.parse.synthDef(o.synthDef, {
-                rate: o.rate,
-                overrideRate: overrideRate,
-                visitors: that.tail,
-                buffers: that.enviro.buffers,
-                buses: that.enviro.buses,
-                audioSettings: that.audioSettings
-            });
-
-            // Add this synth to the tail of the synthesis environment if appropriate.
-            if (o.addToEnvironment !== false) {
-                that.enviro.tail(that);
-            }
-        };
-
-        that.init();
-        return that;
+    flock.synth.set = function (that, namedNodes, path, val, swap) {
+        return flock.input.set(namedNodes, path, val, undefined, function (ugenDef, path, target, prev) {
+            return flock.synth.ugenValueParser(that, ugenDef, prev, swap);
+        });
     };
 
+    flock.synth.gen = function (that) {
+        var nodes = that.nodes,
+            m = that.model,
+            i,
+            node;
+
+        for (i = 0; i < nodes.length; i++) {
+            node = nodes[i];
+            if (node.gen !== undefined) {
+                node.gen(node.model.blockSize); // TODO: De-thatify.
+            }
+
+            m.value = node.model.value;
+        }
+    };
+
+    flock.synth.input = function (args, getFn, setFn) {
+        //path, val, swap
+        var path = args[0];
+
+        return !path ? undefined : typeof path === "string" ?
+            args.length < 2 ? getFn(path) : setFn.apply(null, args) :
+            flock.isIterable(path) ? getFn(path) : setFn.apply(null, args);
+    };
+
+    flock.synth.addToEnvironment = function (synth, position, options, enviro) {
+        if (position === undefined) {
+            position = options.addToEnvironment;
+        }
+
+        // Add this synth to the tail of the synthesis environment if appropriate.
+        if (position === undefined || position === null || position === false) {
+            return;
+        }
+
+        var type = typeof (position);
+        if (type === "string" && position === "head" || position === "tail") {
+            enviro[position](synth);
+        } else if (type === "number") {
+            enviro.insert(position, synth);
+        } else {
+            enviro.tail(synth);
+        }
+    };
+
+    // TODO: Reduce all these dependencies on "that" (i.e. a synth instance).
     flock.synth.ugenValueParser = function (that, ugenDef, prev, swap) {
         if (ugenDef === null || ugenDef === undefined) {
             return prev;
@@ -12288,30 +12681,25 @@ var fluid = fluid || require("infusion"),
         return parsed;
     };
 
-    /**
-     * Makes a new synth.
-     * Deprecated. Use flock.synth instead. This is provided for semi-backwards-compatibility with
-     * previous version of Flocking where flock.synth had a multi-argument signature.
-     */
-    flock.synth.make = function (def, options) {
-        options = options || {};
-        options.synthDef = def;
-        return flock.synth(options);
-    };
 
     fluid.defaults("flock.synth.value", {
         gradeNames: ["flock.synth", "autoInit"],
 
         rate: "demand",
 
-        addToEnvironment: false
+        addToEnvironment: false,
+
+        invokers: {
+            value: {
+                funcName: "flock.synth.value.genValue",
+                args: ["{that}.model", "{that}.gen"]
+            }
+        }
     });
 
-    flock.synth.value.finalInit = function (that) {
-        that.value = function () {
-            that.gen(1);
-            return that.model.value;
-        };
+    flock.synth.value.genValue = function (m, genFn) {
+        genFn(1);
+        return m.value;
     };
 
 
@@ -12330,57 +12718,114 @@ var fluid = fluid || require("infusion"),
     });
 
 
+    // TODO: At the moment, flock.synth.group attempts to act as a proxy for
+    // a collection of synths, allowing users to address it as if it were
+    // a single synth. However, it does nothing to ensure that its contained synths
+    // are managed properly with the environment. There's currently no way to ensure that
+    // when a group is removed from the environment, all its synths are too.
+    // This should be completely refactored in favour of an approach using dynamic components.
     fluid.defaults("flock.synth.group", {
-        gradeNames: ["fluid.eventedComponent", "flock.node", "flock.nodeList", "autoInit"],
-        rate: flock.rates.AUDIO
+        gradeNames: ["flock.synth", "autoInit"],
+
+        members: {
+            out: null,
+        },
+
+        methodEventMap: {
+            "onSet": "set",
+            "onGen": "gen",
+            "onPlay": "play",
+            "onPause": "pause"
+        },
+
+        invokers: {
+            play: "{that}.events.onPlay.fire",
+            pause: "{that}.events.onPause.fire",
+            set: "{that}.events.onSet.fire",
+            get: "flock.synth.group.get({arguments}, {that}.nodes)",
+            input: {
+                funcName: "flock.synth.group.input",
+                args: ["{arguments}", "{that}.get", "{that}.events.onSet.fire"]
+            },
+            gen: {
+                funcName: "flock.synth.group.gen",
+                args: "{that}"
+            }
+        },
+
+        events: {
+            onSet: null,
+            onGen: null,
+            onPlay: null,
+            onPause: null
+        },
+
+        listeners: {
+            onInsert: [
+                {
+                    funcName: "flock.synth.group.bindMethods",
+                    args: [
+                        "{arguments}.0", // The newly added node.
+                        "{that}.options.methodEventMap",
+                        "{that}.events",
+                        "addListener"
+                    ]
+                },
+
+                // Brute force and unreliable way of ensuring that
+                // children of a group don't get directly added to the environment.
+                {
+                    funcName: "flock.synth.pause",
+                    args: ["{arguments}.0", "{that}.enviro"]
+                }
+            ],
+
+            onRemove: {
+                funcName: "flock.synth.group.bindMethods",
+                args: [
+                    "{arguments}.0", // The removed node.
+                    "{that}.options.methodEventMap",
+                    "{that}.events",
+                    "removeListener"
+                ]
+            }
+        }
     });
 
-    flock.synth.group.finalInit = function (that) {
-        that.rate = that.options.rate;
-        that.enviro = that.enviro || flock.enviro.shared;
-
-        flock.synth.group.makeDispatchedMethods(that, [
-            "input", "get", "set", "gen", "play", "pause"
-        ]);
-
-        that.init = function () {
-            if (that.options.addToEnvironment !== false) {
-                that.enviro.tail(that);
-            }
-        };
-
-        that.init();
+    flock.synth.group.gen = function (that) {
+        flock.nodeEvaluator.gen(that.nodes);
     };
 
-    flock.synth.group.makeDispatcher = function (nodes, msg) {
-        return function () {
-            var i,
-                node,
-                val;
-            for (i = 0; i < nodes.length; i++) {
-                node = nodes[i];
-                val = node[msg].apply(node, arguments);
-            }
+    flock.synth.group.get = function (args, nodes) {
+        var tailIdx = nodes.length - 1,
+            tailNode = nodes[tailIdx];
 
-            return val;
-        };
+        return tailNode.get.apply(tailNode, args);
     };
 
-    flock.synth.group.makeDispatchedMethods = function (that, methodNames) {
-        var name,
-            i;
+    flock.synth.group.input = function (args, onGet, onSet) {
+        var evt = args.length > 1 ? onSet : onGet;
+        return evt.apply(null, args);
+    };
 
-        for (i = 0; i < methodNames.length; i++) {
-            name = methodNames[i];
-            that[name] = flock.synth.group.makeDispatcher(that.nodes, name, flock.synth.group.dispatch);
+    flock.synth.group.bindMethods = function (node, methodEventMap, events, eventActionName) {
+        for (var eventName in methodEventMap) {
+            var methodName = methodEventMap[eventName],
+                method = node[methodName],
+                firer = events[eventName],
+                eventAction = firer[eventActionName];
+
+            eventAction(method);
         }
-
-        return that;
     };
-
 
     fluid.defaults("flock.synth.polyphonic", {
         gradeNames: ["flock.synth.group", "autoInit"],
+
+        maxVoices: 16,
+        amplitudeNormalizer: "static", // "dynamic", "static", Function, falsey
+        amplitudeKey: "env.sustain",
+
         noteSpecs: {
             on: {
                 "env.gate": 1
@@ -12389,94 +12834,185 @@ var fluid = fluid || require("infusion"),
                 "env.gate": 0
             }
         },
-        maxVoices: 16,
-        initVoicesLazily: true,
-        amplitudeKey: "env.sustain",
-        amplitudeNormalizer: "static" // "dynamic", "static", Function, falsey
+
+        components: {
+            voiceAllocator: {
+                type: "flock.synth.voiceAllocator.lazy",
+                options: {
+                    // TODO: Replace these with distributeOptions.
+                    synthDef: "{polyphonic}.options.synthDef",
+                    maxVoices: "{polyphonic}.options.maxVoices",
+                    amplitudeNormalizer: "{polyphonic}.options.amplitudeNormalizer",
+                    amplitudeKey: "{polyphonic}.options.amplitudeKey",
+
+                    listeners: {
+                        onCreateVoice: "{polyphonic}.tail({arguments}.0)"
+                    }
+                }
+            }
+        },
+
+        invokers: {
+            noteChange: {
+                funcName: "flock.synth.polyphonic.noteChange",
+                args: [
+                    "{arguments}.0", // The voice synth to change.
+                    "{arguments}.1", // The note event name (i.e. "on" or "off").
+                    "{arguments}.2", // The note change spec to apply.
+                    "{that}.options.noteSpecs"
+                ]
+            },
+
+            noteOn: {
+                funcName: "flock.synth.polyphonic.noteOn",
+                args: [
+                    "{arguments}.0", // Note name.
+                    "{arguments}.1", // Optional changeSpec
+                    "{voiceAllocator}",
+                    "{that}.noteOff",
+                    "{that}.noteChange"
+                ]
+            },
+
+            noteOff: {
+                funcName: "flock.synth.polyphonic.noteOff",
+                args: [
+                    "{arguments}.0", // Note name.
+                    "{arguments}.1", // Optional changeSpec
+                    "{voiceAllocator}",
+                    "{that}.noteChange"
+                ]
+            },
+
+            createVoice: {
+                funcName: "flock.synth.polyphonic.createVoice",
+                args: ["{that}.options", "{that}.insert"]
+            }
+        }
     });
 
-    flock.synth.polyphonic.finalInit = function (that) {
-        that.activeVoices = {};
-        that.freeVoices = [];
-
-        that.noteChange = function (voice, eventName, changeSpec) {
-            var noteEventSpec = that.options.noteSpecs[eventName];
-            changeSpec = $.extend({}, noteEventSpec, changeSpec);
-            voice.input(changeSpec);
-        };
-
-        that.noteOn = function (noteName, changeSpec) {
-            var voice = that.nextFreeVoice();
-            if (that.activeVoices[noteName]) {
-                that.noteOff(noteName);
-            }
-            that.activeVoices[noteName] = voice;
-            that.noteChange(voice, "on", changeSpec);
-
-            return voice;
-        };
-
-        that.noteOff = function (noteName, changeSpec) {
-            var voice = that.activeVoices[noteName];
-            if (!voice) {
-                return null;
-            }
-            that.noteChange(voice, "off", changeSpec);
-            delete that.activeVoices[noteName];
-            that.freeVoices.push(voice);
-
-            return voice;
-        };
-
-        that.createVoice = function () {
-            var voice = flock.synth({
-                synthDef: that.options.synthDef,
-                addToEnvironment: false
-            });
-
-            var normalizer = that.options.amplitudeNormalizer,
-                ampKey = that.options.amplitudeKey,
-                normValue;
-
-            if (normalizer) {
-                if (typeof normalizer === "function") {
-                    normalizer(voice, ampKey);
-                } else if (normalizer === "static") {
-                    normValue = 1.0 / that.options.maxVoices;
-                    voice.input(ampKey, normValue);
-                }
-                // TODO: Implement dynamic voice normalization.
-            }
-            that.nodes.push(voice);
-
-            return voice;
-        };
-
-        that.pooledVoiceAllocator = function () {
-            return that.freeVoices.pop();
-        };
-
-        that.lazyVoiceAllocator = function () {
-            return that.freeVoices.length > 1 ?
-                that.freeVoices.pop() : Object.keys(that.activeVoices).length > that.options.maxVoices ?
-                null : that.createVoice();
-        };
-
-        that.init = function () {
-            if (!that.options.initVoicesLazily) {
-                var i;
-                for (i = 0; i < that.options.maxVoices; i++) {
-                    that.freeVoices[i] = that.createVoice();
-                }
-                that.nextFreeVoice = that.pooledVoiceAllocator;
-            } else {
-                that.nextFreeVoice = that.lazyVoiceAllocator;
-            }
-        };
-
-        that.init();
-        return that;
+    flock.synth.polyphonic.noteChange = function (voice, eventName, changeSpec, noteSpecs) {
+        var noteEventSpec = noteSpecs[eventName];
+        changeSpec = $.extend({}, noteEventSpec, changeSpec);
+        voice.input(changeSpec);
     };
+
+    flock.synth.polyphonic.noteOn = function (noteName, changeSpec, voiceAllocator, noteOff, noteChange) {
+        var voice = voiceAllocator.getFreeVoice();
+        if (voiceAllocator.activeVoices[noteName]) {
+            noteOff(noteName);
+        }
+        voiceAllocator.activeVoices[noteName] = voice;
+        noteChange(voice, "on", changeSpec);
+
+        return voice;
+    };
+
+    flock.synth.polyphonic.noteOff = function (noteName, changeSpec, voiceAllocator, noteChange) {
+        var voice = voiceAllocator.activeVoices[noteName];
+        if (!voice) {
+            return null;
+        }
+        noteChange(voice, "off", changeSpec);
+        delete voiceAllocator.activeVoices[noteName];
+        voiceAllocator.freeVoices.push(voice);
+
+        return voice;
+    };
+
+    fluid.defaults("flock.synth.voiceAllocator", {
+        gradeNames: ["fluid.standardComponent", "autoInit"],
+
+        maxVoices: 16,
+        amplitudeNormalizer: "static", // "dynamic", "static", Function, falsey
+        amplitudeKey: "env.sustain",
+
+        members: {
+            activeVoices: {},
+            freeVoices: []
+        },
+
+        invokers: {
+            createVoice: {
+                funcName: "flock.synth.voiceAllocator.createVoice",
+                args: ["{that}.options", "{that}.events.onCreateVoice.fire"]
+            }
+        },
+
+        events: {
+            onCreateVoice: null
+        }
+    });
+
+
+    flock.synth.voiceAllocator.createVoice = function (options, onCreateVoice) {
+        var voice = flock.synth({
+            synthDef: options.synthDef,
+            addToEnvironment: false
+        });
+
+        var normalizer = options.amplitudeNormalizer,
+            ampKey = options.amplitudeKey,
+            normValue;
+
+        if (normalizer) {
+            if (typeof normalizer === "function") {
+                normalizer(voice, ampKey);
+            } else if (normalizer === "static") {
+                normValue = 1.0 / options.maxVoices;
+                voice.input(ampKey, normValue);
+            }
+            // TODO: Implement dynamic voice normalization.
+        }
+
+        onCreateVoice(voice);
+
+        return voice;
+    };
+
+    fluid.defaults("flock.synth.voiceAllocator.lazy", {
+        gradeNames: ["flock.synth.voiceAllocator", "autoInit"],
+
+        invokers: {
+            getFreeVoice: {
+                funcName: "flock.synth.voiceAllocator.lazy.get",
+                args: [
+                    "{that}.freeVoices",
+                    "{that}.activeVoices",
+                    "{that}.createVoice",
+                    "{that}.options.maxVoices"
+                ]
+            }
+        }
+    });
+
+    flock.synth.voiceAllocator.lazy.get = function (freeVoices, activeVoices, createVoiceFn, maxVoices) {
+        return freeVoices.length > 1 ?
+            freeVoices.pop() : Object.keys(activeVoices).length > maxVoices ?
+            null : createVoiceFn();
+    };
+
+    fluid.defaults("flock.synth.voiceAllocator.pool", {
+        gradeNames: ["flock.synth.voiceAllocator", "autoInit"],
+
+        invokers: {
+            getFreeVoice: "flock.synth.voiceAllocator.pool.get({that}.freeVoices)"
+        }
+    });
+
+    flock.synth.voiceAllocator.pool.get = function (freeVoices) {
+        if (freeVoices.length > 0) {
+            return freeVoices.pop();
+        }
+    };
+
+    flock.synth.voiceAllocator.pool.allocateVoices = function (freeVoices, createVoiceFn, maxVoices) {
+        for (var i = 0; i < maxVoices; i++) {
+            freeVoices[i] = createVoiceFn();
+        }
+
+    };
+
 
     /**
      * flock.band provides an IoC-friendly interface for a collection of named synths.
@@ -12505,10 +13041,23 @@ var fluid = fluid || require("infusion"),
             onSet: null
         },
 
-        distributeOptions: {
-            source: "{that}.options.synthListeners",
-            removeSource: true,
-            target: "{that flock.synth}.options.listeners"
+        distributeOptions: [
+            {
+                source: "{that}.options.childListeners",
+                removeSource: true,
+                target: "{that fluid.eventedComponent}.options.listeners"
+            },
+            {
+                source: "{that}.options.synthListeners",
+                removeSource: true,
+                target: "{that flock.synth}.options.listeners"
+            }
+        ],
+
+        childListeners: {
+            "{band}.events.onDestroy": {
+                func: "{that}.destroy"
+            }
         },
 
         synthListeners: {
@@ -12518,6 +13067,10 @@ var fluid = fluid || require("infusion"),
 
             "{band}.events.onPause": {
                 func: "{that}.pause"
+            },
+
+            "{band}.events.onSet": {
+                func: "{that}.set"
             }
         }
     });
@@ -12651,47 +13204,60 @@ var fluid = fluid || require("infusion"),
 
     // TODO: This is actually part of the interpreter's expansion process
     // and should be clearly named as such.
-    flock.bufferDesc = function (data) {
+    flock.bufferDesc = function (data, sampleRate, numChannels) {
         var fn = flock.platform.isWebAudio && data instanceof AudioBuffer ?
             flock.bufferDesc.fromAudioBuffer : flock.isIterable(data) ?
             flock.bufferDesc.fromChannelArray : flock.bufferDesc.expand;
 
-        return fn(data);
+        return fn(data, sampleRate, numChannels);
     };
 
-    flock.bufferDesc.inferFormat = function (bufDesc) {
+    flock.bufferDesc.inferFormat = function (bufDesc, sampleRate, numChannels) {
         var format = bufDesc.format,
             data = bufDesc.data;
 
-        format.sampleRate = format.sampleRate || 44100;
-        format.numSampleFrames = format.numSampleFrames || data.channels[0].length;
+        format.sampleRate = sampleRate || format.sampleRate || 44100;
+        format.numChannels = numChannels || format.numChannels || bufDesc.data.channels.length;
+        format.numSampleFrames = format.numSampleFrames ||
+            data.channels.length > 0 ? data.channels[0].length : 0;
         format.duration = format.numSampleFrames / format.sampleRate;
 
         return bufDesc;
     };
 
-    flock.bufferDesc.fromChannelArray = function (arr, sampleRate) {
+    flock.bufferDesc.fromChannelArray = function (arr, sampleRate, numChannels) {
+        if (arr instanceof Float32Array) {
+            arr = [arr];
+        }
+
         var bufDesc = {
             container: {},
 
             format: {
-                numChannels: 1,
-                sampleRate: sampleRate
+                numChannels: numChannels,
+                sampleRate: sampleRate,
+                numSampleFrames: arr[0].length
             },
 
             data: {
-                channels: [arr]
+                channels: arr
             }
         };
 
-        return flock.bufferDesc.inferFormat(bufDesc);
+        return flock.bufferDesc.inferFormat(bufDesc, sampleRate, numChannels);
     };
 
-    flock.bufferDesc.expand = function (bufDesc) {
+    flock.bufferDesc.expand = function (bufDesc, sampleRate, numChannels) {
+        bufDesc = bufDesc || {
+            data: {
+                channels: []
+            }
+        };
+
         bufDesc.container = bufDesc.container || {};
         bufDesc.format = bufDesc.format || {};
-
-        bufDesc.format.numChannels = bufDesc.format.numChannels || bufDesc.data.channels.length;
+        bufDesc.format.numChannels = numChannels ||
+            bufDesc.format.numChannels || bufDesc.data.channels.length; // TODO: Duplication with inferFormat.
 
         if (bufDesc.data && bufDesc.data.channels) {
             // Special case for an unwrapped single-channel array.
@@ -12707,7 +13273,7 @@ var fluid = fluid || require("infusion"),
             }
         }
 
-        return flock.bufferDesc.inferFormat(bufDesc);
+        return flock.bufferDesc.inferFormat(bufDesc, sampleRate, numChannels);
     };
 
     flock.bufferDesc.fromAudioBuffer = function (audioBuffer) {
@@ -12737,7 +13303,7 @@ var fluid = fluid || require("infusion"),
      * Represents a source for fetching buffers.
      */
     fluid.defaults("flock.bufferSource", {
-        gradeNames: ["fluid.eventedComponent", "fluid.modelComponent", "autoInit"],
+        gradeNames: ["fluid.standardComponent", "autoInit"],
 
         model: {
             state: "start",
@@ -12803,11 +13369,7 @@ var fluid = fluid || require("infusion"),
                 }
             ],
 
-            onBufferUpdated: {
-                // TODO: Hardcoded reference to shared environment.
-                funcName: "flock.enviro.shared.registerBuffer",
-                args: ["{arguments}.0"]
-            },
+            onBufferUpdated: "{environment}.registerBuffer({arguments}.0)",
 
             onError: {
                 funcName: "{that}.applier.requestChange",
@@ -12952,7 +13514,7 @@ var fluid = fluid || require("infusion"),
             }
 
             // TODO: Hardcoded reference to the shared environment.
-            flock.parse.bufferForDef(bufferDefs[i], bufferTarget, flock.enviro.shared);
+            flock.parse.bufferForDef(bufferDefs[i], bufferTarget, flock.environment);
         }
     };
 
@@ -12989,19 +13551,7 @@ var fluid = fluid || require("infusion"),
 
         if (!flock.parse.synthDef.hasOutUGen(ugenDef)) {
             // We didn't get an out ugen specified, so we need to make one.
-            ugenDef = {
-                id: flock.OUT_UGEN_ID,
-                ugen: "flock.ugen.valueOut",
-                inputs: {
-                    sources: ugenDef
-                }
-            };
-
-            if (options.rate === flock.rates.AUDIO) {
-                ugenDef.ugen = "flock.ugen.out";
-                ugenDef.inputs.bus = 0;
-                ugenDef.inputs.expand = options.audioSettings.chans;
-            }
+            ugenDef = flock.parse.synthDef.makeOutUGen(ugenDef, options);
         }
 
         return flock.parse.ugenForDef(ugenDef, options);
@@ -13014,6 +13564,24 @@ var fluid = fluid || require("infusion"),
             synthDef.ugen === "flock.ugen.out" ||
             synthDef.ugen === "flock.ugen.valueOut"
         );
+    };
+
+    flock.parse.synthDef.makeOutUGen = function (ugenDef, options) {
+        ugenDef = {
+            id: flock.OUT_UGEN_ID,
+            ugen: "flock.ugen.valueOut",
+            inputs: {
+                sources: ugenDef
+            }
+        };
+
+        if (options.rate === flock.rates.AUDIO) {
+            ugenDef.ugen = "flock.ugen.out";
+            ugenDef.inputs.bus = 0;
+            ugenDef.inputs.expand = options.audioSettings.chans;
+        }
+
+        return ugenDef;
     };
 
     flock.parse.makeUGen = function (ugenDef, parsedInputs, options) {
@@ -13043,8 +13611,8 @@ var fluid = fluid || require("infusion"),
             }
         });
         // TODO: When we switch to Infusion options merging, these should have a mergePolicy of preserve.
-        ugenDef.options.audioSettings.buffers = options.buffers;
-        ugenDef.options.audioSettings.buses = options.buses;
+        ugenDef.options.buffers = options.buffers;
+        ugenDef.options.buses = options.buses;
 
         var outputBufferSize = ugenDef.rate === flock.rates.AUDIO ? blockSize : 1,
             outputBuffers;
@@ -13069,9 +13637,13 @@ var fluid = fluid || require("infusion"),
 
 
     flock.parse.reservedWords = ["id", "ugen", "rate", "inputs", "options"];
-    flock.parse.specialInputs = ["value", "buffer", "list", "table", "envelope"];
+    flock.parse.specialInputs = ["value", "buffer", "list", "table", "envelope", "durations", "values"];
 
-    flock.parse.expandUGenDef = function (ugenDef) {
+    flock.parse.expandInputs = function (ugenDef) {
+        if (ugenDef.inputs) {
+            return ugenDef;
+        }
+
         var inputs = {},
             prop;
 
@@ -13177,9 +13749,9 @@ var fluid = fluid || require("infusion"),
      */
     flock.parse.ugenForDef = function (ugenDef, options) {
         options = $.extend(true, {
-            audioSettings: flock.enviro.shared.options.audioSettings,
-            buses: flock.enviro.shared.buses,
-            buffers: flock.enviro.shared.buffers
+            audioSettings: flock.environment.audioSystem.model,
+            buses: flock.environment.buses,
+            buffers: flock.environment.buffers
         }, options);
 
         var o = options,
@@ -13194,9 +13766,7 @@ var fluid = fluid || require("infusion"),
             return flock.parse.ugensForDefs(ugenDef, options);
         }
 
-        if (!ugenDef.inputs) {
-            ugenDef = flock.parse.expandUGenDef(ugenDef);
-        }
+        ugenDef = flock.parse.expandInputs(ugenDef);
 
         flock.parse.expandRate(ugenDef, options);
         ugenDef = flock.parse.ugenDef.mergeOptions(ugenDef, options);
@@ -13544,7 +14114,7 @@ var fluid = fluid || require("infusion"),
                 success: success,
                 error: options.error,
                 sampleRate: options.sampleRate ||
-                    (flock.enviro.shared ? flock.enviro.shared.audioSettings.rates.audio : undefined)
+                    (flock.environment ? flock.environment.audioSystem.model.rates.audio : undefined)
             });
         };
 
@@ -13557,7 +14127,7 @@ var fluid = fluid || require("infusion"),
      * the browser's Web Audio Context.
      */
     flock.audio.decode.webAudio = function (o) {
-        var ctx = flock.enviro.shared.audioStrategy.context,
+        var ctx = flock.environment.audioSystem.context,
             success = function (audioBuffer) {
                 var bufDesc = flock.bufferDesc.fromAudioBuffer(audioBuffer);
                 o.success(bufDesc);
@@ -13589,7 +14159,253 @@ var fluid = fluid || require("infusion"),
 
         flock.audio.decoderStrategies[type] = strategy;
     };
+}());
+;/*
+ * Flocking Audio Encoders
+ * http://github.com/colinbdclark/flocking
+ *
+ * Copyright 2015, Colin Clark
+ * Dual licensed under the MIT and GPL Version 2 licenses.
+ */
 
+/*global require, ArrayBuffer, Uint8Array */
+/*jshint white: false, newcap: true, regexp: true, browser: true,
+forin: false, nomen: true, bitwise: false, maxerr: 100,
+indent: 4, plusplus: false, curly: true, eqeqeq: true,
+freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
+unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
+funcscope: false*/
+
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
+
+(function () {
+
+    "use strict";
+
+    fluid.registerNamespace("flock.audio.encode");
+
+    flock.audio.interleave = function (bufDesc) {
+        var numFrames = bufDesc.format.numSampleFrames,
+            chans = bufDesc.data.channels,
+            numChans = bufDesc.format.numChannels,
+            numSamps = numFrames * numChans,
+            out = new Float32Array(numSamps),
+            outIdx = 0,
+            frame,
+            chan;
+
+        for (frame = 0; frame < numFrames; frame++) {
+            for (chan = 0; chan < numChans; chan++) {
+                out[outIdx] = chans[chan][frame];
+                outIdx++;
+            }
+        }
+
+        return out;
+    };
+
+    flock.audio.encode = function (bufDesc, type, format) {
+        type = type || "wav";
+        if (type.toLowerCase() !== "wav") {
+            flock.fail("Flocking currently only supports encoding WAVE files.");
+        }
+
+        return flock.audio.encode.wav(bufDesc, format);
+    };
+
+    flock.audio.encode.writeFloat32Array = function (offset, dv, buf) {
+        for (var i = 0; i < buf.length; i++) {
+            dv.setFloat32(offset, buf[i], true);
+            offset += 4;
+        }
+
+        return dv;
+    };
+
+    flock.audio.encode.setString = function (dv, offset, str){
+        for (var i = 0; i < str.length; i++){
+            dv.setUint8(offset + i, str.charCodeAt(i));
+        }
+    };
+
+    flock.audio.encode.setBytes = function (dv, offset, bytes) {
+        for (var i = 0; i < bytes.length; i++) {
+            dv.setUint8(offset + i, bytes[i]);
+        }
+    };
+
+
+    flock.audio.encode.writeAsPCM = function (formatSpec, offset, dv, buf) {
+        if (formatSpec.setter === "setFloat32" && buf instanceof Float32Array) {
+            return flock.audio.encode.writeFloat32Array(offset, dv, buf);
+        }
+
+        for (var i = 0; i < buf.length; i++) {
+            // Clamp to within bounds.
+            var s = Math.min(1.0, buf[i]);
+            s = Math.max(-1.0, s);
+
+            // Scale to the otuput number format.
+            s = s < 0 ? s * formatSpec.scaleNeg : s * formatSpec.scalePos;
+
+            // Write the sample to the DataView.
+            dv[formatSpec.setter](offset, s, true);
+            offset += formatSpec.width;
+        }
+
+        return dv;
+    };
+
+    flock.audio.pcm = {
+        int16: {
+            scalePos: 32767,
+            scaleNeg: 32768,
+            setter: "setInt16",
+            width: 2
+        },
+
+        int32: {
+            scalePos: 2147483647,
+            scaleNeg: 2147483648,
+            setter: "setInt32",
+            width: 4
+        },
+
+        float32: {
+            scalePos: 1,
+            scaleNeg: 1,
+            setter: "setFloat32",
+            width: 4
+        }
+    };
+
+    flock.audio.encode.wav = function (bufDesc, format) {
+        format = format || flock.audio.pcm.int16;
+
+        var formatSpec = typeof format === "string" ? flock.audio.pcm[format] : format;
+        if (!formatSpec) {
+            flock.fail("Flocking does not support encoding " + format + " format PCM wave files.");
+        }
+
+        var interleaved = flock.audio.interleave(bufDesc),
+            numChans = bufDesc.format.numChannels,
+            sampleRate = bufDesc.format.sampleRate,
+            isPCM = formatSpec.setter !== "setFloat32",
+            riffHeaderSize = 8,
+            formatHeaderSize = 12,
+            formatBodySize = 16,
+            formatTag = 1,
+            dataHeaderSize = 8,
+            dataBodySize = interleaved.length * formatSpec.width,
+            dataChunkSize = dataHeaderSize + dataBodySize,
+            bitsPerSample = 8 * formatSpec.width;
+
+        if (numChans > 2 || !isPCM) {
+            var factHeaderSize = 8,
+                factBodySize = 4,
+                factChunkSize = factHeaderSize + factBodySize;
+
+            formatBodySize += factChunkSize;
+
+            if (numChans > 2) {
+                formatBodySize += 24;
+                formatTag = 0xFFFE; // Extensible.
+            } else {
+                formatBodySize += 2;
+                formatTag = 3; // Two-channel IEEE float.
+            }
+        }
+
+        var formatChunkSize = formatHeaderSize + formatBodySize,
+            riffBodySize = formatChunkSize + dataChunkSize,
+            numBytes = riffHeaderSize + riffBodySize,
+            out = new ArrayBuffer(numBytes),
+            dv = new DataView(out);
+
+        // RIFF chunk header.
+        flock.audio.encode.setString(dv, 0, "RIFF"); // ckID
+        dv.setUint32(4, riffBodySize, true); // cksize
+
+        // Format Header
+        flock.audio.encode.setString(dv, 8, "WAVE"); // WAVEID
+        flock.audio.encode.setString(dv, 12, "fmt "); // ckID
+        dv.setUint32(16, formatBodySize, true); // cksize, length of the format chunk.
+
+        // Format Body
+        dv.setUint16(20, formatTag, true); // wFormatTag
+        dv.setUint16(22, numChans, true); // nChannels
+        dv.setUint32(24, sampleRate, true); // nSamplesPerSec
+        dv.setUint32(28, sampleRate * 4, true); // nAvgBytesPerSec (sample rate * block align)
+        dv.setUint16(32, numChans * formatSpec.width, true); //nBlockAlign (channel count * bytes per sample)
+        dv.setUint16(34, bitsPerSample, true); // wBitsPerSample
+
+        var offset = 36;
+        if (formatTag === 3) {
+            // IEEE Float. Write out a fact chunk.
+            dv.setUint16(offset, 0, true); // cbSize: size of the extension
+            offset += 2;
+            offset = flock.audio.encode.wav.writeFactChunk(dv, offset, bufDesc.format.numSampleFrames);
+        } else if (formatTag === 0xFFFE) {
+            // Extensible format (i.e. > 2 channels).
+            // Write out additional format fields and fact chunk.
+            dv.setUint16(offset, 22, true); // cbSize: size of the extension
+            offset += 2;
+
+            // Additional format fields.
+            offset = flock.audio.encode.wav.additionalFormat(offset, dv, bitsPerSample, isPCM);
+
+            // Fact chunk.
+            offset = flock.audio.encode.wav.writeFactChunk(dv, offset, bufDesc.format.numSampleFrames);
+        }
+
+        flock.audio.encode.wav.writeDataChunk(formatSpec, offset, dv, interleaved, dataBodySize);
+
+        return dv.buffer;
+    };
+
+    flock.audio.encode.wav.subformats = {
+        pcm: new Uint8Array([1, 0, 0, 0, 0, 0, 16, 0, 128, 0, 0, 170, 0, 56, 155, 113]),
+        float: new Uint8Array([3, 0, 0, 0, 0, 0, 16, 0, 128, 0, 0, 170, 0, 56, 155, 113])
+    };
+
+    flock.audio.encode.wav.additionalFormat = function (offset, dv, bitsPerSample, isPCM) {
+        dv.setUint16(offset, bitsPerSample, true); // wValidBitsPerSample
+        offset += 2;
+
+        dv.setUint32(offset, 0x80000000, true); // dwChannelMask, hardcoded to SPEAKER_RESERVED
+        offset += 4;
+
+        // Subformat GUID.
+        var subformat = flock.audio.encode.wav.subformats[isPCM ? "pcm" : "float"];
+        flock.audio.encode.setBytes(dv, offset, subformat);
+        offset += 16;
+
+        return offset;
+    };
+
+    flock.audio.encode.wav.writeFactChunk = function (dv, offset, numSampleFrames) {
+        flock.audio.encode.setString(dv, offset, "fact"); // ckID
+        offset += 4;
+
+        dv.setUint32(offset, 4, true); //cksize
+        offset += 4;
+
+        dv.setUint32(offset, numSampleFrames, true); // dwSampleLength
+        offset += 4;
+
+        return offset;
+    };
+
+    flock.audio.encode.wav.writeDataChunk = function (formatSpec, offset, dv, interleaved, numSampleBytes) {
+        // Data chunk Header
+        flock.audio.encode.setString(dv, offset, "data");
+        offset += 4;
+        dv.setUint32(offset, numSampleBytes, true); // Length of the datahunk.
+        offset += 4;
+
+        flock.audio.encode.writeAsPCM(formatSpec, offset, dv, interleaved);
+    };
 }());
 ;/*
 * Flocking Scheduler
@@ -13647,142 +14463,219 @@ var fluid = fluid || require("infusion"),
     /**********
      * Clocks *
      **********/
-
-    fluid.defaults("flock.scheduler.intervalClock", {
+    fluid.defaults("flock.scheduler.clock", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
+
         events: {
             tick: null
         }
     });
 
-    flock.scheduler.intervalClock.finalInit = function (that) {
-        that.scheduled = {};
+    fluid.defaults("flock.scheduler.intervalClock", {
+        gradeNames: ["flock.scheduler.clock", "autoInit"],
 
-        that.schedule = function (interval) {
-            var id = setInterval(function () {
-                that.events.tick.fire(interval);
-            }, interval);
-            that.scheduled[interval] = id;
-        };
+        members: {
+            scheduled: {}
+        },
 
-        that.clear = function (interval) {
-            var id = that.scheduled[interval];
-            clearInterval(id);
-            delete that.scheduled[interval];
-        };
+        invokers: {
+            schedule: {
+                funcName: "flock.scheduler.intervalClock.schedule",
+                args: [
+                    "{arguments}.0", // The inverval to clear.
+                    "{that}.scheduled",
+                    "{that}.events.tick.fire",
+                    "{that}.events.onClear.fire"
+                ]
+            },
 
-        that.clearAll = function () {
-            for (var interval in that.scheduled) {
-                that.clear(interval);
-            }
-        };
+            clear: {
+                funcName: "flock.scheduler.intervalClock.clear",
+                args:[
+                    "{arguments}.0", // The inverval to clear.
+                    "{that}.scheduled",
+                    "{that}.events.onClear.fire"
+                ]
+            },
 
-        that.end = that.clearAll;
+            clearAll: {
+                funcName: "flock.scheduler.intervalClock.clearAll",
+                args: ["{that}.scheduled", "{that}.events.onClear.fire"]
+            },
+
+            end: "{that}.clearAll"
+        }
+    });
+
+    flock.scheduler.intervalClock.schedule = function (interval, scheduled, onTick) {
+        var id = setInterval(function () {
+            onTick(interval);
+        }, interval);
+        scheduled[interval] = id;
+    };
+
+    flock.scheduler.intervalClock.clear = function (interval, scheduled) {
+        var id = scheduled[interval];
+        clearInterval(id);
+        delete scheduled[interval];
+    };
+
+    flock.scheduler.intervalClock.clearAll = function (scheduled, onClear) {
+        for (var interval in scheduled) {
+            flock.scheduler.intervalClock.clear(interval, scheduled, onClear);
+        }
     };
 
 
     fluid.defaults("flock.scheduler.scheduleClock", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
-        events: {
-            tick: null
+        gradeNames: ["flock.scheduler.clock", "autoInit"],
+
+        members: {
+            scheduled: []
+        },
+
+        invokers: {
+            schedule: {
+                funcName: "flock.scheduler.scheduleClock.schedule",
+                args: [
+                    "{arguments}.0",
+                    "{that}.scheduled",
+                    "{that}.events"
+                ]
+            },
+
+            clear: {
+                funcName: "flock.scheduler.scheduleClock.clear",
+                args: [
+                    "{arguments}.0",
+                    "{arguments}.1",
+                    "{that}.scheduled",
+                    "{that}.events.onClear.fire"
+                ]
+            },
+
+            clearAll: {
+                funcName: "flock.scheduler.scheduleClock.clearAll",
+                args: [
+                    "{that}.scheduled",
+                    "{that}.events.onClear.fire"
+                ]
+            },
+
+            end: "{that}.clearAll"
         }
     });
 
-    flock.scheduler.scheduleClock.finalInit = function (that) {
-        that.scheduled = [];
-
-        that.schedule = function (timeFromNow) {
-            var id;
-            id = setTimeout(function () {
-                that.clear(id);
-                that.events.tick.fire(timeFromNow);
-            }, timeFromNow);
-            that.scheduled.push(id);
-        };
-
-        that.clear = function (id, idx) {
-            idx = idx === undefined ? that.scheduled.indexOf(id) : idx;
-            if (idx > -1) {
-                that.scheduled.splice(idx, 1);
-            }
+    flock.scheduler.scheduleClock.schedule = function (timeFromNow, scheduled, events) {
+        var id;
+        id = setTimeout(function () {
             clearTimeout(id);
-        };
+            events.tick.fire(timeFromNow);
+        }, timeFromNow);
 
-        that.clearAll = function () {
-            for (var i = 0; i < that.scheduled.length; i++) {
-                var id = that.scheduled[i];
-                clearTimeout(id);
-            }
-            that.scheduled.length = 0;
-        };
+        scheduled.push(id);
+    };
 
-        that.end = that.clearAll;
+    flock.scheduler.scheduleClock.clear = function (id, idx, scheduled) {
+        idx = idx === undefined ? scheduled.indexOf(id) : idx;
+        if (idx > -1) {
+            scheduled.splice(idx, 1);
+            clearTimeout(id);
+        }
+    };
+
+    flock.scheduler.scheduleClock.clearAll = function (scheduled) {
+        for (var i = 0; i < scheduled.length; i++) {
+            var id = scheduled[i];
+            clearTimeout(id);
+        }
+
+        scheduled.length = 0;
     };
 
 
     fluid.defaults("flock.scheduler.webWorkerClock", {
-        gradeNames: ["fluid.modelComponent", "fluid.eventedComponent", "autoInit"],
-        model: {
-            messages: {
-                schedule: {
-                    msg: "schedule"
-                },
-                clear: {
-                    msg: "clear"
-                },
-                clearAll: {
-                    msg: "clearAll"
-                },
-                end: {
-                    msg: "end"
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        members: {
+            worker: {
+                expander: {
+                    funcName: "flock.worker",
+                    args: "@expand:fluid.getGlobalValue(flock.scheduler.webWorkerClock.workerImpl)"
                 }
             }
         },
+
+        invokers: {
+            postToWorker: {
+                funcName: "flock.scheduler.webWorkerClock.postToWorker",
+                args: [
+                    "{arguments}.0", // Message name.
+                    "{arguments}.1", // Value.
+                    "{that}.options.messages",
+                    "{that}.worker"
+                ]
+            },
+
+            schedule: "{that}.postToWorker(schedule, {arguments}.0)",
+
+            clear: "{that}.postToWorker(clear, {arguments}.0)",
+
+            clearAll: "{that}.postToWorker(clearAll)",
+
+            end: "{that}.postToWorker(end)"
+        },
+
         events: {
             tick: null
         },
-        clockType: "intervalClock"
+
+        listeners: {
+            onCreate: {
+                funcName: "flock.scheduler.webWorkerClock.init",
+                args: ["{that}"]
+            }
+        },
+
+        startMsg: {
+            msg: "start",
+            value: "{that}.options.clockType"
+        },
+
+        messages: {
+            schedule: {
+                msg: "schedule"
+            },
+
+            clear: {
+                msg: "clear"
+            },
+
+            clearAll: {
+                msg: "clearAll"
+            },
+
+            end: {
+                msg: "end"
+            }
+        }
     });
 
-    flock.scheduler.webWorkerClock.finalInit = function (that) {
-        that.worker = new flock.worker(flock.scheduler.webWorkerClock.workerImpl);
-
-        // Start the worker-side clock.
-        that.worker.postMessage({
-            msg: "start",
-            value: that.options.clockType
-        });
-
-        // Listen for tick messages from the worker and fire accordingly.
+    flock.scheduler.webWorkerClock.init = function (that) {
         that.worker.addEventListener("message", function (e) {
             that.events.tick.fire(e.data.value);
         }, false);
 
-        that.postToWorker = function (msgName, value) {
-            var msg = that.model.messages[msgName];
-            if (value !== undefined) {
-                msg.value = value;
-            }
-            that.worker.postMessage(msg);
-        };
-
-        that.schedule = function (time) {
-            that.postToWorker("schedule", time);
-        };
-
-        that.clear = function (time) {
-            that.postToWorker("clear", time);
-        };
-
-        that.clearAll = function () {
-            that.postToWorker("clearAll");
-        };
-
-        that.end = function () {
-            that.postToWorker("end");
-        };
+        that.worker.postMessage(that.options.startMsg);
     };
 
+    flock.scheduler.webWorkerClock.postToWorker = function (msgName, value, messages, worker) {
+        var msg = messages[msgName];
+        if (value !== undefined) {
+            msg.value = value;
+        }
+        worker.postMessage(msg);
+    };
 
     // This code is only intended to run from within a Worker, via flock.worker.
     flock.scheduler.webWorkerClock.workerImpl = function () {
@@ -13897,190 +14790,467 @@ var fluid = fluid || require("infusion"),
      * Schedulers *
      **************/
 
-    flock.scheduler.makeOneShotValueListener = function (value, fn, removeFn) {
-        var listener = function (time) {
-            if (time === value) {
-                fn(time);
-                removeFn(listener);
-            }
-        };
+    fluid.defaults("flock.scheduler", {
+        gradeNames: ["fluid.standardComponent", "autoInit"],
+
+        events: {
+            onScheduled: null,
+            onFinished: null,
+            onClearAll: null
+        },
+
+        listeners: {
+            onClearAll: [
+                "{that}.clock.clearAll()"
+            ]
+        }
+    });
+
+    flock.scheduler.addListener = function (listener, listeners, onAdded) {
+        listeners.push(listener);
+        onAdded(listener);
 
         return listener;
     };
 
-    flock.scheduler.makeRepeatingValueListener = function (value, fn) {
-        return function (time) {
-            if (time === value) {
-                fn(time);
-            }
-        };
+    flock.scheduler.removeListener = function (listener, listeners, onRemoved) {
+        if (!listener) {
+            return;
+        }
+
+        var idx = listeners.indexOf(listener);
+        if (idx > -1) {
+            listeners.splice(idx, 1);
+            onRemoved(listener);
+        } else if (listener.wrappedListener) {
+            flock.scheduler.removeListener(listener.wrappedListener, listeners, onRemoved);
+        }
     };
 
+    fluid.defaults("flock.scheduler.repeat", {
+        gradeNames: ["flock.scheduler", "autoInit"],
 
-    fluid.defaults("flock.scheduler.async", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        members: {
+            listeners: {}
+        },
+
         components: {
-            timeConverter: {
-                type: "flock.convert.seconds"
-            },
-            intervalClock: {
+            clock: {
                 type: "flock.scheduler.webWorkerIntervalClock"
+            }
+        },
+
+        invokers: {
+            schedule: {
+                funcName: "flock.scheduler.repeat.schedule",
+                args: [
+                    "{arguments}.0", // The interval to schedule.
+                    "{arguments}.1", // The listener.
+                    "{timeConverter}",
+                    "{synthContext}",
+                    "{that}.listeners",
+                    "{that}.events.onScheduled.fire"
+                ]
             },
-            scheduleClock: {
-                type: "flock.scheduler.webWorkerScheduleClock"
+
+            clear: "{that}.events.onFinished.fire",
+
+            clearAll: {
+                funcName: "flock.scheduler.repeat.clearAll",
+                args: [
+                    "{that}.listeners",
+                    "{that}.events.onFinished.fire",
+                    "{that}.events.onClearAll.fire"
+                ]
+            },
+
+            clearInterval: {
+                funcName: "flock.scheduler.repeat.clearInterval",
+                args: ["{arguments}.0", "{that}.listeners", "{that}.events.onFinished.fire"]
+            }
+        },
+
+        listeners: {
+            onScheduled: [
+                {
+                    funcName: "flock.scheduler.addListener",
+                    args: [
+                        "{arguments}.1", // The listener.
+                        {
+                            expander: {
+                                funcName: "flock.scheduler.repeat.intervalListeners",
+                                args: ["{arguments}.0", "{that}.listeners"]
+                            }
+                        },
+                        "{that}.clock.events.tick.addListener"
+                    ]
+                },
+                {
+                    func: "{that}.clock.schedule",
+                    args: ["{arguments}.0"]
+                }
+            ],
+            onFinished: {
+                funcName: "flock.scheduler.removeListener",
+                args: [
+                    "{arguments}.1",    // The listener.
+                    {
+                        expander: {
+                            funcName: "flock.scheduler.repeat.intervalListeners",
+                            args: ["{arguments}.0", "{that}.listeners"]
+                        }
+                    },
+                    "{that}.clock.events.tick.removeListener"
+                ]
             }
         }
     });
 
-    // TODO: Duplication!
-    flock.scheduler.async.finalInit = function (that) {
-        that.intervalListeners = {};
-        that.scheduleListeners = [];
+    flock.scheduler.repeat.intervalListeners = function (interval, listeners) {
+        return listeners[interval];
+    };
 
-        that.addIntervalListener = function (interval, fn) {
-            var listener = flock.scheduler.makeRepeatingValueListener(interval, fn);
-            listener.wrappedListener = fn;
-            that.intervalListeners[interval] = that.intervalListeners[interval] || [];
-            that.intervalListeners[interval].push(listener);
-            that.intervalClock.events.tick.addListener(listener);
+    flock.scheduler.repeat.schedule = function (interval, listener, timeConverter, synthContext, listeners, onScheduled) {
+        interval = timeConverter.value(interval);
+        listener = flock.scheduler.async.prepareListener(listener, synthContext);
 
-            return listener;
-        };
+        var wrapper = flock.scheduler.repeat.wrapValueListener(interval, listener);
 
-        that.addScheduleListener = function (time, fn) {
-            var listener = flock.scheduler.makeOneShotValueListener(time, fn, that.clear);
-            listener.wrappedListener = fn;
-            that.scheduleListeners.push(listener);
-            that.scheduleClock.events.tick.addListener(listener);
+        flock.scheduler.repeat.addInterval(interval, listeners);
+        onScheduled(interval, wrapper);
 
-            return listener;
-        };
+        return wrapper;
+    };
 
-        that.scheduleChange = function (time, changeSpec, addListenerFn, clock) {
-            var ms = that.timeConverter.value(time),
-                fn = flock.scheduler.async.prepareSchedulerFn(changeSpec, that.events),
-                listener = addListenerFn(ms, fn);
-
-            clock.schedule(ms);
-            return listener;
-        };
-
-        that.repeat = function (interval, changeSpec) {
-            return that.scheduleChange(interval, changeSpec, that.addIntervalListener, that.intervalClock);
-        };
-
-        that.once = function (time, changeSpec) {
-            return that.scheduleChange(time, changeSpec, that.addScheduleListener, that.scheduleClock);
-        };
-
-        that.sequence = function (times, changeSpec) {
-            var listeners = [],
-                listener;
-
-            for (var i = 0; i < times.length; i++) {
-                listener = that.once(times[i], changeSpec);
-                listeners.push(listener);
-            }
-
-            return listeners;
-        };
-
-        that.schedule = function (schedules) {
-            schedules = flock.isIterable(schedules) ? schedules : [schedules];
-
-            var i,
-                schedule;
-
-            for (i = 0; i < schedules.length; i++) {
-                schedule = schedules[i];
-                flock.invoke(that, schedule.interval, [schedule.time, schedule.change]);
+    flock.scheduler.repeat.wrapValueListener = function (value, listener) {
+        var wrapper = function (time) {
+            if (time === value) {
+                listener(time);
             }
         };
 
-        that.clear = function (listener) {
-            if (!listener) {
-                return;
-            }
+        wrapper.wrappedListener = listener;
 
-            // TODO: Rather inefficient.
-            var idx = that.scheduleListeners.indexOf(listener),
-                interval;
-            if (idx > -1) {
-                that.scheduleClock.events.tick.removeListener(listener);
-                that.scheduleListeners.splice(idx, 1);
-                return;
-            }
+        return wrapper;
+    };
 
-            that.intervalClock.events.tick.removeListener(listener);
-            for (interval in that.intervalListeners) {
-                idx = that.intervalListeners[interval].indexOf(listener);
-                if (idx > -1) {
-                    that.intervalListeners[interval].splice(idx, 1);
+    flock.scheduler.repeat.addInterval = function (interval, listeners) {
+        var listenersForInterval = listeners[interval];
+        if (!listenersForInterval) {
+            listenersForInterval = listeners[interval] = [];
+        }
+    };
+
+    flock.scheduler.repeat.clearAll = function (listeners, onFinished, onClearAll) {
+        for (var interval in listeners) {
+            flock.scheduler.repeat.clearInterval(interval, listeners, onFinished);
+        }
+
+        onClearAll();
+    };
+
+    flock.scheduler.repeat.clearInterval = function (interval, listeners, onFinished) {
+        var listenersForInterval = listeners[interval];
+
+        if (!listenersForInterval) {
+            return;
+        }
+
+        for (var i = 0; i < listenersForInterval.length; i++) {
+            var listener = listenersForInterval[i];
+            onFinished(interval, listener);
+        }
+    };
+
+
+    fluid.defaults("flock.scheduler.once", {
+        gradeNames: ["flock.scheduler", "autoInit"],
+
+        members: {
+            listeners: []
+        },
+
+        components: {
+            clock: {
+                type: "flock.scheduler.webWorkerScheduleClock"
+            }
+        },
+
+        invokers: {
+            schedule: {
+                funcName: "flock.scheduler.once.schedule",
+                args: [
+                    "{arguments}.0", // The scheduled time.
+                    "{arguments}.1", // The listener.
+                    "{timeConverter}",
+                    "{synthContext}",
+                    "{that}.clear",
+                    "{that}.events.onScheduled.fire"
+                ]
+            },
+
+            clear: "{that}.events.onFinished.fire",
+
+            clearAll: {
+                funcName: "flock.scheduler.once.clearAll",
+                args: [
+                    "{that}.listeners",
+                    "{that}.events.onFinished.fire",
+                    "{that}.events.onClearAll.fire"
+                ]
+            }
+        },
+
+        listeners: {
+            onScheduled: [
+                {
+                    funcName: "flock.scheduler.addListener",
+                    args: [
+                        "{arguments}.1", // The listener.
+                        "{that}.listeners", // All registered listeners.
+                        "{that}.clock.events.tick.addListener"
+                    ]
+                },
+                {
+                    func: "{that}.clock.schedule",
+                    args: ["{arguments}.0"]
                 }
+            ],
+            onFinished: {
+                funcName: "flock.scheduler.removeListener",
+                args: [
+                    "{arguments}.0",    // The listener.
+                    "{that}.listeners", // All registered listeners.
+                    "{that}.clock.events.tick.removeListener"
+                ]
+            }
+        }
+    });
+
+    flock.scheduler.once.wrapValueListener = function (value, listener, removeFn) {
+        var wrapper = function (time) {
+            if (time === value) {
+                listener(time);
+                removeFn(wrapper);
             }
         };
 
-        that.clearRepeat = function (interval) {
-            that.intervalClock.clear(interval);
+        wrapper.wrappedListener = listener;
 
-            var listeners = that.intervalListeners[interval],
-                i,
-                listener;
+        return wrapper;
+    };
 
-            if (!listeners) {
-                return;
+    flock.scheduler.once.schedule = function (time, listener, timeConverter, synthContext, removeFn, onScheduled) {
+        time = timeConverter.value(time);
+        listener = flock.scheduler.async.prepareListener(listener, synthContext);
+
+        var wrapper = flock.scheduler.once.wrapValueListener(time, listener, removeFn);
+        onScheduled(time, wrapper);
+
+        return wrapper;
+    };
+
+    flock.scheduler.once.clearAll = function (listeners, onFinished, onClearAll) {
+        for (var i = 0; i < listeners.length; i++) {
+            onFinished(listeners[i]);
+        }
+
+        onClearAll();
+    };
+
+
+    fluid.defaults("flock.scheduler.async", {
+        gradeNames: ["fluid.standardComponent", "autoInit"],
+
+        subSchedulerOptions: {
+            components: {
+                timeConverter: "{async}.timeConverter"
+            },
+
+            listeners: {
+                "{async}.events.onClear": "{that}.clear()",
+                "{async}.events.onClearAll": "{that}.clearAll()",
+                "{async}.events.onEnd": "{that}.clock.end()"
             }
+        },
 
-            for (i = 0; i < listeners.length; i++) {
-                listener = listeners[i];
-                that.intervalClock.events.tick.removeListener(listener);
-            }
-            listeners.length = 0;
+        distributeOptions: {
+            source: "{that}.options.subSchedulerOptions",
+            removeSource: true,
+            target: "{that flock.scheduler}.options"
+        },
 
-            return listener;
-        };
+        components: {
+            timeConverter: {
+                type: "flock.convert.seconds"
+            },
 
-        that.clearAll = function () {
-            that.intervalClock.clearAll();
-            for (var interval in that.intervalListeners) {
-                that.clearRepeat(interval);
-            }
+            onceScheduler: {
+                type: "flock.scheduler.once"
+            },
 
-            that.scheduleClock.clearAll();
-            for (var listener in that.scheduleListeners) {
-                that.clear(listener);
-            }
-        };
+            repeatScheduler: {
+                type: "flock.scheduler.repeat"
+            },
 
-        that.end = function () {
-            that.intervalClock.end();
-            that.scheduleClock.end();
-        };
+            // This is user-specified.
+            // Typically a flock.band instance or a synth itself,
+            // but can be anything that has a set of named synths.
+            synthContext: undefined
+        },
 
-        if (that.options.score) {
-            that.schedule(that.options.score);
+        invokers: {
+            /**
+             * Schedules a listener to be invoked repeatedly at the specified interval.
+             *
+             * @param {Number} interval the interval to schedule
+             * @param {Function} listener the listener to invoke
+             */
+            repeat: {
+                func: "{repeatScheduler}.schedule",
+                args: ["{arguments}.0", "{arguments}.1"]
+            },
+
+            /**
+             * Schedules a listener to be invoked once at a future time.
+             *
+             * @param {Number} time the time (relative to now) when the listener should be invoked
+             * @param {Function} listener the listener to invoke
+             */
+            once: {
+                func: "{onceScheduler}.schedule",
+                args: ["{arguments}.0", "{arguments}.1"]
+            },
+
+            /**
+             * Schedules a series of "once" events.
+             *
+             * @param {Array} times an array of times to schedule
+             * @param {Object} changeSpec the change spec that should be applied
+             */
+            sequence: {
+                funcName: "flock.scheduler.async.sequence",
+                args: [
+                    "{arguments}.0", // Array of times to schedule.
+                    "{arguments}.1", // The changeSpec to schedule.
+                    "{that}.once"
+                ]
+            },
+
+            /**
+             * Schedules a score.
+             *
+             * @param {Array} score an array of score object
+             */
+            schedule: {
+                funcName: "flock.scheduler.async.schedule",
+                args: ["{arguments}.0", "{that}"]
+            },
+
+            /**
+             * Deprecated.
+             *
+             * Clears a previously-registered listener.
+             *
+             * Note that this function is relatively ineffecient, and
+             * a direct call to the clear() method of either the repeatScheduler
+             * or the onceScheduler is more effective.
+             *
+             * @param {Function} listener the listener to clear
+             */
+            clear: "{that}.events.onClear.fire",
+
+            /**
+             * Clears all listeners for all scheduled and repeating events.
+             */
+            clearAll: "{that}.events.onClearAll.fire",
+
+            /**
+             * Clears all registered listeners and stops this scheduler's
+             * clocks.
+             */
+            end: "{that}.events.onEnd.fire"
+        },
+
+        events: {
+            onClear: null,
+            onClearAll: null,
+            onEnd: null
+        },
+
+        listeners: {
+            onCreate: "{that}.schedule({that}.options.score)",
+            onEnd: "{that}.clearAll",
+            onDestroy: "{that}.end()"
+        }
+    });
+
+    flock.scheduler.async.sequence = function (times, changeSpec, onceFn) {
+        var listeners = [];
+
+        for (var i = 0; i < times.length; i++) {
+            var listener = onceFn(times[i], changeSpec);
+            listeners.push(listener);
+        }
+
+        return listeners;
+    };
+
+    // TODO: This function is implemented suspiciously.
+    flock.scheduler.async.schedule = function (schedules, that) {
+        if (!schedules) {
+            return;
+        }
+
+        schedules = flock.isIterable(schedules) ? schedules : [schedules];
+
+        for (var i = 0; i < schedules.length; i++) {
+            var schedule = schedules[i];
+            flock.invoke(that, schedule.interval, [schedule.time, schedule.change]);
         }
     };
 
-    flock.scheduler.async.prepareSchedulerFn = function (changeSpec, events) {
-        var type = typeof changeSpec,
-            fn;
-
-        if (type === "function") {
-            // The user has scheduled a raw function pointer.
-            fn = changeSpec;
-        } else if (type === "string") {
-            // An event was scheduled by name.
-            fn = events[changeSpec].fire;
-        } else {
-            // A change spec object was scheduled.
-            fn = flock.scheduler.async.evaluateChangeSpec(changeSpec);
-        }
-
-        return fn;
+    flock.scheduler.async.prepareListener = function (changeSpec, synthContext) {
+        return typeof changeSpec === "function" ? changeSpec :
+            flock.scheduler.async.evaluateChangeSpec(changeSpec, synthContext);
     };
 
-    flock.scheduler.async.evaluateChangeSpec = function (changeSpec) {
+    flock.scheduler.async.getTargetSynth = function (changeSpec, synthContext) {
+        var synthPath = changeSpec.synth;
+
+        if (!changeSpec.synth) {
+            return synthContext;
+        }
+
+        if (typeof synthPath !== "string") {
+            return synthPath;
+        }
+
+        var synth = synthContext ? fluid.get(synthContext, synthPath) :
+            flock.environment.namedNodes[synthPath];
+
+        return synth || flock.environment.namedNodes[synthPath];
+    };
+
+    flock.scheduler.async.makeSynthUpdater = function (synths, changeSpec, staticChanges, synthContext) {
+        return function () {
+            for (var path in synths) {
+                var synth = synths[path];
+                staticChanges[path] = synth.value();
+            }
+
+            var targetSynth = flock.scheduler.async.getTargetSynth(changeSpec, synthContext);
+
+            if (!targetSynth) {
+                flock.fail("A target synth named " + changeSpec.synth +
+                    " could not be found in either the specified synthContext or the flock.environment.");
+            } else {
+                targetSynth.set(staticChanges);
+            }
+        };
+    };
+
+    flock.scheduler.async.evaluateChangeSpec = function (changeSpec, synthContext) {
         var synths = {},
             staticChanges = {};
 
@@ -14094,18 +15264,7 @@ var fluid = fluid || require("infusion"),
             }
         }
 
-        // Create a scheduler listener that evaluates the changeSpec and updates the synth.
-        return function () {
-            for (var path in synths) {
-                var synth = synths[path];
-                staticChanges[path] = synth.value();
-            }
-
-            // TODO: Hardcoded to the shared environment.
-            var targetSynth = typeof changeSpec.synth === "string" ?
-                flock.enviro.shared.namedNodes[changeSpec.synth] : changeSpec.synth;
-            targetSynth.set(staticChanges);
-        };
+        return flock.scheduler.async.makeSynthUpdater(synths, changeSpec, staticChanges, synthContext);
     };
 
     fluid.defaults("flock.scheduler.async.tempo", {
@@ -14130,31 +15289,42 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.convert");
 
-    flock.convert.makeStatelessConverter = function (convertFn) {
-        return function () {
-            return {
-                value: convertFn
-            };
-        };
+    fluid.defaults("flock.convert.ms", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        invokers: {
+            value: "fluid.identity({arguments}.0)"
+        }
+    });
+
+
+    fluid.defaults("flock.convert.seconds", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        invokers: {
+            value: "flock.convert.seconds.toMillis({arguments}.0)"
+        }
+    });
+
+    flock.convert.seconds.toMillis = function (secs) {
+        return secs * 1000;
     };
 
-    flock.convert.ms = flock.convert.makeStatelessConverter(fluid.identity);
-
-    flock.convert.seconds = flock.convert.makeStatelessConverter(function (secs) {
-        return secs * 1000;
-    });
 
     fluid.defaults("flock.convert.beats", {
-        gradeNames: ["fluid.littleComponent", "autoInit"],
-        bpm: 60
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        bpm: 60,
+
+        invokers: {
+            value: "flock.convert.beats.toMillis({arguments}.0, {that}.options.bpm)"
+        }
     });
 
-    flock.convert.beats.finalInit = function (that) {
-        that.value = function (beats) {
-            var bpm = that.options.bpm;
-            return bpm <= 0 ? 0 : (beats / bpm) * 60000;
-        };
+    flock.convert.beats.toMillis = function (beats, bpm) {
+        return bpm <= 0 ? 0 : (beats / bpm) * 60000;
     };
+
 }());
 ;/*
 * Flocking WebAudio Strategy
@@ -14180,18 +15350,10 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.webAudio");
 
-    flock.webAudio.createNode = function (context, type, args, params) {
-        // Second argument is a NodeSpec object.
-        if (typeof type !== "string") {
-            args = type.args;
-            params = type.params;
-            type = type.node;
-        }
+    flock.webAudio.createNode = function (context, nodeSpec) {
+        nodeSpec.args = nodeSpec.args ? fluid.makeArray(nodeSpec.args) : undefined;
 
-        args = args === undefined || args === null ? [] :
-            fluid.isArrayable(args) ? args : [args];
-
-        var creatorName = "create" + type,
+        var creatorName = "create" + nodeSpec.node,
             nodeStrIdx = creatorName.indexOf("Node");
 
         // Trim off "Node" if it is present.
@@ -14199,24 +15361,200 @@ var fluid = fluid || require("infusion"),
             creatorName = creatorName.substring(0, nodeStrIdx);
         }
 
-        var node = context[creatorName].apply(context, args);
-        flock.webAudio.initializeNodeInputs(node, params);
+        var node = context[creatorName].apply(context, nodeSpec.args);
+        flock.webAudio.initNodeParams(context, node, nodeSpec);
+        flock.webAudio.initNodeProperties(node, nodeSpec);
+        flock.webAudio.initNodeInputs(node, nodeSpec);
 
         return node;
+    };
+
+    flock.webAudio.setAudioParamValue = function (context, param, value, atTime) {
+        atTime = atTime || 0.0;
+        var scheduledTime = context.currentTime + atTime;
+        param.setValueAtTime(value, scheduledTime);
     };
 
     // TODO: Add support for other types of AudioParams.
-    flock.webAudio.initializeNodeInputs = function (node, paramSpec) {
-        if (!node || !paramSpec) {
+    flock.webAudio.initNodeParams = function (context, node, nodeSpec) {
+        var params = nodeSpec.params;
+
+        if (!node || !params) {
             return;
         }
 
-        for (var inputName in paramSpec) {
-            node[inputName].value = paramSpec[inputName];
+        for (var paramName in params) {
+            var param = node[paramName],
+                value = params[paramName];
+
+            flock.webAudio.setAudioParamValue(context, param, value);
         }
 
         return node;
     };
+
+    flock.webAudio.safariPropertyProhibitions = [
+        "channelCount",
+        "channelCountMode"
+    ];
+
+    flock.webAudio.shouldSetProperty = function (propName) {
+        return flock.platform.browser.safari ?
+            flock.webAudio.safariPropertyProhibitions.indexOf(propName) < 0 :
+            true;
+    };
+
+    flock.webAudio.initNodeProperties = function (node, nodeSpec) {
+        var props = nodeSpec.props;
+        if (!props) {
+            return;
+        }
+
+        for (var propName in props) {
+            var value = props[propName];
+
+            if (flock.webAudio.shouldSetProperty(propName)) {
+                node[propName] = value;
+            }
+        }
+
+        return node;
+    };
+
+    flock.webAudio.connectInput = function (node, inputNum, input, outputNum) {
+        input.connect(node, outputNum, inputNum);
+    };
+
+    // TODO: Add the ability to specify the output channel of the connection.
+    // TODO: Unify this with AudioParams so they all just look like "inputs".
+    flock.webAudio.initNodeInputs = function (node, nodeSpec) {
+        var inputs = nodeSpec.inputs;
+
+        for (var inputName in inputs) {
+            var inputNodes = inputs[inputName],
+                inputNum = parseInt(inputName, 10);
+
+            inputNodes = fluid.makeArray(inputNodes);
+
+            for (var i = 0; i < inputNodes.length; i++) {
+                var input = inputNodes[i];
+                flock.webAudio.connectInput(node, inputNum, input);
+            }
+        }
+    };
+
+
+    fluid.defaults("flock.webAudio.audioSystem", {
+        gradeNames: ["flock.audioSystem", "autoInit"],
+
+        channelRange: {
+            min: "@expand:flock.webAudio.audioSystem.calcMinChannels()",
+            max: "@expand:flock.webAudio.audioSystem.calcMaxChannels({that}.context.destination)"
+        },
+
+        members: {
+            context: "@expand:flock.webAudio.audioSystem.createContext()"
+        },
+
+        model: {
+            rates: {
+                audio: "{that}.context.sampleRate"
+            }
+        },
+
+        listeners: {
+            onCreate: [
+                "flock.webAudio.audioSystem.registerContextSingleton({that})",
+                "flock.webAudio.audioSystem.configureDestination({that}.context, {that}.model.chans)"
+            ]
+        }
+    });
+
+    flock.webAudio.audioSystem.createContext = function () {
+        var singleton = fluid.staticEnvironment.audioSystem;
+        return singleton ? singleton.context : new flock.shim.AudioContext();
+    };
+
+    flock.webAudio.audioSystem.registerContextSingleton = function (that) {
+        fluid.staticEnvironment.audioSystem = that;
+    };
+
+    flock.webAudio.audioSystem.calcMaxChannels = function (destination) {
+        return flock.platform.browser.safari ? destination.channelCount :
+            destination.maxChannelCount;
+    };
+
+    flock.webAudio.audioSystem.calcMinChannels = function () {
+        return flock.platform.browser.safari ? 2 : 1;
+    };
+
+    flock.webAudio.audioSystem.configureDestination = function (context, chans) {
+        // Safari will throw an InvalidStateError DOM Exception 11 when
+        // attempting to set channelCount on the audioContext's destination.
+        // TODO: Remove this conditional when Safari adds support for multiple channels.
+        if (!flock.platform.browser.safari) {
+            context.destination.channelCount = chans;
+            context.destination.channelCountMode = "explicit";
+            context.destination.channelInterpretation = "discrete";
+        }
+    };
+
+    fluid.defaults("flock.webAudio.node", {
+        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
+
+        members: {
+            node: "@expand:flock.webAudio.createNode({audioSystem}.context, {that}.options.nodeSpec)"
+        },
+
+        nodeSpec: {
+            args: [],
+            params: {},
+            properties: {}
+        }
+    });
+
+
+    fluid.defaults("flock.webAudio.gain", {
+        gradeNames: ["flock.webAudio.node", "autoInit"],
+
+        members: {
+            node: "@expand:flock.webAudio.createNode({audioSystem}.context, {that}.options.nodeSpec)"
+        },
+
+        nodeSpec: {
+            node: "Gain"
+        }
+    });
+
+
+    fluid.defaults("flock.webAudio.scriptProcessor", {
+        gradeNames: ["flock.webAudio.node", "autoInit"],
+
+        nodeSpec: {
+            node: "ScriptProcessor",
+            args: [
+                "{audioSystem}.model.bufferSize",
+                "{audioSystem}.model.numInputBuses",
+                "{audioSystem}.model.chans"
+            ],
+            params: {},
+            properties: {
+                channelCountMode: "explicit"
+            }
+        }
+    });
+
+    fluid.defaults("flock.webAudio.channelMerger", {
+        gradeNames: ["flock.webAudio.node", "autoInit"],
+
+        nodeSpec: {
+            node: "ChannelMerger",
+            args: ["{audioSystem}.model.numInputBuses"],
+            properties: {
+                channelCountMode: "discrete"
+            }
+        }
+    });
 
 
     // TODO: Remove this when Chrome implements navigator.getMediaDevices().
@@ -14265,58 +15603,18 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.audioStrategy.web", {
         gradeNames: ["flock.audioStrategy", "autoInit"],
 
-        members: {
-            context: "{contextWrapper}.context",
-            sampleRate: "{that}.context.sampleRate",
-            chans: {
-                expander: {
-                    funcName: "flock.audioStrategy.web.calculateChannels",
-                    args: ["{contextWrapper}.context", "{enviro}.options.audioSettings.chans"]
-                }
-            },
-            jsNode: {
-                expander: {
-                    funcName: "flock.audioStrategy.web.createScriptProcessor",
-                    args: [
-                        "{contextWrapper}.context",
-                        "{enviro}.options.audioSettings.bufferSize",
-                        "{enviro}.options.audioSettings.numInputBuses",
-                        "{that}.chans"
-                    ]
-                }
-            }
-        },
-
         model: {
             isGenerating: false,
-            shouldInitIOS: flock.platform.isIOS,
-            krPeriods: {
-                expander: {
-                    funcName: "flock.audioStrategy.web.calcNumKrPeriods",
-                    args: "{enviro}.options.audioSettings"
-                }
-            }
+            shouldInitIOS: flock.platform.isIOS
         },
 
         invokers: {
-            start: {
-                func: "{that}.events.onStart.fire"
-            },
-
-            stop: {
-                func: "{that}.events.onStop.fire"
-            },
-
-            reset: {
-                func: "{that}.events.onReset.fire"
-            }
+            start: "{that}.events.onStart.fire()",
+            stop: "{that}.events.onStop.fire()",
+            saveBuffer: "flock.audioStrategy.web.saveBuffer({arguments}.0)"
         },
 
         components: {
-            contextWrapper: {
-                type: "flock.webAudio.contextWrapper"
-            },
-
             nativeNodeManager: {
                 type: "flock.webAudio.nativeNodeManager"
             },
@@ -14326,46 +15624,11 @@ var fluid = fluid || require("infusion"),
             }
         },
 
-        events: {
-            onStart: null,
-            onStop: null,
-            onReset: null
-        },
-
         listeners: {
-            onCreate: [
-                {
-                    funcName: "flock.audioStrategy.web.setChannelState",
-                    args: ["{that}.chans", "{contextWrapper}.context.destination"]
-                },
-                {
-                    funcName: "flock.audioStrategy.web.pushAudioSettings",
-                    args: ["{that}.sampleRate", "{that}.chans", "{enviro}.options.audioSettings"]
-                },
-                {
-                    funcName: "flock.audioStrategy.web.bindWriter",
-                    args: [
-                        "{that}.jsNode",
-                        "{nodeEvaluator}",
-                        "{nativeNodeManager}",
-                        "{that}.model",
-                        "{enviro}.options.audioSettings"
-                    ]
-                }
-            ],
-
             onStart: [
                 {
                     func: "{that}.applier.change",
                     args: ["isGenerating", true]
-                },
-                {
-                    // TODO: Replace this with some progressive enhancement action.
-                    funcName: "flock.audioStrategy.web.iOSStart",
-                    args: ["{that}.model", "{that}.applier", "{contextWrapper}.context", "{that}.jsNode"]
-                },
-                {
-                    func: "{nativeNodeManager}.connect"
                 }
             ],
 
@@ -14373,62 +15636,11 @@ var fluid = fluid || require("infusion"),
                 {
                     func: "{that}.applier.change",
                     args: ["isGenerating", false]
-                },
-                {
-                    func: "{nativeNodeManager}.disconnect"
-                }
-            ],
-
-            onReset: [
-                {
-                    func: "{that}.stop"
-                },
-                {
-                    func: "{nativeNodeManager}.removeAllInputs"
-                },
-                {
-                    func: "{that}.applier.change",
-                    args: ["playState.written", 0]
                 }
             ]
         }
     });
 
-    flock.audioStrategy.web.calculateChannels = function (context, chans) {
-        // TODO: Remove this conditional when Safari adds support for multiple channels.
-        return flock.platform.browser.safari ?  context.destination.channelCount :
-            Math.min(chans, context.destination.maxChannelCount);
-    };
-
-    // TODO: Refactor into a shared environment-level model property.
-    flock.audioStrategy.web.pushAudioSettings = function (sampleRate, chans, audioSettings) {
-        audioSettings.rates.audio = sampleRate;
-        audioSettings.chans = chans;
-    };
-
-    flock.audioStrategy.web.setChannelState = function (chans, destinationNode) {
-        // Safari will throw an InvalidStateError DOM Exception 11 when
-        // attempting to set channelCount on the audioContext's destination.
-        // TODO: Remove this conditional when Safari adds support for multiple channels.
-        if (!flock.platform.browser.safari) {
-            destinationNode.channelCount = chans;
-            destinationNode.channelCountMode = "explicit";
-            destinationNode.channelInterpretation = "discrete";
-        }
-    };
-
-    flock.audioStrategy.web.calcNumKrPeriods = function (s) {
-        return s.bufferSize / s.blockSize;
-    };
-
-    flock.audioStrategy.web.createScriptProcessor = function (ctx, bufferSize, numInputs, chans) {
-        var jsNodeName = ctx.createScriptProcessor ? "createScriptProcessor" : "createJavaScriptNode",
-            jsNode = ctx[jsNodeName](bufferSize, numInputs, chans);
-
-        jsNode.channelCountMode = "explicit";
-
-        return jsNode;
-    };
 
     flock.audioStrategy.web.bindWriter = function (jsNode, nodeEvaluator, nativeNodeManager, model, audioSettings) {
         jsNode.model = model;
@@ -14450,14 +15662,15 @@ var fluid = fluid || require("infusion"),
      *  - audioSettings: the enviornment's audio settings
      */
     flock.audioStrategy.web.writeSamples = function (e) {
-        var m = this.model,
-            numInputNodes = this.inputNodes.length,
+        var numInputNodes = this.inputNodes.length,
             evaluator = this.evaluator,
+            nodes = evaluator.nodes,
             s = this.audioSettings,
             inBufs = e.inputBuffer,
             outBufs = e.outputBuffer,
-            krPeriods = m.krPeriods,
+            numBlocks = s.numBlocks,
             buses = evaluator.buses,
+            numBuses = s.numBuses,
             blockSize = s.blockSize,
             chans = s.chans,
             inChans = inBufs.numberOfChannels,
@@ -14475,10 +15688,10 @@ var fluid = fluid || require("infusion"),
 
         // TODO: Make a formal distinction between input buses,
         // output buses, and interconnect buses in the environment!
-        for (i = 0; i < krPeriods; i++) {
+        for (i = 0; i < numBlocks; i++) {
             var offset = i * blockSize;
 
-            evaluator.clearBuses();
+            flock.nodeEvaluator.clearBuses(numBuses, blockSize, buses);
 
             // Read this ScriptProcessorNode's input buffers
             // into the environment.
@@ -14494,7 +15707,7 @@ var fluid = fluid || require("infusion"),
                 }
             }
 
-            evaluator.gen();
+            flock.nodeEvaluator.gen(nodes);
 
             // Output the environment's signal
             // to this ScriptProcessorNode's output channels.
@@ -14524,37 +15737,44 @@ var fluid = fluid || require("infusion"),
         }
     };
 
+    flock.audioStrategy.web.saveBuffer = function (o) {
+        try {
+            var encoded = flock.audio.encode.wav(o.buffer, o.format),
+                blob = new Blob([encoded], {
+                    type: "audio/wav"
+                });
 
-    /**
-     * An Infusion component wrapper for a Web Audio API AudioContext instance.
-     */
-    // TODO: Refactor this into an "audio system" component (with cross-platform base grade)
-    // that serves as the canonical source for shared audio settings such as
-    // sample rate, number of channels, etc.
-    fluid.defaults("flock.webAudio.contextWrapper", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+            flock.audioStrategy.web.download(o.path, blob);
 
-        members: {
-            context: "@expand:flock.webAudio.contextWrapper.create()"
-        },
+            if (o.success) {
+                o.success(encoded);
+            }
 
-        listeners: {
-            onCreate: [
-                {
-                    funcName: "flock.webAudio.contextWrapper.registerSingleton",
-                    args: ["{that}"]
-                }
-            ]
+            return encoded;
+        } catch (e) {
+            if (!o.error) {
+                flock.fail("There was an error while trying to download the buffer named " +
+                    o.buffer.id + ". Error: " + e);
+            } else {
+                o.error(e);
+            }
         }
-    });
-
-    flock.webAudio.contextWrapper.create = function () {
-        var singleton = fluid.staticEnvironment.webAudioContextWrapper;
-        return singleton ? singleton.context : new flock.shim.AudioContext();
     };
 
-    flock.webAudio.contextWrapper.registerSingleton = function (that) {
-        fluid.staticEnvironment.webAudioContextWrapper = that;
+    flock.audioStrategy.web.download = function (fileName, blob) {
+        var dataURL = flock.shim.URL.createObjectURL(blob),
+            a = window.document.createElement("a"),
+            click = document.createEvent("Event");
+
+        // TODO: This approach currently only works in Chrome.
+        // Although Firefox apparently supports it, this method of
+        // programmatically clicking the link doesn't seem to have an
+        // effect in it.
+        // http://caniuse.com/#feat=download
+        a.href = dataURL;
+        a.download = fileName;
+        click.initEvent("click", true, true);
+        a.dispatchEvent(click);
     };
 
 
@@ -14566,43 +15786,57 @@ var fluid = fluid || require("infusion"),
      * "islands" are implemented.
      */
     fluid.defaults("flock.webAudio.nativeNodeManager", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
-
-        audioSettings: "{enviro}.options.audioSettings",
+        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
 
         members: {
             outputNode: undefined,
-            inputNodes: [],
-            merger: {
-                expander: {
-                    funcName: "flock.webAudio.nativeNodeManager.createInputMerger",
-                    args: [
-                        "{contextWrapper}.context",
-                        "{enviro}.options.audioSettings.numInputBuses",
-                        "{web}.jsNode"
-                    ]
+            inputNodes: []
+        },
+
+        components: {
+            scriptProcessor: {
+                createOnEvent: "onCreateScriptProcessor",
+                type: "flock.webAudio.scriptProcessor",
+                options: {
+                    nodeSpec: {
+                        inputs: {
+                            "0": "{inputMerger}"
+                        }
+                    },
+
+                    listeners: {
+                        onCreate: [
+                            // TODO: Where should this really go?
+                            {
+                                funcName: "flock.audioStrategy.web.bindWriter",
+                                args: [
+                                    "{that}.node",
+                                    "{nodeEvaluator}",
+                                    "{nativeNodeManager}",
+                                    "{audioStrategy}.model",
+                                    "{audioSystem}.model"
+                                ]
+                            }
+                        ]
+                    }
                 }
+            },
+
+            merger: {
+                type: "flock.webAudio.channelMerger"
             }
         },
 
         invokers: {
-            connect: {
-                funcName: "flock.webAudio.nativeNodeManager.connect",
-                args: [
-                    "{that}.merger",
-                    "{web}.jsNode",
-                    "{that}.outputNode",
-                    "{contextWrapper}.context.destination"
-                ]
-            },
+            connect: "{that}.events.onConnect.fire",
+
+            disconnect: "{that}.events.onDisconnect.fire",
 
             createNode: {
                 funcName: "flock.webAudio.createNode",
                 args: [
-                    "{contextWrapper}.context",
-                    "{arguments}.0", // Node type.
-                    "{arguments}.1", // Constructor args.
-                    "{arguments}.2"  // AudioParam connections.
+                    "{audioSystem}.context",
+                    "{arguments}.0" // The nodeSpec
                 ]
             },
 
@@ -14610,31 +15844,33 @@ var fluid = fluid || require("infusion"),
                 funcName: "flock.webAudio.nativeNodeManager.createInputNode",
                 args: [
                     "{that}",
-                    "{arguments}.0", // Node type.
-                    "{arguments}.1", // Constructor args.
-                    "{arguments}.2", // AudioParam connections.
-                    "{arguments}.3"  // {optional} The input bus number to insert it at.
+                    "{arguments}.0", // The nodeSpec.
+                    "{arguments}.1", // {optional} The input bus number to insert it at.
                 ]
             },
 
             createMediaStreamInput: {
                 funcName: "flock.webAudio.nativeNodeManager.createInputNode",
+                dynamic: true,
                 args: [
                     "{that}",
-                    "MediaStreamSource",
-                    "{arguments}.0", // The MediaStream,
-                    undefined,
+                    {
+                        node: "MediaStreamSource",
+                        args: ["{arguments}.0"] // The MediaStream
+                    },
                     "{arguments}.1"  // {optional} The input bus number to insert it at.
                 ]
             },
 
             createMediaElementInput: {
                 funcName: "flock.webAudio.nativeNodeManager.createInputNode",
+                dynamic: true,
                 args: [
                     "{that}",
-                    "MediaElementSource",
-                    "{arguments}.0", // The HTMLMediaElement
-                    undefined,
+                    {
+                        node: "MediaElementSource",
+                        args: ["{arguments}.0"] // The HTMLMediaElement
+                    },
                     "{arguments}.1"  // {optional} The input bus number to insert it at.
                 ]
             },
@@ -14643,21 +15879,15 @@ var fluid = fluid || require("infusion"),
                 funcName: "flock.webAudio.nativeNodeManager.createOutputNode",
                 args: [
                     "{that}",
-                    "{arguments}.0", // Node type.
-                    "{arguments}.1", // Constructor args.
-                    "{arguments}.2"  // AudioParam connections.
+                    "{arguments}.0" // The nodeSpec
                 ]
-            },
-
-            disconnect: {
-                funcName: "flock.webAudio.nativeNodeManager.disconnect",
-                args: ["{that}.merger", "{web}.jsNode", "{that}.outputNode"]
             },
 
             insertInput: {
                 funcName: "flock.webAudio.nativeNodeManager.insertInput",
                 args: [
                     "{that}",
+                    "{audioSystem}.model",
                     "{enviro}",
                     "{arguments}.0", // The node to insert.
                     "{arguments}.1"  // {optional} The bus number to insert it at.
@@ -14681,48 +15911,105 @@ var fluid = fluid || require("infusion"),
 
             removeOutput: {
                 funcName: "flock.webAudio.nativeNodeManager.removeOutput",
-                args: ["{web}.jsNode"]
+                dynamic: true,
+                args: ["{scriptProcessor}.node"]
             }
         },
 
+        events: {
+            onCreateScriptProcessor: null, // TODO: Naming!
+            onStart: "{audioStrategy}.events.onStart",
+            onConnect: null,
+            onStop: "{audioStrategy}.events.onStop",
+            onDisconnect: null,
+            onReset: "{audioStrategy}.events.onReset"
+        },
+
         listeners: {
-            onCreate: {
-                func: "{that}.insertOutput",
-                args: "{web}.jsNode"
-            }
+            onCreate: [
+                "{that}.events.onCreateScriptProcessor.fire()",
+                {
+                    func: "{that}.insertOutput",
+                    args: "{scriptProcessor}.node"
+                }
+            ],
+
+            onStart: [
+                "{nativeNodeManager}.connect()",
+
+                {
+                    // TODO: Replace this with some progressive enhancement action.
+                    // TODO: Where should this really go?
+                    funcName: "flock.audioStrategy.web.iOSStart",
+                    args: [
+                        "{audioStrategy}.model",
+                        "{audioStrategy}.applier",
+                        "{audioSystem}.context",
+                        "{scriptProcessor}.node"
+                    ]
+                }
+            ],
+
+            onConnect: [
+                {
+                    "this": "{merger}.node",
+                    method: "connect",
+                    args: ["{scriptProcessor}.node"]
+                },
+                {
+                    "this": "{that}.outputNode",
+                    method: "connect",
+                    args: ["{audioSystem}.context.destination"]
+                },
+                {
+                    funcName: "flock.webAudio.nativeNodeManager.connectOutput",
+                    args: ["{scriptProcessor}.node", "{that}.outputNode"]
+                }
+            ],
+
+            onStop: [
+                "{nativeNodeManager}.disconnect()"
+            ],
+
+            onDisconnect: [
+                {
+                    "this": "{merger}.node",
+                    method: "disconnect",
+                    args: [0]
+                },
+                {
+                    "this": "{scriptProcessor}.node",
+                    method: "disconnect",
+                    args: [0]
+                },
+                {
+                    "this": "{that}.outputNode",
+                    method: "disconnect",
+                    args: [0]
+                }
+            ],
+
+            onReset: [
+                "{that}.removeAllInputs",
+                "{that}.events.onCreateScriptProcessor.fire()"
+            ]
         }
     });
 
-    flock.webAudio.nativeNodeManager.createInputNode = function (that, type, args, params, busNum) {
-        var node = that.createNode(type, args, params);
+    flock.webAudio.nativeNodeManager.createInputNode = function (that, nodeSpec, busNum) {
+        var node = that.createNode(nodeSpec);
         return that.insertInput(node, busNum);
     };
 
-    flock.webAudio.nativeNodeManager.createOutputNode = function (that, type, args, params) {
-        var node = that.createNode(type, args, params);
+    flock.webAudio.nativeNodeManager.createOutputNode = function (that, nodeSpec) {
+        var node = that.createNode(nodeSpec);
         return that.insertOutput(node);
     };
 
-    flock.webAudio.nativeNodeManager.createInputMerger = function (ctx, numInputBuses, jsNode) {
-        var merger = ctx.createChannelMerger(numInputBuses);
-        merger.channelInterpretation = "discrete";
-        merger.connect(jsNode);
-
-        return merger;
-    };
-
-    flock.webAudio.nativeNodeManager.connect = function (merger, jsNode, outputNode, destination) {
-        merger.connect(jsNode);
-        outputNode.connect(destination);
+    flock.webAudio.nativeNodeManager.connectOutput = function (jsNode, outputNode) {
         if (jsNode !== outputNode) {
             jsNode.connect(outputNode);
         }
-    };
-
-    flock.webAudio.nativeNodeManager.disconnect = function (merger, jsNode, outputNode) {
-        merger.disconnect(0);
-        jsNode.disconnect(0);
-        outputNode.disconnect(0);
     };
 
     flock.webAudio.nativeNodeManager.removeAllInputs = function (inputNodes) {
@@ -14733,8 +16020,8 @@ var fluid = fluid || require("infusion"),
         inputNodes.length = 0;
     };
 
-    flock.webAudio.nativeNodeManager.insertInput = function (that, enviro, node, busNum) {
-        var maxInputs = that.options.audioSettings.numInputBuses;
+    flock.webAudio.nativeNodeManager.insertInput = function (that, audioSettings, enviro, node, busNum) {
+        var maxInputs = audioSettings.numInputBuses;
         if (that.inputNodes.length >= maxInputs) {
             flock.fail("There are too many input nodes connected to Flocking. " +
                 "The maximum number of input buses is currently set to " + maxInputs + ". " +
@@ -14743,11 +16030,11 @@ var fluid = fluid || require("infusion"),
             return;
         }
 
-        busNum = busNum === undefined ? enviro.acquireNextBus("input") : busNum;
-        var idx = busNum - enviro.audioSettings.chans;
+        busNum = busNum === undefined ? enviro.busManager.acquireNextBus("input") : busNum;
+        var idx = busNum - audioSettings.chans;
 
         that.inputNodes.push(node);
-        node.connect(that.merger, 0, idx);
+        node.connect(that.merger.node, 0, idx);
 
         return busNum;
     };
@@ -14784,10 +16071,6 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.webAudio.inputDeviceManager", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
 
-        members: {
-            context: "{contextWrapper}.context"
-        },
-
         invokers: {
             /**
              * Opens the specified audio device.
@@ -14814,7 +16097,7 @@ var fluid = fluid || require("infusion"),
             openAudioDeviceWithConstraints: {
                 funcName: "flock.webAudio.inputDeviceManager.openAudioDeviceWithConstraints",
                 args: [
-                    "{that}.context",
+                    "{audioSystem}.context",
                     "{enviro}",
                     "{nativeNodeManager}.createMediaStreamInput",
                     "{arguments}.0"
@@ -14901,7 +16184,7 @@ var fluid = fluid || require("infusion"),
 
         // Acquire an input bus ahead of time so we can synchronously
         // notify the client where its output will be.
-        var busNum = enviro.acquireNextBus("input");
+        var busNum = enviro.busManager.acquireNextBus("input");
 
         function error (err) {
             fluid.log(fluid.logLevel.IMPORTANT,
@@ -14918,6 +16201,83 @@ var fluid = fluid || require("infusion"),
 
         return busNum;
     };
+
+
+    fluid.defaults("flock.webAudio.outputFader", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        fadeDuration: 0.5,
+
+        gainSpec: {
+            node: "Gain",
+
+            params: {
+                gain: 0.0
+            },
+
+            properties: {
+                channelCount: "{audioSystem}.model.chans",
+                channelCountMode: "explicit"
+            }
+        },
+
+        members: {
+            gainNode: "@expand:flock.webAudio.outputFader.createGainNode({enviro}, {that}.options.gainSpec)",
+            context: "{audioSystem}.context"
+        },
+
+        invokers: {
+            fadeIn: {
+                funcName: "flock.webAudio.outputFader.fadeIn",
+                args: [
+                    "{that}.context",
+                    "{that}.gainNode",
+                    "{arguments}.0", // Target amplitude
+                    "{that}.options.fadeDuration"
+                ]
+            },
+
+            fadeTo: {
+                funcName: "flock.webAudio.outputFader.fadeTo",
+                args: [
+                    "{that}.context",
+                    "{that}.gainNode",
+                    "{arguments}.0", // Target amplitude
+                    "{that}.options.fadeDuration"
+                ]
+            }
+        }
+    });
+
+    flock.webAudio.outputFader.createGainNode = function (enviro, gainSpec) {
+        var gainNode = enviro.audioStrategy.nativeNodeManager.createOutputNode(gainSpec);
+
+        return gainNode;
+    };
+
+    flock.webAudio.outputFader.fade = function (context, gainNode, start, end, duration) {
+        duration = duration || 0.0;
+
+        var now = context.currentTime,
+            endTime = now + duration;
+
+        // Set the current value now, then ramp to the target.
+        flock.webAudio.setAudioParamValue(context, gainNode.gain, start);
+        gainNode.gain.linearRampToValueAtTime(end, endTime);
+    };
+
+    flock.webAudio.outputFader.fadeTo = function (context, gainNode, end, duration) {
+        flock.webAudio.outputFader.fade(context, gainNode, gainNode.gain.value, end, duration);
+    };
+
+    flock.webAudio.outputFader.fadeIn = function (context, gainNode, end, duration) {
+        flock.webAudio.outputFader.fade(context, gainNode, 0, end, duration);
+    };
+
+
+    fluid.demands("flock.audioSystem.platform", "flock.platform.webAudio", {
+        funcName: "flock.webAudio.audioSystem"
+    });
 
     fluid.demands("flock.audioStrategy.platform", "flock.platform.webAudio", {
         funcName: "flock.audioStrategy.web"
@@ -15121,8 +16481,8 @@ var fluid = fluid || require("infusion"),
 
                 return flock.parse.ugenDef(ugenDef, {
                     audioSettings: that.options.audioSettings,
-                    buses: that.options.audioSettings.buses,
-                    buffers: that.options.audioSettings.buffers
+                    buses: that.options.buses,
+                    buffers: that.options.buffers
                 });
             });
         };
@@ -15218,7 +16578,7 @@ var fluid = fluid || require("infusion"),
                 that.tags.push(tags[i]);
             }
 
-            s = o.audioSettings = o.audioSettings || flock.enviro.shared.audioSettings;
+            s = o.audioSettings = o.audioSettings || flock.environment.audioSystem.model;
             m.sampleRate = o.sampleRate || s.rates[that.rate];
             m.nyquistRate = m.sampleRate;
             m.blockSize = that.rate === flock.rates.AUDIO ? s.blockSize : 1;
@@ -15634,6 +16994,7 @@ var fluid = fluid || require("infusion"),
             strideInputs: ["source", "duration"]
         }
     });
+
 
     flock.ugen.triggerCallback = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
@@ -16387,7 +17748,7 @@ var fluid = fluid || require("infusion"),
 
             if (m.bufDef !== inputs.buffer || inputName === "buffer") {
                 m.bufDef = inputs.buffer;
-                flock.parse.bufferForDef(m.bufDef, that, flock.enviro.shared); // TODO: Shared enviro reference.
+                flock.parse.bufferForDef(m.bufDef, that, flock.environment); // TODO: Shared enviro reference.
             }
         };
 
@@ -16650,6 +18011,152 @@ var fluid = fluid || require("infusion"),
     });
 
     /**
+     * Writes input into a buffer.
+     *
+     * Inputs:
+     *
+     *   sources: the inputs to write to the buffer,
+     *   buffer: a bufferDef to write to; the buffer will be created if it doesn't already exist
+     *   start: the index into the buffer to start writing at; defaults to 0
+     *   loop: a flag specifying if the unit generator should loop back to the beginning
+     *         of the buffer when it reaches the end; defaults to 0.
+     */
+    flock.ugen.writeBuffer = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                out = that.output,
+                inputs = that.inputs,
+                buffer = that.buffer,
+                sources = that.multiInputs.sources,
+                numChans = sources.length,
+                bufferChannels = buffer.data.channels,
+                numFrames = buffer.format.numSampleFrames,
+                startIdx = inputs.start.output[0],
+                loop = inputs.loop.output[0],
+                i,
+                channelWriteIdx,
+                j;
+
+            if (m.prevStart !== startIdx) {
+                m.prevStart = startIdx;
+                m.writeIdx = Math.floor(startIdx);
+            }
+
+            for (i = 0; i < numChans; i++) {
+                var inputChannel = sources[i].output;
+                var bufferChannel = bufferChannels[i];
+                var outputChannel = out[i];
+                channelWriteIdx = m.writeIdx;
+
+                for (j = 0; j < numSamps; j++) {
+                    var samp = inputChannel[j];
+
+                    // TODO: Remove this conditional by being smarter about dynamic outputs.
+                    if (outputChannel) {
+                        outputChannel[j] = samp;
+                    }
+
+                    if (channelWriteIdx < numFrames) {
+                        bufferChannel[channelWriteIdx] = samp;
+                    } else if (loop > 0) {
+                        channelWriteIdx = Math.floor(startIdx);
+                        bufferChannel[channelWriteIdx] = samp;
+                    }
+                    channelWriteIdx++;
+                }
+            }
+
+            m.writeIdx = channelWriteIdx;
+            that.mulAdd(numSamps);
+        };
+
+        that.createBuffer = function (that, bufDef) {
+            var o = that.options,
+                s = o.audioSettings,
+                buffers = o.buffers,
+                numChans = that.multiInputs.sources.length,
+                duration = Math.round(that.options.duration * s.rates.audio),
+                channels = new Array(numChans),
+                i;
+
+            // We need to make a new buffer.
+            for (i = 0; i < numChans; i++) {
+                channels[i] = new Float32Array(duration);
+            }
+
+            var buffer = flock.bufferDesc(channels, s.rates.audio, numChans);
+
+            if (bufDef.id) {
+                buffer.id = bufDef.id;
+                buffers[bufDef.id] = buffer;
+            }
+
+            return buffer;
+        };
+
+        that.setupBuffer = function (bufDef) {
+            bufDef = typeof bufDef === "string" ? {id: bufDef} : bufDef;
+
+            var existingBuffer;
+            if (bufDef.id) {
+                // Check for an existing environment buffer.
+                existingBuffer = that.options.buffers[bufDef.id];
+            }
+
+            that.buffer = existingBuffer || that.createBuffer(that, bufDef);
+
+            return that.buffer;
+        };
+
+        that.onInputChanged = function (inputName) {
+            if (!inputName) {
+                that.collectMultiInputs();
+                that.setupBuffer(that.inputs.buffer);
+            } else if (inputName === "sources") {
+                that.collectMultiInputs();
+            } else if (inputName === "buffer") {
+                that.setupBuffer(that.inputs.buffer);
+            }
+
+            flock.onMulAddInputChanged(that);
+        };
+
+        that.init = function () {
+            that.onInputChanged();
+        };
+
+        that.init();
+
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.writeBuffer", {
+        rate: "audio",
+
+        inputs: {
+            sources: null,
+            buffer: null,
+            start: 0,
+            loop: 0
+        },
+
+        ugenOptions: {
+            model: {
+                prevStart: undefined,
+                writeIdx: 0
+            },
+
+            tags: ["flock.ugen.multiChannelOutput"],
+            numOutputs: 2, // TODO: Should be dynamically set to sources.length; user has to override.
+            multiInputNames: ["sources"],
+            duration: 600 // In seconds. Default is 10 minutes.
+        }
+    });
+
+
+    /**
      * Outputs the duration of the specified buffer. Runs at either constant or control rate.
      * Use control rate only when the underlying buffer may change dynamically.
      *
@@ -16772,7 +18279,7 @@ var fluid = fluid || require("infusion"),
     /**
      * Outputs a phase step value for playing the specified buffer at its normal playback rate.
      * This unit generator takes into account any differences between the sound file's sample rate and
-     * the environment's audio rate.
+     * the AudioSystem's audio rate.
      *
      * Inputs:
      *  buffer: a bufDef object specifying the buffer to track
@@ -16839,7 +18346,7 @@ var fluid = fluid || require("infusion"),
     });
 
     /**
-     * Constant-rate unit generator that outputs the environment's current audio sample rate.
+     * Constant-rate unit generator that outputs the AudioSystem's current audio sample rate.
      */
     flock.ugen.sampleRate = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options),
@@ -17651,6 +19158,220 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+    /**
+     * A triggerable timed gate.
+     *
+     * This unit generator will output 1.0 for the specified
+     * duration whenever it is triggered.
+     *
+     * Similar to SuperCollider's Trig1 unit generator.
+     *
+     * Inputs:
+     *     duration: the duration (in seconds) to remain open
+     *     trigger: a trigger signal that will cause the gate to open
+     */
+    // TODO: Unit tests!
+    flock.ugen.timedGate = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                out = that.output,
+                trigger = that.inputs.trigger.output,
+                duration = that.inputs.duration.output[0],
+                currentTrig,
+                i,
+                j,
+                val;
+
+            if (duration !== m.duration) {
+                m.duration = duration;
+                m.durationSamps = Math.floor(duration * m.sampleRate);
+            }
+
+            for (i = j = 0; i < numSamps; i++, j += m.strides.trigger) {
+                currentTrig = trigger[j];
+                if (currentTrig > 0.0 && m.prevTrigger <= 0.0) {
+                    // If we're already open, close the gate for one sample.
+                    val = that.options.resetOnTrigger && m.sampsRemaining > 0 ? 0.0 : 1.0;
+                    m.sampsRemaining = m.durationSamps;
+                } else {
+                    val = m.sampsRemaining > 0 ? 1.0 : 0.0;
+                }
+
+                out[i] = val;
+                m.sampsRemaining--;
+
+                m.prevTrigger = currentTrig;
+            }
+
+            m.unscaledValue = val;
+            that.mulAdd(numSamps);
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
+        };
+
+        that.init = function () {
+            that.onInputChanged();
+        };
+
+        that.init();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.timedGate", {
+        rate: "audio",
+        inputs: {
+            trigger: 0.0,
+            duration: 1.0
+        },
+        ugenOptions: {
+            model: {
+                unscaledValue: 0.0,
+                value: 0.0,
+                prevTrigger: 0.0,
+                sampsRemaining: 0,
+                durationSamps: 0,
+                duration: 0.0
+            },
+            resetOnTrigger: true,
+            strideInputs: ["trigger"]
+        }
+    });
+
+    /**
+     * A Sequencer unit generator outputs a sequence of values
+     * for the specified sequence of durations.
+     *
+     * Optionally, when the resetOnNext flag is set,
+     * the sequencer will reset its value to 0.0 for one sample
+     * prior to moving to the next duration.
+     * This is useful for sequencing envelope gates, for example.
+     *
+     * Inputs:
+     *     durations: an array of durations (in seconds) to hold each value
+     *     values: an array of values to output
+     *     loop: if > 0, the unit generator will loop back to the beginning
+     *         of the lists when it reaches the end; defaults to 0.
+     */
+    // TODO: Unit Tests!
+    flock.ugen.sequencer = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                o = that.options,
+                resetOnNext = o.resetOnNext,
+                out = that.output,
+                loop = that.inputs.loop.output[0],
+                durations = that.inputs.durations,
+                values = that.inputs.values,
+                i,
+                val;
+
+            for (i = 0; i < numSamps; i++) {
+                if (values.length === 0 || durations.length === 0) {
+                    // Nothing to output.
+                    out[i] = val = 0.0;
+                    continue;
+                }
+
+                if (m.samplesRemaining <= 0) {
+                    // We've hit the end of a stage.
+                    if (m.idx < durations.length - 1) {
+                        // Continue to the next value/duration pair.
+                        m.idx++;
+                        val = flock.ugen.sequencer.nextStage(durations, values, resetOnNext, m);
+                    } else if (loop > 0.0) {
+                        // Loop back to the first value/duration pair.
+                        m.idx = 0;
+                        val = flock.ugen.sequencer.nextStage(durations, values, resetOnNext, m);
+                    } else {
+                        // Nothing left to do.
+                        val = o.holdLastValue ? m.unscaledValue : 0.0;
+                    }
+                } else {
+                    // Still in the midst of a stage.
+                    val = values[m.idx];
+                    m.samplesRemaining--;
+                }
+
+                out[i] = val;
+            }
+
+            m.unscaledValue = val;
+            that.mulAdd(numSamps);
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
+        };
+
+        that.onInputChanged = function (inputName) {
+            var inputs = that.inputs;
+
+            if (!inputName || inputName === "durations") {
+                flock.ugen.sequencer.calcDurationsSamps(inputs.durations, that.model);
+                flock.ugen.sequencer.failOnMissingInput("durations", that);
+            }
+
+            if (!inputName || inputName === "values") {
+                flock.ugen.sequencer.failOnMissingInput("values", that);
+            }
+
+            if (inputs.durations.length !== inputs.values.length) {
+                flock.fail("Mismatched durations and values array lengths for flock.ugen.sequencer: " +
+                    fluid.prettyPrintJSON(that.options.ugenDef));
+            }
+
+            flock.onMulAddInputChanged(that);
+        };
+
+        that.init = function () {
+            that.onInputChanged();
+        };
+
+        that.init();
+        return that;
+    };
+
+    flock.ugen.sequencer.failOnMissingInput = function (inputName, that) {
+        var input = that.inputs[inputName];
+        if (!input || !flock.isIterable(input)) {
+            flock.fail("No " + inputName + " array input was specified for flock.ugen.sequencer: " +
+                fluid.prettyPrintJSON(that.options.ugenDef));
+        }
+    };
+
+    flock.ugen.sequencer.calcDurationsSamps = function (durations, m) {
+        m.samplesRemaining = Math.floor(durations[m.idx] * m.sampleRate);
+    };
+
+    flock.ugen.sequencer.nextStage = function (durations, values, resetOnNext, m) {
+        flock.ugen.sequencer.calcDurationsSamps(durations, m);
+        m.samplesRemaining--;
+        return resetOnNext ? 0.0 : values[m.idx];
+    };
+
+    fluid.defaults("flock.ugen.sequencer", {
+        rate: "audio",
+        inputs: {
+            // TODO: start,
+            // TODO: end,
+            // TODO: skip
+            // TODO: direction,
+            durations: [],
+            values: [],
+            loop: 0.0
+        },
+        ugenOptions: {
+            model: {
+                idx: 0,
+                samplesRemaining: 0,
+                unscaledValue: 0.0,
+                value: 0.0
+            },
+            resetOnNext: false,
+            holdLastvalue: false
+        }
+    });
+
 
     /**
      * An equal power stereo panner.
@@ -17738,7 +19459,7 @@ var fluid = fluid || require("infusion"),
         that.gen = function (numSamps) {
             var m = that.model,
                 sources = that.multiInputs.sources,
-                buses = that.options.audioSettings.buses,
+                buses = that.options.buses,
                 bufStart = that.inputs.bus.output[0],
                 expand = that.inputs.expand.output[0],
                 numSources,
@@ -17857,6 +19578,7 @@ var fluid = fluid || require("infusion"),
     });
 
     // TODO: fix naming.
+    // TODO: Make this a proper multiinput ugen.
     flock.ugen["in"] = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
@@ -17865,7 +19587,7 @@ var fluid = fluid || require("infusion"),
                 out = that.output;
 
             flock.ugen.in.readBus(numSamps, out, that.inputs.bus,
-                that.options.audioSettings.buses);
+                that.options.buses);
 
             m.unscaledValue = flock.ugen.lastOutputValue(numSamps, out);
             that.mulAdd(numSamps);
@@ -17875,7 +19597,7 @@ var fluid = fluid || require("infusion"),
         that.multiBusGen = function (numSamps) {
             var m = that.model,
                 busesInput = that.inputs.bus,
-                enviroBuses = that.options.audioSettings.buses,
+                enviroBuses = that.options.buses,
                 out = that.output,
                 i,
                 j,
@@ -17950,9 +19672,8 @@ var fluid = fluid || require("infusion"),
 
         that.init = function () {
             // TODO: Direct reference to the shared environment.
-            var busNum = flock.enviro.shared.audioStrategy.inputDeviceManager.openAudioDevice(options);
-            that.bus = that.options.audioSettings.buses[busNum];
-
+            var busNum = flock.environment.audioStrategy.inputDeviceManager.openAudioDevice(options);
+            that.bus = that.options.buses[busNum];
             that.onInputChanged();
         };
 
@@ -17972,6 +19693,59 @@ var fluid = fluid || require("infusion"),
     /***********
      * Filters *
      ***********/
+
+    flock.ugen.lag = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                out = that.output,
+                inputs = that.inputs,
+                time = inputs.time.output[0],
+                source = inputs.source.output,
+                prevSamp = m.prevSamp,
+                lagCoef = m.lagCoef,
+                i,
+                j,
+                currSamp,
+                outVal;
+
+            if (time !== m.prevTime) {
+                m.prevtime = time;
+                lagCoef = m.lagCoef = time === 0 ? 0.0 : Math.exp(flock.LOG001 / (time * m.sampleRate));
+            }
+
+            for (i = j = 0; i < numSamps; i++, j += m.strides.source) {
+                currSamp = source[j];
+                outVal = currSamp + lagCoef * (prevSamp - currSamp);
+                out[i] = prevSamp = outVal;
+            }
+
+            m.prevSamp = prevSamp;
+
+            that.mulAdd(numSamps);
+        };
+
+        that.onInputChanged();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.lag", {
+        rate: "audio",
+        inputs: {
+            source: null,
+            time: 0.1
+        },
+        ugenOptions: {
+            strideInputs: ["source"],
+            model: {
+                prevSamp: 0.0,
+                lagCoef: 0.0,
+                prevTime: 0.0
+            }
+        }
+    });
+
 
     /**
      * A generic FIR and IIR filter engine. You specify the coefficients, and this will do the rest.
@@ -19358,7 +21132,7 @@ var fluid = fluid || require("infusion"),
         var that = flock.ugen(inputs, output, options);
 
         that.gen = function (numSamps) {
-            var list = that.inputs.list,
+            var values = that.inputs.values,
                 inputs = that.inputs,
                 freq = inputs.freq.output,
                 loop = inputs.loop.output[0],
@@ -19366,13 +21140,13 @@ var fluid = fluid || require("infusion"),
                 scale = m.scale,
                 out = that.output,
                 start = inputs.start ? Math.round(inputs.start.output[0]) : 0,
-                end = inputs.end ? Math.round(inputs.end.output[0]) : list.length,
+                end = inputs.end ? Math.round(inputs.end.output[0]) : values.length,
                 startItem,
                 i,
                 j;
 
             if (m.unscaledValue === undefined) {
-                startItem = list[start];
+                startItem = values[start];
                 m.unscaledValue = (startItem === undefined) ? 0.0 : startItem;
             }
 
@@ -19390,7 +21164,7 @@ var fluid = fluid || require("infusion"),
                     }
                 }
 
-                out[i] = m.unscaledValue = list[m.nextIdx];
+                out[i] = m.unscaledValue = values[m.nextIdx];
                 m.phase += freq[j] * scale;
 
                 if (m.phase >= 1.0) {
@@ -19406,8 +21180,13 @@ var fluid = fluid || require("infusion"),
         that.onInputChanged = function () {
             that.model.scale = that.rate !== flock.rates.DEMAND ? that.model.sampleDur : 1;
 
-            if (!that.inputs.list) {
-                that.inputs.list = [];
+            if ((!that.inputs.values || that.inputs.values.length === 0) && that.inputs.list) {
+                flock.log.warn("The 'list' input to flock.ugen.sequence is deprecated. Use 'values' instead.");
+                that.inputs.values = that.inputs.list;
+            }
+
+            if (!that.inputs.values) {
+                that.inputs.values = [];
             }
 
             that.calculateStrides();
@@ -19429,7 +21208,7 @@ var fluid = fluid || require("infusion"),
             start: 0,
             freq: 1.0,
             loop: 0.0,
-            list: []
+            values: []
         },
 
         ugenOptions: {
@@ -19452,13 +21231,13 @@ var fluid = fluid || require("infusion"),
                 a4Freq = a4.freq,
                 a4NoteNum = a4.noteNum,
                 notesPerOctave = m.notesPerOctave,
-                noteNum = that.inputs.source.output,
+                noteNum = that.inputs.note.output,
                 out = that.output,
                 i,
                 j,
                 val;
 
-            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.source) {
+            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.note) {
                 out[i] = val = flock.midiFreq(noteNum[j], a4Freq, a4NoteNum, notesPerOctave);
             }
 
@@ -19479,7 +21258,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.ugen.midiFreq", {
         rate: "control",
         inputs: {
-            source: null // TODO: This input should be named "note"
+            note: 69
         },
         ugenOptions: {
             model: {
@@ -19492,8 +21271,51 @@ var fluid = fluid || require("infusion"),
                 notesPerOctave: 12
             },
             strideInputs: [
-                "source"
+                "note"
             ]
+        }
+    });
+
+
+    flock.ugen.midiAmp = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                velocity = that.inputs.velocity.output,
+                out = that.output,
+                i,
+                j,
+                val;
+
+            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.velocity) {
+                out[i] = val = velocity[j] / 127;
+            }
+
+            m.unscaledValue = val;
+            that.mulAdd(numSamps);
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
+        };
+
+        that.init = function () {
+            that.onInputChanged();
+        };
+
+        that.init();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.midiAmp", {
+        rate: "control",
+        inputs: {
+            velocity: 0
+        },
+        ugenOptions: {
+            model: {
+                unscaledValue: 0.0,
+                value: 0.0
+            },
+            strideInputs: ["velocity"]
         }
     });
 }());
@@ -21293,12 +23115,12 @@ var fluid = fluid || require("infusion"),
         };
 
         that.init = function () {
-            var enviro = flock.enviro.shared,
+            var enviro = flock.environment,
                 mediaEl = $(that.options.element),
                 // TODO: Direct reference to the shared environment.
                 busNum = enviro.audioStrategy.nativeNodeManager.createMediaElementInput(mediaEl[0]);
 
-            that.bus = that.options.audioSettings.buses[busNum];
+            that.bus = that.options.buses[busNum];
             that.onInputChanged();
 
             // TODO: Remove this warning when Safari and Android
@@ -21634,6 +23456,7 @@ var fluid = fluid || require("infusion"),
      * including references to all the available MIDI ports
      * and the MIDIAccess object.
      */
+    // TODO: This should be a model component!
     fluid.defaults("flock.midi.system", {
         gradeNames: ["fluid.eventedComponent", "autoInit"],
 
@@ -21656,14 +23479,15 @@ var fluid = fluid || require("infusion"),
 
             refreshPorts: {
                 funcName: "flock.midi.system.refreshPorts",
-                args: ["{that}", "{that}.access"]
+                args: ["{that}", "{that}.access", "{that}.events.onPortsAvailable.fire"]
             }
         },
 
         events: {
             onAccessGranted: null,
             onAccessError: null,
-            onReady: null
+            onReady: null,
+            onPortsAvailable: null
         },
 
         listeners: {
@@ -21672,17 +23496,9 @@ var fluid = fluid || require("infusion"),
             },
 
             onAccessGranted: [
-                {
-                    funcName: "flock.midi.system.setAccess",
-                    args: ["{that}", "{arguments}.0"]
-                },
-                {
-                    func: "{that}.refreshPorts"
-                },
-                {
-                    func: "{that}.events.onReady.fire",
-                    args: "{that}.ports"
-                }
+                "flock.midi.system.setAccess({that}, {arguments}.0)",
+                "{that}.refreshPorts()",
+                "{that}.events.onReady.fire({that}.ports)"
             ],
 
             onAccessError: {
@@ -21696,9 +23512,31 @@ var fluid = fluid || require("infusion"),
         that.access = access;
     };
 
-    flock.midi.system.refreshPorts = function (that, access) {
+    flock.midi.system.refreshPorts = function (that, access, onPortsAvailable) {
         that.ports = flock.midi.getPorts(access);
+        onPortsAvailable(that.ports);
     };
+
+
+    /**
+     * An abstract grade that the defines the event names
+     * for receiving MIDI messages
+     */
+    fluid.defaults("flock.midi.receiver", {
+        gradeNames: ["fluid.eventedComponent"],
+
+        events: {
+            raw: null,
+            message: null,
+            note: null,
+            noteOn: null,
+            noteOff: null,
+            control: null,
+            program: null,
+            aftertouch: null,
+            pitchbend: null
+        }
+    });
 
 
     /*
@@ -21707,7 +23545,7 @@ var fluid = fluid || require("infusion"),
      */
     // TODO: Handle port disconnection events.
     fluid.defaults("flock.midi.connection", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["flock.midi.receiver", "autoInit"],
 
         openImmediately: false,
 
@@ -21762,20 +23600,10 @@ var fluid = fluid || require("infusion"),
         },
 
         events: {
-            onPortsAvailable: null, //"{system}.events.onReady",
+            onPortsAvailable: null,
             onReady: null,
             onError: null,
-            onSendMessage: null,
-
-            raw: null,
-            message: null,
-            note: null,
-            noteOn: null,
-            noteOff: null,
-            control: null,
-            program: null,
-            aftertouch: null,
-            pitchbend: null
+            onSendMessage: null
         },
 
         listeners: {
@@ -21794,7 +23622,11 @@ var fluid = fluid || require("infusion"),
             raw: {
                 funcName: "flock.midi.connection.fireEvent",
                 args: ["{arguments}.0", "{that}.events"]
-            }
+            },
+
+            onDestroy: [
+                "{that}.close()"
+            ]
         }
     });
 
@@ -21830,13 +23662,8 @@ var fluid = fluid || require("infusion"),
             };
         }
 
-        if (portSpec.id) {
-            return function (ports) {
-                ports.find(flock.midi.findPorts.idMatcher(portSpec.id));
-            };
-        }
-
-        var matcher = portSpec.manufacturer && portSpec.name ?
+        var matcher = portSpec.id ? flock.midi.findPorts.idMatcher(portSpec.id) :
+            portSpec.manufacturer && portSpec.name ?
             flock.midi.findPorts.bothMatcher(portSpec.manufacturer, portSpec.name) :
             portSpec.manufacturer ? flock.midi.findPorts.manufacturerMatcher(portSpec.manufacturer) :
             flock.midi.findPorts.nameMatcher(portSpec.name);
@@ -22022,6 +23849,167 @@ var fluid = fluid || require("infusion"),
 
         if (eventForType) {
             eventForType.fire(model);
+        }
+    };
+
+
+    fluid.defaults("flock.midi.controller", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+
+        members: {
+            controlMap: "@expand:flock.midi.controller.optimizeControlMap({that}.options.controlMap)",
+            noteMap: "{that}.options.noteMap"
+        },
+
+        controlMap: {},                       // Control and note maps
+        noteMap: {},                          // need to be specified by the user.
+
+        components: {
+            synthContext: {                   // Also user-specified. Typically a flock.band instance,
+                type: "flock.band"            // but can be anything that has a set of named synths,
+            },                                // including a synth itself.
+
+            connection: {
+                type: "flock.midi.connection",
+                options: {
+                    ports: {
+                        input: "*"              // Connect to the first available input port.
+                    },
+
+                    openImmediately: true,    // Immediately upon instantiating the connection.
+
+                    listeners: {
+                        control: {
+                            func: "{controller}.mapControl"
+                        },
+                        note: {
+                            func: "{controller}.mapNote"
+                        }
+                    }
+                }
+            }
+        },
+
+        invokers: {
+            mapControl: {
+                funcName: "flock.midi.controller.mapControl",
+                args: ["{arguments}.0", "{that}.synthContext", "{that}.controlMap"]
+            },
+
+            mapNote: {
+                funcName: "flock.midi.controller.mapNote",
+                args: ["{arguments}.0", "{that}.synthContext", "{that}.noteMap"]
+            }
+        }
+    });
+
+    flock.midi.controller.optimizeControlMap = function (controlMap) {
+        var controlMapArray = new Array(127);
+        fluid.each(controlMap, function (mapSpec, controlNum) {
+            var idx = Number(controlNum);
+            controlMapArray[idx] = mapSpec;
+        });
+
+        return controlMapArray;
+    };
+
+    flock.midi.controller.expandControlMapSpec = function (valueUGenID, mapSpec) {
+        mapSpec.transform.id = valueUGenID;
+
+        // TODO: The key "valuePath" is confusing;
+        // it actually points to the location in the
+        // transform synth where the value will be set.
+        mapSpec.valuePath = mapSpec.valuePath || "value";
+
+        if (!mapSpec.transform.ugen) {
+            mapSpec.transform.ugen = "flock.ugen.value";
+        }
+
+        return mapSpec;
+    };
+
+    flock.midi.controller.makeValueSynth = function (value, id, mapSpec) {
+        mapSpec = flock.midi.controller.expandControlMapSpec(id, mapSpec);
+
+        var transform = mapSpec.transform,
+            valuePath = mapSpec.valuePath;
+
+        flock.set(transform, valuePath, value);
+
+        // Instantiate the new value synth.
+        var valueSynth = flock.synth.value({
+            synthDef: transform
+        });
+
+        // Update the value path so we can quickly update the synth's input value.
+        mapSpec.valuePath = id + "." + valuePath;
+
+        return valueSynth;
+    };
+
+    flock.midi.controller.transformValue = function (value, mapSpec) {
+        var transform = mapSpec.transform,
+            type = typeof transform;
+
+        if (type === "function") {
+            return transform(value);
+        }
+        // TODO: Add support for string-based transforms
+        // that bind to globally-defined synths
+        // (e.g. "flock.synth.midiFreq" or "flock.synth.midiAmp")
+        // TODO: Factor this into a separate function.
+        if (!mapSpec.transformSynth) {
+            // We have a raw synthDef.
+            // Instantiate a value synth to transform incoming control values.
+
+            // TODO: In order to support multiple inputs (e.g. a multi-arg OSC message),
+            // this special path needs to be scoped to the argument name. In the case of MIDI,
+            // this would be the CC number. In the case of OSC, it would be a combination of
+            // OSC message address and argument index.
+            mapSpec.transformSynth = flock.midi.controller.makeValueSynth(
+                value, "flock-midi-controller-in", mapSpec);
+        } else {
+            // TODO: When the new node architecture is in in place, we can directly connect this
+            // synth to the target synth at instantiation time.
+            // TODO: Add support for arrays of values, such as multi-arg OSC messages.
+            mapSpec.transformSynth.set(mapSpec.valuePath, value);
+        }
+
+        return mapSpec.transformSynth.value();
+    };
+
+    flock.midi.controller.setMappedValue = function (value, map, synthContext) {
+        if (!map) {
+            return;
+        }
+
+        value = map.transform ? flock.midi.controller.transformValue(value, map) : value;
+        var synth = synthContext[map.synth] || synthContext;
+
+        synth.set(map.input, value);
+    };
+
+    flock.midi.controller.mapControl = function (midiMsg, synthContext, controlMap) {
+        var map = controlMap[midiMsg.number],
+            value = midiMsg.value;
+
+        flock.midi.controller.setMappedValue(value, map, synthContext);
+    };
+
+    // TODO: Add support for defining listener filters or subsets
+    // of all midi notes (e.g. for controllers like the Quneo).
+    flock.midi.controller.mapNote = function (midiMsg, synthContext, noteMap) {
+        var keyMap = noteMap.note,
+            key = midiMsg.note,
+            velMap = noteMap.velocity,
+            vel = midiMsg.velocity;
+
+        if (keyMap) {
+            flock.midi.controller.setMappedValue(key, keyMap, synthContext);
+        }
+
+        if (velMap) {
+            flock.midi.controller.setMappedValue(vel, velMap, synthContext);
         }
     };
 

@@ -126,7 +126,7 @@ For our example, let's create a noisy synth that uses frequency modulation. The 
 
 We want our example to work on all devices. iOS has a restrict that sounds can only be played as the result of a user action. If you try to start Flocking without the user first having tapped on something, it will be silent. So we'll need to make sure that we only start Flocking after the user has clicked the button for the first time.
 
-To do so, we will bind a one-time click handler on our button. It will start the Flocking _shared environment_ by calling its `play` method. We'll use jQuery's `one()` method to register a handler that automatically gets removed after it has fired once. Here's the code for it:
+To do so, we will bind a one-time click handler on our button. It will start the Flocking Environment by calling its `play` method. We'll use jQuery's `one()` method to register a handler that automatically gets removed after it has fired once. Here's the code for it:
 
     $(container).one("click", function () {
         var enviro = flock.init();

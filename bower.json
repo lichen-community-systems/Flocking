@@ -22,7 +22,10 @@
         "MIT-LICENSE.txt",
         "package.json"
     ],
-    "dependencies": {},
+    "dependencies": {
+        "jsPlumb": "1.6.4",
+        "codemirror-infusion": "git://github.com/colinbdclark/codemirror-infusion.git"
+    },
     "devDependencies": {
         "requirejs": ">=2.1.14"
     }

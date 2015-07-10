@@ -1,0 +1,14 @@
+{
+    "description": "Creates a new synth consisting of a sine wave whose amplitude is slowly moduled by another sine wave.",
+    "synthDef": {
+        "id": "carrier",
+        "ugen": "flock.ugen.sinOsc",
+        "freq": 440,
+        "mul": {
+            "id": "mod",
+            "ugen": "flock.ugen.sinOsc",
+            "freq": 1.0,
+            "mul": 0.25
+        }
+    }
+}

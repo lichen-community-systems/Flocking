@@ -119,47 +119,60 @@ var fluid = fluid || require("infusion"),
 
     // TODO: This is actually part of the interpreter's expansion process
     // and should be clearly named as such.
-    flock.bufferDesc = function (data) {
+    flock.bufferDesc = function (data, sampleRate, numChannels) {
         var fn = flock.platform.isWebAudio && data instanceof AudioBuffer ?
             flock.bufferDesc.fromAudioBuffer : flock.isIterable(data) ?
             flock.bufferDesc.fromChannelArray : flock.bufferDesc.expand;
 
-        return fn(data);
+        return fn(data, sampleRate, numChannels);
     };
 
-    flock.bufferDesc.inferFormat = function (bufDesc) {
+    flock.bufferDesc.inferFormat = function (bufDesc, sampleRate, numChannels) {
         var format = bufDesc.format,
             data = bufDesc.data;
 
-        format.sampleRate = format.sampleRate || 44100;
-        format.numSampleFrames = format.numSampleFrames || data.channels[0].length;
+        format.sampleRate = sampleRate || format.sampleRate || 44100;
+        format.numChannels = numChannels || format.numChannels || bufDesc.data.channels.length;
+        format.numSampleFrames = format.numSampleFrames ||
+            data.channels.length > 0 ? data.channels[0].length : 0;
         format.duration = format.numSampleFrames / format.sampleRate;
 
         return bufDesc;
     };
 
-    flock.bufferDesc.fromChannelArray = function (arr, sampleRate) {
+    flock.bufferDesc.fromChannelArray = function (arr, sampleRate, numChannels) {
+        if (arr instanceof Float32Array) {
+            arr = [arr];
+        }
+
         var bufDesc = {
             container: {},
 
             format: {
-                numChannels: 1,
-                sampleRate: sampleRate
+                numChannels: numChannels,
+                sampleRate: sampleRate,
+                numSampleFrames: arr[0].length
             },
 
             data: {
-                channels: [arr]
+                channels: arr
             }
         };
 
-        return flock.bufferDesc.inferFormat(bufDesc);
+        return flock.bufferDesc.inferFormat(bufDesc, sampleRate, numChannels);
     };
 
-    flock.bufferDesc.expand = function (bufDesc) {
+    flock.bufferDesc.expand = function (bufDesc, sampleRate, numChannels) {
+        bufDesc = bufDesc || {
+            data: {
+                channels: []
+            }
+        };
+
         bufDesc.container = bufDesc.container || {};
         bufDesc.format = bufDesc.format || {};
-
-        bufDesc.format.numChannels = bufDesc.format.numChannels || bufDesc.data.channels.length;
+        bufDesc.format.numChannels = numChannels ||
+            bufDesc.format.numChannels || bufDesc.data.channels.length; // TODO: Duplication with inferFormat.
 
         if (bufDesc.data && bufDesc.data.channels) {
             // Special case for an unwrapped single-channel array.
@@ -175,7 +188,7 @@ var fluid = fluid || require("infusion"),
             }
         }
 
-        return flock.bufferDesc.inferFormat(bufDesc);
+        return flock.bufferDesc.inferFormat(bufDesc, sampleRate, numChannels);
     };
 
     flock.bufferDesc.fromAudioBuffer = function (audioBuffer) {
@@ -205,7 +218,7 @@ var fluid = fluid || require("infusion"),
      * Represents a source for fetching buffers.
      */
     fluid.defaults("flock.bufferSource", {
-        gradeNames: ["fluid.eventedComponent", "fluid.modelComponent", "autoInit"],
+        gradeNames: ["fluid.standardComponent", "autoInit"],
 
         model: {
             state: "start",
@@ -271,11 +284,7 @@ var fluid = fluid || require("infusion"),
                 }
             ],
 
-            onBufferUpdated: {
-                // TODO: Hardcoded reference to shared environment.
-                funcName: "flock.enviro.shared.registerBuffer",
-                args: ["{arguments}.0"]
-            },
+            onBufferUpdated: "{environment}.registerBuffer({arguments}.0)",
 
             onError: {
                 funcName: "{that}.applier.requestChange",
@@ -420,7 +429,7 @@ var fluid = fluid || require("infusion"),
             }
 
             // TODO: Hardcoded reference to the shared environment.
-            flock.parse.bufferForDef(bufferDefs[i], bufferTarget, flock.enviro.shared);
+            flock.parse.bufferForDef(bufferDefs[i], bufferTarget, flock.environment);
         }
     };
 

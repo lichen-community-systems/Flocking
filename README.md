@@ -68,7 +68,7 @@ Documentation and Demos
 -----------------------
 
 * Flocking's [documentation](docs/) is in the repository
-* Demos can be found in the [Flocking Playground](http://flockingjs.org/demos/interactive/html/playground.html)
+* Demos can be found in the [Flocking Playground](http://flockingjs.org/demos/playground)
 * Other examples are located in the [examples repository](http://github.com/colinbdclark/flocking-examples)
 
 
@@ -265,16 +265,15 @@ To add a synth to the tail of the graph so that it will be evaluated after all o
 
     enviro.tail(mySynth);
 
-
 ### Schedulers ###
 
 A scheduler allows you to schedule changes to Synths at a particular time.
 Currently, there is one type of Scheduler, the asynchronous scheduler.
 Unfortunately, it is driven by the browser's notoriously inaccurate setTimeout() and setInterval() clocks,
-which means that it will drift by up to 75 ms depending on the browser's load. In practice, however, this drift is
-sufficient for scheduling many kinds of changes, and if sample-level accuracy is needed,
-unit generators such as <code>flock.ugen.sequence</code>, <code>flock.ugen.change</code> and  
-<code>flock.ugen.random</code> can be used.
+which means that it will drift by up to 75 ms depending on the browser's load.
+In practice, however, this drift is sufficient for scheduling many kinds of changes,
+and if sample-level accuracy is needed, unit generators such as <code>flock.ugen.sequence</code>,
+<code>flock.ugen.change</code> and  <code>flock.ugen.random</code> can be used.
 
 A block-accurate scheduler is planned for an upcoming release of Flocking.
 In the meantime the asynchronous scheduler does a decent job of keeping "pleasantly inaccurate" time.
@@ -293,7 +292,7 @@ Here's an example of the declarative powers of the Flocking scheduler:
                         synthDef: {   // Synth that generate values by iterating through the list.
                             ugen: "flock.ugen.sequence",
                             loop: 1.0,
-                            list: [110, 220, 330, 440, 550, 660, 880]
+                            values: [110, 220, 330, 440, 550, 660, 880]
                         }
                     }
                 }

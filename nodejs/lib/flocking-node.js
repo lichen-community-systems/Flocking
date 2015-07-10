@@ -105,20 +105,21 @@ var fs = require("fs"),
         bytesPerSample: 4, // Flocking uses Float32s, hence 4 bytes.
 
         model: {
+            audioSettings: "{audioSystem}.model",
             bytesPerBlock: {
                 expander: {
                     funcName: "flock.audioStrategy.nodejs.calcBlockBytes",
-                    args: ["{that}.options.audioSettings", "{that}.options.bytesPerSample"]
+                    args: ["{audioSystem}.model", "{that}.options.bytesPerSample"]
                 }
             }
         },
 
         members: {
-            speaker: "@expand:flock.audioStrategy.nodejs.createSpeaker({that}.options.audioSettings)",
+            speaker: "@expand:flock.audioStrategy.nodejs.createSpeaker({that}.model.audioSettings)",
             outputStream: {
                 expander: {
                     funcName: "flock.audioStrategy.nodejs.createOutputStream",
-                    args: "{that}.options.audioSettings"
+                    args: "{that}.model.audioSettings"
                 }
             }
         },
@@ -145,7 +146,14 @@ var fs = require("fs"),
                 args: "Audio input is not currently supported on Node.js"
             },
 
-            stopReadingAudioInput: "{that}.startReadingAudioInput"
+            stopReadingAudioInput: "{that}.startReadingAudioInput",
+
+            saveBuffer: "flock.audioStrategy.nodejs.saveBuffer({arguments}.0)"
+        },
+
+        listeners: {
+            onStart: ["{that}.start"],
+            onStop: ["{that}.stop"]
         }
     });
 
@@ -180,13 +188,15 @@ var fs = require("fs"),
     };
 
     flock.audioStrategy.nodejs.writeSamples = function (numBytes, that) {
-        var settings = that.options.audioSettings,
+        var s = that.model.audioSettings,
             m = that.model,
             bytesPerSample = that.options.bytesPerSample,
-            blockSize = settings.blockSize,
-            chans = settings.chans,
+            blockSize = s.blockSize,
+            chans = s.chans,
             krPeriods = numBytes / m.bytesPerBlock,
             evaluator = that.nodeEvaluator,
+            buses = evaluator.buses,
+            nodes = evaluator.nodes,
             outputStream = that.outputStream,
             out = new Buffer(numBytes);
 
@@ -199,8 +209,8 @@ var fs = require("fs"),
             flock.generate.silence(out);
         } else {
             for (var i = 0, offset = 0; i < krPeriods; i++, offset += m.bytesPerBlock) {
-                evaluator.clearBuses();
-                evaluator.gen();
+                flock.nodeEvaluator.clearBuses(s.numBuses, s.blockSize, buses);
+                flock.nodeEvaluator.gen(nodes);
 
                 // Interleave each output channel.
                 for (var chan = 0; chan < chans; chan++) {
@@ -216,6 +226,30 @@ var fs = require("fs"),
         outputStream.push(out);
     };
 
+    flock.audioStrategy.nodejs.saveBuffer = function (o) {
+        var encoded = flock.audio.encode.wav(o.buffer);
+
+        fs.writeFile(o.path, encoded, function (err) {
+            if (err) {
+                if (!o.error) {
+                    flock.fail("There was an error while writing a buffer named " +
+                        o.buffer.id + " with the file path " + fileName + ". Error was: " + err);
+                } else {
+                    o.error(err);
+                }
+
+                return;
+            }
+
+            if (o.success) {
+                o.success(encoded);
+            }
+        });
+    };
+
+    fluid.demands("flock.audioSystem.platform", "flock.platform.nodejs", {
+        funcName: "flock.audioSystem"
+    });
 
     fluid.demands("flock.audioStrategy.platform", "flock.platform.nodejs", {
         funcName: "flock.audioStrategy.nodejs"
