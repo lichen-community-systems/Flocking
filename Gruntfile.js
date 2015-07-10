@@ -23,8 +23,8 @@ module.exports = function(grunt) {
         ],
 
         miscDeps: [
-            // Marcus Geelnard's DSPI API polyfill
-            "third-party/dspapi/js/dspapi.js",
+            // Marcus Geelnard's WebArrayMath polyfill
+            "third-party/webarraymath/js/webarraymath.js",
             // Sim.js' random distribution library.
             "third-party/simjs/js/random-0.26.js"
         ],
@@ -146,7 +146,7 @@ module.exports = function(grunt) {
 
         flock: {
             banners: {
-                short: "/*! Flocking <%= pkg.version %> (<%= grunt.template.today('mmmm d, yyyy') %>), Copyright <%= grunt.template.today('yyyy') %> Colin Clark | flockingjs.org */\n\n"
+                short: "/*! Flocking <%= pkg.version %>, Copyright <%= grunt.template.today('yyyy') %> Colin Clark | flockingjs.org */\n\n"
             }
         }
     });

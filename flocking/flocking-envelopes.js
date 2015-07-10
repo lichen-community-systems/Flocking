@@ -6,7 +6,7 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global require, DSP*/
+/*global require*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,
@@ -20,7 +20,8 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    var $ = fluid.registerNamespace("jQuery");
+    var $ = fluid.registerNamespace("jQuery"),
+        ArrayMath = flock.requireModule("webarraymath", "ArrayMath");
 
     /*********************
      * Envelope Creators *
@@ -133,7 +134,7 @@ var fluid = fluid || require("infusion"),
         dadsr: {
             transformer: function (o) {
                 var levels = [0, 0, o.peak, o.peak * o.sustain, 0];
-                DSP.add(levels, levels, o.bias);
+                ArrayMath.add(levels, o.bias, levels);
 
                 return {
                     levels: levels,
@@ -157,7 +158,7 @@ var fluid = fluid || require("infusion"),
         adsr: {
             transformer: function (o) {
                 var levels = [0, o.peak, o.peak * o.sustain, 0];
-                DSP.add(levels, levels, o.bias);
+                ArrayMath.add(levels, o.bias, levels);
 
                 return {
                     levels: levels,

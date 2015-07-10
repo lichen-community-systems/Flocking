@@ -110,8 +110,8 @@ If you'd prefer to link to the individual Flocking files during development, the
     <script src="flocking/third-party/infusion/js/FluidIoC.js"></script>
     <script src="flocking/third-party/infusion/js/DataBinding.js"></script>
 
-    <!-- The DSP API Polyfill -->
-    <script src="flocking/third-party/dspapi/js/dspapi.js"></script>
+    <!-- The WebArrayMath Polyfill -->
+    <script src="flocking/third-party/webarraymath/js/webarraymath.js"></script>
 
     <!-- Flocking -->
     <script src="flocking/flocking/flocking-core.js"></script>

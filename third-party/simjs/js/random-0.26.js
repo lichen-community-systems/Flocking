@@ -1,19 +1,19 @@
 
 /** Random.js library.
- * 
+ *
  * The code is licensed as LGPL.
 */
 
-/* 
+/*
    A C-program for MT19937, with initialization improved 2002/1/26.
    Coded by Takuji Nishimura and Makoto Matsumoto.
- 
-   Before using, initialize the state by using init_genrand(seed)  
+
+   Before using, initialize the state by using init_genrand(seed)
    or init_by_array(init_key, key_length).
- 
+
    Copyright (C) 1997 - 2002, Makoto Matsumoto and Takuji Nishimura,
-   All rights reserved.                          
- 
+   All rights reserved.
+
    Redistribution and use in source and binary forms, with or without
    modification, are permitted provided that the following conditions
    are met:
@@ -25,8 +25,8 @@
         notice, this list of conditions and the following disclaimer in the
         documentation and/or other materials provided with the distribution.
 
-     3. The names of its contributors may not be used to endorse or promote 
-        products derived from this software without specific prior written 
+     3. The names of its contributors may not be used to endorse or promote
+        products derived from this software without specific prior written
         permission.
 
    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
@@ -53,9 +53,9 @@ var Random = function(seed) {
 		|| Math.ceil(seed) != Math.floor(seed)) {             // ARG_CHECK
 		throw new TypeError("seed value must be an integer"); // ARG_CHECK
 	}                                                         // ARG_CHECK
-	
-	
-	/* Period parameters */  
+
+
+	/* Period parameters */
 	this.N = 624;
 	this.M = 397;
 	this.MATRIX_A = 0x9908b0df;   /* constant vector a */
@@ -112,9 +112,9 @@ Random.prototype.init_by_array = function(init_key, key_length) {
 		if (i>=this.N) { this.mt[0] = this.mt[this.N-1]; i=1; }
 	}
 
-	this.mt[0] = 0x80000000; /* MSB is 1; assuring non-zero initial array */ 
+	this.mt[0] = 0x80000000; /* MSB is 1; assuring non-zero initial array */
 };
- 
+
 /* generates a random number on [0,0xffffffff]-interval */
 Random.prototype.genrand_int32 = function() {
 	var y;
@@ -151,7 +151,7 @@ Random.prototype.genrand_int32 = function() {
 
 	return y >>> 0;
 };
- 
+
 /* generates a random number on [0,0x7fffffff]-interval */
 Random.prototype.genrand_int31 = function() {
 	return (this.genrand_int32()>>>1);
@@ -159,8 +159,8 @@ Random.prototype.genrand_int31 = function() {
 
 /* generates a random number on [0,1]-real-interval */
 Random.prototype.genrand_real1 = function() {
-	return this.genrand_int32()*(1.0/4294967295.0); 
-	/* divided by 2^32-1 */ 
+	return this.genrand_int32()*(1.0/4294967295.0);
+	/* divided by 2^32-1 */
 };
 
 /* generates a random number on [0,1)-real-interval */
@@ -171,20 +171,20 @@ Random.prototype.random = function() {
 		}
 		this.skip = true;
 	}
-	return this.genrand_int32()*(1.0/4294967296.0); 
+	return this.genrand_int32()*(1.0/4294967296.0);
 	/* divided by 2^32 */
 };
 
 /* generates a random number on (0,1)-real-interval */
 Random.prototype.genrand_real3 = function() {
-	return (this.genrand_int32() + 0.5)*(1.0/4294967296.0); 
+	return (this.genrand_int32() + 0.5)*(1.0/4294967296.0);
 	/* divided by 2^32 */
 };
 
 /* generates a random number on [0,1) with 53-bit resolution*/
-Random.prototype.genrand_res53 = function() { 
-	var a=this.genrand_int32()>>>5, b=this.genrand_int32()>>>6; 
-	return(a*67108864.0+b)*(1.0/9007199254740992.0); 
+Random.prototype.genrand_res53 = function() {
+	var a=this.genrand_int32()>>>5, b=this.genrand_int32()>>>6;
+	return(a*67108864.0+b)*(1.0/9007199254740992.0);
 };
 
 /* These real versions are due to Isaku Wada, 2002/01/09 added */
@@ -195,29 +195,29 @@ Random.prototype.LOG4 = Math.log(4.0);
 Random.prototype.SG_MAGICCONST = 1.0 + Math.log(4.5);
 
 Random.prototype.exponential = function (lambda) {
-	if (arguments.length != 1) {                         // ARG_CHECK                     
+	if (arguments.length != 1) {                         // ARG_CHECK
 		throw new SyntaxError("exponential() must "     // ARG_CHECK
 				+ " be called with 'lambda' parameter"); // ARG_CHECK
 	}                                                   // ARG_CHECK
-	
+
 	var r = this.random();
 	return -Math.log(r) / lambda;
 };
 
 Random.prototype.gamma = function (alpha, beta) {
-	if (arguments.length != 2) {                         // ARG_CHECK                     
+	if (arguments.length != 2) {                         // ARG_CHECK
 		throw new SyntaxError("gamma() must be called"  // ARG_CHECK
 				+ " with alpha and beta parameters"); // ARG_CHECK
 	}                                                   // ARG_CHECK
-	
+
 	/* Based on Python 2.6 source code of random.py.
 	 */
-	
+
 	if (alpha > 1.0) {
 		var ainv = Math.sqrt(2.0 * alpha - 1.0);
 		var bbb = alpha - this.LOG4;
 		var ccc = alpha + ainv;
-		
+
 		while (true) {
 			var u1 = this.random();
 			if ((u1 < 1e-7) || (u > 0.9999999)) {
@@ -259,15 +259,15 @@ Random.prototype.gamma = function (alpha, beta) {
 		}
 		return x * beta;
 	}
-	
+
 };
 
 Random.prototype.normal = function (mu, sigma) {
-	if (arguments.length != 2) {                          // ARG_CHECK                     
+	if (arguments.length != 2) {                          // ARG_CHECK
 		throw new SyntaxError("normal() must be called"  // ARG_CHECK
 				+ " with mu and sigma parameters");      // ARG_CHECK
 	}                                                    // ARG_CHECK
-	
+
 	var z = this.lastNormal;
 	this.lastNormal = NaN;
 	if (!z) {
@@ -275,30 +275,30 @@ Random.prototype.normal = function (mu, sigma) {
 		var b = Math.sqrt(-2.0 * Math.log(1.0 - this.random()));
 		z = Math.cos(a) * b;
 		this.lastNormal = Math.sin(a) * b;
-	} 
+	}
 	return mu + z * sigma;
 };
 
 Random.prototype.pareto = function (alpha) {
-	if (arguments.length != 1) {                         // ARG_CHECK                     
+	if (arguments.length != 1) {                         // ARG_CHECK
 		throw new SyntaxError("pareto() must be called" // ARG_CHECK
 				+ " with alpha parameter");             // ARG_CHECK
 	}                                                   // ARG_CHECK
-	
+
 	var u = this.random();
 	return 1.0 / Math.pow((1 - u), 1.0 / alpha);
 };
 
 Random.prototype.triangular = function (lower, upper, mode) {
 	// http://en.wikipedia.org/wiki/Triangular_distribution
-	if (arguments.length != 3) {                         // ARG_CHECK                     
+	if (arguments.length != 3) {                         // ARG_CHECK
 		throw new SyntaxError("triangular() must be called" // ARG_CHECK
 		+ " with lower, upper and mode parameters");    // ARG_CHECK
 	}                                                   // ARG_CHECK
-	
+
 	var c = (mode - lower) / (upper - lower);
 	var u = this.random();
-	
+
 	if (u <= c) {
 		return lower + Math.sqrt(u * (upper - lower) * (mode - lower));
 	} else {
@@ -307,7 +307,7 @@ Random.prototype.triangular = function (lower, upper, mode) {
 };
 
 Random.prototype.uniform = function (lower, upper) {
-	if (arguments.length != 2) {                         // ARG_CHECK                     
+	if (arguments.length != 2) {                         // ARG_CHECK
 		throw new SyntaxError("uniform() must be called" // ARG_CHECK
 		+ " with lower and upper parameters");    // ARG_CHECK
 	}                                                   // ARG_CHECK
@@ -315,10 +315,14 @@ Random.prototype.uniform = function (lower, upper) {
 };
 
 Random.prototype.weibull = function (alpha, beta) {
-	if (arguments.length != 2) {                         // ARG_CHECK                     
+	if (arguments.length != 2) {                         // ARG_CHECK
 		throw new SyntaxError("weibull() must be called" // ARG_CHECK
 		+ " with alpha and beta parameters");    // ARG_CHECK
 	}                                                   // ARG_CHECK
 	var u = 1.0 - this.random();
 	return alpha * Math.pow(-Math.log(u), 1.0 / beta);
 };
+
+if (typeof window === "undefined" && typeof module !== "undefined" && module.exports) {
+    module.exports = Random;
+}

@@ -6,7 +6,7 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global require, Float32Array, Random*/
+/*global require, Float32Array*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,
@@ -21,8 +21,9 @@ var fluid = fluid || require("infusion"),
     "use strict";
 
     var $ = fluid.registerNamespace("jQuery"),
-        DSP = flock.requireModule("DSP", "dspapi"),
-        Filter = flock.requireModule("Filter", "dspapi");
+        ArrayMath = flock.requireModule("webarraymath", "ArrayMath"),
+        Filter = flock.requireModule("webarraymath", "Filter"),
+        Random = flock.requireModule("Random");
 
     /*************
      * Utilities *
@@ -804,16 +805,17 @@ var fluid = fluid || require("infusion"),
 
     flock.ugen.math = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
-        that.expandedSource = new Float32Array(that.options.audioSettings.blockSize);
+        that.expandedRight = new Float32Array(that.options.audioSettings.blockSize);
 
         that.krSourceKrInputGen = function () {
             var m = that.model,
                 op = that.activeInput,
                 input = that.inputs[op],
                 out = that.output,
-                sourceBuf = flock.generate(that.expandedSource, that.inputs.source.output[0]);
+                left = that.inputs.source.output[0],
+                right = flock.generate(that.expandedRight, input.output[0]);
 
-            DSP[op](out, sourceBuf, input.output[0]);
+            ArrayMath[op](out, left, right);
             m.value = m.unscaledValue = out[out.length - 1];
         };
 
@@ -822,9 +824,10 @@ var fluid = fluid || require("infusion"),
                 op = that.activeInput,
                 input = that.inputs[op],
                 out = that.output,
-                sourceBuf = flock.generate(that.expandedSource, that.inputs.source.output[0]);
+                left = that.inputs.source.output[0],
+                right = input.output;
 
-            DSP[op](out, sourceBuf, input.output);
+            ArrayMath[op](out, left, right);
             m.value = m.unscaledValue = out[out.length - 1];
         };
 
@@ -833,9 +836,10 @@ var fluid = fluid || require("infusion"),
                 op = that.activeInput,
                 input = that.inputs[op],
                 out = that.output,
-                sourceBuf = that.inputs.source.output;
+                left = that.inputs.source.output,
+                right = flock.generate(that.expandedRight, input.output[0]);
 
-            DSP[op](out, sourceBuf, input.output[0]);
+            ArrayMath[op](out, left, right);
             m.value = m.unscaledValue = out[out.length - 1];
         };
 
@@ -843,9 +847,11 @@ var fluid = fluid || require("infusion"),
             var m = that.model,
                 op = that.activeInput,
                 input = that.inputs[op],
-                out = that.output;
+                out = that.output,
+                left = that.inputs.source.output,
+                right = input.output;
 
-            DSP[op](that.output, that.inputs.source.output, input.output);
+            ArrayMath[op](out, left, right);
             m.value = m.unscaledValue = out[out.length - 1];
         };
 
@@ -871,8 +877,8 @@ var fluid = fluid || require("infusion"),
         };
 
         that.init = function () {
-            if (typeof (DSP) === "undefined") {
-                throw new Error("DSP is undefined. Please include dspapi.js to use the flock.math unit generator.");
+            if (typeof (ArrayMath) === "undefined") {
+                throw new Error("ArrayMath is undefined. Please include webarraymath.js to use the flock.math unit generator.");
             }
             that.onInputChanged();
         };
