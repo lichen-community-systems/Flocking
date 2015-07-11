@@ -17,3 +17,29 @@ To make a build, simply run:
 And then link to the Flocking file in your HTML:
 
     <script src="flocking/dist/flocking-all.js"></script>
+
+Description of Each Build
+--------------------------
+
+<table>
+    <tr>
+        <th>Filename</th>
+        <th>Description</th>
+    </tr>
+        <tr>
+            <td><code>flocking-all.js</code></td>
+            <td>All of Flocking and all its dependencies. Use this file if you're not using a module loader and want a simple way to link Flocking into your web page.</code>
+        </tr>
+        <tr>
+            <td><code>flocking-no-jquery.js</code></td>
+            <td>All of Flocking's dependencies except jQuery. This build is CommonJS/AMD/CMD/whatever module system friendly.</code>
+        </tr>
+        <tr>
+            <td><code>flocking-base.js</code></td>
+            <td>No jQuery, no Infusion, only Flocking's more obscure dependencies (i.e. the Web Array Math polyfill and the Random library) and the base Flocking files. Use this if you want to provide your own copy of most dependencies (e.g. with an Infusion custom build) and customize which unit generators to ship with.</code>
+        </tr>
+        <tr>
+            <td><code>flocking-ugens.js</code></td>
+            <td>All of Flocking's unit generators. Nothing else. You need to provide your own base Flocking build with appropriate dependencies.</code>
+        </tr>
+</table>

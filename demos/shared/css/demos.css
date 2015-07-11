@@ -62,3 +62,18 @@ td {
     background: #fff;
     padding: 1.5%;
 }
+
+.instructions {
+    font-style: italic;
+    font-size: 80%;
+}
+
+label {
+    font-family: serif;
+}
+
+select {
+    margin-left: 0.5em;
+    margin-right: 0.5em;
+    min-width: 20em;
+}

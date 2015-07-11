@@ -1,13 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
+        <title>Audio Input Demo</title>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-
-        <title>Flocking MIDI Demo</title>
 
         <link rel="stylesheet" type="text/css" href="../shared/css/demos.css" />
         <link rel="stylesheet" type="text/css" href="../../ui/shared/css/flocking-icon-font.css" />
+        <link rel="stylesheet" type="text/css" href="../../ui/play-button/css/play-button.css" />
 
         <script src="../../third-party/jquery/js/jquery.js"></script>
 
@@ -21,39 +20,29 @@
         <script src="../../third-party/infusion/js/ModelTransformationTransforms.js"></script>
         <script src="../../third-party/infusion/js/FluidView.js"></script>
 
-        <script src="../../third-party/webarraymath/js/webarraymath.js"></script>
-        <script src="../../third-party/simjs/js/random-0.26.js"></script>
-
         <script src="../../flocking/flocking-core.js"></script>
+        <script src="../../flocking/flocking-scheduler.js"></script>
         <script src="../../flocking/flocking-buffers.js"></script>
         <script src="../../flocking/flocking-audiofile.js"></script>
-        <script src="../../flocking/flocking-audiofile-encoder.js"></script>
-        <script src="../../flocking/flocking-scheduler.js"></script>
         <script src="../../flocking/flocking-webaudio.js"></script>
         <script src="../../flocking/flocking-parser.js"></script>
-        <script src="../../flocking/flocking-webmidi.js"></script>
-
         <script src="../../flocking/ugens/core.js"></script>
-        <script src="../../flocking/ugens/bandlimited.js"></script>
-        <script src="../../flocking/ugens/envelopes.js"></script>
-        <script src="../../flocking/ugens/midi.js"></script>
+        <script src="../../flocking/ugens/oscillators.js"></script>
+        <script src="../../flocking/ugens/browser.js"></script>
+        <script src="../../ui/play-button/js/play-button.js"></script>
 
-        <script src="../../ui/selectbox/js/selectbox.js"></script>
-        <script src="../../ui/midi/midi-input-selector/js/midi-input-selector.js"></script>
-        <script src="../../ui/midi/midi-connector/js/midi-connector.js"></script>
-
-        <script src="midi-demo.js"></script>
+        <script src="js/audio-input.js"></script>
     </head>
 
     <body>
-        <main>
-            <h1>Flocking MIDI Demo</h1>
-            <p class="instructions">This demo allows you to select a MIDI controller from the dropdown menu.
-            Note events from the selected controller will trigger the envelope of a Flocking synth.</p>
-        </main>
+        <h1>Audio Input Demo</h1>
+
+        <p class="instructions">Drag the mouse around the page to change the parameters of a
+            sine oscillator that is being modulated by your audio input. Wear headphones to avoid feedback.</p>
+        <button id="play">Play</button>
 
         <script>
-            window.midiDemo = flock.midiDemo("main");
+            demo.audioInput();
         </script>
     </body>
 </html>

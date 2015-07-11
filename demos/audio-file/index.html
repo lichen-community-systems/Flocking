@@ -3,30 +3,32 @@
     <head>
         <title>Audio File Decoding Demo</title>
         <meta charset="UTF-8" />
-        <link rel="stylesheet" type="text/css" href="../../shared/css/demos.css" />
-        <link rel="stylesheet" type="text/css" href="../css/audiofile.css" />
+        <link rel="stylesheet" type="text/css" href="../shared/css/demos.css" />
+        <link rel="stylesheet" type="text/css" href="css/audiofile.css" />
 
-        <script src="../../../third-party/jquery/js/jquery.js"></script>
+        <script src="../../third-party/jquery/js/jquery.js"></script>
 
-        <script src="../../../third-party/infusion/js/Fluid.js"></script>
-        <script src="../../../third-party/infusion/js/FluidIoC.js"></script>
-        <script src="../../../third-party/infusion/js/DataBinding.js"></script>
-        <script src="../../../third-party/infusion/js/ModelTransformation.js"></script>
-        <script src="../../../third-party/infusion/js/ModelTransformationTransforms.js"></script>
+        <script src="../../third-party/infusion/js/Fluid.js"></script>
+        <script src="../../third-party/infusion/js/FluidIoC.js"></script>
+        <script src="../../third-party/infusion/js/DataBinding.js"></script>
+        <script src="../../third-party/infusion/js/ModelTransformation.js"></script>
+        <script src="../../third-party/infusion/js/ModelTransformationTransforms.js"></script>
 
-        <script src="../../../flocking/flocking-core.js"></script>
-        <script src="../../../flocking/flocking-scheduler.js"></script>
-        <script src="../../../flocking/flocking-buffers.js"></script>
-        <script src="../../../flocking/flocking-audiofile.js"></script>
-        <script src="../../../flocking/flocking-audiofile-encoder.js"></script>
-        <script src="../../../flocking/flocking-audiofile-compatibility.js"></script>
-        <script src="../../../flocking/flocking-webaudio.js"></script>
-        <script src="../../../flocking/flocking-parser.js"></script>
-        <script src="../../../flocking/flocking-ugens.js"></script>
-        <script src="../../../flocking/flocking-gfx.js"></script>
-        <script src="../../../flocking/flocking-ugens-browser.js"></script>
+        <script src="../../flocking/flocking-core.js"></script>
+        <script src="../../flocking/flocking-scheduler.js"></script>
+        <script src="../../flocking/flocking-buffers.js"></script>
+        <script src="../../flocking/flocking-audiofile.js"></script>
+        <script src="../../flocking/flocking-audiofile-encoder.js"></script>
+        <script src="../../flocking/flocking-audiofile-compatibility.js"></script>
+        <script src="../../flocking/flocking-webaudio.js"></script>
+        <script src="../../flocking/flocking-parser.js"></script>
+        <script src="../../flocking/flocking-gfx.js"></script>
 
-        <script src="../../shared/js/demo-utils.js"></script>
+        <script src="../../flocking/ugens/core.js"></script>
+        <script src="../../flocking/ugens/buffer.js"></script>
+        <script src="../../flocking/ugens/browser.js"></script>
+
+        <script src="../shared/js/demo-utils.js"></script>
     </head>
 
     <body>
@@ -58,7 +60,7 @@
 
         <script>
             var enviro = flock.init();
-            
+
             var synth = flock.synth({
                 synthDef: {
                     ugen: "flock.ugen.scope",

@@ -71,7 +71,7 @@ var fluid = fluid || require("infusion"),
             },
 
             playButton: {
-                type: "flock.ui.enviroPlayButton",
+                type: "flock.ui.resetEnviroPlayButton",
                 container: "{that}.dom.playButton"
             }
         },

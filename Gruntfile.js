@@ -29,7 +29,7 @@ module.exports = function(grunt) {
             "third-party/simjs/js/random-0.26.js"
         ],
 
-        flocking: [
+        flockingBase: [
             "flocking/flocking-core.js",
             "flocking/flocking-buffers.js",
             "flocking/flocking-parser.js",
@@ -39,12 +39,30 @@ module.exports = function(grunt) {
             // to reduce the size of the default Flocking build.
             "flocking/flocking-scheduler.js",
             "flocking/flocking-webaudio.js",
-            "flocking/flocking-ugens.js",
-            "flocking/flocking-ugens-bandlimited.js",
-            "flocking/flocking-envelopes.js",
-            "flocking/flocking-ugens-browser.js",
-            "flocking/flocking-gfx.js",
-            "flocking/flocking-webmidi.js"
+            "flocking/flocking-webmidi.js",
+            "flocking/flocking-gfx.js"
+        ],
+
+        flockingUGens: [
+            "flocking/ugens/core.js",
+            "flocking/ugens/bandlimited.js",
+            "flocking/ugens/browser.js",
+            "flocking/ugens/buffer.js",
+            "flocking/ugens/debugging.js",
+            "flocking/ugens/distortion.js",
+            "flocking/ugens/dynamics.js",
+            "flocking/ugens/envelopes.js",
+            "flocking/ugens/filters.js",
+            "flocking/ugens/gates.js",
+            "flocking/ugens/granular.js",
+            "flocking/ugens/listening.js",
+            "flocking/ugens/math.js",
+            "flocking/ugens/midi.js",
+            "flocking/ugens/multichannel.js",
+            "flocking/ugens/oscillators.js",
+            "flocking/ugens/random.js",
+            "flocking/ugens/scheduling.js",
+            "flocking/ugens/triggers.js"
         ],
 
         amdHeader: [
@@ -80,18 +98,34 @@ module.exports = function(grunt) {
             },
 
             all: {
-                src: [].concat(files.jQuery, files.infusion, files.miscDeps, files.flocking),
+                src: [].concat(
+                    files.jQuery, files.infusion, files.miscDeps,
+                    files.flockingBase, files.flockingUGens
+                ),
                 dest: "dist/<%= pkg.name %>-all.js"
             },
 
             amd: {
                 src: [].concat(
                     files.amdHeader,
-                    files.infusion, files.miscDeps, files.flocking,
+                    files.infusion, files.miscDeps,
+                    files.flockingBase, files.flockingUGens,
                     files.amdFooter
                 ),
                 dest: "dist/<%= pkg.name %>-no-jquery.js"
+            },
 
+            base: {
+                src: [].concat(
+                    files.miscDeps,
+                    files.flockingBase
+                ),
+                dest: "dist/<%= pkg.name %>-base.js"
+            },
+
+            ugens: {
+                src: files.flockingUGens,
+                dest: "dist/<%= pkg.name %>-ugens.js"
             }
         },
 
@@ -138,9 +172,13 @@ module.exports = function(grunt) {
             }
         },
 
-        githooks: {
-            all: {
-                "pre-commit": "default",
+        watch: {
+            scripts: {
+                files: ["flocking/**/*.js", "third-party/**/*.js", "Gruntfile.js"],
+                tasks: ["jshint", "clean", "concat", "uglify"],
+                options: {
+                    spawn: false
+                }
             }
         },
 
@@ -157,7 +195,7 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks("grunt-contrib-clean");
     grunt.loadNpmTasks("grunt-contrib-copy");
     grunt.loadNpmTasks("grunt-contrib-jshint");
-    grunt.loadNpmTasks("grunt-githooks");
+    grunt.loadNpmTasks("grunt-contrib-watch");
 
     grunt.registerTask("default", ["clean", "jshint", "concat", "uglify", "copy"]);
 };

@@ -229,7 +229,10 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-
+    /**
+     * A Play Button that starts and stops the Flocking environment,
+     * fading in and out appropriately so as to avoid clicks.
+     */
     fluid.defaults("flock.ui.enviroPlayButton", {
         gradeNames: ["flock.ui.playButton", "autoInit"],
 
@@ -259,7 +262,7 @@ var fluid = fluid || require("infusion"),
 
         listeners: {
             onFadeIn: [
-                "{enviro}.play()",
+                "{enviro}.start()",
                 "{fader}.fadeIn(1.0)"
             ],
 
@@ -279,7 +282,10 @@ var fluid = fluid || require("infusion"),
             ],
 
             afterFadeOut: [
-                "{that}.enviro.reset()"
+                {
+                    func: "{that}.enviro.stop",
+                    namespace: "stopEnviro"
+                }
             ]
         },
 
@@ -325,5 +331,22 @@ var fluid = fluid || require("infusion"),
             }
         });
     };
+
+    /**
+     * An enviroPlayButton that completely resets the environment
+     * whenever it is paused, destroying any all
+     */
+    fluid.defaults("flock.ui.resetEnviroPlayButton", {
+        gradeNames: ["flock.ui.enviroPlayButton", "autoInit"],
+
+        listeners: {
+            afterFadeOut: [
+                {
+                    func: "{that}.enviro.reset",
+                    priority: "after:stopEnviro"
+                }
+            ]
+        }
+    });
 
 }());

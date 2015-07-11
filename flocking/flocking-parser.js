@@ -229,7 +229,7 @@ var fluid = fluid || require("infusion"),
     flock.parse.ugenForDef = function (ugenDef, options) {
         options = $.extend(true, {
             audioSettings: flock.environment.audioSystem.model,
-            buses: flock.environment.buses,
+            buses: flock.environment.busManager.buses,
             buffers: flock.environment.buffers
         }, options);
 

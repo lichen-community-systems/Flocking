@@ -15,6 +15,8 @@ var fluid = fluid || require("infusion"),
     "use strict";
 
     fluid.registerNamespace("flock.test");
+
+    flock.init();
     
 	var testConfigs = [
         {
@@ -26,30 +28,33 @@ var fluid = fluid || require("infusion"),
             url: flock.test.audio.triangleInt16AIFF
         }
     ];
-	
+
     var emptyFn = function () {};
-	
+
     var makeTestSpec = function (config) {
         return {
             name: config.name,
             test: function () {
                 // TODO: This code assumes flock.audio.decode will run synchronously,
                 // which it doesn't always do and can't be relied upon.
-                flock.audio.decode(config.url, emptyFn);
+                flock.audio.decode({
+                    src: config.url,
+                    success: emptyFn
+                });
             }
         };
     };
-	
+
     flock.test.timeDecodeAudioFileFromDataURL = function () {
         var testSpecs = [],
-            i, 
+            i,
             config;
-        
+
         for (i = 0; i < testConfigs.length; i++) {
             config = testConfigs[i];
             testSpecs.push(makeTestSpec(config));
         }
-        
+
         sheep.test(testSpecs, true);
     };
 

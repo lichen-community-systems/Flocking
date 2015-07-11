@@ -1,10 +1,10 @@
 /*
-* Flocking Envelopes
-* http://github.com/colinbdclark/flocking
-*
-* Copyright 2011-2014, Colin Clark
-* Dual licensed under the MIT and GPL Version 2 licenses.
-*/
+ * Flocking Envelopes
+ * http://github.com/colinbdclark/flocking
+ *
+ * Copyright 2011-2014, Colin Clark
+ * Dual licensed under the MIT and GPL Version 2 licenses.
+ */
 
 /*global require*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
@@ -1018,6 +1018,83 @@ var fluid = fluid || require("infusion"),
                 stage: 0.0,
                 numStages: 0.0
             }
+        }
+    });
+
+
+    /**
+     * Loops through a linear ramp from start to end, incrementing the output by step.
+     * Equivalent to SuperCollider's or CSound's Phasor unit generator.
+     *
+     * Inputs:
+     *  start: the value to start ramping from
+     *  end: the value to ramp to
+     *  step: the value to increment per sample
+     *  reset: the value to return to when the loop is reset by a trigger signal
+     *  trigger: a trigger signal that, when it cross the zero line, will reset the loop back to the reset point
+     */
+    flock.ugen.phasor = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                inputs = that.inputs,
+                out = that.output,
+                step = inputs.step.output,
+                trig = inputs.trigger.output,
+                i,
+                j,
+                k;
+
+            // TODO: Add sample priming to the ugen graph to remove this conditional.
+            if (m.unscaledValue === undefined) {
+                m.unscaledValue = inputs.start.output[0];
+            }
+
+            for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.trigger, k += m.strides.step) {
+                if ((trig[j] > 0.0 && m.prevTrig <= 0.0)) {
+                    m.unscaledValue = inputs.reset.output[0];
+                }
+                m.prevTrig = trig[j];
+
+                if (m.unscaledValue >= inputs.end.output[0]) {
+                    m.unscaledValue = inputs.start.output[0];
+                }
+
+                out[i] = m.unscaledValue;
+                m.unscaledValue += step[k]; // TODO: Model out of sync with last output sample.
+            }
+
+            that.mulAdd(numSamps);
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
+        };
+
+        that.onInputChanged();
+
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.phasor", {
+        rate: "control",
+        inputs: {
+            start: 0.0,
+            end: 1.0,
+            reset: 0.0,
+            step: 0.1,
+            trigger: 0.0,
+            mul: null,
+            add: null
+        },
+        ugenOptions: {
+            model: {
+                unscaledValue: undefined,
+                value: 0.0
+            },
+
+            strideInputs: [
+                "trigger",
+                "step"
+            ]
         }
     });
 
