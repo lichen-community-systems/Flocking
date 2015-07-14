@@ -11,15 +11,17 @@ module.exports = function(grunt) {
 
         infusion: [
             "third-party/infusion/js/Fluid.js",
-            "third-party/infusion/js/FluidDocument.js",
-            "third-party/infusion/js/FluidDOMUtilities.js",
             "third-party/infusion/js/FluidDebugging.js",
             "third-party/infusion/js/FluidIoC.js",
             "third-party/infusion/js/DataBinding.js",
             "third-party/infusion/js/ModelTransformation.js",
             "third-party/infusion/js/ModelTransformationTransforms.js",
-            "third-party/infusion/js/FluidView.js",
-            "third-party/infusion/js/FluidRequests.js"
+        ],
+
+        infusionViews: [
+            "third-party/infusion/js/FluidDocument.js",
+            "third-party/infusion/js/FluidDOMUtilities.js",
+            "third-party/infusion/js/FluidView.js"
         ],
 
         miscDeps: [
@@ -40,13 +42,11 @@ module.exports = function(grunt) {
             "flocking/flocking-scheduler.js",
             "flocking/flocking-webaudio.js",
             "flocking/flocking-webmidi.js",
-            "flocking/flocking-gfx.js"
+            "flocking/ugens/core.js"
         ],
 
         flockingUGens: [
-            "flocking/ugens/core.js",
             "flocking/ugens/bandlimited.js",
-            "flocking/ugens/browser.js",
             "flocking/ugens/buffer.js",
             "flocking/ugens/debugging.js",
             "flocking/ugens/distortion.js",
@@ -63,6 +63,11 @@ module.exports = function(grunt) {
             "flocking/ugens/random.js",
             "flocking/ugens/scheduling.js",
             "flocking/ugens/triggers.js"
+        ],
+
+        flockingViews: [
+            "flocking/flocking-gfx.js",
+            "flocking/ugens/browser.js"
         ],
 
         amdHeader: [
@@ -99,8 +104,10 @@ module.exports = function(grunt) {
 
             all: {
                 src: [].concat(
-                    files.jQuery, files.infusion, files.miscDeps,
-                    files.flockingBase, files.flockingUGens
+                    files.jQuery,
+                    files.infusion, files.infusionViews,
+                    files.miscDeps,
+                    files.flockingBase, files.flockingUGens, files.flockingViews
                 ),
                 dest: "dist/<%= pkg.name %>-all.js"
             },
@@ -108,8 +115,9 @@ module.exports = function(grunt) {
             amd: {
                 src: [].concat(
                     files.amdHeader,
-                    files.infusion, files.miscDeps,
-                    files.flockingBase, files.flockingUGens,
+                    files.infusion,
+                    files.miscDeps,
+                    files.flockingBase, files.flockingUGens, files.flockingViews,
                     files.amdFooter
                 ),
                 dest: "dist/<%= pkg.name %>-no-jquery.js"
@@ -117,15 +125,13 @@ module.exports = function(grunt) {
 
             base: {
                 src: [].concat(
+                    files.amdHeader,
+                    files.infusion,
                     files.miscDeps,
-                    files.flockingBase
+                    files.flockingBase,
+                    files.amdFooter
                 ),
                 dest: "dist/<%= pkg.name %>-base.js"
-            },
-
-            ugens: {
-                src: files.flockingUGens,
-                dest: "dist/<%= pkg.name %>-ugens.js"
             }
         },
 
@@ -175,7 +181,7 @@ module.exports = function(grunt) {
         watch: {
             scripts: {
                 files: ["flocking/**/*.js", "third-party/**/*.js", "Gruntfile.js"],
-                tasks: ["jshint", "clean", "concat", "uglify"],
+                tasks: ["default"],
                 options: {
                     spawn: false
                 }
@@ -197,5 +203,5 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks("grunt-contrib-jshint");
     grunt.loadNpmTasks("grunt-contrib-watch");
 
-    grunt.registerTask("default", ["clean", "jshint", "concat", "uglify", "copy"]);
+    grunt.registerTask("default", ["jshint", "clean", "concat", "uglify", "copy"]);
 };

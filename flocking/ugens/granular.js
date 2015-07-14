@@ -27,7 +27,7 @@ var fluid = fluid || require("infusion"),
      *   - dur: the duration of each grain (control or constant rate only)
      *   - trigger: a trigger signal that, when it move to a positive number, will start a grain
      *   - buffer: a bufferDef object describing the buffer to granulate
-     *   - centerPos: the postion within the sound buffer when the grain will reach maximum amplitude
+     *   - centerPos: the postion within the sound buffer where the grain will reach maximum amplitude (in seconds)
      *   - amp: the peak amplitude of the grain
      *   - speed: the rate at which grain samples are selected from the buffer; 1.0 is normal speed, -1.0 is backwards
      *

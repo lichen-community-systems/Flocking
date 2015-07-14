@@ -36,10 +36,6 @@ Description of Each Build
         </tr>
         <tr>
             <td><code>flocking-base.js</code></td>
-            <td>No jQuery, no Infusion, only Flocking's more obscure dependencies (i.e. the Web Array Math polyfill and the Random library) and the base Flocking files. Use this if you want to provide your own copy of most dependencies (e.g. with an Infusion custom build) and customize which unit generators to ship with.</code>
-        </tr>
-        <tr>
-            <td><code>flocking-ugens.js</code></td>
-            <td>All of Flocking's unit generators. Nothing else. You need to provide your own base Flocking build with appropriate dependencies.</code>
+            <td>Like <code>flocking-no-jquery.js</code>, except this build doesn't include any unit generators beyond the basic set, nor does it include any View-related code (such as <code>flocking-gfx.js</code>). Use this if you want to choose which unit generators to ship with your application, and if you're not using any of Flocking's UI components.</code>
         </tr>
 </table>

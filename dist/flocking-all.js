@@ -11747,299 +11747,6 @@ var fluid = fluid || fluid_2_0;
 ;/*
 Copyright 2007-2010 University of Cambridge
 Copyright 2007-2009 University of Toronto
-Copyright 2010-2011 Lucendo Development Ltd.
-Copyright 2010 OCAD University
-Copyright 2005-2013 jQuery Foundation, Inc. and other contributors
-
-Licensed under the Educational Community License (ECL), Version 2.0 or the New
-BSD license. You may not use this file except in compliance with one these
-Licenses.
-
-You may obtain a copy of the ECL 2.0 License and BSD License at
-https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
-*/
-
-/** This file contains functions which depend on the presence of a DOM document
- * but which do not depend on the contents of Fluid.js **/
-
-var fluid_2_0 = fluid_2_0 || {};
-
-(function ($, fluid) {
-    "use strict";
-
-    // polyfill for $.browser which was removed in jQuery 1.9 and later
-    // Taken from jquery-migrate-1.2.1.js,
-    // jQuery Migrate - v1.2.1 - 2013-05-08
-    // https://github.com/jquery/jquery-migrate
-    // Copyright 2005, 2013 jQuery Foundation, Inc. and other contributors; Licensed MIT
-
-    fluid.uaMatch = function (ua) {
-        ua = ua.toLowerCase();
-
-        var match = /(chrome)[ \/]([\w.]+)/.exec( ua ) ||
-            /(webkit)[ \/]([\w.]+)/.exec( ua ) ||
-            /(opera)(?:.*version|)[ \/]([\w.]+)/.exec( ua ) ||
-            /(msie) ([\w.]+)/.exec( ua ) ||
-        ua.indexOf("compatible") < 0 && /(mozilla)(?:.*? rv:([\w.]+)|)/.exec( ua ) || [];
-
-        return {
-            browser: match[ 1 ] || "",
-            version: match[ 2 ] || "0"
-        };
-    };
-
-    var matched, browser;
-
-    // Don't clobber any existing jQuery.browser in case it's different
-    if (!$.browser) {
-        if (!!navigator.userAgent.match(/Trident\/7\./)) {
-            browser = { // From http://stackoverflow.com/questions/18684099/jquery-fail-to-detect-ie-11
-                msie: true,
-                version: 11
-            };
-        } else {
-            matched = fluid.uaMatch(navigator.userAgent);
-            browser = {};
-
-            if (matched.browser) {
-                browser[matched.browser] = true;
-                browser.version = matched.version;
-            }
-            // Chrome is Webkit, but Webkit is also Safari.
-            if (browser.chrome) {
-                browser.webkit = true;
-            } else if (browser.webkit) {
-                browser.safari = true;
-            }
-        }
-        $.browser = browser;
-    }
-
-    // Private constants.
-    var NAMESPACE_KEY = "fluid-scoped-data";
-
-    /**
-     * Gets stored state from the jQuery instance's data map.
-     * This function is unsupported: It is not really intended for use by implementors.
-     */
-    fluid.getScopedData = function(target, key) {
-        var data = $(target).data(NAMESPACE_KEY);
-        return data ? data[key] : undefined;
-    };
-
-    /**
-     * Stores state in the jQuery instance's data map. Unlike jQuery's version,
-     * accepts multiple-element jQueries.
-     * This function is unsupported: It is not really intended for use by implementors.
-     */
-    fluid.setScopedData = function(target, key, value) {
-        $(target).each(function() {
-            var data = $.data(this, NAMESPACE_KEY) || {};
-            data[key] = value;
-
-            $.data(this, NAMESPACE_KEY, data);
-        });
-    };
-
-    /** Global focus manager - makes use of "focusin" event supported in jquery 1.4.2 or later.
-     */
-
-    var lastFocusedElement = null;
-
-    $(document).bind("focusin", function (event){
-        lastFocusedElement = event.target;
-    });
-
-    fluid.getLastFocusedElement = function () {
-        return lastFocusedElement;
-    };
-
-
-    var ENABLEMENT_KEY = "enablement";
-
-    /** Queries or sets the enabled status of a control. An activatable node
-     * may be "disabled" in which case its keyboard bindings will be inoperable
-     * (but still stored) until it is reenabled again.
-     * This function is unsupported: It is not really intended for use by implementors.
-     */
-
-    fluid.enabled = function(target, state) {
-        target = $(target);
-        if (state === undefined) {
-            return fluid.getScopedData(target, ENABLEMENT_KEY) !== false;
-        }
-        else {
-            $("*", target).add(target).each(function() {
-                if (fluid.getScopedData(this, ENABLEMENT_KEY) !== undefined) {
-                    fluid.setScopedData(this, ENABLEMENT_KEY, state);
-                }
-                else if (/select|textarea|input/i.test(this.nodeName)) {
-                    $(this).prop("disabled", !state);
-                }
-            });
-            fluid.setScopedData(target, ENABLEMENT_KEY, state);
-        }
-    };
-
-    fluid.initEnablement = function(target) {
-        fluid.setScopedData(target, ENABLEMENT_KEY, true);
-    };
-
-    // This utility is required through the use of newer versions of jQuery which will obscure the original
-    // event responsible for interaction with a target. This is currently use in Tooltip.js and FluidView.js
-    // "dead man's blur" but would be of general utility
-
-    fluid.resolveEventTarget = function (event) {
-        while (event.originalEvent && event.originalEvent.target) {
-            event = event.originalEvent;
-        }
-        return event.target;
-    };
-
-    // These function (fluid.focus() and fluid.blur()) serve several functions. They should be used by
-    // all implementation both in test cases and component implementation which require to trigger a focus
-    // event. Firstly, they restore the old behaviour in jQuery versions prior to 1.10 in which a focus
-    // trigger synchronously relays to a focus handler. In newer jQueries this defers to the real browser
-    // relay with numerous platform and timing-dependent effects.
-    // Secondly, they are necessary since simulation of focus events by jQuery under IE
-    // is not sufficiently good to intercept the "focusin" binding. Any code which triggers
-    // focus or blur synthetically throughout the framework and client code must use this function,
-    // especially if correct cross-platform interaction is required with the "deadMansBlur" function.
-
-    function applyOp(node, func) {
-        node = $(node);
-        node.trigger("fluid-"+func);
-        node.triggerHandler(func);
-        node[func]();
-        return node;
-    }
-
-    $.each(["focus", "blur"], function(i, name) {
-        fluid[name] = function(elem) {
-            return applyOp(elem, name);
-        };
-    });
-
-})(jQuery, fluid_2_0);
-;/*
-Copyright 2008-2010 University of Cambridge
-Copyright 2008-2009 University of Toronto
-
-Licensed under the Educational Community License (ECL), Version 2.0 or the New
-BSD license. You may not use this file except in compliance with one these
-Licenses.
-
-You may obtain a copy of the ECL 2.0 License and BSD License at
-https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
-*/
-
-var fluid_2_0 = fluid_2_0 || {};
-
-(function ($, fluid) {
-    "use strict";
-
-    fluid.dom = fluid.dom || {};
-
-    // Node walker function for iterateDom.
-    var getNextNode = function (iterator) {
-        if (iterator.node.firstChild) {
-            iterator.node = iterator.node.firstChild;
-            iterator.depth += 1;
-            return iterator;
-        }
-        while (iterator.node) {
-            if (iterator.node.nextSibling) {
-                iterator.node = iterator.node.nextSibling;
-                return iterator;
-            }
-            iterator.node = iterator.node.parentNode;
-            iterator.depth -= 1;
-        }
-        return iterator;
-    };
-
-    /**
-     * Walks the DOM, applying the specified acceptor function to each element.
-     * There is a special case for the acceptor, allowing for quick deletion of elements and their children.
-     * Return "delete" from your acceptor function if you want to delete the element in question.
-     * Return "stop" to terminate iteration.
-
-     * Implementation note - this utility exists mainly for performance reasons. It was last tested
-     * carefully some time ago (around jQuery 1.2) but at that time was around 3-4x faster at raw DOM
-     * filtration tasks than the jQuery equivalents, which was an important source of performance loss in the
-     * Reorderer component. General clients of the framework should use this method with caution if at all, and
-     * the performance issues should be reassessed when we have time.
-     *
-     * @param {Element} node the node to start walking from
-     * @param {Function} acceptor the function to invoke with each DOM element
-     * @param {Boolean} allnodes Use <code>true</code> to call acceptor on all nodes,
-     * rather than just element nodes (type 1)
-     */
-    fluid.dom.iterateDom = function (node, acceptor, allNodes) {
-        var currentNode = {node: node, depth: 0};
-        var prevNode = node;
-        var condition;
-        while (currentNode.node !== null && currentNode.depth >= 0 && currentNode.depth < fluid.dom.iterateDom.DOM_BAIL_DEPTH) {
-            condition = null;
-            if (currentNode.node.nodeType === 1 || allNodes) {
-                condition = acceptor(currentNode.node, currentNode.depth);
-            }
-            if (condition) {
-                if (condition === "delete") {
-                    currentNode.node.parentNode.removeChild(currentNode.node);
-                    currentNode.node = prevNode;
-                }
-                else if (condition === "stop") {
-                    return currentNode.node;
-                }
-            }
-            prevNode = currentNode.node;
-            currentNode = getNextNode(currentNode);
-        }
-    };
-
-    // Work around IE circular DOM issue. This is the default max DOM depth on IE.
-    // http://msdn2.microsoft.com/en-us/library/ms761392(VS.85).aspx
-    fluid.dom.iterateDom.DOM_BAIL_DEPTH = 256;
-
-    /**
-     * Checks if the specified container is actually the parent of containee.
-     *
-     * @param {Element} container the potential parent
-     * @param {Element} containee the child in question
-     */
-    fluid.dom.isContainer = function (container, containee) {
-        for (; containee; containee = containee.parentNode) {
-            if (container === containee) {
-                return true;
-            }
-        }
-        return false;
-    };
-
-    /** Return the element text from the supplied DOM node as a single String.
-     * Implementation note - this is a special-purpose utility used in the framework in just one
-     * position in the Reorderer. It only performs a "shallow" traversal of the text and was intended
-     * as a quick and dirty means of extracting element labels where the user had not explicitly provided one.
-     * It should not be used by general users of the framework and its presence here needs to be
-     * reassessed.
-     */
-    fluid.dom.getElementText = function (element) {
-        var nodes = element.childNodes;
-        var text = "";
-        for (var i = 0; i < nodes.length; ++i) {
-            var child = nodes[i];
-            if (child.nodeType === 3) {
-                text = text + child.nodeValue;
-            }
-        }
-        return text;
-    };
-
-})(jQuery, fluid_2_0);
-;/*
-Copyright 2007-2010 University of Cambridge
-Copyright 2007-2009 University of Toronto
 Copyright 2007-2009 University of California, Berkeley
 Copyright 2010 OCAD University
 Copyright 2010-2011 Lucendo Development Ltd.
@@ -17630,6 +17337,299 @@ var fluid = fluid || fluid_2_0;
 
 })(jQuery, fluid_2_0);
 ;/*
+Copyright 2007-2010 University of Cambridge
+Copyright 2007-2009 University of Toronto
+Copyright 2010-2011 Lucendo Development Ltd.
+Copyright 2010 OCAD University
+Copyright 2005-2013 jQuery Foundation, Inc. and other contributors
+
+Licensed under the Educational Community License (ECL), Version 2.0 or the New
+BSD license. You may not use this file except in compliance with one these
+Licenses.
+
+You may obtain a copy of the ECL 2.0 License and BSD License at
+https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
+*/
+
+/** This file contains functions which depend on the presence of a DOM document
+ * but which do not depend on the contents of Fluid.js **/
+
+var fluid_2_0 = fluid_2_0 || {};
+
+(function ($, fluid) {
+    "use strict";
+
+    // polyfill for $.browser which was removed in jQuery 1.9 and later
+    // Taken from jquery-migrate-1.2.1.js,
+    // jQuery Migrate - v1.2.1 - 2013-05-08
+    // https://github.com/jquery/jquery-migrate
+    // Copyright 2005, 2013 jQuery Foundation, Inc. and other contributors; Licensed MIT
+
+    fluid.uaMatch = function (ua) {
+        ua = ua.toLowerCase();
+
+        var match = /(chrome)[ \/]([\w.]+)/.exec( ua ) ||
+            /(webkit)[ \/]([\w.]+)/.exec( ua ) ||
+            /(opera)(?:.*version|)[ \/]([\w.]+)/.exec( ua ) ||
+            /(msie) ([\w.]+)/.exec( ua ) ||
+        ua.indexOf("compatible") < 0 && /(mozilla)(?:.*? rv:([\w.]+)|)/.exec( ua ) || [];
+
+        return {
+            browser: match[ 1 ] || "",
+            version: match[ 2 ] || "0"
+        };
+    };
+
+    var matched, browser;
+
+    // Don't clobber any existing jQuery.browser in case it's different
+    if (!$.browser) {
+        if (!!navigator.userAgent.match(/Trident\/7\./)) {
+            browser = { // From http://stackoverflow.com/questions/18684099/jquery-fail-to-detect-ie-11
+                msie: true,
+                version: 11
+            };
+        } else {
+            matched = fluid.uaMatch(navigator.userAgent);
+            browser = {};
+
+            if (matched.browser) {
+                browser[matched.browser] = true;
+                browser.version = matched.version;
+            }
+            // Chrome is Webkit, but Webkit is also Safari.
+            if (browser.chrome) {
+                browser.webkit = true;
+            } else if (browser.webkit) {
+                browser.safari = true;
+            }
+        }
+        $.browser = browser;
+    }
+
+    // Private constants.
+    var NAMESPACE_KEY = "fluid-scoped-data";
+
+    /**
+     * Gets stored state from the jQuery instance's data map.
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    fluid.getScopedData = function(target, key) {
+        var data = $(target).data(NAMESPACE_KEY);
+        return data ? data[key] : undefined;
+    };
+
+    /**
+     * Stores state in the jQuery instance's data map. Unlike jQuery's version,
+     * accepts multiple-element jQueries.
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+    fluid.setScopedData = function(target, key, value) {
+        $(target).each(function() {
+            var data = $.data(this, NAMESPACE_KEY) || {};
+            data[key] = value;
+
+            $.data(this, NAMESPACE_KEY, data);
+        });
+    };
+
+    /** Global focus manager - makes use of "focusin" event supported in jquery 1.4.2 or later.
+     */
+
+    var lastFocusedElement = null;
+
+    $(document).bind("focusin", function (event){
+        lastFocusedElement = event.target;
+    });
+
+    fluid.getLastFocusedElement = function () {
+        return lastFocusedElement;
+    };
+
+
+    var ENABLEMENT_KEY = "enablement";
+
+    /** Queries or sets the enabled status of a control. An activatable node
+     * may be "disabled" in which case its keyboard bindings will be inoperable
+     * (but still stored) until it is reenabled again.
+     * This function is unsupported: It is not really intended for use by implementors.
+     */
+
+    fluid.enabled = function(target, state) {
+        target = $(target);
+        if (state === undefined) {
+            return fluid.getScopedData(target, ENABLEMENT_KEY) !== false;
+        }
+        else {
+            $("*", target).add(target).each(function() {
+                if (fluid.getScopedData(this, ENABLEMENT_KEY) !== undefined) {
+                    fluid.setScopedData(this, ENABLEMENT_KEY, state);
+                }
+                else if (/select|textarea|input/i.test(this.nodeName)) {
+                    $(this).prop("disabled", !state);
+                }
+            });
+            fluid.setScopedData(target, ENABLEMENT_KEY, state);
+        }
+    };
+
+    fluid.initEnablement = function(target) {
+        fluid.setScopedData(target, ENABLEMENT_KEY, true);
+    };
+
+    // This utility is required through the use of newer versions of jQuery which will obscure the original
+    // event responsible for interaction with a target. This is currently use in Tooltip.js and FluidView.js
+    // "dead man's blur" but would be of general utility
+
+    fluid.resolveEventTarget = function (event) {
+        while (event.originalEvent && event.originalEvent.target) {
+            event = event.originalEvent;
+        }
+        return event.target;
+    };
+
+    // These function (fluid.focus() and fluid.blur()) serve several functions. They should be used by
+    // all implementation both in test cases and component implementation which require to trigger a focus
+    // event. Firstly, they restore the old behaviour in jQuery versions prior to 1.10 in which a focus
+    // trigger synchronously relays to a focus handler. In newer jQueries this defers to the real browser
+    // relay with numerous platform and timing-dependent effects.
+    // Secondly, they are necessary since simulation of focus events by jQuery under IE
+    // is not sufficiently good to intercept the "focusin" binding. Any code which triggers
+    // focus or blur synthetically throughout the framework and client code must use this function,
+    // especially if correct cross-platform interaction is required with the "deadMansBlur" function.
+
+    function applyOp(node, func) {
+        node = $(node);
+        node.trigger("fluid-"+func);
+        node.triggerHandler(func);
+        node[func]();
+        return node;
+    }
+
+    $.each(["focus", "blur"], function(i, name) {
+        fluid[name] = function(elem) {
+            return applyOp(elem, name);
+        };
+    });
+
+})(jQuery, fluid_2_0);
+;/*
+Copyright 2008-2010 University of Cambridge
+Copyright 2008-2009 University of Toronto
+
+Licensed under the Educational Community License (ECL), Version 2.0 or the New
+BSD license. You may not use this file except in compliance with one these
+Licenses.
+
+You may obtain a copy of the ECL 2.0 License and BSD License at
+https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
+*/
+
+var fluid_2_0 = fluid_2_0 || {};
+
+(function ($, fluid) {
+    "use strict";
+
+    fluid.dom = fluid.dom || {};
+
+    // Node walker function for iterateDom.
+    var getNextNode = function (iterator) {
+        if (iterator.node.firstChild) {
+            iterator.node = iterator.node.firstChild;
+            iterator.depth += 1;
+            return iterator;
+        }
+        while (iterator.node) {
+            if (iterator.node.nextSibling) {
+                iterator.node = iterator.node.nextSibling;
+                return iterator;
+            }
+            iterator.node = iterator.node.parentNode;
+            iterator.depth -= 1;
+        }
+        return iterator;
+    };
+
+    /**
+     * Walks the DOM, applying the specified acceptor function to each element.
+     * There is a special case for the acceptor, allowing for quick deletion of elements and their children.
+     * Return "delete" from your acceptor function if you want to delete the element in question.
+     * Return "stop" to terminate iteration.
+
+     * Implementation note - this utility exists mainly for performance reasons. It was last tested
+     * carefully some time ago (around jQuery 1.2) but at that time was around 3-4x faster at raw DOM
+     * filtration tasks than the jQuery equivalents, which was an important source of performance loss in the
+     * Reorderer component. General clients of the framework should use this method with caution if at all, and
+     * the performance issues should be reassessed when we have time.
+     *
+     * @param {Element} node the node to start walking from
+     * @param {Function} acceptor the function to invoke with each DOM element
+     * @param {Boolean} allnodes Use <code>true</code> to call acceptor on all nodes,
+     * rather than just element nodes (type 1)
+     */
+    fluid.dom.iterateDom = function (node, acceptor, allNodes) {
+        var currentNode = {node: node, depth: 0};
+        var prevNode = node;
+        var condition;
+        while (currentNode.node !== null && currentNode.depth >= 0 && currentNode.depth < fluid.dom.iterateDom.DOM_BAIL_DEPTH) {
+            condition = null;
+            if (currentNode.node.nodeType === 1 || allNodes) {
+                condition = acceptor(currentNode.node, currentNode.depth);
+            }
+            if (condition) {
+                if (condition === "delete") {
+                    currentNode.node.parentNode.removeChild(currentNode.node);
+                    currentNode.node = prevNode;
+                }
+                else if (condition === "stop") {
+                    return currentNode.node;
+                }
+            }
+            prevNode = currentNode.node;
+            currentNode = getNextNode(currentNode);
+        }
+    };
+
+    // Work around IE circular DOM issue. This is the default max DOM depth on IE.
+    // http://msdn2.microsoft.com/en-us/library/ms761392(VS.85).aspx
+    fluid.dom.iterateDom.DOM_BAIL_DEPTH = 256;
+
+    /**
+     * Checks if the specified container is actually the parent of containee.
+     *
+     * @param {Element} container the potential parent
+     * @param {Element} containee the child in question
+     */
+    fluid.dom.isContainer = function (container, containee) {
+        for (; containee; containee = containee.parentNode) {
+            if (container === containee) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    /** Return the element text from the supplied DOM node as a single String.
+     * Implementation note - this is a special-purpose utility used in the framework in just one
+     * position in the Reorderer. It only performs a "shallow" traversal of the text and was intended
+     * as a quick and dirty means of extracting element labels where the user had not explicitly provided one.
+     * It should not be used by general users of the framework and its presence here needs to be
+     * reassessed.
+     */
+    fluid.dom.getElementText = function (element) {
+        var nodes = element.childNodes;
+        var text = "";
+        for (var i = 0; i < nodes.length; ++i) {
+            var child = nodes[i];
+            if (child.nodeType === 3) {
+                text = text + child.nodeValue;
+            }
+        }
+        return text;
+    };
+
+})(jQuery, fluid_2_0);
+;/*
 Copyright 2010-2011 Lucendo Development Ltd.
 Copyright 2010-2011 OCAD University
 
@@ -18295,353 +18295,6 @@ var fluid_2_0 = fluid_2_0 || {};
         delay: 150,
         backDelay: 100
     });
-
-})(jQuery, fluid_2_0);
-;/*
-Copyright 2010-2011 OCAD University
-Copyright 2010-2011 Lucendo Development Ltd.
-
-Licensed under the Educational Community License (ECL), Version 2.0 or the New
-BSD license. You may not use this file except in compliance with one these
-Licenses.
-
-You may obtain a copy of the ECL 2.0 License and BSD License at
-https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
-*/
-
-var fluid_2_0 = fluid_2_0 || {};
-
-(function ($, fluid) {
-    "use strict";
-
-    /** Framework-global caching state for fluid.fetchResources **/
-
-    var resourceCache = {};
-
-    var pendingClass = {};
-
-    /** Accepts a hash of structures with free keys, where each entry has either
-     * href/url or nodeId set - on completion, callback will be called with the populated
-     * structure with fetched resource text in the field "resourceText" for each
-     * entry. Each structure may contain "options" holding raw options to be forwarded
-     * to jQuery.ajax().
-     */
-
-    fluid.fetchResources = function(resourceSpecs, callback, options) {
-        var that = fluid.initLittleComponent("fluid.fetchResources", options);
-        that.resourceSpecs = resourceSpecs;
-        that.callback = callback;
-        that.operate = function() {
-            fluid.fetchResources.fetchResourcesImpl(that);
-        };
-        fluid.each(resourceSpecs, function(resourceSpec, key) {
-            resourceSpec.recurseFirer = fluid.makeEventFirer({name: "I/O completion for resource \"" + key + "\""});
-            resourceSpec.recurseFirer.addListener(that.operate);
-            if (resourceSpec.url && !resourceSpec.href) {
-                resourceSpec.href = resourceSpec.url;
-            }
-        });
-        if (that.options.amalgamateClasses) {
-            fluid.fetchResources.amalgamateClasses(resourceSpecs, that.options.amalgamateClasses, that.operate);
-        }
-        that.operate();
-        return that;
-    };
-
-    /*
-     * This function is unsupported: It is not really intended for use by implementors.
-     */
-    // Add "synthetic" elements of *this* resourceSpec list corresponding to any
-    // still pending elements matching the PROLEPTICK CLASS SPECIFICATION supplied
-    fluid.fetchResources.amalgamateClasses = function(specs, classes, operator) {
-        fluid.each(classes, function(clazz) {
-            var pending = pendingClass[clazz];
-            fluid.each(pending, function(pendingrec, canon) {
-                specs[clazz+"!"+canon] = pendingrec;
-                pendingrec.recurseFirer.addListener(operator);
-            });
-        });
-    };
-
-    /*
-     * This function is unsupported: It is not really intended for use by implementors.
-     */
-    fluid.fetchResources.timeSuccessCallback = function(resourceSpec) {
-        if (resourceSpec.timeSuccess && resourceSpec.options && resourceSpec.options.success) {
-            var success = resourceSpec.options.success;
-            resourceSpec.options.success = function() {
-                var startTime = new Date();
-                var ret = success.apply(null, arguments);
-                fluid.log("External callback for URL " + resourceSpec.href + " completed - callback time: " +
-                        (new Date().getTime() - startTime.getTime()) + "ms");
-                return ret;
-            };
-        }
-    };
-
-    // TODO: Integrate punch-through from old Engage implementation
-    function canonUrl(url) {
-        return url;
-    }
-
-    fluid.fetchResources.clearResourceCache = function(url) {
-        if (url) {
-            delete resourceCache[canonUrl(url)];
-        }
-        else {
-            fluid.clear(resourceCache);
-        }
-    };
-
-    /*
-     * This function is unsupported: It is not really intended for use by implementors.
-     */
-    fluid.fetchResources.handleCachedRequest = function(resourceSpec, response) {
-        var canon = canonUrl(resourceSpec.href);
-        var cached = resourceCache[canon];
-        if (cached.$$firer$$) {
-            fluid.log("Handling request for " + canon + " from cache");
-            var fetchClass = resourceSpec.fetchClass;
-            if (fetchClass && pendingClass[fetchClass]) {
-                fluid.log("Clearing pendingClass entry for class " + fetchClass);
-                delete pendingClass[fetchClass][canon];
-            }
-            resourceCache[canon] = response;
-            cached.fire(response);
-        }
-    };
-
-    /*
-     * This function is unsupported: It is not really intended for use by implementors.
-     */
-    fluid.fetchResources.completeRequest = function(thisSpec) {
-        thisSpec.queued = false;
-        thisSpec.completeTime = new Date();
-        fluid.log("Request to URL " + thisSpec.href + " completed - total elapsed time: " +
-            (thisSpec.completeTime.getTime() - thisSpec.initTime.getTime()) + "ms");
-        thisSpec.recurseFirer.fire();
-    };
-
-    /*
-     * This function is unsupported: It is not really intended for use by implementors.
-     */
-    fluid.fetchResources.makeResourceCallback = function(thisSpec) {
-        return {
-            success: function(response) {
-                thisSpec.resourceText = response;
-                thisSpec.resourceKey = thisSpec.href;
-                if (thisSpec.forceCache) {
-                    fluid.fetchResources.handleCachedRequest(thisSpec, response);
-                }
-                fluid.fetchResources.completeRequest(thisSpec);
-            },
-            error: function(response, textStatus, errorThrown) {
-                thisSpec.fetchError = {
-                    status: response.status,
-                    textStatus: response.textStatus,
-                    errorThrown: errorThrown
-                };
-                fluid.fetchResources.completeRequest(thisSpec);
-            }
-
-        };
-    };
-
-
-    /*
-     * This function is unsupported: It is not really intended for use by implementors.
-     */
-    fluid.fetchResources.issueCachedRequest = function(resourceSpec, options) {
-        var canon = canonUrl(resourceSpec.href);
-        var cached = resourceCache[canon];
-        if (!cached) {
-            fluid.log("First request for cached resource with url " + canon);
-            cached = fluid.makeEventFirer({name: "cache notifier for resource URL " + canon});
-            cached.$$firer$$ = true;
-            resourceCache[canon] = cached;
-            var fetchClass = resourceSpec.fetchClass;
-            if (fetchClass) {
-                if (!pendingClass[fetchClass]) {
-                    pendingClass[fetchClass] = {};
-                }
-                pendingClass[fetchClass][canon] = resourceSpec;
-            }
-            options.cache = false; // TODO: Getting weird "not modified" issues on Firefox
-            $.ajax(options);
-        }
-        else {
-            if (!cached.$$firer$$) {
-                options.success(cached);
-            }
-            else {
-                fluid.log("Request for cached resource which is in flight: url " + canon);
-                cached.addListener(function(response) {
-                    options.success(response);
-                });
-            }
-        }
-    };
-
-    /*
-     * This function is unsupported: It is not really intended for use by implementors.
-     */
-    // Compose callbacks in such a way that the 2nd, marked "external" will be applied
-    // first if it exists, but in all cases, the first, marked internal, will be
-    // CALLED WITHOUT FAIL
-    fluid.fetchResources.composeCallbacks = function (internal, external) {
-        return external ? (internal ?
-        function () {
-            try {
-                external.apply(null, arguments);
-            }
-            catch (e) {
-                fluid.log("Exception applying external fetchResources callback: " + e);
-            }
-            internal.apply(null, arguments); // call the internal callback without fail
-        } : external ) : internal;
-    };
-
-    // unsupported, NON-API function
-    fluid.fetchResources.composePolicy = function(target, source) {
-        return fluid.fetchResources.composeCallbacks(target, source);
-    };
-
-    fluid.defaults("fluid.fetchResources.issueRequest", {
-        mergePolicy: {
-            success: fluid.fetchResources.composePolicy,
-            error: fluid.fetchResources.composePolicy,
-            url: "reverse"
-        }
-    });
-
-    // unsupported, NON-API function
-    fluid.fetchResources.issueRequest = function(resourceSpec, key) {
-        var thisCallback = fluid.fetchResources.makeResourceCallback(resourceSpec);
-        var options = {
-            url:     resourceSpec.href,
-            success: thisCallback.success,
-            error:   thisCallback.error,
-            dataType: resourceSpec.dataType || "text"
-        };
-        fluid.fetchResources.timeSuccessCallback(resourceSpec);
-        options = fluid.merge(fluid.defaults("fluid.fetchResources.issueRequest").mergePolicy,
-                      options, resourceSpec.options);
-        resourceSpec.queued = true;
-        resourceSpec.initTime = new Date();
-        fluid.log("Request with key " + key + " queued for " + resourceSpec.href);
-
-        if (resourceSpec.forceCache) {
-            fluid.fetchResources.issueCachedRequest(resourceSpec, options);
-        }
-        else {
-            $.ajax(options);
-        }
-    };
-
-    fluid.fetchResources.fetchResourcesImpl = function(that) {
-        var complete = true;
-        var allSync = true;
-        var resourceSpecs = that.resourceSpecs;
-        for (var key in resourceSpecs) {
-            var resourceSpec = resourceSpecs[key];
-            if (!resourceSpec.options || resourceSpec.options.async) {
-                allSync = false;
-            }
-            if (resourceSpec.href && !resourceSpec.completeTime) {
-                if (!resourceSpec.queued) {
-                    fluid.fetchResources.issueRequest(resourceSpec, key);
-                }
-                if (resourceSpec.queued) {
-                    complete = false;
-                }
-            }
-            else if (resourceSpec.nodeId && !resourceSpec.resourceText) {
-                var node = document.getElementById(resourceSpec.nodeId);
-                // upgrade this to somehow detect whether node is "armoured" somehow
-                // with comment or CDATA wrapping
-                resourceSpec.resourceText = fluid.dom.getElementText(node);
-                resourceSpec.resourceKey = resourceSpec.nodeId;
-            }
-        }
-        if (complete && that.callback && !that.callbackCalled) {
-            that.callbackCalled = true;
-            if ($.browser.mozilla && !allSync) {
-                // Defer this callback to avoid debugging problems on Firefox
-                setTimeout(function() {
-                    that.callback(resourceSpecs);
-                }, 1);
-            }
-            else {
-                that.callback(resourceSpecs);
-            }
-        }
-    };
-
-    // TODO: This framework function is a stop-gap before the "ginger world" is capable of
-    // asynchronous instantiation. It currently performs very poor fidelity expansion of a
-    // component's options to discover "resources" only held in the static environment
-    fluid.fetchResources.primeCacheFromResources = function(componentName) {
-        var resources = fluid.defaults(componentName).resources;
-        var expanded = (fluid.expandOptions ? fluid.expandOptions : fluid.identity)(fluid.copy(resources));
-        fluid.fetchResources(expanded);
-    };
-
-    /** Utilities invoking requests for expansion **/
-    fluid.registerNamespace("fluid.expander");
-
-    /*
-     * This function is unsupported: It is not really intended for use by implementors.
-     */
-    fluid.expander.makeDefaultFetchOptions = function (successdisposer, failid, options) {
-        return $.extend(true, {dataType: "text"}, options, {
-            success: function(response, environmentdisposer) {
-                var json = JSON.parse(response);
-                environmentdisposer(successdisposer(json));
-            },
-            error: function(response, textStatus) {
-                fluid.log("Error fetching " + failid + ": " + textStatus);
-            }
-        });
-    };
-
-    /*
-     * This function is unsupported: It is not really intended for use by implementors.
-     */
-    fluid.expander.makeFetchExpander = function (options) {
-        return { expander: {
-            type: "fluid.expander.deferredFetcher",
-            href: options.url,
-            options: fluid.expander.makeDefaultFetchOptions(options.disposer, options.url, options.options),
-            resourceSpecCollector: "{resourceSpecCollector}",
-            fetchKey: options.fetchKey
-        }};
-    };
-
-    fluid.expander.deferredFetcher = function(deliverer, source, expandOptions) {
-        var expander = source.expander;
-        var spec = fluid.copy(expander);
-        // fetch the "global" collector specified in the external environment to receive
-        // this resourceSpec
-        var collector = fluid.expand(expander.resourceSpecCollector, expandOptions);
-        delete spec.type;
-        delete spec.resourceSpecCollector;
-        delete spec.fetchKey;
-        var environmentdisposer = function(disposed) {
-            deliverer(disposed);
-        };
-        // replace the callback which is there (taking 2 arguments) with one which
-        // directly responds to the request, passing in the result and OUR "disposer" -
-        // which once the user has processed the response (say, parsing JSON and repackaging)
-        // finally deposits it in the place of the expander in the tree to which this reference
-        // has been stored at the point this expander was evaluated.
-        spec.options.success = function(response) {
-            expander.options.success(response, environmentdisposer);
-        };
-        var key = expander.fetchKey || fluid.allocateGuid();
-        collector[key] = spec;
-        return fluid.NO_VALUE;
-    };
-
 
 })(jQuery, fluid_2_0);
 ;// -*- mode: javascript; tab-width: 2; indent-tabs-mode: nil; -*-
@@ -26295,83 +25948,6 @@ var fluid = fluid || require("infusion"),
     };
 
 }());
-;/*!
-* Flocking - Creative audio synthesis for the Web!
-* http://github.com/colinbdclark/flocking
-*
-* Copyright 2011-2014, Colin Clark
-* Dual licensed under the MIT or GPL Version 2 licenses.
-*/
-
-/*global require*/
-/*jshint white: false, newcap: true, regexp: true, browser: true,
-    forin: false, nomen: true, bitwise: false, maxerr: 100,
-    indent: 4, plusplus: false, curly: true, eqeqeq: true,
-    freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
-    unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
-    funcscope: false*/
-
-var fluid = fluid || require("infusion"),
-    flock = fluid.registerNamespace("flock");
-
-(function () {
-    "use strict";
-    
-    fluid.registerNamespace("flock.view");
-    
-    // TODO: Infusionize.
-    flock.view.scope = function (canvas, model) {
-        var that = {
-            model: model || {
-                values: []
-            },
-            canvas: typeof (canvas) === "string" ? document.querySelector(canvas) : canvas
-        };
-        
-        that.refreshView = function () {
-            var ctx = that.ctx,
-                h = that.model.height,
-                halfH = that.model.halfHeight,
-                w = that.model.width,
-                vals = that.model.values,
-                len = vals.length,
-                scaleX = that.model.scaleX * (w / len), // TODO: Doesn't support scale values < 1.0
-                i,
-                x,
-                y;
-        
-            ctx.clearRect(0, 0, w, h);
-            ctx.beginPath();
-            for (i = 0; i < len; i++) {
-                x = i * scaleX;
-                y = vals[i] * that.model.scaleY * halfH + halfH;
-                ctx.lineTo(x, y);
-            }
-            ctx.stroke();
-        };
-        
-        that.init = function () {
-            that.ctx = that.canvas.getContext("2d");
-            that.ctx.fillStyle = that.model.fill || that.ctx.fillStyle;
-            that.ctx.strokeStyle = that.model.strokeColor || that.ctx.strokeStyle;
-            that.ctx.lineWidth = that.model.strokeWidth || that.ctx.lineWidth;
-        
-            that.model.min = that.model.min || -1.0;
-            that.model.max = that.model.max || 1.0;
-            that.model.height = that.canvas.height;
-            that.model.halfHeight = that.model.height / 2;
-            that.model.width = that.canvas.width;
-            that.model.scaleX = that.model.scaleX || that.model.scale || 1.0;
-            that.model.scaleY = that.model.scaleY || that.model.scale || 1.0;
-            
-            that.refreshView();
-        };
-        
-        that.init();
-        return that;
-    };
-    
-}());
 ;/*
  * Flocking Core Unit Generators
  * http://github.com/colinbdclark/flocking
@@ -27530,402 +27106,6 @@ var fluid = fluid || require("infusion"),
                 ampScale: undefined,
                 phaseResetValue: undefined
             }
-        }
-    });
-}());
-;/*
-* Flocking Browser-Dependent Unit Generators
-* http://github.com/colinbdclark/flocking
-*
-* Copyright 2013-2014, Colin Clark
-* Dual licensed under the MIT and GPL Version 2 licenses.
-*/
-
-/*global require, Float32Array, window*/
-/*jshint white: false, newcap: true, regexp: true, browser: true,
-    forin: false, nomen: true, bitwise: false, maxerr: 100,
-    indent: 4, plusplus: false, curly: true, eqeqeq: true,
-    freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
-    unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
-    funcscope: false*/
-
-var fluid = fluid || require("infusion"),
-    flock = fluid.registerNamespace("flock");
-
-(function () {
-    "use strict";
-
-    var $ = fluid.registerNamespace("jQuery");
-
-    fluid.registerNamespace("flock.ugen");
-
-    /***************************
-     * Browser-dependent UGens *
-     ***************************/
-
-    flock.ugen.scope = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
-
-        that.gen = function (numSamps) {
-            var m = that.model,
-                source = that.inputs.source.output,
-                spf = m.spf,
-                bufIdx = m.bufIdx,
-                buf = m.scope.values,
-                i;
-
-            for (i = 0; i < numSamps; i++) {
-                buf[bufIdx] = source[i];
-                if (bufIdx < spf) {
-                    bufIdx += 1;
-                } else {
-                    bufIdx = 0;
-                    that.scopeView.refreshView();
-                }
-            }
-
-            m.bufIdx = bufIdx;
-            m.value = m.unscaledValue = flock.ugen.lastOutputValue(numSamps, source);
-        };
-
-        that.onInputChanged = function () {
-            // Pass the "source" input directly back as the output from this ugen.
-            that.output = that.inputs.source.output;
-        };
-
-        that.init = function () {
-            that.model.spf = Math.round(that.model.sampleRate / that.options.fps);
-            that.model.bufIdx = 0;
-
-            // Set up the scopeView widget.
-            that.model.scope = that.options.styles;
-            that.model.scope.values = new Float32Array(that.model.spf);
-            that.scopeView = flock.view.scope(that.options.canvas, that.model.scope);
-
-            that.onInputChanged();
-            that.scopeView.refreshView();
-        };
-
-        that.init();
-        return that;
-    };
-
-    fluid.defaults("flock.ugen.scope", {
-        rate: "audio",
-        inputs: {
-            source: null
-        },
-        ugenOptions: {
-            fps: 60,
-            styles: {
-                strokeColor: "#777777",
-                strokeWidth: 1
-            }
-        }
-    });
-
-
-    flock.ugen.mouse = {};
-
-    /**
-     * Tracks the mouse's position along the specified axis within the boundaries the whole screen.
-     * This unit generator will generate a signal between 0.0 and 1.0 based on the position of the mouse;
-     * use the mul and add inputs to scale this value to an appropriate control signal.
-     */
-    flock.ugen.mouse.cursor = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
-
-        /**
-         * Generates a control rate signal between 0.0 and 1.0 by tracking the mouse's position along the specified axis.
-         *
-         * @param numSamps the number of samples to generate
-         */
-        that.exponentialGen = function (numSamps) {
-            var m = that.model,
-                val = flock.ugen.mouse.cursor.normalize(that.target, m),
-                movingAvg = m.movingAvg,
-                lag = that.inputs.lag.output[0],
-                add = that.inputs.add.output[0],
-                mul = that.inputs.mul.output[0],
-                lagCoef = m.lagCoef,
-                out = that.output,
-                i,
-                max;
-
-            if (lag !== lagCoef) {
-                lagCoef = lag === 0 ? 0.0 : Math.exp(flock.LOG001 / (lag * m.sampleRate));
-                m.lagCoef = lagCoef;
-            }
-
-            for (i = 0; i < numSamps; i++) {
-                max = mul + add;
-                val = Math.pow(max  / add, val) * add;
-                movingAvg = val + lagCoef * (movingAvg - val); // 1-pole filter averages mouse values.
-                out[i] = movingAvg;
-            }
-
-            m.movingAvg = movingAvg;
-            m.value = m.unscaledValue = movingAvg;
-        };
-
-        that.linearGen = function (numSamps) {
-            var m = that.model,
-                val = flock.ugen.mouse.cursor.normalize(that.target, m),
-                movingAvg = m.movingAvg,
-                lag = that.inputs.lag.output[0],
-                add = that.inputs.add.output[0],
-                mul = that.inputs.mul.output[0],
-                lagCoef = m.lagCoef,
-                out = that.output,
-                i;
-
-            if (lag !== lagCoef) {
-                lagCoef = lag === 0 ? 0.0 : Math.exp(flock.LOG001 / (lag * m.sampleRate));
-                m.lagCoef = lagCoef;
-            }
-
-            for (i = 0; i < numSamps; i++) {
-                movingAvg = val + lagCoef * (movingAvg - val);
-                out[i] = movingAvg * mul + add;
-            }
-
-            m.movingAvg = m.unscaledValue = movingAvg;
-            m.value = flock.ugen.lastOutputValue(numSamps, out);
-        };
-
-        that.noInterpolationGen = function (numSamps) {
-            var m = that.model,
-                out = that.output,
-                val = flock.ugen.mouse.cursor.normalize(that.target, m),
-                i;
-
-            for (i = 0; i < numSamps; i++) {
-                out[i] = val * that.inputs.mul.output[0] + that.inputs.add.output[0];
-            }
-
-            m.value = m.unscaledValue = flock.ugen.lastOutputValue(numSamps, out);
-        };
-
-        that.moveListener = function (e) {
-            var m = that.model;
-            m.mousePosition = e[m.eventProp];
-        };
-
-        that.overListener = function () {
-            that.model.isWithinTarget = true;
-        };
-
-        that.outListener = function () {
-            var m = that.model;
-            m.isWithinTarget = false;
-            m.mousePosition = 0.0;
-        };
-
-        that.downListener = function () {
-            that.model.isMouseDown = true;
-        };
-
-        that.upListener = function () {
-            var m = that.model;
-            m.isMouseDown = false;
-            m.mousePosition = 0;
-        };
-
-        that.moveWhileDownListener = function (e) {
-            if (that.model.isMouseDown) {
-                that.moveListener(e);
-            }
-        };
-
-        that.bindEvents = function () {
-            var target = that.target,
-                moveListener = that.moveListener;
-
-            if (that.options.onlyOnMouseDown) {
-                target.mousedown(that.downListener);
-                target.mouseup(that.upListener);
-                moveListener = that.moveWhileDownListener;
-            }
-
-            target.mouseover(that.overListener);
-            target.mouseout(that.outListener);
-            target.mousemove(moveListener);
-        };
-
-        that.onInputChanged = function () {
-            flock.onMulAddInputChanged(that);
-
-            var interp = that.options.interpolation;
-            that.gen = interp === "none" ? that.noInterpolationGen :
-                interp === "exponential" ? that.exponentialGen : that.linearGen;
-        };
-
-        that.init = function () {
-            var m = that.model,
-                options = that.options,
-                axis = options.axis,
-                target = $(options.target || window);
-
-            if (axis === "x" || axis === "width" || axis === "horizontal") {
-                m.eventProp = "clientX";
-                m.offsetProp = "left";
-                m.dimension = "width";
-            } else {
-                m.eventProp = "clientY";
-                m.offsetProp = "top";
-                m.dimension = "height";
-            }
-
-            that.target = target;
-            m.mousePosition = 0;
-            m.movingAvg = 0;
-
-            that.bindEvents();
-            that.onInputChanged();
-        };
-
-        that.init();
-        return that;
-    };
-
-    flock.ugen.mouse.cursor.normalize = function (target, m) {
-        if (!m.isWithinTarget) {
-            return 0.0;
-        }
-
-        var size = target[m.dimension](),
-            offset = target.offset(),
-            pos = m.mousePosition;
-
-        if (offset) {
-            pos -= offset[m.offsetProp];
-        }
-
-        return pos / size;
-    };
-
-    fluid.defaults("flock.ugen.mouse.cursor", {
-        rate: "control",
-        inputs: {
-            lag: 0.5,
-            add: 0.0,
-            mul: 1.0
-        },
-
-        ugenOptions: {
-            axis: "x",
-            interpolation: "linear",
-            model: {
-                mousePosition: 0,
-                movingAvg: 0,
-                value: 0.0
-            }
-        }
-    });
-
-
-    flock.ugen.mouse.click = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
-
-        that.gen = function (numSamps) {
-            var out = that.output,
-                m = that.model,
-                i;
-
-            for (i = 0; i < numSamps; i++) {
-                out[i] = m.unscaledValue;
-            }
-
-            that.mulAdd(numSamps);
-            m.value = flock.ugen.lastOutputValue(numSamps, out);
-        };
-
-        that.mouseDownListener = function () {
-            that.model.unscaledValue = 1.0;
-        };
-
-        that.mouseUpListener = function () {
-            that.model.unscaledValue = 0.0;
-        };
-
-        that.init = function () {
-            var m = that.model;
-            m.target = !that.options.target ? $(window) : $(that.options.target);
-
-            m.target.mousedown(that.mouseDownListener);
-            m.target.mouseup(that.mouseUpListener);
-
-            that.onInputChanged();
-        };
-
-        that.onInputChanged = function () {
-            flock.onMulAddInputChanged(that);
-        };
-
-        that.init();
-        return that;
-    };
-
-    fluid.defaults("flock.ugen.mouse.click", {
-        rate: "control"
-    });
-
-
-    flock.ugen.mediaIn = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
-
-        that.gen = function (numSamps) {
-            var m = that.model,
-                out = that.output,
-                bus = that.bus,
-                val;
-
-            for (var i = 0; i < numSamps; i++) {
-                out[i] = val = bus[i];
-            }
-
-            m.unscaledValue = val;
-            that.mulAdd(numSamps);
-            m.value = flock.ugen.lastOutputValue(numSamps, out);
-        };
-
-        that.onInputChanged = function () {
-            flock.onMulAddInputChanged(that);
-        };
-
-        that.init = function () {
-            var enviro = flock.environment,
-                mediaEl = $(that.options.element),
-                // TODO: Direct reference to the shared environment.
-                busNum = enviro.audioStrategy.nativeNodeManager.createMediaElementInput(mediaEl[0]);
-
-            that.bus = that.options.buses[busNum];
-            that.onInputChanged();
-
-            // TODO: Remove this warning when Safari and Android
-            // fix their MediaElementAudioSourceNode implementations.
-            if (flock.platform.browser.safari) {
-                flock.log.warn("MediaElementSourceNode does not work on Safari. " +
-                    "For more information, see https://bugs.webkit.org/show_bug.cgi?id=84743 " +
-                    "and https://bugs.webkit.org/show_bug.cgi?id=125031");
-            } else if (flock.platform.isAndroid) {
-                flock.log.warn("MediaElementSourceNode does not work on Android. " +
-                    "For more information, see https://code.google.com/p/chromium/issues/detail?id=419446");
-            }
-        };
-
-        that.init();
-        return that;
-    };
-
-    fluid.defaults("flock.ugen.mediaIn", {
-        rate: "audio",
-        inputs: {
-            mul: null,
-            add: null
-        },
-        ugenOptions: {
-            element: "audio"
         }
     });
 }());
@@ -31162,7 +30342,7 @@ var fluid = fluid || require("infusion"),
      *   - dur: the duration of each grain (control or constant rate only)
      *   - trigger: a trigger signal that, when it move to a positive number, will start a grain
      *   - buffer: a bufferDef object describing the buffer to granulate
-     *   - centerPos: the postion within the sound buffer when the grain will reach maximum amplitude
+     *   - centerPos: the postion within the sound buffer where the grain will reach maximum amplitude (in seconds)
      *   - amp: the peak amplitude of the grain
      *   - speed: the rate at which grain samples are selected from the buffer; 1.0 is normal speed, -1.0 is backwards
      *
@@ -33553,4 +32733,477 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+}());
+;/*!
+* Flocking - Creative audio synthesis for the Web!
+* http://github.com/colinbdclark/flocking
+*
+* Copyright 2011-2014, Colin Clark
+* Dual licensed under the MIT or GPL Version 2 licenses.
+*/
+
+/*global require*/
+/*jshint white: false, newcap: true, regexp: true, browser: true,
+    forin: false, nomen: true, bitwise: false, maxerr: 100,
+    indent: 4, plusplus: false, curly: true, eqeqeq: true,
+    freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
+    unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
+    funcscope: false*/
+
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
+
+(function () {
+    "use strict";
+    
+    fluid.registerNamespace("flock.view");
+    
+    // TODO: Infusionize.
+    flock.view.scope = function (canvas, model) {
+        var that = {
+            model: model || {
+                values: []
+            },
+            canvas: typeof (canvas) === "string" ? document.querySelector(canvas) : canvas
+        };
+        
+        that.refreshView = function () {
+            var ctx = that.ctx,
+                h = that.model.height,
+                halfH = that.model.halfHeight,
+                w = that.model.width,
+                vals = that.model.values,
+                len = vals.length,
+                scaleX = that.model.scaleX * (w / len), // TODO: Doesn't support scale values < 1.0
+                i,
+                x,
+                y;
+        
+            ctx.clearRect(0, 0, w, h);
+            ctx.beginPath();
+            for (i = 0; i < len; i++) {
+                x = i * scaleX;
+                y = vals[i] * that.model.scaleY * halfH + halfH;
+                ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        };
+        
+        that.init = function () {
+            that.ctx = that.canvas.getContext("2d");
+            that.ctx.fillStyle = that.model.fill || that.ctx.fillStyle;
+            that.ctx.strokeStyle = that.model.strokeColor || that.ctx.strokeStyle;
+            that.ctx.lineWidth = that.model.strokeWidth || that.ctx.lineWidth;
+        
+            that.model.min = that.model.min || -1.0;
+            that.model.max = that.model.max || 1.0;
+            that.model.height = that.canvas.height;
+            that.model.halfHeight = that.model.height / 2;
+            that.model.width = that.canvas.width;
+            that.model.scaleX = that.model.scaleX || that.model.scale || 1.0;
+            that.model.scaleY = that.model.scaleY || that.model.scale || 1.0;
+            
+            that.refreshView();
+        };
+        
+        that.init();
+        return that;
+    };
+    
+}());
+;/*
+* Flocking Browser-Dependent Unit Generators
+* http://github.com/colinbdclark/flocking
+*
+* Copyright 2013-2014, Colin Clark
+* Dual licensed under the MIT and GPL Version 2 licenses.
+*/
+
+/*global require, Float32Array, window*/
+/*jshint white: false, newcap: true, regexp: true, browser: true,
+    forin: false, nomen: true, bitwise: false, maxerr: 100,
+    indent: 4, plusplus: false, curly: true, eqeqeq: true,
+    freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
+    unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
+    funcscope: false*/
+
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
+
+(function () {
+    "use strict";
+
+    var $ = fluid.registerNamespace("jQuery");
+
+    fluid.registerNamespace("flock.ugen");
+
+    /***************************
+     * Browser-dependent UGens *
+     ***************************/
+
+    flock.ugen.scope = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                source = that.inputs.source.output,
+                spf = m.spf,
+                bufIdx = m.bufIdx,
+                buf = m.scope.values,
+                i;
+
+            for (i = 0; i < numSamps; i++) {
+                buf[bufIdx] = source[i];
+                if (bufIdx < spf) {
+                    bufIdx += 1;
+                } else {
+                    bufIdx = 0;
+                    that.scopeView.refreshView();
+                }
+            }
+
+            m.bufIdx = bufIdx;
+            m.value = m.unscaledValue = flock.ugen.lastOutputValue(numSamps, source);
+        };
+
+        that.onInputChanged = function () {
+            // Pass the "source" input directly back as the output from this ugen.
+            that.output = that.inputs.source.output;
+        };
+
+        that.init = function () {
+            that.model.spf = Math.round(that.model.sampleRate / that.options.fps);
+            that.model.bufIdx = 0;
+
+            // Set up the scopeView widget.
+            that.model.scope = that.options.styles;
+            that.model.scope.values = new Float32Array(that.model.spf);
+            that.scopeView = flock.view.scope(that.options.canvas, that.model.scope);
+
+            that.onInputChanged();
+            that.scopeView.refreshView();
+        };
+
+        that.init();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.scope", {
+        rate: "audio",
+        inputs: {
+            source: null
+        },
+        ugenOptions: {
+            fps: 60,
+            styles: {
+                strokeColor: "#777777",
+                strokeWidth: 1
+            }
+        }
+    });
+
+
+    flock.ugen.mouse = {};
+
+    /**
+     * Tracks the mouse's position along the specified axis within the boundaries the whole screen.
+     * This unit generator will generate a signal between 0.0 and 1.0 based on the position of the mouse;
+     * use the mul and add inputs to scale this value to an appropriate control signal.
+     */
+    flock.ugen.mouse.cursor = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        /**
+         * Generates a control rate signal between 0.0 and 1.0 by tracking the mouse's position along the specified axis.
+         *
+         * @param numSamps the number of samples to generate
+         */
+        that.exponentialGen = function (numSamps) {
+            var m = that.model,
+                val = flock.ugen.mouse.cursor.normalize(that.target, m),
+                movingAvg = m.movingAvg,
+                lag = that.inputs.lag.output[0],
+                add = that.inputs.add.output[0],
+                mul = that.inputs.mul.output[0],
+                lagCoef = m.lagCoef,
+                out = that.output,
+                i,
+                max;
+
+            if (lag !== lagCoef) {
+                lagCoef = lag === 0 ? 0.0 : Math.exp(flock.LOG001 / (lag * m.sampleRate));
+                m.lagCoef = lagCoef;
+            }
+
+            for (i = 0; i < numSamps; i++) {
+                max = mul + add;
+                val = Math.pow(max  / add, val) * add;
+                movingAvg = val + lagCoef * (movingAvg - val); // 1-pole filter averages mouse values.
+                out[i] = movingAvg;
+            }
+
+            m.movingAvg = movingAvg;
+            m.value = m.unscaledValue = movingAvg;
+        };
+
+        that.linearGen = function (numSamps) {
+            var m = that.model,
+                val = flock.ugen.mouse.cursor.normalize(that.target, m),
+                movingAvg = m.movingAvg,
+                lag = that.inputs.lag.output[0],
+                add = that.inputs.add.output[0],
+                mul = that.inputs.mul.output[0],
+                lagCoef = m.lagCoef,
+                out = that.output,
+                i;
+
+            if (lag !== lagCoef) {
+                lagCoef = lag === 0 ? 0.0 : Math.exp(flock.LOG001 / (lag * m.sampleRate));
+                m.lagCoef = lagCoef;
+            }
+
+            for (i = 0; i < numSamps; i++) {
+                movingAvg = val + lagCoef * (movingAvg - val);
+                out[i] = movingAvg * mul + add;
+            }
+
+            m.movingAvg = m.unscaledValue = movingAvg;
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
+        };
+
+        that.noInterpolationGen = function (numSamps) {
+            var m = that.model,
+                out = that.output,
+                val = flock.ugen.mouse.cursor.normalize(that.target, m),
+                i;
+
+            for (i = 0; i < numSamps; i++) {
+                out[i] = val * that.inputs.mul.output[0] + that.inputs.add.output[0];
+            }
+
+            m.value = m.unscaledValue = flock.ugen.lastOutputValue(numSamps, out);
+        };
+
+        that.moveListener = function (e) {
+            var m = that.model;
+            m.mousePosition = e[m.eventProp];
+        };
+
+        that.overListener = function () {
+            that.model.isWithinTarget = true;
+        };
+
+        that.outListener = function () {
+            var m = that.model;
+            m.isWithinTarget = false;
+            m.mousePosition = 0.0;
+        };
+
+        that.downListener = function () {
+            that.model.isMouseDown = true;
+        };
+
+        that.upListener = function () {
+            var m = that.model;
+            m.isMouseDown = false;
+            m.mousePosition = 0;
+        };
+
+        that.moveWhileDownListener = function (e) {
+            if (that.model.isMouseDown) {
+                that.moveListener(e);
+            }
+        };
+
+        that.bindEvents = function () {
+            var target = that.target,
+                moveListener = that.moveListener;
+
+            if (that.options.onlyOnMouseDown) {
+                target.mousedown(that.downListener);
+                target.mouseup(that.upListener);
+                moveListener = that.moveWhileDownListener;
+            }
+
+            target.mouseover(that.overListener);
+            target.mouseout(that.outListener);
+            target.mousemove(moveListener);
+        };
+
+        that.onInputChanged = function () {
+            flock.onMulAddInputChanged(that);
+
+            var interp = that.options.interpolation;
+            that.gen = interp === "none" ? that.noInterpolationGen :
+                interp === "exponential" ? that.exponentialGen : that.linearGen;
+        };
+
+        that.init = function () {
+            var m = that.model,
+                options = that.options,
+                axis = options.axis,
+                target = $(options.target || window);
+
+            if (axis === "x" || axis === "width" || axis === "horizontal") {
+                m.eventProp = "clientX";
+                m.offsetProp = "left";
+                m.dimension = "width";
+            } else {
+                m.eventProp = "clientY";
+                m.offsetProp = "top";
+                m.dimension = "height";
+            }
+
+            that.target = target;
+            m.mousePosition = 0;
+            m.movingAvg = 0;
+
+            that.bindEvents();
+            that.onInputChanged();
+        };
+
+        that.init();
+        return that;
+    };
+
+    flock.ugen.mouse.cursor.normalize = function (target, m) {
+        if (!m.isWithinTarget) {
+            return 0.0;
+        }
+
+        var size = target[m.dimension](),
+            offset = target.offset(),
+            pos = m.mousePosition;
+
+        if (offset) {
+            pos -= offset[m.offsetProp];
+        }
+
+        return pos / size;
+    };
+
+    fluid.defaults("flock.ugen.mouse.cursor", {
+        rate: "control",
+        inputs: {
+            lag: 0.5,
+            add: 0.0,
+            mul: 1.0
+        },
+
+        ugenOptions: {
+            axis: "x",
+            interpolation: "linear",
+            model: {
+                mousePosition: 0,
+                movingAvg: 0,
+                value: 0.0
+            }
+        }
+    });
+
+
+    flock.ugen.mouse.click = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var out = that.output,
+                m = that.model,
+                i;
+
+            for (i = 0; i < numSamps; i++) {
+                out[i] = m.unscaledValue;
+            }
+
+            that.mulAdd(numSamps);
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
+        };
+
+        that.mouseDownListener = function () {
+            that.model.unscaledValue = 1.0;
+        };
+
+        that.mouseUpListener = function () {
+            that.model.unscaledValue = 0.0;
+        };
+
+        that.init = function () {
+            var m = that.model;
+            m.target = !that.options.target ? $(window) : $(that.options.target);
+
+            m.target.mousedown(that.mouseDownListener);
+            m.target.mouseup(that.mouseUpListener);
+
+            that.onInputChanged();
+        };
+
+        that.onInputChanged = function () {
+            flock.onMulAddInputChanged(that);
+        };
+
+        that.init();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.mouse.click", {
+        rate: "control"
+    });
+
+
+    flock.ugen.mediaIn = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                out = that.output,
+                bus = that.bus,
+                val;
+
+            for (var i = 0; i < numSamps; i++) {
+                out[i] = val = bus[i];
+            }
+
+            m.unscaledValue = val;
+            that.mulAdd(numSamps);
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
+        };
+
+        that.onInputChanged = function () {
+            flock.onMulAddInputChanged(that);
+        };
+
+        that.init = function () {
+            var enviro = flock.environment,
+                mediaEl = $(that.options.element),
+                // TODO: Direct reference to the shared environment.
+                busNum = enviro.audioStrategy.nativeNodeManager.createMediaElementInput(mediaEl[0]);
+
+            that.bus = that.options.buses[busNum];
+            that.onInputChanged();
+
+            // TODO: Remove this warning when Safari and Android
+            // fix their MediaElementAudioSourceNode implementations.
+            if (flock.platform.browser.safari) {
+                flock.log.warn("MediaElementSourceNode does not work on Safari. " +
+                    "For more information, see https://bugs.webkit.org/show_bug.cgi?id=84743 " +
+                    "and https://bugs.webkit.org/show_bug.cgi?id=125031");
+            } else if (flock.platform.isAndroid) {
+                flock.log.warn("MediaElementSourceNode does not work on Android. " +
+                    "For more information, see https://code.google.com/p/chromium/issues/detail?id=419446");
+            }
+        };
+
+        that.init();
+        return that;
+    };
+
+    fluid.defaults("flock.ugen.mediaIn", {
+        rate: "audio",
+        inputs: {
+            mul: null,
+            add: null
+        },
+        ugenOptions: {
+            element: "audio"
+        }
+    });
 }());
