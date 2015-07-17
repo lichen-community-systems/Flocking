@@ -258,7 +258,7 @@ var fluid = fluid || require("infusion"),
     });
 
     /**
-     * Writes input into a buffer.
+     * flock.ugen.writeBuffer writes its "source" input into a user-specified buffer.
      *
      * Inputs:
      *
