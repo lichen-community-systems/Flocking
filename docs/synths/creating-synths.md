@@ -41,6 +41,22 @@ If you're creating a synth in the context of another component such as a <code>f
             }
         }
     });
+
+## Playing and Pausing Synths
+
+In Flocking, the environment manages the sample generation and output process for all synths. It maintains a list of every active synth, and is responsible for triggering them to generate output. You must start the environment using <code>enviro.start()</code> before any sound will be generated. Stopping the environment (with <code>enviro.stop()</code>) will cause all synths to stop generating samples entirely, and for Flocking to unregister its various Web Audio API hooks, ensuring that it no longer takes up any CPU time.
+
+A synth must be added to the environment before it will start making sound, and it must be removed from the environment in order to stop it from sounding. By default, each new Synth is automatically added to the Flocking global environment when it is instantiated. This behaviour can be controlled using the <code>addToEnvironment</code> option, which is described below.
+
+Synths provide <code>play()</code> and <code>pause()</code> methods as a convenience; these methods offer a quick way to add and remove a synth from the environment. If the environment hasn't already been started, a synth's <code>play</code> method will also start it. The side effect of this behaviour is that all synths that have already been added to the environment will start to play. A synth's <code>pause</code> method, however, will not stop the environment; it only removes the synth from its environment.
+
+Here's the basic lifecycle for a Flocking application:
+
+1. Initialize Flocking using <code>flock.init</code>. For example, <code>var enviro = flock.init();</code>
+1. Start the environment when your application is first ready to generate sound, using <code>enviro.start()</code>
+2. Create synths whenever you need them, using the <code>addToEnvironment</code> option to control whether they should start playing immediately or wait until <code>play</code> is called on them
+3. Use Synth's <code>play</code> and <code>pause</code> methods to programmatically start and stop synths from sounding
+
 ## Synth Options
 
 ### Synth Definitions
