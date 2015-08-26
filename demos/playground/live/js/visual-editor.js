@@ -622,7 +622,7 @@ var fluid = fluid || require("infusion"),
         }
 
         that.events.onRender.fire();
-        flock.ui.nodeRenderer.synth.clear(that.jsPlumb,that. container, that.ugenRenderers);
+        flock.ui.nodeRenderer.synth.clear(that.jsPlumb, that.container, that.ugenRenderers);
         flock.ui.nodeRenderer.synth.render(activeSynthSpec.synthDef, that);
         that.events.afterRender.fire();
     };

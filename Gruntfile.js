@@ -6,22 +6,22 @@ module.exports = function(grunt) {
 
     var files = {
         jQuery: [
-            "third-party/jquery/js/jquery.js"
+            "node_modules/jquery/dist/jquery.js"
         ],
 
         infusion: [
-            "third-party/infusion/js/Fluid.js",
-            "third-party/infusion/js/FluidDebugging.js",
-            "third-party/infusion/js/FluidIoC.js",
-            "third-party/infusion/js/DataBinding.js",
-            "third-party/infusion/js/ModelTransformation.js",
-            "third-party/infusion/js/ModelTransformationTransforms.js",
+            "node_modules/infusion/src/framework/core/js/Fluid.js",
+            "node_modules/infusion/src/framework/core/js/FluidDebugging.js",
+            "node_modules/infusion/src/framework/core/js/FluidIoC.js",
+            "node_modules/infusion/src/framework/core/js/DataBinding.js",
+            "node_modules/infusion/src/framework/core/js/ModelTransformation.js",
+            "node_modules/infusion/src/framework/core/js/ModelTransformationTransforms.js",
         ],
 
         infusionViews: [
-            "third-party/infusion/js/FluidDocument.js",
-            "third-party/infusion/js/FluidDOMUtilities.js",
-            "third-party/infusion/js/FluidView.js"
+            "node_modules/infusion/src/framework/core/js/FluidDocument.js",
+            "node_modules/infusion/src/framework/core/js/FluidDOMUtilities.js",
+            "node_modules/infusion/src/framework/core/js/FluidView.js"
         ],
 
         miscDeps: [
