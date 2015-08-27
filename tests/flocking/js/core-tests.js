@@ -1959,6 +1959,24 @@ var fluid = fluid || require("infusion"),
         });
     });
 
+    fluid.defaults("flock.test.componentWithTypedArrayOption", {
+        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        buffer: new Float32Array([1, 1, 1, 1])
+    });
+
+    test("Typed Array Component Merging", function () {
+        var c = flock.test.componentWithTypedArrayOption();
+        deepEqual(c.options.buffer, new Float32Array([1, 1, 1, 1]),
+            "The component's typed array should be set to the default value.");
+
+        c = flock.test.componentWithTypedArrayOption({
+            buffer: new Float32Array([2, 2, 2, 2])
+        });
+        deepEqual(c.options.buffer, new Float32Array([2, 2, 2, 2]),
+            "The component's typed array should have been overriden.");
+    });
+
+
     module("flock.band tests");
 
     test("flock.band with multiple addToEnvironment synths", function () {
