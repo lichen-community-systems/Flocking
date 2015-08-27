@@ -59,7 +59,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.dust", {
+    flock.ugenDefaults("flock.ugen.dust", {
         rate: "audio",
         inputs: {
             density: 1.0,
@@ -100,7 +100,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.whiteNoise", {
+    flock.ugenDefaults("flock.ugen.whiteNoise", {
         rate: "audio",
         inputs: {
             mul: null,
@@ -162,7 +162,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.pinkNoise", {
+    flock.ugenDefaults("flock.ugen.pinkNoise", {
         rate: "audio",
         inputs: {
             mul: null,
@@ -234,7 +234,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.lfNoise", {
+    flock.ugenDefaults("flock.ugen.lfNoise", {
         rate: "audio",
         inputs: {
             freq: 440,
@@ -297,7 +297,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.random", {
+    flock.ugenDefaults("flock.ugen.random", {
         rate: "audio",
         inputs: {
             seed: null,
@@ -332,7 +332,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.random.exponential", {
+    flock.ugenDefaults("flock.ugen.random.exponential", {
         rate: "audio",
         inputs: {
             seed: null,
@@ -376,7 +376,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.random.gamma", {
+    flock.ugenDefaults("flock.ugen.random.gamma", {
         rate: "audio",
         inputs: {
             seed: null,
@@ -421,7 +421,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.random.normal", {
+    flock.ugenDefaults("flock.ugen.random.normal", {
         rate: "audio",
         inputs: {
             seed: null,
@@ -462,7 +462,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.random.pareto", {
+    flock.ugenDefaults("flock.ugen.random.pareto", {
         rate: "audio",
         inputs: {
             seed: null,
@@ -502,7 +502,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.random.triangular", {
+    flock.ugenDefaults("flock.ugen.random.triangular", {
         rate: "audio",
         inputs: {
             seed: null,
@@ -546,7 +546,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.random.weibull", {
+    flock.ugenDefaults("flock.ugen.random.weibull", {
         rate: "audio",
         inputs: {
             seed: null,

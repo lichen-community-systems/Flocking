@@ -91,7 +91,7 @@ var fluid = fluid || require("infusion"),
         flock.onMulAddInputChanged(that);
     };
 
-    fluid.defaults("flock.ugen.osc", {
+    flock.ugenDefaults("flock.ugen.osc", {
         rate: "audio",
         inputs: {
             freq: 440.0,
@@ -123,14 +123,14 @@ var fluid = fluid || require("infusion"),
 
         namespaceObj[oscName] = function (inputs, output, options) {
             // TODO: Awkward options pre-merging. Refactor osc API.
-            var defaults = fluid.defaults("flock.ugen.osc"),
+            var defaults = flock.ugenDefaults("flock.ugen.osc"),
                 merged = fluid.merge(null, defaults, options),
                 s = merged.tableSize;
             inputs.table = flock.fillTable(s, tableFillFn);
             return flock.ugen.osc(inputs, output, options);
         };
 
-        fluid.defaults(name, fluid.defaults("flock.ugen.osc"));
+        flock.ugenDefaults(name, flock.ugenDefaults("flock.ugen.osc"));
     };
 
     flock.ugen.osc.define("flock.ugen.sinOsc", flock.tableGenerators.sin);
@@ -173,7 +173,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.sin", {
+    flock.ugenDefaults("flock.ugen.sin", {
         rate: "audio",
         inputs: {
             freq: 440.0,
@@ -242,7 +242,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.lfSaw", {
+    flock.ugenDefaults("flock.ugen.lfSaw", {
         rate: "audio",
         inputs: {
             freq: 440,
@@ -308,7 +308,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.lfPulse", {
+    flock.ugenDefaults("flock.ugen.lfPulse", {
         rate: "audio",
         inputs: {
             freq: 440,
@@ -377,7 +377,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.impulse", {
+    flock.ugenDefaults("flock.ugen.impulse", {
         rate: "audio",
         inputs: {
             freq: 440,

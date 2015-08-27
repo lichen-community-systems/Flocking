@@ -107,7 +107,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.blit", {
+    flock.ugenDefaults("flock.ugen.blit", {
         rate: "audio",
 
         inputs: {
@@ -194,7 +194,7 @@ var fluid = fluid || require("infusion"),
         m.dcOffset = 1.0 / m.d0; // DC offset at steady state is 1 / d0.
     };
 
-    fluid.defaults("flock.ugen.saw", {
+    flock.ugenDefaults("flock.ugen.saw", {
         rate: "audio",
 
         inputs: {
@@ -285,7 +285,7 @@ var fluid = fluid || require("infusion"),
         m.sign *= -1.0;
     };
 
-    fluid.defaults("flock.ugen.square", {
+    flock.ugenDefaults("flock.ugen.square", {
         rate: "audio",
 
         inputs: {
@@ -387,7 +387,7 @@ var fluid = fluid || require("infusion"),
         m.sign *= -1.0;
     };
 
-    fluid.defaults("flock.ugen.tri", {
+    flock.ugenDefaults("flock.ugen.tri", {
         rate: "audio",
 
         inputs: {

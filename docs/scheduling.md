@@ -33,7 +33,7 @@ Here's an example of using the Infusion style to create a very simple drum machi
         flock.init();
 
         fluid.defaults("flock.examples.drumMachine", {
-            gradeNames: ["fluid.eventedComponent", "autoInit"],
+            gradeNames: ["fluid.component"],
 
             score: [
                 {

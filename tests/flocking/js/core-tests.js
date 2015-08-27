@@ -440,7 +440,7 @@ var fluid = fluid || require("infusion"),
     });
 
     fluid.defaults("flock.test.genReportSynth", {
-        gradeNames: ["flock.synth", "autoInit"],
+        gradeNames: ["flock.synth"],
 
         model: {
             didGen: false
@@ -1938,7 +1938,7 @@ var fluid = fluid || require("infusion"),
         ok(!fluid.isPrimitive(ta), "fluid.isPrimitive() should not recognize a typed array as a primitive.");
 
         fluid.defaults("flock.test.typedArrayComponent", {
-            gradeNames: ["fluid.littleComponent", "autoInit"],
+            gradeNames: ["fluid.component"],
             synthDef: {
                 cat: ta
             }
@@ -1958,6 +1958,24 @@ var fluid = fluid || require("infusion"),
             }
         });
     });
+
+    fluid.defaults("flock.test.componentWithTypedArrayOption", {
+        gradeNames: "fluid.component",
+        buffer: new Float32Array([1, 1, 1, 1])
+    });
+
+    test("Typed Array Component Merging", function () {
+        var c = flock.test.componentWithTypedArrayOption();
+        deepEqual(c.options.buffer, new Float32Array([1, 1, 1, 1]),
+            "The component's typed array should be set to the default value.");
+
+        c = flock.test.componentWithTypedArrayOption({
+            buffer: new Float32Array([2, 2, 2, 2])
+        });
+        deepEqual(c.options.buffer, new Float32Array([2, 2, 2, 2]),
+            "The component's typed array should have been overriden.");
+    });
+
 
     module("flock.band tests");
 

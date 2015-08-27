@@ -229,7 +229,7 @@ var fluid = fluid || require("infusion"),
      */
     // TODO: This should be a model component!
     fluid.defaults("flock.midi.system", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         sysex: false,
 
@@ -294,7 +294,7 @@ var fluid = fluid || require("infusion"),
      * for receiving MIDI messages
      */
     fluid.defaults("flock.midi.receiver", {
-        gradeNames: ["fluid.eventedComponent"],
+        gradeNames: ["fluid.component"],
 
         events: {
             raw: null,
@@ -316,7 +316,7 @@ var fluid = fluid || require("infusion"),
      */
     // TODO: Handle port disconnection events.
     fluid.defaults("flock.midi.connection", {
-        gradeNames: ["flock.midi.receiver", "autoInit"],
+        gradeNames: ["flock.midi.receiver"],
 
         openImmediately: false,
 
@@ -625,7 +625,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.midi.controller", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         members: {
             controlMap: "@expand:flock.midi.controller.optimizeControlMap({that}.options.controlMap)",

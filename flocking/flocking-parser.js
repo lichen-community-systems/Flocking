@@ -187,7 +187,7 @@ var fluid = fluid || require("infusion"),
 
     flock.parse.ugenDef.mergeOptions = function (ugenDef) {
         // TODO: Infusion options merging.
-        var defaults = fluid.defaults(ugenDef.ugen) || {};
+        var defaults = flock.ugenDefaults(ugenDef.ugen) || {};
 
         // TODO: Insane!
         defaults = fluid.copy(defaults);

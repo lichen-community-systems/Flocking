@@ -71,7 +71,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.print", {
+    flock.ugenDefaults("flock.ugen.print", {
         rate: "audio",
         inputs: {
             source: null,

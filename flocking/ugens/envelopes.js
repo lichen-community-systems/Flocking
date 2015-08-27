@@ -32,7 +32,7 @@ var fluid = fluid || require("infusion"),
     // Unsupported API.
     flock.envelope.makeCreator = function (name, envelopeOptionsTransformer) {
         return function (options) {
-            var defaults = fluid.defaults(name),
+            var defaults = flock.ugenDefaults(name),
                 merged = $.extend(true, {}, defaults, options);
 
             return envelopeOptionsTransformer(merged);
@@ -47,7 +47,7 @@ var fluid = fluid || require("infusion"),
             path = fluid.pathUtil.composePath(inNamespace, pathSuffix);
             creatorSpec = creatorSpecs[pathSuffix];
 
-            fluid.defaults(path, creatorSpec.defaults);
+            flock.ugenDefaults(path, creatorSpec.defaults);
             fluid.setGlobalValue(path, flock.envelope.makeCreator(path, creatorSpec.transformer));
         }
     };
@@ -630,7 +630,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.line", {
+    flock.ugenDefaults("flock.ugen.line", {
         rate: "control",
         inputs: {
             start: 0.0,
@@ -707,7 +707,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.xLine", {
+    flock.ugenDefaults("flock.ugen.xLine", {
         rate: "control",
         inputs: {
             start: 0.0,
@@ -802,7 +802,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.asr", {
+    flock.ugenDefaults("flock.ugen.asr", {
         rate: "control",
         inputs: {
             start: 0.0,
@@ -835,7 +835,7 @@ var fluid = fluid || require("infusion"),
     // This will be removed before Flocking 1.0.
     flock.ugen.env = {};
     flock.ugen.env.simpleASR  = flock.ugen.asr;
-    fluid.defaults("flock.ugen.env.simpleASR", fluid.copy(fluid.defaults("flock.ugen.asr")));
+    flock.ugenDefaults("flock.ugen.env.simpleASR", fluid.copy(flock.ugenDefaults("flock.ugen.asr")));
 
     flock.ugen.envGen = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
@@ -996,7 +996,7 @@ var fluid = fluid || require("infusion"),
         return lineGen;
     };
 
-    fluid.defaults("flock.ugen.envGen", {
+    flock.ugenDefaults("flock.ugen.envGen", {
         rate: "audio",
 
         inputs: {
@@ -1074,7 +1074,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.phasor", {
+    flock.ugenDefaults("flock.ugen.phasor", {
         rate: "control",
         inputs: {
             start: 0.0,

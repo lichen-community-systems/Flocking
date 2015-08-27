@@ -22,6 +22,19 @@ var fluid = fluid || require("infusion"),
 
     var $ = fluid.registerNamespace("jQuery");
 
+    flock.ugenDefaults = function (path, defaults) {
+        if (arguments.length === 1) {
+            return flock.ugenDefaults.store[path];
+        }
+
+        flock.ugenDefaults.store[path] = defaults;
+
+        return defaults;
+    };
+
+    flock.ugenDefaults.store = {};
+
+
     flock.isUGen = function (obj) {
         return obj && obj.tags && obj.tags.indexOf("flock.ugen") > -1;
     };
@@ -33,7 +46,7 @@ var fluid = fluid || require("infusion"),
             options = $.extend(true, {}, defaultOptions, options);
             return root(inputs, output, options);
         });
-        fluid.defaults(sourcePath + "." + aliasName, inputDefaults);
+        flock.ugenDefaults(sourcePath + "." + aliasName, inputDefaults);
     };
 
     // TODO: Check API; write unit tests.
@@ -429,7 +442,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.value", {
+    flock.ugenDefaults("flock.ugen.value", {
         rate: "control",
 
         inputs: {
@@ -462,7 +475,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.silence", {
+    flock.ugenDefaults("flock.ugen.silence", {
         rate: "constant"
     });
 
@@ -494,7 +507,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.passThrough", {
+    flock.ugenDefaults("flock.ugen.passThrough", {
         rate: "audio",
 
         inputs: {
@@ -504,7 +517,7 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    
+
     flock.ugen.out = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
@@ -566,7 +579,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.out", {
+    flock.ugenDefaults("flock.ugen.out", {
         rate: "audio",
         inputs: {
             sources: null,
@@ -616,7 +629,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.valueOut", {
+    flock.ugenDefaults("flock.ugen.valueOut", {
         rate: "control",
 
         inputs: {
@@ -694,7 +707,7 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    fluid.defaults("flock.ugen.in", {
+    flock.ugenDefaults("flock.ugen.in", {
         rate: "audio",
         inputs: {
             bus: 0,
@@ -738,7 +751,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.audioIn", {
+    flock.ugenDefaults("flock.ugen.audioIn", {
         rate: "audio",
         inputs: {
             mul: null,

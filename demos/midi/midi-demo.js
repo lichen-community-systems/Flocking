@@ -6,7 +6,7 @@
     flock.init();
 
     fluid.defaults("flock.midiDemo", {
-        gradeNames: ["fluid.viewRelayComponent", "autoInit"],
+        gradeNames: ["fluid.viewComponent"],
 
         components: {
             environment: "{environment}",
@@ -69,7 +69,7 @@
 
     
     fluid.defaults("flock.midiDemo.synth", {
-        gradeNames: ["flock.synth", "autoInit"],
+        gradeNames: ["flock.synth"],
 
         synthDef: {
             ugen: "flock.ugen.square",

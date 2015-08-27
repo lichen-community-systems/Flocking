@@ -102,7 +102,7 @@ In app.js (or whatever files you want to use), you'll define your Flocking code:
 
 
     fluid.defaults("myStuff.beepy.synth", {
-        gradeNames: ["flock.synth", "autoInit"],
+        gradeNames: ["flock.synth"],
 
         synthDef: {
             id: "beeper",
@@ -113,7 +113,7 @@ In app.js (or whatever files you want to use), you'll define your Flocking code:
     });
 
     fluid.defaults("myStuff.beepy.app", {
-        gradeNames: ["fluid.eventedComponent", "fluid.modelComponent", "autoInit"],
+        gradeNames: ["fluid.component", "fluid.modelComponent"],
 
         members: {
             enviro: "@expand:flock.init()"

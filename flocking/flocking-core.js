@@ -38,11 +38,10 @@ var fluid = fluid || require("infusion"),
         };
 
         var enviro = flock.enviro(enviroOpts);
-        fluid.staticEnvironment.environment = flock.environment = enviro;
 
         // flock.enviro.shared is deprecated. Use "flock.environment"
-        // or an IoC reference to {environment} instead
-        flock.enviro.shared = enviro;
+        // or an IoC reference to {enviro} instead
+        flock.environment = flock.enviro.shared = enviro;
 
         return enviro;
     };
@@ -119,7 +118,6 @@ var fluid = fluid || require("infusion"),
     flock.platform.browser = flock.browser();
     flock.platform.isWebAudio = typeof AudioContext !== "undefined" || typeof webkitAudioContext !== "undefined";
     flock.platform.audioEngine = flock.platform.isBrowser ? "webAudio" : "nodejs";
-    fluid.staticEnvironment.audioEngine = fluid.typeTag("flock.platform." + flock.platform.audioEngine);
 
     flock.shim = {
         URL: flock.platform.isBrowser ? (window.URL || window.webkitURL || window.msURL) : undefined
@@ -813,7 +811,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.nodeList", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         members: {
             nodes: [],
@@ -988,7 +986,7 @@ var fluid = fluid || require("infusion"),
      ***********************/
 
     fluid.defaults("flock.audioSystem", {
-        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
+        gradeNames: ["fluid.modelComponent"],
 
         channelRange: {
             min: 1,
@@ -1087,7 +1085,7 @@ var fluid = fluid || require("infusion"),
      *****************/
 
     fluid.defaults("flock.nodeEvaluator", {
-        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
+        gradeNames: ["fluid.modelComponent"],
 
         model: "{audioSystem}.model",
 
@@ -1136,7 +1134,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.audioStrategy", {
-        gradeNames: ["fluid.standardRelayComponent"],
+        gradeNames: ["fluid.modelComponent"],
 
         components: {
             nodeEvaluator: {
@@ -1161,7 +1159,7 @@ var fluid = fluid || require("infusion"),
     // delineated into types--input, output, and interconnect.
     // TODO: Get rid of the concept of buses altogether.
     fluid.defaults("flock.busManager", {
-        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
+        gradeNames: ["fluid.modelComponent"],
 
         model: {
             nextAvailableBus: {
@@ -1227,7 +1225,13 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.enviro", {
-        gradeNames: ["fluid.standardRelayComponent", "flock.nodeList", "autoInit"],
+        gradeNames: [
+            "flock.nodeList",
+            "fluid.modelComponent",
+            "fluid.resolveRootSingle"
+        ],
+
+        singleRootType: "flock.enviro",
 
         members: {
             buffers: {},
@@ -1240,11 +1244,11 @@ var fluid = fluid || require("infusion"),
             },
 
             audioSystem: {
-                type: "flock.audioSystem.platform"
+                type: "flock.webAudio.audioSystem" // TODO: Make polymorphic again!
             },
 
             audioStrategy: {
-                type: "flock.audioStrategy.platform",
+                type: "flock.audioStrategy.web", // TODO: Also needs to be repolymorphosed.
                 options: {
                     audioSettings: "{audioSystem}.model"
                 }
@@ -1413,7 +1417,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.autoEnviro", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         members: {
             enviro: "@expand:flock.autoEnviro.initEnvironment()"
@@ -1429,12 +1433,12 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.node", {
-        gradeNames: ["flock.autoEnviro", "fluid.standardRelayComponent", "autoInit"],
+        gradeNames: ["flock.autoEnviro", "fluid.modelComponent"],
         model: {}
     });
 
     fluid.defaults("flock.ugenNodeList", {
-        gradeNames: ["flock.nodeList", "autoInit"],
+        gradeNames: ["flock.nodeList"],
 
         invokers: {
             /**
@@ -1601,7 +1605,7 @@ var fluid = fluid || require("infusion"),
      * that describes the synth's unit generator graph.
      */
     fluid.defaults("flock.synth", {
-        gradeNames: ["flock.node", "flock.ugenNodeList", "autoInit"],
+        gradeNames: ["flock.node", "flock.ugenNodeList"],
 
         addToEnvironment: "tail",
         rate: flock.rates.AUDIO,
@@ -1864,7 +1868,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.synth.value", {
-        gradeNames: ["flock.synth", "autoInit"],
+        gradeNames: ["flock.synth"],
 
         rate: "demand",
 
@@ -1885,7 +1889,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.synth.frameRate", {
-        gradeNames: ["flock.synth.value", "autoInit"],
+        gradeNames: ["flock.synth.value"],
 
         rate: "scheduled",
 
@@ -1906,7 +1910,7 @@ var fluid = fluid || require("infusion"),
     // when a group is removed from the environment, all its synths are too.
     // This should be completely refactored in favour of an approach using dynamic components.
     fluid.defaults("flock.synth.group", {
-        gradeNames: ["flock.synth", "autoInit"],
+        gradeNames: ["flock.synth"],
 
         members: {
             out: null,
@@ -2001,7 +2005,7 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.synth.polyphonic", {
-        gradeNames: ["flock.synth.group", "autoInit"],
+        gradeNames: ["flock.synth.group"],
 
         maxVoices: 16,
         amplitudeNormalizer: "static", // "dynamic", "static", Function, falsey
@@ -2066,7 +2070,7 @@ var fluid = fluid || require("infusion"),
             },
 
             createVoice: {
-                funcName: "flock.synth.polyphonic.createVoice",
+                func: "{voiceAllocator}.createVoice",
                 args: ["{that}.options", "{that}.insert"]
             }
         }
@@ -2102,7 +2106,7 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.synth.voiceAllocator", {
-        gradeNames: ["fluid.standardComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         maxVoices: 16,
         amplitudeNormalizer: "static", // "dynamic", "static", Function, falsey
@@ -2152,7 +2156,7 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.synth.voiceAllocator.lazy", {
-        gradeNames: ["flock.synth.voiceAllocator", "autoInit"],
+        gradeNames: ["flock.synth.voiceAllocator"],
 
         invokers: {
             getFreeVoice: {
@@ -2174,7 +2178,7 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.synth.voiceAllocator.pool", {
-        gradeNames: ["flock.synth.voiceAllocator", "autoInit"],
+        gradeNames: ["flock.synth.voiceAllocator"],
 
         invokers: {
             getFreeVoice: "flock.synth.voiceAllocator.pool.get({that}.freeVoices)"
@@ -2200,7 +2204,7 @@ var fluid = fluid || require("infusion"),
      */
     // TODO: Unit tests.
     fluid.defaults("flock.band", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         invokers: {
             play: {
@@ -2226,7 +2230,7 @@ var fluid = fluid || require("infusion"),
             {
                 source: "{that}.options.childListeners",
                 removeSource: true,
-                target: "{that fluid.eventedComponent}.options.listeners"
+                target: "{that fluid.component}.options.listeners"
             },
             {
                 source: "{that}.options.synthListeners",

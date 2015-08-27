@@ -19511,11 +19511,10 @@ var fluid = fluid || require("infusion"),
         };
 
         var enviro = flock.enviro(enviroOpts);
-        fluid.staticEnvironment.environment = flock.environment = enviro;
 
         // flock.enviro.shared is deprecated. Use "flock.environment"
-        // or an IoC reference to {environment} instead
-        flock.enviro.shared = enviro;
+        // or an IoC reference to {enviro} instead
+        flock.environment = flock.enviro.shared = enviro;
 
         return enviro;
     };
@@ -19592,7 +19591,6 @@ var fluid = fluid || require("infusion"),
     flock.platform.browser = flock.browser();
     flock.platform.isWebAudio = typeof AudioContext !== "undefined" || typeof webkitAudioContext !== "undefined";
     flock.platform.audioEngine = flock.platform.isBrowser ? "webAudio" : "nodejs";
-    fluid.staticEnvironment.audioEngine = fluid.typeTag("flock.platform." + flock.platform.audioEngine);
 
     flock.shim = {
         URL: flock.platform.isBrowser ? (window.URL || window.webkitURL || window.msURL) : undefined
@@ -20286,7 +20284,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.nodeList", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         members: {
             nodes: [],
@@ -20461,7 +20459,7 @@ var fluid = fluid || require("infusion"),
      ***********************/
 
     fluid.defaults("flock.audioSystem", {
-        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
+        gradeNames: ["fluid.modelComponent"],
 
         channelRange: {
             min: 1,
@@ -20560,7 +20558,7 @@ var fluid = fluid || require("infusion"),
      *****************/
 
     fluid.defaults("flock.nodeEvaluator", {
-        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
+        gradeNames: ["fluid.modelComponent"],
 
         model: "{audioSystem}.model",
 
@@ -20609,7 +20607,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.audioStrategy", {
-        gradeNames: ["fluid.standardRelayComponent"],
+        gradeNames: ["fluid.modelComponent"],
 
         components: {
             nodeEvaluator: {
@@ -20634,7 +20632,7 @@ var fluid = fluid || require("infusion"),
     // delineated into types--input, output, and interconnect.
     // TODO: Get rid of the concept of buses altogether.
     fluid.defaults("flock.busManager", {
-        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
+        gradeNames: ["fluid.modelComponent"],
 
         model: {
             nextAvailableBus: {
@@ -20700,7 +20698,13 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.enviro", {
-        gradeNames: ["fluid.standardRelayComponent", "flock.nodeList", "autoInit"],
+        gradeNames: [
+            "flock.nodeList",
+            "fluid.modelComponent",
+            "fluid.resolveRootSingle"
+        ],
+
+        singleRootType: "flock.enviro",
 
         members: {
             buffers: {},
@@ -20713,11 +20717,11 @@ var fluid = fluid || require("infusion"),
             },
 
             audioSystem: {
-                type: "flock.audioSystem.platform"
+                type: "flock.webAudio.audioSystem" // TODO: Make polymorphic again!
             },
 
             audioStrategy: {
-                type: "flock.audioStrategy.platform",
+                type: "flock.audioStrategy.web", // TODO: Also needs to be repolymorphosed.
                 options: {
                     audioSettings: "{audioSystem}.model"
                 }
@@ -20886,7 +20890,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.autoEnviro", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         members: {
             enviro: "@expand:flock.autoEnviro.initEnvironment()"
@@ -20902,12 +20906,12 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.node", {
-        gradeNames: ["flock.autoEnviro", "fluid.standardRelayComponent", "autoInit"],
+        gradeNames: ["flock.autoEnviro", "fluid.modelComponent"],
         model: {}
     });
 
     fluid.defaults("flock.ugenNodeList", {
-        gradeNames: ["flock.nodeList", "autoInit"],
+        gradeNames: ["flock.nodeList"],
 
         invokers: {
             /**
@@ -21074,7 +21078,7 @@ var fluid = fluid || require("infusion"),
      * that describes the synth's unit generator graph.
      */
     fluid.defaults("flock.synth", {
-        gradeNames: ["flock.node", "flock.ugenNodeList", "autoInit"],
+        gradeNames: ["flock.node", "flock.ugenNodeList"],
 
         addToEnvironment: "tail",
         rate: flock.rates.AUDIO,
@@ -21337,7 +21341,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.synth.value", {
-        gradeNames: ["flock.synth", "autoInit"],
+        gradeNames: ["flock.synth"],
 
         rate: "demand",
 
@@ -21358,7 +21362,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.synth.frameRate", {
-        gradeNames: ["flock.synth.value", "autoInit"],
+        gradeNames: ["flock.synth.value"],
 
         rate: "scheduled",
 
@@ -21379,7 +21383,7 @@ var fluid = fluid || require("infusion"),
     // when a group is removed from the environment, all its synths are too.
     // This should be completely refactored in favour of an approach using dynamic components.
     fluid.defaults("flock.synth.group", {
-        gradeNames: ["flock.synth", "autoInit"],
+        gradeNames: ["flock.synth"],
 
         members: {
             out: null,
@@ -21474,7 +21478,7 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.synth.polyphonic", {
-        gradeNames: ["flock.synth.group", "autoInit"],
+        gradeNames: ["flock.synth.group"],
 
         maxVoices: 16,
         amplitudeNormalizer: "static", // "dynamic", "static", Function, falsey
@@ -21539,7 +21543,7 @@ var fluid = fluid || require("infusion"),
             },
 
             createVoice: {
-                funcName: "flock.synth.polyphonic.createVoice",
+                func: "{voiceAllocator}.createVoice",
                 args: ["{that}.options", "{that}.insert"]
             }
         }
@@ -21575,7 +21579,7 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.synth.voiceAllocator", {
-        gradeNames: ["fluid.standardComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         maxVoices: 16,
         amplitudeNormalizer: "static", // "dynamic", "static", Function, falsey
@@ -21625,7 +21629,7 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.synth.voiceAllocator.lazy", {
-        gradeNames: ["flock.synth.voiceAllocator", "autoInit"],
+        gradeNames: ["flock.synth.voiceAllocator"],
 
         invokers: {
             getFreeVoice: {
@@ -21647,7 +21651,7 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.synth.voiceAllocator.pool", {
-        gradeNames: ["flock.synth.voiceAllocator", "autoInit"],
+        gradeNames: ["flock.synth.voiceAllocator"],
 
         invokers: {
             getFreeVoice: "flock.synth.voiceAllocator.pool.get({that}.freeVoices)"
@@ -21673,7 +21677,7 @@ var fluid = fluid || require("infusion"),
      */
     // TODO: Unit tests.
     fluid.defaults("flock.band", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         invokers: {
             play: {
@@ -21699,7 +21703,7 @@ var fluid = fluid || require("infusion"),
             {
                 source: "{that}.options.childListeners",
                 removeSource: true,
-                target: "{that fluid.eventedComponent}.options.listeners"
+                target: "{that fluid.component}.options.listeners"
             },
             {
                 source: "{that}.options.synthListeners",
@@ -21841,7 +21845,7 @@ var fluid = fluid || require("infusion"),
     }
 
     fluid.defaults("flock.promise", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         members: {
             promise: {
@@ -21957,7 +21961,7 @@ var fluid = fluid || require("infusion"),
      * Represents a source for fetching buffers.
      */
     fluid.defaults("flock.bufferSource", {
-        gradeNames: ["fluid.standardComponent", "autoInit"],
+        gradeNames: ["fluid.modelComponent"],
 
         model: {
             state: "start",
@@ -22003,19 +22007,19 @@ var fluid = fluid || require("infusion"),
             },
 
             onRefreshPromise: {
-                funcName: "{that}.applier.requestChange",
-                args: ["state", "start"]
+                changePath: "state",
+                value: "start"
             },
 
             onFetch: {
-                funcName: "{that}.applier.requestChange",
-                args: ["state", "in-progress"]
+                changePath: "state",
+                value: "in-progress"
             },
 
             afterFetch: [
                 {
-                    funcName: "{that}.applier.requestChange",
-                    args: ["state", "fetched"]
+                    changePath: "state",
+                    value: "fetched"
                 },
                 {
                     funcName: "{that}.events.onBufferUpdated.fire", // TODO: Replace with boiling?
@@ -22023,11 +22027,11 @@ var fluid = fluid || require("infusion"),
                 }
             ],
 
-            onBufferUpdated: "{environment}.registerBuffer({arguments}.0)",
+            onBufferUpdated: "{enviro}.registerBuffer({arguments}.0)",
 
             onError: {
-                funcName: "{that}.applier.requestChange",
-                args: ["state", "error"]
+                changePath: "state",
+                value: "error"
             }
         },
 
@@ -22093,7 +22097,7 @@ var fluid = fluid || require("infusion"),
      * are all ready.
      */
     fluid.defaults("flock.bufferLoader", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         members: {
             buffers: []
@@ -22362,7 +22366,7 @@ var fluid = fluid || require("infusion"),
 
     flock.parse.ugenDef.mergeOptions = function (ugenDef) {
         // TODO: Infusion options merging.
-        var defaults = fluid.defaults(ugenDef.ugen) || {};
+        var defaults = flock.ugenDefaults(ugenDef.ugen) || {};
 
         // TODO: Insane!
         defaults = fluid.copy(defaults);
@@ -23118,7 +23122,7 @@ var fluid = fluid || require("infusion"),
      * Clocks *
      **********/
     fluid.defaults("flock.scheduler.clock", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         events: {
             tick: null
@@ -23126,7 +23130,7 @@ var fluid = fluid || require("infusion"),
     });
 
     fluid.defaults("flock.scheduler.intervalClock", {
-        gradeNames: ["flock.scheduler.clock", "autoInit"],
+        gradeNames: ["flock.scheduler.clock"],
 
         members: {
             scheduled: {}
@@ -23182,7 +23186,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.scheduler.scheduleClock", {
-        gradeNames: ["flock.scheduler.clock", "autoInit"],
+        gradeNames: ["flock.scheduler.clock"],
 
         members: {
             scheduled: []
@@ -23249,7 +23253,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.scheduler.webWorkerClock", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         members: {
             worker: {
@@ -23430,12 +23434,12 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.scheduler.webWorkerIntervalClock", {
-        gradeNames: ["flock.scheduler.webWorkerClock", "autoInit"],
+        gradeNames: ["flock.scheduler.webWorkerClock"],
         clockType: "intervalClock"
     });
 
     fluid.defaults("flock.scheduler.webWorkerScheduleClock", {
-        gradeNames: ["flock.scheduler.webWorkerClock", "autoInit"],
+        gradeNames: ["flock.scheduler.webWorkerClock"],
         clockType: "scheduleClock"
     });
 
@@ -23445,7 +23449,7 @@ var fluid = fluid || require("infusion"),
      **************/
 
     fluid.defaults("flock.scheduler", {
-        gradeNames: ["fluid.standardComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         events: {
             onScheduled: null,
@@ -23482,7 +23486,7 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.scheduler.repeat", {
-        gradeNames: ["flock.scheduler", "autoInit"],
+        gradeNames: ["flock.scheduler"],
 
         members: {
             listeners: {}
@@ -23618,7 +23622,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.scheduler.once", {
-        gradeNames: ["flock.scheduler", "autoInit"],
+        gradeNames: ["flock.scheduler"],
 
         members: {
             listeners: []
@@ -23714,7 +23718,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.scheduler.async", {
-        gradeNames: ["fluid.standardComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         subSchedulerOptions: {
             components: {
@@ -23922,7 +23926,7 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.scheduler.async.tempo", {
-        gradeNames: ["flock.scheduler.async", "autoInit"],
+        gradeNames: ["flock.scheduler.async"],
 
         bpm: 60,
 
@@ -23944,7 +23948,7 @@ var fluid = fluid || require("infusion"),
     fluid.registerNamespace("flock.convert");
 
     fluid.defaults("flock.convert.ms", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         invokers: {
             value: "fluid.identity({arguments}.0)"
@@ -23953,7 +23957,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.convert.seconds", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         invokers: {
             value: "flock.convert.seconds.toMillis({arguments}.0)"
@@ -23966,7 +23970,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.convert.beats", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         bpm: 60,
 
@@ -24099,7 +24103,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.webAudio.audioSystem", {
-        gradeNames: ["flock.audioSystem", "autoInit"],
+        gradeNames: ["flock.audioSystem"],
 
         channelRange: {
             min: "@expand:flock.webAudio.audioSystem.calcMinChannels()",
@@ -24118,19 +24122,18 @@ var fluid = fluid || require("infusion"),
 
         listeners: {
             onCreate: [
-                "flock.webAudio.audioSystem.registerContextSingleton({that})",
                 "flock.webAudio.audioSystem.configureDestination({that}.context, {that}.model.chans)"
             ]
         }
     });
 
     flock.webAudio.audioSystem.createContext = function () {
-        var singleton = fluid.staticEnvironment.audioSystem;
-        return singleton ? singleton.context : new flock.shim.AudioContext();
-    };
+        var system = flock.webAudio.audioSystem;
+        if (!system.audioContextSingleton) {
+            system.audioContextSingleton = new flock.shim.AudioContext();
+        }
 
-    flock.webAudio.audioSystem.registerContextSingleton = function (that) {
-        fluid.staticEnvironment.audioSystem = that;
+        return system.audioContextSingleton;
     };
 
     flock.webAudio.audioSystem.calcMaxChannels = function (destination) {
@@ -24154,7 +24157,7 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.webAudio.node", {
-        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
+        gradeNames: ["fluid.modelComponent"],
 
         members: {
             node: "@expand:flock.webAudio.createNode({audioSystem}.context, {that}.options.nodeSpec)"
@@ -24169,7 +24172,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.webAudio.gain", {
-        gradeNames: ["flock.webAudio.node", "autoInit"],
+        gradeNames: ["flock.webAudio.node"],
 
         members: {
             node: "@expand:flock.webAudio.createNode({audioSystem}.context, {that}.options.nodeSpec)"
@@ -24182,7 +24185,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.webAudio.scriptProcessor", {
-        gradeNames: ["flock.webAudio.node", "autoInit"],
+        gradeNames: ["flock.webAudio.node"],
 
         nodeSpec: {
             node: "ScriptProcessor",
@@ -24199,7 +24202,7 @@ var fluid = fluid || require("infusion"),
     });
 
     fluid.defaults("flock.webAudio.channelMerger", {
-        gradeNames: ["flock.webAudio.node", "autoInit"],
+        gradeNames: ["flock.webAudio.node"],
 
         nodeSpec: {
             node: "ChannelMerger",
@@ -24254,8 +24257,9 @@ var fluid = fluid || require("infusion"),
     /**
      * Web Audio API Audio Strategy
      */
+    // TODO: Normalize name with flock.webAudio.audioSystem.
     fluid.defaults("flock.audioStrategy.web", {
-        gradeNames: ["flock.audioStrategy", "autoInit"],
+        gradeNames: ["flock.audioStrategy"],
 
         model: {
             isGenerating: false,
@@ -24440,7 +24444,7 @@ var fluid = fluid || require("infusion"),
      * "islands" are implemented.
      */
     fluid.defaults("flock.webAudio.nativeNodeManager", {
-        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         members: {
             outputNode: undefined,
@@ -24723,7 +24727,7 @@ var fluid = fluid || require("infusion"),
      */
     // Add a means for disconnecting audio input nodes.
     fluid.defaults("flock.webAudio.inputDeviceManager", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         invokers: {
             /**
@@ -24858,7 +24862,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.webAudio.outputFader", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         fadeDuration: 0.5,
 
@@ -24927,15 +24931,6 @@ var fluid = fluid || require("infusion"),
     flock.webAudio.outputFader.fadeIn = function (context, gainNode, end, duration) {
         flock.webAudio.outputFader.fade(context, gainNode, 0, end, duration);
     };
-
-
-    fluid.demands("flock.audioSystem.platform", "flock.platform.webAudio", {
-        funcName: "flock.webAudio.audioSystem"
-    });
-
-    fluid.demands("flock.audioStrategy.platform", "flock.platform.webAudio", {
-        funcName: "flock.audioStrategy.web"
-    });
 
 }());
 ;/*
@@ -25169,7 +25164,7 @@ var fluid = fluid || require("infusion"),
      */
     // TODO: This should be a model component!
     fluid.defaults("flock.midi.system", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         sysex: false,
 
@@ -25234,7 +25229,7 @@ var fluid = fluid || require("infusion"),
      * for receiving MIDI messages
      */
     fluid.defaults("flock.midi.receiver", {
-        gradeNames: ["fluid.eventedComponent"],
+        gradeNames: ["fluid.component"],
 
         events: {
             raw: null,
@@ -25256,7 +25251,7 @@ var fluid = fluid || require("infusion"),
      */
     // TODO: Handle port disconnection events.
     fluid.defaults("flock.midi.connection", {
-        gradeNames: ["flock.midi.receiver", "autoInit"],
+        gradeNames: ["flock.midi.receiver"],
 
         openImmediately: false,
 
@@ -25565,7 +25560,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.midi.controller", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         members: {
             controlMap: "@expand:flock.midi.controller.optimizeControlMap({that}.options.controlMap)",
@@ -25749,6 +25744,19 @@ var fluid = fluid || require("infusion"),
 
     var $ = fluid.registerNamespace("jQuery");
 
+    flock.ugenDefaults = function (path, defaults) {
+        if (arguments.length === 1) {
+            return flock.ugenDefaults.store[path];
+        }
+
+        flock.ugenDefaults.store[path] = defaults;
+
+        return defaults;
+    };
+
+    flock.ugenDefaults.store = {};
+
+
     flock.isUGen = function (obj) {
         return obj && obj.tags && obj.tags.indexOf("flock.ugen") > -1;
     };
@@ -25760,7 +25768,7 @@ var fluid = fluid || require("infusion"),
             options = $.extend(true, {}, defaultOptions, options);
             return root(inputs, output, options);
         });
-        fluid.defaults(sourcePath + "." + aliasName, inputDefaults);
+        flock.ugenDefaults(sourcePath + "." + aliasName, inputDefaults);
     };
 
     // TODO: Check API; write unit tests.
@@ -26156,7 +26164,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.value", {
+    flock.ugenDefaults("flock.ugen.value", {
         rate: "control",
 
         inputs: {
@@ -26189,7 +26197,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.silence", {
+    flock.ugenDefaults("flock.ugen.silence", {
         rate: "constant"
     });
 
@@ -26221,7 +26229,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.passThrough", {
+    flock.ugenDefaults("flock.ugen.passThrough", {
         rate: "audio",
 
         inputs: {
@@ -26231,7 +26239,7 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    
+
     flock.ugen.out = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
@@ -26293,7 +26301,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.out", {
+    flock.ugenDefaults("flock.ugen.out", {
         rate: "audio",
         inputs: {
             sources: null,
@@ -26343,7 +26351,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.valueOut", {
+    flock.ugenDefaults("flock.ugen.valueOut", {
         rate: "control",
 
         inputs: {
@@ -26421,7 +26429,7 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    fluid.defaults("flock.ugen.in", {
+    flock.ugenDefaults("flock.ugen.in", {
         rate: "audio",
         inputs: {
             bus: 0,
@@ -26465,7 +26473,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.audioIn", {
+    flock.ugenDefaults("flock.ugen.audioIn", {
         rate: "audio",
         inputs: {
             mul: null,
@@ -26583,7 +26591,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.blit", {
+    flock.ugenDefaults("flock.ugen.blit", {
         rate: "audio",
 
         inputs: {
@@ -26670,7 +26678,7 @@ var fluid = fluid || require("infusion"),
         m.dcOffset = 1.0 / m.d0; // DC offset at steady state is 1 / d0.
     };
 
-    fluid.defaults("flock.ugen.saw", {
+    flock.ugenDefaults("flock.ugen.saw", {
         rate: "audio",
 
         inputs: {
@@ -26761,7 +26769,7 @@ var fluid = fluid || require("infusion"),
         m.sign *= -1.0;
     };
 
-    fluid.defaults("flock.ugen.square", {
+    flock.ugenDefaults("flock.ugen.square", {
         rate: "audio",
 
         inputs: {
@@ -26863,7 +26871,7 @@ var fluid = fluid || require("infusion"),
         m.sign *= -1.0;
     };
 
-    fluid.defaults("flock.ugen.tri", {
+    flock.ugenDefaults("flock.ugen.tri", {
         rate: "audio",
 
         inputs: {
@@ -27039,7 +27047,7 @@ var fluid = fluid || require("infusion"),
         return speed > 0 ? start : end;
     };
 
-    fluid.defaults("flock.ugen.playBuffer", {
+    flock.ugenDefaults("flock.ugen.playBuffer", {
         rate: "audio",
         inputs: {
             channel: 0,
@@ -27121,7 +27129,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.readBuffer", {
+    flock.ugenDefaults("flock.ugen.readBuffer", {
         rate: "audio",
 
         inputs: {
@@ -27267,7 +27275,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.writeBuffer", {
+    flock.ugenDefaults("flock.ugen.writeBuffer", {
         rate: "audio",
 
         inputs: {
@@ -27337,7 +27345,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.bufferDuration", {
+    flock.ugenDefaults("flock.ugen.bufferDuration", {
         rate: "constant",
         inputs: {
             buffer: null,
@@ -27397,7 +27405,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.bufferLength", {
+    flock.ugenDefaults("flock.ugen.bufferLength", {
         rate: "constant",
         inputs: {
             buffer: null,
@@ -27465,7 +27473,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.bufferPhaseStep", {
+    flock.ugenDefaults("flock.ugen.bufferPhaseStep", {
         rate: "constant",
         inputs: {
             buffer: null,
@@ -27492,7 +27500,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.sampleRate", {
+    flock.ugenDefaults("flock.ugen.sampleRate", {
         rate: "constant",
         inputs: {}
     });
@@ -27572,7 +27580,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.print", {
+    flock.ugenDefaults("flock.ugen.print", {
         rate: "audio",
         inputs: {
             source: null,
@@ -27653,7 +27661,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.distortion", {
+    flock.ugenDefaults("flock.ugen.distortion", {
         rate: "audio",
         inputs: {
             source: null,
@@ -27710,7 +27718,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.distortion.deJonge", {
+    flock.ugenDefaults("flock.ugen.distortion.deJonge", {
         rate: "audio",
         inputs: {
             source: null,
@@ -27776,7 +27784,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.distortion.tarrabiaDeJonge", {
+    flock.ugenDefaults("flock.ugen.distortion.tarrabiaDeJonge", {
         rate: "audio",
         inputs: {
             source: null,
@@ -27834,7 +27842,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.distortion.gloubiBoulga", {
+    flock.ugenDefaults("flock.ugen.distortion.gloubiBoulga", {
         rate: "audio",
         inputs: {
             source: null,
@@ -27886,7 +27894,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.normalize", {
+    flock.ugenDefaults("flock.ugen.normalize", {
         rate: "audio",
         inputs: {
             max: 1.0,
@@ -27929,7 +27937,7 @@ var fluid = fluid || require("infusion"),
     // Unsupported API.
     flock.envelope.makeCreator = function (name, envelopeOptionsTransformer) {
         return function (options) {
-            var defaults = fluid.defaults(name),
+            var defaults = flock.ugenDefaults(name),
                 merged = $.extend(true, {}, defaults, options);
 
             return envelopeOptionsTransformer(merged);
@@ -27944,7 +27952,7 @@ var fluid = fluid || require("infusion"),
             path = fluid.pathUtil.composePath(inNamespace, pathSuffix);
             creatorSpec = creatorSpecs[pathSuffix];
 
-            fluid.defaults(path, creatorSpec.defaults);
+            flock.ugenDefaults(path, creatorSpec.defaults);
             fluid.setGlobalValue(path, flock.envelope.makeCreator(path, creatorSpec.transformer));
         }
     };
@@ -28527,7 +28535,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.line", {
+    flock.ugenDefaults("flock.ugen.line", {
         rate: "control",
         inputs: {
             start: 0.0,
@@ -28604,7 +28612,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.xLine", {
+    flock.ugenDefaults("flock.ugen.xLine", {
         rate: "control",
         inputs: {
             start: 0.0,
@@ -28699,7 +28707,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.asr", {
+    flock.ugenDefaults("flock.ugen.asr", {
         rate: "control",
         inputs: {
             start: 0.0,
@@ -28732,7 +28740,7 @@ var fluid = fluid || require("infusion"),
     // This will be removed before Flocking 1.0.
     flock.ugen.env = {};
     flock.ugen.env.simpleASR  = flock.ugen.asr;
-    fluid.defaults("flock.ugen.env.simpleASR", fluid.copy(fluid.defaults("flock.ugen.asr")));
+    flock.ugenDefaults("flock.ugen.env.simpleASR", fluid.copy(flock.ugenDefaults("flock.ugen.asr")));
 
     flock.ugen.envGen = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
@@ -28893,7 +28901,7 @@ var fluid = fluid || require("infusion"),
         return lineGen;
     };
 
-    fluid.defaults("flock.ugen.envGen", {
+    flock.ugenDefaults("flock.ugen.envGen", {
         rate: "audio",
 
         inputs: {
@@ -28971,7 +28979,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.phasor", {
+    flock.ugenDefaults("flock.ugen.phasor", {
         rate: "control",
         inputs: {
             start: 0.0,
@@ -29056,7 +29064,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.lag", {
+    flock.ugenDefaults("flock.ugen.lag", {
         rate: "audio",
         inputs: {
             source: null,
@@ -29120,7 +29128,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.filter", {
+    flock.ugenDefaults("flock.ugen.filter", {
         rate: "audio",
 
         inputs: {
@@ -29184,7 +29192,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.filter.biquad", {
+    flock.ugenDefaults("flock.ugen.filter.biquad", {
         inputs: {
             freq: 440,
             q: 1.0,
@@ -29484,7 +29492,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.filter.moog", {
+    flock.ugenDefaults("flock.ugen.filter.moog", {
         rate: "audio",
         inputs: {
             cutoff: 3000,
@@ -29560,7 +29568,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.delay", {
+    flock.ugenDefaults("flock.ugen.delay", {
         rate: "audio",
         inputs: {
             maxTime: 1.0,
@@ -29609,7 +29617,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.delay1", {
+    flock.ugenDefaults("flock.ugen.delay1", {
         rate: "audio",
         inputs: {
             source: null
@@ -29750,7 +29758,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.freeverb", {
+    flock.ugenDefaults("flock.ugen.freeverb", {
         rate: "audio",
         inputs: {
             source: null,
@@ -29809,7 +29817,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.decay", {
+    flock.ugenDefaults("flock.ugen.decay", {
         rate: "audio",
         inputs: {
             source: null,
@@ -29912,7 +29920,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.gate", {
+    flock.ugenDefaults("flock.ugen.gate", {
         rate: "audio",
         inputs: {
             source: null,
@@ -29992,7 +30000,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.timedGate", {
+    flock.ugenDefaults("flock.ugen.timedGate", {
         rate: "audio",
         inputs: {
             trigger: 0.0,
@@ -30071,7 +30079,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.latch", {
+    flock.ugenDefaults("flock.ugen.latch", {
         rate: "audio",
         inputs: {
             source: null,
@@ -30247,7 +30255,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.triggerGrains", {
+    flock.ugenDefaults("flock.ugen.triggerGrains", {
         rate: "audio",
         inputs: {
             centerPos: 0,
@@ -30408,7 +30416,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.granulator", {
+    flock.ugenDefaults("flock.ugen.granulator", {
         rate: "audio",
 
         inputs: {
@@ -30502,7 +30510,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.amplitude", {
+    flock.ugenDefaults("flock.ugen.amplitude", {
         rate: "audio",
         inputs: {
             source: null,
@@ -30629,7 +30637,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.math", {
+    flock.ugenDefaults("flock.ugen.math", {
         rate: "audio",
         inputs: {
             // Any Web Array Math operator is supported as an input.
@@ -30686,7 +30694,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.sum", {
+    flock.ugenDefaults("flock.ugen.sum", {
         rate: "audio",
         inputs: {
             sources: null
@@ -30749,7 +30757,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.midiFreq", {
+    flock.ugenDefaults("flock.ugen.midiFreq", {
         rate: "control",
         inputs: {
             note: 69
@@ -30799,7 +30807,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.midiAmp", {
+    flock.ugenDefaults("flock.ugen.midiAmp", {
         rate: "control",
         inputs: {
             velocity: 0
@@ -30888,7 +30896,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.pan2", {
+    flock.ugenDefaults("flock.ugen.pan2", {
         rate: "audio",
 
         inputs: {
@@ -31003,7 +31011,7 @@ var fluid = fluid || require("infusion"),
         flock.onMulAddInputChanged(that);
     };
 
-    fluid.defaults("flock.ugen.osc", {
+    flock.ugenDefaults("flock.ugen.osc", {
         rate: "audio",
         inputs: {
             freq: 440.0,
@@ -31035,14 +31043,14 @@ var fluid = fluid || require("infusion"),
 
         namespaceObj[oscName] = function (inputs, output, options) {
             // TODO: Awkward options pre-merging. Refactor osc API.
-            var defaults = fluid.defaults("flock.ugen.osc"),
+            var defaults = flock.ugenDefaults("flock.ugen.osc"),
                 merged = fluid.merge(null, defaults, options),
                 s = merged.tableSize;
             inputs.table = flock.fillTable(s, tableFillFn);
             return flock.ugen.osc(inputs, output, options);
         };
 
-        fluid.defaults(name, fluid.defaults("flock.ugen.osc"));
+        flock.ugenDefaults(name, flock.ugenDefaults("flock.ugen.osc"));
     };
 
     flock.ugen.osc.define("flock.ugen.sinOsc", flock.tableGenerators.sin);
@@ -31085,7 +31093,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.sin", {
+    flock.ugenDefaults("flock.ugen.sin", {
         rate: "audio",
         inputs: {
             freq: 440.0,
@@ -31154,7 +31162,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.lfSaw", {
+    flock.ugenDefaults("flock.ugen.lfSaw", {
         rate: "audio",
         inputs: {
             freq: 440,
@@ -31220,7 +31228,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.lfPulse", {
+    flock.ugenDefaults("flock.ugen.lfPulse", {
         rate: "audio",
         inputs: {
             freq: 440,
@@ -31289,7 +31297,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.impulse", {
+    flock.ugenDefaults("flock.ugen.impulse", {
         rate: "audio",
         inputs: {
             freq: 440,
@@ -31370,7 +31378,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.dust", {
+    flock.ugenDefaults("flock.ugen.dust", {
         rate: "audio",
         inputs: {
             density: 1.0,
@@ -31411,7 +31419,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.whiteNoise", {
+    flock.ugenDefaults("flock.ugen.whiteNoise", {
         rate: "audio",
         inputs: {
             mul: null,
@@ -31473,7 +31481,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.pinkNoise", {
+    flock.ugenDefaults("flock.ugen.pinkNoise", {
         rate: "audio",
         inputs: {
             mul: null,
@@ -31545,7 +31553,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.lfNoise", {
+    flock.ugenDefaults("flock.ugen.lfNoise", {
         rate: "audio",
         inputs: {
             freq: 440,
@@ -31608,7 +31616,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.random", {
+    flock.ugenDefaults("flock.ugen.random", {
         rate: "audio",
         inputs: {
             seed: null,
@@ -31643,7 +31651,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.random.exponential", {
+    flock.ugenDefaults("flock.ugen.random.exponential", {
         rate: "audio",
         inputs: {
             seed: null,
@@ -31687,7 +31695,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.random.gamma", {
+    flock.ugenDefaults("flock.ugen.random.gamma", {
         rate: "audio",
         inputs: {
             seed: null,
@@ -31732,7 +31740,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.random.normal", {
+    flock.ugenDefaults("flock.ugen.random.normal", {
         rate: "audio",
         inputs: {
             seed: null,
@@ -31773,7 +31781,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.random.pareto", {
+    flock.ugenDefaults("flock.ugen.random.pareto", {
         rate: "audio",
         inputs: {
             seed: null,
@@ -31813,7 +31821,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.random.triangular", {
+    flock.ugenDefaults("flock.ugen.random.triangular", {
         rate: "audio",
         inputs: {
             seed: null,
@@ -31857,7 +31865,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.random.weibull", {
+    flock.ugenDefaults("flock.ugen.random.weibull", {
         rate: "audio",
         inputs: {
             seed: null,
@@ -31962,7 +31970,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.change", {
+    flock.ugenDefaults("flock.ugen.change", {
         rate: "audio",
 
         inputs: {
@@ -32076,7 +32084,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.sequence", {
+    flock.ugenDefaults("flock.ugen.sequence", {
         rate: "control",
 
         inputs: {
@@ -32209,7 +32217,7 @@ var fluid = fluid || require("infusion"),
         return resetOnNext ? 0.0 : values[m.idx];
     };
 
-    fluid.defaults("flock.ugen.sequencer", {
+    flock.ugenDefaults("flock.ugen.sequencer", {
         rate: "audio",
         inputs: {
             // TODO: start,
@@ -32289,7 +32297,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.valueChangeTrigger", {
+    flock.ugenDefaults("flock.ugen.valueChangeTrigger", {
         rate: "control",
 
         inputs: {
@@ -32356,7 +32364,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.inputChangeTrigger", {
+    flock.ugenDefaults("flock.ugen.inputChangeTrigger", {
         rate: "control",
 
         inputs: {
@@ -32446,7 +32454,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.triggerCallback", {
+    flock.ugenDefaults("flock.ugen.triggerCallback", {
         rate: "audio",
         inputs: {
             source: 0,
@@ -32495,7 +32503,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.t2a", {
+    flock.ugenDefaults("flock.ugen.t2a", {
         rate: "audio",
         inputs: {
             source: null,
@@ -32665,7 +32673,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.scope", {
+    flock.ugenDefaults("flock.ugen.scope", {
         rate: "audio",
         inputs: {
             source: null
@@ -32859,7 +32867,7 @@ var fluid = fluid || require("infusion"),
         return pos / size;
     };
 
-    fluid.defaults("flock.ugen.mouse.cursor", {
+    flock.ugenDefaults("flock.ugen.mouse.cursor", {
         rate: "control",
         inputs: {
             lag: 0.5,
@@ -32921,7 +32929,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.mouse.click", {
+    flock.ugenDefaults("flock.ugen.mouse.click", {
         rate: "control"
     });
 
@@ -32973,7 +32981,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.mediaIn", {
+    flock.ugenDefaults("flock.ugen.mediaIn", {
         rate: "audio",
         inputs: {
             mul: null,

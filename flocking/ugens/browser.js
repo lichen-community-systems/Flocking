@@ -75,7 +75,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.scope", {
+    flock.ugenDefaults("flock.ugen.scope", {
         rate: "audio",
         inputs: {
             source: null
@@ -269,7 +269,7 @@ var fluid = fluid || require("infusion"),
         return pos / size;
     };
 
-    fluid.defaults("flock.ugen.mouse.cursor", {
+    flock.ugenDefaults("flock.ugen.mouse.cursor", {
         rate: "control",
         inputs: {
             lag: 0.5,
@@ -331,7 +331,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.mouse.click", {
+    flock.ugenDefaults("flock.ugen.mouse.click", {
         rate: "control"
     });
 
@@ -383,7 +383,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.mediaIn", {
+    flock.ugenDefaults("flock.ugen.mediaIn", {
         rate: "audio",
         inputs: {
             mul: null,

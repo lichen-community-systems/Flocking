@@ -18,7 +18,7 @@ var fluid = fluid || require("infusion"),
      **********************/
 
     fluid.defaults("flock.ui.codeMirror", {
-        gradeNames: ["fluid.lintingCodeMirror", "fluid.modelComponent", "autoInit"],
+        gradeNames: ["fluid.lintingCodeMirror", "fluid.modelComponent"],
 
         model: {
             lastChange: {}

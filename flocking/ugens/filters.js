@@ -58,7 +58,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.lag", {
+    flock.ugenDefaults("flock.ugen.lag", {
         rate: "audio",
         inputs: {
             source: null,
@@ -122,7 +122,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.filter", {
+    flock.ugenDefaults("flock.ugen.filter", {
         rate: "audio",
 
         inputs: {
@@ -186,7 +186,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.filter.biquad", {
+    flock.ugenDefaults("flock.ugen.filter.biquad", {
         inputs: {
             freq: 440,
             q: 1.0,
@@ -486,7 +486,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.filter.moog", {
+    flock.ugenDefaults("flock.ugen.filter.moog", {
         rate: "audio",
         inputs: {
             cutoff: 3000,
@@ -562,7 +562,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.delay", {
+    flock.ugenDefaults("flock.ugen.delay", {
         rate: "audio",
         inputs: {
             maxTime: 1.0,
@@ -611,7 +611,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.delay1", {
+    flock.ugenDefaults("flock.ugen.delay1", {
         rate: "audio",
         inputs: {
             source: null
@@ -752,7 +752,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.freeverb", {
+    flock.ugenDefaults("flock.ugen.freeverb", {
         rate: "audio",
         inputs: {
             source: null,
@@ -811,7 +811,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.decay", {
+    flock.ugenDefaults("flock.ugen.decay", {
         rate: "audio",
         inputs: {
             source: null,

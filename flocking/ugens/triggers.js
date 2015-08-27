@@ -54,7 +54,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.valueChangeTrigger", {
+    flock.ugenDefaults("flock.ugen.valueChangeTrigger", {
         rate: "control",
 
         inputs: {
@@ -121,7 +121,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.inputChangeTrigger", {
+    flock.ugenDefaults("flock.ugen.inputChangeTrigger", {
         rate: "control",
 
         inputs: {
@@ -211,7 +211,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.triggerCallback", {
+    flock.ugenDefaults("flock.ugen.triggerCallback", {
         rate: "audio",
         inputs: {
             source: 0,
@@ -260,7 +260,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.t2a", {
+    flock.ugenDefaults("flock.ugen.t2a", {
         rate: "audio",
         inputs: {
             source: null,

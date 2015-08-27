@@ -106,7 +106,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.math", {
+    flock.ugenDefaults("flock.ugen.math", {
         rate: "audio",
         inputs: {
             // Any Web Array Math operator is supported as an input.
@@ -163,7 +163,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.sum", {
+    flock.ugenDefaults("flock.ugen.sum", {
         rate: "audio",
         inputs: {
             sources: null

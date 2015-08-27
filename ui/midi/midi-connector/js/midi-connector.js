@@ -13,7 +13,7 @@ var fluid = fluid || require("infusion");
     "use strict";
 
     fluid.defaults("flock.ui.midiConnector", {
-        gradeNames: ["fluid.viewRelayComponent", "flock.midi.receiver", "autoInit"],
+        gradeNames: ["fluid.viewComponent", "flock.midi.receiver"],
 
         components: {
             midiInputSelector: {

@@ -155,7 +155,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.triggerGrains", {
+    flock.ugenDefaults("flock.ugen.triggerGrains", {
         rate: "audio",
         inputs: {
             centerPos: 0,
@@ -316,7 +316,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.granulator", {
+    flock.ugenDefaults("flock.ugen.granulator", {
         rate: "audio",
 
         inputs: {

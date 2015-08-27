@@ -151,7 +151,7 @@ var fluid = fluid || require("infusion"),
         return speed > 0 ? start : end;
     };
 
-    fluid.defaults("flock.ugen.playBuffer", {
+    flock.ugenDefaults("flock.ugen.playBuffer", {
         rate: "audio",
         inputs: {
             channel: 0,
@@ -233,7 +233,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.readBuffer", {
+    flock.ugenDefaults("flock.ugen.readBuffer", {
         rate: "audio",
 
         inputs: {
@@ -379,7 +379,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.writeBuffer", {
+    flock.ugenDefaults("flock.ugen.writeBuffer", {
         rate: "audio",
 
         inputs: {
@@ -449,7 +449,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.bufferDuration", {
+    flock.ugenDefaults("flock.ugen.bufferDuration", {
         rate: "constant",
         inputs: {
             buffer: null,
@@ -509,7 +509,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.bufferLength", {
+    flock.ugenDefaults("flock.ugen.bufferLength", {
         rate: "constant",
         inputs: {
             buffer: null,
@@ -577,7 +577,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.bufferPhaseStep", {
+    flock.ugenDefaults("flock.ugen.bufferPhaseStep", {
         rate: "constant",
         inputs: {
             buffer: null,
@@ -604,7 +604,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.sampleRate", {
+    flock.ugenDefaults("flock.ugen.sampleRate", {
         rate: "constant",
         inputs: {}
     });

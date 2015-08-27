@@ -16,7 +16,7 @@
     });
 
     fluid.defaults("flock.demo.mediaElementInput", {
-        gradeNames: ["fluid.viewComponent", "flock.band", "autoInit"],
+        gradeNames: ["fluid.viewComponent", "flock.band"],
 
         granulatorDef: {
             ugen: "flock.ugen.granulator",

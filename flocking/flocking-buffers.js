@@ -102,7 +102,7 @@ var fluid = fluid || require("infusion"),
     }
 
     fluid.defaults("flock.promise", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         members: {
             promise: {
@@ -218,7 +218,7 @@ var fluid = fluid || require("infusion"),
      * Represents a source for fetching buffers.
      */
     fluid.defaults("flock.bufferSource", {
-        gradeNames: ["fluid.standardComponent", "autoInit"],
+        gradeNames: ["fluid.modelComponent"],
 
         model: {
             state: "start",
@@ -264,19 +264,19 @@ var fluid = fluid || require("infusion"),
             },
 
             onRefreshPromise: {
-                funcName: "{that}.applier.requestChange",
-                args: ["state", "start"]
+                changePath: "state",
+                value: "start"
             },
 
             onFetch: {
-                funcName: "{that}.applier.requestChange",
-                args: ["state", "in-progress"]
+                changePath: "state",
+                value: "in-progress"
             },
 
             afterFetch: [
                 {
-                    funcName: "{that}.applier.requestChange",
-                    args: ["state", "fetched"]
+                    changePath: "state",
+                    value: "fetched"
                 },
                 {
                     funcName: "{that}.events.onBufferUpdated.fire", // TODO: Replace with boiling?
@@ -284,11 +284,11 @@ var fluid = fluid || require("infusion"),
                 }
             ],
 
-            onBufferUpdated: "{environment}.registerBuffer({arguments}.0)",
+            onBufferUpdated: "{enviro}.registerBuffer({arguments}.0)",
 
             onError: {
-                funcName: "{that}.applier.requestChange",
-                args: ["state", "error"]
+                changePath: "state",
+                value: "error"
             }
         },
 
@@ -354,7 +354,7 @@ var fluid = fluid || require("infusion"),
      * are all ready.
      */
     fluid.defaults("flock.bufferLoader", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         members: {
             buffers: []

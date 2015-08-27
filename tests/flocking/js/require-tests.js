@@ -10,7 +10,7 @@
 
     require.config({
         paths: {
-            jquery: "../../../third-party/jquery/js/jquery"
+            jquery: "../../../node_modules/jquery/dist/jquery"
         }
     });
 

@@ -53,7 +53,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.midiFreq", {
+    flock.ugenDefaults("flock.ugen.midiFreq", {
         rate: "control",
         inputs: {
             note: 69
@@ -103,7 +103,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.midiAmp", {
+    flock.ugenDefaults("flock.ugen.midiAmp", {
         rate: "control",
         inputs: {
             velocity: 0

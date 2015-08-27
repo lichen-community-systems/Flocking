@@ -17,7 +17,7 @@ var fluid = fluid || require("infusion"),
     // TODO: add user-friendly rendering in the case when no midi ports are available
     // TODO: move selectBox container rendering into the selectBox component
     fluid.defaults("flock.ui.midiInputSelector", {
-        gradeNames: ["fluid.viewRelayComponent", "autoInit"],
+        gradeNames: ["fluid.viewComponent"],
 
         model: {
             inputs: []

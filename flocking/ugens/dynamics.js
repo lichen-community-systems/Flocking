@@ -38,7 +38,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.normalize", {
+    flock.ugenDefaults("flock.ugen.normalize", {
         rate: "audio",
         inputs: {
             max: 1.0,

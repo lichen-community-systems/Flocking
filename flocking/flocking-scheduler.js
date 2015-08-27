@@ -55,7 +55,7 @@ var fluid = fluid || require("infusion"),
      * Clocks *
      **********/
     fluid.defaults("flock.scheduler.clock", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         events: {
             tick: null
@@ -63,7 +63,7 @@ var fluid = fluid || require("infusion"),
     });
 
     fluid.defaults("flock.scheduler.intervalClock", {
-        gradeNames: ["flock.scheduler.clock", "autoInit"],
+        gradeNames: ["flock.scheduler.clock"],
 
         members: {
             scheduled: {}
@@ -119,7 +119,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.scheduler.scheduleClock", {
-        gradeNames: ["flock.scheduler.clock", "autoInit"],
+        gradeNames: ["flock.scheduler.clock"],
 
         members: {
             scheduled: []
@@ -186,7 +186,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.scheduler.webWorkerClock", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         members: {
             worker: {
@@ -367,12 +367,12 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.scheduler.webWorkerIntervalClock", {
-        gradeNames: ["flock.scheduler.webWorkerClock", "autoInit"],
+        gradeNames: ["flock.scheduler.webWorkerClock"],
         clockType: "intervalClock"
     });
 
     fluid.defaults("flock.scheduler.webWorkerScheduleClock", {
-        gradeNames: ["flock.scheduler.webWorkerClock", "autoInit"],
+        gradeNames: ["flock.scheduler.webWorkerClock"],
         clockType: "scheduleClock"
     });
 
@@ -382,7 +382,7 @@ var fluid = fluid || require("infusion"),
      **************/
 
     fluid.defaults("flock.scheduler", {
-        gradeNames: ["fluid.standardComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         events: {
             onScheduled: null,
@@ -419,7 +419,7 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.scheduler.repeat", {
-        gradeNames: ["flock.scheduler", "autoInit"],
+        gradeNames: ["flock.scheduler"],
 
         members: {
             listeners: {}
@@ -555,7 +555,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.scheduler.once", {
-        gradeNames: ["flock.scheduler", "autoInit"],
+        gradeNames: ["flock.scheduler"],
 
         members: {
             listeners: []
@@ -651,7 +651,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.scheduler.async", {
-        gradeNames: ["fluid.standardComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         subSchedulerOptions: {
             components: {
@@ -859,7 +859,7 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.scheduler.async.tempo", {
-        gradeNames: ["flock.scheduler.async", "autoInit"],
+        gradeNames: ["flock.scheduler.async"],
 
         bpm: 60,
 
@@ -881,7 +881,7 @@ var fluid = fluid || require("infusion"),
     fluid.registerNamespace("flock.convert");
 
     fluid.defaults("flock.convert.ms", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         invokers: {
             value: "fluid.identity({arguments}.0)"
@@ -890,7 +890,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.convert.seconds", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         invokers: {
             value: "flock.convert.seconds.toMillis({arguments}.0)"
@@ -903,7 +903,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.convert.beats", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         bpm: 60,
 

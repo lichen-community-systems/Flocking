@@ -160,7 +160,7 @@ var fluid = fluid || require("infusion"),
     module("Output tests", {
         setup: function () {
             // TODO: This should be accomplishable via IoC references
-            fluid.staticEnvironment.environment = flock.environment = flock.enviro();
+            flock.environment = flock.enviro();
         }
     });
 
@@ -236,7 +236,7 @@ var fluid = fluid || require("infusion"),
 
         flock.tests.mockStereoUGen = genericUGenCreatorFn;
 
-        fluid.defaults("flock.tests.mockStereoUGen", {
+        flock.ugenDefaults("flock.tests.mockStereoUGen", {
             ugenOptions: {
                 numOutputs: 2,
                 tags: ["flock.ugen.multiChannelOutput"]
@@ -256,7 +256,7 @@ var fluid = fluid || require("infusion"),
 
         flock.tests.mockMultiInputUGen = genericUGenCreatorFn;
 
-        fluid.defaults("flock.tests.mockMultiInputUGen", {
+        flock.ugenDefaults("flock.tests.mockMultiInputUGen", {
             ugenOptions: {
                 multiInputNames: ["cats"]
             }
@@ -1343,7 +1343,7 @@ var fluid = fluid || require("infusion"),
         module("flock.ugen.gate() tests");
 
         fluid.defaults("flock.test.gateSynth", {
-            gradeNames: ["flock.synth", "autoInit"],
+            gradeNames: ["flock.synth"],
             synthDef: {
                 id: "gate",
                 ugen: "flock.ugen.gate",
@@ -2356,7 +2356,7 @@ var fluid = fluid || require("infusion"),
         };
 
         fluid.defaults("flock.test.triggerCallbackSynth", {
-            gradeNames: ["flock.synth", "autoInit"],
+            gradeNames: ["flock.synth"],
             synthDef: {
                 ugen: "flock.ugen.triggerCallback",
                 source: {
@@ -2391,8 +2391,9 @@ var fluid = fluid || require("infusion"),
                 synthDefSpec.options.callback[testSpec.type] = counter.boundCallback;
             }
 
+            var mergedSynthDef = $.extend(true, synthDefSpec, testSpec.synthDefOverrides);
             var synth = flock.test.triggerCallbackSynth({
-                synthDef: $.extend(true, synthDefSpec, testSpec.synthDefOverrides)
+                synthDef: mergedSynthDef
             });
             synth.gen();
 

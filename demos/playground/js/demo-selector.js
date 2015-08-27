@@ -20,7 +20,7 @@ var fluid = fluid || require("infusion"),
      *****************/
 
     fluid.defaults("flock.playground.demoSelector", {
-        gradeNames: ["fluid.viewRelayComponent", "autoInit"],
+        gradeNames: ["fluid.viewComponent"],
 
         components: {
             selectBox: {

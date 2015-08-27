@@ -84,7 +84,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.gate", {
+    flock.ugenDefaults("flock.ugen.gate", {
         rate: "audio",
         inputs: {
             source: null,
@@ -164,7 +164,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.timedGate", {
+    flock.ugenDefaults("flock.ugen.timedGate", {
         rate: "audio",
         inputs: {
             trigger: 0.0,
@@ -243,7 +243,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.latch", {
+    flock.ugenDefaults("flock.ugen.latch", {
         rate: "audio",
         inputs: {
             source: null,

@@ -16,7 +16,7 @@ var fluid = fluid || require("infusion"),
     var $ = fluid.registerNamespace("jQuery");
 
     fluid.defaults("flock.ui.toggleButton", {
-        gradeNames: ["fluid.viewRelayComponent", "autoInit"],
+        gradeNames: ["fluid.viewComponent"],
 
         selfRender: false,
 
@@ -41,9 +41,15 @@ var fluid = fluid || require("infusion"),
                 args: ["isOn", false]
             },
 
-            enable: "{that}.applier.requestChange(isEnabled, true)",
+            enable: {
+                changePath: "isEnabled",
+                value: true
+            },
 
-            disable: "{that}.applier.requestChange(isEnabled, false)",
+            disable: {
+                changePath: "isEnabled",
+                value: false
+            },
 
             refreshView: {
                 funcName: "flock.ui.toggleButton.refreshView",
@@ -156,7 +162,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.ui.toggleButton.toggleModelState = function (model, applier) {
-        applier.requestChange("isOn", !model.isOn);
+        applier.change("isOn", !model.isOn);
         return false;
     };
 
@@ -184,7 +190,7 @@ var fluid = fluid || require("infusion"),
      ***************/
 
     fluid.defaults("flock.ui.playButton", {
-        gradeNames: ["flock.ui.toggleButton", "autoInit"],
+        gradeNames: ["flock.ui.toggleButton"],
 
         invokers: {
             play: {
@@ -234,7 +240,7 @@ var fluid = fluid || require("infusion"),
      * fading in and out appropriately so as to avoid clicks.
      */
     fluid.defaults("flock.ui.enviroPlayButton", {
-        gradeNames: ["flock.ui.playButton", "autoInit"],
+        gradeNames: ["flock.ui.playButton"],
 
         fadeDuration: 0.3,
         resetDelay: 0.0,
@@ -244,8 +250,6 @@ var fluid = fluid || require("infusion"),
         },
 
         components: {
-            enviro: "{environment}",
-
             fader: {
                 type: "flock.webAudio.outputFader",
                 options: {
@@ -337,7 +341,7 @@ var fluid = fluid || require("infusion"),
      * whenever it is paused, destroying any all
      */
     fluid.defaults("flock.ui.resetEnviroPlayButton", {
-        gradeNames: ["flock.ui.enviroPlayButton", "autoInit"],
+        gradeNames: ["flock.ui.enviroPlayButton"],
 
         listeners: {
             afterFadeOut: [

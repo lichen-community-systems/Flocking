@@ -22,7 +22,7 @@ var fluid = fluid || require("infusion"),
     // TODO: Improve the selection handling of this component to make it
     // simpler and more model-oriented.
     fluid.defaults("flock.ui.selectBox", {
-        gradeNames: ["fluid.viewRelayComponent", "autoInit"],
+        gradeNames: ["fluid.viewComponent"],
 
         model: {
             /*

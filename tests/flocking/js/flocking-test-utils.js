@@ -571,7 +571,7 @@ var flock = flock || {};
         return that;
     };
 
-    fluid.defaults("flock.test.ugen.record", {
+    flock.ugenDefaults("flock.test.ugen.record", {
         inputs: {
             source: null
         },

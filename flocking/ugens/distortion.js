@@ -61,7 +61,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.distortion", {
+    flock.ugenDefaults("flock.ugen.distortion", {
         rate: "audio",
         inputs: {
             source: null,
@@ -118,7 +118,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.distortion.deJonge", {
+    flock.ugenDefaults("flock.ugen.distortion.deJonge", {
         rate: "audio",
         inputs: {
             source: null,
@@ -184,7 +184,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.distortion.tarrabiaDeJonge", {
+    flock.ugenDefaults("flock.ugen.distortion.tarrabiaDeJonge", {
         rate: "audio",
         inputs: {
             source: null,
@@ -242,7 +242,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    fluid.defaults("flock.ugen.distortion.gloubiBoulga", {
+    flock.ugenDefaults("flock.ugen.distortion.gloubiBoulga", {
         rate: "audio",
         inputs: {
             source: null,

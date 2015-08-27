@@ -340,7 +340,7 @@ var fluid = fluid || require("infusion"),
     module("Declarative scheduling");
 
     fluid.defaults("flock.scheduler.tests.targetingSynth", {
-        gradeNames: ["fluid.standardComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         components: {
             synthy: {

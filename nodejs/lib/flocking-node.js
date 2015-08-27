@@ -100,7 +100,7 @@ var fs = require("fs"),
      *********************************************/
 
     fluid.defaults("flock.audioStrategy.nodejs", {
-        gradeNames: ["flock.audioStrategy", "autoInit"],
+        gradeNames: ["flock.audioStrategy"],
 
         bytesPerSample: 4, // Flocking uses Float32s, hence 4 bytes.
 

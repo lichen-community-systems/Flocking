@@ -188,7 +188,7 @@ Fluid components are created by defining JSON "component trees", which are manag
 
             // This instrument is a flock.synth, and ask Infusion to automatically
             // define an initialization function for it.
-            gradeNames: ["flock.synth", "autoInit"],
+            gradeNames: ["flock.synth"],
 
             // Define the synthDef for your instrument.
             synthDef: {
@@ -204,7 +204,7 @@ Fluid components are created by defining JSON "component trees", which are manag
         // and which will contain instruments, a scheduler, and score.
         fluid.defaults("myStuff.composition", {
 
-            gradeNames: ["fluid.eventedComponent", "autoInit"],
+            gradeNames: ["fluid.component"],
 
             members: {
                 enviro: "@expand:flock.init"

@@ -117,7 +117,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.webAudio.audioSystem", {
-        gradeNames: ["flock.audioSystem", "autoInit"],
+        gradeNames: ["flock.audioSystem"],
 
         channelRange: {
             min: "@expand:flock.webAudio.audioSystem.calcMinChannels()",
@@ -136,19 +136,18 @@ var fluid = fluid || require("infusion"),
 
         listeners: {
             onCreate: [
-                "flock.webAudio.audioSystem.registerContextSingleton({that})",
                 "flock.webAudio.audioSystem.configureDestination({that}.context, {that}.model.chans)"
             ]
         }
     });
 
     flock.webAudio.audioSystem.createContext = function () {
-        var singleton = fluid.staticEnvironment.audioSystem;
-        return singleton ? singleton.context : new flock.shim.AudioContext();
-    };
+        var system = flock.webAudio.audioSystem;
+        if (!system.audioContextSingleton) {
+            system.audioContextSingleton = new flock.shim.AudioContext();
+        }
 
-    flock.webAudio.audioSystem.registerContextSingleton = function (that) {
-        fluid.staticEnvironment.audioSystem = that;
+        return system.audioContextSingleton;
     };
 
     flock.webAudio.audioSystem.calcMaxChannels = function (destination) {
@@ -172,7 +171,7 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.webAudio.node", {
-        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
+        gradeNames: ["fluid.modelComponent"],
 
         members: {
             node: "@expand:flock.webAudio.createNode({audioSystem}.context, {that}.options.nodeSpec)"
@@ -187,7 +186,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.webAudio.gain", {
-        gradeNames: ["flock.webAudio.node", "autoInit"],
+        gradeNames: ["flock.webAudio.node"],
 
         members: {
             node: "@expand:flock.webAudio.createNode({audioSystem}.context, {that}.options.nodeSpec)"
@@ -200,7 +199,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.webAudio.scriptProcessor", {
-        gradeNames: ["flock.webAudio.node", "autoInit"],
+        gradeNames: ["flock.webAudio.node"],
 
         nodeSpec: {
             node: "ScriptProcessor",
@@ -217,7 +216,7 @@ var fluid = fluid || require("infusion"),
     });
 
     fluid.defaults("flock.webAudio.channelMerger", {
-        gradeNames: ["flock.webAudio.node", "autoInit"],
+        gradeNames: ["flock.webAudio.node"],
 
         nodeSpec: {
             node: "ChannelMerger",
@@ -272,8 +271,9 @@ var fluid = fluid || require("infusion"),
     /**
      * Web Audio API Audio Strategy
      */
+    // TODO: Normalize name with flock.webAudio.audioSystem.
     fluid.defaults("flock.audioStrategy.web", {
-        gradeNames: ["flock.audioStrategy", "autoInit"],
+        gradeNames: ["flock.audioStrategy"],
 
         model: {
             isGenerating: false,
@@ -458,7 +458,7 @@ var fluid = fluid || require("infusion"),
      * "islands" are implemented.
      */
     fluid.defaults("flock.webAudio.nativeNodeManager", {
-        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         members: {
             outputNode: undefined,
@@ -741,7 +741,7 @@ var fluid = fluid || require("infusion"),
      */
     // Add a means for disconnecting audio input nodes.
     fluid.defaults("flock.webAudio.inputDeviceManager", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         invokers: {
             /**
@@ -876,7 +876,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.webAudio.outputFader", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         fadeDuration: 0.5,
 
@@ -945,14 +945,5 @@ var fluid = fluid || require("infusion"),
     flock.webAudio.outputFader.fadeIn = function (context, gainNode, end, duration) {
         flock.webAudio.outputFader.fade(context, gainNode, 0, end, duration);
     };
-
-
-    fluid.demands("flock.audioSystem.platform", "flock.platform.webAudio", {
-        funcName: "flock.webAudio.audioSystem"
-    });
-
-    fluid.demands("flock.audioStrategy.platform", "flock.platform.webAudio", {
-        funcName: "flock.audioStrategy.web"
-    });
 
 }());
