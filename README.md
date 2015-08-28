@@ -68,7 +68,7 @@ Documentation and Demos
 -----------------------
 
 * Flocking's [documentation](docs/) is in the repository
-* Demos can be found in the [Flocking Playground](http://flockingjs.org/demos/interactive/html/playground.html)
+* Demos can be found in the [Flocking Playground](http://flockingjs.org/demos/playground)
 * Other examples are located in the [examples repository](http://github.com/colinbdclark/flocking-examples)
 
 
