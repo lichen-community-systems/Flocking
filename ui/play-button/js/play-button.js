@@ -250,6 +250,8 @@ var fluid = fluid || require("infusion"),
         },
 
         components: {
+            enviro: "{flock.enviro}",
+
             fader: {
                 type: "flock.webAudio.outputFader",
                 options: {

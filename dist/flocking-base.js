@@ -1839,8 +1839,10 @@ var fluid = fluid || fluid_2_0;
     };
 
     // Cheapskate implementation which avoids dependency on DataBinding.js
+    // TODO: This is apparently still used by the core merging algorithm, for reasons we no longer understand, even though
+    // it has long been disused by DataBinding itself
     fluid.model.mergeModel = function (target, source) {
-        if (!fluid.isPrimitive(target)) {
+        if (fluid.isPlainObject(target)) {
             var copySource = fluid.copy(source);
             $.extend(true, source, target);
             $.extend(true, source, copySource);
@@ -10952,7 +10954,7 @@ var fluid = fluid || require("infusion"),
         },
 
         components: {
-            enviro: "{environment}"
+            enviro: "{flock.enviro}"
         },
 
         model: {
@@ -13373,47 +13375,52 @@ var fluid = fluid || require("infusion"),
             clearInterval: {
                 funcName: "flock.scheduler.repeat.clearInterval",
                 args: ["{arguments}.0", "{that}.listeners", "{that}.events.onFinished.fire"]
+            },
+
+            addIntervalListener: {
+                funcName: "flock.scheduler.repeat.addIntervalListener",
+                args: [
+                    "{arguments}.0", // Interval
+                    "{arguments}.1", // Listener
+                    "{that}.listeners",
+                    "{that}.clock.events.tick.addListener"
+                ]
+            },
+
+            removeIntervalListener: {
+                funcName: "flock.scheduler.repeat.removeIntervalListener",
+                args: [
+                    "{arguments}.0", // Interval
+                    "{arguments}.1", // Listener
+                    "{that}.listeners",
+                    "{that}.clock.events.tick.removeListener"
+                ]
             }
         },
 
         listeners: {
             onScheduled: [
-                {
-                    funcName: "flock.scheduler.addListener",
-                    args: [
-                        "{arguments}.1", // The listener.
-                        {
-                            expander: {
-                                funcName: "flock.scheduler.repeat.intervalListeners",
-                                args: ["{arguments}.0", "{that}.listeners"]
-                            }
-                        },
-                        "{that}.clock.events.tick.addListener"
-                    ]
-                },
-                {
-                    func: "{that}.clock.schedule",
-                    args: ["{arguments}.0"]
-                }
+                "{that}.addIntervalListener({arguments}.0, {arguments}.1)",
+                "{that}.clock.schedule({arguments}.0)"
             ],
-            onFinished: {
-                funcName: "flock.scheduler.removeListener",
-                args: [
-                    "{arguments}.1",    // The listener.
-                    {
-                        expander: {
-                            funcName: "flock.scheduler.repeat.intervalListeners",
-                            args: ["{arguments}.0", "{that}.listeners"]
-                        }
-                    },
-                    "{that}.clock.events.tick.removeListener"
-                ]
-            }
+            onFinished: [
+                "{that}.removeIntervalListener({arguments}.0, {arguments}.1)"
+            ]
         }
     });
 
     flock.scheduler.repeat.intervalListeners = function (interval, listeners) {
         return listeners[interval];
+    };
+
+    flock.scheduler.repeat.addIntervalListener = function (interval, listener, listeners, afterAdd) {
+        var listenersForInterval = flock.scheduler.repeat.intervalListeners(interval, listeners);
+        flock.scheduler.addListener(listener, listenersForInterval, afterAdd);
+    };
+
+    flock.scheduler.repeat.removeIntervalListener = function (interval, listener, listeners, afterRemove) {
+        var listenersForInterval = flock.scheduler.repeat.intervalListeners(interval, listeners);
+        flock.scheduler.removeListener(listener, listenersForInterval, afterRemove);
     };
 
     flock.scheduler.repeat.schedule = function (interval, listener, timeConverter, synthContext, listeners, onScheduled) {

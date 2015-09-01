@@ -1631,7 +1631,7 @@ var fluid = fluid || require("infusion"),
         },
 
         components: {
-            enviro: "{environment}"
+            enviro: "{flock.enviro}"
         },
 
         model: {
