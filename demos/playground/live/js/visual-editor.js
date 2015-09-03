@@ -275,7 +275,7 @@ var fluid = fluid || require("infusion"),
             return false;
         }
 
-        var defaults = fluid.defaults(ugenName);
+        var defaults = flock.ugenDefaults(ugenName);
         if (!defaults) {
             return false;
         }
@@ -554,37 +554,45 @@ var fluid = fluid || require("infusion"),
 
     flock.ui.nodeRenderer.synth.layoutGraph = function (graphSpec) {
         // TODO: Wrap Dagre as a component.
-        var g = new dagre.Digraph();
+        var g = new dagre.graphlib.Graph();
+        g.setGraph({
+            rankdir: "BT",
+            ranksep: 100,
+            nodesep: 25
+        });
+        g.setDefaultEdgeLabel(function() { return {}; });
 
         // TODO: This whole workflow should be event-driven rather
         // than depending on imperative iteration.
         fluid.each(graphSpec.nodes, function (node, id) {
-            g.addNode(id, node);
+            g.setNode(id, node);
         });
 
         // TODO: This whole workflow should be event-driven rather
         // than depending on imperative iteration.
         fluid.each(graphSpec.edges, function (edge) {
-            g.addEdge(null, edge.source, edge.target);
+            g.setEdge(edge.source, edge.target);
         });
 
-        var outputGraph = dagre.layout().rankDir("BT").rankSep(100).nodeSep(25).run(g);
+        dagre.layout(g);
 
         // Position the nodes.
         // TODO: This whole workflow should be event-driven rather
         // than depending on imperative iteration.
-        outputGraph.eachNode(function (id, graphNode) {
-            var nodeEl = $("#" + id);
+        g.nodes().forEach(function (id) {
+            var node = g.node(id),
+                nodeEl = $("#" + id);
+
             nodeEl.css({
                 "position": "absolute",
                 // TODO: calculate position from centre, which is what Dagre gives us.
                 // TODO: Offset based on the container's position on screen.
-                "top": graphNode.y + 120,
-                "left": graphNode.x
+                "top": node.y + 120,
+                "left": node.x
             });
         });
 
-        return outputGraph;
+        return g;
     };
 
     flock.ui.nodeRenderer.synth.clear = function (jsPlumb, container, ugenRenderers) {

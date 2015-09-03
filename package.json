@@ -31,9 +31,11 @@
   },
   "dependencies": {
     "jquery": "2.1.4",
-    "infusion": "colinbdclark/infusion#FLUID-5745",
-    "codemirror-infusion": "git://github.com/colinbdclark/codemirror-infusion.git",
+    "infusion": "fluid-project/infusion#a1e3d601478e57276d4143fca5bcbe00f9c6b0cd",
+    "codemirror-infusion": "2.0.0",
     "jsplumb": "sporritt/jsPlumb#1.7.8",
+    "dagre": "0.7.4",
+    "normalize.css": "3.0.3",
     "speaker": "git://github.com/colinbdclark/node-speaker.git#mpg123-lower-latency",
     "midi": "v0.9.3"
   },

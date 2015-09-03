@@ -825,7 +825,7 @@ var fluid = fluid || require("infusion"),
         var synth = synthContext ? fluid.get(synthContext, synthPath) :
             flock.environment.namedNodes[synthPath];
 
-        return synth || flock.environment.namedNodes[synthPath];
+        return synth;
     };
 
     flock.scheduler.async.makeSynthUpdater = function (synths, changeSpec, staticChanges, synthContext) {
