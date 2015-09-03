@@ -280,25 +280,45 @@ In the meantime the asynchronous scheduler does a decent job of keeping "pleasan
 
 Here's an example of the declarative powers of the Flocking scheduler:
 
-    var scheduler = flock.scheduler.async();
-    scheduler.schedule([
-        {
-            interval: "repeat",       // Schedule a repeating change
-            time: 0.25,               // Every quarter of a second.
-            change: {
-                synth: "sin-synth",   // Update values a synth with the global nickname "sin-synth".
-                values: {
-                    "carrier.freq": { // Change the synth's frequency by scheduling a demand-rate
-                        synthDef: {   // Synth that generate values by iterating through the list.
-                            ugen: "flock.ugen.sequence",
-                            loop: 1.0,
-                            values: [110, 220, 330, 440, 550, 660, 880]
+    // Create a Band containing two components:
+    //   1. a synth named "sinSynth," on which we will schedule changes.
+    //   2. an asynchronous scheduler
+    flock.band({
+        components: {
+            sinSynth: {
+                type: "flock.synth",
+                options: {
+                    synthDef: {
+                        id: "carrier",
+                        ugen: "flock.ugen.sinOsc",
+                        freq: 440,
+                        mul: 0.5
+                    }
+                }
+            },
+
+            scheduler: {
+                type: "flock.scheduler.async",
+                options: {
+                    components: {
+                        synthContext: "{sinSynth}",
+                        score: {
+                            values: {
+                                "carrier.freq": { // Change the synth's frequency by scheduling a demand-rate
+                                    synthDef: {   // Synth that generate values by iterating through the list.
+                                        ugen: "flock.ugen.sequence",
+                                        loop: 1.0,
+                                        values: [110, 220, 330, 440, 550, 660, 880]
+                                    }
+                                }
+                            }
+
                         }
                     }
                 }
             }
         }
-    ]);
+    });
 
 If you need to, you can always schedule arbitrary events using plain old functions:
 

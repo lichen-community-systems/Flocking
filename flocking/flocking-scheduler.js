@@ -813,19 +813,9 @@ var fluid = fluid || require("infusion"),
 
     flock.scheduler.async.getTargetSynth = function (changeSpec, synthContext) {
         var synthPath = changeSpec.synth;
-
-        if (!changeSpec.synth) {
-            return synthContext;
-        }
-
-        if (typeof synthPath !== "string") {
-            return synthPath;
-        }
-
-        var synth = synthContext ? fluid.get(synthContext, synthPath) :
-            flock.environment.namedNodes[synthPath];
-
-        return synth;
+        return !synthPath ?
+            synthContext : typeof synthPath !== "string" ?
+            synthPath : fluid.get(synthContext, synthPath);
     };
 
     flock.scheduler.async.makeSynthUpdater = function (synths, changeSpec, staticChanges, synthContext) {

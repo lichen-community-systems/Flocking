@@ -1224,7 +1224,7 @@ var fluid = fluid || require("infusion"),
         equal(nl.nodes.length, 0,
             "When a NodeList is instantiated, it should contain no nodes.");
 
-        var testNodes = [{nickName: "first"}, {cat: "second"}, {nickName: "third"}];
+        var testNodes = [{name: "first"}, {cat: "second"}, {id: "third"}];
         nl.head(testNodes[0]);
         equal(nl.nodes.length, 1,
             "The node should have been added to the list.");
@@ -1250,7 +1250,7 @@ var fluid = fluid || require("infusion"),
         deepEqual(nl.nodes, [testNodes[0], testNodes[2]],
             "Adding a node to the head of the list should put it in the correct position.");
         deepEqual(nl.namedNodes, {"first": testNodes[0], "third": testNodes[2]},
-            "The collection of namedNodes should contain all nodes with a valid nickName.");
+            "The collection of namedNodes should contain all nodes with a valid name or id.");
 
         nl.tail(testNodes[0]);
         deepEqual(nl.nodes, [testNodes[0], testNodes[2], testNodes[0]],
@@ -1268,10 +1268,10 @@ var fluid = fluid || require("infusion"),
         deepEqual(nl.nodes, [testNodes[2], testNodes[1], testNodes[0]],
             "Adding a node at a specific position should work.");
         deepEqual(nl.namedNodes, {"third": testNodes[2]},
-            "A unit generator without a nickName should not be added to namedNodes.");
+            "A unit generator without a name or id should not be added to namedNodes.");
         nl.remove(testNodes[1]);
         deepEqual(nl.namedNodes, {"third": testNodes[2]},
-            "The collection of namedNodes should not change when a node without a nickname is removed.");
+            "The collection of namedNodes should not change when a node without a name or id is removed.");
 
         nl.before(testNodes[0], testNodes[1]);
         deepEqual(nl.nodes, [testNodes[2], testNodes[1], testNodes[0]],
@@ -1287,11 +1287,11 @@ var fluid = fluid || require("infusion"),
 
         nl.remove(testNodes[1]);
         deepEqual(nl.namedNodes, {"third": testNodes[2]},
-            "namedNodes should remain the same after a non-nickNamed node is removed.");
+            "namedNodes should remain the same after an unnamed node is removed.");
 
         nl.remove(testNodes[0]);
         deepEqual(nl.namedNodes, {"third": testNodes[2]},
-            "namedNodes should remain the same after a nickNamed node is removed, which a duplicated of had already been removed.");
+            "namedNodes should remain the same after a named node is removed, which a duplicated of had already been removed.");
 
         nl.after(testNodes[2], testNodes[0]);
         deepEqual(nl.nodes, [testNodes[2], testNodes[0], testNodes[1]],
@@ -1305,7 +1305,7 @@ var fluid = fluid || require("infusion"),
         equal(nl.nodes.length, 0,
             "When a NodeList is instantiated, it should contain no nodes.");
 
-        var testNodes = [{nickName: "first"}, {cat: "second"}, {nickName: "third"}];
+        var testNodes = [{name: "first"}, {cat: "second"}, {id: "third"}];
         fluid.each(testNodes, function (node) {
             nl.tail(node);
         });
@@ -1324,15 +1324,15 @@ var fluid = fluid || require("infusion"),
     test("flock.ugenNodeList", function () {
         var testNodes = [
             {
-                nickName: "1",
+                id: "1",
                 tags: ["flock.ugen"],
                 inputs: {
                     cat: {
-                        nickName: "1.2",
+                        id: "1.2",
                         tags: ["flock.ugen"],
                         inputs: {
                             dog: {
-                                nickName: "1.1",
+                                id: "1.1",
                                 tags: ["flock.ugen"]
                             }
                         }
@@ -1340,15 +1340,15 @@ var fluid = fluid || require("infusion"),
                 }
             },
             {
-                nickName: "2",
+                id: "2",
                 tags: ["flock.ugen"]
             },
             {
-                nickName: "3",
+                id: "3",
                 tags: ["flock.ugen"],
                 inputs: {
                     hamster: {
-                        nickName: 3.1,
+                        id: 3.1,
                         tags: ["flock.ugen"]
                     }
                 }
@@ -1412,14 +1412,14 @@ var fluid = fluid || require("infusion"),
         }, "The node and all its swapped inputs should have been removed.");
 
         var multiInputNode = {
-            nickName: "4",
+            id: "4",
             inputs: {
                 giraffe: {
-                    nickName: 4.1,
+                    id: 4.1,
                     tags: ["flock.ugen"]
                 },
                 goose: {
-                    nickName: 4.2,
+                    id: 4.2,
                     tags: ["flock.ugen"]
                 }
             }

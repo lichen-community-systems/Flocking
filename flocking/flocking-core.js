@@ -929,11 +929,10 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.nodeList.registerNode = function (node, namedNodes) {
-        if (!node.nickName) {
-            return;
+        var name = node.name || node.id;
+        if (name) {
+            namedNodes[name] = node;
         }
-
-        namedNodes[node.nickName] = node;
     };
 
     flock.nodeList.before = function (refNode, node, nodes, insertFn) {
@@ -964,7 +963,10 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.nodeList.unregisterNode = function (node, namedNodes) {
-        delete namedNodes[node.nickName];
+        var name = node.name || node.id;
+        if (name) {
+            delete namedNodes[name];
+        }
     };
 
     flock.nodeList.replace = function (newNode, oldNode, nodes, notFoundFn, onRemove, onInsert) {

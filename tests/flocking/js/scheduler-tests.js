@@ -358,12 +358,16 @@ var fluid = fluid || require("infusion"),
             sked: {
                 type: "flock.scheduler.async",
                 options: {
+                    components: {
+                        synthContext: "{targetingSynth}"
+                    },
+
                     score: [
                         {
                             interval: "once",
                             time: 0.001,
                             change: {
-                                synth: "synth",
+                                synth: "synthy",
                                 values: {
                                     "sin.freq": 110
                                 }
@@ -375,7 +379,7 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    asyncTest("Targeting changes at synth using its global nickName", function () {
+    asyncTest("Targeting changes at synth using the scheduler's synthContext", function () {
         var testComponent = flock.scheduler.tests.targetingSynth();
         equal(440, testComponent.synthy.get("sin.freq"),
             "The target synth's initial frequency should be as configured.");
@@ -385,7 +389,7 @@ var fluid = fluid || require("infusion"),
                 "The target synth's frequency input should have been updated correctly.");
             testComponent.sked.end();
             start();
-        }, 100);
+        }, 200);
     });
 
 }());
