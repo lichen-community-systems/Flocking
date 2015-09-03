@@ -1572,52 +1572,62 @@ var fluid = fluid || require("infusion"),
         });
     };
 
+    fluid.defaults("flock.test.synthGroup.base", {
+        gradeNames: "flock.synth",
+        addToEnvironment: false,
+
+        model: {
+            didGen: false
+        },
+
+        synthDef: {
+            id: "mock",
+            ugen: "flock.test.ugen.mock"
+        },
+
+        invokers: {
+            genFn: {
+                changePath: "didGen",
+                value: true
+            }
+        }
+    });
+
+    fluid.defaults("flock.test.synthGroup.synth1", {
+        gradeNames: "flock.test.synthGroup.base",
+
+        synthDef: {
+            freq: 110,
+            mul: 0.1,
+            options: {
+                buffer: flock.generate(64, 1)
+            }
+        }
+    });
+
+    fluid.defaults("flock.test.synthGroup.synth2", {
+        gradeNames: "flock.test.synthGroup.base",
+
+        synthDef: {
+            freq: 220,
+            mul: 0.2,
+            options: {
+                buffer: flock.generate(64, 2)
+            }
+        }
+    });
+
     test("flock.synth.group", function () {
-        var synth1DidGen = false;
-        var synth2DidGen = false;
+        var synth1 = flock.test.synthGroup.synth1();
+        var synth2 = flock.test.synthGroup.synth2();
 
-        var synthOpts = {
+        var group = flock.synth.group({
             addToEnvironment: false
-        };
-        var synth1 = flock.synth({
-            members: {
-                genFn: function () {
-                    synth1DidGen = true;
-                }
-            },
+        });
 
-            synthDef: {
-                id: "mock",
-                ugen: "flock.test.ugen.mock",
-                freq: 110,
-                mul: 0.1,
-                options: {
-                    buffer: flock.generate(64, 1)
-                }
-            }
-        }, synthOpts);
-        var synth2 = flock.synth({
-            members: {
-                genFn: function () {
-                    synth2DidGen = true;
-                }
-            },
-
-            synthDef: {
-                id: "mock",
-                ugen: "flock.test.ugen.mock",
-                freq: 220,
-                mul: 0.2,
-                options: {
-                    buffer: flock.generate(64, 2)
-                }
-            }
-        }, synthOpts);
-
-        var group = flock.synth.group(synthOpts);
         group.head(synth1);
         group.tail(synth2);
-        equal(2, group.nodes.length,
+        equal(group.nodes.length, 2,
             "Both synths should have been added to the group.");
 
         var inputVal = group.input("mock.freq");
@@ -1635,7 +1645,7 @@ var fluid = fluid || require("infusion"),
         checkValueOnNodes(group.nodes, "mock", "mul", 0.5);
 
         group.gen();
-        ok(synth1DidGen && synth2DidGen,
+        ok(synth1.model.didGen && synth2.model.didGen,
             "All nodes should recieve the gen() method when it is called on the group.");
     });
 
@@ -2021,7 +2031,8 @@ var fluid = fluid || require("infusion"),
             "The first node in the list should be the synth that declared itself at the head.");
 
         // TODO: This test probably doesn't belong here.
-        equal(band.cat.enviro.audioStrategy.nodeEvaluator.nodes, flock.environment.nodes,
+        equal(band.cat.enviro.nodeEvaluator.nodes,
+            flock.environment.nodes,
             "The synths' enviro's audio strategy's node evaluator should share the same node list" +
             "as the environment itself.");
     });

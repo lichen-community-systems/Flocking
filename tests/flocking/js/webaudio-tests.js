@@ -48,7 +48,7 @@
                 numInputBuses: 4
             });
 
-            enviro.audioStrategy.nativeNodeManager.createOutputNode({
+            enviro.audioSystem.nativeNodeManager.createOutputNode({
                 node: "Gain",
                 params: {
                     gain: 0.0
@@ -110,7 +110,7 @@
 
     test("Web Audio input node is created.", function () {
         var audioSystem = flock.environment.audioSystem,
-            nodeManager = flock.environment.audioStrategy.nativeNodeManager;
+            nodeManager = audioSystem.nativeNodeManager;
 
         equal(nodeManager.inputNodes.length, 0,
             "Prior to creating any input nodes, there shouldn't be any in the environment.");

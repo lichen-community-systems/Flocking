@@ -4,7 +4,7 @@
 * Flocking - Creative audio synthesis for the Web!
 * http://github.com/colinbdclark/flocking
 *
-* Copyright 2011-2014, Colin Clark
+* Copyright 2011-2015, Colin Clark
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
@@ -1133,28 +1133,6 @@ var fluid = fluid || require("infusion"),
     };
 
 
-    fluid.defaults("flock.audioStrategy", {
-        gradeNames: ["fluid.modelComponent"],
-
-        components: {
-            nodeEvaluator: {
-                type: "flock.nodeEvaluator"
-            }
-        },
-
-        invokers: {
-            reset: {
-                func: "{that}.events.onReset.fire"
-            }
-        },
-
-        events: {
-            onStart: "{enviro}.events.onStart",
-            onStop: "{enviro}.events.onStop",
-            onReset: "{enviro}.events.onReset"
-        }
-    });
-
     // TODO: Refactor how buses work so that they're clearly
     // delineated into types--input, output, and interconnect.
     // TODO: Get rid of the concept of buses altogether.
@@ -1224,6 +1202,27 @@ var fluid = fluid || require("infusion"),
     };
 
 
+    fluid.defaults("flock.outputManager", {
+        gradeNames: ["fluid.modelComponent"],
+
+        model: {
+            audioSettings: "{audioSystem}.model"
+        },
+
+        invokers: {
+            reset: {
+                func: "{that}.events.onReset.fire"
+            }
+        },
+
+        events: {
+            onStart: "{enviro}.events.onStart",
+            onStop: "{enviro}.events.onStop",
+            onReset: "{enviro}.events.onReset"
+        }
+    });
+
+
     fluid.defaults("flock.enviro", {
         gradeNames: [
             "flock.nodeList",
@@ -1243,15 +1242,13 @@ var fluid = fluid || require("infusion"),
                 type: "flock.scheduler.async"
             },
 
-            audioSystem: {
-                type: "flock.webAudio.audioSystem" // TODO: Make polymorphic again!
+            nodeEvaluator: {
+                type: "flock.nodeEvaluator"
             },
 
-            audioStrategy: {
-                type: "flock.audioStrategy.web", // TODO: Also needs to be repolymorphosed.
-                options: {
-                    audioSettings: "{audioSystem}.model"
-                }
+            audioSystem: {
+                // TODO: Make polymorphic again!
+                type: "flock.webAudio.audioSystem"
             },
 
             busManager: {
@@ -1267,7 +1264,7 @@ var fluid = fluid || require("infusion"),
             /**
              * Generates a block of samples by evaluating all registered nodes.
              */
-            gen: "flock.enviro.gen({audioStrategy}.nodeEvaluator)",
+            gen: "flock.enviro.gen({that}.nodeEvaluator)",
 
             /**
              * Starts generating samples from all synths.
@@ -1317,7 +1314,7 @@ var fluid = fluid || require("infusion"),
                 args: [
                     "{arguments}.0",
                     "{that}.buffers",
-                    "{audioStrategy}"
+                    "{audioSystem}"
                 ]
             }
         },
@@ -1369,7 +1366,7 @@ var fluid = fluid || require("infusion"),
         delete buffers[id];
     };
 
-    flock.enviro.saveBuffer = function (o, buffers, audioStrategy) {
+    flock.enviro.saveBuffer = function (o, buffers, audioSystem) {
         if (typeof o === "string") {
             o = {
                 buffer: o
@@ -1386,7 +1383,7 @@ var fluid = fluid || require("infusion"),
         o.path = o.path || o.buffer.id + "." + o.type;
         o.format = o.format || "int16";
 
-        return audioStrategy.saveBuffer(o, o.buffer);
+        return audioSystem.bufferWriter.save(o, o.buffer);
     };
 
     flock.enviro.gen = function (nodeEvaluator) {
@@ -1432,10 +1429,72 @@ var fluid = fluid || require("infusion"),
         return flock.environment;
     };
 
+
     fluid.defaults("flock.node", {
         gradeNames: ["flock.autoEnviro", "fluid.modelComponent"],
-        model: {}
+
+        addToEnvironment: "tail",
+
+        model: {},
+
+        components: {
+            enviro: "{flock.enviro}"
+        },
+
+        invokers: {
+            /**
+             * Must be overridden by implementing grades.
+             */
+            gen: "fluid.notImplemented()",
+
+            /**
+             * Adds the node to its environment's list of active nodes.
+             *
+             * @param {String || Boolean || Number} position the place to insert the node at;
+             *     if undefined, the node's addToEnvironment option will be used.
+             */
+            addToEnvironment: {
+                funcName: "flock.node.addToEnvironment",
+                args: ["{that}", "{arguments}.0", "{that}.options", "{that}.enviro"]
+            },
+
+            /**
+             * Removes the node from its environment's list of active nodes.
+             */
+            removeFromEnvironment: {
+                funcName: "flock.node.removeFromEnvironment",
+                args: ["{that}", "{arguments}.0"]
+            }
+        }
     });
+
+    flock.node.addToEnvironment = function (node, position, enviro) {
+        if (position === undefined) {
+            position = node.options.addToEnvironment;
+        }
+
+        enviro = enviro || node.enviro;
+
+        // Add this node to the tail of the synthesis environment if appropriate.
+        if (position === undefined || position === null || position === false) {
+            return;
+        }
+
+        var type = typeof (position);
+        if (type === "string" && position === "head" || position === "tail") {
+            node.enviro[position](node);
+        } else if (type === "number") {
+            node.enviro.insert(position, node);
+        } else {
+            node.enviro.tail(node);
+        }
+    };
+
+    flock.node.removeFromEnvironment = function (node, enviro) {
+        enviro = enviro || node.enviro;
+        enviro.remove(node);
+    };
+
 
     fluid.defaults("flock.ugenNodeList", {
         gradeNames: ["flock.nodeList"],
@@ -1607,7 +1666,6 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.synth", {
         gradeNames: ["flock.node", "flock.ugenNodeList"],
 
-        addToEnvironment: "tail",
         rate: flock.rates.AUDIO,
 
         members: {
@@ -1628,10 +1686,6 @@ var fluid = fluid || require("infusion"),
             },
 
             genFn: "@expand:fluid.getGlobalValue({that}.options.invokers.gen.funcName)"
-        },
-
-        components: {
-            enviro: "{flock.enviro}"
         },
 
         model: {
@@ -1655,7 +1709,7 @@ var fluid = fluid || require("infusion"),
              * This is a convenience method that will remove the synth from the environment's node graph.
              */
             pause: {
-                funcName: "flock.synth.pause",
+                funcName: "flock.node.removeFromEnvironment",
                 args: ["{that}", "{that}.enviro"]
             },
 
@@ -1708,29 +1762,23 @@ var fluid = fluid || require("infusion"),
             gen: {
                 funcName: "flock.synth.gen",
                 args: "{that}"
-            },
-
-            /**
-             * Adds the synth to its environment's list of active nodes.
-             *
-             * @param {String || Boolean || Number} position the place to insert the node at;
-             *     if undefined, the synth's addToEnvironment option will be used.
-             */
-            addToEnvironment: {
-                funcName: "flock.synth.addToEnvironment",
-                args: ["{that}", "{arguments}.0", "{that}.options", "{that}.enviro"]
             }
         },
 
         listeners: {
-            onCreate: {
-                funcName: "flock.synth.addToEnvironment",
-                args: ["{that}", undefined, "{that}.options", "{that}.enviro"]
-            },
+            onCreate: [
+                {
+                    func: "{that}.addToEnvironment",
+                    args: []
+                }
+            ],
 
-            onDestroy: {
-                "func": "{that}.pause"
-            }
+            onDestroy: [
+                {
+                    func: "{that}.removeFromEnvironment",
+                    args: []
+                }
+            ]
         }
     });
 
@@ -1773,10 +1821,6 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    flock.synth.pause = function (synth, enviro) {
-        enviro.remove(synth);
-    };
-
     flock.synth.set = function (that, namedNodes, path, val, swap) {
         return flock.input.set(namedNodes, path, val, undefined, function (ugenDef, path, target, prev) {
             return flock.synth.ugenValueParser(that, ugenDef, prev, swap);
@@ -1806,26 +1850,6 @@ var fluid = fluid || require("infusion"),
         return !path ? undefined : typeof path === "string" ?
             args.length < 2 ? getFn(path) : setFn.apply(null, args) :
             flock.isIterable(path) ? getFn(path) : setFn.apply(null, args);
-    };
-
-    flock.synth.addToEnvironment = function (synth, position, options, enviro) {
-        if (position === undefined) {
-            position = options.addToEnvironment;
-        }
-
-        // Add this synth to the tail of the synthesis environment if appropriate.
-        if (position === undefined || position === null || position === false) {
-            return;
-        }
-
-        var type = typeof (position);
-        if (type === "string" && position === "head" || position === "tail") {
-            enviro[position](synth);
-        } else if (type === "number") {
-            enviro.insert(position, synth);
-        } else {
-            enviro.tail(synth);
-        }
     };
 
     // TODO: Reduce all these dependencies on "that" (i.e. a synth instance).
@@ -1903,24 +1927,11 @@ var fluid = fluid || require("infusion"),
     });
 
 
-    // TODO: At the moment, flock.synth.group attempts to act as a proxy for
-    // a collection of synths, allowing users to address it as if it were
-    // a single synth. However, it does nothing to ensure that its contained synths
-    // are managed properly with the environment. There's currently no way to ensure that
-    // when a group is removed from the environment, all its synths are too.
-    // This should be completely refactored in favour of an approach using dynamic components.
     fluid.defaults("flock.synth.group", {
-        gradeNames: ["flock.synth"],
-
-        members: {
-            out: null,
-        },
+        gradeNames: ["flock.nodeList", "flock.node"],
 
         methodEventMap: {
-            "onSet": "set",
-            "onGen": "gen",
-            "onPlay": "play",
-            "onPause": "pause"
+            "onSet": "set"
         },
 
         invokers: {
@@ -1957,10 +1968,8 @@ var fluid = fluid || require("infusion"),
                     ]
                 },
 
-                // Brute force and unreliable way of ensuring that
-                // children of a group don't get directly added to the environment.
                 {
-                    funcName: "flock.synth.pause",
+                    funcName: "flock.node.removeFromEnvironment",
                     args: ["{arguments}.0", "{that}.enviro"]
                 }
             ],

@@ -359,10 +359,10 @@ var fluid = fluid || require("infusion"),
         };
 
         that.init = function () {
-            var enviro = flock.environment,
+            var nativeNodeManager = flock.environment.audioSystem.nativeNodeManager,
                 mediaEl = $(that.options.element),
                 // TODO: Direct reference to the shared environment.
-                busNum = enviro.audioStrategy.nativeNodeManager.createMediaElementInput(mediaEl[0]);
+                busNum = nativeNodeManager.createMediaElementInput(mediaEl[0]);
 
             that.bus = that.options.buses[busNum];
             that.onInputChanged();

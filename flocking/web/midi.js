@@ -1,5 +1,5 @@
 /*
- * Flocking MIDI
+ * Flocking Web MIDI
  * http://github.com/colinbdclark/flocking
  *
  * Copyright 2014, Colin Clark

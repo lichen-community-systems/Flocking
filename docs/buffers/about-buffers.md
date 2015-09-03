@@ -354,7 +354,7 @@ Currently, Flocking supports the following WAVE file formats:
 
 #### Saving Manually-Encoded Buffers ####
 
-If you're manually encoding buffers using <code>flock.audio.encode.wav()</code>, you may also want to provide a way for the user to download an audio file. Flocking's Web-specific _Audio Strategy_ component provides a free function called <code>flock.audioStrategy.web.download()</code> that will cause the buffer to be downloaded to the user's computer. Particularly in browsers other than Chrome, it should be bound to a button or other user-initiated action.
+If you're manually encoding buffers using <code>flock.audio.encode.wav()</code>, you may also want to provide a way for the user to download an audio file. Flocking's Web-specific _Audio Strategy_ component provides a free function called <code>flock.webAudio.strategy.download()</code> that will cause the buffer to be downloaded to the user's computer. Particularly in browsers other than Chrome, it should be bound to a button or other user-initiated action.
 
 ### Using the <code>flock.ugen.writeBuffer</code> Unit Generator ###
 

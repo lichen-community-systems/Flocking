@@ -295,7 +295,7 @@ var fluid = fluid || require("infusion"),
         var type = ugenDef.ugen,
             isValueUGen = flock.ui.nodeRenderer.ugen.hasTag(type, "flock.ugen.valueType"),
             displayName = isValueUGen ? ugenDef.inputs.value : type ?
-                fluid.pathUtil.getTailPath(type) : "";
+                fluid.model.getTailPath(type) : "";
 
         that.applier.change("node.displayName", displayName);
         that.applier.change("node.nodeType", type);

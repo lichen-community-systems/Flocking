@@ -742,7 +742,7 @@ var fluid = fluid || require("infusion"),
 
         that.init = function () {
             // TODO: Direct reference to the shared environment.
-            var busNum = flock.environment.audioStrategy.inputDeviceManager.openAudioDevice(options);
+            var busNum = flock.environment.audioSystem.inputDeviceManager.openAudioDevice(options);
             that.bus = that.options.buses[busNum];
             that.onInputChanged();
         };

@@ -11,7 +11,7 @@ loader.require("../flocking/flocking-audiofile.js");
 loader.require("../flocking/flocking-audiofile-encoder.js");
 loader.require("../flocking/flocking-audiofile-compatibility.js");
 loader.require("../flocking/flocking-scheduler.js");
-loader.require("../flocking/flocking-webmidi.js");
+loader.require("../flocking/web/midi.js");
 
 // Unit generators
 loader.require("../flocking/ugens/core.js");

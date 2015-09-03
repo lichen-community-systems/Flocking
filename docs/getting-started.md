@@ -97,79 +97,9 @@ Concatenated and minified Flocking files are committed to the source code reposi
     <!-- This includes Flocking and all its dependencies, including jQuery 2.0 and Infusion 1.5 -->
     <script src="flocking-all.js"></script>
 
+#### Alternative Builds ####
 
-### Linking to Individual Flocking Files (for development) ###
-
-If you'd prefer to link to the individual Flocking files during development, or to create your own highly modular custom builds, these are the basic required dependencies:
-
-    <!-- jQuery -->
-    <script src="flocking/third-party/jquery/js/jquery.js"></script>
-
-    <!-- Infusion -->
-    <script src="flocking/third-party/infusion/js/Fluid.js"></script>
-    <script src="flocking/third-party/infusion/js/FluidDocument.js"></script>
-    <script src="flocking/third-party/infusion/js/FluidDOMUtilities.js"></script>
-    <script src="flocking/third-party/infusion/js/FluidDebugging.js"></script>
-    <script src="flocking/third-party/infusion/js/FluidIoC.js"></script>
-    <script src="flocking/third-party/infusion/js/DataBinding.js"></script>
-    <script src="flocking/third-party/infusion/js/ModelTransformation.js"></script>
-    <script src="flocking/third-party/infusion/js/ModelTransformationTransforms.js"></script>
-    <script src="flocking/third-party/infusion/js/FluidView.js"></script>
-
-    <!-- Other third-party dependencies: Array Math and Random -->
-    <script src="flocking/third-party/webarraymath/js/webarraymath.js"></script>
-    <script src="flocking/third-party/simjs/js/random-0.26.js"></script>
-
-    <!-- Flocking Base -->
-    <script src="flocking/flocking/flocking-core.js"></script>
-    <script src="flocking/flocking/flocking-buffers.js"></script>
-    <script src="flocking/flocking/flocking-audiofile.js"></script>
-    <script src="flocking/flocking/flocking-audiofile-encoder.js"></script>
-    <script src="flocking/flocking/flocking-scheduler.js"></script>
-    <script src="flocking/flocking/flocking-webaudio.js"></script>
-    <script src="flocking/flocking/flocking-parser.js"></script>
-    <script src="flocking/flocking/flocking-gfx.js"></script>
-    <script src="flocking/flocking/flocking-webmidi.js"></script>
-
-    <!-- Flocking Unit Generators -->
-    <script src="flocking/flocking/ugens/core.js"></script>
-    <script src="flocking/flocking/ugens/bandlimited.js"></script>
-    <script src="flocking/flocking/ugens/browser.js"></script>
-    <script src="flocking/flocking/ugens/buffer.js"></script>
-    <script src="flocking/flocking/ugens/debugging.js"></script>
-    <script src="flocking/flocking/ugens/dynamics.js"></script>
-    <script src="flocking/flocking/ugens/distortion.js"></script>
-    <script src="flocking/flocking/ugens/envelopes.js"></script>
-    <script src="flocking/flocking/ugens/filters.js"></script>
-    <script src="flocking/flocking/ugens/gates.js"></script>
-    <script src="flocking/flocking/ugens/granular.js"></script>
-    <script src="flocking/flocking/ugens/listening.js"></script>
-    <script src="flocking/flocking/ugens/math.js"></script>
-    <script src="flocking/flocking/ugens/midi.js"></script>
-    <script src="flocking/flocking/ugens/multichannel.js"></script>
-    <script src="flocking/flocking/ugens/oscillators.js"></script>
-    <script src="flocking/flocking/ugens/random.js"></script>
-    <script src="flocking/flocking/ugens/scheduling.js"></script>
-    <script src="flocking/flocking/ugens/triggers.js"></script>
-
-
-In addition, if you're working with audio files, these files are required:
-
-    <script src="flocking/flocking/flocking-buffers.js"></script>
-    <script src="flocking/flocking/flocking-audiofile.js"></script>
-
-If you need to use AIFF files, which aren't supported in some browsers, you can include:
-
-    <script src="flocking/flocking/flocking-audiofile-compatibility.js"></script>
-
-If you're using the flock.ugen.scope unit generator, you'll also need:
-
-    <script src="flocking/flocking/flocking-gfx.js"></script>
-
-If you want to use a MIDI controller with Flocking (currently only in Chrome), you'll need:
-
-    <script src="flocking/flocking/flocking-webmidi.js"></script>
-
+Other builds are available. See [Building Flocking](building-flocking.md) for more details.
 
 ## Using Flocking with Infusion ##
 

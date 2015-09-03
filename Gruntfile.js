@@ -40,8 +40,13 @@ module.exports = function(grunt) {
             // flocking-audiofile-compatibility.js is intentionally omitted
             // to reduce the size of the default Flocking build.
             "flocking/flocking-scheduler.js",
-            "flocking/flocking-webaudio.js",
-            "flocking/flocking-webmidi.js",
+            "flocking/web/webaudio-core.js",
+            "flocking/web/audio-system.js",
+            "flocking/web/buffer-writer.js",
+            "flocking/web/input-device-manager.js",
+            "flocking/web/midi.js",
+            "flocking/web/native-node-manager.js",
+            "flocking/web/output-manager.js",
             "flocking/ugens/core.js"
         ],
 

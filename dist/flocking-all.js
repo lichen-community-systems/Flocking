@@ -10521,7 +10521,7 @@ var fluid = fluid || fluid_2_0;
             that.listeners = {};
             that.byId = {};
             that.sortedListeners = [];
-            that.addListener = function (listener, namespace, priority, predicate, softNamespace) {
+            that.addListener = function (listener, namespace, priority, softNamespace, listenerId) {
                 if (that.destroyed) {
                     fluid.fail("Cannot add listener to destroyed event firer " + that.name);
                 }
@@ -10531,12 +10531,14 @@ var fluid = fluid || fluid_2_0;
                 if (typeof(listener) === "string") {
                     listener = {globalName: listener};
                 }
-                var id = fluid.event.identifyListener(listener);
+                var id = listenerId || fluid.event.identifyListener(listener);
                 namespace = namespace || id;
-                var record = {listener: listener, predicate: predicate,
+                var record = {listener: listener,
                     namespace: namespace,
                     softNamespace: softNamespace,
-                    priority: fluid.parsePriority(priority, that.sortedListeners.length, false, "listeners")};
+                    listenerId: listenerId,
+                    priority: fluid.parsePriority(priority, that.sortedListeners.length, false, "listeners")
+                };
                 that.byId[id] = record;
 
                 var thisListeners = (that.listeners[namespace] = fluid.makeArray(that.listeners[namespace]));
@@ -10564,8 +10566,9 @@ var fluid = fluid || fluid_2_0;
                 if (typeof (listener) === "string") {
                     namespace = listener;
                     record = that.listeners[namespace];
-                    if (!record) {
-                        return;
+                    if (!record) { // it was an id and not a namespace - take the namespace from its record later
+                        id = namespace;
+                        namespace = null;
                     }
                 }
                 else if (typeof(listener) === "function") {
@@ -10579,18 +10582,17 @@ var fluid = fluid || fluid_2_0;
                 namespace = namespace || (rec && rec.namespace) || id;
                 delete that.byId[id];
                 record = that.listeners[namespace];
-                if (!record) {
-                    return;
-                }
-                if (softNamespace) {
-                    fluid.remove_if(record, function (thisLis) {
-                        return thisLis.listener.$$fluid_guid === id;
-                    });
-                } else {
-                    record.shift();
-                }
-                if (record.length === 0) {
-                    delete that.listeners[namespace];
+                if (record) {
+                    if (softNamespace) {
+                        fluid.remove_if(record, function (thisLis) {
+                            return thisLis.listener.$$fluid_guid === id || thisLis.listenerId === id;
+                        });
+                    } else {
+                        record.shift();
+                    }
+                    if (record.length === 0) {
+                        delete that.listeners[namespace];
+                    }
                 }
                 that.sortedListeners = fluid.event.sortListeners(that.listeners);
             },
@@ -10602,12 +10604,8 @@ var fluid = fluid || fluid_2_0;
                     var lisrec = listeners[i];
                     lisrec.listener = fluid.event.resolveListener(lisrec.listener);
                     var listener = lisrec.listener;
-    
-                    if (lisrec.predicate && !lisrec.predicate(listener, arguments)) {
-                        continue;
-                    }
-                    var value;
                     var ret = listener.apply(null, arguments);
+                    var value;
                     if (options.preventable && ret === false || that.destroyed) {
                         value = false;
                     }
@@ -10630,7 +10628,7 @@ var fluid = fluid || fluid_2_0;
         } else if (typeof (value) === "function" || typeof (value) === "string") {
             wrapper(firer).addListener(value, namespace);
         } else if (value && typeof (value) === "object") {
-            wrapper(firer).addListener(value.listener, namespace || value.namespace, value.priority, value.predicate, value.softNamespace);
+            wrapper(firer).addListener(value.listener, namespace || value.namespace, value.priority, value.softNamespace, value.listenerId);
         }
     };
 
@@ -13033,18 +13031,18 @@ var fluid_2_0 = fluid_2_0 || {};
     fluid.clearListeners = function (shadow) {
         // TODO: bug here - "afterDestroy" listeners will be unregistered already unless they come from this component
         fluid.each(shadow.listeners, function (rec) {
-            rec.event.removeListener(rec.listener);
+            rec.event.removeListener(rec.listenerId || rec.listener);
         });
         delete shadow.listeners;
     };
 
-    fluid.recordListener = function (event, listener, shadow) {
+    fluid.recordListener = function (event, listener, shadow, listenerId) {
         if (event.ownerId !== shadow.that.id) { // don't bother recording listeners registered from this component itself
             var listeners = shadow.listeners;
             if (!listeners) {
                 listeners = shadow.listeners = [];
             }
-            listeners.push({event: event, listener: listener});
+            listeners.push({event: event, listener: listener, listenerId: listenerId});
         }
     };
     
@@ -13741,8 +13739,8 @@ var fluid_2_0 = fluid_2_0 || {};
     fluid.event.makeTrackedListenerAdder = function (source) {
         var shadow = fluid.shadowForComponent(source);
         return function (event) {
-            return {addListener: function (listener) {
-                    fluid.recordListener(event, listener, shadow);
+            return {addListener: function (listener, namespace, priority, softNamespace, listenerId) {
+                    fluid.recordListener(event, listener, shadow, listenerId);
                     event.addListener.apply(null, arguments);
                 }
             };
@@ -13788,7 +13786,7 @@ var fluid_2_0 = fluid_2_0 || {};
             fluid.popActivity();
             return togo;
         };
-        fluid.event.impersonateListener(listener, togo);
+        fluid.event.impersonateListener(listener, togo); // still necessary for FLUID-5254 even though framework's listeners now get explicit guids
         return togo;
     };
 
@@ -13840,6 +13838,7 @@ var fluid_2_0 = fluid_2_0 || {};
                 firer = true;
             }
             expanded.listener = (standard && (expanded.args && listener !== "fluid.notImplemented" || firer)) ? fluid.event.dispatchListener(that, listener, eventName, expanded) : listener;
+            expanded.listenerId = fluid.allocateGuid();
             return expanded;
         });
         var togo = {
@@ -13904,7 +13903,7 @@ var fluid_2_0 = fluid_2_0 || {};
             }
         }
         else {
-            firer = {typeName: "fluid.event.firer"}; // jslint:ok - already defined
+            firer = {typeName: "fluid.event.firer"};
             firer.fire = function () {
                 var outerArgs = fluid.makeArray(arguments);
                 fluid.pushActivity("fireSynthetic", "firing synthetic event %eventName ", {eventName: eventName});
@@ -13912,9 +13911,9 @@ var fluid_2_0 = fluid_2_0 || {};
                 fluid.popActivity();
                 return togo;
             };
-            firer.addListener = function (listener, namespace, priority, predicate, softNamespace) {
+            firer.addListener = function (listener, namespace, priority, softNamespace, listenerId) {
                 var dispatcher = fluid.event.dispatchListener(that, listener, eventName, eventSpec);
-                adder(origin).addListener(dispatcher, namespace, priority, predicate, softNamespace);
+                adder(origin).addListener(dispatcher, namespace, priority, softNamespace, listenerId);
             };
             firer.removeListener = function (listener) {
                 origin.removeListener(listener);
@@ -15405,6 +15404,7 @@ var fluid_2_0 = fluid_2_0 || {};
         if (typeof(a) !== "number" || typeof(b) !== "number") {
             return a === b;
         } else {
+            // Don't use isNaN because of https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/isNaN#Confusing_special-case_behavior
             if (a === b || a !== a && b !== b) { // Either the same concrete number or both NaN
                 return true;
             } else {
@@ -19479,7 +19479,7 @@ if (typeof window === "undefined" && typeof module !== "undefined" && module.exp
 * Flocking - Creative audio synthesis for the Web!
 * http://github.com/colinbdclark/flocking
 *
-* Copyright 2011-2014, Colin Clark
+* Copyright 2011-2015, Colin Clark
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
@@ -20608,28 +20608,6 @@ var fluid = fluid || require("infusion"),
     };
 
 
-    fluid.defaults("flock.audioStrategy", {
-        gradeNames: ["fluid.modelComponent"],
-
-        components: {
-            nodeEvaluator: {
-                type: "flock.nodeEvaluator"
-            }
-        },
-
-        invokers: {
-            reset: {
-                func: "{that}.events.onReset.fire"
-            }
-        },
-
-        events: {
-            onStart: "{enviro}.events.onStart",
-            onStop: "{enviro}.events.onStop",
-            onReset: "{enviro}.events.onReset"
-        }
-    });
-
     // TODO: Refactor how buses work so that they're clearly
     // delineated into types--input, output, and interconnect.
     // TODO: Get rid of the concept of buses altogether.
@@ -20699,6 +20677,27 @@ var fluid = fluid || require("infusion"),
     };
 
 
+    fluid.defaults("flock.outputManager", {
+        gradeNames: ["fluid.modelComponent"],
+
+        model: {
+            audioSettings: "{audioSystem}.model"
+        },
+
+        invokers: {
+            reset: {
+                func: "{that}.events.onReset.fire"
+            }
+        },
+
+        events: {
+            onStart: "{enviro}.events.onStart",
+            onStop: "{enviro}.events.onStop",
+            onReset: "{enviro}.events.onReset"
+        }
+    });
+
+
     fluid.defaults("flock.enviro", {
         gradeNames: [
             "flock.nodeList",
@@ -20718,15 +20717,13 @@ var fluid = fluid || require("infusion"),
                 type: "flock.scheduler.async"
             },
 
-            audioSystem: {
-                type: "flock.webAudio.audioSystem" // TODO: Make polymorphic again!
+            nodeEvaluator: {
+                type: "flock.nodeEvaluator"
             },
 
-            audioStrategy: {
-                type: "flock.audioStrategy.web", // TODO: Also needs to be repolymorphosed.
-                options: {
-                    audioSettings: "{audioSystem}.model"
-                }
+            audioSystem: {
+                // TODO: Make polymorphic again!
+                type: "flock.webAudio.audioSystem"
             },
 
             busManager: {
@@ -20742,7 +20739,7 @@ var fluid = fluid || require("infusion"),
             /**
              * Generates a block of samples by evaluating all registered nodes.
              */
-            gen: "flock.enviro.gen({audioStrategy}.nodeEvaluator)",
+            gen: "flock.enviro.gen({that}.nodeEvaluator)",
 
             /**
              * Starts generating samples from all synths.
@@ -20792,7 +20789,7 @@ var fluid = fluid || require("infusion"),
                 args: [
                     "{arguments}.0",
                     "{that}.buffers",
-                    "{audioStrategy}"
+                    "{audioSystem}"
                 ]
             }
         },
@@ -20844,7 +20841,7 @@ var fluid = fluid || require("infusion"),
         delete buffers[id];
     };
 
-    flock.enviro.saveBuffer = function (o, buffers, audioStrategy) {
+    flock.enviro.saveBuffer = function (o, buffers, audioSystem) {
         if (typeof o === "string") {
             o = {
                 buffer: o
@@ -20861,7 +20858,7 @@ var fluid = fluid || require("infusion"),
         o.path = o.path || o.buffer.id + "." + o.type;
         o.format = o.format || "int16";
 
-        return audioStrategy.saveBuffer(o, o.buffer);
+        return audioSystem.bufferWriter.save(o, o.buffer);
     };
 
     flock.enviro.gen = function (nodeEvaluator) {
@@ -20907,10 +20904,69 @@ var fluid = fluid || require("infusion"),
         return flock.environment;
     };
 
+
     fluid.defaults("flock.node", {
         gradeNames: ["flock.autoEnviro", "fluid.modelComponent"],
-        model: {}
+
+        addToEnvironment: "tail",
+
+        model: {},
+
+        components: {
+            enviro: "{flock.enviro}"
+        },
+
+        invokers: {
+            /**
+             * Must be overridden by implementing grades.
+             */
+            gen: "fluid.notImplemented()",
+
+            /**
+             * Adds the node to its environment's list of active nodes.
+             *
+             * @param {String || Boolean || Number} position the place to insert the node at;
+             *     if undefined, the node's addToEnvironment option will be used.
+             */
+            addToEnvironment: {
+                funcName: "flock.node.addToEnvironment",
+                args: ["{that}", "{arguments}.0", "{that}.options", "{that}.enviro"]
+            },
+
+            removeFromEnvironment: {
+                funcName: "flock.node.removeFromEnvironment",
+                args: ["{that}", "{arguments}.0"]
+            }
+        }
     });
+
+    flock.node.addToEnvironment = function (node, position, options, enviro) {
+        if (position === undefined) {
+            position = options.addToEnvironment;
+        }
+
+        // Add this node to the tail of the synthesis environment if appropriate.
+        if (position === undefined || position === null || position === false) {
+            return;
+        }
+
+        var type = typeof (position);
+        if (type === "string" && position === "head" || position === "tail") {
+            enviro[position](node);
+        } else if (type === "number") {
+            enviro.insert(position, node);
+        } else {
+            enviro.tail(node);
+        }
+    };
+
+    flock.node.removeFromEnvironment = function (that, enviro) {
+        if (!enviro) {
+            enviro = that.enviro;
+        }
+        enviro.remove(that);
+    };
+
 
     fluid.defaults("flock.ugenNodeList", {
         gradeNames: ["flock.nodeList"],
@@ -21082,7 +21138,6 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.synth", {
         gradeNames: ["flock.node", "flock.ugenNodeList"],
 
-        addToEnvironment: "tail",
         rate: flock.rates.AUDIO,
 
         members: {
@@ -21103,10 +21158,6 @@ var fluid = fluid || require("infusion"),
             },
 
             genFn: "@expand:fluid.getGlobalValue({that}.options.invokers.gen.funcName)"
-        },
-
-        components: {
-            enviro: "{flock.enviro}"
         },
 
         model: {
@@ -21130,7 +21181,7 @@ var fluid = fluid || require("infusion"),
              * This is a convenience method that will remove the synth from the environment's node graph.
              */
             pause: {
-                funcName: "flock.synth.pause",
+                funcName: "flock.node.removeFromEnvironment",
                 args: ["{that}", "{that}.enviro"]
             },
 
@@ -21183,29 +21234,17 @@ var fluid = fluid || require("infusion"),
             gen: {
                 funcName: "flock.synth.gen",
                 args: "{that}"
-            },
-
-            /**
-             * Adds the synth to its environment's list of active nodes.
-             *
-             * @param {String || Boolean || Number} position the place to insert the node at;
-             *     if undefined, the synth's addToEnvironment option will be used.
-             */
-            addToEnvironment: {
-                funcName: "flock.synth.addToEnvironment",
-                args: ["{that}", "{arguments}.0", "{that}.options", "{that}.enviro"]
             }
         },
 
         listeners: {
-            onCreate: {
-                funcName: "flock.synth.addToEnvironment",
-                args: ["{that}", undefined, "{that}.options", "{that}.enviro"]
-            },
+            onCreate: [
+                "{that}.addToEnvironment()"
+            ],
 
-            onDestroy: {
-                "func": "{that}.pause"
-            }
+            onDestroy: [
+                "{that}.removeFromEnvironment()"
+            ]
         }
     });
 
@@ -21248,10 +21287,6 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    flock.synth.pause = function (synth, enviro) {
-        enviro.remove(synth);
-    };
-
     flock.synth.set = function (that, namedNodes, path, val, swap) {
         return flock.input.set(namedNodes, path, val, undefined, function (ugenDef, path, target, prev) {
             return flock.synth.ugenValueParser(that, ugenDef, prev, swap);
@@ -21281,26 +21316,6 @@ var fluid = fluid || require("infusion"),
         return !path ? undefined : typeof path === "string" ?
             args.length < 2 ? getFn(path) : setFn.apply(null, args) :
             flock.isIterable(path) ? getFn(path) : setFn.apply(null, args);
-    };
-
-    flock.synth.addToEnvironment = function (synth, position, options, enviro) {
-        if (position === undefined) {
-            position = options.addToEnvironment;
-        }
-
-        // Add this synth to the tail of the synthesis environment if appropriate.
-        if (position === undefined || position === null || position === false) {
-            return;
-        }
-
-        var type = typeof (position);
-        if (type === "string" && position === "head" || position === "tail") {
-            enviro[position](synth);
-        } else if (type === "number") {
-            enviro.insert(position, synth);
-        } else {
-            enviro.tail(synth);
-        }
     };
 
     // TODO: Reduce all these dependencies on "that" (i.e. a synth instance).
@@ -21378,24 +21393,11 @@ var fluid = fluid || require("infusion"),
     });
 
 
-    // TODO: At the moment, flock.synth.group attempts to act as a proxy for
-    // a collection of synths, allowing users to address it as if it were
-    // a single synth. However, it does nothing to ensure that its contained synths
-    // are managed properly with the environment. There's currently no way to ensure that
-    // when a group is removed from the environment, all its synths are too.
-    // This should be completely refactored in favour of an approach using dynamic components.
     fluid.defaults("flock.synth.group", {
-        gradeNames: ["flock.synth"],
-
-        members: {
-            out: null,
-        },
+        gradeNames: ["flock.nodeList", "flock.node"],
 
         methodEventMap: {
-            "onSet": "set",
-            "onGen": "gen",
-            "onPlay": "play",
-            "onPause": "pause"
+            "onSet": "set"
         },
 
         invokers: {
@@ -21432,10 +21434,8 @@ var fluid = fluid || require("infusion"),
                     ]
                 },
 
-                // Brute force and unreliable way of ensuring that
-                // children of a group don't get directly added to the environment.
                 {
-                    funcName: "flock.synth.pause",
+                    funcName: "flock.node.removeFromEnvironment",
                     args: ["{arguments}.0", "{that}.enviro"]
                 }
             ],
@@ -23992,14 +23992,14 @@ var fluid = fluid || require("infusion"),
 
 }());
 ;/*
-* Flocking WebAudio Strategy
-* http://github.com/colinbdclark/flocking
-*
-* Copyright 2013-2014, Colin Clark
-* Dual licensed under the MIT and GPL Version 2 licenses.
-*/
+ * Flocking Web Audio Core
+ * http://github.com/colinbdclark/flocking
+ *
+ * Copyright 2013-2014, Colin Clark
+ * Dual licensed under the MIT and GPL Version 2 licenses.
+ */
 
-/*global require, MediaStreamTrack, jQuery*/
+/*global require*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,
@@ -24109,60 +24109,6 @@ var fluid = fluid || require("infusion"),
     };
 
 
-    fluid.defaults("flock.webAudio.audioSystem", {
-        gradeNames: ["flock.audioSystem"],
-
-        channelRange: {
-            min: "@expand:flock.webAudio.audioSystem.calcMinChannels()",
-            max: "@expand:flock.webAudio.audioSystem.calcMaxChannels({that}.context.destination)"
-        },
-
-        members: {
-            context: "@expand:flock.webAudio.audioSystem.createContext()"
-        },
-
-        model: {
-            rates: {
-                audio: "{that}.context.sampleRate"
-            }
-        },
-
-        listeners: {
-            onCreate: [
-                "flock.webAudio.audioSystem.configureDestination({that}.context, {that}.model.chans)"
-            ]
-        }
-    });
-
-    flock.webAudio.audioSystem.createContext = function () {
-        var system = flock.webAudio.audioSystem;
-        if (!system.audioContextSingleton) {
-            system.audioContextSingleton = new flock.shim.AudioContext();
-        }
-
-        return system.audioContextSingleton;
-    };
-
-    flock.webAudio.audioSystem.calcMaxChannels = function (destination) {
-        return flock.platform.browser.safari ? destination.channelCount :
-            destination.maxChannelCount;
-    };
-
-    flock.webAudio.audioSystem.calcMinChannels = function () {
-        return flock.platform.browser.safari ? 2 : 1;
-    };
-
-    flock.webAudio.audioSystem.configureDestination = function (context, chans) {
-        // Safari will throw an InvalidStateError DOM Exception 11 when
-        // attempting to set channelCount on the audioContext's destination.
-        // TODO: Remove this conditional when Safari adds support for multiple channels.
-        if (!flock.platform.browser.safari) {
-            context.destination.channelCount = chans;
-            context.destination.channelCountMode = "explicit";
-            context.destination.channelInterpretation = "discrete";
-        }
-    };
-
     fluid.defaults("flock.webAudio.node", {
         gradeNames: ["fluid.modelComponent"],
 
@@ -24220,6 +24166,264 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+    fluid.defaults("flock.webAudio.outputFader", {
+        gradeNames: ["fluid.component"],
+
+        fadeDuration: 0.5,
+
+        gainSpec: {
+            node: "Gain",
+
+            params: {
+                gain: 0.0
+            },
+
+            properties: {
+                channelCount: "{flock.enviro}.audioSystem.model.chans",
+                channelCountMode: "explicit"
+            }
+        },
+
+        members: {
+            gainNode: "@expand:flock.webAudio.outputFader.createGainNode({flock.enviro}.audioSystem.nativeNodeManager, {that}.options.gainSpec)",
+            context: "{flock.enviro}.audioSystem.context"
+        },
+
+        invokers: {
+            fadeIn: {
+                funcName: "flock.webAudio.outputFader.fadeIn",
+                args: [
+                    "{that}.context",
+                    "{that}.gainNode",
+                    "{arguments}.0", // Target amplitude
+                    "{that}.options.fadeDuration"
+                ]
+            },
+
+            fadeTo: {
+                funcName: "flock.webAudio.outputFader.fadeTo",
+                args: [
+                    "{that}.context",
+                    "{that}.gainNode",
+                    "{arguments}.0", // Target amplitude
+                    "{that}.options.fadeDuration"
+                ]
+            }
+        }
+    });
+
+    flock.webAudio.outputFader.createGainNode = function (nativeNodeManager, gainSpec) {
+        var gainNode = nativeNodeManager.createOutputNode(gainSpec);
+        return gainNode;
+    };
+
+    flock.webAudio.outputFader.fade = function (context, gainNode, start, end, duration) {
+        duration = duration || 0.0;
+
+        var now = context.currentTime,
+            endTime = now + duration;
+
+        // Set the current value now, then ramp to the target.
+        flock.webAudio.setAudioParamValue(context, gainNode.gain, start);
+        gainNode.gain.linearRampToValueAtTime(end, endTime);
+    };
+
+    flock.webAudio.outputFader.fadeTo = function (context, gainNode, end, duration) {
+        flock.webAudio.outputFader.fade(context, gainNode, gainNode.gain.value, end, duration);
+    };
+
+    flock.webAudio.outputFader.fadeIn = function (context, gainNode, end, duration) {
+        flock.webAudio.outputFader.fade(context, gainNode, 0, end, duration);
+    };
+
+}());
+;/*
+* Flocking Web Audio System
+* http://github.com/colinbdclark/flocking
+*
+* Copyright 2013-2015, Colin Clark
+* Dual licensed under the MIT and GPL Version 2 licenses.
+*/
+
+/*global require*/
+/*jshint white: false, newcap: true, regexp: true, browser: true,
+    forin: false, nomen: true, bitwise: false, maxerr: 100,
+    indent: 4, plusplus: false, curly: true, eqeqeq: true,
+    freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
+    unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
+    funcscope: false*/
+
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
+
+(function () {
+    "use strict";
+
+    fluid.defaults("flock.webAudio.audioSystem", {
+        gradeNames: ["flock.audioSystem"],
+
+        channelRange: {
+            min: "@expand:flock.webAudio.audioSystem.calcMinChannels()",
+            max: "@expand:flock.webAudio.audioSystem.calcMaxChannels({that}.context.destination)"
+        },
+
+        members: {
+            context: "@expand:flock.webAudio.audioSystem.createContext()"
+        },
+
+        model: {
+            rates: {
+                audio: "{that}.context.sampleRate"
+            }
+        },
+
+        components: {
+            outputManager: {
+                type: "flock.webAudio.outputManager"
+            },
+
+            nativeNodeManager: {
+                type: "flock.webAudio.nativeNodeManager"
+            },
+
+            inputDeviceManager: {
+                type: "flock.webAudio.inputDeviceManager"
+            },
+
+            bufferWriter: {
+                type: "flock.webAudio.bufferWriter"
+            }
+        },
+
+        listeners: {
+            onCreate: [
+                "flock.webAudio.audioSystem.configureDestination({that}.context, {that}.model.chans)"
+            ]
+        }
+    });
+
+    flock.webAudio.audioSystem.createContext = function () {
+        var system = flock.webAudio.audioSystem;
+        if (!system.audioContextSingleton) {
+            system.audioContextSingleton = new flock.shim.AudioContext();
+        }
+
+        return system.audioContextSingleton;
+    };
+
+    flock.webAudio.audioSystem.calcMaxChannels = function (destination) {
+        return flock.platform.browser.safari ? destination.channelCount :
+            destination.maxChannelCount;
+    };
+
+    flock.webAudio.audioSystem.calcMinChannels = function () {
+        return flock.platform.browser.safari ? 2 : 1;
+    };
+
+    flock.webAudio.audioSystem.configureDestination = function (context, chans) {
+        // Safari will throw an InvalidStateError DOM Exception 11 when
+        // attempting to set channelCount on the audioContext's destination.
+        // TODO: Remove this conditional when Safari adds support for multiple channels.
+        if (!flock.platform.browser.safari) {
+            context.destination.channelCount = chans;
+            context.destination.channelCountMode = "explicit";
+            context.destination.channelInterpretation = "discrete";
+        }
+    };
+
+}());
+;/*
+ * Flocking Web Audio Buffer Writer
+ * http://github.com/colinbdclark/flocking
+ *
+ * Copyright 2013-2014, Colin Clark
+ * Dual licensed under the MIT and GPL Version 2 licenses.
+ */
+
+/*global require*/
+/*jshint white: false, newcap: true, regexp: true, browser: true,
+    forin: false, nomen: true, bitwise: false, maxerr: 100,
+    indent: 4, plusplus: false, curly: true, eqeqeq: true,
+    freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
+    unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
+    funcscope: false*/
+
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
+
+(function () {
+    "use strict";
+
+    fluid.defaults("flock.webAudio.bufferWriter", {
+        gradeNames: "fluid.component",
+
+        invokers: {
+            save: "flock.webAudio.bufferWriter.saveBuffer({arguments}.0)"
+        }
+    });
+
+    // TODO: This should move into its own component.
+    flock.webAudio.bufferWriter.saveBuffer = function (o) {
+        try {
+            var encoded = flock.audio.encode.wav(o.buffer, o.format),
+                blob = new Blob([encoded], {
+                    type: "audio/wav"
+                });
+
+            flock.webAudio.bufferWriter.download(o.path, blob);
+
+            if (o.success) {
+                o.success(encoded);
+            }
+
+            return encoded;
+        } catch (e) {
+            if (!o.error) {
+                flock.fail("There was an error while trying to download the buffer named " +
+                    o.buffer.id + ". Error: " + e);
+            } else {
+                o.error(e);
+            }
+        }
+    };
+
+    flock.webAudio.bufferWriter.download = function (fileName, blob) {
+        var dataURL = flock.shim.URL.createObjectURL(blob),
+            a = window.document.createElement("a"),
+            click = document.createEvent("Event");
+
+        // TODO: This approach currently only works in Chrome.
+        // Although Firefox apparently supports it, this method of
+        // programmatically clicking the link doesn't seem to have an
+        // effect in it.
+        // http://caniuse.com/#feat=download
+        a.href = dataURL;
+        a.download = fileName;
+        click.initEvent("click", true, true);
+        a.dispatchEvent(click);
+    };
+}());
+;/*
+ * Flocking Web Audio Input Manager
+ * http://github.com/colinbdclark/flocking
+ *
+ * Copyright 2013-2014, Colin Clark
+ * Dual licensed under the MIT and GPL Version 2 licenses.
+ */
+
+/*global require, MediaStreamTrack, jQuery*/
+/*jshint white: false, newcap: true, regexp: true, browser: true,
+    forin: false, nomen: true, bitwise: false, maxerr: 100,
+    indent: 4, plusplus: false, curly: true, eqeqeq: true,
+    freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
+    unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
+    funcscope: false*/
+
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
+
+(function () {
+    "use strict";
 
     // TODO: Remove this when Chrome implements navigator.getMediaDevices().
     fluid.registerNamespace("flock.webAudio.chrome");
@@ -24259,475 +24463,6 @@ var fluid = fluid || require("infusion"),
     };
 
     jQuery.extend(flock.shim, webAudioShims);
-
-
-    /**
-     * Web Audio API Audio Strategy
-     */
-    // TODO: Normalize name with flock.webAudio.audioSystem.
-    fluid.defaults("flock.audioStrategy.web", {
-        gradeNames: ["flock.audioStrategy"],
-
-        model: {
-            isGenerating: false,
-            shouldInitIOS: flock.platform.isIOS
-        },
-
-        invokers: {
-            start: "{that}.events.onStart.fire()",
-            stop: "{that}.events.onStop.fire()",
-            saveBuffer: "flock.audioStrategy.web.saveBuffer({arguments}.0)"
-        },
-
-        components: {
-            nativeNodeManager: {
-                type: "flock.webAudio.nativeNodeManager"
-            },
-
-            inputDeviceManager: {
-                type: "flock.webAudio.inputDeviceManager"
-            }
-        },
-
-        listeners: {
-            onStart: [
-                {
-                    func: "{that}.applier.change",
-                    args: ["isGenerating", true]
-                }
-            ],
-
-            onStop: [
-                {
-                    func: "{that}.applier.change",
-                    args: ["isGenerating", false]
-                }
-            ]
-        }
-    });
-
-
-    flock.audioStrategy.web.bindWriter = function (jsNode, nodeEvaluator, nativeNodeManager, model, audioSettings) {
-        jsNode.model = model;
-        jsNode.evaluator = nodeEvaluator;
-        jsNode.audioSettings = audioSettings;
-        jsNode.inputNodes = nativeNodeManager.inputNodes;
-        jsNode.onaudioprocess = flock.audioStrategy.web.writeSamples;
-    };
-
-    /**
-     * Writes samples to the audio strategy's ScriptProcessorNode.
-     *
-     * This function must be bound as a listener to the node's
-     * onaudioprocess event. It expects to be called in the context
-     * of a "this" instance containing the following properties:
-     *  - model: the strategy's model object
-     *  - inputNodes: a list of native input nodes to be read into input buses
-     *  - nodeEvaluator: a nodeEvaluator instance
-     *  - audioSettings: the enviornment's audio settings
-     */
-    flock.audioStrategy.web.writeSamples = function (e) {
-        var numInputNodes = this.inputNodes.length,
-            evaluator = this.evaluator,
-            nodes = evaluator.nodes,
-            s = this.audioSettings,
-            inBufs = e.inputBuffer,
-            outBufs = e.outputBuffer,
-            numBlocks = s.numBlocks,
-            buses = evaluator.buses,
-            numBuses = s.numBuses,
-            blockSize = s.blockSize,
-            chans = s.chans,
-            inChans = inBufs.numberOfChannels,
-            chan,
-            i,
-            samp;
-
-        // If there are no nodes providing samples, write out silence.
-        if (evaluator.nodes.length < 1) {
-            for (chan = 0; chan < chans; chan++) {
-                flock.generate.silence(outBufs.getChannelData(chan));
-            }
-            return;
-        }
-
-        // TODO: Make a formal distinction between input buses,
-        // output buses, and interconnect buses in the environment!
-        for (i = 0; i < numBlocks; i++) {
-            var offset = i * blockSize;
-
-            flock.nodeEvaluator.clearBuses(numBuses, blockSize, buses);
-
-            // Read this ScriptProcessorNode's input buffers
-            // into the environment.
-            if (numInputNodes > 0) {
-                for (chan = 0; chan < inChans; chan++) {
-                    var inBuf = inBufs.getChannelData(chan),
-                        inBusNumber = chans + chan, // Input buses are located after output buses.
-                        targetBuf = buses[inBusNumber];
-
-                    for (samp = 0; samp < blockSize; samp++) {
-                        targetBuf[samp] = inBuf[samp + offset];
-                    }
-                }
-            }
-
-            flock.nodeEvaluator.gen(nodes);
-
-            // Output the environment's signal
-            // to this ScriptProcessorNode's output channels.
-            for (chan = 0; chan < chans; chan++) {
-                var sourceBuf = buses[chan],
-                    outBuf = outBufs.getChannelData(chan);
-
-                // And output each sample.
-                for (samp = 0; samp < blockSize; samp++) {
-                    outBuf[samp + offset] = sourceBuf[samp];
-                }
-            }
-        }
-    };
-
-    flock.audioStrategy.web.iOSStart = function (model, applier, ctx, jsNode) {
-        // Work around a bug in iOS Safari where it now requires a noteOn()
-        // message to be invoked before sound will work at all. Just connecting a
-        // ScriptProcessorNode inside a user event handler isn't sufficient.
-        if (model.shouldInitIOS) {
-            var s = ctx.createBufferSource();
-            s.connect(jsNode);
-            s.start(0);
-            s.stop(0);
-            s.disconnect(0);
-            applier.change("shouldInitIOS", false);
-        }
-    };
-
-    flock.audioStrategy.web.saveBuffer = function (o) {
-        try {
-            var encoded = flock.audio.encode.wav(o.buffer, o.format),
-                blob = new Blob([encoded], {
-                    type: "audio/wav"
-                });
-
-            flock.audioStrategy.web.download(o.path, blob);
-
-            if (o.success) {
-                o.success(encoded);
-            }
-
-            return encoded;
-        } catch (e) {
-            if (!o.error) {
-                flock.fail("There was an error while trying to download the buffer named " +
-                    o.buffer.id + ". Error: " + e);
-            } else {
-                o.error(e);
-            }
-        }
-    };
-
-    flock.audioStrategy.web.download = function (fileName, blob) {
-        var dataURL = flock.shim.URL.createObjectURL(blob),
-            a = window.document.createElement("a"),
-            click = document.createEvent("Event");
-
-        // TODO: This approach currently only works in Chrome.
-        // Although Firefox apparently supports it, this method of
-        // programmatically clicking the link doesn't seem to have an
-        // effect in it.
-        // http://caniuse.com/#feat=download
-        a.href = dataURL;
-        a.download = fileName;
-        click.initEvent("click", true, true);
-        a.dispatchEvent(click);
-    };
-
-
-    /**
-     * Manages a collection of input nodes and an output node,
-     * with a JS node in between.
-     *
-     * Note: this component is slated for removal when Web Audio
-     * "islands" are implemented.
-     */
-    fluid.defaults("flock.webAudio.nativeNodeManager", {
-        gradeNames: ["fluid.component"],
-
-        members: {
-            outputNode: undefined,
-            inputNodes: []
-        },
-
-        components: {
-            scriptProcessor: {
-                createOnEvent: "onCreateScriptProcessor",
-                type: "flock.webAudio.scriptProcessor",
-                options: {
-                    nodeSpec: {
-                        inputs: {
-                            "0": "{inputMerger}"
-                        }
-                    },
-
-                    listeners: {
-                        onCreate: [
-                            // TODO: Where should this really go?
-                            {
-                                funcName: "flock.audioStrategy.web.bindWriter",
-                                args: [
-                                    "{that}.node",
-                                    "{nodeEvaluator}",
-                                    "{nativeNodeManager}",
-                                    "{audioStrategy}.model",
-                                    "{audioSystem}.model"
-                                ]
-                            }
-                        ]
-                    }
-                }
-            },
-
-            merger: {
-                type: "flock.webAudio.channelMerger"
-            }
-        },
-
-        invokers: {
-            connect: "{that}.events.onConnect.fire",
-
-            disconnect: "{that}.events.onDisconnect.fire",
-
-            createNode: {
-                funcName: "flock.webAudio.createNode",
-                args: [
-                    "{audioSystem}.context",
-                    "{arguments}.0" // The nodeSpec
-                ]
-            },
-
-            createInputNode: {
-                funcName: "flock.webAudio.nativeNodeManager.createInputNode",
-                args: [
-                    "{that}",
-                    "{arguments}.0", // The nodeSpec.
-                    "{arguments}.1", // {optional} The input bus number to insert it at.
-                ]
-            },
-
-            createMediaStreamInput: {
-                funcName: "flock.webAudio.nativeNodeManager.createInputNode",
-                dynamic: true,
-                args: [
-                    "{that}",
-                    {
-                        node: "MediaStreamSource",
-                        args: ["{arguments}.0"] // The MediaStream
-                    },
-                    "{arguments}.1"  // {optional} The input bus number to insert it at.
-                ]
-            },
-
-            createMediaElementInput: {
-                funcName: "flock.webAudio.nativeNodeManager.createInputNode",
-                dynamic: true,
-                args: [
-                    "{that}",
-                    {
-                        node: "MediaElementSource",
-                        args: ["{arguments}.0"] // The HTMLMediaElement
-                    },
-                    "{arguments}.1"  // {optional} The input bus number to insert it at.
-                ]
-            },
-
-            createOutputNode: {
-                funcName: "flock.webAudio.nativeNodeManager.createOutputNode",
-                args: [
-                    "{that}",
-                    "{arguments}.0" // The nodeSpec
-                ]
-            },
-
-            insertInput: {
-                funcName: "flock.webAudio.nativeNodeManager.insertInput",
-                args: [
-                    "{that}",
-                    "{audioSystem}.model",
-                    "{enviro}",
-                    "{arguments}.0", // The node to insert.
-                    "{arguments}.1"  // {optional} The bus number to insert it at.
-                ]
-            },
-
-            removeInput: {
-                funcName: "flock.webAudio.nativeNodeManager.removeInput",
-                args: ["{arguments}.0", "{that}.inputNodes"]
-            },
-
-            removeAllInputs: {
-                funcName: "flock.webAudio.nativeNodeManager.removeAllInputs",
-                args: "{that}.inputNodes"
-            },
-
-            insertOutput: {
-                funcName: "flock.webAudio.nativeNodeManager.insertOutput",
-                args: ["{that}", "{arguments}.0"]
-            },
-
-            removeOutput: {
-                funcName: "flock.webAudio.nativeNodeManager.removeOutput",
-                dynamic: true,
-                args: ["{scriptProcessor}.node"]
-            }
-        },
-
-        events: {
-            onCreateScriptProcessor: null, // TODO: Naming!
-            onStart: "{audioStrategy}.events.onStart",
-            onConnect: null,
-            onStop: "{audioStrategy}.events.onStop",
-            onDisconnect: null,
-            onReset: "{audioStrategy}.events.onReset"
-        },
-
-        listeners: {
-            onCreate: [
-                "{that}.events.onCreateScriptProcessor.fire()",
-                {
-                    func: "{that}.insertOutput",
-                    args: "{scriptProcessor}.node"
-                }
-            ],
-
-            onStart: [
-                "{nativeNodeManager}.connect()",
-
-                {
-                    // TODO: Replace this with some progressive enhancement action.
-                    // TODO: Where should this really go?
-                    funcName: "flock.audioStrategy.web.iOSStart",
-                    args: [
-                        "{audioStrategy}.model",
-                        "{audioStrategy}.applier",
-                        "{audioSystem}.context",
-                        "{scriptProcessor}.node"
-                    ]
-                }
-            ],
-
-            onConnect: [
-                {
-                    "this": "{merger}.node",
-                    method: "connect",
-                    args: ["{scriptProcessor}.node"]
-                },
-                {
-                    "this": "{that}.outputNode",
-                    method: "connect",
-                    args: ["{audioSystem}.context.destination"]
-                },
-                {
-                    funcName: "flock.webAudio.nativeNodeManager.connectOutput",
-                    args: ["{scriptProcessor}.node", "{that}.outputNode"]
-                }
-            ],
-
-            onStop: [
-                "{nativeNodeManager}.disconnect()"
-            ],
-
-            onDisconnect: [
-                {
-                    "this": "{merger}.node",
-                    method: "disconnect",
-                    args: [0]
-                },
-                {
-                    "this": "{scriptProcessor}.node",
-                    method: "disconnect",
-                    args: [0]
-                },
-                {
-                    "this": "{that}.outputNode",
-                    method: "disconnect",
-                    args: [0]
-                }
-            ],
-
-            onReset: [
-                "{that}.removeAllInputs",
-                "{that}.events.onCreateScriptProcessor.fire()"
-            ]
-        }
-    });
-
-    flock.webAudio.nativeNodeManager.createInputNode = function (that, nodeSpec, busNum) {
-        var node = that.createNode(nodeSpec);
-        return that.insertInput(node, busNum);
-    };
-
-    flock.webAudio.nativeNodeManager.createOutputNode = function (that, nodeSpec) {
-        var node = that.createNode(nodeSpec);
-        return that.insertOutput(node);
-    };
-
-    flock.webAudio.nativeNodeManager.connectOutput = function (jsNode, outputNode) {
-        if (jsNode !== outputNode) {
-            jsNode.connect(outputNode);
-        }
-    };
-
-    flock.webAudio.nativeNodeManager.removeAllInputs = function (inputNodes) {
-        for (var i = 0; i < inputNodes.length; i++) {
-            var node = inputNodes[i];
-            node.disconnect(0);
-        }
-        inputNodes.length = 0;
-    };
-
-    flock.webAudio.nativeNodeManager.insertInput = function (that, audioSettings, enviro, node, busNum) {
-        var maxInputs = audioSettings.numInputBuses;
-        if (that.inputNodes.length >= maxInputs) {
-            flock.fail("There are too many input nodes connected to Flocking. " +
-                "The maximum number of input buses is currently set to " + maxInputs + ". " +
-                "Either remove an existing input node or increase Flockings numInputBuses option.");
-
-            return;
-        }
-
-        busNum = busNum === undefined ? enviro.busManager.acquireNextBus("input") : busNum;
-        var idx = busNum - audioSettings.chans;
-
-        that.inputNodes.push(node);
-        node.connect(that.merger.node, 0, idx);
-
-        return busNum;
-    };
-
-    flock.webAudio.nativeNodeManager.removeInput = function (node, inputNodes) {
-        var idx = inputNodes.indexOf(node);
-        if (idx > -1) {
-            inputNodes.splice(idx, 1);
-        }
-
-        node.disconnect(0);
-    };
-
-    flock.webAudio.nativeNodeManager.insertOutput = function (that, node) {
-        if (that.outputNode) {
-            that.outputNode.disconnect(0);
-        }
-
-        that.outputNode = node;
-
-        return node;
-    };
-
-    flock.webAudio.nativeNodeManager.removeOutput = function (jsNode) {
-        // Replace the current output node with the jsNode.
-        flock.webAudio.nativeNodeManager.insertOutput(jsNode);
-    };
-
 
     /**
      * Manages audio input devices using the Web Audio API.
@@ -24867,81 +24602,9 @@ var fluid = fluid || require("infusion"),
         return busNum;
     };
 
-
-    fluid.defaults("flock.webAudio.outputFader", {
-        gradeNames: ["fluid.component"],
-
-        fadeDuration: 0.5,
-
-        gainSpec: {
-            node: "Gain",
-
-            params: {
-                gain: 0.0
-            },
-
-            properties: {
-                channelCount: "{audioSystem}.model.chans",
-                channelCountMode: "explicit"
-            }
-        },
-
-        members: {
-            gainNode: "@expand:flock.webAudio.outputFader.createGainNode({enviro}, {that}.options.gainSpec)",
-            context: "{audioSystem}.context"
-        },
-
-        invokers: {
-            fadeIn: {
-                funcName: "flock.webAudio.outputFader.fadeIn",
-                args: [
-                    "{that}.context",
-                    "{that}.gainNode",
-                    "{arguments}.0", // Target amplitude
-                    "{that}.options.fadeDuration"
-                ]
-            },
-
-            fadeTo: {
-                funcName: "flock.webAudio.outputFader.fadeTo",
-                args: [
-                    "{that}.context",
-                    "{that}.gainNode",
-                    "{arguments}.0", // Target amplitude
-                    "{that}.options.fadeDuration"
-                ]
-            }
-        }
-    });
-
-    flock.webAudio.outputFader.createGainNode = function (enviro, gainSpec) {
-        var gainNode = enviro.audioStrategy.nativeNodeManager.createOutputNode(gainSpec);
-
-        return gainNode;
-    };
-
-    flock.webAudio.outputFader.fade = function (context, gainNode, start, end, duration) {
-        duration = duration || 0.0;
-
-        var now = context.currentTime,
-            endTime = now + duration;
-
-        // Set the current value now, then ramp to the target.
-        flock.webAudio.setAudioParamValue(context, gainNode.gain, start);
-        gainNode.gain.linearRampToValueAtTime(end, endTime);
-    };
-
-    flock.webAudio.outputFader.fadeTo = function (context, gainNode, end, duration) {
-        flock.webAudio.outputFader.fade(context, gainNode, gainNode.gain.value, end, duration);
-    };
-
-    flock.webAudio.outputFader.fadeIn = function (context, gainNode, end, duration) {
-        flock.webAudio.outputFader.fade(context, gainNode, 0, end, duration);
-    };
-
 }());
 ;/*
- * Flocking MIDI
+ * Flocking Web MIDI
  * http://github.com/colinbdclark/flocking
  *
  * Copyright 2014, Colin Clark
@@ -25728,6 +25391,467 @@ var fluid = fluid || require("infusion"),
 
 }());
 ;/*
+ * Flocking Web Audio Native Node Manager
+ * http://github.com/colinbdclark/flocking
+ *
+ * Copyright 2013-2015, Colin Clark
+ * Dual licensed under the MIT and GPL Version 2 licenses.
+ */
+
+/*global require*/
+/*jshint white: false, newcap: true, regexp: true, browser: true,
+    forin: false, nomen: true, bitwise: false, maxerr: 100,
+    indent: 4, plusplus: false, curly: true, eqeqeq: true,
+    freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
+    unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
+    funcscope: false*/
+
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
+
+(function () {
+    "use strict";
+
+    /**
+     * Manages a collection of input nodes and an output node,
+     * with a JS node in between.
+     *
+     * Note: this component is slated for removal when Web Audio
+     * "islands" are implemented.
+     */
+    fluid.defaults("flock.webAudio.nativeNodeManager", {
+        gradeNames: ["fluid.component"],
+
+        members: {
+            outputNode: undefined,
+            inputNodes: []
+        },
+
+        components: {
+            scriptProcessor: {
+                createOnEvent: "onCreateScriptProcessor",
+                type: "flock.webAudio.scriptProcessor",
+                options: {
+                    nodeSpec: {
+                        inputs: {
+                            "0": "{inputMerger}"
+                        }
+                    }
+                }
+            },
+
+            merger: {
+                type: "flock.webAudio.channelMerger"
+            }
+        },
+
+        invokers: {
+            connect: "{that}.events.onConnect.fire",
+
+            disconnect: "{that}.events.onDisconnect.fire",
+
+            createNode: {
+                funcName: "flock.webAudio.createNode",
+                args: [
+                    "{audioSystem}.context",
+                    "{arguments}.0" // The nodeSpec
+                ]
+            },
+
+            createInputNode: {
+                funcName: "flock.webAudio.nativeNodeManager.createInputNode",
+                args: [
+                    "{that}",
+                    "{arguments}.0", // The nodeSpec.
+                    "{arguments}.1", // {optional} The input bus number to insert it at.
+                ]
+            },
+
+            createMediaStreamInput: {
+                funcName: "flock.webAudio.nativeNodeManager.createInputNode",
+                args: [
+                    "{that}",
+                    {
+                        node: "MediaStreamSource",
+                        args: ["{arguments}.0"] // The MediaStream
+                    },
+                    "{arguments}.1"  // {optional} The input bus number to insert it at.
+                ]
+            },
+
+            createMediaElementInput: {
+                funcName: "flock.webAudio.nativeNodeManager.createInputNode",
+                args: [
+                    "{that}",
+                    {
+                        node: "MediaElementSource",
+                        args: ["{arguments}.0"] // The HTMLMediaElement
+                    },
+                    "{arguments}.1"  // {optional} The input bus number to insert it at.
+                ]
+            },
+
+            createOutputNode: {
+                funcName: "flock.webAudio.nativeNodeManager.createOutputNode",
+                args: [
+                    "{that}",
+                    "{arguments}.0" // The nodeSpec
+                ]
+            },
+
+            insertInput: {
+                funcName: "flock.webAudio.nativeNodeManager.insertInput",
+                args: [
+                    "{that}",
+                    "{audioSystem}.model",
+                    "{enviro}",
+                    "{arguments}.0", // The node to insert.
+                    "{arguments}.1"  // {optional} The bus number to insert it at.
+                ]
+            },
+
+            removeInput: {
+                funcName: "flock.webAudio.nativeNodeManager.removeInput",
+                args: ["{arguments}.0", "{that}.inputNodes"]
+            },
+
+            removeAllInputs: {
+                funcName: "flock.webAudio.nativeNodeManager.removeAllInputs",
+                args: "{that}.inputNodes"
+            },
+
+            insertOutput: {
+                funcName: "flock.webAudio.nativeNodeManager.insertOutput",
+                args: ["{that}", "{arguments}.0"]
+            },
+
+            removeOutput: {
+                funcName: "flock.webAudio.nativeNodeManager.removeOutput",
+                args: ["{scriptProcessor}.node"]
+            }
+        },
+
+        events: {
+            // TODO: Normalize these with other components
+            // that reference the same events. Bump them up to {audioSystem}
+            // or use cross-component listener references?
+            onStart: "{enviro}.events.onStart",
+            onStop: "{enviro}.events.onStop",
+            onReset: "{enviro}.events.onReset",
+
+            onCreateScriptProcessor: null,
+            onConnect: null,
+            onDisconnect: null
+        },
+
+        listeners: {
+            onCreate: [
+                "{that}.events.onCreateScriptProcessor.fire()",
+                {
+                    func: "{that}.insertOutput",
+                    args: "{scriptProcessor}.node"
+                }
+            ],
+
+            onStart: [
+                "{that}.connect()"
+            ],
+
+            onConnect: [
+                {
+                    "this": "{merger}.node",
+                    method: "connect",
+                    args: ["{scriptProcessor}.node"]
+                },
+                {
+                    "this": "{that}.outputNode",
+                    method: "connect",
+                    args: ["{audioSystem}.context.destination"]
+                },
+                {
+                    funcName: "flock.webAudio.nativeNodeManager.connectOutput",
+                    args: ["{scriptProcessor}.node", "{that}.outputNode"]
+                }
+            ],
+
+            onStop: [
+                "{that}.disconnect()"
+            ],
+
+            onDisconnect: [
+                {
+                    "this": "{merger}.node",
+                    method: "disconnect",
+                    args: [0]
+                },
+                {
+                    "this": "{scriptProcessor}.node",
+                    method: "disconnect",
+                    args: [0]
+                },
+                {
+                    "this": "{that}.outputNode",
+                    method: "disconnect",
+                    args: [0]
+                }
+            ],
+
+            onReset: [
+                "{that}.removeAllInputs",
+                "{that}.events.onCreateScriptProcessor.fire()"
+            ]
+        }
+    });
+
+    flock.webAudio.nativeNodeManager.createInputNode = function (that, nodeSpec, busNum) {
+        var node = that.createNode(nodeSpec);
+        return that.insertInput(node, busNum);
+    };
+
+    flock.webAudio.nativeNodeManager.createOutputNode = function (that, nodeSpec) {
+        var node = that.createNode(nodeSpec);
+        return that.insertOutput(node);
+    };
+
+    flock.webAudio.nativeNodeManager.connectOutput = function (jsNode, outputNode) {
+        if (jsNode !== outputNode) {
+            jsNode.connect(outputNode);
+        }
+    };
+
+    flock.webAudio.nativeNodeManager.removeAllInputs = function (inputNodes) {
+        for (var i = 0; i < inputNodes.length; i++) {
+            var node = inputNodes[i];
+            node.disconnect(0);
+        }
+        inputNodes.length = 0;
+    };
+
+    flock.webAudio.nativeNodeManager.insertInput = function (that, audioSettings, enviro, node, busNum) {
+        var maxInputs = audioSettings.numInputBuses;
+        if (that.inputNodes.length >= maxInputs) {
+            flock.fail("There are too many input nodes connected to Flocking. " +
+                "The maximum number of input buses is currently set to " + maxInputs + ". " +
+                "Either remove an existing input node or increase Flockings numInputBuses option.");
+
+            return;
+        }
+
+        busNum = busNum === undefined ? enviro.busManager.acquireNextBus("input") : busNum;
+        var idx = busNum - audioSettings.chans;
+
+        that.inputNodes.push(node);
+        node.connect(that.merger.node, 0, idx);
+
+        return busNum;
+    };
+
+    flock.webAudio.nativeNodeManager.removeInput = function (node, inputNodes) {
+        var idx = inputNodes.indexOf(node);
+        if (idx > -1) {
+            inputNodes.splice(idx, 1);
+        }
+
+        node.disconnect(0);
+    };
+
+    flock.webAudio.nativeNodeManager.insertOutput = function (that, node) {
+        if (that.outputNode) {
+            that.outputNode.disconnect(0);
+        }
+
+        that.outputNode = node;
+
+        return node;
+    };
+
+    flock.webAudio.nativeNodeManager.removeOutput = function (jsNode) {
+        // Replace the current output node with the jsNode.
+        flock.webAudio.nativeNodeManager.insertOutput(jsNode);
+    };
+
+}());
+;/*
+ * Flocking Web Audio Output Manager
+ * http://github.com/colinbdclark/flocking
+ *
+ * Copyright 2013-2015, Colin Clark
+ * Dual licensed under the MIT and GPL Version 2 licenses.
+ */
+
+/*global require*/
+/*jshint white: false, newcap: true, regexp: true, browser: true,
+    forin: false, nomen: true, bitwise: false, maxerr: 100,
+    indent: 4, plusplus: false, curly: true, eqeqeq: true,
+    freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
+    unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
+    funcscope: false*/
+
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
+
+(function () {
+    "use strict";
+
+    /**
+     * Web Audio API Output Manager
+     */
+    fluid.defaults("flock.webAudio.outputManager", {
+        gradeNames: ["flock.outputManager"],
+
+        model: {
+            isGenerating: false,
+            shouldInitIOS: flock.platform.isIOS,
+            audioSettings: {}
+        },
+
+        distributeOptions: [
+            {
+                source: "{that}.options.scriptProcessorOptions",
+                target: "{nativeNodeManager > scriptProcessor}.options"
+            }
+        ],
+
+        scriptProcessorOptions: {
+            listeners: {
+                onCreate: [
+                    "{outputManager}.bindAudioProcess()"
+                ]
+            }
+        },
+
+        invokers: {
+            start: "{that}.events.onStart.fire()",
+            stop: "{that}.events.onStop.fire()",
+            bindAudioProcess: {
+                funcName: "flock.webAudio.outputManager.bindAudioProcess",
+                args: ["{nodeEvaluator}", "{nativeNodeManager}", "{that}.model"]
+            }
+        },
+
+        listeners: {
+            onStart: [
+                {
+                    func: "{that}.applier.change",
+                    args: ["isGenerating", true]
+                },
+                {
+                    // TODO: Replace this with some progressive enhancement action.
+                    priority: "last",
+                    funcName: "flock.webAudio.outputManager.iOSStart",
+                    args: [
+                        "{that}", "{audioSystem}.context", "{scriptProcessor}.node"
+                    ]
+                }
+            ],
+
+            onStop: [
+                {
+                    func: "{that}.applier.change",
+                    args: ["isGenerating", false]
+                }
+            ]
+        }
+    });
+
+
+    flock.webAudio.outputManager.bindAudioProcess = function (nodeEvaluator,
+        nativeNodeManager, model) {
+        var jsNode = nativeNodeManager.scriptProcessor.node;
+
+        jsNode.model = model;
+        jsNode.evaluator = nodeEvaluator;
+        jsNode.inputNodes = nativeNodeManager.inputNodes;
+        jsNode.onaudioprocess = flock.webAudio.outputManager.writeSamples;
+    };
+
+    /**
+     * Writes samples to a ScriptProcessorNode's output buffers.
+     *
+     * This function must be bound as a listener to the node's
+     * onaudioprocess event. It expects to be called in the context
+     * of a "this" instance containing the following properties:
+     *  - model: the outputManager's model
+     *  - inputNodes: a list of native input nodes to be read into input buses
+     *  - nodeEvaluator: a nodeEvaluator instance
+     */
+    flock.webAudio.outputManager.writeSamples = function (e) {
+        var numInputNodes = this.inputNodes.length,
+            evaluator = this.evaluator,
+            nodes = evaluator.nodes,
+            s = this.model.audioSettings,
+            inBufs = e.inputBuffer,
+            outBufs = e.outputBuffer,
+            numBlocks = s.numBlocks,
+            buses = evaluator.buses,
+            numBuses = s.numBuses,
+            blockSize = s.blockSize,
+            chans = s.chans,
+            inChans = inBufs.numberOfChannels,
+            chan,
+            i,
+            samp;
+
+        // If there are no nodes providing samples, write out silence.
+        if (evaluator.nodes.length < 1) {
+            for (chan = 0; chan < chans; chan++) {
+                flock.generate.silence(outBufs.getChannelData(chan));
+            }
+            return;
+        }
+
+        // TODO: Make a formal distinction between input buses,
+        // output buses, and interconnect buses in the environment!
+        for (i = 0; i < numBlocks; i++) {
+            var offset = i * blockSize;
+
+            flock.nodeEvaluator.clearBuses(numBuses, blockSize, buses);
+
+            // Read this ScriptProcessorNode's input buffers
+            // into the environment.
+            if (numInputNodes > 0) {
+                for (chan = 0; chan < inChans; chan++) {
+                    var inBuf = inBufs.getChannelData(chan),
+                        inBusNumber = chans + chan, // Input buses are located after output buses.
+                        targetBuf = buses[inBusNumber];
+
+                    for (samp = 0; samp < blockSize; samp++) {
+                        targetBuf[samp] = inBuf[samp + offset];
+                    }
+                }
+            }
+
+            flock.nodeEvaluator.gen(nodes);
+
+            // Output the environment's signal
+            // to this ScriptProcessorNode's output channels.
+            for (chan = 0; chan < chans; chan++) {
+                var sourceBuf = buses[chan],
+                    outBuf = outBufs.getChannelData(chan);
+
+                // And output each sample.
+                for (samp = 0; samp < blockSize; samp++) {
+                    outBuf[samp + offset] = sourceBuf[samp];
+                }
+            }
+        }
+    };
+
+    flock.webAudio.outputManager.iOSStart = function (that, ctx, jsNode) {
+        // Work around a bug in iOS Safari where it now requires a noteOn()
+        // message to be invoked before sound will work at all. Just connecting a
+        // ScriptProcessorNode inside a user event handler isn't sufficient.
+        if (that.model.shouldInitIOS) {
+            var s = ctx.createBufferSource();
+            s.connect(jsNode);
+            s.start(0);
+            s.stop(0);
+            s.disconnect(0);
+            that.applier.change("shouldInitIOS", false);
+        }
+    };
+}());
+;/*
  * Flocking Core Unit Generators
  * http://github.com/colinbdclark/flocking
  *
@@ -26471,7 +26595,7 @@ var fluid = fluid || require("infusion"),
 
         that.init = function () {
             // TODO: Direct reference to the shared environment.
-            var busNum = flock.environment.audioStrategy.inputDeviceManager.openAudioDevice(options);
+            var busNum = flock.environment.audioSystem.inputDeviceManager.openAudioDevice(options);
             that.bus = that.options.buses[busNum];
             that.onInputChanged();
         };
@@ -32964,10 +33088,10 @@ var fluid = fluid || require("infusion"),
         };
 
         that.init = function () {
-            var enviro = flock.environment,
+            var nativeNodeManager = flock.environment.audioSystem.nativeNodeManager,
                 mediaEl = $(that.options.element),
                 // TODO: Direct reference to the shared environment.
-                busNum = enviro.audioStrategy.nativeNodeManager.createMediaElementInput(mediaEl[0]);
+                busNum = nativeNodeManager.createMediaElementInput(mediaEl[0]);
 
             that.bus = that.options.buses[busNum];
             that.onInputChanged();

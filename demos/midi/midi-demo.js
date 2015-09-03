@@ -6,10 +6,10 @@
     flock.init();
 
     fluid.defaults("flock.midiDemo", {
-        gradeNames: ["fluid.viewComponent"],
+        gradeNames: "fluid.viewComponent",
 
         components: {
-            environment: "{environment}",
+            enviro: "{flock.enviro}",
 
             midiConnector: {
                 type: "flock.ui.midiConnector",
@@ -37,7 +37,7 @@
 
         listeners: {
             onCreate: [
-                "{environment}.start()"
+                "{enviro}.start()"
             ]
         }
     });
@@ -67,7 +67,7 @@
         return that;
     };
 
-    
+
     fluid.defaults("flock.midiDemo.synth", {
         gradeNames: ["flock.synth"],
 
