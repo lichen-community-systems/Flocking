@@ -25705,31 +25705,29 @@ var fluid = fluid || require("infusion"),
             audioSettings: {}
         },
 
-        distributeOptions: [
-            {
-                source: "{that}.options.scriptProcessorOptions",
-                target: "{nativeNodeManager > scriptProcessor}.options"
-            }
-        ],
-
-        scriptProcessorOptions: {
-            listeners: {
-                onCreate: [
-                    "{outputManager}.bindAudioProcess()"
-                ]
-            }
-        },
-
         invokers: {
             start: "{that}.events.onStart.fire()",
             stop: "{that}.events.onStop.fire()",
             bindAudioProcess: {
                 funcName: "flock.webAudio.outputManager.bindAudioProcess",
                 args: ["{nodeEvaluator}", "{nativeNodeManager}", "{that}.model"]
+            },
+
+            unbindAudioProcess: {
+                funcName: "flock.webAudio.outputManager.unbindAudioProcess",
+                args: ["{nativeNodeManager}"]
             }
         },
 
         listeners: {
+            "{nativeNodeManager}.events.onConnect": [
+                "{that}.bindAudioProcess()"
+            ],
+
+            "{nativeNodeManager}.events.onDisconnect": [
+                "{that}.unbindAudioProcess()"
+            ],
+
             onStart: [
                 {
                     func: "{that}.applier.change",
@@ -25763,6 +25761,10 @@ var fluid = fluid || require("infusion"),
         jsNode.evaluator = nodeEvaluator;
         jsNode.inputNodes = nativeNodeManager.inputNodes;
         jsNode.onaudioprocess = flock.webAudio.outputManager.writeSamples;
+    };
+
+    flock.webAudio.outputManager.unbindAudioProcess = function (nativeNodeManager) {
+        nativeNodeManager.scriptProcessor.node.onaudioprocess = undefined;
     };
 
     /**
