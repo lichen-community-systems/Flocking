@@ -10252,11 +10252,10 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.nodeList.registerNode = function (node, namedNodes) {
-        if (!node.nickName) {
-            return;
+        var name = node.name || node.id;
+        if (name) {
+            namedNodes[name] = node;
         }
-
-        namedNodes[node.nickName] = node;
     };
 
     flock.nodeList.before = function (refNode, node, nodes, insertFn) {
@@ -10287,7 +10286,10 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.nodeList.unregisterNode = function (node, namedNodes) {
-        delete namedNodes[node.nickName];
+        var name = node.name || node.id;
+        if (name) {
+            delete namedNodes[name];
+        }
     };
 
     flock.nodeList.replace = function (newNode, oldNode, nodes, notFoundFn, onRemove, onInsert) {
@@ -10781,6 +10783,9 @@ var fluid = fluid || require("infusion"),
                 args: ["{that}", "{arguments}.0", "{that}.options", "{that}.enviro"]
             },
 
+            /**
+             * Removes the node from its environment's list of active nodes.
+             */
             removeFromEnvironment: {
                 funcName: "flock.node.removeFromEnvironment",
                 args: ["{that}", "{arguments}.0"]
@@ -10788,10 +10793,12 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    flock.node.addToEnvironment = function (node, position, options, enviro) {
+    flock.node.addToEnvironment = function (node, position, enviro) {
         if (position === undefined) {
-            position = options.addToEnvironment;
+            position = node.options.addToEnvironment;
         }
+
+        enviro = enviro || node.enviro;
 
         // Add this node to the tail of the synthesis environment if appropriate.
         if (position === undefined || position === null || position === false) {
@@ -10800,19 +10807,17 @@ var fluid = fluid || require("infusion"),
 
         var type = typeof (position);
         if (type === "string" && position === "head" || position === "tail") {
-            enviro[position](node);
+            node.enviro[position](node);
         } else if (type === "number") {
-            enviro.insert(position, node);
+            node.enviro.insert(position, node);
         } else {
-            enviro.tail(node);
+            node.enviro.tail(node);
         }
     };
 
-    flock.node.removeFromEnvironment = function (that, enviro) {
-        if (!enviro) {
-            enviro = that.enviro;
-        }
-        enviro.remove(that);
+    flock.node.removeFromEnvironment = function (node, enviro) {
+        enviro = enviro || node.enviro;
+        enviro.remove(node);
     };
 
 
@@ -11087,11 +11092,17 @@ var fluid = fluid || require("infusion"),
 
         listeners: {
             onCreate: [
-                "{that}.addToEnvironment()"
+                {
+                    func: "{that}.addToEnvironment",
+                    args: []
+                }
             ],
 
             onDestroy: [
-                "{that}.removeFromEnvironment()"
+                {
+                    func: "{that}.removeFromEnvironment",
+                    args: []
+                }
             ]
         }
     });
@@ -12308,7 +12319,6 @@ var fluid = fluid || require("infusion"),
         var ugen = flock.parse.makeUGen(ugenDef, inputs, options);
         if (ugenDef.id) {
             ugen.id = ugenDef.id;
-            ugen.nickName = ugenDef.id; // TODO: Normalize nicknames and ids.
         }
 
         ugen.options.ugenDef = ugenDef;
@@ -13730,19 +13740,9 @@ var fluid = fluid || require("infusion"),
 
     flock.scheduler.async.getTargetSynth = function (changeSpec, synthContext) {
         var synthPath = changeSpec.synth;
-
-        if (!changeSpec.synth) {
-            return synthContext;
-        }
-
-        if (typeof synthPath !== "string") {
-            return synthPath;
-        }
-
-        var synth = synthContext ? fluid.get(synthContext, synthPath) :
-            flock.environment.namedNodes[synthPath];
-
-        return synth || flock.environment.namedNodes[synthPath];
+        return !synthPath ?
+            synthContext : typeof synthPath !== "string" ?
+            synthPath : fluid.get(synthContext, synthPath);
     };
 
     flock.scheduler.async.makeSynthUpdater = function (synths, changeSpec, staticChanges, synthContext) {
