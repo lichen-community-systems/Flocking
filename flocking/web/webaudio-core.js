@@ -23,7 +23,7 @@ var fluid = fluid || require("infusion"),
     fluid.registerNamespace("flock.webAudio");
 
     flock.webAudio.createNode = function (context, nodeSpec) {
-        nodeSpec.args = nodeSpec.args ? fluid.makeArray(nodeSpec.args) : undefined;
+        var args = nodeSpec.args ? fluid.makeArray(nodeSpec.args) : undefined;
 
         var creatorName = "create" + nodeSpec.node,
             nodeStrIdx = creatorName.indexOf("Node");
@@ -33,7 +33,7 @@ var fluid = fluid || require("infusion"),
             creatorName = creatorName.substring(0, nodeStrIdx);
         }
 
-        var node = context[creatorName].apply(context, nodeSpec.args);
+        var node = context[creatorName].apply(context, args);
         flock.webAudio.initNodeParams(context, node, nodeSpec);
         flock.webAudio.initNodeProperties(node, nodeSpec);
         flock.webAudio.initNodeInputs(node, nodeSpec);

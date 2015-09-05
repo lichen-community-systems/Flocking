@@ -24016,7 +24016,7 @@ var fluid = fluid || require("infusion"),
     fluid.registerNamespace("flock.webAudio");
 
     flock.webAudio.createNode = function (context, nodeSpec) {
-        nodeSpec.args = nodeSpec.args ? fluid.makeArray(nodeSpec.args) : undefined;
+        var args = nodeSpec.args ? fluid.makeArray(nodeSpec.args) : undefined;
 
         var creatorName = "create" + nodeSpec.node,
             nodeStrIdx = creatorName.indexOf("Node");
