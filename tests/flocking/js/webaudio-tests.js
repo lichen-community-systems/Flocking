@@ -230,7 +230,8 @@
         });
     };
 
-    // TODO: Remove this warning when Safari fixes its MediaElementAudioSourceNode implementation.
+    // TODO: Remove this condition when Safari fixes its
+    // MediaElementAudioSourceNode implementation.
     if (!flock.platform.browser.safari) {
         flock.init();
 
