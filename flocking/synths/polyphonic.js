@@ -38,20 +38,26 @@ var fluid = fluid || require("infusion"),
             }
         },
 
+        distributeOptions: {
+            source: "{that}.options.voiceAllocatorOptions",
+            target: "{that flock.synth.voiceAllocator}.options",
+            removeSource: true
+        },
+
+        voiceAllocatorOptions: {
+            synthDef: "{polyphonic}.options.synthDef",
+            maxVoices: "{polyphonic}.options.maxVoices",
+            amplitudeNormalizer: "{polyphonic}.options.amplitudeNormalizer",
+            amplitudeKey: "{polyphonic}.options.amplitudeKey",
+
+            listeners: {
+                onCreateVoice: "{polyphonic}.tail({arguments}.0)"
+            }
+        },
+
         components: {
             voiceAllocator: {
-                type: "flock.synth.voiceAllocator.lazy",
-                options: {
-                    // TODO: Replace these with distributeOptions.
-                    synthDef: "{polyphonic}.options.synthDef",
-                    maxVoices: "{polyphonic}.options.maxVoices",
-                    amplitudeNormalizer: "{polyphonic}.options.amplitudeNormalizer",
-                    amplitudeKey: "{polyphonic}.options.amplitudeKey",
-
-                    listeners: {
-                        onCreateVoice: "{polyphonic}.tail({arguments}.0)"
-                    }
-                }
+                type: "flock.synth.voiceAllocator.lazy"
             }
         },
 
@@ -97,7 +103,7 @@ var fluid = fluid || require("infusion"),
     flock.synth.polyphonic.noteChange = function (voice, eventName, changeSpec, noteSpecs) {
         var noteEventSpec = noteSpecs[eventName];
         changeSpec = $.extend({}, noteEventSpec, changeSpec);
-        voice.input(changeSpec);
+        voice.set(changeSpec);
     };
 
     flock.synth.polyphonic.noteOn = function (noteName, changeSpec, voiceAllocator, noteOff, noteChange) {
@@ -214,66 +220,4 @@ var fluid = fluid || require("infusion"),
             freeVoices[i] = createVoiceFn();
         }
     };
-
-
-    /**
-     * flock.band provides an IoC-friendly interface for a collection of named synths.
-     */
-    // TODO: Unit tests.
-    fluid.defaults("flock.band", {
-        gradeNames: ["fluid.component"],
-
-        invokers: {
-            play: {
-                func: "{that}.events.onPlay.fire"
-            },
-
-            pause: {
-                func: "{that}.events.onPause.fire"
-            },
-
-            set: {
-                func: "{that}.events.onSet.fire"
-            }
-        },
-
-        events: {
-            onPlay: null,
-            onPause: null,
-            onSet: null
-        },
-
-        distributeOptions: [
-            {
-                source: "{that}.options.childListeners",
-                removeSource: true,
-                target: "{that fluid.component}.options.listeners"
-            },
-            {
-                source: "{that}.options.synthListeners",
-                removeSource: true,
-                target: "{that flock.synth}.options.listeners"
-            }
-        ],
-
-        childListeners: {
-            "{band}.events.onDestroy": {
-                func: "{that}.destroy"
-            }
-        },
-
-        synthListeners: {
-            "{band}.events.onPlay": {
-                func: "{that}.play"
-            },
-
-            "{band}.events.onPause": {
-                func: "{that}.pause"
-            },
-
-            "{band}.events.onSet": {
-                func: "{that}.set"
-            }
-        }
-    });
 }());

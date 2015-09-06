@@ -1437,15 +1437,42 @@ var fluid = fluid || require("infusion"),
 
         model: {},
 
+        members: {
+            genFn: "@expand:fluid.getGlobalValue({that}.options.invokers.gen.funcName)"
+        },
+
         components: {
             enviro: "{flock.enviro}"
         },
 
         invokers: {
             /**
+             * Plays the node. This is a convenience method that will add the
+             * node to the tail of the environment's node graph and then play
+             * the environmnent.
+             *
+             * @param {Number} dur optional duration to play this synth in seconds
+             */
+            play: {
+                funcName: "flock.node.play",
+                args: ["{that}", "{that}.enviro", "{that}.addToEnvironment"]
+            },
+
+            /**
+             * Stops the synth if it is currently playing.
+             * This is a convenience method that will remove the synth from the environment's node graph.
+             */
+            pause: {
+                funcName: "flock.node.removeFromEnvironment",
+                args: ["{that}", "{that}.enviro"]
+            },
+
+            /**
              * Must be overridden by implementing grades.
              */
-            gen: "fluid.notImplemented()",
+            gen: {
+                funcName: "fluid.notImplemented"
+            },
 
             /**
              * Adds the node to its environment's list of active nodes.
@@ -1465,6 +1492,16 @@ var fluid = fluid || require("infusion"),
                 funcName: "flock.node.removeFromEnvironment",
                 args: ["{that}", "{arguments}.0"]
             }
+        },
+
+        listeners: {
+            onCreate: [
+                "{that}.addToEnvironment()"
+            ],
+
+            onDestroy: [
+                "{that}.removeFromEnvironment()"
+            ]
         }
     });
 
@@ -1495,6 +1532,20 @@ var fluid = fluid || require("infusion"),
         enviro.remove(node);
     };
 
+    flock.node.play = function (node, enviro, addToEnviroFn) {
+        if (enviro.nodes.indexOf(node) === -1) {
+            var position = node.options.addToEnvironment || "tail";
+            addToEnviroFn(position);
+        }
+
+        // TODO: This behaviour is confusing
+        // since calling mySynth.play() will cause
+        // all synths in the environment to be played.
+        // This functionality should be removed.
+        if (!enviro.model.isPlaying) {
+            enviro.play();
+        }
+    };
 
     fluid.defaults("flock.ugenNodeList", {
         gradeNames: ["flock.nodeList"],
@@ -1683,9 +1734,7 @@ var fluid = fluid || require("infusion"),
                         "{that}.tail"
                     ]
                 }
-            },
-
-            genFn: "@expand:fluid.getGlobalValue({that}.options.invokers.gen.funcName)"
+            }
         },
 
         model: {
@@ -1693,26 +1742,6 @@ var fluid = fluid || require("infusion"),
         },
 
         invokers: {
-            /**
-             * Plays the synth. This is a convenience method that will add the synth to the tail of the
-             * environment's node graph and then play the environmnent.
-             *
-             * @param {Number} dur optional duration to play this synth in seconds
-             */
-            play: {
-                funcName: "flock.synth.play",
-                args: ["{that}", "{that}.enviro", "{that}.addToEnvironment"]
-            },
-
-            /**
-             * Stops the synth if it is currently playing.
-             * This is a convenience method that will remove the synth from the environment's node graph.
-             */
-            pause: {
-                funcName: "flock.node.removeFromEnvironment",
-                args: ["{that}", "{that}.enviro"]
-            },
-
             /**
              * Sets the value of the ugen at the specified path.
              *
@@ -1763,22 +1792,6 @@ var fluid = fluid || require("infusion"),
                 funcName: "flock.synth.gen",
                 args: "{that}"
             }
-        },
-
-        listeners: {
-            onCreate: [
-                {
-                    func: "{that}.addToEnvironment",
-                    args: []
-                }
-            ],
-
-            onDestroy: [
-                {
-                    func: "{that}.removeFromEnvironment",
-                    args: []
-                }
-            ]
         }
     });
 
@@ -1804,21 +1817,6 @@ var fluid = fluid || require("infusion"),
             buses: buses,
             audioSettings: audioSettings
         });
-    };
-
-    flock.synth.play = function (synth, enviro, addToEnviroFn) {
-        if (enviro.nodes.indexOf(synth) === -1) {
-            var position = synth.options.addToEnvironment || "tail";
-            addToEnviroFn(position);
-        }
-
-        // TODO: This behaviour is confusing
-        // since calling mySynth.play() will cause
-        // all synths in the environment to be played.
-        // This functionality should be removed.
-        if (!enviro.model.isPlaying) {
-            enviro.play();
-        }
     };
 
     flock.synth.set = function (that, namedNodes, path, val, swap) {
