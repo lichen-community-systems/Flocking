@@ -61,7 +61,7 @@ is documented in the wiki. Plans include:
  * A block-accurate scheduler and more sample-accurate scheduling unit generators
  * Multichannel expansion
 
-Unplanned features, bug fixes, and contributions are welcome and appreciated, of course.
+Unplanned features, bug fixes, and contributions are welcome and appreciated, of course. The Flocking project adheres to the [Contributor Covenant guidelines](http://contributor-covenant.org/version/1/2/0/), and is an open and welcoming community.
 
 
 Documentation and Demos
