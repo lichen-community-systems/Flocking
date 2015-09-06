@@ -33,6 +33,9 @@ module.exports = function(grunt) {
 
         flockingBase: [
             "flocking/flocking-core.js",
+            "flocking/synths/group.js",
+            "flocking/synths/polyphonic.js",
+            "flocking/synths/band.js",
             "flocking/flocking-buffers.js",
             "flocking/flocking-parser.js",
             "flocking/flocking-audiofile.js",

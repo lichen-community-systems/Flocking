@@ -17,7 +17,7 @@ var fluid = fluid || require("infusion"),
     fluid.registerNamespace("flock.test");
 
     flock.init();
-    
+
 	var testConfigs = [
         {
             name: "Decode 16 bit WAV file from base64-encoded dataURL",
@@ -34,6 +34,7 @@ var fluid = fluid || require("infusion"),
     var makeTestSpec = function (config) {
         return {
             name: config.name,
+            numReps: 200000,
             test: function () {
                 // TODO: This code assumes flock.audio.decode will run synchronously,
                 // which it doesn't always do and can't be relied upon.

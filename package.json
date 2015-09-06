@@ -39,6 +39,9 @@
     "speaker": "git://github.com/colinbdclark/node-speaker.git#mpg123-lower-latency",
     "midi": "v0.9.3"
   },
+  "devDependencies": {
+    "sheep-benchmark": "colinbdclark/sheep.js"
+  },
   "engines": {
     "node": ">=0.10.x"
   }

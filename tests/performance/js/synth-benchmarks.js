@@ -75,6 +75,7 @@ var flock = flock || {};
                 testSpec.name = name + " " + rate + " rate.";
                 testSpecs.push(testSpec);
                 testSpec.numReps = 200;
+                testSpec.batchSize = 25;
             }
         }
 

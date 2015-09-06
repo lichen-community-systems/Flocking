@@ -19476,12 +19476,12 @@ if (typeof window === "undefined" && typeof module !== "undefined" && module.exp
 ;/*! Flocking 0.1, Copyright 2011-2014 Colin Clark | flockingjs.org */
 
 /*
-* Flocking - Creative audio synthesis for the Web!
-* http://github.com/colinbdclark/flocking
-*
-* Copyright 2011-2015, Colin Clark
-* Dual licensed under the MIT and GPL Version 2 licenses.
-*/
+ * Flocking - Creative audio synthesis for the Web!
+ * http://github.com/colinbdclark/flocking
+ *
+ * Copyright 2011-2015, Colin Clark
+ * Dual licensed under the MIT and GPL Version 2 licenses.
+ */
 
 /*global require, Float32Array, window, AudioContext, webkitAudioContext*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
@@ -19496,8 +19496,6 @@ var fluid = fluid || require("infusion"),
 
 (function () {
     "use strict";
-
-    var $ = fluid.registerNamespace("jQuery");
 
     flock.fluid = fluid;
 
@@ -21404,6 +21402,36 @@ var fluid = fluid || require("infusion"),
     });
 
 
+    /*******************************
+     * Error Handling Conveniences *
+     *******************************/
+
+    flock.bufferDesc = function () {
+        throw new Error("flock.bufferDesc is not defined. Did you forget to include the flocking-buffers.js file?");
+    };
+}());
+;/*
+ * Flocking Synth Group
+ * http://github.com/colinbdclark/flocking
+ *
+ * Copyright 2011-2015, Colin Clark
+ * Dual licensed under the MIT and GPL Version 2 licenses.
+ */
+
+/*global require*/
+/*jshint white: false, newcap: true, regexp: true, browser: true,
+    forin: false, nomen: true, bitwise: false, maxerr: 100,
+    indent: 4, plusplus: false, curly: true, eqeqeq: true,
+    freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
+    unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
+    funcscope: false*/
+
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
+
+(function () {
+    "use strict";
+
     fluid.defaults("flock.synth.group", {
         gradeNames: ["flock.nodeList", "flock.node"],
 
@@ -21489,6 +21517,30 @@ var fluid = fluid || require("infusion"),
             eventAction(method);
         }
     };
+}());
+;/*
+ * Flocking Polyphonic Synth
+ * http://github.com/colinbdclark/flocking
+ *
+ * Copyright 2011-2015, Colin Clark
+ * Dual licensed under the MIT and GPL Version 2 licenses.
+ */
+
+/*global require*/
+/*jshint white: false, newcap: true, regexp: true, browser: true,
+    forin: false, nomen: true, bitwise: false, maxerr: 100,
+    indent: 4, plusplus: false, curly: true, eqeqeq: true,
+    freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
+    unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
+    funcscope: false*/
+
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
+
+(function () {
+    "use strict";
+
+    var $ = fluid.registerNamespace("jQuery");
 
     fluid.defaults("flock.synth.polyphonic", {
         gradeNames: ["flock.synth.group"],
@@ -21681,7 +21733,6 @@ var fluid = fluid || require("infusion"),
         for (var i = 0; i < maxVoices; i++) {
             freeVoices[i] = createVoiceFn();
         }
-
     };
 
 
@@ -21745,14 +21796,88 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
+}());
+;/*
+ * Flocking Band
+ * http://github.com/colinbdclark/flocking
+ *
+ * Copyright 2013-2015, Colin Clark
+ * Dual licensed under the MIT and GPL Version 2 licenses.
+ */
 
-    /*******************************
-     * Error Handling Conveniences *
-     *******************************/
+/*global require*/
+/*jshint white: false, newcap: true, regexp: true, browser: true,
+    forin: false, nomen: true, bitwise: false, maxerr: 100,
+    indent: 4, plusplus: false, curly: true, eqeqeq: true,
+    freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
+    unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
+    funcscope: false*/
 
-    flock.bufferDesc = function () {
-        throw new Error("flock.bufferDesc is not defined. Did you forget to include the flocking-buffers.js file?");
-    };
+var fluid = fluid || require("infusion");
+
+(function () {
+    "use strict";
+
+    /**
+     * flock.band provides an IoC-friendly interface for a collection of named synths.
+     */
+    // TODO: Unit tests.
+    fluid.defaults("flock.band", {
+        gradeNames: ["fluid.component"],
+
+        invokers: {
+            play: {
+                func: "{that}.events.onPlay.fire"
+            },
+
+            pause: {
+                func: "{that}.events.onPause.fire"
+            },
+
+            set: {
+                func: "{that}.events.onSet.fire"
+            }
+        },
+
+        events: {
+            onPlay: null,
+            onPause: null,
+            onSet: null
+        },
+
+        distributeOptions: [
+            {
+                source: "{that}.options.childListeners",
+                removeSource: true,
+                target: "{that fluid.component}.options.listeners"
+            },
+            {
+                source: "{that}.options.synthListeners",
+                removeSource: true,
+                target: "{that flock.synth}.options.listeners"
+            }
+        ],
+
+        childListeners: {
+            "{band}.events.onDestroy": {
+                func: "{that}.destroy"
+            }
+        },
+
+        synthListeners: {
+            "{band}.events.onPlay": {
+                func: "{that}.play"
+            },
+
+            "{band}.events.onPause": {
+                func: "{that}.pause"
+            },
+
+            "{band}.events.onSet": {
+                func: "{that}.set"
+            }
+        }
+    });
 }());
 ;/*
 * Flocking Audio Buffers
@@ -24026,7 +24151,7 @@ var fluid = fluid || require("infusion"),
             creatorName = creatorName.substring(0, nodeStrIdx);
         }
 
-        var node = context[creatorName].apply(context, nodeSpec.args);
+        var node = context[creatorName].apply(context, args);
         flock.webAudio.initNodeParams(context, node, nodeSpec);
         flock.webAudio.initNodeProperties(node, nodeSpec);
         flock.webAudio.initNodeInputs(node, nodeSpec);
