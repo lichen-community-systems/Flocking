@@ -829,7 +829,7 @@ var fluid = fluid || require("infusion"),
 
             if (!targetSynth) {
                 flock.fail("A target synth named " + changeSpec.synth +
-                    " could not be found in either the specified synthContext or the flock.environment.");
+                    " could not be found in the specified synthContext. Synth context was: " + synthContext);
             } else {
                 targetSynth.set(staticChanges);
             }

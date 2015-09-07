@@ -21261,19 +21261,7 @@ var fluid = fluid || require("infusion"),
         members: {
             rate: "{that}.options.rate",
             audioSettings: "{enviro}.audioSystem.model", // TODO: Move this.
-            out: {
-                expander: {
-                    funcName: "flock.synth.parseSynthDef",
-                    args: [
-                        "{that}.options.synthDef",
-                        "{that}.rate",
-                        "{enviro}.audioSystem.model",
-                        "{that}.enviro.buffers",
-                        "{that}.enviro.busManager.buses",
-                        "{that}.tail"
-                    ]
-                }
-            }
+            out: null
         },
 
         model: {
@@ -21331,6 +21319,19 @@ var fluid = fluid || require("infusion"),
                 funcName: "flock.synth.gen",
                 args: "{that}"
             }
+        },
+
+        listeners: {
+            "onCreate.parseSynthDef": [
+                {
+                    funcName: "flock.synth.parseSynthDef",
+                    args: [
+                        "{that}.options.synthDef",
+                        "{that}",
+                        "{enviro}"
+                    ]
+                }
+            ]
         }
     });
 
@@ -21338,24 +21339,26 @@ var fluid = fluid || require("infusion"),
         return rate === flock.rates.AUDIO ? audioSettings.blockSize : 1;
     };
 
-    flock.synth.parseSynthDef = function (synthDef, rate, audioSettings, buffers, buses, tailFn) {
+    flock.synth.parseSynthDef = function (synthDef, that, enviro) {
         if (!synthDef) {
             fluid.log(fluid.logLevel.IMPORTANT,
                 "Warning: Instantiating a flock.synth instance with an empty synth def.");
         }
 
         // At demand or schedule rates, override the rate of all non-constant ugens.
-        var overrideRate = rate === flock.rates.SCHEDULED || rate === flock.rates.DEMAND;
+        var overrideRate = that.rate === flock.rates.SCHEDULED || that.rate === flock.rates.DEMAND;
 
         // Parse the synthDef into a graph of unit generators.
-        return flock.parse.synthDef(synthDef, {
-            rate: rate,
+        that.out = flock.parse.synthDef(synthDef, {
+            rate: that.rate,
             overrideRate: overrideRate,
-            visitors: tailFn,
-            buffers: buffers,
-            buses: buses,
-            audioSettings: audioSettings
+            visitors: that.tail,
+            buffers: enviro.buffers,
+            buses: enviro.busManager.buses,
+            audioSettings: enviro.audioSystem.model
         });
+
+        return that.out;
     };
 
     flock.synth.set = function (that, namedNodes, path, val, swap) {
@@ -24041,7 +24044,7 @@ var fluid = fluid || require("infusion"),
 
             if (!targetSynth) {
                 flock.fail("A target synth named " + changeSpec.synth +
-                    " could not be found in either the specified synthContext or the flock.environment.");
+                    " could not be found in the specified synthContext. Synth context was: " + synthContext);
             } else {
                 targetSynth.set(staticChanges);
             }
