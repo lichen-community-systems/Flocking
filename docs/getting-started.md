@@ -87,7 +87,7 @@ Flocking is hosted on Github. Here's how to get started:
 * Run _grunt_ to make a build of Flocking
 * Copy the _dist_ directory into your project. You probably will want to rename it to something like _flocking_
 * Use the _flocking-all.js_ for development for _flocking-all.min.js_ for production.
-* The other two files, _flocking-audiofile-worker.js_ and _flocking-audiofile.js_ will be loaded automatically into a Web Worker when decoding audio files.
+* The other two files, _flocking-audiofile-worker.js_ and _audiofile.js_ will be loaded automatically into a Web Worker when decoding audio files.
 
 
 ### Linking to a Flocking Build ###

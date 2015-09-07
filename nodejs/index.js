@@ -4,35 +4,35 @@ var fluid = require("infusion"),
     flock = fluid.registerNamespace("flock"),
     loader = fluid.getLoader(__dirname); // jshint ignore:line
 
-loader.require("../flocking/flocking-core.js");
-loader.require("../flocking/flocking-buffers.js");
-loader.require("../flocking/flocking-parser.js");
-loader.require("../flocking/flocking-audiofile.js");
-loader.require("../flocking/flocking-audiofile-encoder.js");
-loader.require("../flocking/flocking-audiofile-compatibility.js");
-loader.require("../flocking/flocking-scheduler.js");
-loader.require("../flocking/web/midi.js");
+loader.require("../src/core.js");
+loader.require("../src/buffers.js");
+loader.require("../src/parser.js");
+loader.require("../src/audiofile.js");
+loader.require("../src/audiofile-encoder.js");
+loader.require("../src/flocking-audiofile-compatibility.js");
+loader.require("../src/scheduler.js");
+loader.require("../src/web/midi.js");
 
 // Unit generators
-loader.require("../flocking/ugens/core.js");
-loader.require("../flocking/ugens/bandlimited.js");
-loader.require("../flocking/ugens/browser.js");
-loader.require("../flocking/ugens/buffer.js");
-loader.require("../flocking/ugens/debugging.js");
-loader.require("../flocking/ugens/distortion.js");
-loader.require("../flocking/ugens/dynamics.js");
-loader.require("../flocking/ugens/envelopes.js");
-loader.require("../flocking/ugens/filters.js");
-loader.require("../flocking/ugens/gates.js");
-loader.require("../flocking/ugens/granular.js");
-loader.require("../flocking/ugens/listening.js");
-loader.require("../flocking/ugens/math.js");
-loader.require("../flocking/ugens/midi.js");
-loader.require("../flocking/ugens/multichannel.js");
-loader.require("../flocking/ugens/oscillators.js");
-loader.require("../flocking/ugens/random.js");
-loader.require("../flocking/ugens/scheduling.js");
-loader.require("../flocking/ugens/triggers.js");
+loader.require("../src/ugens/core.js");
+loader.require("../src/ugens/bandlimited.js");
+loader.require("../src/ugens/browser.js");
+loader.require("../src/ugens/buffer.js");
+loader.require("../src/ugens/debugging.js");
+loader.require("../src/ugens/distortion.js");
+loader.require("../src/ugens/dynamics.js");
+loader.require("../src/ugens/envelopes.js");
+loader.require("../src/ugens/filters.js");
+loader.require("../src/ugens/gates.js");
+loader.require("../src/ugens/granular.js");
+loader.require("../src/ugens/listening.js");
+loader.require("../src/ugens/math.js");
+loader.require("../src/ugens/midi.js");
+loader.require("../src/ugens/multichannel.js");
+loader.require("../src/ugens/oscillators.js");
+loader.require("../src/ugens/random.js");
+loader.require("../src/ugens/scheduling.js");
+loader.require("../src/ugens/triggers.js");
 
 loader.require("./lib/flocking-node.js");
 

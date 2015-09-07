@@ -21472,7 +21472,7 @@ var fluid = fluid || require("infusion"),
      *******************************/
 
     flock.bufferDesc = function () {
-        throw new Error("flock.bufferDesc is not defined. Did you forget to include the flocking-buffers.js file?");
+        throw new Error("flock.bufferDesc is not defined. Did you forget to include the buffers.js file?");
     };
 }());
 ;/*

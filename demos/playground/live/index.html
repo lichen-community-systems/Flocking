@@ -10,9 +10,9 @@
         <link rel="stylesheet" href="../../../node_modules/codemirror-infusion/node_modules/codemirror/lib/codemirror.css" />
         <link rel="stylesheet" href="../../../node_modules/codemirror-infusion/node_modules/codemirror/addon/lint/lint.css" />
         <link rel="stylesheet" href="../../../node_modules/codemirror-infusion/node_modules/codemirror/addon/dialog/dialog.css" />
-        <link rel="stylesheet" type="text/css" href="../../../ui/editor/css/editor.css" />
-        <link rel="stylesheet" type="text/css" href="../../../ui/play-button/css/play-button.css" />
-        <link rel="stylesheet" type="text/css" href="../../../ui/shared/css/flocking-icon-font.css" />
+        <link rel="stylesheet" type="text/css" href="../../../src/ui/editor/css/editor.css" />
+        <link rel="stylesheet" type="text/css" href="../../../src/ui/play-button/css/play-button.css" />
+        <link rel="stylesheet" type="text/css" href="../../../src/ui/shared/css/flocking-icon-font.css" />
         <link rel="stylesheet" type="text/css" href="../css/playground.css" />
         <link rel="stylesheet" type="text/css" href="css/live-playground.css" />
         <link rel="stylesheet" type="text/css" href="../css/shake.css" />
@@ -53,47 +53,47 @@
         <script src="../../../third-party/webarraymath/js/webarraymath.js"></script>
         <script src="../../../third-party/simjs/js/random-0.26.js"></script>
 
-        <script src="../../../flocking/flocking-core.js"></script>
-        <script src="../../../flocking/synths/group.js"></script>
-        <script src="../../../flocking/synths/polyphonic.js"></script>
-        <script src="../../../flocking/synths/band.js"></script>
-        <script src="../../../flocking/flocking-buffers.js"></script>
-        <script src="../../../flocking/flocking-audiofile.js"></script>
-        <script src="../../../flocking/flocking-audiofile-encoder.js"></script>
-        <script src="../../../flocking/flocking-scheduler.js"></script>
-        <script src="../../../flocking/web/webaudio-core.js"></script>
-        <script src="../../../flocking/web/audio-system.js"></script>
-        <script src="../../../flocking/web/buffer-writer.js"></script>
-        <script src="../../../flocking/web/input-device-manager.js"></script>
-        <script src="../../../flocking/web/midi.js"></script>
-        <script src="../../../flocking/web/native-node-manager.js"></script>
-        <script src="../../../flocking/web/output-manager.js"></script>
-        <script src="../../../flocking/flocking-parser.js"></script>
-        <script src="../../../flocking/flocking-gfx.js"></script>
+        <script src="../../../src/core.js"></script>
+        <script src="../../../src/synths/group.js"></script>
+        <script src="../../../src/synths/polyphonic.js"></script>
+        <script src="../../../src/synths/band.js"></script>
+        <script src="../../../src/buffers.js"></script>
+        <script src="../../../src/audiofile.js"></script>
+        <script src="../../../src/audiofile-encoder.js"></script>
+        <script src="../../../src/scheduler.js"></script>
+        <script src="../../../src/web/webaudio-core.js"></script>
+        <script src="../../../src/web/audio-system.js"></script>
+        <script src="../../../src/web/buffer-writer.js"></script>
+        <script src="../../../src/web/input-device-manager.js"></script>
+        <script src="../../../src/web/midi.js"></script>
+        <script src="../../../src/web/native-node-manager.js"></script>
+        <script src="../../../src/web/output-manager.js"></script>
+        <script src="../../../src/parser.js"></script>
+        <script src="../../../src/gfx.js"></script>
 
-        <script src="../../../flocking/ugens/core.js"></script>
-        <script src="../../../flocking/ugens/bandlimited.js"></script>
-        <script src="../../../flocking/ugens/browser.js"></script>
-        <script src="../../../flocking/ugens/buffer.js"></script>
-        <script src="../../../flocking/ugens/debugging.js"></script>
-        <script src="../../../flocking/ugens/dynamics.js"></script>
-        <script src="../../../flocking/ugens/distortion.js"></script>
-        <script src="../../../flocking/ugens/envelopes.js"></script>
-        <script src="../../../flocking/ugens/filters.js"></script>
-        <script src="../../../flocking/ugens/gates.js"></script>
-        <script src="../../../flocking/ugens/granular.js"></script>
-        <script src="../../../flocking/ugens/listening.js"></script>
-        <script src="../../../flocking/ugens/math.js"></script>
-        <script src="../../../flocking/ugens/midi.js"></script>
-        <script src="../../../flocking/ugens/multichannel.js"></script>
-        <script src="../../../flocking/ugens/oscillators.js"></script>
-        <script src="../../../flocking/ugens/random.js"></script>
-        <script src="../../../flocking/ugens/scheduling.js"></script>
-        <script src="../../../flocking/ugens/triggers.js"></script>
+        <script src="../../../src/ugens/core.js"></script>
+        <script src="../../../src/ugens/bandlimited.js"></script>
+        <script src="../../../src/ugens/browser.js"></script>
+        <script src="../../../src/ugens/buffer.js"></script>
+        <script src="../../../src/ugens/debugging.js"></script>
+        <script src="../../../src/ugens/dynamics.js"></script>
+        <script src="../../../src/ugens/distortion.js"></script>
+        <script src="../../../src/ugens/envelopes.js"></script>
+        <script src="../../../src/ugens/filters.js"></script>
+        <script src="../../../src/ugens/gates.js"></script>
+        <script src="../../../src/ugens/granular.js"></script>
+        <script src="../../../src/ugens/listening.js"></script>
+        <script src="../../../src/ugens/math.js"></script>
+        <script src="../../../src/ugens/midi.js"></script>
+        <script src="../../../src/ugens/multichannel.js"></script>
+        <script src="../../../src/ugens/oscillators.js"></script>
+        <script src="../../../src/ugens/random.js"></script>
+        <script src="../../../src/ugens/scheduling.js"></script>
+        <script src="../../../src/ugens/triggers.js"></script>
 
-        <script src="../../../ui/selectbox/js/selectbox.js"></script>
-        <script src="../../../ui/editor/js/editor.js"></script>
-        <script src="../../../ui/play-button/js/play-button.js"></script>
+        <script src="../../../src/ui/selectbox/js/selectbox.js"></script>
+        <script src="../../../src/ui/editor/js/editor.js"></script>
+        <script src="../../../src/ui/play-button/js/play-button.js"></script>
 
         <script src="../js/demo-selector.js"></script>
         <script src="../js/playground.js"></script>

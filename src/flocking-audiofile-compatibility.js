@@ -407,7 +407,7 @@ var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undef
 
         if (scripts.length < 1) {
             throw new Error("Flocking error: could not load the Audio Decoder into a worker because " +
-            "flocking-all.js or flocking-core.js could not be found.");
+            "flocking-all.js or core.js could not be found.");
         }
 
         src = scripts.eq(0).attr("src");
@@ -423,8 +423,8 @@ var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undef
         "flocking-all.min.js",
         "flocking-no-jquery.js",
         "flocking-no-jquery.min.js",
-        "flocking-audiofile.js",
-        "flocking-core.js"
+        "audiofile.js",
+        "core.js"
     ];
 
     flock.audio.decodeArrayBuffer = function (data, type) {

@@ -36,6 +36,6 @@ Description of Each Build
         </tr>
         <tr>
             <td><code>flocking-base.js</code></td>
-            <td>Like <code>flocking-no-jquery.js</code>, except this build doesn't include any unit generators beyond the basic set, nor does it include any View-related code (such as <code>flocking-gfx.js</code>). Use this if you want to choose which unit generators to ship with your application, and if you're not using any of Flocking's UI components.</code>
+            <td>Like <code>flocking-no-jquery.js</code>, except this build doesn't include any unit generators beyond the basic set, nor does it include any View-related code (such as <code>gfx.js</code>). Use this if you want to choose which unit generators to ship with your application, and if you're not using any of Flocking's UI components.</code>
         </tr>
 </table>
