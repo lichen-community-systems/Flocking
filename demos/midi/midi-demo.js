@@ -17,15 +17,17 @@
                 options: {
                     listeners: {
                         noteOn: {
-                            func: "{synth}.set",
-                            args: {
-                                "freq.note": "{arguments}.0.note",
-                                "amp.velocity": "{arguments}.0.velocity",
-                                "env.gate": 1.0
-                            }
+                            func: "{synth}.noteOn",
+                            args: [
+                                "{arguments}.0.note",
+                                {
+                                    "freq.note": "{arguments}.0.note",
+                                    "amp.velocity": "{arguments}.0.velocity"
+                                }
+                            ]
                         },
 
-                        noteOff: "{synth}.set(env.gate, 0.0)"
+                        noteOff: "{synth}.noteOff({arguments}.0.note)"
                     }
                 }
             },
@@ -51,15 +53,15 @@
         };
 
         that.midiConnector.events.noteOn.addListener(function (noteEvent) {
-            that.synth.set({
+            that.synth.noteOn(noteEvent.note, {
                 "freq.note": noteEvent.note,
                 "amp.velocity": noteEvent.velocity,
                 "env.gate": 1.0
             });
         });
 
-        that.midiConnector.events.noteOff.addListener(function () {
-            that.synth.set("env.gate", 0.0);
+        that.midiConnector.events.noteOff.addListener(function (noteEvent) {
+            that.synth.noteOff(noteEvent.note);
         });
 
         flock.environment.start();
@@ -69,7 +71,7 @@
 
 
     fluid.defaults("flock.midiDemo.synth", {
-        gradeNames: ["flock.synth"],
+        gradeNames: ["flock.synth.polyphonic"],
 
         synthDef: {
             ugen: "flock.ugen.square",

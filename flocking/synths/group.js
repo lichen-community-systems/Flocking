@@ -21,7 +21,7 @@ var fluid = fluid || require("infusion"),
     "use strict";
 
     fluid.defaults("flock.synth.group", {
-        gradeNames: ["flock.nodeList", "flock.node"],
+        gradeNames: ["flock.node", "flock.noteTarget", "flock.nodeList"],
 
         methodEventMap: {
             "onSet": "set"
@@ -32,10 +32,13 @@ var fluid = fluid || require("infusion"),
             pause: "{that}.events.onPause.fire",
             set: "{that}.events.onSet.fire",
             get: "flock.synth.group.get({arguments}, {that}.nodes)",
+
+            // Deprecated. Use set() instead.
             input: {
                 funcName: "flock.synth.group.input",
                 args: ["{arguments}", "{that}.get", "{that}.events.onSet.fire"]
             },
+
             gen: {
                 funcName: "flock.synth.group.gen",
                 args: "{that}"

@@ -19497,6 +19497,8 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
+    var $ = fluid.registerNamespace("jQuery");
+
     flock.fluid = fluid;
 
     flock.init = function (options) {
@@ -20971,7 +20973,7 @@ var fluid = fluid || require("infusion"),
 
         listeners: {
             onCreate: [
-                "{that}.addToEnvironment()"
+                "{that}.addToEnvironment({that}.options.addToEnvironment)"
             ],
 
             onDestroy: [
@@ -21021,6 +21023,66 @@ var fluid = fluid || require("infusion"),
             enviro.play();
         }
     };
+
+
+    fluid.defaults("flock.noteTarget", {
+        gradeNames: "fluid.component",
+
+        noteChanges: {
+            on: {
+                "env.gate": 1
+            },
+
+            off: {
+                "env.gate": 0
+            }
+        },
+
+        invokers: {
+            set: {
+                funcName: "fluid.notImplemented"
+            },
+
+            noteOn: {
+                func: "{that}.events.noteOn.fire"
+            },
+
+            noteOff: {
+                func: "{that}.events.noteOff.fire"
+            },
+
+            noteChange: {
+                funcName: "flock.noteTarget.change",
+                args: [
+                    "{that}",
+                    "{arguments}.0", // The type of note; either "on" or "off"
+                    "{arguments}.1"  // The change to apply for this note.
+                ]
+            }
+        },
+
+        events: {
+            noteOn: null,
+            noteOff: null
+        },
+
+        listeners: {
+            "noteOn.handleChange": [
+                "{that}.noteChange(on, {arguments}.0)"
+            ],
+
+            "noteOff.handleChange": [
+                "{that}.noteChange(off, {arguments}.0)"
+            ]
+        }
+    });
+
+    flock.noteTarget.change = function (that, type, changeSpec) {
+        var baseChange = that.options.noteChanges[type];
+        var mergedChange = $.extend({}, baseChange, changeSpec);
+        that.set(mergedChange);
+    };
+
 
     fluid.defaults("flock.ugenNodeList", {
         gradeNames: ["flock.nodeList"],
@@ -21190,9 +21252,11 @@ var fluid = fluid || require("infusion"),
      * that describes the synth's unit generator graph.
      */
     fluid.defaults("flock.synth", {
-        gradeNames: ["flock.node", "flock.ugenNodeList"],
+        gradeNames: ["flock.node", "flock.noteTarget", "flock.ugenNodeList"],
 
         rate: flock.rates.AUDIO,
+
+        addToEnvironment: true,
 
         members: {
             rate: "{that}.options.rate",
@@ -21431,7 +21495,7 @@ var fluid = fluid || require("infusion"),
     "use strict";
 
     fluid.defaults("flock.synth.group", {
-        gradeNames: ["flock.nodeList", "flock.node"],
+        gradeNames: ["flock.node", "flock.noteTarget", "flock.nodeList"],
 
         methodEventMap: {
             "onSet": "set"
@@ -21442,10 +21506,13 @@ var fluid = fluid || require("infusion"),
             pause: "{that}.events.onPause.fire",
             set: "{that}.events.onSet.fire",
             get: "flock.synth.group.get({arguments}, {that}.nodes)",
+
+            // Deprecated. Use set() instead.
             input: {
                 funcName: "flock.synth.group.input",
                 args: ["{arguments}", "{that}.get", "{that}.events.onSet.fire"]
             },
+
             gen: {
                 funcName: "flock.synth.group.gen",
                 args: "{that}"
@@ -21547,14 +21614,9 @@ var fluid = fluid || require("infusion"),
         amplitudeNormalizer: "static", // "dynamic", "static", Function, falsey
         amplitudeKey: "env.sustain",
 
-        noteSpecs: {
-            on: {
-                "env.gate": 1
-            },
-            off: {
-                "env.gate": 0
-            }
-        },
+        // Deprecated. Will be removed in Flocking 0.3.0.
+        // Use "noteChanges" instead.
+        noteSpecs: "{that}.options.noteChanges",
 
         distributeOptions: {
             source: "{that}.options.voiceAllocatorOptions",
@@ -21583,31 +21645,10 @@ var fluid = fluid || require("infusion"),
             noteChange: {
                 funcName: "flock.synth.polyphonic.noteChange",
                 args: [
-                    "{arguments}.0", // The voice synth to change.
-                    "{arguments}.1", // The note event name (i.e. "on" or "off").
-                    "{arguments}.2", // The note change spec to apply.
-                    "{that}.options.noteSpecs"
-                ]
-            },
-
-            noteOn: {
-                funcName: "flock.synth.polyphonic.noteOn",
-                args: [
-                    "{arguments}.0", // Note name.
-                    "{arguments}.1", // Optional changeSpec
-                    "{voiceAllocator}",
-                    "{that}.noteOff",
-                    "{that}.noteChange"
-                ]
-            },
-
-            noteOff: {
-                funcName: "flock.synth.polyphonic.noteOff",
-                args: [
-                    "{arguments}.0", // Note name.
-                    "{arguments}.1", // Optional changeSpec
-                    "{voiceAllocator}",
-                    "{that}.noteChange"
+                    "{that}",
+                    "{arguments}.0", // The note event name (i.e. "on" or "off").
+                    "{arguments}.1", // The voice to change.
+                    "{arguments}.2" // The note change specification to apply.
                 ]
             },
 
@@ -21615,34 +21656,59 @@ var fluid = fluid || require("infusion"),
                 func: "{voiceAllocator}.createVoice",
                 args: ["{that}.options", "{that}.insert"]
             }
+        },
+
+        listeners: {
+            "noteOn.handleChange": [
+                {
+                    funcName: "flock.synth.polyphonic.noteOn",
+                    args: [
+                        "{that}",
+                        "{arguments}.0", // The voice name.
+                        "{arguments}.1" // [optional] a change specification to apply for this note.
+                    ]
+                }
+            ],
+
+            "noteOff.handleChange": [
+                {
+                    funcName: "flock.synth.polyphonic.noteOff",
+                    args: [
+                        "{that}",
+                        "{arguments}.0", // The voice name.
+                        "{arguments}.1" // [optional] a change specification to apply for this note.
+                    ]
+                }
+            ]
         }
     });
 
-    flock.synth.polyphonic.noteChange = function (voice, eventName, changeSpec, noteSpecs) {
-        var noteEventSpec = noteSpecs[eventName];
-        changeSpec = $.extend({}, noteEventSpec, changeSpec);
-        voice.set(changeSpec);
+    flock.synth.polyphonic.noteChange = function (that, type, voice, changeSpec) {
+        var changeBase = that.options.noteChanges[type];
+        var mergedChange = $.extend({}, changeBase, changeSpec);
+        voice.set(mergedChange);
     };
 
-    flock.synth.polyphonic.noteOn = function (noteName, changeSpec, voiceAllocator, noteOff, noteChange) {
-        var voice = voiceAllocator.getFreeVoice();
-        if (voiceAllocator.activeVoices[noteName]) {
-            noteOff(noteName);
+    flock.synth.polyphonic.noteOn = function (that, voiceName, changeSpec) {
+        var voice = that.voiceAllocator.getFreeVoice();
+        if (that.voiceAllocator.activeVoices[voiceName]) {
+            that.noteOff(voiceName);
         }
-        voiceAllocator.activeVoices[noteName] = voice;
-        noteChange(voice, "on", changeSpec);
+        that.voiceAllocator.activeVoices[voiceName] = voice;
+        that.noteChange("on", voice, changeSpec);
 
         return voice;
     };
 
-    flock.synth.polyphonic.noteOff = function (noteName, changeSpec, voiceAllocator, noteChange) {
-        var voice = voiceAllocator.activeVoices[noteName];
+    flock.synth.polyphonic.noteOff = function (that, voiceName, changeSpec) {
+        var voice = that.voiceAllocator.activeVoices[voiceName];
         if (!voice) {
             return null;
         }
-        noteChange(voice, "off", changeSpec);
-        delete voiceAllocator.activeVoices[noteName];
-        voiceAllocator.freeVoices.push(voice);
+
+        that.noteChange("off", voice, changeSpec);
+        delete that.voiceAllocator.activeVoices[voiceName];
+        that.voiceAllocator.freeVoices.push(voice);
 
         return voice;
     };

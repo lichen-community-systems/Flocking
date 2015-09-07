@@ -22,6 +22,8 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
+    var $ = fluid.registerNamespace("jQuery");
+
     flock.fluid = fluid;
 
     flock.init = function (options) {
@@ -1496,7 +1498,7 @@ var fluid = fluid || require("infusion"),
 
         listeners: {
             onCreate: [
-                "{that}.addToEnvironment()"
+                "{that}.addToEnvironment({that}.options.addToEnvironment)"
             ],
 
             onDestroy: [
@@ -1546,6 +1548,66 @@ var fluid = fluid || require("infusion"),
             enviro.play();
         }
     };
+
+
+    fluid.defaults("flock.noteTarget", {
+        gradeNames: "fluid.component",
+
+        noteChanges: {
+            on: {
+                "env.gate": 1
+            },
+
+            off: {
+                "env.gate": 0
+            }
+        },
+
+        invokers: {
+            set: {
+                funcName: "fluid.notImplemented"
+            },
+
+            noteOn: {
+                func: "{that}.events.noteOn.fire"
+            },
+
+            noteOff: {
+                func: "{that}.events.noteOff.fire"
+            },
+
+            noteChange: {
+                funcName: "flock.noteTarget.change",
+                args: [
+                    "{that}",
+                    "{arguments}.0", // The type of note; either "on" or "off"
+                    "{arguments}.1"  // The change to apply for this note.
+                ]
+            }
+        },
+
+        events: {
+            noteOn: null,
+            noteOff: null
+        },
+
+        listeners: {
+            "noteOn.handleChange": [
+                "{that}.noteChange(on, {arguments}.0)"
+            ],
+
+            "noteOff.handleChange": [
+                "{that}.noteChange(off, {arguments}.0)"
+            ]
+        }
+    });
+
+    flock.noteTarget.change = function (that, type, changeSpec) {
+        var baseChange = that.options.noteChanges[type];
+        var mergedChange = $.extend({}, baseChange, changeSpec);
+        that.set(mergedChange);
+    };
+
 
     fluid.defaults("flock.ugenNodeList", {
         gradeNames: ["flock.nodeList"],
@@ -1715,9 +1777,11 @@ var fluid = fluid || require("infusion"),
      * that describes the synth's unit generator graph.
      */
     fluid.defaults("flock.synth", {
-        gradeNames: ["flock.node", "flock.ugenNodeList"],
+        gradeNames: ["flock.node", "flock.noteTarget", "flock.ugenNodeList"],
 
         rate: flock.rates.AUDIO,
+
+        addToEnvironment: true,
 
         members: {
             rate: "{that}.options.rate",
