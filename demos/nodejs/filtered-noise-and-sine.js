@@ -1,5 +1,14 @@
-/*jshint node:true*/
-/*global require, __dirname*/
+/*
+ * Flocking Node.js "Filtered Noise and Sine" Demo
+ * http://github.com/colinbdclark/flocking
+ *
+ * Copyright 2013-2015, Colin Clark
+ * Dual licensed under the MIT and GPL Version 2 licenses.
+ */
+
+/*jslint white: true, vars: true, undef: true, newcap: true, regexp: true,
+    node: true, forin: true, continue: true, nomen: true,
+    bitwise: true, maxerr: 100, indent: 4 */
 
 "use strict";
 
