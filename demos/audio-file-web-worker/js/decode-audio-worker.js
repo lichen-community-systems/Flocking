@@ -5,7 +5,7 @@
     "use strict";
 
     importScripts(
-        "./flocking-audiofile.js"
+        "./audiofile.js"
     );
 
     flock.audio.workerDecoder = {};

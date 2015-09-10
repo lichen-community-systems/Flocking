@@ -61,7 +61,7 @@ is documented in the wiki. Plans include:
  * A block-accurate scheduler and more sample-accurate scheduling unit generators
  * Multichannel expansion
 
-Unplanned features, bug fixes, and contributions are welcome and appreciated, of course.
+Unplanned features, bug fixes, and contributions are welcome and appreciated, of course. The Flocking project adheres to the [Contributor Covenant guidelines](http://contributor-covenant.org/version/1/2/0/), and is an open and welcoming community.
 
 
 Documentation and Demos
@@ -280,25 +280,45 @@ In the meantime the asynchronous scheduler does a decent job of keeping "pleasan
 
 Here's an example of the declarative powers of the Flocking scheduler:
 
-    var scheduler = flock.scheduler.async();
-    scheduler.schedule([
-        {
-            interval: "repeat",       // Schedule a repeating change
-            time: 0.25,               // Every quarter of a second.
-            change: {
-                synth: "sin-synth",   // Update values a synth with the global nickname "sin-synth".
-                values: {
-                    "carrier.freq": { // Change the synth's frequency by scheduling a demand-rate
-                        synthDef: {   // Synth that generate values by iterating through the list.
-                            ugen: "flock.ugen.sequence",
-                            loop: 1.0,
-                            values: [110, 220, 330, 440, 550, 660, 880]
+    // Create a Band containing two components:
+    //   1. a synth named "sinSynth," on which we will schedule changes.
+    //   2. an asynchronous scheduler
+    flock.band({
+        components: {
+            sinSynth: {
+                type: "flock.synth",
+                options: {
+                    synthDef: {
+                        id: "carrier",
+                        ugen: "flock.ugen.sinOsc",
+                        freq: 440,
+                        mul: 0.5
+                    }
+                }
+            },
+
+            scheduler: {
+                type: "flock.scheduler.async",
+                options: {
+                    components: {
+                        synthContext: "{sinSynth}",
+                        score: {
+                            values: {
+                                "carrier.freq": { // Change the synth's frequency by scheduling a demand-rate
+                                    synthDef: {   // Synth that generate values by iterating through the list.
+                                        ugen: "flock.ugen.sequence",
+                                        loop: 1.0,
+                                        values: [110, 220, 330, 440, 550, 660, 880]
+                                    }
+                                }
+                            }
+
                         }
                     }
                 }
             }
         }
-    ]);
+    });
 
 If you need to, you can always schedule arbitrary events using plain old functions:
 
@@ -317,8 +337,8 @@ The Flocking scheduler is still under active development and its API will change
 Compatibility
 -------------
 
-Flocking is currently tested on the latest versions of Firefox, Chrome and Safari
-on Mac, Windows, Linux, iOS, and Android. Node.js 0.10.x is also supported.
+Flocking is currently tested on the latest versions of Firefox, Chrome, Safari, and Microsoft Edge
+on Mac, Windows, Linux, iOS, and Android. Node.js 0.12.x is also supported.
 
 
 License

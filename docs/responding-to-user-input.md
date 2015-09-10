@@ -191,7 +191,7 @@ JavScript:
 
         // Our instrument.
         fluid.defaults("userInputDemo.doge", {
-            gradeNames: ["flock.synth", "autoInit"],
+            gradeNames: ["flock.synth"],
 
             synthDef: {
                 id: "carrier",
@@ -216,7 +216,7 @@ JavScript:
         fluid.defaults("userInputDemo.clickSource", {
 
             // Make an Infusion view component to bind with our markup.
-            gradeNames: ["fluid.viewComponent", "autoInit"],
+            gradeNames: ["fluid.viewComponent"],
 
             components: {
                 // Make our synth a subcomponent of this view.
@@ -285,7 +285,7 @@ Here's a quick example of how a user could customize this component with their o
     fluid.defaults("userInputDemo.segmentedClicker", {
 
         // Mix in the "clickSource" grade
-        gradeNames: ["userInputDemo.clickSource", "autoInit"],
+        gradeNames: ["userInputDemo.clickSource"],
 
         segmentFreqs: [1760, 880, 220],
 

@@ -20,7 +20,7 @@ var fluid = fluid || require("infusion"),
      *****************************/
 
     fluid.defaults("flock.playground.jsPlumb", {
-        gradeNames: ["fluid.viewRelayComponent", "autoInit"],
+        gradeNames: ["fluid.viewComponent"],
 
         jsPlumbSettings: {},
 
@@ -62,7 +62,7 @@ var fluid = fluid || require("infusion"),
      * is tediously doing its job rendering.
      */
     fluid.defaults("flock.playground.playToggler", {
-        gradeNames: ["fluid.eventedComponent", "autoInit"],
+        gradeNames: ["fluid.component"],
 
         listeners: {
             "{visualView}.events.afterRender": {
@@ -83,7 +83,7 @@ var fluid = fluid || require("infusion"),
      *********************/
 
     fluid.defaults("flock.playground.visual", {
-        gradeNames: ["flock.playground", "autoInit"],
+        gradeNames: ["flock.playground"],
 
         distributeOptions: [
             {
@@ -144,7 +144,7 @@ var fluid = fluid || require("infusion"),
      ***************/
 
     fluid.defaults("flock.playground.visualView", {
-        gradeNames: ["fluid.viewRelayComponent", "autoInit"],
+        gradeNames: ["fluid.viewComponent"],
 
         components: {
             jsPlumb: {
@@ -186,7 +186,7 @@ var fluid = fluid || require("infusion"),
      ******************/
 
     fluid.defaults("flock.ui.nodeRenderer", {
-        gradeNames: ["fluid.viewRelayComponent", "autoInit"],
+        gradeNames: ["fluid.viewComponent"],
 
         nodeType: "",
 
@@ -260,7 +260,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.ui.nodeRenderer.ugen", {
-        gradeNames: ["flock.ui.nodeRenderer", "autoInit"],
+        gradeNames: ["flock.ui.nodeRenderer"],
 
         invokers: {
             prepareRenderModel: {
@@ -275,7 +275,7 @@ var fluid = fluid || require("infusion"),
             return false;
         }
 
-        var defaults = fluid.defaults(ugenName);
+        var defaults = flock.ugenDefaults(ugenName);
         if (!defaults) {
             return false;
         }
@@ -295,7 +295,7 @@ var fluid = fluid || require("infusion"),
         var type = ugenDef.ugen,
             isValueUGen = flock.ui.nodeRenderer.ugen.hasTag(type, "flock.ugen.valueType"),
             displayName = isValueUGen ? ugenDef.inputs.value : type ?
-                fluid.pathUtil.getTailPath(type) : "";
+                fluid.model.getTailPath(type) : "";
 
         that.applier.change("node.displayName", displayName);
         that.applier.change("node.nodeType", type);
@@ -303,7 +303,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.ui.nodeRenderer.buffer", {
-        gradeNames: ["flock.ui.nodeRenderer", "autoInit"],
+        gradeNames: ["flock.ui.nodeRenderer"],
 
         nodeType: "flock.buffer",
 
@@ -335,7 +335,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.ui.nodeRenderer.list", {
-        gradeNames: ["flock.ui.nodeRenderer", "autoInit"],
+        gradeNames: ["flock.ui.nodeRenderer"],
 
         nodeType: "flock.list",
 
@@ -350,15 +350,15 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.ui.nodeRenderer.values", {
-        gradeNames: ["flock.ui.nodeRenderer.list", "autoInit"]
+        gradeNames: ["flock.ui.nodeRenderer.list"]
     });
 
     fluid.defaults("flock.ui.nodeRenderer.durations", {
-        gradeNames: ["flock.ui.nodeRenderer.list", "autoInit"]
+        gradeNames: ["flock.ui.nodeRenderer.list"]
     });
 
     fluid.defaults("flock.ui.nodeRenderer.table", {
-        gradeNames: ["flock.ui.nodeRenderer", "autoInit"],
+        gradeNames: ["flock.ui.nodeRenderer"],
         nodeType: "flock.table",
         model: {
             node: {
@@ -368,7 +368,7 @@ var fluid = fluid || require("infusion"),
     });
 
     fluid.defaults("flock.ui.nodeRenderer.envelope", {
-        gradeNames: ["flock.ui.nodeRenderer", "autoInit"],
+        gradeNames: ["flock.ui.nodeRenderer"],
         nodeType: "flock.envelope",
         model: {
             node: {
@@ -379,7 +379,7 @@ var fluid = fluid || require("infusion"),
 
 
     fluid.defaults("flock.ui.nodeRenderer.synth", {
-        gradeNames: ["fluid.viewRelayComponent", "autoInit"],
+        gradeNames: ["fluid.viewComponent"],
 
         members: {
             ugenRenderers: []
@@ -554,37 +554,45 @@ var fluid = fluid || require("infusion"),
 
     flock.ui.nodeRenderer.synth.layoutGraph = function (graphSpec) {
         // TODO: Wrap Dagre as a component.
-        var g = new dagre.Digraph();
+        var g = new dagre.graphlib.Graph();
+        g.setGraph({
+            rankdir: "BT",
+            ranksep: 100,
+            nodesep: 25
+        });
+        g.setDefaultEdgeLabel(function() { return {}; });
 
         // TODO: This whole workflow should be event-driven rather
         // than depending on imperative iteration.
         fluid.each(graphSpec.nodes, function (node, id) {
-            g.addNode(id, node);
+            g.setNode(id, node);
         });
 
         // TODO: This whole workflow should be event-driven rather
         // than depending on imperative iteration.
         fluid.each(graphSpec.edges, function (edge) {
-            g.addEdge(null, edge.source, edge.target);
+            g.setEdge(edge.source, edge.target);
         });
 
-        var outputGraph = dagre.layout().rankDir("BT").rankSep(100).nodeSep(25).run(g);
+        dagre.layout(g);
 
         // Position the nodes.
         // TODO: This whole workflow should be event-driven rather
         // than depending on imperative iteration.
-        outputGraph.eachNode(function (id, graphNode) {
-            var nodeEl = $("#" + id);
+        g.nodes().forEach(function (id) {
+            var node = g.node(id),
+                nodeEl = $("#" + id);
+
             nodeEl.css({
                 "position": "absolute",
                 // TODO: calculate position from centre, which is what Dagre gives us.
                 // TODO: Offset based on the container's position on screen.
-                "top": graphNode.y + 120,
-                "left": graphNode.x
+                "top": node.y + 120,
+                "left": node.x
             });
         });
 
-        return outputGraph;
+        return g;
     };
 
     flock.ui.nodeRenderer.synth.clear = function (jsPlumb, container, ugenRenderers) {
@@ -622,7 +630,7 @@ var fluid = fluid || require("infusion"),
         }
 
         that.events.onRender.fire();
-        flock.ui.nodeRenderer.synth.clear(that.jsPlumb,that. container, that.ugenRenderers);
+        flock.ui.nodeRenderer.synth.clear(that.jsPlumb, that.container, that.ugenRenderers);
         flock.ui.nodeRenderer.synth.render(activeSynthSpec.synthDef, that);
         that.events.afterRender.fire();
     };

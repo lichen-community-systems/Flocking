@@ -19,7 +19,7 @@
     "synthesis"
   ],
   "readmeFilename": "README.md",
-  "main": "nodejs/index.js",
+  "main": "index.js",
   "devDependencies": {
     "grunt": "~0.4.2",
     "grunt-contrib-clean": "~0.4.1",
@@ -27,12 +27,20 @@
     "grunt-contrib-copy": "~0.4.1",
     "grunt-contrib-jshint": "~0.8.0",
     "grunt-contrib-uglify": "~0.3.2",
-    "grunt-contrib-watch": "^0.6.1"
+    "grunt-contrib-watch": "^0.6.1",
+    "sheep-benchmark": "colinbdclark/sheep.js"
   },
   "dependencies": {
-    "infusion": "fluid-project/infusion#1.9.x",
+    "jquery": "2.1.4",
+    "infusion": "fluid-project/infusion#a1e3d601478e57276d4143fca5bcbe00f9c6b0cd",
+    "codemirror-infusion": "2.0.0",
+    "jsplumb": "sporritt/jsPlumb#1.7.8",
+    "dagre": "0.7.4",
+    "normalize.css": "3.0.3"
+  },
+  "optionalDependencies": {
     "speaker": "git://github.com/colinbdclark/node-speaker.git#mpg123-lower-latency",
-    "midi": "v0.9.3"
+    "midi": "0.9.4"
   },
   "engines": {
     "node": ">=0.10.x"

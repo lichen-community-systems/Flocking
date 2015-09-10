@@ -6,22 +6,27 @@ module.exports = function(grunt) {
 
     var files = {
         jQuery: [
-            "third-party/jquery/js/jquery.js"
+            "node_modules/jquery/dist/jquery.js"
+        ],
+
+        jQueryStandalone: [
+            "node_modules/infusion/src/framework/core/js/jquery.standalone.js"
         ],
 
         infusion: [
-            "third-party/infusion/js/Fluid.js",
-            "third-party/infusion/js/FluidDebugging.js",
-            "third-party/infusion/js/FluidIoC.js",
-            "third-party/infusion/js/DataBinding.js",
-            "third-party/infusion/js/ModelTransformation.js",
-            "third-party/infusion/js/ModelTransformationTransforms.js",
+            "node_modules/infusion/src/framework/core/js/Fluid.js",
+            "node_modules/infusion/src/framework/core/js/FluidDebugging.js",
+            "node_modules/infusion/src/framework/core/js/FluidIoC.js",
+            "node_modules/infusion/src/framework/core/js/DataBinding.js",
+            "node_modules/infusion/src/framework/core/js/ModelTransformation.js",
+            "node_modules/infusion/src/framework/core/js/ModelTransformationTransforms.js",
+            "node_modules/infusion/src/framework/enhancement/js/ContextAwareness.js"
         ],
 
         infusionViews: [
-            "third-party/infusion/js/FluidDocument.js",
-            "third-party/infusion/js/FluidDOMUtilities.js",
-            "third-party/infusion/js/FluidView.js"
+            "node_modules/infusion/src/framework/core/js/FluidDocument.js",
+            "node_modules/infusion/src/framework/core/js/FluidDOMUtilities.js",
+            "node_modules/infusion/src/framework/core/js/FluidView.js"
         ],
 
         miscDeps: [
@@ -32,42 +37,50 @@ module.exports = function(grunt) {
         ],
 
         flockingBase: [
-            "flocking/flocking-core.js",
-            "flocking/flocking-buffers.js",
-            "flocking/flocking-parser.js",
-            "flocking/flocking-audiofile.js",
-            "flocking/flocking-audiofile-encoder.js",
+            "src/core.js",
+            "src/synths/group.js",
+            "src/synths/polyphonic.js",
+            "src/synths/band.js",
+            "src/buffers.js",
+            "src/parser.js",
+            "src/audiofile.js",
+            "src/audiofile-encoder.js",
             // flocking-audiofile-compatibility.js is intentionally omitted
             // to reduce the size of the default Flocking build.
-            "flocking/flocking-scheduler.js",
-            "flocking/flocking-webaudio.js",
-            "flocking/flocking-webmidi.js",
-            "flocking/ugens/core.js"
+            "src/scheduler.js",
+            "src/web/webaudio-core.js",
+            "src/web/audio-system.js",
+            "src/web/buffer-writer.js",
+            "src/web/input-device-manager.js",
+            "src/web/midi.js",
+            "src/web/native-node-manager.js",
+            "src/web/output-manager.js",
+            "src/ugens/core.js"
         ],
 
         flockingUGens: [
-            "flocking/ugens/bandlimited.js",
-            "flocking/ugens/buffer.js",
-            "flocking/ugens/debugging.js",
-            "flocking/ugens/distortion.js",
-            "flocking/ugens/dynamics.js",
-            "flocking/ugens/envelopes.js",
-            "flocking/ugens/filters.js",
-            "flocking/ugens/gates.js",
-            "flocking/ugens/granular.js",
-            "flocking/ugens/listening.js",
-            "flocking/ugens/math.js",
-            "flocking/ugens/midi.js",
-            "flocking/ugens/multichannel.js",
-            "flocking/ugens/oscillators.js",
-            "flocking/ugens/random.js",
-            "flocking/ugens/scheduling.js",
-            "flocking/ugens/triggers.js"
+            "src/ugens/bandlimited.js",
+            "src/ugens/buffer.js",
+            "src/ugens/debugging.js",
+            "src/ugens/distortion.js",
+            "src/ugens/dynamics.js",
+            "src/ugens/envelopes.js",
+            "src/ugens/filters.js",
+            "src/ugens/gates.js",
+            "src/ugens/granular.js",
+            "src/ugens/listening.js",
+            "src/ugens/math.js",
+            "src/ugens/midi.js",
+            "src/ugens/multichannel.js",
+            "src/ugens/oscillators.js",
+            "src/ugens/random.js",
+            "src/ugens/scheduling.js",
+            "src/ugens/triggers.js"
         ],
 
         flockingViews: [
-            "flocking/flocking-gfx.js",
-            "flocking/ugens/browser.js"
+            "src/gfx.js",
+            "src/ugens/browser.js"
         ],
 
         amdHeader: [
@@ -85,7 +98,7 @@ module.exports = function(grunt) {
 
         jshint: {
             all: [
-                "flocking/*.js",
+                "src/*.js",
                 "demos/**/*.js",
                 "tests/**/*.js",
                 "nodejs/**/*.js",
@@ -126,6 +139,7 @@ module.exports = function(grunt) {
             base: {
                 src: [].concat(
                     files.amdHeader,
+                    files.jQueryStandalone,
                     files.infusion,
                     files.miscDeps,
                     files.flockingBase,
@@ -162,8 +176,8 @@ module.exports = function(grunt) {
                     expand: true,
                     flatten: true,
                     src: [
-                        "flocking/flocking-audiofile-compatibility.js",
-                        "flocking/flocking-audiofile-worker.js"
+                        "src/flocking-audiofile-compatibility.js",
+                        "src/flocking-audiofile-worker.js"
                     ],
                     dest: "dist/",
                     filter: "isFile"
@@ -180,7 +194,7 @@ module.exports = function(grunt) {
 
         watch: {
             scripts: {
-                files: ["flocking/**/*.js", "third-party/**/*.js", "Gruntfile.js"],
+                files: ["src/**/*.js", "third-party/**/*.js", "Gruntfile.js"],
                 tasks: ["default"],
                 options: {
                     spawn: false

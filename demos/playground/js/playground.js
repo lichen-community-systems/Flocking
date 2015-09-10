@@ -24,7 +24,7 @@ var fluid = fluid || require("infusion"),
      **************/
 
     fluid.defaults("flock.playground", {
-        gradeNames: ["fluid.viewRelayComponent", "autoInit"],
+        gradeNames: ["fluid.viewComponent"],
 
         model: {
             activeSynthSpec: {},
@@ -109,7 +109,7 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.defaults("flock.playground.code", {
-        gradeNames: ["flock.playground", "autoInit"],
+        gradeNames: ["flock.playground"],
 
         listeners: {
             onEvaluateDemo: [

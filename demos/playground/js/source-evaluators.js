@@ -68,7 +68,7 @@ var fluid = fluid || require("infusion"),
      ******************************/
 
     fluid.defaults("flock.sourceEvaluator", {
-        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
+        gradeNames: ["fluid.modelComponent"],
 
         members: {
             // TODO: Where should this be located, given that
@@ -101,7 +101,7 @@ var fluid = fluid || require("infusion"),
      ******************/
 
     fluid.defaults("flock.sourceEvaluator.json", {
-        gradeNames: ["flock.sourceEvaluator", "autoInit"],
+        gradeNames: ["flock.sourceEvaluator"],
 
         defaultComponentType: "flock.band",
 
@@ -201,7 +201,7 @@ var fluid = fluid || require("infusion"),
      ************************/
 
     fluid.defaults("flock.sourceEvaluator.code", {
-        gradeNames: ["flock.sourceEvaluator", "autoInit"],
+        gradeNames: ["flock.sourceEvaluator"],
 
         model: {
             source: ""

@@ -141,7 +141,7 @@ Since namespaces are hierarchical, you can define sub-namespaces for particular 
 When you've decided on a namespace, you can define your synth grades within it. Grades are defined by calling <code>fluid.defaults()</code>, which registers your custom component with the Infusion defaults registry. The first argument is the fully-qualified name of your custom synth grade, followed by an object that contains all its default values.
 
     fluid.defaults("drift.synths.grainSynth", {
-        gradeNames: ["flock.synth", "autoInit"],
+        gradeNames: ["flock.synth"],
         synthDef: {
             ugen: "flock.ugen.triggerGrains",
             speed: 2.0
@@ -165,7 +165,7 @@ If you want to override the default values for a particular instance of your cus
 You can also define custom synths that override any aspect of a base grade. Here we override the type of granulator used:
 
         fluid.defaults("drift.synths.betterGrainSynth", {
-            gradeNames: ["drift.synths.grainSynth", "autoInit"],
+            gradeNames: ["drift.synths.grainSynth"],
             synthDef: {
                 ugen: "flock.ugen.granulator",
                 grainDur: 0.001

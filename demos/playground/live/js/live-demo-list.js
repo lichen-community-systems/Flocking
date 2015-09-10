@@ -13,7 +13,7 @@ var fluid = fluid || require("infusion");
     "use strict";
 
     fluid.defaults("flock.playground.demos.live", {
-        gradeNames: ["fluid.standardRelayComponent", "autoInit"],
+        gradeNames: ["fluid.modelComponent"],
 
         model: {
             groups: [

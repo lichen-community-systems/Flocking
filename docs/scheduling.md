@@ -33,14 +33,14 @@ Here's an example of using the Infusion style to create a very simple drum machi
         flock.init();
 
         fluid.defaults("flock.examples.drumMachine", {
-            gradeNames: ["fluid.eventedComponent", "autoInit"],
+            gradeNames: ["fluid.component"],
 
             score: [
                 {
                     interval: "repeat",
                     time: 1,
                     change: {
-                        synth: "synth",
+                        synth: "drumSynth",
                         values: {
                             "trig.source": {
                                 synthDef: {
@@ -55,7 +55,7 @@ Here's an example of using the Infusion style to create a very simple drum machi
             ],
 
             components: {
-                synth: {
+                drumSynth: {
                     type: "flock.synth",
                     options: {
                         synthDef: {
@@ -78,7 +78,10 @@ Here's an example of using the Infusion style to create a very simple drum machi
                     type: "flock.scheduler.async.tempo",
                     options: {
                         bpm: 120,
-                        score: "{drumMachine}.options.score"
+                        score: "{drumMachine}.options.score",
+                        components: {
+                            synthContext: "{drumMachine}"
+                        }
                     }
                 }
             },

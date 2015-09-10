@@ -1,5 +1,5 @@
 fluid.defaults("flock.demo.sequencedSine", {
-    gradeNames: ["flock.synth", "autoInit"],
+    gradeNames: ["flock.synth"],
     synthDef: {
         ugen: "flock.ugen.out",
         expand: 1,
