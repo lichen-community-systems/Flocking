@@ -3,7 +3,7 @@
 
 "use strict";
 
-var flock = require(__dirname + "/../index.js"), //jshint ignore:line
+var flock = require(__dirname + "/../../index.js"), //jshint ignore:line
     enviro = flock.init();
 
 var synth = flock.synth({

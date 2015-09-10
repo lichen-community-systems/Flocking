@@ -10,7 +10,7 @@
 // so that we can share most demos between both platforms.
 
 var currentDir = __dirname, //jshint ignore:line
-    flock = require(currentDir + "/../index.js"),
+    flock = require(currentDir + "/../../index.js"),
     enviro = flock.init({
         chans: 4
     });

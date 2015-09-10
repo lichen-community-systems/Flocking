@@ -1249,8 +1249,7 @@ var fluid = fluid || require("infusion"),
             },
 
             audioSystem: {
-                // TODO: Make polymorphic again!
-                type: "flock.webAudio.audioSystem"
+                type: "flock.audioSystem"
             },
 
             busManager: {

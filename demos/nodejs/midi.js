@@ -4,7 +4,7 @@
 "use strict";
 
 var fluid = require("infusion"),
-    flock = require(__dirname + "/../index.js"); //jshint ignore:line
+    flock = require(__dirname + "/../../index.js"); //jshint ignore:line
 
 flock.init();
 

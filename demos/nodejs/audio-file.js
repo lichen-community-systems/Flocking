@@ -4,7 +4,7 @@
 "use strict";
 
 var currentDir = __dirname, //jshint ignore:line
-    flock = require(currentDir + "/../index.js"),
+    flock = require(currentDir + "/../../index.js"),
     enviro = flock.init();
 
 flock.synth({

@@ -10725,8 +10725,7 @@ var fluid = fluid || require("infusion"),
             },
 
             audioSystem: {
-                // TODO: Make polymorphic again!
-                type: "flock.webAudio.audioSystem"
+                type: "flock.audioSystem"
             },
 
             busManager: {
@@ -14414,6 +14413,22 @@ var fluid = fluid || require("infusion"),
 (function () {
 
     "use strict";
+
+    // Brute force grade definition overrides.
+    // TODO: Replace this with proper use of contextAwareness
+    fluid.defaults("flock.webAudio.enviroContext", {
+        gradeNames: ["fluid.component"],
+
+        distributeOptions: [
+            {
+                target: "{/ flock.enviro > audioSystem}.options",
+                record: {
+                    gradeNames: "flock.webAudio.audioSystem"
+                }
+            }
+        ]
+    });
+    flock.webAudio.enviroContext();
 
     fluid.defaults("flock.webAudio.audioSystem", {
         gradeNames: ["flock.audioSystem"],
