@@ -35,12 +35,14 @@
     "codemirror-infusion": "2.0.0",
     "jsplumb": "sporritt/jsPlumb#1.7.8",
     "dagre": "0.7.4",
-    "normalize.css": "3.0.3",
-    "speaker": "git://github.com/colinbdclark/node-speaker.git#mpg123-lower-latency",
-    "midi": "0.9.4"
+    "normalize.css": "3.0.3"
   },
   "devDependencies": {
     "sheep-benchmark": "colinbdclark/sheep.js"
+  },
+  "optionalDependencies": {
+    "speaker": "git://github.com/colinbdclark/node-speaker.git#mpg123-lower-latency",
+    "midi": "0.9.4"
   },
   "engines": {
     "node": ">=0.10.x"

@@ -337,8 +337,8 @@ The Flocking scheduler is still under active development and its API will change
 Compatibility
 -------------
 
-Flocking is currently tested on the latest versions of Firefox, Chrome and Safari
-on Mac, Windows, Linux, iOS, and Android. Node.js 0.10.x is also supported.
+Flocking is currently tested on the latest versions of Firefox, Chrome, Safari, and Microsoft Edge
+on Mac, Windows, Linux, iOS, and Android. Node.js 0.12.x is also supported.
 
 
 License
