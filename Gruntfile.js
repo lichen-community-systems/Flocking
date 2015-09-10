@@ -20,6 +20,7 @@ module.exports = function(grunt) {
             "node_modules/infusion/src/framework/core/js/DataBinding.js",
             "node_modules/infusion/src/framework/core/js/ModelTransformation.js",
             "node_modules/infusion/src/framework/core/js/ModelTransformationTransforms.js",
+            "node_modules/infusion/src/framework/enhancement/js/ContextAwareness.js"
         ],
 
         infusionViews: [

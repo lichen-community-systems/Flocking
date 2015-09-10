@@ -17,42 +17,6 @@ var fs = require("fs"),
     fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
 
-// Brute force grade definition overrides.
-// TODO: Replace this with proper use of contextAwareness
-fluid.defaults("flock.nodejs.enviroContext", {
-    gradeNames: ["fluid.component"],
-
-    distributeOptions: [
-        {
-            target: "{/ flock.scheduler.once}.options",
-            record: {
-                components: {
-                    clock: {
-                        type: "flock.scheduler.scheduleClock"
-                    }
-                }
-            }
-        },
-        {
-            target: "{/ flock.scheduler.repeat}.options",
-            record: {
-                components: {
-                    clock: {
-                        type: "flock.scheduler.intervalClock"
-                    }
-                }
-            }
-        },
-        {
-            target: "{/ flock.enviro > audioSystem}.options",
-            record: {
-                gradeNames: "flock.nodejs.audioSystem"
-            }
-        }
-    ]
-});
-flock.nodejs.enviroContext();
-
 
 fluid.defaults("flock.nodejs.audioSystem", {
     gradeNames: "flock.audioSystem",
@@ -131,4 +95,38 @@ flock.audio.decode.node = function (options) {
 flock.audio.registerDecoderStrategy({
     "default": flock.audio.decode.node,
     "aiff": flock.audio.decode.node
+});
+
+
+/**
+ * Distributes platform-specific grades for Node.js
+ */
+fluid.defaults("flock.nodejs.enviroContextDistributor", {
+    gradeNames: "fluid.component",
+
+    distributeOptions: [
+        {
+            target: "{/ flock.scheduler.once}.options.components.clock",
+            record: {
+                type: "flock.scheduler.scheduleClock"
+            }
+        },
+        {
+            target: "{/ flock.scheduler.repeat}.options.components.clock",
+            record: {
+                type: "flock.scheduler.intervalClock"
+            }
+        },
+        {
+            target: "{/ flock.enviro > audioSystem}.options",
+            record: {
+                gradeNames: "flock.nodejs.audioSystem"
+            }
+        }
+    ]
+});
+
+fluid.constructSingle([], {
+    singleRootType: "flock.nodejs.enviroContextDistributor",
+    type: "flock.nodejs.enviroContextDistributor"
 });
