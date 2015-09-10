@@ -14,9 +14,9 @@ var flock = flock || {};
     "use strict";
 
     flock.init();
-    
+
     module("flock.ugen.value tests");
-    
+
     // TODO: Normalize this with the real node evaluation algorithm in Synth (i.e. break it out and reuse it.)
     var gen = function (ugens, duration) {
         var kr = 64,
@@ -24,7 +24,7 @@ var flock = flock || {};
             i,
             j,
             ugen;
-            
+
         for (i = 0; i < periods; i++) {
             for (j = 0; j < ugens.length; j++) {
                 ugen = ugens[j];
@@ -34,28 +34,28 @@ var flock = flock || {};
             }
         }
     };
-    
+
     var runTimingTest = function (ugens, numRuns) {
         var avgDuration = 0,
             currentStartTime,
             currentEndTime,
             i;
-        
+
         for (i = 0; i < numRuns; i++) {
             currentStartTime = Date.now();
             gen(ugens, 1);
             currentEndTime = Date.now();
-            avgDuration += currentEndTime - currentStartTime;            
+            avgDuration += currentEndTime - currentStartTime;
         }
         avgDuration = avgDuration / numRuns;
-        
+
         return avgDuration;
     };
-    
+
     var assertCeiling = function (actual, expectedCeiling, msg) {
         ok(actual <= expectedCeiling, msg + " Actual is: " + actual + ".");
     };
-    
+
     test("flock.ugen.value with stereo flock.ugen.out", function () {
         var synth = flock.synth({
             synthDef: {
@@ -73,21 +73,21 @@ var flock = flock || {};
                 }
             }
         });
-        
-        var avg = runTimingTest(synth.nodes, 50);
-        assertCeiling(avg, 5, 
+
+        var avg = runTimingTest(synth.ugens.nodes, 50);
+        assertCeiling(avg, 5,
             "Generating and outputting 1 second of stereo signal from flock.ugen.value should take less than 5 ms.");
     });
-    
+
     module("flock.ugen.sinOsc tests");
-    
+
     var checkUGen = function (ugenDef, expectedCeil, msg) {
         var ugen = flock.parse.ugenForDef(ugenDef),
             ugens = [ugen],
             inputName,
             input,
             avg;
-            
+
         for (inputName in ugen.inputs) {
             input = ugen.inputs[inputName];
             if (input.gen) {
@@ -97,7 +97,7 @@ var flock = flock || {};
         avg = runTimingTest(ugens, 50);
         assertCeiling(avg, expectedCeil, msg);
     };
-    
+
     var testConfigs = [
         {
             ugenDef: {
@@ -183,15 +183,15 @@ var flock = flock || {};
             },
             maxDur: 150
         }
-        
+
     ];
-    
+
     var runTest = function (ugenDef, maxDur, msg) {
         test(msg, function () {
             checkUGen(ugenDef, maxDur, "Should take no longer than " + maxDur + " ms.");
         });
     };
-    
+
     var testConfigurations = function (configs) {
         var i,
             config,
@@ -200,13 +200,13 @@ var flock = flock || {};
             input,
             msg,
             inputMsgs;
-            
+
         for (i = 0; i < configs.length; i++) {
             config = configs[i];
             inputs = config.ugenDef.inputs;
             msg = "1 sec. signal from " + config.ugenDef.ugen + " with ";
             inputMsgs = [];
-            
+
             for (inputName in inputs) {
                 input = inputs[inputName];
                 inputMsgs.push((input.rate ? input.rate : "constant") + " rate " + inputName);
@@ -214,6 +214,6 @@ var flock = flock || {};
             runTest(config.ugenDef, config.maxDur, msg + inputMsgs.join(", "));
         }
     };
-    
+
     testConfigurations(testConfigs);
 }());

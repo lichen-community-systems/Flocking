@@ -33,8 +33,6 @@ var fluid = fluid || require("infusion"),
         },
 
         invokers: {
-            start: "{that}.events.onStart.fire()",
-            stop: "{that}.events.onStop.fire()",
             bindAudioProcess: {
                 funcName: "flock.webAudio.outputManager.bindAudioProcess",
                 args: ["{nodeEvaluator}", "{nativeNodeManager}", "{that}.model"]

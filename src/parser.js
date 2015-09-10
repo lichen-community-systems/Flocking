@@ -89,9 +89,6 @@ var fluid = fluid || require("infusion"),
                 blockSize: blockSize
             }
         });
-        // TODO: When we switch to Infusion options merging, these should have a mergePolicy of preserve.
-        ugenDef.options.buffers = options.buffers;
-        ugenDef.options.buses = options.buses;
 
         var outputBufferSize = ugenDef.rate === flock.rates.AUDIO ? blockSize : 1,
             outputBuffers;
@@ -107,10 +104,14 @@ var fluid = fluid || require("infusion"),
             outputBuffers = new Float32Array(outputBufferSize);
         }
 
+        var ugenOpts = fluid.copy(ugenDef.options);
+        ugenOpts.buffers = options.buffers;
+        ugenOpts.buses = options.buses;
+
         return flock.invoke(undefined, ugenDef.ugen, [
             parsedInputs,
             outputBuffers,
-            ugenDef.options
+            ugenOpts
         ]);
     };
 

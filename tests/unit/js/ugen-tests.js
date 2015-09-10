@@ -1478,7 +1478,7 @@ var fluid = fluid || require("infusion"),
         });
 
         inSynth.enviro.gen();
-        var actual = inSynth.namedNodes["in"].output;
+        var actual = inSynth.ugens.namedNodes["in"].output;
         deepEqual(actual, inSynth.enviro.busManager.buses[62],
             "With a single source input, the output of flock.ugen.in should make a copy of the bus referenced.");
         deepEqual(actual, outSynth.get("bufferMock").options.buffer,
@@ -1512,7 +1512,7 @@ var fluid = fluid || require("infusion"),
         });
 
         inSynth.enviro.gen();
-        var actual = inSynth.namedNodes["in"].output;
+        var actual = inSynth.ugens.namedNodes["in"].output;
         var expected = flock.generate(64, function (i) {
             return (i + 1) * 2;
         });
@@ -1547,7 +1547,7 @@ var fluid = fluid || require("infusion"),
             }
         });
 
-        var normalizer = normalizerSynth.namedNodes.normalizer;
+        var normalizer = normalizerSynth.ugens.namedNodes.normalizer;
         normalizerSynth.gen();
         var expected = flock.normalize(flock.test.ascendingBuffer(64, -31), 1.0);
         deepEqual(normalizer.output, expected,
@@ -1569,7 +1569,7 @@ var fluid = fluid || require("infusion"),
             synthDef: synthDef
         });
         synth.gen();
-        var math = synth.namedNodes.math;
+        var math = synth.ugens.namedNodes.math;
         deepEqual(math.output, expected, msg);
     };
 
@@ -1793,7 +1793,7 @@ var fluid = fluid || require("infusion"),
         var delaySynth = flock.synth({
             synthDef:delayLineDef
         });
-        var delay = delaySynth.namedNodes.delay;
+        var delay = delaySynth.ugens.namedNodes.delay;
         delaySynth.gen();
 
         // First block should be silent.
@@ -1844,7 +1844,7 @@ var fluid = fluid || require("infusion"),
             var synth = flock.synth({
                 synthDef: durationDef
             });
-            var durUGen = synth.namedNodes.dur;
+            var durUGen = synth.ugens.namedNodes.dur;
 
             synth.gen();
             equal(durUGen.output[0], 2.5,

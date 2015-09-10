@@ -590,8 +590,8 @@ var fluid = fluid || require("infusion"),
 
     test("Set input values", function () {
         var synth = createSynth(simpleSynthDef),
-            sineUGen = synth.namedNodes.sine,
-            modUGen = synth.namedNodes.mod;
+            sineUGen = synth.ugens.namedNodes.sine,
+            modUGen = synth.ugens.namedNodes.mod;
 
         // Setting simple values.
         synth.input("sine.freq", 220);
@@ -628,9 +628,9 @@ var fluid = fluid || require("infusion"),
             }
         };
         var dust = synth.input("sine.mul", testUGenDef);
-        equal(synth.namedNodes.sine.inputs.mul, dust,
+        equal(synth.ugens.namedNodes.sine.inputs.mul, dust,
             "The 'mul' ugen should be set to our test Dust ugen.");
-        equal(synth.namedNodes.sine.inputs.mul.inputs.density.model.value, 200,
+        equal(synth.ugens.namedNodes.sine.inputs.mul.inputs.density.model.value, 200,
             "The ugen should be set up correctly.");
 
         // Set a named ugen directly.
@@ -639,9 +639,9 @@ var fluid = fluid || require("infusion"),
             ugen: "flock.ugen.lfNoise",
             freq: 123
         });
-        equal(synth.namedNodes.sine.inputs.freq.model.value, 123,
+        equal(synth.ugens.namedNodes.sine.inputs.freq.model.value, 123,
             "Directly setting a named unit generator should cause the previous ugen to be replaced.");
-        ok(sineUGen !== synth.namedNodes.sine);
+        ok(sineUGen !== synth.ugens.namedNodes.sine);
     });
 
     test("Set input values, onInputChanged event", function () {
@@ -698,7 +698,7 @@ var fluid = fluid || require("infusion"),
             synthDef: def
         });
         var actual = synth.input("carrier.freq.sources.1"),
-            expected = synth.namedNodes.adder.inputs.sources[1];
+            expected = synth.ugens.namedNodes.adder.inputs.sources[1];
         equal(actual, expected, "Getting a ugen input within an array should return the correct ugen.");
 
         actual = synth.input("adder.sources.1.freq");
@@ -708,7 +708,7 @@ var fluid = fluid || require("infusion"),
 
         synth.input("adder.sources.1.freq", 889);
         expected = 889;
-        actual = synth.namedNodes.adder.inputs.sources[1].inputs.freq.model.value;
+        actual = synth.ugens.namedNodes.adder.inputs.sources[1].inputs.freq.model.value;
         equal(actual, expected,
             "Setting a value on a ugen within an array should succeed.");
 
@@ -716,7 +716,7 @@ var fluid = fluid || require("infusion"),
             ugen: "flock.ugen.lfNoise",
             freq: 456
         });
-        equal(synth.namedNodes.adder.inputs.sources[0].inputs.freq.model.value, 456,
+        equal(synth.ugens.namedNodes.adder.inputs.sources[0].inputs.freq.model.value, 456,
             "Setting a ugen within an array should succeed.");
     });
 
@@ -726,13 +726,13 @@ var fluid = fluid || require("infusion"),
         equal(value.length, synth.get("out.sources").length,
             msgPrefix + ": " +
             "The input should have the correct number of unit generators attached to it.");
-        equal(synth.nodes.length, expectedNumNodes,
+        equal(synth.ugens.nodes.length, expectedNumNodes,
             msgPrefix + ": " +
             "The unit generator list should have been updated with the new unit generator count (i.e. old inputs removed, new ones added).");
 
         var activeOldCount = 0;
         for (var i = 0; i < oldUGens.length; i++) {
-            activeOldCount += synth.nodes.indexOf(oldUGens[i]);
+            activeOldCount += synth.ugens.nodes.indexOf(oldUGens[i]);
         }
         ok(activeOldCount < 0,
             msgPrefix + ": " +
@@ -783,11 +783,11 @@ var fluid = fluid || require("infusion"),
             synthDef: def
         });
 
-        equal(synth.nodes.length, 11,
+        equal(synth.ugens.nodes.length, 11,
             "Sanity check: all 11 unit generators should have been added to the synth.");
 
         var result = synth.get("out.sources");
-        equal(result, synth.namedNodes.out.inputs.sources,
+        equal(result, synth.ugens.namedNodes.out.inputs.sources,
             "Getting an array-valued input should return all values.");
 
         runSetArrayValueTest(synth, "out.sources", [
@@ -885,7 +885,7 @@ var fluid = fluid || require("infusion"),
             }
         });
 
-        direct = synth.namedNodes.sine;
+        direct = synth.ugens.namedNodes.sine;
 
         expected = {
             "sine.freq": direct.inputs.freq,
@@ -1000,7 +1000,7 @@ var fluid = fluid || require("infusion"),
         if (change) {
             synth.set(change);
         }
-        equal(synth.nodes.length, expected, msg);
+        equal(synth.ugens.nodes.length, expected, msg);
     };
 
     var runUGenCountTests = function (testSpec) {
@@ -1596,12 +1596,12 @@ var fluid = fluid || require("infusion"),
         $.each(testSpecs, function (i, spec) {
             var toRemove = spec.ugenToRemove;
             if (toRemove) {
-                toRemove = typeof (toRemove) === "string" ? flock.get(synth, toRemove) : toRemove;
-                synth.removeTree(toRemove, true);
+                toRemove = typeof (toRemove) === "string" ? flock.get(synth.ugens, toRemove) : toRemove;
+                synth.ugens.removeTree(toRemove, true);
             }
-            equal(synth.nodes.length, spec.expected.all,
+            equal(synth.ugens.nodes.length, spec.expected.all,
                 spec.msg + ", there should be " + spec.expected.all + " all ugens.");
-            equal(Object.keys(synth.namedNodes).length, spec.expected.named,
+            equal(Object.keys(synth.ugens.namedNodes).length, spec.expected.named,
                 spec.msg + ", there should be " + spec.expected.named + " named ugens.");
         });
     };
@@ -1664,7 +1664,7 @@ var fluid = fluid || require("infusion"),
                 msg: "After removing an active, named ugen"
             },
             {
-                ugenToRemove: "out.inputs.sources.inputs.dog",
+                ugenToRemove: "root.inputs.sources.inputs.dog",
                 expected: {
                     all: 5,
                     named: 1
@@ -1672,7 +1672,7 @@ var fluid = fluid || require("infusion"),
                 msg: "After removing an active, unnamed ugen"
             },
             {
-                ugenToRemove: "out",
+                ugenToRemove: "root",
                 expected: {
                     all: 0,
                     named: 0
@@ -1690,17 +1690,17 @@ var fluid = fluid || require("infusion"),
             synthDef: nestedSynthDef
         });
 
-        var toReplace = synth.namedNodes.gerbil,
-            expectedInput = synth.namedNodes.ear,
+        var toReplace = synth.ugens.namedNodes.gerbil,
+            expectedInput = synth.ugens.namedNodes.ear,
             newUGen = flock.parse.ugenForDef({
                 id: "gerbil",
                 ugen: "flock.test.ugen.mock"
             });
-        synth.swapTree(newUGen, toReplace);
+        synth.ugens.swapTree(newUGen, toReplace);
 
-        equal(synth.namedNodes.gerbil, newUGen,
+        equal(synth.ugens.namedNodes.gerbil, newUGen,
             "The old ugen should have been replaced by the new one.");
-        equal(synth.namedNodes.gerbil.inputs.ear, expectedInput,
+        equal(synth.ugens.namedNodes.gerbil.inputs.ear, expectedInput,
             "The old ugen's input should have been copied over to the new one.");
         // TODO: Why is this failing?
         //deepEqual(synth.out.inputs.sources.inputs.gerbil, newUGen, "The new ugen's output should be wired back up.");
@@ -1711,7 +1711,7 @@ var fluid = fluid || require("infusion"),
 
     var checkValueOnNodes = function (nodes, ugenName, inputName, expected) {
         $.each(nodes, function (i, node) {
-            var actual = node.namedNodes[ugenName].input(inputName);
+            var actual = node.ugens.namedNodes[ugenName].input(inputName);
             equal(expected, actual, "Node #" + i + " should have the correct value.");
         });
     };
@@ -1892,17 +1892,15 @@ var fluid = fluid || require("infusion"),
     module("Parsing tests");
 
     var checkRegisteredUGens = function (synth, expectedNumEvals) {
-        equal(Object.keys(synth.namedNodes).length, 3, "There should be three registered ugens.");
-        ok(synth.out,
-            "The output ugen should have been stored at synth.out");
-        equal(synth.nodes.length, expectedNumEvals,
+        equal(Object.keys(synth.ugens.namedNodes).length, 3, "There should be three registered ugens.");
+        equal(synth.ugens.nodes.length, expectedNumEvals,
             "There should be " + expectedNumEvals + " ugens in the 'all' list, including the output.");
     };
 
     var checkParsedTestSynthDef = function (synthDef, expectedNumEvalUGens) {
         var synth = flock.synth({
             synthDef: synthDef
-        }), namedUGens = synth.namedNodes;
+        }), namedUGens = synth.ugens.namedNodes;
 
         checkRegisteredUGens(synth, expectedNumEvalUGens);
         ok(namedUGens.sine, "The sine ugen should be keyed by its id....");
@@ -1962,12 +1960,12 @@ var fluid = fluid || require("infusion"),
         var synth = flock.synth({
             synthDef: multiChanTestSynthDef
         });
-        var namedUGens = synth.namedNodes;
+        var namedUGens = synth.ugens.namedNodes;
 
         checkRegisteredUGens(synth, 9);
         ok(namedUGens.leftSine, "The left sine ugen should have been parsed correctly.");
         ok(namedUGens.rightSine, "The right sine ugen should have been parsed correctly.");
-        deepEqual(synth.out.inputs.sources,
+        deepEqual(synth.ugens.root.inputs.sources,
             [namedUGens.leftSine, namedUGens.rightSine],
             "The output ugen should have an array of sources, containing the left and right sine ugens.");
     });
@@ -1994,7 +1992,7 @@ var fluid = fluid || require("infusion"),
 
         var synth = flock.synth({
             synthDef: mixedSynthDef
-        }), namedUGens = synth.namedNodes;
+        }), namedUGens = synth.ugens.namedNodes;
 
         equal(namedUGens.carrier.inputs.freq, namedUGens.mod,
             "The modulator should have been set as the frequency input to the carrier.");

@@ -199,8 +199,8 @@ var fluid = fluid || require("infusion"),
 
                 return flock.parse.ugenDef(ugenDef, {
                     audioSettings: that.options.audioSettings,
-                    buses: that.options.buses,
-                    buffers: that.options.buffers
+                    buses: that.buses,
+                    buffers: that.buffers
                 });
             });
         };

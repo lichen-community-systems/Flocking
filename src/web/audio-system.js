@@ -18,6 +18,7 @@ var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
 
 (function () {
+
     "use strict";
 
     fluid.defaults("flock.webAudio.audioSystem", {
@@ -91,5 +92,4 @@ var fluid = fluid || require("infusion"),
             context.destination.channelInterpretation = "discrete";
         }
     };
-
 }());

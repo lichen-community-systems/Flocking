@@ -10688,9 +10688,9 @@ var fluid = fluid || require("infusion"),
         },
 
         invokers: {
-            reset: {
-                func: "{that}.events.onReset.fire"
-            }
+            start: "{that}.events.onStart.fire()",
+            stop: "{that}.events.onStop.fire()",
+            reset: "{that}.events.onReset.fire"
         },
 
         events: {
@@ -10700,7 +10700,7 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-
+    // TODO: Factor out buffer logic into a separate component.
     fluid.defaults("flock.enviro", {
         gradeNames: [
             "flock.nodeList",
@@ -11253,7 +11253,7 @@ var fluid = fluid || require("infusion"),
      * that describes the synth's unit generator graph.
      */
     fluid.defaults("flock.synth", {
-        gradeNames: ["flock.node", "flock.noteTarget", "flock.ugenNodeList"],
+        gradeNames: ["flock.node", "flock.noteTarget"],
 
         rate: flock.rates.AUDIO,
 
@@ -11261,12 +11261,17 @@ var fluid = fluid || require("infusion"),
 
         members: {
             rate: "{that}.options.rate",
-            audioSettings: "{enviro}.audioSystem.model", // TODO: Move this.
-            out: null
+            audioSettings: "{enviro}.audioSystem.model" // TODO: Move this.
         },
 
         model: {
             blockSize: "@expand:flock.synth.calcBlockSize({that}.rate, {enviro}.audioSystem.model)"
+        },
+
+        components: {
+            ugens: {
+                type: "flock.synth.ugenTree"
+            }
         },
 
         invokers: {
@@ -11280,7 +11285,7 @@ var fluid = fluid || require("infusion"),
              */
             set: {
                 funcName: "flock.synth.set",
-                args: ["{that}", "{that}.namedNodes", "{arguments}.0", "{arguments}.1", "{arguments}.2"]
+                args: ["{that}", "{ugenTree}.namedNodes", "{arguments}.0", "{arguments}.1", "{arguments}.2"]
             },
 
             /**
@@ -11291,7 +11296,7 @@ var fluid = fluid || require("infusion"),
              */
             get: {
                 funcName: "flock.input.get",
-                args: ["{that}.namedNodes", "{arguments}.0"]
+                args: ["{ugenTree}.namedNodes", "{arguments}.0"]
             },
 
             /**
@@ -11320,46 +11325,11 @@ var fluid = fluid || require("infusion"),
                 funcName: "flock.synth.gen",
                 args: "{that}"
             }
-        },
-
-        listeners: {
-            "onCreate.parseSynthDef": [
-                {
-                    funcName: "flock.synth.parseSynthDef",
-                    args: [
-                        "{that}.options.synthDef",
-                        "{that}",
-                        "{enviro}"
-                    ]
-                }
-            ]
         }
     });
 
     flock.synth.calcBlockSize = function (rate, audioSettings) {
         return rate === flock.rates.AUDIO ? audioSettings.blockSize : 1;
-    };
-
-    flock.synth.parseSynthDef = function (synthDef, that, enviro) {
-        if (!synthDef) {
-            fluid.log(fluid.logLevel.IMPORTANT,
-                "Warning: Instantiating a flock.synth instance with an empty synth def.");
-        }
-
-        // At demand or schedule rates, override the rate of all non-constant ugens.
-        var overrideRate = that.rate === flock.rates.SCHEDULED || that.rate === flock.rates.DEMAND;
-
-        // Parse the synthDef into a graph of unit generators.
-        that.out = flock.parse.synthDef(synthDef, {
-            rate: that.rate,
-            overrideRate: overrideRate,
-            visitors: that.tail,
-            buffers: enviro.buffers,
-            buses: enviro.busManager.buses,
-            audioSettings: enviro.audioSystem.model
-        });
-
-        return that.out;
     };
 
     flock.synth.set = function (that, namedNodes, path, val, swap) {
@@ -11369,7 +11339,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.synth.gen = function (that) {
-        var nodes = that.nodes,
+        var nodes = that.ugens.nodes,
             m = that.model,
             i,
             node;
@@ -11409,7 +11379,7 @@ var fluid = fluid || require("infusion"),
             oldUGens = flock.isIterable(prev) ? prev : (prev !== undefined ? [prev] : []);
 
         var replaceLen = Math.min(newUGens.length, oldUGens.length),
-            replaceFn = swap ? that.swapTree : that.replaceTree,
+            replaceFn = swap ? that.ugens.swapTree : that.ugens.replaceTree,
             i,
             atIdx,
             j;
@@ -11421,14 +11391,61 @@ var fluid = fluid || require("infusion"),
 
         for (j = i; j < newUGens.length; j++) {
             atIdx++;
-            that.insertTree(atIdx, newUGens[j]);
+            that.ugens.insertTree(atIdx, newUGens[j]);
         }
 
         for (j = i; j < oldUGens.length; j++) {
-            that.removeTree(oldUGens[j]);
+            that.ugens.removeTree(oldUGens[j]);
         }
 
         return parsed;
+    };
+
+    // TODO: Should this also take on the role of evaluating nodes?
+    // TODO: Naming.
+    fluid.defaults("flock.synth.ugenTree", {
+        gradeNames: "flock.ugenNodeList",
+
+        synthDef: "{synth}.options.synthDef",
+        rate: "{synth}.options.rate",
+
+        members: {
+            root: null
+        },
+
+        listeners: {
+            onCreate: [
+                {
+                    funcName: "flock.synth.ugenTree.instantiateUGens",
+                    args: [
+                        "{that}",
+                        "{enviro}"
+                    ]
+                }
+            ]
+        }
+    });
+
+    flock.synth.ugenTree.instantiateUGens = function (that, enviro) {
+        if (!that.options.synthDef) {
+            fluid.log(fluid.logLevel.IMPORTANT,
+                "Warning: Instantiating a flock.synth instance with an empty synth def.");
+        }
+
+        // At demand or schedule rates, override the rate of all non-constant ugens.
+        var rate = that.options.rate;
+        var overrideRate = rate === flock.rates.SCHEDULED ||
+            rate === flock.rates.DEMAND;
+
+        // Parse the synthDef into a graph of unit generators.
+        that.root = flock.parse.synthDef(that.options.synthDef, {
+            rate: rate,
+            overrideRate: overrideRate,
+            visitors: that.tail,
+            buffers: enviro.buffers,
+            buses: enviro.busManager.buses,
+            audioSettings: enviro.audioSystem.model
+        });
     };
 
 
@@ -12418,9 +12435,6 @@ var fluid = fluid || require("infusion"),
                 blockSize: blockSize
             }
         });
-        // TODO: When we switch to Infusion options merging, these should have a mergePolicy of preserve.
-        ugenDef.options.buffers = options.buffers;
-        ugenDef.options.buses = options.buses;
 
         var outputBufferSize = ugenDef.rate === flock.rates.AUDIO ? blockSize : 1,
             outputBuffers;
@@ -12436,10 +12450,14 @@ var fluid = fluid || require("infusion"),
             outputBuffers = new Float32Array(outputBufferSize);
         }
 
+        var ugenOpts = fluid.copy(ugenDef.options);
+        ugenOpts.buffers = options.buffers;
+        ugenOpts.buses = options.buses;
+
         return flock.invoke(undefined, ugenDef.ugen, [
             parsedInputs,
             outputBuffers,
-            ugenDef.options
+            ugenOpts
         ]);
     };
 
@@ -14394,6 +14412,7 @@ var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
 
 (function () {
+
     "use strict";
 
     fluid.defaults("flock.webAudio.audioSystem", {
@@ -14467,13 +14486,12 @@ var fluid = fluid || require("infusion"),
             context.destination.channelInterpretation = "discrete";
         }
     };
-
 }());
 ;/*
  * Flocking Web Audio Buffer Writer
  * http://github.com/colinbdclark/flocking
  *
- * Copyright 2013-2014, Colin Clark
+ * Copyright 2013-2015, Colin Clark
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
 
@@ -15843,8 +15861,6 @@ var fluid = fluid || require("infusion"),
         },
 
         invokers: {
-            start: "{that}.events.onStart.fire()",
-            stop: "{that}.events.onStop.fire()",
             bindAudioProcess: {
                 funcName: "flock.webAudio.outputManager.bindAudioProcess",
                 args: ["{nodeEvaluator}", "{nativeNodeManager}", "{that}.model"]
@@ -16191,8 +16207,8 @@ var fluid = fluid || require("infusion"),
 
                 return flock.parse.ugenDef(ugenDef, {
                     audioSettings: that.options.audioSettings,
-                    buses: that.options.buses,
-                    buffers: that.options.buffers
+                    buses: that.buses,
+                    buffers: that.buffers
                 });
             });
         };
