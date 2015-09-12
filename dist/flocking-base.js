@@ -12380,6 +12380,16 @@ var fluid = fluid || require("infusion"),
         return desc;
     };
 
+    flock.bufferDesc.toAudioBuffer = function (context, bufDesc) {
+        var buffer = context.createBuffer(bufDesc.format.numChannels,
+            bufDesc.format.numSampleFrames, bufDesc.format.sampleRate);
+
+        for (var i = 0; i < bufDesc.format.numChannels; i++) {
+            buffer.copyToChannel(bufDesc.data.channels[i], i);
+        }
+
+        return buffer;
+    };
 
     /**
      * Represents a source for fetching buffers.
