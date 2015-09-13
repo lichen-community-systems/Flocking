@@ -44,16 +44,23 @@ fluid.defaults("flock.nodejs.outputManager", {
                 funcName: "flock.nodejs.outputManager.createOutputStream",
                 args: "{audioSystem}.model"
             }
+        },
+
+        sampleWriter: {
+            expander: {
+                funcName: "flock.nodejs.outputManager.makeSampleWriter",
+                args: [
+                    "{that}.model",
+                    "{that}.options.bytesPerSample",
+                    "{that}.outputStream",
+                    "{busManager}.buses",
+                    "{enviro}.nodeList.nodes"
+                ]
+            }
         }
     },
 
     invokers: {
-        // TODO: De-thatify.
-        writeSamples: {
-            funcName: "flock.nodejs.outputManager.writeSamples",
-            args: ["{arguments}.0", "{that}", "{nodeEvaluator}"]
-        },
-
         startReadingAudioInput: {
             funcName: "flock.fail",
             args: "Audio input is not currently supported on Node.js"
@@ -66,9 +73,10 @@ fluid.defaults("flock.nodejs.outputManager", {
         "onStart.startGenerating": [
             {
                 funcName: "flock.nodejs.outputManager.startGeneratingSamples",
-                args: ["{that}.outputStream", "{that}.speaker", "{that}.writeSamples"]
+                args: ["{that}"]
             }
         ],
+
         "onStop.stopGenerating": [
             {
                 funcName: "flock.nodejs.outputManager.stopGeneratingSamples",
@@ -89,7 +97,7 @@ flock.nodejs.outputManager.createSpeaker = function (audioSettings) {
         sampleRate: audioSettings.rates.audio,
         signed: true,
         float: true,
-        samplesPerFrame: audioSettings.blockSize,
+        samplesPerFrame: audioSettings.bufferSize,
         endianness: "LE"
     });
 };
@@ -98,9 +106,9 @@ flock.nodejs.outputManager.createOutputStream = function () {
     return new Readable();
 };
 
-flock.nodejs.outputManager.startGeneratingSamples = function (outputStream, speaker, writeFn) {
-    outputStream._read = writeFn;
-    outputStream.pipe(speaker);
+flock.nodejs.outputManager.startGeneratingSamples = function (that) {
+    that.outputStream._read = that.sampleWriter;
+    that.outputStream.pipe(that.speaker);
 };
 
 flock.nodejs.outputManager.stopGeneratingSamples = function (outputStream, speaker) {
@@ -108,40 +116,38 @@ flock.nodejs.outputManager.stopGeneratingSamples = function (outputStream, speak
     outputStream._read = undefined;
 };
 
-flock.nodejs.outputManager.writeSamples = function (numBytes, that, nodeEvaluator) {
-    var s = that.model.audioSettings,
-        m = that.model,
-        bytesPerSample = that.options.bytesPerSample,
-        blockSize = s.blockSize,
-        chans = s.chans,
-        krPeriods = numBytes / m.bytesPerBlock,
-        buses = nodeEvaluator.buses,
-        nodes = nodeEvaluator.nodes,
-        outputStream = that.outputStream,
-        out = new Buffer(numBytes);
+flock.nodejs.outputManager.makeSampleWriter = function (model, bytesPerSample, outputStream, buses, nodes) {
+    return function (numBytes) {
+        var m = model,
+            s = m.audioSettings,
+            blockSize = s.blockSize,
+            chans = s.chans,
+            krPeriods = numBytes / m.bytesPerBlock,
+            out = new Buffer(numBytes);
 
-    if (numBytes < m.bytesPerBlock) {
-        return;
-    }
+        if (numBytes < m.bytesPerBlock) {
+            return;
+        }
 
-    if (nodeEvaluator.nodes.length < 1) {
-        // If there are no nodes providing samples, write out silence.
-        flock.generate.silence(out);
-    } else {
-        for (var i = 0, offset = 0; i < krPeriods; i++, offset += m.bytesPerBlock) {
-            flock.nodeEvaluator.clearBuses(s.numBuses, s.blockSize, buses);
-            flock.nodeEvaluator.gen(nodes);
+        if (nodes.length < 1) {
+            // If there are no nodes providing samples, write out silence.
+            flock.generate.silence(out);
+        } else {
+            for (var i = 0, offset = 0; i < krPeriods; i++, offset += m.bytesPerBlock) {
+                flock.synthEvaluator.clearBuses(buses, s.numBuses, s.blockSize);
+                flock.synthEvaluator.gen(nodes);
 
-            // Interleave each output channel.
-            for (var chan = 0; chan < chans; chan++) {
-                var bus = nodeEvaluator.buses[chan];
-                for (var sampIdx = 0; sampIdx < blockSize; sampIdx++) {
-                    var frameIdx = (sampIdx * chans + chan) * bytesPerSample;
-                    out.writeFloatLE(bus[sampIdx], offset + frameIdx);
+                // Interleave each output channel.
+                for (var chan = 0; chan < chans; chan++) {
+                    var bus = buses[chan];
+                    for (var sampIdx = 0; sampIdx < blockSize; sampIdx++) {
+                        var frameIdx = (sampIdx * chans + chan) * bytesPerSample;
+                        out.writeFloatLE(bus[sampIdx], offset + frameIdx);
+                    }
                 }
             }
         }
-    }
 
-    outputStream.push(out);
+        outputStream.push(out);
+    };
 };

@@ -21,17 +21,27 @@ var fluid = fluid || require("infusion"),
     "use strict";
 
     fluid.defaults("flock.synth.group", {
-        gradeNames: ["flock.node", "flock.noteTarget", "flock.nodeList"],
+        gradeNames: ["flock.node", "flock.noteTarget"],
 
         methodEventMap: {
             "onSet": "set"
+        },
+
+        members: {
+            innerSynths: "@expand:flock.nodeList()"
         },
 
         invokers: {
             play: "{that}.events.onPlay.fire",
             pause: "{that}.events.onPause.fire",
             set: "{that}.events.onSet.fire",
-            get: "flock.synth.group.get({arguments}, {that}.nodes)",
+            get: "flock.synth.group.get({arguments}, {that}.innerSynths.nodes)",
+            head: "flock.synth.group.head({arguments}.0, {that})",
+            tail: "flock.synth.group.tail({arguments}.0, {that})",
+            insert: "flock.synth.group.insert({arguments}.0, {arguments}.1, {that})",
+            before: "flock.synth.group.before({arguments}.0, {arguments}.1, {that})",
+            after: "flock.synth.group.after({arguments}.0, {arguments}.1, {that})",
+            remove: "{that}.events.onRemove.fire",
 
             // Deprecated. Use set() instead.
             input: {
@@ -49,7 +59,9 @@ var fluid = fluid || require("infusion"),
             onSet: null,
             onGen: null,
             onPlay: null,
-            onPause: null
+            onPause: null,
+            onInsert: null,
+            onRemove: null
         },
 
         listeners: {
@@ -64,26 +76,59 @@ var fluid = fluid || require("infusion"),
                     ]
                 },
 
-                {
-                    funcName: "flock.node.removeFromEnvironment",
-                    args: ["{arguments}.0", "{that}.enviro"]
-                }
+                "flock.synth.group.removeNodeFromEnvironment({arguments}.0)"
             ],
 
-            onRemove: {
-                funcName: "flock.synth.group.bindMethods",
-                args: [
-                    "{arguments}.0", // The removed node.
-                    "{that}.options.methodEventMap",
-                    "{that}.events",
-                    "removeListener"
-                ]
-            }
+            onRemove: [
+                {
+                    funcName: "flock.synth.group.bindMethods",
+                    args: [
+                        "{arguments}.0", // The removed node.
+                        "{that}.options.methodEventMap",
+                        "{that}.events",
+                        "removeListener"
+                    ]
+                },
+                {
+                    "this": "{that}.innerSynths",
+                    method: "remove",
+                    args: ["{arguments}.0"]
+                }
+            ]
         }
     });
 
+    flock.synth.group.head = function (node, that) {
+        flock.nodeList.head(that.innerSynths, node);
+        that.events.onInsert.fire(node);
+    };
+
+    flock.synth.group.tail = function (node, that) {
+        flock.nodeList.tail(that.innerSynths, node);
+        that.events.onInsert.fire(node);
+    };
+
+    flock.synth.group.insert = function (node, idx, that) {
+        flock.nodeList.insert(that.innerSynths, node, idx);
+        that.events.onInsert.fire(node);
+    };
+
+    flock.synth.group.before = function (nodeToInsert, targetNode, that) {
+        flock.nodeList.before(that.innerSynths, nodeToInsert, targetNode);
+        that.events.onInsert.fire(nodeToInsert);
+    };
+
+    flock.synth.group.after = function (nodeToInsert, targetNode, that) {
+        flock.nodeList.after(that.innerSynths, nodeToInsert, targetNode);
+        that.events.onInsert.fire(nodeToInsert);
+    };
+
+    flock.synth.group.removeNodeFromEnvironment = function (node) {
+        node.removeFromEnvironment();
+    };
+
     flock.synth.group.gen = function (that) {
-        flock.nodeEvaluator.gen(that.nodes);
+        flock.synthEvaluator.gen(that.innerSynths.nodes);
     };
 
     flock.synth.group.get = function (args, nodes) {

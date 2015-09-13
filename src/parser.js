@@ -285,10 +285,9 @@ var fluid = fluid || require("infusion"),
         ugen.options.ugenDef = ugenDef;
 
         if (visitors) {
-            visitors = fluid.makeArray(visitors);
-            fluid.each(visitors, function (visitor) {
-                visitor(ugen, ugenDef, rates);
-            });
+            for(var i = 0; i < visitors.length; i++) {
+                visitors[i](ugen, ugenDef, rates);
+            }
         }
 
         return ugen;

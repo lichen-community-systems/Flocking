@@ -17,6 +17,8 @@ var fluid = require("infusion"),
     loader = fluid.getLoader(__dirname); // jshint ignore:line
 
 loader.require("src/core.js");
+loader.require("src/node-list.js");
+loader.require("src/evaluators.js");
 loader.require("src/synths/band.js");
 loader.require("src/synths/group.js");
 loader.require("src/synths/polyphonic.js");

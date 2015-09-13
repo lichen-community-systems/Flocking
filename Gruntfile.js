@@ -38,6 +38,8 @@ module.exports = function(grunt) {
 
         flockingBase: [
             "src/core.js",
+            "src/node-list.js",
+            "src/evaluators.js",
             "src/synths/group.js",
             "src/synths/polyphonic.js",
             "src/synths/band.js",

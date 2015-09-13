@@ -255,7 +255,7 @@ you can override the <code>addToEnvironment</code> option when you instantiate i
     });
 
 If you need to manage the Environment's list of synths manually,
-you can use the methods provided by the flock.nodeList _grade_.
+you can use the methods provided by the flock.nodeListComponent _grade_.
 
 To add a synth to the head of the graph so that it will be evaluated first:
 

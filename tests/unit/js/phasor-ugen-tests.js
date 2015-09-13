@@ -45,7 +45,7 @@
                 synthDef: def,
                 addToEnvironment: false
             });
-            var loop = synth.ugens.namedNodes.looper;
+            var loop = synth.nodeList.namedNodes.looper;
 
             test(testSpec.name, function () {
                 testTriggeredSignals(synth, loop, testSpec.tests);
