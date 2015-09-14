@@ -24,12 +24,13 @@ var fluid = fluid || require("infusion"),
 
     flock.synthEvaluator.gen = function (nodes) {
         var i,
-            node;
+            node,
+            val;
 
         // Now evaluate each node.
         for (i = 0; i < nodes.length; i++) {
             node = nodes[i];
-            node.genFn(node);
+            val = node.genFn(node.nodeList.nodes, node.model);
         }
     };
 
@@ -41,5 +42,24 @@ var fluid = fluid || require("infusion"),
                 bus[j] = 0;
             }
         }
+    };
+
+    fluid.registerNamespace("flock.ugenEvaluator");
+
+    flock.ugenEvaluator.gen = function (nodes, m) {
+        var val;
+
+        for (var i = 0; i < nodes.length; i++) {
+            var node = nodes[i];
+            if (node.gen !== undefined) {
+                node.gen(node.model.blockSize);
+            }
+
+            val = node.model.value;
+        }
+
+        m.value = val;
+
+        return val;
     };
 }());

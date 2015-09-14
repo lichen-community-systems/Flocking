@@ -20948,10 +20948,6 @@ var fluid = fluid || require("infusion"),
 
         model: {},
 
-        members: {
-            genFn: "@expand:fluid.getGlobalValue({that}.options.invokers.gen.funcName)"
-        },
-
         components: {
             enviro: "{flock.enviro}"
         },
@@ -20974,13 +20970,6 @@ var fluid = fluid || require("infusion"),
              * This is a convenience method that will remove the synth from the environment's node graph.
              */
             pause: "{that}.removeFromEnvironment()",
-
-            /**
-             * Must be overridden by implementing grades.
-             */
-            gen: {
-                funcName: "fluid.notImplemented"
-            },
 
             /**
              * Adds the node to its environment's list of active nodes.
@@ -21145,7 +21134,8 @@ var fluid = fluid || require("infusion"),
             rate: "{that}.options.rate",
             audioSettings: "{enviro}.audioSystem.model", // TODO: Move this.
             nodeList: "@expand:flock.nodeList()",
-            out: "{that}.options.ugens"
+            out: "{that}.options.ugens",
+            genFn: "@expand:fluid.getGlobalValue(flock.ugenEvaluator.gen)"
         },
 
         model: {
@@ -21194,14 +21184,6 @@ var fluid = fluid || require("infusion"),
                     "{that}.get",
                     "{that}.set"
                 ]
-            },
-
-            /**
-             * Generates one block of audio rate signal by evaluating this synth's unit generator graph.
-             */
-            gen: {
-                funcName: "flock.synth.gen",
-                args: "{that}"
             }
         }
     });
@@ -21218,23 +21200,6 @@ var fluid = fluid || require("infusion"),
         return flock.input.set(namedNodes, path, val, undefined, function (ugenDef, path, target, prev) {
             return flock.synth.ugenValueParser(that, ugenDef, prev, swap);
         });
-    };
-
-    // TODO: Move this to UGenEvaluator.
-    flock.synth.gen = function (that) {
-        var nodes = that.nodeList.nodes,
-            m = that.model,
-            i,
-            node;
-
-        for (i = 0; i < nodes.length; i++) {
-            node = nodes[i];
-            if (node.gen !== undefined) {
-                node.gen(node.model.blockSize); // TODO: De-thatify.
-            }
-
-            m.value = node.model.value;
-        }
     };
 
     flock.synth.input = function (args, getFn, setFn) {
@@ -21294,16 +21259,11 @@ var fluid = fluid || require("infusion"),
 
         invokers: {
             value: {
-                funcName: "flock.synth.value.genValue",
-                args: ["{that}"]
+                funcName: "flock.ugenEvaluator.gen",
+                args: ["{that}.nodeList.nodes", "{that}.model"]
             }
         }
     });
-
-    flock.synth.value.genValue = function (that) {
-        flock.synth.gen(that);
-        return that.model.value;
-    };
 
 
     fluid.defaults("flock.synth.frameRate", {
@@ -21582,12 +21542,13 @@ var fluid = fluid || require("infusion"),
 
     flock.synthEvaluator.gen = function (nodes) {
         var i,
-            node;
+            node,
+            val;
 
         // Now evaluate each node.
         for (i = 0; i < nodes.length; i++) {
             node = nodes[i];
-            node.genFn(node);
+            val = node.genFn(node.nodeList.nodes, node.model);
         }
     };
 
@@ -21599,6 +21560,25 @@ var fluid = fluid || require("infusion"),
                 bus[j] = 0;
             }
         }
+    };
+
+    fluid.registerNamespace("flock.ugenEvaluator");
+
+    flock.ugenEvaluator.gen = function (nodes, m) {
+        var val;
+
+        for (var i = 0; i < nodes.length; i++) {
+            var node = nodes[i];
+            if (node.gen !== undefined) {
+                node.gen(node.model.blockSize);
+            }
+
+            val = node.model.value;
+        }
+
+        m.value = val;
+
+        return val;
     };
 }());
 ;/*
@@ -21631,14 +21611,15 @@ var fluid = fluid || require("infusion"),
         },
 
         members: {
-            innerSynths: "@expand:flock.nodeList()"
+            nodeList: "@expand:flock.nodeList()",
+            genFn: "@expand:fluid.getGlobalValue(flock.synthEvaluator.gen)"
         },
 
         invokers: {
             play: "{that}.events.onPlay.fire",
             pause: "{that}.events.onPause.fire",
             set: "{that}.events.onSet.fire",
-            get: "flock.synth.group.get({arguments}, {that}.innerSynths.nodes)",
+            get: "flock.synth.group.get({arguments}, {that}.nodeList.nodes)",
             head: "flock.synth.group.head({arguments}.0, {that})",
             tail: "flock.synth.group.tail({arguments}.0, {that})",
             insert: "flock.synth.group.insert({arguments}.0, {arguments}.1, {that})",
@@ -21650,11 +21631,6 @@ var fluid = fluid || require("infusion"),
             input: {
                 funcName: "flock.synth.group.input",
                 args: ["{arguments}", "{that}.get", "{that}.events.onSet.fire"]
-            },
-
-            gen: {
-                funcName: "flock.synth.group.gen",
-                args: "{that}"
             }
         },
 
@@ -21693,7 +21669,7 @@ var fluid = fluid || require("infusion"),
                     ]
                 },
                 {
-                    "this": "{that}.innerSynths",
+                    "this": "{that}.nodeList",
                     method: "remove",
                     args: ["{arguments}.0"]
                 }
@@ -21702,36 +21678,32 @@ var fluid = fluid || require("infusion"),
     });
 
     flock.synth.group.head = function (node, that) {
-        flock.nodeList.head(that.innerSynths, node);
+        flock.nodeList.head(that.nodeList, node);
         that.events.onInsert.fire(node);
     };
 
     flock.synth.group.tail = function (node, that) {
-        flock.nodeList.tail(that.innerSynths, node);
+        flock.nodeList.tail(that.nodeList, node);
         that.events.onInsert.fire(node);
     };
 
     flock.synth.group.insert = function (node, idx, that) {
-        flock.nodeList.insert(that.innerSynths, node, idx);
+        flock.nodeList.insert(that.nodeList, node, idx);
         that.events.onInsert.fire(node);
     };
 
     flock.synth.group.before = function (nodeToInsert, targetNode, that) {
-        flock.nodeList.before(that.innerSynths, nodeToInsert, targetNode);
+        flock.nodeList.before(that.nodeList, nodeToInsert, targetNode);
         that.events.onInsert.fire(nodeToInsert);
     };
 
     flock.synth.group.after = function (nodeToInsert, targetNode, that) {
-        flock.nodeList.after(that.innerSynths, nodeToInsert, targetNode);
+        flock.nodeList.after(that.nodeList, nodeToInsert, targetNode);
         that.events.onInsert.fire(nodeToInsert);
     };
 
     flock.synth.group.removeNodeFromEnvironment = function (node) {
         node.removeFromEnvironment();
-    };
-
-    flock.synth.group.gen = function (that) {
-        flock.synthEvaluator.gen(that.innerSynths.nodes);
     };
 
     flock.synth.group.get = function (args, nodes) {
@@ -21807,7 +21779,7 @@ var fluid = fluid || require("infusion"),
             listeners: {
                 onCreateVoice: {
                     funcName: "flock.nodeList.tail",
-                    args: ["{polyphonic}.innerSynths", "{arguments}.0"]
+                    args: ["{polyphonic}.nodeList", "{arguments}.0"]
                 }
             }
         },

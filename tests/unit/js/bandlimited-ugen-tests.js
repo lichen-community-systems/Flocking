@@ -138,7 +138,7 @@ var fluid = fluid || require("infusion"),
             actual = new Float32Array(fullSize);
 
         for (var i = 0; i < testSpec.numBlocks; i++) {
-            synth.gen();
+            synth.genFn(synth.nodeList.nodes, synth.model);
             for (var j = 0; j < blockSize; j++) {
                 actual[j + (i * blockSize)] = synth.get("blit").output[j];
             }

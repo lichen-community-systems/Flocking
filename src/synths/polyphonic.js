@@ -48,7 +48,7 @@ var fluid = fluid || require("infusion"),
             listeners: {
                 onCreateVoice: {
                     funcName: "flock.nodeList.tail",
-                    args: ["{polyphonic}.innerSynths", "{arguments}.0"]
+                    args: ["{polyphonic}.nodeList", "{arguments}.0"]
                 }
             }
         },

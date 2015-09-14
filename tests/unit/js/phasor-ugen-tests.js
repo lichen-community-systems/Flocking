@@ -33,7 +33,7 @@
             if (test.trigger !== undefined) {
                 ugen.input("trigger", test.trigger);
             }
-            synth.gen();
+            synth.genFn(synth.nodeList.nodes, synth.model);
             deepEqual(ugen.output, test.expected, test.msg);
         }
     };

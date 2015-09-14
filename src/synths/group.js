@@ -28,14 +28,15 @@ var fluid = fluid || require("infusion"),
         },
 
         members: {
-            innerSynths: "@expand:flock.nodeList()"
+            nodeList: "@expand:flock.nodeList()",
+            genFn: "@expand:fluid.getGlobalValue(flock.synthEvaluator.gen)"
         },
 
         invokers: {
             play: "{that}.events.onPlay.fire",
             pause: "{that}.events.onPause.fire",
             set: "{that}.events.onSet.fire",
-            get: "flock.synth.group.get({arguments}, {that}.innerSynths.nodes)",
+            get: "flock.synth.group.get({arguments}, {that}.nodeList.nodes)",
             head: "flock.synth.group.head({arguments}.0, {that})",
             tail: "flock.synth.group.tail({arguments}.0, {that})",
             insert: "flock.synth.group.insert({arguments}.0, {arguments}.1, {that})",
@@ -47,11 +48,6 @@ var fluid = fluid || require("infusion"),
             input: {
                 funcName: "flock.synth.group.input",
                 args: ["{arguments}", "{that}.get", "{that}.events.onSet.fire"]
-            },
-
-            gen: {
-                funcName: "flock.synth.group.gen",
-                args: "{that}"
             }
         },
 
@@ -90,7 +86,7 @@ var fluid = fluid || require("infusion"),
                     ]
                 },
                 {
-                    "this": "{that}.innerSynths",
+                    "this": "{that}.nodeList",
                     method: "remove",
                     args: ["{arguments}.0"]
                 }
@@ -99,36 +95,32 @@ var fluid = fluid || require("infusion"),
     });
 
     flock.synth.group.head = function (node, that) {
-        flock.nodeList.head(that.innerSynths, node);
+        flock.nodeList.head(that.nodeList, node);
         that.events.onInsert.fire(node);
     };
 
     flock.synth.group.tail = function (node, that) {
-        flock.nodeList.tail(that.innerSynths, node);
+        flock.nodeList.tail(that.nodeList, node);
         that.events.onInsert.fire(node);
     };
 
     flock.synth.group.insert = function (node, idx, that) {
-        flock.nodeList.insert(that.innerSynths, node, idx);
+        flock.nodeList.insert(that.nodeList, node, idx);
         that.events.onInsert.fire(node);
     };
 
     flock.synth.group.before = function (nodeToInsert, targetNode, that) {
-        flock.nodeList.before(that.innerSynths, nodeToInsert, targetNode);
+        flock.nodeList.before(that.nodeList, nodeToInsert, targetNode);
         that.events.onInsert.fire(nodeToInsert);
     };
 
     flock.synth.group.after = function (nodeToInsert, targetNode, that) {
-        flock.nodeList.after(that.innerSynths, nodeToInsert, targetNode);
+        flock.nodeList.after(that.nodeList, nodeToInsert, targetNode);
         that.events.onInsert.fire(nodeToInsert);
     };
 
     flock.synth.group.removeNodeFromEnvironment = function (node) {
         node.removeFromEnvironment();
-    };
-
-    flock.synth.group.gen = function (that) {
-        flock.synthEvaluator.gen(that.innerSynths.nodes);
     };
 
     flock.synth.group.get = function (args, nodes) {

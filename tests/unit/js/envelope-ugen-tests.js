@@ -519,7 +519,7 @@ var fluid = fluid || require("infusion"),
             for (var i = 0; i < testSpec.numBlocksToGen; i++) {
                 var expectedPath = testSpec.expectations[i];
                 var expectedBuffer = fluid.get(expectedSegments, expectedPath);
-                synth.gen();
+                synth.genFn(synth.nodeList.nodes, synth.model);
 
                 if (curveSpec.round && curveSpec.round[expectedPath]) {
                     flock.test.arrayEqualBothRounded(curveSpec.round[expectedPath], envUGen.output, expectedBuffer, test.name + expectedPath);
@@ -826,7 +826,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.test.envGen.generateBlock = function (synth, allSamples, idx) {
-        synth.gen();
+        synth.genFn(synth.nodeList.nodes, synth.model);
         return flock.test.envGen.collectBlock(synth.get("env").output, allSamples, idx);
     };
 

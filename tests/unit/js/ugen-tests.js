@@ -1093,7 +1093,7 @@ var fluid = fluid || require("infusion"),
                 }
             });
 
-            s.gen();
+            s.genFn(s.nodeList.nodes, s.model);
             flock.test.unbrokenInRangeSignal(s.get("player").output, -1.0, 1.0);
         });
     };
@@ -1176,7 +1176,7 @@ var fluid = fluid || require("infusion"),
         }
 
         for (var i = 0; i < 4; i++) {
-            synth.gen();
+            synth.genFn(synth.nodeList.nodes, synth.model);
             samplesGenerated += 64;
 
             for (var j = 0; j < numInputs; j++) {
@@ -1256,7 +1256,7 @@ var fluid = fluid || require("infusion"),
         });
 
         for (var i = 0; i < 4; i++) {
-            synth.gen(64);
+            synth.genFn(synth.nodeList.nodes, synth.model);
         }
 
         var actual = synth.enviro.buffers.giraffes.data.channels[0],
@@ -1361,7 +1361,7 @@ var fluid = fluid || require("infusion"),
             var gateSynth = flock.test.gateSynth(synthOptions),
                 gateUGen = gateSynth.get("gate");
 
-            gateSynth.gen();
+            gateSynth.genFn(gateSynth.nodeList.nodes, gateSynth.model);
             deepEqual(gateUGen.output, expectedOutput,
                 "The gate should open and remain open when the source signal hits the threshold.");
         };
@@ -1548,7 +1548,8 @@ var fluid = fluid || require("infusion"),
         });
 
         var normalizer = normalizerSynth.nodeList.namedNodes.normalizer;
-        normalizerSynth.gen();
+        normalizerSynth.genFn(normalizerSynth.nodeList.nodes, normalizerSynth.model);
+
         var expected = flock.normalize(flock.test.ascendingBuffer(64, -31), 1.0);
         deepEqual(normalizer.output, expected,
             "The signal should be normalized to 1.0.");
@@ -1568,7 +1569,7 @@ var fluid = fluid || require("infusion"),
         var synth = flock.synth({
             synthDef: synthDef
         });
-        synth.gen();
+        synth.genFn(synth.nodeList.nodes, synth.model);
         var math = synth.nodeList.namedNodes.math;
         deepEqual(math.output, expected, msg);
     };
@@ -1794,7 +1795,7 @@ var fluid = fluid || require("infusion"),
             synthDef:delayLineDef
         });
         var delay = delaySynth.nodeList.namedNodes.delay;
-        delaySynth.gen();
+        delaySynth.genFn(delaySynth.nodeList.nodes, delaySynth.model);
 
         // First block should be silent.
         var expected = new Float32Array(64);
@@ -1802,13 +1803,13 @@ var fluid = fluid || require("infusion"),
             "With a delay time equal to the length of a block, the first output block should be silent.");
 
         // Second should contain the first block's contents.
-        delaySynth.gen();
+        delaySynth.genFn(delaySynth.nodeList.nodes, delaySynth.model);
         expected = flock.test.ascendingBuffer(64, 1);
         deepEqual(delay.output, expected,
             "The delay's second block should contain the source's first block of samples.");
 
         // Third block should be similarly delayed.
-        delaySynth.gen();
+        delaySynth.genFn(delaySynth.nodeList.nodes, delaySynth.model);
         expected = flock.test.ascendingBuffer(64, 65);
         deepEqual(delay.output, expected,
             "The delay's third block should contain the source's second block of samples.");
@@ -1846,7 +1847,7 @@ var fluid = fluid || require("infusion"),
             });
             var durUGen = synth.nodeList.namedNodes.dur;
 
-            synth.gen();
+            synth.genFn(synth.nodeList.nodes, synth.model);
             equal(durUGen.output[0], 2.5,
                 "The buffer's length in seconds should be returned");
         });
@@ -2073,7 +2074,7 @@ var fluid = fluid || require("infusion"),
             latchSynth.set("latcher.trigger", trigger);
         }
 
-        latchSynth.gen();
+        latchSynth.genFn(latchSynth.nodeList.nodes, latchSynth.model);
         var latch = latchSynth.get("latcher");
         equal(latch.gen, expectedRate === "audio" ? latch.arGen : latch.krGen,
             "The unit generator should be generating samples at " + expectedRate + " rate.");
@@ -2241,7 +2242,7 @@ var fluid = fluid || require("infusion"),
         });
 
         var passThrough = synth.get("pass");
-        synth.gen();
+        synth.genFn(synth.nodeList.nodes, synth.model);
 
         var expected = new Float32Array(64);
         expected[0] = 1;
@@ -2260,7 +2261,7 @@ var fluid = fluid || require("infusion"),
         });
 
         var passThrough = synth.get("pass");
-        synth.gen();
+        synth.genFn(synth.nodeList.nodes, synth.model);
         deepEqual(passThrough.output, passThrough.inputs.source.output,
             "The entire source should be passed through as-is.");
     });
@@ -2277,7 +2278,7 @@ var fluid = fluid || require("infusion"),
         });
 
         var passThrough = synth.get("pass");
-        synth.gen();
+        synth.genFn(synth.nodeList.nodes, synth.model);
         deepEqual(passThrough.output, new Float32Array([1]),
             "The first value of the source buffer should be passed through as-is.");
     });
@@ -2306,14 +2307,14 @@ var fluid = fluid || require("infusion"),
         ok(t2a.rate === flock.rates.AUDIO,
             "The unit generator should be running at audio rate.");
 
-        synth.gen();
+        synth.genFn(synth.nodeList.nodes, synth.model);
         var expected = new Float32Array(64);
         expected[0] = 1.0;
         deepEqual(t2a.output, expected,
             "The control rate trigger value should output at the first index in audio rate output stream.");
 
         synth.set("converter.offset", 27);
-        synth.gen();
+        synth.genFn(synth.nodeList.nodes, synth.model);
         deepEqual(t2a.output, silence,
             "If the trigger hasn't reset and fired again, the output should be silent.");
 
@@ -2322,12 +2323,12 @@ var fluid = fluid || require("infusion"),
             list: new Float32Array(64),
             freq: sampleRate
         });
-        synth.gen();
+        synth.genFn(synth.nodeList.nodes, synth.model);
         deepEqual(t2a.output, silence,
             "If the trigger has reset but hasn't fired again, the output should be silent.");
 
         synth.set("converter.source", synthDef.source);
-        synth.gen();
+        synth.genFn(synth.nodeList.nodes, synth.model);
         expected = new Float32Array(64);
         expected[27] = 1.0;
         deepEqual(t2a.output, expected,
@@ -2395,7 +2396,7 @@ var fluid = fluid || require("infusion"),
             var synth = flock.test.triggerCallbackSynth({
                 synthDef: mergedSynthDef
             });
-            synth.gen();
+            synth.genFn(synth.nodeList.nodes, synth.model);
 
             var expectedNumCalls = testSpec.expectedCallbackArgs.length;
             equal(counter.callbackRecords.length, expectedNumCalls, "The callback should have been invoked " +
@@ -2531,7 +2532,7 @@ var fluid = fluid || require("infusion"),
                 channelAssertion,
                 fn;
 
-            synth.gen();
+            synth.genFn(synth.nodeList.nodes, synth.model);
 
             for (i = 0; i < panTestSpec.channelAssertions.length; i++) {
                 channelAssertion = panTestSpec.channelAssertions[i];

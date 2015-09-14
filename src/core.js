@@ -1215,10 +1215,6 @@ var fluid = fluid || require("infusion"),
 
         model: {},
 
-        members: {
-            genFn: "@expand:fluid.getGlobalValue({that}.options.invokers.gen.funcName)"
-        },
-
         components: {
             enviro: "{flock.enviro}"
         },
@@ -1241,13 +1237,6 @@ var fluid = fluid || require("infusion"),
              * This is a convenience method that will remove the synth from the environment's node graph.
              */
             pause: "{that}.removeFromEnvironment()",
-
-            /**
-             * Must be overridden by implementing grades.
-             */
-            gen: {
-                funcName: "fluid.notImplemented"
-            },
 
             /**
              * Adds the node to its environment's list of active nodes.
@@ -1412,7 +1401,8 @@ var fluid = fluid || require("infusion"),
             rate: "{that}.options.rate",
             audioSettings: "{enviro}.audioSystem.model", // TODO: Move this.
             nodeList: "@expand:flock.nodeList()",
-            out: "{that}.options.ugens"
+            out: "{that}.options.ugens",
+            genFn: "@expand:fluid.getGlobalValue(flock.ugenEvaluator.gen)"
         },
 
         model: {
@@ -1461,14 +1451,6 @@ var fluid = fluid || require("infusion"),
                     "{that}.get",
                     "{that}.set"
                 ]
-            },
-
-            /**
-             * Generates one block of audio rate signal by evaluating this synth's unit generator graph.
-             */
-            gen: {
-                funcName: "flock.synth.gen",
-                args: "{that}"
             }
         }
     });
@@ -1485,23 +1467,6 @@ var fluid = fluid || require("infusion"),
         return flock.input.set(namedNodes, path, val, undefined, function (ugenDef, path, target, prev) {
             return flock.synth.ugenValueParser(that, ugenDef, prev, swap);
         });
-    };
-
-    // TODO: Move this to UGenEvaluator.
-    flock.synth.gen = function (that) {
-        var nodes = that.nodeList.nodes,
-            m = that.model,
-            i,
-            node;
-
-        for (i = 0; i < nodes.length; i++) {
-            node = nodes[i];
-            if (node.gen !== undefined) {
-                node.gen(node.model.blockSize); // TODO: De-thatify.
-            }
-
-            m.value = node.model.value;
-        }
     };
 
     flock.synth.input = function (args, getFn, setFn) {
@@ -1561,16 +1526,11 @@ var fluid = fluid || require("infusion"),
 
         invokers: {
             value: {
-                funcName: "flock.synth.value.genValue",
-                args: ["{that}"]
+                funcName: "flock.ugenEvaluator.gen",
+                args: ["{that}.nodeList.nodes", "{that}.model"]
             }
         }
     });
-
-    flock.synth.value.genValue = function (that) {
-        flock.synth.gen(that);
-        return that.model.value;
-    };
 
 
     fluid.defaults("flock.synth.frameRate", {

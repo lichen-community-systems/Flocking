@@ -62,6 +62,10 @@ var fluid = fluid || require("infusion"),
             didGen: false
         },
 
+        members: {
+            genFn: "{that}.gen"
+        },
+
         synthDef: {
             ugen: "flock.ugen.silence"
         },
@@ -79,8 +83,8 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    flock.test.genReportSynth.gen = function (that) {
-        that.applier.change("didGen", true);
+    flock.test.genReportSynth.gen = function (applier) {
+        applier.change("didGen", true);
     };
 
     var testEnviroGraph = function (fn) {
@@ -579,7 +583,7 @@ var fluid = fluid || require("infusion"),
         });
 
         var passThrough = synth.get("pass");
-        synth.gen();
+        synth.genFn(synth.nodeList.nodes, synth.model);
         deepEqual(passThrough.output, flock.test.fillBuffer(1, 64),
             "When first instantiating the synth, a unit generator's inputs should be evaluated first.");
 
@@ -589,12 +593,12 @@ var fluid = fluid || require("infusion"),
             freq: flock.environment.audioSystem.model.rates.audio,
             list: flock.test.fillBuffer(64, 127)
         });
-        synth.gen();
+        synth.genFn(synth.nodeList.nodes, synth.model);
         deepEqual(passThrough.output, flock.test.fillBuffer(64, 127),
             "After swapping one active unit generator for another, the correct order should be preserved.");
 
         synth.set("pass.source", 1.0);
-        synth.gen();
+        synth.genFn(synth.nodeList.nodes, synth.model);
         var expected = new Float32Array(64);
         expected[0] = 1.0; // With a control rate source input, passThrough will only output the first value.
         deepEqual(passThrough.output, expected,
@@ -606,7 +610,7 @@ var fluid = fluid || require("infusion"),
             freq: flock.environment.audioSystem.model.rates.audio,
             values: flock.test.fillBuffer(128, 191)
         });
-        synth.gen();
+        synth.genFn(synth.nodeList.nodes, synth.model);
         deepEqual(passThrough.output, flock.test.fillBuffer(128, 191),
             "Replacing an inactive ugen for an active one.");
     });
@@ -797,7 +801,11 @@ var fluid = fluid || require("infusion"),
 
     var checkModelState = function (synth, genMethodName, numGens) {
         for (var i = 1; i <= numGens; i++) {
-            synth[genMethodName]();
+            if (genMethodName === "value") {
+                synth.value();
+            } else {
+                synth.genFn(synth.nodeList.nodes, synth.model);
+            }
             equal(synth.model.value, i,
                 "The model value should have been correctly updated.");
         }
@@ -1039,7 +1047,7 @@ var fluid = fluid || require("infusion"),
 
         group.head(synth1);
         group.tail(synth2);
-        equal(group.innerSynths.nodes.length, 2,
+        equal(group.nodeList.nodes.length, 2,
             "Both synths should have been added to the group.");
 
         var inputVal = group.input("mock.freq");
@@ -1051,12 +1059,13 @@ var fluid = fluid || require("infusion"),
             "Getting an input on the group with get() should return the tail synth's value.");
 
         group.input("mock.freq", 440);
-        checkValueOnNodes(group.innerSynths.nodes, "mock", "freq", 440);
+        checkValueOnNodes(group.nodeList.nodes, "mock", "freq", 440);
 
         group.set("mock.mul", 0.5);
-        checkValueOnNodes(group.innerSynths.nodes, "mock", "mul", 0.5);
+        checkValueOnNodes(group.nodeList.nodes, "mock", "mul", 0.5);
 
-        group.gen();
+        group.genFn(group.nodeList.nodes, group.model);
+
         ok(synth1.model.didGen && synth2.model.didGen,
             "All nodes should recieve the gen() method when it is called on the group.");
     });
