@@ -134,8 +134,8 @@ flock.nodejs.outputManager.makeSampleWriter = function (model, bytesPerSample, o
             flock.generate.silence(out);
         } else {
             for (var i = 0, offset = 0; i < krPeriods; i++, offset += m.bytesPerBlock) {
-                flock.synthEvaluator.clearBuses(buses, s.numBuses, s.blockSize);
-                flock.synthEvaluator.gen(nodes);
+                flock.evaluate.clearBuses(buses, s.numBuses, s.blockSize);
+                flock.evaluate.synths(nodes);
 
                 // Interleave each output channel.
                 for (var chan = 0; chan < chans; chan++) {

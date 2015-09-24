@@ -14,7 +14,7 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    flock.init();
+    var environment = flock.init();
 
     fluid.registerNamespace("flock.test");
 
@@ -116,7 +116,7 @@ var fluid = fluid || require("infusion"),
             bitDepth: 16,
             dataSize: eightBitSampleSize * 2,
             src: flock.test.audio.triangleInt16WAV,
-            sampleRate: flock.environment.audioSystem.model.rates.audio
+            sampleRate: environment.audioSystem.model.rates.audio
         }
     ]);
 
@@ -164,6 +164,7 @@ var fluid = fluid || require("infusion"),
             asyncTest("Encode in " + format + " format, then decode it again.", function () {
                 flock.audio.decode({
                     src: "../../shared/audio/long-triangle-int16-44100.wav",
+                    sampleRate: environment.audioSystem.model.sampleRate,
                     success: function (original) {
                         flock.test.audioFile.encodeThenDecode(original, format);
                     },

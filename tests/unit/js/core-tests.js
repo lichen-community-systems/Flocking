@@ -16,7 +16,7 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.test.core");
 
-    flock.init();
+    var environment = flock.init();
 
     var $ = fluid.registerNamespace("jQuery");
 
@@ -421,7 +421,7 @@ var fluid = fluid || require("infusion"),
     module("flock.band tests");
 
     test("flock.band with multiple addToEnvironment synths", function () {
-        flock.nodeList.clearAll(flock.environment.nodeList);
+        flock.nodeList.clearAll(environment.nodeList);
 
         var def = {
             ugen: "flock.ugen.sin"
@@ -455,15 +455,15 @@ var fluid = fluid || require("infusion"),
             }
         });
 
-        equal(flock.environment.nodeList.nodes.length, 3,
+        equal(environment.nodeList.nodes.length, 3,
             "Three synth nodes should have been added to the shared environment.");
 
-        equal(flock.environment.nodeList.nodes[0], band.cat,
+        equal(environment.nodeList.nodes[0], band.cat,
             "The first node in the list should be the synth that declared itself at the head.");
 
         // TODO: This test probably doesn't belong here.
         equal(band.cat.enviro.nodeList.nodes,
-            flock.environment.nodeList.nodes,
+            environment.nodeList.nodes,
             "The synths' enviro's audio strategy's node evaluator should share the same node list" +
             "as the environment itself.");
     });

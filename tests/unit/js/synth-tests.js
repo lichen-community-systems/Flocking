@@ -16,7 +16,7 @@ var fluid = fluid || require("infusion"),
 
     var $ = fluid.registerNamespace("jQuery");
 
-    flock.init();
+    var environment = flock.init();
 
     var simpleSynthDef = {
         ugen: "flock.ugen.out",
@@ -51,7 +51,7 @@ var fluid = fluid || require("infusion"),
 
     module("Synth tests", {
         teardown: function () {
-            flock.environment.reset();
+            environment.reset();
         }
     });
 
@@ -96,10 +96,10 @@ var fluid = fluid || require("infusion"),
 
     asyncTest("Auto add to the environment", function () {
         var synth = flock.test.genReportSynth();
-        flock.environment.play();
+        environment.play();
 
         testEnviroGraph(function () {
-            ok(flock.environment.nodeList.nodes.indexOf(synth) > -1,
+            ok(environment.nodeList.nodes.indexOf(synth) > -1,
                 "The synth should have been automatically added to the environment.");
             ok(synth.model.didGen,
                 "The synth should have been evaluated.");
@@ -110,10 +110,10 @@ var fluid = fluid || require("infusion"),
         var synth = flock.test.genReportSynth({
             addToEnvironment: false
         });
-        flock.environment.play();
+        environment.play();
 
         testEnviroGraph(function () {
-            ok(flock.environment.nodeList.nodes.indexOf(synth) === -1,
+            ok(environment.nodeList.nodes.indexOf(synth) === -1,
                 "The synth should not have been automatically added to the environment.");
             ok(!synth.model.didGen,
                 "The synth should not have been evaluated.");
@@ -122,20 +122,20 @@ var fluid = fluid || require("infusion"),
 
     asyncTest("Remove from the environment", function () {
         var synth = flock.test.genReportSynth();
-        flock.environment.play();
+        environment.play();
 
-        var audioSettings = flock.environment.audioSystem.model,
+        var audioSettings = environment.audioSystem.model,
             waitDur = (audioSettings.bufferSize / audioSettings.rates.audio) * 1000 * 2;
 
         setTimeout(function () {
-            ok(flock.environment.nodeList.nodes.indexOf(synth) > -1,
+            ok(environment.nodeList.nodes.indexOf(synth) > -1,
                 "The synth should have been automatically added to the environment.");
             ok(synth.model.didGen,
                 "The synth should have been evaluated.");
 
             synth.pause();
 
-            ok(flock.environment.nodeList.nodes.indexOf(synth) === -1,
+            ok(environment.nodeList.nodes.indexOf(synth) === -1,
                 "The synth should have been removed from the environment.");
 
             synth.reset();
@@ -149,20 +149,20 @@ var fluid = fluid || require("infusion"),
 
     asyncTest("destroy() removes a synth from the environment", function () {
         var synth = flock.test.genReportSynth();
-        var audioSettings = flock.environment.audioSystem.model,
+        var audioSettings = environment.audioSystem.model,
             waitDur = (audioSettings.bufferSize / audioSettings.rates.audio) * 1000 * 2;
 
-        flock.environment.play();
+        environment.play();
 
         setTimeout(function () {
-            ok(flock.environment.nodeList.nodes.indexOf(synth) > -1,
+            ok(environment.nodeList.nodes.indexOf(synth) > -1,
                 "The synth should have been automatically added to the environment.");
             ok(synth.model.didGen,
                 "The synth should have been evaluated.");
 
             synth.reset();
             synth.destroy();
-            ok(flock.environment.nodeList.nodes.indexOf(synth) === -1,
+            ok(environment.nodeList.nodes.indexOf(synth) === -1,
                 "The synth should have been removed from the environment.");
 
             setTimeout(function () {
@@ -576,7 +576,7 @@ var fluid = fluid || require("infusion"),
                 source: {
                     ugen: "flock.ugen.sequence",
                     rate: "audio",
-                    freq: flock.environment.audioSystem.model.rates.audio,
+                    freq: environment.audioSystem.model.rates.audio,
                     values: flock.test.fillBuffer(1, 64)
                 }
             }
@@ -590,7 +590,7 @@ var fluid = fluid || require("infusion"),
         synth.set("pass.source", {
             ugen: "flock.ugen.sequence",
             rate: "audio",
-            freq: flock.environment.audioSystem.model.rates.audio,
+            freq: environment.audioSystem.model.rates.audio,
             list: flock.test.fillBuffer(64, 127)
         });
         synth.genFn(synth.nodeList.nodes, synth.model);
@@ -607,7 +607,7 @@ var fluid = fluid || require("infusion"),
         synth.set("pass.source", {
             ugen: "flock.ugen.sequence",
             rate: "audio",
-            freq: flock.environment.audioSystem.model.rates.audio,
+            freq: environment.audioSystem.model.rates.audio,
             values: flock.test.fillBuffer(128, 191)
         });
         synth.genFn(synth.nodeList.nodes, synth.model);
@@ -682,7 +682,7 @@ var fluid = fluid || require("infusion"),
     });
 
     var testAddToEnvironment = function (synthOptions, expectedOrder, message) {
-        flock.nodeList.clearAll(flock.environment.nodeList);
+        flock.nodeList.clearAll(environment.nodeList);
 
         var synths = [];
         fluid.each(synthOptions, function (synthOption) {
@@ -690,7 +690,7 @@ var fluid = fluid || require("infusion"),
         });
 
         var actualOrder = fluid.transform(synths, function (synth) {
-            return flock.environment.nodeList.nodes.indexOf(synth);
+            return environment.nodeList.nodes.indexOf(synth);
         });
 
         deepEqual(actualOrder, expectedOrder, message);
@@ -801,11 +801,7 @@ var fluid = fluid || require("infusion"),
 
     var checkModelState = function (synth, genMethodName, numGens) {
         for (var i = 1; i <= numGens; i++) {
-            if (genMethodName === "value") {
-                synth.value();
-            } else {
-                synth.genFn(synth.nodeList.nodes, synth.model);
-            }
+            flock.evaluate.synth(synth);
             equal(synth.model.value, i,
                 "The model value should have been correctly updated.");
         }

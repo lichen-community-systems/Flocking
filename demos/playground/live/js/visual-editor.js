@@ -389,6 +389,10 @@ var fluid = fluid || require("infusion"),
             activeSynthSpec: {}
         },
 
+        components: {
+            enviro: "{flock.enviro}"
+        },
+
         invokers: {
             refreshView: {
                 funcName: "flock.ui.nodeRenderer.synth.refreshView",
@@ -454,15 +458,15 @@ var fluid = fluid || require("infusion"),
         return ugenDef;
     };
 
-    flock.ui.nodeRenderer.synth.expandDef = function (synthDef) {
+    flock.ui.nodeRenderer.synth.expandDef = function (synthDef, enviro) {
         // TODO: Copy pasted from flock.parser.ugenForDef. It needs refactoring.
         // TODO: should this be sourced elsewhere in this context?
         var options = {
             // TODO: This is hardcoded to audio rate, which is fine until we can edit value synths.
             rate: flock.rates.AUDIO,
-            audioSettings: flock.environment.audioSystem.model,
-            buses: flock.environment.buses,
-            buffers: flock.environment.buffers
+            audioSettings: enviro.audioSystem.model,
+            buses: enviro.buses,
+            buffers: enviro.buffers
         };
 
         if (!flock.parse.synthDef.hasOutUGen(synthDef)) {
@@ -615,7 +619,7 @@ var fluid = fluid || require("infusion"),
             return;
         }
 
-        var expanded = flock.ui.nodeRenderer.synth.expandDef(synthDef);
+        var expanded = flock.ui.nodeRenderer.synth.expandDef(synthDef, that.enviro);
         flock.ui.nodeRenderer.synth.accumulateRenderers(undefined, expanded, that);
 
         var graph = flock.ui.nodeRenderer.synth.renderGraph(that);

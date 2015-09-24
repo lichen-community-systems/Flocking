@@ -310,16 +310,23 @@ var fluid = fluid || require("infusion"),
         }
     };
 
+    flock.parse.bufferForDef.createBufferSource = function (enviro) {
+        return flock.bufferSource({
+            sampleRate: enviro.audioSystem.model.sampleRate
+        });
+    };
+
     flock.parse.bufferForDef.findSource = function (defOrDesc, enviro) {
         var source;
 
         if (enviro && defOrDesc.id) {
             source = enviro.bufferSources[defOrDesc.id];
             if (!source) {
-                source = enviro.bufferSources[defOrDesc.id] = flock.bufferSource();
+                source = flock.parse.bufferForDef.createBufferSource(enviro);
+                enviro.bufferSources[defOrDesc.id] = source;
             }
         } else {
-            source = flock.bufferSource();
+            source = flock.parse.bufferForDef.createBufferSource(enviro);
         }
 
         return source;

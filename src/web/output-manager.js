@@ -136,7 +136,7 @@ var fluid = fluid || require("infusion"),
         for (i = 0; i < numBlocks; i++) {
             var offset = i * blockSize;
 
-            flock.synthEvaluator.clearBuses(buses, numBuses, blockSize);
+            flock.evaluate.clearBuses(buses, numBuses, blockSize);
 
             // Read this ScriptProcessorNode's input buffers
             // into the environment.
@@ -152,7 +152,7 @@ var fluid = fluid || require("infusion"),
                 }
             }
 
-            flock.synthEvaluator.gen(nodes);
+            flock.evaluate.synths(nodes);
 
             // Output the environment's signal
             // to this ScriptProcessorNode's output channels.

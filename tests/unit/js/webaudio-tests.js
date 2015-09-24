@@ -42,13 +42,14 @@
         return actual.subarray(start, start + expected.length);
     };
 
+    var environment;
     module("flock.ugen.mediaIn", {
         setup: function () {
-            var enviro = flock.init({
+            environment = flock.init({
                 numInputBuses: 4
             });
 
-            enviro.audioSystem.nativeNodeManager.createOutputNode({
+            environment.audioSystem.nativeNodeManager.createOutputNode({
                 node: "Gain",
                 params: {
                     gain: 0.0
@@ -98,7 +99,7 @@
             audioEl.play();
             synth.play();
 
-            flock.environment.asyncScheduler.once(duration, function () {
+            environment.asyncScheduler.once(duration, function () {
                 audioEl.pause();
                 synth.pause();
 
@@ -109,7 +110,7 @@
     };
 
     test("Web Audio input node is created.", function () {
-        var audioSystem = flock.environment.audioSystem,
+        var audioSystem = environment.audioSystem,
             nodeManager = audioSystem.nativeNodeManager;
 
         equal(nodeManager.inputNodes.length, 0,
@@ -170,12 +171,13 @@
     });
 
     test("Audio settings are correctly pushed from the Web Audio context.", function () {
-        var enviro = flock.init({
+        var environment = flock.init({
             chans: flock.ALL_CHANNELS,
             sampleRate: 192000
         });
 
-        equal(enviro.audioSystem.model.rates.audio, enviro.audioSystem.context.sampleRate,
+        equal(environment.audioSystem.model.rates.audio,
+            environment.audioSystem.context.sampleRate,
             "The correct sample rate was pushed.");
 
         var synth = flock.synth({
@@ -186,15 +188,17 @@
             addToEnvironment: false
         });
 
-        equal(synth.audioSettings.rates.audio, enviro.audioSystem.context.sampleRate,
+        equal(synth.audioSettings.rates.audio,
+            environment.audioSystem.context.sampleRate,
             "And newly instantiated synths receive the correct sample rate.");
 
-        equal(synth.get("sine").model.sampleRate, enviro.audioSystem.context.sampleRate,
+        equal(synth.get("sine").model.sampleRate,
+            environment.audioSystem.context.sampleRate,
             "Unit generators also receive the correct sample rate.");
     });
 
     flock.test.webaudio.runMediaElementSourceNodeTest = function (expectedBuffer) {
-        var sampleRate = flock.environment.audioSystem.context.sampleRate,
+        var sampleRate = environment.audioSystem.context.sampleRate,
             testFilePath = flock.test.webaudio.getTestFilePath(sampleRate),
             audioEl = flock.test.createAudioElement(testFilePath, true, false),
             synth = flock.test.createRecordingMediaSynth(audioEl);
@@ -233,14 +237,15 @@
     // TODO: Remove this condition when Safari fixes its
     // MediaElementAudioSourceNode implementation.
     if (!flock.platform.browser.safari) {
-        flock.init();
+        environment = flock.init();
 
-        var sampleRate = flock.environment.audioSystem.context.sampleRate,
+        var sampleRate = environment.audioSystem.context.sampleRate,
             testFilePath = flock.test.webaudio.getTestFilePath(sampleRate);
 
         asyncTest("Reading input samples.", function () {
             flock.audio.decode({
                 src: testFilePath,
+                sampleRate: environment.audioSystem.model.sampleRate,
                 success: flock.test.webaudio.runMediaElementSourceNodeTest,
                 error: function (msg) {
                     ok(false, msg);

@@ -187,6 +187,7 @@ At an even lower level of abstraction, you can manually load and decode audio fi
     var buffer;
     flock.audio.decode({
         src: "sounds/cat.wav", // src can also be a File object or Data URL.
+        sampleRate: environment.audioSystem.model.sampleRate,
         success: function (bufferDescription) {
             // Do something with the loaded buffer.
             buffer = bufferDescription;
@@ -199,7 +200,7 @@ At an even lower level of abstraction, you can manually load and decode audio fi
 If you want to share a buffer that you've loaded by hand amongst unit multiple generators, you'll want to give it an ID and register it with the Flocking environment:
 
     buffer.id = "meow";
-    flock.environment.registerBuffer(buffer);
+    environment.registerBuffer(buffer);
 
 
 ## Buffer Descriptions ##
@@ -294,7 +295,7 @@ Flocking provides a means to export buffers from the Environment as sound files.
 The Environment's <code>saveBuffer()</code> method performs the work of both  encoding and saving an audio buffer in one step:
 
     var buffer; // Assume this exists.
-    flock.environment.saveBuffer({
+    environment.saveBuffer({
         type: "wav",
         format: "float32",
         buffer: buffer,
@@ -362,6 +363,10 @@ Flocking provides a unit generator for writing audio streams to buffers. <code>f
 
 Typically, you want to record into a buffer and then use the [Flocking Scheduler](../scheduling.md) to stop the environment and export the buffer as an audio file. Here's an example:
 
+    // Initialize Flocking and hold onto a reference
+    // to the environment.
+    var environment = flock.init();
+
     // Record a 30 second, 4-channel audio file.
     var synth = flock.synth({
         synthDef: {
@@ -388,9 +393,9 @@ Typically, you want to record into a buffer and then use the [Flocking Scheduler
         }
     });
 
-    flock.environment.asyncScheduler.once(30, function () {
-        flock.environment.stop();
-        flock.environment.saveBuffer({
+    environment.asyncScheduler.once(30, function () {
+        environment.stop();
+        environment.saveBuffer({
             type: "wav",
             format: "float32",
             buffer: "recording"

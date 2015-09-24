@@ -20,46 +20,47 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    fluid.registerNamespace("flock.synthEvaluator");
+    flock.evaluate = {
+        synth: function (synth) {
+            synth.genFn(synth.nodeList.nodes);
 
-    flock.synthEvaluator.gen = function (nodes) {
-        var i,
-            node,
-            val;
+            // Update the synth's model.
+            if (synth.out) {
+                synth.model.value = synth.out.model.value;
+            }
+        },
 
-        // Now evaluate each node.
-        for (i = 0; i < nodes.length; i++) {
-            node = nodes[i];
-            val = node.genFn(node.nodeList.nodes, node.model);
-        }
-    };
+        synthValue: function (synth) {
+            flock.evaluate.synth(synth);
+            return synth.model.value;
+        },
 
-    // TODO: Move this to the Bus Manager or somewhere more appropriate.
-    flock.synthEvaluator.clearBuses = function (buses, numBuses, busLen) {
-        for (var i = 0; i < numBuses; i++) {
-            var bus = buses[i];
-            for (var j = 0; j < busLen; j++) {
-                bus[j] = 0;
+        synths: function (synths) {
+            for (var i = 0; i < synths.length; i++) {
+                flock.evaluate.synth(synths[i]);
+            }
+        },
+
+        // TODO: Move this elsewhere?
+        clearBuses: function (buses, numBuses, busLen) {
+            for (var i = 0; i < numBuses; i++) {
+                var bus = buses[i];
+                for (var j = 0; j < busLen; j++) {
+                    bus[j] = 0;
+                }
+            }
+        },
+
+        ugens: function (ugens) {
+            var ugen;
+
+            for (var i = 0; i < ugens.length; i++) {
+                ugen = ugens[i];
+                if (ugen.gen !== undefined) {
+                    ugen.gen(ugen.model.blockSize);
+                }
             }
         }
     };
 
-    fluid.registerNamespace("flock.ugenEvaluator");
-
-    flock.ugenEvaluator.gen = function (nodes, m) {
-        var val;
-
-        for (var i = 0; i < nodes.length; i++) {
-            var node = nodes[i];
-            if (node.gen !== undefined) {
-                node.gen(node.model.blockSize);
-            }
-
-            val = node.model.value;
-        }
-
-        m.value = val;
-
-        return val;
-    };
 }());

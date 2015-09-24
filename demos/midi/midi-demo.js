@@ -3,7 +3,7 @@
 (function () {
     "use strict";
 
-    flock.init();
+    var environment = flock.init();
 
     fluid.defaults("flock.midiDemo", {
         gradeNames: "fluid.viewComponent",
@@ -64,7 +64,7 @@
             that.synth.noteOff(noteEvent.note);
         });
 
-        flock.environment.start();
+        environment.start();
 
         return that;
     };

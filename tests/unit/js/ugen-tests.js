@@ -17,9 +17,9 @@ var fluid = fluid || require("infusion"),
     var $ = fluid.registerNamespace("jQuery");
     fluid.registerNamespace("flock.test");
 
-    flock.init();
+    var environment = flock.init();
 
-    var sampleRate = flock.environment.audioSystem.model.rates.audio;
+    var sampleRate = environment.audioSystem.model.rates.audio;
 
     module("UGen interpolation configuration tests");
 
@@ -160,7 +160,7 @@ var fluid = fluid || require("infusion"),
     module("Output tests", {
         setup: function () {
             // TODO: This should be accomplishable via IoC references
-            flock.environment = flock.enviro();
+            environment = flock.enviro();
         }
     });
 
@@ -175,8 +175,7 @@ var fluid = fluid || require("infusion"),
 
     var testOutputs = function (numRuns, defs, bus, expectedOutput, msg) {
         var synths = [],
-            i,
-            enviro = flock.environment;
+            i;
 
         defs = $.makeArray(defs);
         $.each(defs, function (i, def) {
@@ -187,8 +186,8 @@ var fluid = fluid || require("infusion"),
         });
 
         for (i = 0; i < numRuns; i++) {
-            enviro.gen();
-            deepEqual(enviro.busManager.buses[bus], expectedOutput, i + ": " + msg);
+            environment.gen();
+            deepEqual(environment.busManager.buses[bus], expectedOutput, i + ": " + msg);
         }
 
         $.each(synths, function (i, synth) {
@@ -909,7 +908,7 @@ var fluid = fluid || require("infusion"),
 
     module("flock.ugen.playBuffer", {
         setup: function () {
-            flock.init();
+            environment = flock.init();
 
             var bufDesc = flock.bufferDesc({
                 id: flock.test.ugen.playBuffer.playbackDef.inputs.buffer.id,
@@ -920,7 +919,7 @@ var fluid = fluid || require("infusion"),
                     channels: [flock.test.fillBuffer(1, 64)]
                 }
             });
-            flock.parse.bufferForDef.resolveBuffer(bufDesc, undefined, flock.environment);
+            flock.parse.bufferForDef.resolveBuffer(bufDesc, undefined, environment);
         }
     });
 
@@ -1093,7 +1092,7 @@ var fluid = fluid || require("infusion"),
                 }
             });
 
-            s.genFn(s.nodeList.nodes, s.model);
+            flock.evaluate.synth(s);
             flock.test.unbrokenInRangeSignal(s.get("player").output, -1.0, 1.0);
         });
     };
@@ -1176,7 +1175,7 @@ var fluid = fluid || require("infusion"),
         }
 
         for (var i = 0; i < 4; i++) {
-            synth.genFn(synth.nodeList.nodes, synth.model);
+            flock.evaluate.synth(synth);
             samplesGenerated += 64;
 
             for (var j = 0; j < numInputs; j++) {
@@ -1250,13 +1249,13 @@ var fluid = fluid || require("infusion"),
                 buffer: "giraffes",
                 loop: shouldLoop ? 1.0 : 0.0,
                 options: {
-                    duration: 128 / flock.environment.audioSystem.model.rates.audio
+                    duration: 128 / environment.audioSystem.model.rates.audio
                 }
             })
         });
 
         for (var i = 0; i < 4; i++) {
-            synth.genFn(synth.nodeList.nodes, synth.model);
+            flock.evaluate.synth(synth);
         }
 
         var actual = synth.enviro.buffers.giraffes.data.channels[0],
@@ -1361,7 +1360,7 @@ var fluid = fluid || require("infusion"),
             var gateSynth = flock.test.gateSynth(synthOptions),
                 gateUGen = gateSynth.get("gate");
 
-            gateSynth.genFn(gateSynth.nodeList.nodes, gateSynth.model);
+            flock.evaluate.synth(gateSynth);
             deepEqual(gateUGen.output, expectedOutput,
                 "The gate should open and remain open when the source signal hits the threshold.");
         };
@@ -1428,7 +1427,7 @@ var fluid = fluid || require("infusion"),
 
     module("flock.ugen.in", {
         setup: function () {
-            flock.environment = flock.enviro({
+            environment = flock.enviro({
                 audioSettings: {
                     numBuses: 16
                 }
@@ -1548,7 +1547,7 @@ var fluid = fluid || require("infusion"),
         });
 
         var normalizer = normalizerSynth.nodeList.namedNodes.normalizer;
-        normalizerSynth.genFn(normalizerSynth.nodeList.nodes, normalizerSynth.model);
+        flock.evaluate.synth(normalizerSynth);
 
         var expected = flock.normalize(flock.test.ascendingBuffer(64, -31), 1.0);
         deepEqual(normalizer.output, expected,
@@ -1569,7 +1568,7 @@ var fluid = fluid || require("infusion"),
         var synth = flock.synth({
             synthDef: synthDef
         });
-        synth.genFn(synth.nodeList.nodes, synth.model);
+        flock.evaluate.synth(synth);
         var math = synth.nodeList.namedNodes.math;
         deepEqual(math.output, expected, msg);
     };
@@ -1795,7 +1794,7 @@ var fluid = fluid || require("infusion"),
             synthDef:delayLineDef
         });
         var delay = delaySynth.nodeList.namedNodes.delay;
-        delaySynth.genFn(delaySynth.nodeList.nodes, delaySynth.model);
+        flock.evaluate.synth(delaySynth);
 
         // First block should be silent.
         var expected = new Float32Array(64);
@@ -1803,13 +1802,13 @@ var fluid = fluid || require("infusion"),
             "With a delay time equal to the length of a block, the first output block should be silent.");
 
         // Second should contain the first block's contents.
-        delaySynth.genFn(delaySynth.nodeList.nodes, delaySynth.model);
+        flock.evaluate.synth(delaySynth);
         expected = flock.test.ascendingBuffer(64, 1);
         deepEqual(delay.output, expected,
             "The delay's second block should contain the source's first block of samples.");
 
         // Third block should be similarly delayed.
-        delaySynth.genFn(delaySynth.nodeList.nodes, delaySynth.model);
+        flock.evaluate.synth(delaySynth);
         expected = flock.test.ascendingBuffer(64, 65);
         deepEqual(delay.output, expected,
             "The delay's third block should contain the source's second block of samples.");
@@ -1818,6 +1817,8 @@ var fluid = fluid || require("infusion"),
 
     module("flock.ugen.bufferDuration tests", {
         setup: function () {
+            var environment = flock.init();
+
             var bufDesc = flock.bufferDesc({
                 id: "bufferDurationTests",
                 format: {
@@ -1827,7 +1828,7 @@ var fluid = fluid || require("infusion"),
                     channels: [flock.test.ascendingBuffer(sampleRate * 2.5, 0)] // 2.5 second buffer
                 }
             });
-            flock.parse.bufferForDef.resolveBuffer(bufDesc, undefined, flock.environment);
+            flock.parse.bufferForDef.resolveBuffer(bufDesc, undefined, environment);
         }
     });
 
@@ -1847,7 +1848,7 @@ var fluid = fluid || require("infusion"),
             });
             var durUGen = synth.nodeList.namedNodes.dur;
 
-            synth.genFn(synth.nodeList.nodes, synth.model);
+            flock.evaluate.synth(synth);
             equal(durUGen.output[0], 2.5,
                 "The buffer's length in seconds should be returned");
         });
@@ -2074,7 +2075,7 @@ var fluid = fluid || require("infusion"),
             latchSynth.set("latcher.trigger", trigger);
         }
 
-        latchSynth.genFn(latchSynth.nodeList.nodes, latchSynth.model);
+        flock.evaluate.synth(latchSynth);
         var latch = latchSynth.get("latcher");
         equal(latch.gen, expectedRate === "audio" ? latch.arGen : latch.krGen,
             "The unit generator should be generating samples at " + expectedRate + " rate.");
@@ -2242,7 +2243,7 @@ var fluid = fluid || require("infusion"),
         });
 
         var passThrough = synth.get("pass");
-        synth.genFn(synth.nodeList.nodes, synth.model);
+        flock.evaluate.synth(synth);
 
         var expected = new Float32Array(64);
         expected[0] = 1;
@@ -2261,7 +2262,7 @@ var fluid = fluid || require("infusion"),
         });
 
         var passThrough = synth.get("pass");
-        synth.genFn(synth.nodeList.nodes, synth.model);
+        flock.evaluate.synth(synth);
         deepEqual(passThrough.output, passThrough.inputs.source.output,
             "The entire source should be passed through as-is.");
     });
@@ -2278,7 +2279,7 @@ var fluid = fluid || require("infusion"),
         });
 
         var passThrough = synth.get("pass");
-        synth.genFn(synth.nodeList.nodes, synth.model);
+        flock.evaluate.synth(synth);
         deepEqual(passThrough.output, new Float32Array([1]),
             "The first value of the source buffer should be passed through as-is.");
     });
@@ -2307,14 +2308,14 @@ var fluid = fluid || require("infusion"),
         ok(t2a.rate === flock.rates.AUDIO,
             "The unit generator should be running at audio rate.");
 
-        synth.genFn(synth.nodeList.nodes, synth.model);
+        flock.evaluate.synth(synth);
         var expected = new Float32Array(64);
         expected[0] = 1.0;
         deepEqual(t2a.output, expected,
             "The control rate trigger value should output at the first index in audio rate output stream.");
 
         synth.set("converter.offset", 27);
-        synth.genFn(synth.nodeList.nodes, synth.model);
+        flock.evaluate.synth(synth);
         deepEqual(t2a.output, silence,
             "If the trigger hasn't reset and fired again, the output should be silent.");
 
@@ -2323,12 +2324,12 @@ var fluid = fluid || require("infusion"),
             list: new Float32Array(64),
             freq: sampleRate
         });
-        synth.genFn(synth.nodeList.nodes, synth.model);
+        flock.evaluate.synth(synth);
         deepEqual(t2a.output, silence,
             "If the trigger has reset but hasn't fired again, the output should be silent.");
 
         synth.set("converter.source", synthDef.source);
-        synth.genFn(synth.nodeList.nodes, synth.model);
+        flock.evaluate.synth(synth);
         expected = new Float32Array(64);
         expected[27] = 1.0;
         deepEqual(t2a.output, expected,
@@ -2396,7 +2397,7 @@ var fluid = fluid || require("infusion"),
             var synth = flock.test.triggerCallbackSynth({
                 synthDef: mergedSynthDef
             });
-            synth.genFn(synth.nodeList.nodes, synth.model);
+            flock.evaluate.synth(synth);
 
             var expectedNumCalls = testSpec.expectedCallbackArgs.length;
             equal(counter.callbackRecords.length, expectedNumCalls, "The callback should have been invoked " +
@@ -2532,7 +2533,7 @@ var fluid = fluid || require("infusion"),
                 channelAssertion,
                 fn;
 
-            synth.genFn(synth.nodeList.nodes, synth.model);
+            flock.evaluate.synth(synth);
 
             for (i = 0; i < panTestSpec.channelAssertions.length; i++) {
                 channelAssertion = panTestSpec.channelAssertions[i];

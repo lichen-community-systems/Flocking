@@ -20574,7 +20574,7 @@ var fluid = fluid || require("infusion"),
                 constant: 0
             },
             blockSize: 64,
-            numBlocks: 16,
+            numBlocks: 16, // TODO: Move this and its transform into the web/output-manager.js
             chans: 2,
             numInputBuses: 2,
             numBuses: 8,
@@ -20897,9 +20897,9 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.enviro.gen = function (buses, audioSettings, nodes) {
-        flock.synthEvaluator.clearBuses(buses,
+        flock.evaluate.clearBuses(buses,
             audioSettings.numBuses, audioSettings.blockSize);
-        flock.synthEvaluator.gen(nodes);
+        flock.evaluate.synths(nodes);
     };
 
     flock.enviro.start = function (model, onStart) {
@@ -20933,11 +20933,7 @@ var fluid = fluid || require("infusion"),
     });
 
     flock.autoEnviro.initEnvironment = function () {
-        if (!flock.environment) {
-            flock.init();
-        }
-
-        return flock.environment;
+        return !flock.environment ? flock.init() : flock.environment;
     };
 
 
@@ -21135,7 +21131,7 @@ var fluid = fluid || require("infusion"),
             audioSettings: "{enviro}.audioSystem.model", // TODO: Move this.
             nodeList: "@expand:flock.nodeList()",
             out: "{that}.options.ugens",
-            genFn: "@expand:fluid.getGlobalValue(flock.ugenEvaluator.gen)"
+            genFn: "@expand:fluid.getGlobalValue(flock.evaluate.ugens)"
         },
 
         model: {
@@ -21259,8 +21255,8 @@ var fluid = fluid || require("infusion"),
 
         invokers: {
             value: {
-                funcName: "flock.ugenEvaluator.gen",
-                args: ["{that}.nodeList.nodes", "{that}.model"]
+                funcName: "flock.evaluate.synthValue",
+                args: ["{that}"]
             }
         }
     });
@@ -21538,48 +21534,49 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    fluid.registerNamespace("flock.synthEvaluator");
+    flock.evaluate = {
+        synth: function (synth) {
+            synth.genFn(synth.nodeList.nodes);
 
-    flock.synthEvaluator.gen = function (nodes) {
-        var i,
-            node,
-            val;
+            // Update the synth's model.
+            if (synth.out) {
+                synth.model.value = synth.out.model.value;
+            }
+        },
 
-        // Now evaluate each node.
-        for (i = 0; i < nodes.length; i++) {
-            node = nodes[i];
-            val = node.genFn(node.nodeList.nodes, node.model);
-        }
-    };
+        synthValue: function (synth) {
+            flock.evaluate.synth(synth);
+            return synth.model.value;
+        },
 
-    // TODO: Move this to the Bus Manager or somewhere more appropriate.
-    flock.synthEvaluator.clearBuses = function (buses, numBuses, busLen) {
-        for (var i = 0; i < numBuses; i++) {
-            var bus = buses[i];
-            for (var j = 0; j < busLen; j++) {
-                bus[j] = 0;
+        synths: function (synths) {
+            for (var i = 0; i < synths.length; i++) {
+                flock.evaluate.synth(synths[i]);
+            }
+        },
+
+        // TODO: Move this elsewhere?
+        clearBuses: function (buses, numBuses, busLen) {
+            for (var i = 0; i < numBuses; i++) {
+                var bus = buses[i];
+                for (var j = 0; j < busLen; j++) {
+                    bus[j] = 0;
+                }
+            }
+        },
+
+        ugens: function (ugens) {
+            var ugen;
+
+            for (var i = 0; i < ugens.length; i++) {
+                ugen = ugens[i];
+                if (ugen.gen !== undefined) {
+                    ugen.gen(ugen.model.blockSize);
+                }
             }
         }
     };
 
-    fluid.registerNamespace("flock.ugenEvaluator");
-
-    flock.ugenEvaluator.gen = function (nodes, m) {
-        var val;
-
-        for (var i = 0; i < nodes.length; i++) {
-            var node = nodes[i];
-            if (node.gen !== undefined) {
-                node.gen(node.model.blockSize);
-            }
-
-            val = node.model.value;
-        }
-
-        m.value = val;
-
-        return val;
-    };
 }());
 ;/*
  * Flocking Synth Group
@@ -21612,7 +21609,7 @@ var fluid = fluid || require("infusion"),
 
         members: {
             nodeList: "@expand:flock.nodeList()",
-            genFn: "@expand:fluid.getGlobalValue(flock.synthEvaluator.gen)"
+            genFn: "@expand:fluid.getGlobalValue(flock.evaluate.synths)"
         },
 
         invokers: {
@@ -22268,6 +22265,8 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.bufferSource", {
         gradeNames: ["fluid.modelComponent"],
 
+        sampleRate: "{flock.enviro}.audioSystem.model.sampleRate",
+
         model: {
             state: "start",
             src: null
@@ -22366,6 +22365,7 @@ var fluid = fluid || require("infusion"),
                 that.events.onFetch.fire(bufDef);
                 flock.audio.decode({
                     src: bufDef.src,
+                    sampleRate: that.options.sampleRate,
                     success: function (bufDesc) {
                         if (bufDef.id) {
                             bufDesc.id = bufDef.id;
@@ -22404,12 +22404,16 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.bufferLoader", {
         gradeNames: ["fluid.component"],
 
+        // A list of BufferDef objects to resolve.
+        bufferDefs: [],
+
         members: {
             buffers: []
         },
 
-        // A list of BufferDef objects to resolve.
-        bufferDefs: [],
+        components: {
+            enviro: "{flock.enviro}"
+        },
 
         events: {
             afterBuffersLoaded: null
@@ -22418,7 +22422,7 @@ var fluid = fluid || require("infusion"),
         listeners: {
             onCreate: {
                 funcName: "flock.bufferLoader.loadBuffers",
-                args: ["{that}.options.bufferDefs", "{that}.buffers", "{that}.events.afterBuffersLoaded.fire"]
+                args: ["{that}"]
             }
         }
     });
@@ -22456,16 +22460,16 @@ var fluid = fluid || require("infusion"),
         return bufDefs;
     };
 
-    flock.bufferLoader.loadBuffers = function (bufferDefs, decodedBuffers, afterBuffersLoaded) {
-        bufferDefs = fluid.makeArray(bufferDefs);
+    flock.bufferLoader.loadBuffers = function (that) {
+        var bufferDefs = fluid.makeArray(that.options.bufferDefs);
 
         // TODO: This is a sign that flock.parse.bufferForDef is still terribly broken.
         var bufferTarget = {
             setBuffer: function (decoded) {
-                decodedBuffers.push(decoded);
+                that.buffers.push(decoded);
 
-                if (decodedBuffers.length === bufferDefs.length) {
-                    afterBuffersLoaded(decodedBuffers);
+                if (that.buffers.length === that.options.bufferDefs.length) {
+                    that.events.afterBuffersLoaded.fire(that.buffers);
                 }
             }
         };
@@ -22477,7 +22481,7 @@ var fluid = fluid || require("infusion"),
             }
 
             // TODO: Hardcoded reference to the shared environment.
-            flock.parse.bufferForDef(bufferDefs[i], bufferTarget, flock.environment);
+            flock.parse.bufferForDef(bufferDefs[i], bufferTarget, that.enviro);
         }
     };
 
@@ -22794,16 +22798,23 @@ var fluid = fluid || require("infusion"),
         }
     };
 
+    flock.parse.bufferForDef.createBufferSource = function (enviro) {
+        return flock.bufferSource({
+            sampleRate: enviro.audioSystem.model.sampleRate
+        });
+    };
+
     flock.parse.bufferForDef.findSource = function (defOrDesc, enviro) {
         var source;
 
         if (enviro && defOrDesc.id) {
             source = enviro.bufferSources[defOrDesc.id];
             if (!source) {
-                source = enviro.bufferSources[defOrDesc.id] = flock.bufferSource();
+                source = flock.parse.bufferForDef.createBufferSource(enviro);
+                enviro.bufferSources[defOrDesc.id] = source;
             }
         } else {
-            source = flock.bufferSource();
+            source = flock.parse.bufferForDef.createBufferSource(enviro);
         }
 
         return source;
@@ -23075,8 +23086,7 @@ var fluid = fluid || require("infusion"),
                 type: type,
                 success: success,
                 error: options.error,
-                sampleRate: options.sampleRate ||
-                    (flock.environment ? flock.environment.audioSystem.model.rates.audio : undefined)
+                sampleRate: options.sampleRate
             });
         };
 
@@ -23089,6 +23099,7 @@ var fluid = fluid || require("infusion"),
      * the browser's Web Audio Context.
      */
     flock.audio.decode.webAudio = function (o) {
+        // TODO: Reference to shared environment.
         var ctx = flock.environment.audioSystem.context,
             success = function (audioBuffer) {
                 var bufDesc = flock.bufferDesc.fromAudioBuffer(audioBuffer);
@@ -24193,7 +24204,7 @@ var fluid = fluid || require("infusion"),
         return function () {
             for (var path in synths) {
                 var synth = synths[path];
-                staticChanges[path] = synth.value();
+                staticChanges[path] = flock.evaluate.synthValue(synth);
             }
 
             var targetSynth = flock.scheduler.async.getTargetSynth(changeSpec, synthContext);
@@ -24638,7 +24649,7 @@ var fluid = fluid || require("infusion"),
     });
 
     fluid.constructSingle([], {
-        singleRootType: "flock.webAudio.enviroContextDistributor",
+        singleRootType: "flock.enviroContextDistributor",
         type: "flock.webAudio.enviroContextDistributor"
     });
 }());
@@ -26119,7 +26130,7 @@ var fluid = fluid || require("infusion"),
         for (i = 0; i < numBlocks; i++) {
             var offset = i * blockSize;
 
-            flock.synthEvaluator.clearBuses(buses, numBuses, blockSize);
+            flock.evaluate.clearBuses(buses, numBuses, blockSize);
 
             // Read this ScriptProcessorNode's input buffers
             // into the environment.
@@ -26135,7 +26146,7 @@ var fluid = fluid || require("infusion"),
                 }
             }
 
-            flock.synthEvaluator.gen(nodes);
+            flock.evaluate.synths(nodes);
 
             // Output the environment's signal
             // to this ScriptProcessorNode's output channels.
@@ -26705,7 +26716,8 @@ var fluid = fluid || require("infusion"),
                 rate,
                 bus,
                 inc,
-                outIdx;
+                outIdx,
+                val;
 
             numSources = sources.length;
             numOutputBuses = Math.max(expand, numSources);
@@ -26722,18 +26734,19 @@ var fluid = fluid || require("infusion"),
                 outIdx = 0;
 
                 for (j = 0; j < numSamps; j++, outIdx += inc) {
+                    val = source.output[outIdx];
                     // TODO: Support control rate interpolation.
                     // TODO: Don't attempt to write to buses beyond the available number.
                     //       Provide an error at onInputChanged time if the unit generator is configured
                     //       with more sources than available buffers.
-                    bus[j] = bus[j] + source.output[outIdx];
+                    bus[j] = bus[j] + val;
                 }
             }
 
             // TODO: Consider how we should handle "value" when the number
             // of input channels for "sources" can be variable.
             // In the meantime, we just output the last source's last sample.
-            m.value = m.unscaledValue = source.output[outIdx];
+            m.value = m.unscaledValue = val;
             that.mulAdd(numSamps); // TODO: Does this even work?
         };
 
@@ -33405,6 +33418,9 @@ var fluid = fluid || require("infusion"),
             var nativeNodeManager = flock.environment.audioSystem.nativeNodeManager,
                 mediaEl = $(that.options.element),
                 // TODO: Direct reference to the shared environment.
+                // TODO: Factor this out into a utility that can be injected
+                // into unit generators without requiring a full reference
+                // to either the environment or the nativeNodeManager.
                 busNum = nativeNodeManager.createMediaElementInput(mediaEl[0]);
 
             that.bus = that.options.buses[busNum];

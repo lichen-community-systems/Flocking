@@ -841,7 +841,7 @@ var fluid = fluid || require("infusion"),
                 constant: 0
             },
             blockSize: 64,
-            numBlocks: 16,
+            numBlocks: 16, // TODO: Move this and its transform into the web/output-manager.js
             chans: 2,
             numInputBuses: 2,
             numBuses: 8,
@@ -1164,9 +1164,9 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.enviro.gen = function (buses, audioSettings, nodes) {
-        flock.synthEvaluator.clearBuses(buses,
+        flock.evaluate.clearBuses(buses,
             audioSettings.numBuses, audioSettings.blockSize);
-        flock.synthEvaluator.gen(nodes);
+        flock.evaluate.synths(nodes);
     };
 
     flock.enviro.start = function (model, onStart) {
@@ -1200,11 +1200,7 @@ var fluid = fluid || require("infusion"),
     });
 
     flock.autoEnviro.initEnvironment = function () {
-        if (!flock.environment) {
-            flock.init();
-        }
-
-        return flock.environment;
+        return !flock.environment ? flock.init() : flock.environment;
     };
 
 
@@ -1402,7 +1398,7 @@ var fluid = fluid || require("infusion"),
             audioSettings: "{enviro}.audioSystem.model", // TODO: Move this.
             nodeList: "@expand:flock.nodeList()",
             out: "{that}.options.ugens",
-            genFn: "@expand:fluid.getGlobalValue(flock.ugenEvaluator.gen)"
+            genFn: "@expand:fluid.getGlobalValue(flock.evaluate.ugens)"
         },
 
         model: {
@@ -1526,8 +1522,8 @@ var fluid = fluid || require("infusion"),
 
         invokers: {
             value: {
-                funcName: "flock.ugenEvaluator.gen",
-                args: ["{that}.nodeList.nodes", "{that}.model"]
+                funcName: "flock.evaluate.synthValue",
+                args: ["{that}"]
             }
         }
     });

@@ -326,7 +326,7 @@ var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undef
     };
 
     flock.audio.decode.resample = function (bufDesc, sampleRate) {
-        if (bufDesc.format.sampleRate === sampleRate) {
+        if (!sampleRate || bufDesc.format.sampleRate === sampleRate) {
             return bufDesc;
         }
 

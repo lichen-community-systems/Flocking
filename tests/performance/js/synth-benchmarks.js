@@ -46,7 +46,7 @@ var flock = flock || {};
 
             test: function (synth) {
                 for (var i = 0; i < numSampleBlocks; i++) {
-                    synth.genFn(synth.nodeList.nodes, synth.model);
+                    flock.evaluate.synth(synth);
                 }
             }
         };

@@ -14,8 +14,8 @@
 
     var $ = fluid.registerNamespace("jQuery");
 
-    flock.init();
-    var sampleRate = flock.environment.audioSystem.model.rates.audio;
+    var environment = flock.init();
+    var sampleRate = environment.audioSystem.model.rates.audio;
 
     module("flock.ugen.phasor");
 
@@ -33,7 +33,7 @@
             if (test.trigger !== undefined) {
                 ugen.input("trigger", test.trigger);
             }
-            synth.genFn(synth.nodeList.nodes, synth.model);
+            flock.evaluate.synth(synth);
             deepEqual(ugen.output, test.expected, test.msg);
         }
     };

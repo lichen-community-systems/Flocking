@@ -822,7 +822,7 @@ var fluid = fluid || require("infusion"),
         return function () {
             for (var path in synths) {
                 var synth = synths[path];
-                staticChanges[path] = synth.value();
+                staticChanges[path] = flock.evaluate.synthValue(synth);
             }
 
             var targetSynth = flock.scheduler.async.getTargetSynth(changeSpec, synthContext);

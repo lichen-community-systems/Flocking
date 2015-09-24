@@ -538,7 +538,8 @@ var fluid = fluid || require("infusion"),
                 rate,
                 bus,
                 inc,
-                outIdx;
+                outIdx,
+                val;
 
             numSources = sources.length;
             numOutputBuses = Math.max(expand, numSources);
@@ -555,18 +556,19 @@ var fluid = fluid || require("infusion"),
                 outIdx = 0;
 
                 for (j = 0; j < numSamps; j++, outIdx += inc) {
+                    val = source.output[outIdx];
                     // TODO: Support control rate interpolation.
                     // TODO: Don't attempt to write to buses beyond the available number.
                     //       Provide an error at onInputChanged time if the unit generator is configured
                     //       with more sources than available buffers.
-                    bus[j] = bus[j] + source.output[outIdx];
+                    bus[j] = bus[j] + val;
                 }
             }
 
             // TODO: Consider how we should handle "value" when the number
             // of input channels for "sources" can be variable.
             // In the meantime, we just output the last source's last sample.
-            m.value = m.unscaledValue = source.output[outIdx];
+            m.value = m.unscaledValue = val;
             that.mulAdd(numSamps); // TODO: Does this even work?
         };
 

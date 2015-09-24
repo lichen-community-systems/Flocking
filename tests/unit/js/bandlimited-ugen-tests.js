@@ -16,7 +16,7 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.test.blit");
 
-    flock.init();
+    var environment = flock.init();
 
     flock.test.blit.baseTests = [
         {
@@ -91,7 +91,7 @@ var fluid = fluid || require("infusion"),
                         },
                         {
                             funcName: "deepEqual",
-                            args: [new Float32Array(flock.environment.audioSystem.model.blockSize * 2)]
+                            args: [new Float32Array(environment.audioSystem.model.blockSize * 2)]
                         }
                     ]
                 }
@@ -133,12 +133,12 @@ var fluid = fluid || require("infusion"),
 
     flock.test.blit.generateOutput = function (synth, testSpec) {
         // Create a buffer that can hold about a second's worth of audio.
-        var blockSize = flock.environment.audioSystem.model.blockSize,
+        var blockSize = environment.audioSystem.model.blockSize,
             fullSize = blockSize * testSpec.numBlocks,
             actual = new Float32Array(fullSize);
 
         for (var i = 0; i < testSpec.numBlocks; i++) {
-            synth.genFn(synth.nodeList.nodes, synth.model);
+            flock.evaluate.synth(synth);
             for (var j = 0; j < blockSize; j++) {
                 actual[j + (i * blockSize)] = synth.get("blit").output[j];
             }

@@ -52,8 +52,8 @@ Synths provide <code>play()</code> and <code>pause()</code> methods as a conveni
 
 Here's the basic lifecycle for a Flocking application:
 
-1. Initialize Flocking using <code>flock.init</code>. For example, <code>var enviro = flock.init();</code>
-1. Start the environment when your application is first ready to generate sound, using <code>enviro.start()</code>
+1. Initialize Flocking using <code>flock.init</code>. For example, <code>var environment = flock.init();</code>
+1. Start the environment when your application is first ready to generate sound, using <code>environment.start()</code>
 2. Create synths whenever you need them, using the <code>addToEnvironment</code> option to control whether they should start playing immediately or wait until <code>play</code> is called on them
 3. Use Synth's <code>play</code> and <code>pause</code> methods to programmatically start and stop synths from sounding
 

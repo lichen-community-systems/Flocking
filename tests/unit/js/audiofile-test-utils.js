@@ -5,6 +5,8 @@
 
     fluid.registerNamespace("flock.test.audioFile");
 
+    var environment = flock.init();
+
     flock.test.audioFile.testTriangleBuffer = function (decoded, sampleRate) {
         var data = decoded.data,
             format = decoded.format,
@@ -38,10 +40,11 @@
             return function () {
                 flock.audio.decode({
                     src: config.src,
+                    sampleRate: environment.audioSystem.model.sampleRate,
                     decoder: config.decoder,
                     success: function (decoded) {
                         flock.test.audioFile.testTriangleBuffer(decoded,
-                            flock.environment.audioSystem.model.rates.audio);
+                            environment.audioSystem.model.rates.audio);
                         start();
                     }
                 });

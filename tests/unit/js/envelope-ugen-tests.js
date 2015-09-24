@@ -15,9 +15,9 @@ var fluid = fluid || require("infusion"),
     "use strict";
 
     var $ = fluid.registerNamespace("jQuery");
-    flock.init();
+    var environment = flock.init();
 
-    var sampleRate = flock.environment.audioSystem.model.rates.audio;
+    var sampleRate = environment.audioSystem.model.rates.audio;
 
 
     /*****************************
@@ -519,7 +519,7 @@ var fluid = fluid || require("infusion"),
             for (var i = 0; i < testSpec.numBlocksToGen; i++) {
                 var expectedPath = testSpec.expectations[i];
                 var expectedBuffer = fluid.get(expectedSegments, expectedPath);
-                synth.genFn(synth.nodeList.nodes, synth.model);
+                flock.evaluate.synth(synth);
 
                 if (curveSpec.round && curveSpec.round[expectedPath]) {
                     flock.test.arrayEqualBothRounded(curveSpec.round[expectedPath], envUGen.output, expectedBuffer, test.name + expectedPath);
@@ -826,7 +826,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.test.envGen.generateBlock = function (synth, allSamples, idx) {
-        synth.genFn(synth.nodeList.nodes, synth.model);
+        flock.evaluate.synth(synth);
         return flock.test.envGen.collectBlock(synth.get("env").output, allSamples, idx);
     };
 

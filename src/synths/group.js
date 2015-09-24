@@ -29,7 +29,7 @@ var fluid = fluid || require("infusion"),
 
         members: {
             nodeList: "@expand:flock.nodeList()",
-            genFn: "@expand:fluid.getGlobalValue(flock.synthEvaluator.gen)"
+            genFn: "@expand:fluid.getGlobalValue(flock.evaluate.synths)"
         },
 
         invokers: {

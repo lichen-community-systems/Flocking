@@ -53,7 +53,7 @@ And an example JavaScript file:
         // You should change this to a namespace that is appropriate for your project.
         fluid.registerNamespace("myStuff");
 
-        var enviro = flock.init();
+        var environment = flock.init();
 
         // Expose any public functions or constructors as properties on your namesapce.
         myStuff.play = function () {
@@ -73,7 +73,7 @@ And an example JavaScript file:
             // If you're on iOS, you will need to call in a listener for
             // some kind of user input action, such a button click or touch handler.
             // This is because iOS will only play sound if the user initiated it.
-            enviro.start();
+            environment.start();
         };
 
     }());
