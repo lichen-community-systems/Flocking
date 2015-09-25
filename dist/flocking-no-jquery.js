@@ -12764,8 +12764,9 @@ var fluid = fluid || require("infusion"),
 
         xhr.onreadystatechange = function () {
             if (xhr.readyState === 4) {
-                if (xhr.status === 200) {
-                    options.success(xhr.response, flock.file.parseFileExtension(src));
+                if (flock.net.isXHRSuccessful(xhr)) {
+                    options.success(xhr.response,
+                        flock.file.parseFileExtension(src));
                 } else {
                     if (!options.error) {
                         throw new Error(xhr.statusText);
@@ -12779,6 +12780,12 @@ var fluid = fluid || require("infusion"),
         xhr.open(options.method || "GET", src, true);
         xhr.responseType = options.responseType || "arraybuffer";
         xhr.send(options.data);
+    };
+
+    flock.net.isXHRSuccessful = function (xhr) {
+        return xhr.status === 200 ||
+            (xhr.responseURL.indexOf("file://") === 0 && xhr.status === 0 &&
+            xhr.response);
     };
 
 
