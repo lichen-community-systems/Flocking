@@ -40,6 +40,7 @@ module.exports = function(grunt) {
             "src/core.js",
             "src/node-list.js",
             "src/evaluators.js",
+            "src/synths/model.js",
             "src/synths/group.js",
             "src/synths/polyphonic.js",
             "src/synths/band.js",
