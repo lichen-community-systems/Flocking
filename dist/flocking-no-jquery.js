@@ -1,4 +1,4 @@
-/*! Flocking 0.1.3 (August 11, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.3 (September 30, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof exports === "object") {
@@ -11879,8 +11879,8 @@ var fluid = fluid || require("infusion"),
         that.reset = function () {
             that.stop();
             that.asyncScheduler.clearAll();
-            that.applier.change("nextAvailableBus.input", []);
-            that.applier.change("nextAvailableBus.interconnect", []);
+            that.applier.change("nextAvailableBus.input", 0);
+            that.applier.change("nextAvailableBus.interconnect", 0);
             that.audioStrategy.reset();
             that.clearAll();
         };
