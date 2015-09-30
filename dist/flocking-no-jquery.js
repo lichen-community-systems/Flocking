@@ -11453,7 +11453,12 @@ var fluid = fluid || require("infusion"),
         gradeNames: "flock.synth",
 
         modelListeners: {
-            "": "flock.modelSynth.updateUGens({that}, {change}.value)"
+            "": [
+                {
+                    funcName: "flock.modelSynth.updateUGens",
+                    args: ["{that}", "{change}.value"]
+                }
+            ]
         }
     });
 
