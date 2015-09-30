@@ -11605,7 +11605,7 @@ var fluid = fluid || require("infusion"),
             if (fluid.isPrimitive(value) || value.ugen) {
                 changeSpec[newPath] = value;
             } else {
-                flock.modelSynth.flattenModelPath(newPath, value, changeSpec);
+                flock.modelSynth.flattenModel(newPath, value, changeSpec);
             }
         }
 
