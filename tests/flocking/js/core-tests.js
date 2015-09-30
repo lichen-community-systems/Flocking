@@ -6,7 +6,7 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, module, test, asyncTest, expect, ok, equal, deepEqual, start*/
+/*global require, QUnit, module, test, asyncTest, expect, ok, equal, deepEqual, start*/
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
@@ -1925,5 +1925,24 @@ var fluid = fluid || require("infusion"),
         flock.test.core.runBusTests("interconnect", 2, enviroOpts, function (runIdx, enviro) {
             return runIdx + enviro.audioSettings.chans + enviro.audioSettings.numInputBuses;
         });
+    });
+
+    flock.test.core.testBusAcquisition = function (enviro, expected, msg) {
+        var busNum = enviro.acquireNextBus("interconnect");
+        QUnit.equal(busNum, expected, msg);
+    };
+
+    test("Bus acquisition after environment reset", function () {
+        var enviroOptions = {
+            chans: 2,
+            numBuses: 6,
+            numInputBuses: 2
+        };
+
+        var enviro = flock.init(enviroOptions);
+        flock.test.core.testBusAcquisition(enviro, 4, "The first interconnect bus should have been acquired.");
+        enviro.reset();
+        flock.test.core.testBusAcquisition(enviro, 4,
+            "The first interconnectBus should have been acquired again after resetting the environment.");
     });
 }());

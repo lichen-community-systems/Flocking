@@ -1047,8 +1047,8 @@ var fluid = fluid || require("infusion"),
         that.reset = function () {
             that.stop();
             that.asyncScheduler.clearAll();
-            that.applier.change("nextAvailableBus.input", []);
-            that.applier.change("nextAvailableBus.interconnect", []);
+            that.applier.change("nextAvailableBus.input", 0);
+            that.applier.change("nextAvailableBus.interconnect", 0);
             that.audioStrategy.reset();
             that.clearAll();
         };
