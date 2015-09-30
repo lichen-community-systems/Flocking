@@ -24,8 +24,12 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.modelSynth", {
         gradeNames: "flock.synth",
 
+        model: {
+            inputs: {}
+        },
+
         modelListeners: {
-            "": [
+            "inputs": [
                 {
                     funcName: "flock.modelSynth.updateUGens",
                     args: ["{that}", "{change}.value"]
