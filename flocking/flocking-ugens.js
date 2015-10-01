@@ -21,8 +21,8 @@ var fluid = fluid || require("infusion"),
     "use strict";
 
     var $ = fluid.registerNamespace("jQuery"),
-        DSP = flock.requireModule("DSP", "dspapi"),
-        Filter = flock.requireModule("Filter", "dspapi");
+        DSP = flock.requireModule("dspapi", "DSP"),
+        Filter = flock.requireModule("dspapi", "Filter");
 
     /*************
      * Utilities *

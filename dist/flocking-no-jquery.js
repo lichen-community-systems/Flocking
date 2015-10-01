@@ -9492,9 +9492,9 @@ var fluid_2_0 = fluid_2_0 || {};
 //------------------------------------------------------------------------------
 
 (function () {
-    
+
     var g = typeof (window) !== "undefined" ? window : typeof (self) !== "undefined" ? self : global;
-    
+
     (function () {
       if (g.DSP) return;
 
@@ -10504,7 +10504,13 @@ var fluid_2_0 = fluid_2_0 || {};
       g.FFT = FFT;
     })();
 
-    
+    if (typeof module !== "undefined" && module.exports) {
+        module.exports = {
+            DSP: g.DSP,
+            Filter: g.Filter,
+            FFT: g.FFT
+        };
+    }
 })();
 ;
 /** Random.js library.
@@ -10962,12 +10968,24 @@ var fluid = fluid || require("infusion"),
         URL: flock.platform.isBrowser ? (window.URL || window.webkitURL || window.msURL) : undefined
     };
 
-    flock.requireModule = function (globalName, moduleName) {
-        if (!moduleName) {
-            moduleName = globalName;
+    flock.requireModule = function (moduleName, globalName) {
+        if (flock.platform.isBrowser) {
+            return window[globalName || moduleName];
         }
-        return flock.platform.isBrowser ? window[globalName] :
-            (flock.platform.hasRequire ? require(moduleName)[globalName] : undefined);
+
+        if (!flock.platform.hasRequire) {
+            return undefined;
+        }
+
+        var resolvedName = flock.requireModule.paths[moduleName] || moduleName;
+        var togo = require(resolvedName);
+
+        return globalName ? togo[globalName] : togo;
+    };
+
+    flock.requireModule.paths = {
+        dspapi: "../third-party/dspapi/js/dspapi.js",
+        Random: "../third-party/simjs/js/random-0.26.js"
     };
 
     /*************
@@ -14947,8 +14965,8 @@ var fluid = fluid || require("infusion"),
     "use strict";
 
     var $ = fluid.registerNamespace("jQuery"),
-        DSP = flock.requireModule("DSP", "dspapi"),
-        Filter = flock.requireModule("Filter", "dspapi");
+        DSP = flock.requireModule("dspapi", "DSP"),
+        Filter = flock.requireModule("dspapi", "Filter");
 
     /*************
      * Utilities *

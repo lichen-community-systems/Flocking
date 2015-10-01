@@ -9,16 +9,7 @@
     "url": "git://github.com/colinbdclark/Flocking.git"
   },
   "bugs": "http://github.com/colinbdclark/Flocking/issues",
-  "licenses": [
-    {
-      "type": "MIT",
-      "url": "http://opensource.org/licenses/MIT"
-    },
-    {
-      "type": "GPL",
-      "url": "http://opensource.org/licenses/GPL-3.0"
-    }
-  ],
+  "license": "(MIT OR GPL-2.0)",
   "keywords": [
     "Flocking",
     "WebAudio",
@@ -43,8 +34,7 @@
   "dependencies": {
     "infusion": "fluid-project/infusion#1.9.x",
     "speaker": "git://github.com/colinbdclark/node-speaker.git#mpg123-lower-latency",
-    "dspapi": "git://github.com/colinbdclark/node-dsp.git",
-    "midi": "v0.8.1"
+    "midi": "0.9.4"
   },
   "engines": {
     "node": "0.10.x"

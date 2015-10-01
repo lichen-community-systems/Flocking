@@ -32,9 +32,9 @@
 //------------------------------------------------------------------------------
 
 (function () {
-    
+
     var g = typeof (window) !== "undefined" ? window : typeof (self) !== "undefined" ? self : global;
-    
+
     (function () {
       if (g.DSP) return;
 
@@ -1044,5 +1044,11 @@
       g.FFT = FFT;
     })();
 
-    
+    if (typeof module !== "undefined" && module.exports) {
+        module.exports = {
+            DSP: g.DSP,
+            Filter: g.Filter,
+            FFT: g.FFT
+        };
+    }
 })();
