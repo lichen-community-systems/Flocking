@@ -6,8 +6,7 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, module, test, ok, equal, deepEqual*/
-
+/*global require, QUnit, module, test, ok, equal, deepEqual*/
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
 
@@ -565,4 +564,24 @@ var fluid = fluid || require("infusion"),
             return runIdx + enviro.audioSystem.model.chans + enviro.audioSystem.model.numInputBuses;
         });
     });
+
+    flock.test.core.testBusAcquisition = function (enviro, expected, msg) {
+        var busNum = enviro.busManager.acquireNextBus("interconnect");
+        QUnit.equal(busNum, expected, msg);
+    };
+
+    test("Bus acquisition after environment reset", function () {
+        var enviroOptions = {
+            chans: 2,
+            numBuses: 6,
+            numInputBuses: 2
+        };
+
+        var enviro = flock.init(enviroOptions);
+        flock.test.core.testBusAcquisition(enviro, 4, "The first interconnect bus should have been acquired.");
+        enviro.reset();
+        flock.test.core.testBusAcquisition(enviro, 4,
+            "The first interconnectBus should have been acquired again after resetting the environment.");
+    });
+
 }());
