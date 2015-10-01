@@ -1168,6 +1168,14 @@ var fluid = fluid || require("infusion"),
                     "{audioSystem}.model.chans",
                     "{audioSystem}.model.numInputBuses"
                 ]
+            },
+
+            reset: {
+                changePath: "nextAvailableBus",
+                value: {
+                    input: 0,
+                    interconnect: 0
+                }
             }
         }
     });
@@ -1339,14 +1347,7 @@ var fluid = fluid || require("infusion"),
             onReset: [
                 "{that}.stop()",
                 "{asyncScheduler}.clearAll()",
-                {
-                    func: "{that}.applier.change",
-                    args: ["nextAvailableBus.input", []]
-                },
-                {
-                    func: "{that}.applier.change",
-                    args: ["nextAvailableBus.interconnect", []]
-                },
+                "{busManager}.reset()",
                 "{that}.clearAll()"
             ]
         }
