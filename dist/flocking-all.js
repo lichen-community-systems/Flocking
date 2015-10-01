@@ -1,4 +1,4 @@
-/*! Flocking 0.1.3 (September 30, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.4 (October 1, 2015), Copyright 2015 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.3
