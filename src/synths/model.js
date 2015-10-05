@@ -32,16 +32,16 @@ var fluid = fluid || require("infusion"),
             "inputs": [
                 {
                     funcName: "flock.modelSynth.updateUGens",
-                    args: ["{that}", "{change}.value"]
+                    args: ["{that}.set", "{change}.value"]
                 }
             ]
         }
     });
 
-    flock.modelSynth.updateUGens = function (that, changeValue) {
+    flock.modelSynth.updateUGens = function (set, changeValue) {
         var changeSpec = {};
         flock.modelSynth.flattenModel("", changeValue, changeSpec);
-        that.set(changeSpec);
+        set(changeSpec);
     };
 
     flock.modelSynth.flattenModel = function (path, model, changeSpec) {
