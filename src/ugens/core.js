@@ -426,7 +426,7 @@ var fluid = fluid || require("infusion"),
             var inputs = that.inputs,
                 m = that.model;
 
-            m.value = m.unscaledValue = inputs.value;
+            m.unscaledValue = inputs.value;
 
             if (that.rate !== "constant") {
                 that.gen = that.dynamicGen;

@@ -19852,10 +19852,17 @@ var fluid = fluid || require("infusion"),
     flock.platform.isWebAudio = typeof AudioContext !== "undefined" || typeof webkitAudioContext !== "undefined";
     flock.platform.audioEngine = flock.platform.isBrowser ? "webAudio" : "nodejs";
 
+    if (flock.platform.browser && flock.platform.browser.version !== undefined) {
+        var dotIdx = flock.platform.browser.version.indexOf(".");
+
+        flock.platform.browser.majorVersionNumber = Number(dotIdx < 0 ?
+            flock.platform.browser.version :
+            flock.platform.browser.version.substring(0, dotIdx));
+    }
+
     flock.shim = {
         URL: flock.platform.isBrowser ? (window.URL || window.webkitURL || window.msURL) : undefined
     };
-
 
     flock.requireModule = function (moduleName, globalName) {
         if (flock.platform.isBrowser) {
@@ -26670,7 +26677,7 @@ var fluid = fluid || require("infusion"),
             var inputs = that.inputs,
                 m = that.model;
 
-            m.value = m.unscaledValue = inputs.value;
+            m.unscaledValue = inputs.value;
 
             if (that.rate !== "constant") {
                 that.gen = that.dynamicGen;
@@ -33494,8 +33501,9 @@ var fluid = fluid || require("infusion"),
 
             // TODO: Remove this warning when Safari and Android
             // fix their MediaElementAudioSourceNode implementations.
-            if (flock.platform.browser.safari) {
-                flock.log.warn("MediaElementSourceNode does not work on Safari. " +
+            if (flock.platform.browser.safari &&
+                flock.platform.browser.majorVersionNumber < 601) {
+                flock.log.warn("MediaElementSourceNode only works on Safari 9 or higher. " +
                     "For more information, see https://bugs.webkit.org/show_bug.cgi?id=84743 " +
                     "and https://bugs.webkit.org/show_bug.cgi?id=125031");
             } else if (flock.platform.isAndroid) {
