@@ -11129,9 +11129,9 @@ var fluid = fluid || require("infusion"),
             /**
              * Sets the value of the ugen at the specified path.
              *
-             * @param {String} path the ugen's path within the synth graph
-             * @param {Number || UGenDef} val a scalar value (for Value ugens) or a UGenDef object
-             * @param {Boolean} swap ??
+             * @param {String||Object} a keypath or change specification object
+             * @param {Number || UGenDef} val a value to set
+             * @param {Boolean} swap whether or not to reattach the current unit generator's inputs to the new one
              * @return {UGen} the newly created UGen that was set at the specified path
              */
             set: {
@@ -11599,16 +11599,16 @@ var fluid = fluid || require("infusion"),
             "inputs": [
                 {
                     funcName: "flock.modelSynth.updateUGens",
-                    args: ["{that}", "{change}.value"]
+                    args: ["{that}.set", "{that}.options.ugens", "{change}.value"]
                 }
             ]
         }
     });
 
-    flock.modelSynth.updateUGens = function (that, changeValue) {
+    flock.modelSynth.updateUGens = function (set, ugens, changeValue) {
         var changeSpec = {};
         flock.modelSynth.flattenModel("", changeValue, changeSpec);
-        that.set(changeSpec);
+        set(changeSpec);
     };
 
     flock.modelSynth.flattenModel = function (path, model, changeSpec) {
