@@ -128,6 +128,50 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+
+    flock.ugen.listItem = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                out = that.output,
+                list = that.inputs.list,
+                maxIdx = list.length - 1,
+                index = that.inputs.index.output,
+                i,
+                val,
+                j,
+                listIdx;
+
+            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.index) {
+                listIdx = Math.round(index[j] * maxIdx);
+                listIdx = Math.max(0, listIdx);
+                listIdx = Math.min(listIdx, maxIdx);
+                val = list[listIdx];
+                out[i] = val;
+            }
+
+            m.unscaledValue = val;
+            that.mulAdd(numSamps);
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
+        };
+
+        that.onInputChanged();
+        return that;
+    };
+
+    flock.ugenDefaults("flock.ugen.listItem", {
+        rate: "control",
+        inputs: {
+            index: 0, // A value between 0 and 1.0
+            list: [0]
+        },
+        ugenOptions: {
+            strideInputs: ["index"]
+        }
+    });
+
+
     flock.ugen.sequence = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
