@@ -1,35 +1,93 @@
-# Running Flocking in Node.js #
-
-Flocking is configured as an npm module. If you want to use it in a Node.js application, you can add it to your package.json file's dependencies block:
-
-    dependencies: {
-        "flocking": "git://github.com/colinbdclark/node-flocking.git"
-    }
-
-Then, in your application, use the Fluid Infusion global module loading system to import Flocking:
-
-    var fluid = require("infusion"),
-        flock = fluid.require("flocking");
-
-From there, you can use Flocking just as if it were running in a web browser. Keep in mind that, unless you use other third-party packages, there won't be a DOM present, and Fluid Infusion provides only a minimal version of jQuery.
-
-
 ## Running the Flocking Node.js Demos ##
 
-Just run the demo file with the "node" process. For example,
+Flocking ships with a handful of Node.js-specific demos. They are located in the <code>demos/nodejs</code> directory. To run them:
+* First, run <code>npm install</code> to install all of Flocking's dependencies.
+* Next, run the demos using the <code>node</code> command.
 
-    node nodejs/demos/audio-file.js
+For example:
+
+    node demos/nodejs/audio-file.js
 
 or:
 
-    node nodejs/demos/fast-scheduling.js
+    node demos/nodejs/fast-scheduling.js
 
 or:
 
-    node nodejs/demos/filtered-noise-and-sine.js
+    node demos/nodejs/filtered-noise-and-sine.js
 
 
-## An Example Flocking Node.js Project Using Infusion ##
+# Using Flocking With Node.js #
+
+Flocking is available as an npm module. If you want to use it in a Node.js application, you can add it to your package.json file's dependencies block:
+
+    dependencies: {
+        "flocking": "0.1.4"
+    }
+
+Then, in your application, you can <code>require</code> the Flocking module to load it:
+
+    var flock = require("flocking");
+
+From there, you can use Flocking just as if it were running in a web browser. Keep in mind that, unless you use other third-party packages, there won't be a DOM present.
+
+
+## A Basic Flocking Node.js Application ##
+
+First, define your <code>package.json</code> file:
+
+    {
+        "name": "flocking-app",
+        "description": "A simple of example of using Flocking with Node.js",
+        "main": "index.js",
+        "version": "1.0.0",
+        "author": "Me",
+        "license": "MIT",
+        "readmeFilename": "README.md",
+        "dependencies": {
+            "flocking": "0.1.4"
+        }
+    }
+
+Next, write some JavaScript code in your <code>index.js</code>:
+
+    var flock = require("flocking"),
+        enviro = flock.init();
+
+    var s = flock.synth({
+        synthDef: {
+            ugen: "flock.ugen.sin",
+            freq: {
+                ugen: "flock.ugen.lfNoise",
+                freq: 1,
+                mul: 180,
+                add: 180
+            },
+            mul: {
+                ugen: "flock.ugen.envGen",
+                envelope: {
+                    type: "flock.envelope.sin",
+                    duration: 0.5
+                },
+                gate: {
+                    ugen: "flock.ugen.lfPulse",
+                    width: 0.5,
+                    freq: 1
+                }
+            }
+        }
+    });
+
+    enviro.play();
+
+Before you run your application, make sure you install all your dependencies by running <code>npm install</code>
+
+Then start your application by running <code>node .</code> from your project's root.
+
+
+## Advanced: Using Flocking with Infusion in Node.js ##
+
+*Note: These instructions will only work with the unreleased Flocking 0.2.0 version.*
 
 A Flocking Node.js project is typically laid out in the following directory structure:
 
@@ -50,33 +108,28 @@ Here's an example of a _package.json_ file for a Flocking app:
         "version": "0.0.1",
         "author": "Me",
         "dependencies": {
-            "infusion": "git://github.com/fluid-project/infusion.git",
-            "flocking": "git://github.com/colinbdclark/Flocking.git"
+            "infusion": "2.0.0-dev.20151007T134312Z.8c33cd4",
+            "flocking": "colinbdclark/Flocking.git"
         },
-        "main": "index.js",
-        "engines": {
-            "node" : "0.10.x"
-        }
+        "main": "index.js"
     }
+
 
 And your index.js might look something like this:
 
     "use strict";
 
     // Imports Fluid Infusion.
-    var fluid = require("infusion"),
+    var fluid = require("infusion");
 
-        // Gets an Infusion loader for the current directory (i.e. the one index.js is located in)
-        loader = fluid.getLoader(__dirname),
-
-        // Imports Flocking
-        flock = fluid.registerNamespace("flock");
+    // Imports Flocking
+    var flock = fluid.registerNamespace("flock");
 
     // Loads your application.
-    loader.require("./lib/app.js");
+    require("./lib/app.js");
 
     // Imports your own personal namespace (which is defined in app.js).
-    // Change this so something more appropriate for your application.
+    // Change this to something more appropriate for your application.
     var myStuff = fluid.registerNamespace("myStuff");
 
     // Initializes Flocking with an appropriate buffer size.
@@ -88,21 +141,16 @@ And your index.js might look something like this:
     // Start your application
     myStuff.beepy.app();
 
-
 In app.js (or whatever files you want to use), you'll define your Flocking code:
 
     "use strict";
 
     // Import Infusion and Flocking.
-    var fluid = require("infusion"),
-        flock = fluid.require("flocking");
-
-    // Define a namespace for your app.
-    fluid.registerNamespace("myStuff.beepy");
-
+    var fluid = require("infusion");
+    var flock = require("flocking");
 
     fluid.defaults("myStuff.beepy.synth", {
-        gradeNames: ["flock.synth"],
+        gradeNames: "flock.synth",
 
         synthDef: {
             id: "beeper",
@@ -113,14 +161,9 @@ In app.js (or whatever files you want to use), you'll define your Flocking code:
     });
 
     fluid.defaults("myStuff.beepy.app", {
-        gradeNames: ["fluid.component", "fluid.modelComponent"],
-
-        members: {
-            enviro: "@expand:flock.init()"
-        },
+        gradeNames: "fluid.component",
 
         components: {
-
             // Define your synth as a component of your application.
             synth: {
                 type: "myStuff.beepy.synth"
@@ -168,7 +211,7 @@ In app.js (or whatever files you want to use), you'll define your Flocking code:
             onCreate: [
                 {
 
-                    func: "{environment}.start"
+                    func: "{flock.enviro}.start"
                 },
                 {
                     func: "{scheduler}.schedule",
@@ -177,12 +220,3 @@ In app.js (or whatever files you want to use), you'll define your Flocking code:
             ]
         }
     });
-
-
-To run your Node.js, first install its dependencies:
-
-    npm install
-
-And then you can start your app with:
-
-    node .
