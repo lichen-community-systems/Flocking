@@ -1,3 +1,17 @@
+## Flocking and Node.js ##
+
+Flocking supports Node.js versions 0.12.x and 4.2.x. It depends on several third-party Node libraries for audio output and MIDI input.
+
+On Mac and Windows, you shouldn't need any additional dependencies. However, on Linux, the ALSA development library is required.
+
+On Ubuntu and Debian:
+
+    apt-get install libasound2-dev
+
+On Fedora and CentOS:
+
+    yum install alsa-lib-devel
+
 ## Running the Flocking Node.js Demos ##
 
 Flocking ships with a handful of Node.js-specific demos. They are located in the <code>demos/nodejs</code> directory. To run them:
