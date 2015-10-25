@@ -22,8 +22,8 @@
 /* global jQuery:true, global */
 /* exported jQuery */
 
-var fluid_2_0_0_beta_1 = fluid_2_0_0_beta_1 || {};
-var fluid = fluid || fluid_2_0_0_beta_1;
+var fluid_2_0 = fluid_2_0 || {};
+var fluid = fluid || fluid_2_0;
 
 (function (fluid) {
     "use strict";
@@ -150,7 +150,7 @@ var fluid = fluid || fluid_2_0_0_beta_1;
         }
     };
 
-})(fluid_2_0_0_beta_1);
+})(fluid_2_0);
 
 var jQuery = fluid.jQueryStandalone;
 ;/*!
@@ -181,13 +181,13 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
 
 /* global console */
 
-var fluid_2_0_0_beta_1 = fluid_2_0_0_beta_1 || {};
-var fluid = fluid || fluid_2_0_0_beta_1;
+var fluid_2_0 = fluid_2_0 || {};
+var fluid = fluid || fluid_2_0;
 
 (function ($, fluid) {
     "use strict";
 
-    fluid.version = "Infusion 2.0.0-dev";
+    fluid.version = "Infusion 2.0-SNAPSHOT";
 
     // Export this for use in environments like node.js, where it is useful for
     // configuring stack trace behaviour
@@ -250,7 +250,7 @@ var fluid = fluid || fluid_2_0_0_beta_1;
         renderer = renderer || fluid.renderOneActivity;
         return fluid.transform(activityStack, renderer);
     };
-
+    
     // Definitions for ThreadLocals, the static and dynamic environment - lifted here from
     // FluidIoC.js so that we can issue calls to fluid.describeActivity for debugging purposes
     // in the core framework
@@ -329,13 +329,13 @@ var fluid = fluid || fluid_2_0_0_beta_1;
         this.stack = new Error().stack;
     };
     fluid.FluidError.prototype = new Error();
-
+    
     // The framework's built-in "log" failure handler - this logs the supplied message as well as any framework activity in progress via fluid.log
     fluid.logFailure = function (args, activity) {
         fluid.log.apply(null, [fluid.logLevel.FAIL, "ASSERTION FAILED: "].concat(args));
         fluid.logActivity(activity);
     };
-
+    
     fluid.renderLoggingArg = function (arg) {
         return fluid.isPrimitive(arg) || !fluid.isPlainObject(arg) ? arg : JSON.stringify(arg);
     };
@@ -488,7 +488,7 @@ var fluid = fluid || fluid_2_0_0_beta_1;
         } // FLUID-5226: This inventive strategy taken from jQuery detects whether the object's prototype is directly Object.prototype by virtue of having an "isPrototypeOf" direct member
         return !totest.constructor || !totest.constructor.prototype || Object.prototype.hasOwnProperty.call(totest.constructor.prototype, "isPrototypeOf");
     };
-
+    
     /** Returns <code>primitive</code>, <code>array</code> or <code>object</code> depending on whether the supplied object has
      * one of those types, by use of the <code>fluid.isPrimitive</code>, <code>fluid.isPlainObject</code> and <code>fluid.isArrayable</code> utilities
      */
@@ -519,7 +519,7 @@ var fluid = fluid || fluid_2_0_0_beta_1;
     };
 
     /** A function which raises a failure if executed */
-
+    
     fluid.notImplemented = function () {
         fluid.fail("This operation is not implemented");
     };
@@ -533,7 +533,7 @@ var fluid = fluid || fluid_2_0_0_beta_1;
     fluid.isUncopyable = function (totest) {
         return fluid.isPrimitive(totest) || fluid.isDOMish(totest) || !fluid.isPlainObject(totest);
     };
-
+    
     fluid.copyRecurse = function (tocopy, segs) {
         if (segs.length > fluid.strategyRecursionBailout) {
             fluid.fail("Runaway recursion encountered in fluid.copy - reached path depth of " + fluid.strategyRecursionBailout + " via path of " + segs.join(".") +
@@ -842,14 +842,14 @@ var fluid = fluid || fluid_2_0_0_beta_1;
         });
         return togo;
     };
-
+    
     /** Applies a stable sorting algorithm to the supplied array and comparator (note that Array.sort in JavaScript is not specified
      * to be stable). The algorithm used will be an insertion sort, which whilst quadratic in time, will perform well
      * on small array sizes.
      * @param array {Array} The array to be sorted. This input array will be modified in place.
      * @param func {Function} A comparator returning >0, 0, or <0 on pairs of elements representing their sort order (same contract as Array.sort comparator)
      */
-
+    
     fluid.stableSort = function (array, func) {
         for (var i = 0; i < array.length; i++) {
             var k = array[i];
@@ -859,11 +859,11 @@ var fluid = fluid || fluid_2_0_0_beta_1;
             array[j] = k;
         }
     };
-
+    
     /** Converts a hash into an object by hoisting out the object's keys into an array element via the supplied String "key", and then transforming via an optional further function, which receives the signature
      * (newElement, oldElement, key) where newElement is the freshly cloned element, oldElement is the original hash's element, and key is the key of the element.
      * If the function is not supplied, the old element is simply deep-cloned onto the new element (same effect
-     * as transform fluid.transforms.objectToArray)
+     * as transform fluid.transforms.objectToArray) 
      */
     fluid.hashToArray = function (hash, keyName, func) {
         var togo = [];
@@ -880,7 +880,7 @@ var fluid = fluid || fluid_2_0_0_beta_1;
         return togo;
     };
 
-    /** Converts an array consisting of a mixture of arrays and non-arrays into the concatenation of any inner arrays
+    /** Converts an array consisting of a mixture of arrays and non-arrays into the concatenation of any inner arrays 
      * with the non-array elements
      */
     fluid.flatten = function (array) {
@@ -937,14 +937,14 @@ var fluid = fluid || fluid_2_0_0_beta_1;
       * use internal to the framework **/
 
     fluid.marker = function () {};
-
+    
     fluid.makeMarker = function (value, extra) {
         var togo = Object.create(fluid.marker.prototype);
         togo.value = value;
         $.extend(togo, extra);
         return Object.freeze(togo);
     };
-
+    
     /** A special "marker object" representing that a distinguished
      * (probably context-dependent) value should be substituted.
      */
@@ -969,7 +969,7 @@ var fluid = fluid || fluid_2_0_0_beta_1;
         }
         return totest.value === type.value;
     };
-
+    
     fluid.logLevelsSpec = {
         "FATAL":      0,
         "FAIL":       5,
@@ -986,7 +986,7 @@ var fluid = fluid || fluid_2_0_0_beta_1;
         return fluid.makeMarker(key, {priority: value});
     });
     var logLevelStack = [fluid.logLevel.IMPORTANT]; // The stack of active logging levels, with the current level at index 0
-
+    
 
     // Model functions
     fluid.model = {}; // cannot call registerNamespace yet since it depends on fluid.model
@@ -1130,7 +1130,7 @@ var fluid = fluid || fluid_2_0_0_beta_1;
         }
         return fluid.model.accessSimple(root, EL, fluid.NO_VALUE, environment, initSegs, false);
     };
-
+    
     /** Even more optimised version which assumes segs are parsed and no configuration **/
     fluid.getImmediate = function (root, segs, i) {
         var limit = (i === undefined ? segs.length: i + 1);
@@ -1252,9 +1252,9 @@ var fluid = fluid || fluid_2_0_0_beta_1;
     fluid.allocateGuid = function () {
         return fluid_prefix + (fluid_guid++);
     };
-
+    
     // Fluid priority system for encoding relative positions of, e.g. listeners, transforms, options, in lists
-
+    
     fluid.extremePriority = 4e9; // around 2^32 - allows headroom of 21 fractional bits for sub-priorities
     fluid.priorityTypes = {
         first: -1,
@@ -1270,24 +1270,24 @@ var fluid = fluid || fluid_2_0_0_beta_1;
         testing: 10,
         authoring: 20
     };
-
-    // unsupported, NON-API function
+    
+    // unsupported, NON-API function    
     fluid.parsePriorityConstraint = function (constraint, fixedOnly, site) {
         var segs = constraint.split(":");
         var type = segs[0];
         var lookup = fluid.priorityTypes[type];
         if (lookup === undefined) {
-            fluid.fail("Invalid constraint type in priority field " + constraint + ": the only supported values are " + fluid.keys(fluid.priorityTypes).join(", ") + " or numeric");
+            fluid.fail("Invalid priority constraint type in constraint " + constraint + ": the only supported values are " + fluid.keys(fluid.priorityType).join(", "));
         }
         if (fixedOnly && lookup === 0) {
-            fluid.fail("Constraint type in priority field " + constraint + " is not supported in a " + site + " record - you must use either a numeric value or first, last");
+            fluid.fail("Constraint-based priority in constraint " + constraint + " is not supported in a " + site + " record - you must use either a numeric value or first, last");
         }
         return {
             type: segs[0],
             target: segs[1]
         };
     };
-
+    
     // unsupported, NON-API function
     fluid.parsePriority = function (priority, count, fixedOnly, site) {
         priority = priority || 0;
@@ -1314,10 +1314,10 @@ var fluid = fluid || fluid_2_0_0_beta_1;
         if (togo.fixed !== null) {
             togo.fixed += togo.count / 1024; // use some fractional bits to encode count bias
         }
-
+        
         return togo;
     };
-
+    
     fluid.renderPriority = function (parsed) {
         return parsed.constraint ? (parsed.constraint.target ? parsed.constraint.type + ":" + parsed.constraint.target : parsed.constraint.type ) : Math.floor(parsed.fixed);
     };
@@ -1331,7 +1331,7 @@ var fluid = fluid || fluid_2_0_0_beta_1;
             return (recA.priority.fixed === null) - (recB.priority.fixed === null);
         }
     };
-
+    
     fluid.honourConstraint = function (array, firstConstraint, c) {
         var constraint = array[c].priority.constraint;
         var matchIndex = fluid.find(array, function (element, index) {
@@ -1354,14 +1354,14 @@ var fluid = fluid || fluid_2_0_0_beta_1;
     };
 
     // unsupported, NON-API function
-    // Priorities accepted from users have higher numbers representing high priority (sort first) -
+    // Priorities accepted from users have higher numbers representing high priority (sort first) - 
     fluid.sortByPriority = function (array) {
         fluid.stableSort(array, fluid.compareByPriority);
 
         var firstConstraint = fluid.find(array, function (element, index) {
             return element.priority.constraint && fluid.priorityTypes[element.priority.constraint.type] === 0 ? index : undefined;
         }, array.length);
-
+        
         while (true) {
             if (firstConstraint === array.length) {
                 return array;
@@ -1658,7 +1658,7 @@ var fluid = fluid || fluid_2_0_0_beta_1;
             return target;
         };
     };
-
+    
     fluid.validateListenersImplemented = function (that) {
         var errors = [];
         fluid.each(that.events, function (event, name) {
@@ -1681,14 +1681,14 @@ var fluid = fluid || fluid_2_0_0_beta_1;
     fluid.arrayConcatPolicy = function (target, source) {
         return fluid.makeArray(target).concat(fluid.makeArray(source));
     };
-
+    
     /*** FLUID ERROR SYSTEM ***/
-
+    
     fluid.failureEvent = fluid.makeEventFirer({name: "failure event"});
-
+    
     fluid.failureEvent.addListener(fluid.builtinFail, "fail");
     fluid.failureEvent.addListener(fluid.logFailure, "log", "before:fail");
-
+    
     /**
      * Configure the behaviour of fluid.fail by pushing or popping a disposition record onto a stack.
      * @param {Number|Function} condition
@@ -1708,13 +1708,13 @@ var fluid = fluid || fluid_2_0_0_beta_1;
     };
 
     /*** DEFAULTS AND OPTIONS MERGING SYSTEM ***/
-
+    
     // A function to tag the types of all Fluid components
     fluid.componentConstructor = function () {};
 
     /** Create a "type tag" component with no state but simply a type name and id. The most
      *  minimal form of Fluid component */
-    // No longer a publically supported function - we don't abolish this because it is too annoying to prevent
+    // No longer a publically supported function - we don't abolish this because it is too annoying to prevent 
     // circularity during the bootup of the IoC system if we try to construct full components before it is complete
     // unsupported, non-API function
     fluid.typeTag = function (name) {
@@ -1772,7 +1772,7 @@ var fluid = fluid || fluid_2_0_0_beta_1;
             gradeHash: {},
             optionsChain: []
         };
-        // stronger grades appear to the right in defaults - dynamic grades are stronger still - FLUID-5085
+        // stronger grades appear to the right in defaults - dynamic grades are stronger still - FLUID-5085 
         // we supply these in reverse order to resolveGradesImpl with weak grades at the right
         return resolveGradesImpl(gradeStruct, [defaultName].concat(fluid.makeArray(gradeNames)), true);
     };
@@ -1829,8 +1829,8 @@ var fluid = fluid || fluid_2_0_0_beta_1;
         }
         return mergedDefaults.defaults;
     };
-
-    // unsupported, NON-API function
+    
+    // unsupported, NON-API function    
     fluid.upgradePrimitiveFunc = function (rec, key) {
         if (rec && fluid.isPrimitive(rec)) {
             var togo = {};
@@ -2140,7 +2140,7 @@ var fluid = fluid || fluid_2_0_0_beta_1;
             }
             else {
                 if (target !== fluid.inEvaluationMarker) { // TODO: blatant "coding to the test" - this enables the simplest "re-trunking" in
-                    // FluidIoCTests to function. In practice, we need to throw away this implementation entirely in favour of the
+                    // FluidIoCTests to function. In practice, we need to throw away this implementation entirely in favour of the 
                     // "iterative deepening" model coming with FLUID-4925
                     target[name] = fluid.inEvaluationMarker;
                 }
@@ -2350,7 +2350,7 @@ var fluid = fluid || fluid_2_0_0_beta_1;
             fluid.model.applyChangeRequest(target, {type: "DELETE", segs: segs});
         }
     };
-
+    
     /**
      * Merges the component's declared defaults, as obtained from fluid.defaults(),
      * with the user's specified overrides.
@@ -2442,13 +2442,13 @@ var fluid = fluid || fluid_2_0_0_beta_1;
         fluid.deliverOptionsStrategy(that, options, mergeOptions); // do this early to broadcast and receive "distributeOptions"
 
         fluid.computeComponentAccessor(that, userOptions && userOptions.localRecord);
-
+        
         var transformOptions = fluid.driveStrategy(options, "transformOptions", mergeOptions.strategy);
         if (transformOptions) {
             fluid.transformOptionsBlocks(mergeBlocks, transformOptions, ["user", "subcomponentRecord"]);
             updateBlocks(); // because the possibly simple blocks may have changed target
         }
-
+        
         if (!baseMergeOptions.target.mergePolicy) {
             computeMergePolicy();
         }
@@ -2484,15 +2484,15 @@ var fluid = fluid || fluid_2_0_0_beta_1;
         });
         return fluid.invokeGlobalFunction(name, args);
     };
-
+    
     fluid.noNamespaceDistributionPrefix = "no-namespace-distribution-";
-
+    
     fluid.mergeOneDistribution = function (target, source, key) {
         var namespace = source.namespace || key || fluid.noNamespaceDistributionPrefix + fluid.allocateGuid();
         source.namespace = namespace;
         target[namespace] = source;
     };
-
+    
     fluid.distributeOptionsPolicy = function (target, source) {
         target = target || {};
         if (fluid.isArrayable(source)) {
@@ -2508,10 +2508,10 @@ var fluid = fluid || fluid_2_0_0_beta_1;
         }
         return target;
     };
-
+    
     fluid.mergingArray = function () {};
     fluid.mergingArray.prototype = [];
-
+    
     // Defer all evaluation of all nested members to resolve FLUID-5668
     fluid.membersMergePolicy = function (target, source) {
         target = target || {};
@@ -2527,9 +2527,9 @@ var fluid = fluid || fluid_2_0_0_beta_1;
         });
         return target;
     };
-
+    
     fluid.invokerStrategies = fluid.arrayToHash(["func", "funcName", "listener", "this", "method"]);
-
+    
     // Resolve FLUID-5741, FLUID-5184 by ensuring that we avoid mixing incompatible invoker strategies
     fluid.invokersMergePolicy = function (target, source) {
         target = target || {};
@@ -2583,7 +2583,7 @@ var fluid = fluid || fluid_2_0_0_beta_1;
             afterDestroy: null
         }
     });
-
+    
     fluid.defaults("fluid.emptySubcomponent", {
         gradeNames: ["fluid.component"]
     });
@@ -2640,7 +2640,7 @@ var fluid = fluid || fluid_2_0_0_beta_1;
 
         fluid.instantiateFirers(that, options);
         fluid.mergeListeners(that, that.events, options.listeners);
-
+        
         return that;
     };
 
@@ -2832,7 +2832,7 @@ var fluid = fluid || fluid_2_0_0_beta_1;
         return template;
     };
 
-})(jQuery, fluid_2_0_0_beta_1);
+})(jQuery, fluid_2_0);
 ;/*
 Copyright 2007-2010 University of Cambridge
 Copyright 2007-2009 University of Toronto
@@ -2848,8 +2848,8 @@ You may obtain a copy of the ECL 2.0 License and BSD License at
 https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
 */
 
-var fluid_2_0_0_beta_1 = fluid_2_0_0_beta_1 || {};
-var fluid = fluid || fluid_2_0_0_beta_1;
+var fluid_2_0 = fluid_2_0 || {};
+var fluid = fluid || fluid_2_0;
 
 (function ($, fluid) {
     "use strict";
@@ -3130,7 +3130,7 @@ var fluid = fluid || fluid_2_0_0_beta_1;
         return togo;
     };
 
-})(jQuery, fluid_2_0_0_beta_1);
+})(jQuery, fluid_2_0);
 ;/*
 Copyright 2011-2013 OCAD University
 Copyright 2010-2015 Lucendo Development Ltd.
@@ -3143,7 +3143,7 @@ You may obtain a copy of the ECL 2.0 License and BSD License at
 https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
 */
 
-var fluid_2_0_0_beta_1 = fluid_2_0_0_beta_1 || {};
+var fluid_2_0 = fluid_2_0 || {};
 
 (function ($, fluid) {
     "use strict";
@@ -5357,7 +5357,7 @@ var fluid_2_0_0_beta_1 = fluid_2_0_0_beta_1 || {};
         return source.expander.value ? source.expander.value : source.expander.tree;
     };
 
-})(jQuery, fluid_2_0_0_beta_1);
+})(jQuery, fluid_2_0);
 ;/*
 Copyright 2008-2010 University of Cambridge
 Copyright 2008-2009 University of Toronto
@@ -5372,7 +5372,7 @@ You may obtain a copy of the ECL 2.0 License and BSD License at
 https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
 */
 
-var fluid_2_0_0_beta_1 = fluid_2_0_0_beta_1 || {};
+var fluid_2_0 = fluid_2_0 || {};
 
 (function ($, fluid) {
     "use strict";
@@ -6716,7 +6716,7 @@ var fluid_2_0_0_beta_1 = fluid_2_0_0_beta_1 || {};
         return that;
     };
 
-})(jQuery, fluid_2_0_0_beta_1);
+})(jQuery, fluid_2_0);
 ;/*
 Copyright 2010 University of Toronto
 Copyright 2010-2011 OCAD University
@@ -6729,8 +6729,8 @@ You may obtain a copy of the ECL 2.0 License and BSD License at
 https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
 */
 
-var fluid_2_0_0_beta_1 = fluid_2_0_0_beta_1 || {};
-var fluid = fluid || fluid_2_0_0_beta_1;
+var fluid_2_0 = fluid_2_0 || {};
+var fluid = fluid || fluid_2_0;
 
 (function ($, fluid) {
     "use strict";
@@ -7381,7 +7381,7 @@ var fluid = fluid || fluid_2_0_0_beta_1;
         };
     };
 
-})(jQuery, fluid_2_0_0_beta_1);
+})(jQuery, fluid_2_0);
 ;/*
 Copyright 2010 University of Toronto
 Copyright 2010-2011 OCAD University
@@ -7395,8 +7395,8 @@ You may obtain a copy of the ECL 2.0 License and BSD License at
 https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
 */
 
-var fluid_2_0_0_beta_1 = fluid_2_0_0_beta_1 || {};
-var fluid = fluid || fluid_2_0_0_beta_1;
+var fluid_2_0 = fluid_2_0 || {};
+var fluid = fluid || fluid_2_0;
 
 (function ($, fluid) {
     "use strict";
@@ -8057,7 +8057,7 @@ var fluid = fluid || fluid_2_0_0_beta_1;
         return fluid.invokeGlobalFunction(transformSpec.func, args);
     };
 
-})(jQuery, fluid_2_0_0_beta_1);
+})(jQuery, fluid_2_0);
 ;/*
 Copyright 2008-2009 University of Toronto
 Copyright 2010-2011 OCAD University
@@ -8071,7 +8071,7 @@ You may obtain a copy of the ECL 2.0 License and BSD License at
 https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
 */
 
-var fluid_2_0_0_beta_1 = fluid_2_0_0_beta_1 || {};
+var fluid_2_0 = fluid_2_0 || {};
 
 (function ($, fluid) {
     "use strict";
@@ -8314,7 +8314,7 @@ var fluid_2_0_0_beta_1 = fluid_2_0_0_beta_1 || {};
         }
     });
 
-})(jQuery, fluid_2_0_0_beta_1);
+})(jQuery, fluid_2_0);
 
 ;// -*- mode: javascript; tab-width: 2; indent-tabs-mode: nil; -*-
 //------------------------------------------------------------------------------
