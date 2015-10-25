@@ -615,6 +615,12 @@ var fluid = fluid || require("infusion"),
      * In this implementation, buffers are always allowed to play until their end.
      * A subsequent trigger while a buffer is still blaying won't interrupt it; another will be added to the mix.
      */
+    // TODO:
+    //   - Remove ridiculous variable assignment block
+    //   - Factor out voice logic into separate functions
+    //   - Add support for speed input and sample rate conversion
+    //   - Source buffers directly from the environment at gen time,
+    //     rather than trying do so proactively (and failing if they're not there)
     flock.ugen.triggerBuffers = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
