@@ -6,7 +6,7 @@
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
 
-/*global require*/
+/*global require, flock*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,
@@ -37,6 +37,11 @@ var fluid = fluid || require("infusion");
 
             set: {
                 func: "{that}.events.onSet.fire"
+            },
+
+            getSynths: {
+                funcName: "flock.band.getSynths",
+                args: ["{that}"]
             }
         },
 
@@ -79,4 +84,15 @@ var fluid = fluid || require("infusion");
             }
         }
     });
+
+    flock.band.getSynths = function (that) {
+        var synths = [];
+        fluid.each(that.options.components, function (componentDef, name) {
+            if (fluid.hasGrade(that[name].options, "flock.synth")) {
+                synths.push(that[name]);
+            }
+        });
+
+        return synths;
+    };
 }());

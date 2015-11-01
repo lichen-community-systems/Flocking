@@ -467,6 +467,47 @@ var fluid = fluid || require("infusion"),
             "as the environment itself.");
     });
 
+    test("getSynths", function () {
+        fluid.defaults("flock.test.band", {
+            gradeNames: "flock.band",
+
+            components: {
+                synth1: {
+                    type: "flock.synth",
+                    options: {
+                        synthDef: {
+                            ugen: "flock.ugen.sin"
+                        }
+                    }
+                },
+
+                synth2: {
+                    type: "flock.synth",
+                    options: {
+                        synthDef: {
+                            ugen: "flock.ugen.sin"
+                        }
+                    }
+                },
+
+                nonSynth: {
+                    type: "fluid.component"
+                }
+            }
+        });
+
+        var b = flock.test.band();
+        var synths = b.getSynths();
+
+        equal(synths.length, 2,
+            "The correct number of synths were returned from getSynths().");
+
+        fluid.each(synths, function (synth) {
+            ok(fluid.hasGrade(synth.options, "flock.synth"),
+                "All synths returned from getSynths() are of the appropriate grade.");
+        });
+    });
+
     test("Options clamping", function () {
         var enviro = flock.init({
             chans: 64,
