@@ -19,10 +19,10 @@ var fluid = require("infusion"),
 loader.require("src/core.js");
 loader.require("src/node-list.js");
 loader.require("src/evaluators.js");
-loader.require("src/synths/band.js");
 loader.require("src/synths/model.js");
 loader.require("src/synths/group.js");
 loader.require("src/synths/polyphonic.js");
+loader.require("src/synths/band.js");
 loader.require("src/buffers.js");
 loader.require("src/parser.js");
 loader.require("src/audiofile.js");
@@ -34,7 +34,6 @@ loader.require("src/web/midi.js");
 // Unit generators
 loader.require("src/ugens/core.js");
 loader.require("src/ugens/bandlimited.js");
-loader.require("src/ugens/browser.js");
 loader.require("src/ugens/buffer.js");
 loader.require("src/ugens/debugging.js");
 loader.require("src/ugens/distortion.js");

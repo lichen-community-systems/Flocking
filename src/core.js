@@ -1487,7 +1487,7 @@ var fluid = fluid || require("infusion"),
 
         var parsed = flock.parse.ugenDef(ugenDef, {
             audioSettings: that.audioSettings,
-            buses: that.enviro.buses,
+            buses: that.enviro.busManager.buses,
             buffers: that.enviro.buffers
         });
 

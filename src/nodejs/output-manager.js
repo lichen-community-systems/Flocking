@@ -39,25 +39,7 @@ fluid.defaults("flock.nodejs.outputManager", {
             }
         },
 
-        outputStream: {
-            expander: {
-                funcName: "flock.nodejs.outputManager.createOutputStream",
-                args: "{audioSystem}.model"
-            }
-        },
-
-        sampleWriter: {
-            expander: {
-                funcName: "flock.nodejs.outputManager.makeSampleWriter",
-                args: [
-                    "{that}.model",
-                    "{that}.options.bytesPerSample",
-                    "{that}.outputStream",
-                    "{busManager}.buses",
-                    "{enviro}.nodeList.nodes"
-                ]
-            }
-        }
+        outputStream: "@expand:flock.nodejs.outputManager.createOutputStream()"
     },
 
     invokers: {
@@ -71,17 +53,11 @@ fluid.defaults("flock.nodejs.outputManager", {
 
     listeners: {
         "onStart.startGenerating": [
-            {
-                funcName: "flock.nodejs.outputManager.startGeneratingSamples",
-                args: ["{that}"]
-            }
+            "flock.nodejs.outputManager.startGeneratingSamples({that}, {busManager}.buses, {enviro}.nodeList)"
         ],
 
         "onStop.stopGenerating": [
-            {
-                funcName: "flock.nodejs.outputManager.stopGeneratingSamples",
-                args: ["{that}.outputStream", "{that}.speaker"]
-            }
+            "flock.nodejs.outputManager.stopGeneratingSamples({that})"
         ]
     }
 });
@@ -106,22 +82,25 @@ flock.nodejs.outputManager.createOutputStream = function () {
     return new Readable();
 };
 
-flock.nodejs.outputManager.startGeneratingSamples = function (that) {
-    that.outputStream._read = that.sampleWriter;
+flock.nodejs.outputManager.startGeneratingSamples = function (that, buses, nodeList) {
+    var writer = flock.nodejs.outputManager.makeSampleWriter(that, buses, nodeList);
+    that.outputStream._read = writer;
     that.outputStream.pipe(that.speaker);
 };
 
-flock.nodejs.outputManager.stopGeneratingSamples = function (outputStream, speaker) {
-    outputStream.unpipe(speaker);
-    outputStream._read = undefined;
+flock.nodejs.outputManager.stopGeneratingSamples = function (that) {
+    that.outputStream._read = undefined;
+    that.outputStream.unpipe(that.speaker);
 };
 
-flock.nodejs.outputManager.makeSampleWriter = function (model, bytesPerSample, outputStream, buses, nodes) {
+flock.nodejs.outputManager.makeSampleWriter = function (that, buses, nodeList) {
     return function (numBytes) {
-        var m = model,
+        var m = that.model,
             s = m.audioSettings,
             blockSize = s.blockSize,
             chans = s.chans,
+            bytesPerSample = that.options.bytesPerSample,
+            nodes = nodeList.nodes,
             krPeriods = numBytes / m.bytesPerBlock,
             out = new Buffer(numBytes);
 
@@ -148,6 +127,6 @@ flock.nodejs.outputManager.makeSampleWriter = function (model, bytesPerSample, o
             }
         }
 
-        outputStream.push(out);
+        that.outputStream.push(out);
     };
 };
