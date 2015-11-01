@@ -13,47 +13,48 @@
 "use strict";
 
 var fluid = require("infusion"),
-    flock = fluid.registerNamespace("flock"),
-    loader = fluid.getLoader(__dirname); // jshint ignore:line
+    flock = fluid.registerNamespace("flock");
 
-loader.require("src/core.js");
-loader.require("src/node-list.js");
-loader.require("src/evaluators.js");
-loader.require("src/synths/model.js");
-loader.require("src/synths/group.js");
-loader.require("src/synths/polyphonic.js");
-loader.require("src/synths/band.js");
-loader.require("src/buffers.js");
-loader.require("src/parser.js");
-loader.require("src/audiofile.js");
-loader.require("src/audiofile-encoder.js");
-loader.require("src/flocking-audiofile-compatibility.js");
-loader.require("src/scheduler.js");
-loader.require("src/web/midi.js");
+// Flocking core
+require("./src/core.js");
+require("./src/node-list.js");
+require("./src/evaluators.js");
+require("./src/synths/model.js");
+require("./src/synths/group.js");
+require("./src/synths/polyphonic.js");
+require("./src/synths/band.js");
+require("./src/buffers.js");
+require("./src/parser.js");
+require("./src/audiofile.js");
+require("./src/audiofile-encoder.js");
+require("./src/flocking-audiofile-compatibility.js");
+require("./src/scheduler.js");
+require("./src/web/midi.js");
 
 // Unit generators
-loader.require("src/ugens/core.js");
-loader.require("src/ugens/bandlimited.js");
-loader.require("src/ugens/buffer.js");
-loader.require("src/ugens/debugging.js");
-loader.require("src/ugens/distortion.js");
-loader.require("src/ugens/dynamics.js");
-loader.require("src/ugens/envelopes.js");
-loader.require("src/ugens/filters.js");
-loader.require("src/ugens/gates.js");
-loader.require("src/ugens/granular.js");
-loader.require("src/ugens/listening.js");
-loader.require("src/ugens/math.js");
-loader.require("src/ugens/midi.js");
-loader.require("src/ugens/multichannel.js");
-loader.require("src/ugens/oscillators.js");
-loader.require("src/ugens/random.js");
-loader.require("src/ugens/scheduling.js");
-loader.require("src/ugens/triggers.js");
+require("./src/ugens/core.js");
+require("./src/ugens/bandlimited.js");
+require("./src/ugens/buffer.js");
+require("./src/ugens/debugging.js");
+require("./src/ugens/distortion.js");
+require("./src/ugens/dynamics.js");
+require("./src/ugens/envelopes.js");
+require("./src/ugens/filters.js");
+require("./src/ugens/gates.js");
+require("./src/ugens/granular.js");
+require("./src/ugens/listening.js");
+require("./src/ugens/math.js");
+require("./src/ugens/midi.js");
+require("./src/ugens/multichannel.js");
+require("./src/ugens/oscillators.js");
+require("./src/ugens/random.js");
+require("./src/ugens/scheduling.js");
+require("./src/ugens/triggers.js");
 
-loader.require("src/nodejs/audio-system.js");
-loader.require("src/nodejs/output-manager.js");
-loader.require("src/nodejs/buffer-writer.js");
-loader.require("src/nodejs/midi.js");
+// Node.js-specific modules.
+require("./src/nodejs/audio-system.js");
+require("./src/nodejs/output-manager.js");
+require("./src/nodejs/buffer-writer.js");
+require("./src/nodejs/midi.js");
 
 module.exports = flock;

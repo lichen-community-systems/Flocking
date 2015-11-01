@@ -19843,7 +19843,7 @@ var fluid = fluid || require("infusion"),
     fluid.registerNamespace("flock.platform");
     flock.platform.isBrowser = typeof window !== "undefined";
     flock.platform.hasRequire = typeof require !== "undefined";
-    flock.platform.os = flock.platform.isBrowser ? window.navigator.platform : fluid.require("os").platform();
+    flock.platform.os = flock.platform.isBrowser ? window.navigator.platform : require("os").platform();
     flock.platform.isLinux = flock.platform.os.indexOf("Linux") > -1;
     flock.platform.isAndroid = flock.platform.isLinux && flock.platform.os.indexOf("arm") > -1;
     flock.platform.isIOS = flock.platform.os === "iPhone" || flock.platform.os === "iPad" || flock.platform.os === "iPod";
@@ -21220,7 +21220,7 @@ var fluid = fluid || require("infusion"),
 
         var parsed = flock.parse.ugenDef(ugenDef, {
             audioSettings: that.audioSettings,
-            buses: that.enviro.buses,
+            buses: that.enviro.busManager.buses,
             buffers: that.enviro.buffers
         });
 
