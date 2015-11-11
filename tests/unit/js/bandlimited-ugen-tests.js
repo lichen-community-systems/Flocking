@@ -59,7 +59,7 @@ var fluid = fluid || require("infusion"),
 
     flock.test.blit.waveformAssertions = [
         {
-            funcName: "flock.test.unbrokenInRangeSignal",
+            funcName: "flock.test.unbrokenAudioSignalInRange",
             args: [-1, 1, null],
             msg: "The array should be within the appropriate amplitude range."
         }

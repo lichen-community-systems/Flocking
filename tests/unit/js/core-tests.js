@@ -625,4 +625,19 @@ var fluid = fluid || require("infusion"),
             "The first interconnectBus should have been acquired again after resetting the environment.");
     });
 
+    module("Random number genertors");
+
+    test("flock.randomAudioValue()", function () {
+        var buf = new Float32Array(100000);
+        flock.generate(buf, flock.randomAudioValue);
+        flock.test.signalInRange(buf, -1.0, 1.0);
+    });
+
+    test("flock.randomValue()", function () {
+        var buf = new Float32Array(100000);
+        flock.generate(buf, function () {
+            return flock.randomValue(-12, 2);
+        });
+        flock.test.signalInRange(buf, -12.0, 2.0);
+    });
 }());

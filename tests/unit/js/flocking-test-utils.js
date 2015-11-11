@@ -472,16 +472,72 @@ var flock = flock || {};
             msg + " There should be no other properties in the object.");
     };
 
-    flock.test.unbrokenInRangeSignal = function (output, expectedMin, expectedMax, range) {
+    flock.test.checkBuffer = function (output, predicateFn, msg) {
+        var passesCheck = false;
+        for (var i = 0; i < output.length; i++) {
+            passesCheck = predicateFn(output[i]);
+            if (passesCheck) {
+                break;
+            }
+        }
+        ok(passesCheck, msg);
+    };
+
+    flock.test.containsNegativeValues = function (output) {
+        var checkNegativeValue = function (val) {
+            if (val < 0.0) {
+                return true;
+            } else {
+                return false;
+            }
+        };
+
+        flock.test.checkBuffer(output, checkNegativeValue,
+            "The signal should contain negative values.");
+    };
+
+    flock.test.containsPositiveValues = function (output) {
+        var checkPositiveValue = function (val) {
+            if (val > 0.0) {
+                return true;
+            } else {
+                return false;
+            }
+        };
+
+        flock.test.checkBuffer(output, checkPositiveValue,
+            "The signal should contain positive values.");
+    };
+
+    flock.test.signalInRange = function (output, expectedMin, expectedMax, range) {
         output = range ? output.subarray(range.start, range.end) : output;
         flock.test.arrayNotNaN(output,
             "The ugen should never output NaN.");
         flock.test.arrayNotSilent(output,
             "The output should not be completely silent.");
-        flock.test.arrayUnbroken(output,
-            "The ugen should produce an unbroken audio tone.");
         flock.test.arrayWithinRange(output, expectedMin, expectedMax,
             "The ugen should produce output values ranging between " + expectedMin + " and " + expectedMax + ".");
+    };
+
+    flock.test.unbrokenSignalInRange = function (output, expectedMin, expectedMax, range) {
+        output = range ? output.subarray(range.start, range.end) : output;
+        flock.test.signalInRange(output, expectedMin, expectedMax);
+        flock.test.arrayUnbroken(output,
+            "The ugen should produce an unbroken audio tone.");
+    };
+
+    flock.test.audioSignalInRange = function (output, expectedMin, expectedMax, range) {
+        output = range ? output.subarray(range.start, range.end) : output;
+        flock.test.signalInRange(output, expectedMin, expectedMax);
+        flock.test.containsNegativeValues(output);
+        flock.test.containsPositiveValues(output);
+    };
+
+    flock.test.unbrokenAudioSignalInRange = function (output, expectedMin, expectedMax, range) {
+        output = range ? output.subarray(range.start, range.end) : output;
+        flock.test.audioSignalInRange(output, expectedMin, expectedMax);
+        flock.test.arrayUnbroken(output,
+            "The ugen should produce an unbroken audio tone.");
     };
 
 

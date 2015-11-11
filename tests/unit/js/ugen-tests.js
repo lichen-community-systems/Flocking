@@ -441,7 +441,7 @@ var fluid = fluid || require("infusion"),
         lfNoise.output = new Float32Array(sampleRate);
 
         lfNoise.gen(sampleRate);
-        flock.test.unbrokenInRangeSignal(lfNoise.output, -1.0, 1.0);
+        flock.test.unbrokenSignalInRange(lfNoise.output, -1.0, 1.0);
         flock.test.continuousArray(lfNoise.output, 0.0001,
             "The output should be smooth and continuous when interpolated.");
     });
@@ -452,9 +452,13 @@ var fluid = fluid || require("infusion"),
     test("flock.ugen.pinkNoise() sane output", function () {
         var pink = flock.parse.ugenDef({
             ugen: "flock.ugen.pinkNoise"
+        }, {
+            audioSettings: {
+                blockSize: 100000
+            }
         });
-        pink.gen(64);
-        flock.test.unbrokenInRangeSignal(pink.output, -1.0, 1.0);
+        pink.gen(100000);
+        flock.test.unbrokenAudioSignalInRange(pink.output, -1.0, 1.0);
     });
 
 
@@ -809,7 +813,7 @@ var fluid = fluid || require("infusion"),
     var testOsc = function (ugenType, otherTests) {
         test(ugenType, function () {
             var ug = makeAndPrimeOsc(ugenType, sampleRate);
-            flock.test.unbrokenInRangeSignal(ug.output, -0.75, 0.75);
+            flock.test.unbrokenAudioSignalInRange(ug.output, -0.75, 0.75);
             if (otherTests) {
                 otherTests(ug);
             }
@@ -1093,7 +1097,7 @@ var fluid = fluid || require("infusion"),
             });
 
             flock.evaluate.synth(s);
-            flock.test.unbrokenInRangeSignal(s.get("player").output, -1.0, 1.0);
+            flock.test.unbrokenAudioSignalInRange(s.get("player").output, -1.0, 1.0);
         });
     };
 
