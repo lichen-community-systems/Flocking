@@ -447,18 +447,30 @@ var fluid = fluid || require("infusion"),
     });
 
 
+    fluid.registerNamespace("flock.test.noise");
+
+    flock.test.noise.ugenInAudioRange = function (ugenName) {
+            var pink = flock.parse.ugenDef({
+                ugen: ugenName
+            }, {
+                audioSettings: {
+                    blockSize: 100000
+                }
+            });
+            pink.gen(100000);
+            flock.test.unbrokenAudioSignalInRange(pink.output, -1.0, 1.0);
+    };
+
+    module("flock.ugen.whiteNoise");
+
+    test("White noise is in audio signal range", function () {
+        flock.test.noise.ugenInAudioRange("flock.ugen.whiteNoise");
+    });
+
     module("PinkNoise tests");
 
     test("flock.ugen.pinkNoise() sane output", function () {
-        var pink = flock.parse.ugenDef({
-            ugen: "flock.ugen.pinkNoise"
-        }, {
-            audioSettings: {
-                blockSize: 100000
-            }
-        });
-        pink.gen(100000);
-        flock.test.unbrokenAudioSignalInRange(pink.output, -1.0, 1.0);
+        flock.test.noise.ugenInAudioRange("flock.ugen.pinkNoise");
     });
 
 

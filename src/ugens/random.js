@@ -88,7 +88,7 @@ var fluid = fluid || require("infusion"),
                 val;
 
             for (i = 0; i < numSamps; i++) {
-                out[i] = val = Math.random();
+                out[i] = val = flock.randomAudioValue();
             }
 
             m.unscaledValue = val;
