@@ -72,6 +72,18 @@ var fluid = fluid || require("infusion"),
             ugenDef.rate = flock.rates.AUDIO;
         }
 
+        if (!flock.hasValue(flock.rates, ugenDef.rate)) {
+            flock.fail("An invalid rate was specified for a unit generator. ugenDef was: " +
+                fluid.prettyPrintJSON(ugenDef));
+
+            if (!flock.debug.failHard) {
+                var oldRate = ugenDef.rate;
+                ugenDef.rate = flock.rates.AUDIO;
+                flock.log.warn("Overriding invalid unit generator rate. Rate is now '" +
+                    ugenDef.rate + "'; was: " + fluid.prettyPrintJSON(oldRate));
+            }
+        }
+
         var sampleRate;
         // Set the ugen's sample rate value according to the rate the user specified.
         if (ugenDef.options && ugenDef.options.sampleRate !== undefined) {

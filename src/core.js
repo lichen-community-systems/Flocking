@@ -162,6 +162,18 @@ var fluid = fluid || require("infusion"),
         return o && o.length !== undefined && type !== "string" && type !== "function";
     };
 
+    flock.hasValue = function (obj, value) {
+        var found = false;
+        for (var key in obj) {
+            if (obj[key] === value) {
+                found = true;
+                break;
+            }
+        }
+
+        return found;
+    };
+
     flock.hasTag = function (obj, tag) {
         if (!obj || !tag) {
             return false;
