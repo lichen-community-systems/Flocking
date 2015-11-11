@@ -278,12 +278,12 @@ and if sample-level accuracy is needed, unit generators such as <code>flock.ugen
 A block-accurate scheduler is planned for an upcoming release of Flocking.
 In the meantime the asynchronous scheduler does a decent job of keeping "pleasantly inaccurate" time.
 
-Here's an example of the declarative powers of the Flocking scheduler:
+Here's an example of how to use the Flocking scheduler declaratively:
 
     // Create a Band containing two components:
     //   1. a synth named "sinSynth," on which we will schedule changes.
     //   2. an asynchronous scheduler
-    flock.band({
+    var band = flock.band({
         components: {
             sinSynth: {
                 type: "flock.synth",
@@ -291,8 +291,13 @@ Here's an example of the declarative powers of the Flocking scheduler:
                     synthDef: {
                         id: "carrier",
                         ugen: "flock.ugen.sinOsc",
-                        freq: 440,
-                        mul: 0.5
+                        freq: 220,
+                        mul: {
+                            ugen: "flock.ugen.line",
+                            start: 0,
+                            end: 0.25,
+                            duration: 1.0
+                        }
                     }
                 }
             },
@@ -301,20 +306,25 @@ Here's an example of the declarative powers of the Flocking scheduler:
                 type: "flock.scheduler.async",
                 options: {
                     components: {
-                        synthContext: "{sinSynth}",
-                        score: {
-                            values: {
-                                "carrier.freq": { // Change the synth's frequency by scheduling a demand-rate
-                                    synthDef: {   // Synth that generate values by iterating through the list.
-                                        ugen: "flock.ugen.sequence",
-                                        loop: 1.0,
-                                        values: [110, 220, 330, 440, 550, 660, 880]
+                        synthContext: "{sinSynth}"
+                    },
+
+                    score: [
+                        {
+                            interval: "repeat",
+                            time: 1.0,
+                            change: {
+                                values: {
+                                    "carrier.freq": {
+                                        synthDef: {
+                                            ugen: "flock.ugen.sequence",
+                                            values: [330, 440, 550, 660, 880, 990, 1100, 1210]
+                                        }
                                     }
                                 }
                             }
-
                         }
-                    }
+                    ]
                 }
             }
         }
@@ -322,9 +332,9 @@ Here's an example of the declarative powers of the Flocking scheduler:
 
 If you need to, you can always schedule arbitrary events using plain old functions:
 
-    // Fade out after 10 seconds.
-    scheduler.once(10, function () {
-        synth.set({
+    // Fade out after 8 seconds.
+    band.scheduler.once(8, function () {
+        band.sinSynth.set({
             "carrier.mul.start": 0.25,
             "carrier.mul.end": 0.0,
             "carrier.mul.duration": 1.0
