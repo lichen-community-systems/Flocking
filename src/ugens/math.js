@@ -122,13 +122,17 @@ var fluid = fluid || require("infusion"),
             var m = that.model,
                 out = that.output,
                 source = that.inputs.sources.output,
-                i;
+                i,
+                val;
 
             for (i = 0; i < numSamps; i++) {
-                out[i] = source[i];
+                val = source[i];
+                out[i] = val;
             }
 
-            m.value = m.unscaledValue = flock.ugen.lastOutputValue(numSamps, out);
+            m.unscaledValue = val;
+            that.mulAdd(numSamps);
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
         };
 
         that.sumGen = function (numSamps) {
@@ -147,7 +151,9 @@ var fluid = fluid || require("infusion"),
                 out[i] = sum;
             }
 
-            m.value = m.unscaledValue = flock.ugen.lastOutputValue(numSamps, out);
+            m.unscaledValue = sum;
+            that.mulAdd(numSamps);
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
         };
 
         that.onInputChanged = function () {
@@ -157,6 +163,8 @@ var fluid = fluid || require("infusion"),
             } else {
                 that.gen = that.copyGen;
             }
+
+            flock.onMulAddInputChanged(that);
         };
 
         that.onInputChanged();
