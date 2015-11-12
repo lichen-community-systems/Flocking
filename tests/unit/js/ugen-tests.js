@@ -450,15 +450,15 @@ var fluid = fluid || require("infusion"),
     fluid.registerNamespace("flock.test.noise");
 
     flock.test.noise.ugenInAudioRange = function (ugenName) {
-            var pink = flock.parse.ugenDef({
-                ugen: ugenName
-            }, {
-                audioSettings: {
-                    blockSize: 100000
-                }
-            });
-            pink.gen(100000);
-            flock.test.unbrokenAudioSignalInRange(pink.output, -1.0, 1.0);
+        var pink = flock.parse.ugenDef({
+            ugen: ugenName
+        }, {
+            audioSettings: {
+                blockSize: 100000
+            }
+        });
+        pink.gen(100000);
+        flock.test.unbrokenAudioSignalInRange(pink.output, -1.0, 1.0);
     };
 
     module("flock.ugen.whiteNoise");

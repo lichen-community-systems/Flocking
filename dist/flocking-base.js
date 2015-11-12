@@ -9901,11 +9901,47 @@ var fluid = fluid || require("infusion"),
         return o && o.length !== undefined && type !== "string" && type !== "function";
     };
 
+    flock.hasValue = function (obj, value) {
+        var found = false;
+        for (var key in obj) {
+            if (obj[key] === value) {
+                found = true;
+                break;
+            }
+        }
+
+        return found;
+    };
+
     flock.hasTag = function (obj, tag) {
         if (!obj || !tag) {
             return false;
         }
         return obj.tags && obj.tags.indexOf(tag) > -1;
+    };
+
+    /**
+     * Returns a random number between the specified low and high values.
+     *
+     * For performance reasons, this function does not perform any type checks;
+     * you will need ensure that your low and high arguments are Numbers.
+     *
+     * @param low the minimum value
+     * @param high the maximum value
+     * @return a random value constrained to the specified range
+     */
+    flock.randomValue = function (low, high) {
+        var scaled = high - low;
+        return Math.random() * scaled + low;
+    };
+
+    /**
+     * Produces a random number between -1.0 and 1.0.
+     *
+     * @return a random audio value
+     */
+    flock.randomAudioValue = function () {
+        return Math.random() * 2.0 - 1.0;
     };
 
     // TODO: Chrome profiler marks this function as unoptimized.
@@ -12039,7 +12075,8 @@ var fluid = fluid || require("infusion"),
     unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
     funcscope: false*/
 
-var fluid = fluid || require("infusion");
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
@@ -12646,6 +12683,18 @@ var fluid = fluid || require("infusion"),
         // Assume audio rate if no rate was specified by the user.
         if (!ugenDef.rate) {
             ugenDef.rate = flock.rates.AUDIO;
+        }
+
+        if (!flock.hasValue(flock.rates, ugenDef.rate)) {
+            flock.fail("An invalid rate was specified for a unit generator. ugenDef was: " +
+                fluid.prettyPrintJSON(ugenDef));
+
+            if (!flock.debug.failHard) {
+                var oldRate = ugenDef.rate;
+                ugenDef.rate = flock.rates.AUDIO;
+                flock.log.warn("Overriding invalid unit generator rate. Rate is now '" +
+                    ugenDef.rate + "'; was: " + fluid.prettyPrintJSON(oldRate));
+            }
         }
 
         var sampleRate;
