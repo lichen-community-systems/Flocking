@@ -11630,6 +11630,7 @@ var fluid = fluid || require("infusion"),
  * http://github.com/colinbdclark/flocking
  *
  * Copyright 2013-2015, Colin Clark
+ * Copyright 2015, OCAD University
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
 
@@ -11647,7 +11648,6 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    // TODO: Unit tests.
     fluid.defaults("flock.modelSynth", {
         gradeNames: "flock.synth",
 
@@ -11671,12 +11671,16 @@ var fluid = fluid || require("infusion"),
         set(changeSpec);
     };
 
+    flock.modelSynth.shouldFlattenValue = function (value) {
+        return fluid.isPrimitive(value) || flock.isIterable(value) || value.ugen;
+    };
+
     flock.modelSynth.flattenModel = function (path, model, changeSpec) {
         for (var key in model) {
             var value = model[key],
                 newPath = fluid.pathUtil.composePath(path, key.toString());
 
-            if (fluid.isPrimitive(value) || value.ugen) {
+            if (flock.modelSynth.shouldFlattenValue(value)) {
                 changeSpec[newPath] = value;
             } else {
                 flock.modelSynth.flattenModel(newPath, value, changeSpec);
