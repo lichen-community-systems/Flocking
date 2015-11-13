@@ -37,8 +37,8 @@ Description of Each Build
         <tr>
             <td><code>flocking-base.js</code></td>
             <td>This build doesn't include include any view-related code whatsoever.
-            It ships with a minimal set of jQuery-compatible utilities suitable for
-            running the core of Infusion and Flocking. It also does not contain any unit generators beyond the basic set. Use this if you want to choose which unit generators to ship with your application, and if you don't intend to use
+            You must provide your own builds of Infusion and jQuery.
+            It also does not contain any unit generators beyond the basic set. Use this if you want to choose which unit generators to ship with your application, and if you don't intend to use
             Flocking's UI components, Infusion Views, or jQuery for access to the DOM. This build is also not compatible with browser-based module loaders.</code>
         </tr>
 </table>

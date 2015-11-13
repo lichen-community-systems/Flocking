@@ -141,8 +141,6 @@ module.exports = function(grunt) {
 
             base: {
                 src: [].concat(
-                    files.jQueryStandalone,
-                    files.infusion,
                     files.miscDeps,
                     files.flockingBase
                 ),
