@@ -338,15 +338,20 @@ var fluid = fluid || require("infusion"),
         };
 
         that.onInputChanged = function (inputName) {
-            var inputs = that.inputs;
+            var m = that.model,
+                inputs = that.inputs;
 
-            if (!inputName || inputName === "durations") {
+            if (inputName === "durations" || inputs.durations !== m.prevDurations) {
                 flock.ugen.sequencer.calcDurationsSamps(inputs.durations, that.model);
                 flock.ugen.sequencer.validateInput("durations", that);
+                m.idx = 0;
+                m.prevDurations = inputs.durations;
             }
 
-            if (!inputName || inputName === "values") {
+            if (inputName === "values" || inputs.values !== m.prevValues) {
                 flock.ugen.sequencer.validateInput("values", that);
+                m.idx = 0;
+                m.prevValues = inputs.values;
             }
 
             that.model.shouldValidateSequences = true;
@@ -402,7 +407,9 @@ var fluid = fluid || require("infusion"),
                 idx: 0,
                 samplesRemaining: 0,
                 unscaledValue: 0.0,
-                value: 0.0
+                value: 0.0,
+                prevDurations: [],
+                prevValues: []
             },
             resetOnNext: false,
             holdLastvalue: false

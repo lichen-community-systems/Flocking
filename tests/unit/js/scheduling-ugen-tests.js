@@ -173,6 +173,40 @@ var fluid = fluid || require("infusion"),
         QUnit.ok(wasErrorRaised,
             "After an input is updated again and they still are mismatched, " +
             "an error should be raised again.");
+    });
 
+    QUnit.test("gh-137: Update to shorter sequence", function () {
+        var sampleDur = 1.0 / flock.environment.audioSystem.model.rates.audio,
+            durations = [sampleDur * 10, sampleDur * 10],
+            values = [1, 2];
+
+        var expectedFirstBlock = flock.generate(64, function (i) {
+            return i < 10 ? 1 : i < 20 ? 2 : 0;
+        });
+
+        var s = flock.synth({
+            synthDef: {
+                id: "seq",
+                ugen: "flock.ugen.sequencer",
+                rate: "audio",
+                durations: durations,
+                values: values
+            }
+        });
+
+        var sequencer = s.get("seq");
+        sequencer.gen(64);
+        QUnit.deepEqual(sequencer.output, expectedFirstBlock,
+            "The first block of the sequencer's signal should have been correctly generated.");
+
+        var expectedSecondBlock = flock.generate(64, 3);
+        s.set({
+            "seq.durations": [sampleDur * 64],
+            "seq.values": [3]
+        });
+        sequencer.gen(64);
+        QUnit.deepEqual(sequencer.output, expectedSecondBlock,
+            "The second block should be correctly generated when the value and duration inputs " +
+            "have been changed to a smaller array.");
     });
 }());
