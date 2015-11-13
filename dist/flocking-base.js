@@ -11631,6 +11631,7 @@ var fluid = fluid || require("infusion"),
  *
  * Copyright 2013-2015, Colin Clark
  * Copyright 2015, OCAD University
+ *
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
 
@@ -11659,15 +11660,15 @@ var fluid = fluid || require("infusion"),
             "inputs": [
                 {
                     funcName: "flock.modelSynth.updateUGens",
-                    args: ["{that}.set", "{that}.options.ugens", "{change}.value"]
+                    args: ["{that}.set", "{that}.options.ugens", "{change}"]
                 }
             ]
         }
     });
 
-    flock.modelSynth.updateUGens = function (set, ugens, changeValue) {
+    flock.modelSynth.updateUGens = function (set, ugens, change) {
         var changeSpec = {};
-        flock.modelSynth.flattenModel("", changeValue, changeSpec);
+        flock.modelSynth.flattenModel("", change.value, changeSpec);
         set(changeSpec);
     };
 

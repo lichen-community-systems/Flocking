@@ -11497,6 +11497,7 @@ var fluid = fluid || require("infusion"),
  *
  * Copyright 2013-2015, Colin Clark
  * Copyright 2015, OCAD University
+ *
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
 
@@ -11525,15 +11526,15 @@ var fluid = fluid || require("infusion"),
             "inputs": [
                 {
                     funcName: "flock.modelSynth.updateUGens",
-                    args: ["{that}.set", "{that}.options.ugens", "{change}.value"]
+                    args: ["{that}.set", "{that}.options.ugens", "{change}"]
                 }
             ]
         }
     });
 
-    flock.modelSynth.updateUGens = function (set, ugens, changeValue) {
+    flock.modelSynth.updateUGens = function (set, ugens, change) {
         var changeSpec = {};
-        flock.modelSynth.flattenModel("", changeValue, changeSpec);
+        flock.modelSynth.flattenModel("", change.value, changeSpec);
         set(changeSpec);
     };
 
@@ -23011,6 +23012,11 @@ var fluid = fluid || require("infusion"),
                 i,
                 val;
 
+            if (m.shouldValidateSequences) {
+                flock.ugen.sequencer.validateSequences(durations, values);
+                m.shouldValidateSequences = false;
+            }
+
             for (i = 0; i < numSamps; i++) {
                 if (values.length === 0 || durations.length === 0) {
                     // Nothing to output.
@@ -23051,18 +23057,14 @@ var fluid = fluid || require("infusion"),
 
             if (!inputName || inputName === "durations") {
                 flock.ugen.sequencer.calcDurationsSamps(inputs.durations, that.model);
-                flock.ugen.sequencer.failOnMissingInput("durations", that);
+                flock.ugen.sequencer.validateInput("durations", that);
             }
 
             if (!inputName || inputName === "values") {
-                flock.ugen.sequencer.failOnMissingInput("values", that);
+                flock.ugen.sequencer.validateInput("values", that);
             }
 
-            if (inputs.durations.length !== inputs.values.length) {
-                flock.fail("Mismatched durations and values array lengths for flock.ugen.sequencer: " +
-                    fluid.prettyPrintJSON(that.options.ugenDef));
-            }
-
+            that.model.shouldValidateSequences = true;
             flock.onMulAddInputChanged(that);
         };
 
@@ -23074,11 +23076,18 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    flock.ugen.sequencer.failOnMissingInput = function (inputName, that) {
+    flock.ugen.sequencer.validateInput = function (inputName, that) {
         var input = that.inputs[inputName];
         if (!input || !flock.isIterable(input)) {
             flock.fail("No " + inputName + " array input was specified for flock.ugen.sequencer: " +
                 fluid.prettyPrintJSON(that.options.ugenDef));
+        }
+    };
+
+    flock.ugen.sequencer.validateSequences = function (durations, values) {
+        if (durations.length !== values.length) {
+            flock.fail("Mismatched durations and values array lengths for flock.ugen.sequencer. Durations: " +
+                fluid.prettyPrintJSON(durations) + ", values: " + fluid.prettyPrintJSON(values));
         }
     };
 
