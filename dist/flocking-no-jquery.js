@@ -23057,15 +23057,15 @@ var fluid = fluid || require("infusion"),
                 inputs = that.inputs;
 
             if (inputName === "durations" || inputs.durations !== m.prevDurations) {
+                m.idx = 0;
                 flock.ugen.sequencer.calcDurationsSamps(inputs.durations, that.model);
                 flock.ugen.sequencer.validateInput("durations", that);
-                m.idx = 0;
                 m.prevDurations = inputs.durations;
             }
 
             if (inputName === "values" || inputs.values !== m.prevValues) {
-                flock.ugen.sequencer.validateInput("values", that);
                 m.idx = 0;
+                flock.ugen.sequencer.validateInput("values", that);
                 m.prevValues = inputs.values;
             }
 
