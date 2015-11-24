@@ -28,16 +28,16 @@ var flock = flock || {};
                     ugen;
 
                 // Change the rate of each unit generator to the specified rate.
-                for (i = 0; i < synth.nodes.length; i++) {
-                    ugen = synth.nodes[i];
+                for (i = 0; i < synth.nodeList.nodes.length; i++) {
+                    ugen = synth.nodeList.nodes[i];
                     if (ugen.id !== "audio-only") { // TODO: Craziness.
                         ugen.rate = rate;
                     }
                 }
 
                 // And then whip through again and poke everyone to update their input assumptions.
-                for (i = 0; i < synth.nodes.length; i++) {
-                    ugen = synth.nodes[i];
+                for (i = 0; i < synth.nodeList.nodes.length; i++) {
+                    ugen = synth.nodeList.nodes[i];
                     ugen.onInputChanged();
                 }
 
@@ -46,7 +46,7 @@ var flock = flock || {};
 
             test: function (synth) {
                 for (var i = 0; i < numSampleBlocks; i++) {
-                    synth.gen();
+                    flock.evaluate.synth(synth);
                 }
             }
         };

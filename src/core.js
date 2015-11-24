@@ -110,7 +110,7 @@ var fluid = fluid || require("infusion"),
     fluid.registerNamespace("flock.platform");
     flock.platform.isBrowser = typeof window !== "undefined";
     flock.platform.hasRequire = typeof require !== "undefined";
-    flock.platform.os = flock.platform.isBrowser ? window.navigator.platform : fluid.require("os").platform();
+    flock.platform.os = flock.platform.isBrowser ? window.navigator.platform : require("os").platform();
     flock.platform.isLinux = flock.platform.os.indexOf("Linux") > -1;
     flock.platform.isAndroid = flock.platform.isLinux && flock.platform.os.indexOf("arm") > -1;
     flock.platform.isIOS = flock.platform.os === "iPhone" || flock.platform.os === "iPad" || flock.platform.os === "iPod";
@@ -119,10 +119,17 @@ var fluid = fluid || require("infusion"),
     flock.platform.isWebAudio = typeof AudioContext !== "undefined" || typeof webkitAudioContext !== "undefined";
     flock.platform.audioEngine = flock.platform.isBrowser ? "webAudio" : "nodejs";
 
+    if (flock.platform.browser && flock.platform.browser.version !== undefined) {
+        var dotIdx = flock.platform.browser.version.indexOf(".");
+
+        flock.platform.browser.majorVersionNumber = Number(dotIdx < 0 ?
+            flock.platform.browser.version :
+            flock.platform.browser.version.substring(0, dotIdx));
+    }
+
     flock.shim = {
         URL: flock.platform.isBrowser ? (window.URL || window.webkitURL || window.msURL) : undefined
     };
-
 
     flock.requireModule = function (moduleName, globalName) {
         if (flock.platform.isBrowser) {
@@ -155,6 +162,18 @@ var fluid = fluid || require("infusion"),
         return o && o.length !== undefined && type !== "string" && type !== "function";
     };
 
+    flock.hasValue = function (obj, value) {
+        var found = false;
+        for (var key in obj) {
+            if (obj[key] === value) {
+                found = true;
+                break;
+            }
+        }
+
+        return found;
+    };
+
     flock.hasTag = function (obj, tag) {
         if (!obj || !tag) {
             return false;
@@ -162,33 +181,81 @@ var fluid = fluid || require("infusion"),
         return obj.tags && obj.tags.indexOf(tag) > -1;
     };
 
-    // TODO: Chrome profiler marks this function as unoptimized.
-    // This should probably be factored into separate functions for
-    // new and existing arrays. (e.g. "generate" vs. "fill")
-    flock.generate = function (bufOrSize, generator) {
-        var buf = typeof bufOrSize === "number" ? new Float32Array(bufOrSize) : bufOrSize,
-            isFunc = typeof generator === "function",
-            i;
+    /**
+     * Returns a random number between the specified low and high values.
+     *
+     * For performance reasons, this function does not perform any type checks;
+     * you will need ensure that your low and high arguments are Numbers.
+     *
+     * @param low the minimum value
+     * @param high the maximum value
+     * @return a random value constrained to the specified range
+     */
+    flock.randomValue = function (low, high) {
+        var scaled = high - low;
+        return Math.random() * scaled + low;
+    };
 
-        for (i = 0; i < buf.length; i++) {
-            buf[i] = isFunc ? generator(i, buf) : generator;
+    /**
+     * Produces a random number between -1.0 and 1.0.
+     *
+     * @return a random audio value
+     */
+    flock.randomAudioValue = function () {
+        return Math.random() * 2.0 - 1.0;
+    };
+
+    flock.fillBuffer = function (buf, fillFn) {
+        for (var i = 0; i < buf.length; i++) {
+            buf[i] = fillFn(i, buf);
         }
 
         return buf;
     };
 
-    flock.generate.silence = function (bufOrSize) {
-        if (typeof bufOrSize === "number") {
-            return new Float32Array(bufOrSize);
+    flock.fillBufferWithValue = function (buf, value) {
+        for (var i = 0; i < buf.length; i++) {
+            buf[i] = value;
         }
 
-        var buf = bufOrSize,
-            i;
-        for (i = 0; i < buf.length; i++) {
+        return buf;
+    };
+
+    flock.generateBuffer = function (length, fillFn) {
+        var buf = new Float32Array(length);
+        return flock.fillBuffer(buf, fillFn);
+    };
+
+    flock.generateBufferWithValue = function (length, value) {
+        var buf = new Float32Array(length);
+        return flock.fillBufferWithValue(buf, value);
+    };
+
+    // Deprecated. Will be removed in Flocking 0.3.0.
+    // Use the faster, non-polymorphic generate/fill functions instead.
+    flock.generate = function (length, fillFn) {
+        var isFn = typeof fillFn === "function",
+            isNum = typeof length === "number";
+
+        var generateFn = isFn ?
+            (isNum ? flock.generateBuffer : flock.fillBuffer) :
+            (isNum ? flock.generateBufferWithValue : flock.fillBufferWithValue);
+
+        return generateFn(length, fillFn);
+    };
+
+    flock.generate.silence = function (length) {
+        return new Float32Array(length);
+    };
+
+    flock.clearBuffer = function (buf) {
+        for (var i = 0; i < buf.length; i++) {
             buf[i] = 0.0;
         }
+
         return buf;
     };
+
 
     /**
      * Performs an in-place reversal of all items in the array.
@@ -297,7 +364,7 @@ var fluid = fluid || require("infusion"),
     flock.generateFourierTable = function (size, scale, numHarms, phase, amps) {
         phase *= flock.TWOPI;
 
-        return flock.generate(size, function (i) {
+        return flock.generateBuffer(size, function (i) {
             var harm,
                 amp,
                 w,
@@ -314,7 +381,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.generateNormalizedFourierTable = function (size, scale, numHarms, phase, ampGenFn) {
-        var amps = flock.generate(numHarms, function (harm) {
+        var amps = flock.generateBuffer(numHarms, function (harm) {
             return ampGenFn(harm + 1); //  Harmonics are indexed from 1 instead of 0.
         });
 
@@ -329,7 +396,7 @@ var fluid = fluid || require("infusion"),
 
     flock.tableGenerators = {
         sin: function (size, scale) {
-            return flock.generate(size, function (i) {
+            return flock.generateBuffer(size, function (i) {
                 return Math.sin(i * scale);
             });
         },
@@ -360,14 +427,14 @@ var fluid = fluid || require("infusion"),
 
         hann: function (size) {
             // Hanning envelope: sin^2(i) for i from 0 to pi
-            return flock.generate(size, function (i) {
+            return flock.generateBuffer(size, function (i) {
                 var y = Math.sin(Math.PI * i / size);
                 return y * y;
             });
         },
 
         sinWindow: function (size) {
-            return flock.generate(size, function (i) {
+            return flock.generateBuffer(size, function (i) {
                 return Math.sin(Math.PI * i / size);
             });
         }
@@ -425,6 +492,13 @@ var fluid = fluid || require("infusion"),
         }
 
         return target;
+    };
+
+    flock.copyToBuffer = function (source, target) {
+        var len = Math.min(source.length, target.length);
+        for (var i = 0; i < len; i++) {
+            target[i] = source[i];
+        }
     };
 
     flock.parseMidiString = function (midiStr) {
@@ -810,179 +884,6 @@ var fluid = fluid || require("infusion"),
     };
 
 
-    fluid.defaults("flock.nodeList", {
-        gradeNames: ["fluid.component"],
-
-        members: {
-            nodes: [],
-            namedNodes: {}
-        },
-
-        invokers: {
-            insert: {
-                funcName: "flock.nodeList.insert",
-                // TODO: Backwards arguments?
-                args: [
-                    "{arguments}.0", // The index to insert it at.
-                    "{arguments}.1", // The node to insert.
-                    "{that}.nodes",
-                    "{that}.events.onInsert.fire"
-                ]
-            },
-
-            head: {
-                func: "{that}.insert",
-                args: [0, "{arguments}.0"]
-            },
-
-            tail: {
-                funcName: "flock.nodeList.tail",
-                args: ["{arguments}.0", "{that}.nodes", "{that}.insert"]
-            },
-
-            before: {
-                funcName: "flock.nodeList.before",
-                args: [
-                    "{arguments}.0", // Reference node.
-                    "{arguments}.1", // Node to add.
-                    "{that}.nodes",
-                    "{that}.insert"
-                ]
-            },
-
-            after: {
-                funcName: "flock.nodeList.after",
-                args: [
-                    "{arguments}.0", // Reference node.
-                    "{arguments}.1", // Node to add.
-                    "{that}.nodes",
-                    "{that}.insert"
-                ]
-            },
-
-            remove: {
-                funcName: "flock.nodeList.remove",
-                args: [
-                    "{arguments}.0", // Node to remove.
-                    "{that}.nodes",
-                    "{that}.events.onRemove.fire"
-                ]
-            },
-
-            replace: {
-                funcName: "flock.nodeList.replace",
-                args: [
-                    // TODO: Backwards arguments?
-                    "{arguments}.0", // New node.
-                    "{arguments}.1", // Old node.
-                    "{that}.nodes",
-                    "{that}.head",
-                    "{that}.events.onRemove.fire",
-                    "{that}.events.onInsert.fire"
-                ]
-            },
-
-            clearAll: {
-                func: "{that}.events.onClearAll.fire"
-            }
-        },
-
-        events: {
-            onInsert: null,
-            onRemove: null,
-            onClearAll: null
-        },
-
-        listeners: {
-            onClearAll: [
-                {
-                    func: "fluid.clear",
-                    args: "{that}.nodes"
-                },
-                {
-                    func: "fluid.clear",
-                    args: "{that}.namedNodes"
-                }
-            ],
-
-            onInsert: {
-                funcName: "flock.nodeList.registerNode",
-                args: ["{arguments}.0", "{that}.namedNodes"]
-            },
-
-            onRemove: {
-                funcName: "flock.nodeList.unregisterNode",
-                args: ["{arguments}.0", "{that}.namedNodes"]
-            }
-        }
-    });
-
-    flock.nodeList.insert = function (idx, node, nodes, onInsert) {
-        if (idx < 0) {
-            idx = 0;
-        }
-
-        nodes.splice(idx, 0, node);
-        onInsert(node, idx);
-
-        return idx;
-    };
-
-    flock.nodeList.registerNode = function (node, namedNodes) {
-        var name = node.name || node.id;
-        if (name) {
-            namedNodes[name] = node;
-        }
-    };
-
-    flock.nodeList.before = function (refNode, node, nodes, insertFn) {
-        var refIdx = nodes.indexOf(refNode);
-        return insertFn(refIdx, node);
-    };
-
-    flock.nodeList.after = function (refNode, node, nodes, insertFn) {
-        var refIdx = nodes.indexOf(refNode),
-            atIdx = refIdx + 1;
-
-        return insertFn(atIdx, node);
-    };
-
-    flock.nodeList.tail = function (node, nodes, insertFn) {
-        var idx = nodes.length;
-        return insertFn(idx, node);
-    };
-
-    flock.nodeList.remove = function (node, nodes, onRemove) {
-        var idx = nodes.indexOf(node);
-        if (idx > -1) {
-            nodes.splice(idx, 1);
-            onRemove(node);
-        }
-
-        return idx;
-    };
-
-    flock.nodeList.unregisterNode = function (node, namedNodes) {
-        var name = node.name || node.id;
-        if (name) {
-            delete namedNodes[name];
-        }
-    };
-
-    flock.nodeList.replace = function (newNode, oldNode, nodes, notFoundFn, onRemove, onInsert) {
-        var idx = nodes.indexOf(oldNode);
-        if (idx < 0) {
-            return notFoundFn(newNode);
-        }
-
-        nodes[idx] = newNode;
-        onRemove(oldNode);
-        onInsert(newNode);
-
-        return idx;
-    };
-
-
     /***********************
      * Synths and Playback *
      ***********************/
@@ -1014,7 +915,7 @@ var fluid = fluid || require("infusion"),
                 constant: 0
             },
             blockSize: 64,
-            numBlocks: 16,
+            numBlocks: 16, // TODO: Move this and its transform into the web/output-manager.js
             chans: 2,
             numInputBuses: 2,
             numBuses: 8,
@@ -1079,59 +980,6 @@ var fluid = fluid || require("infusion"),
     flock.audioSystem.defaultBufferSize = function () {
         return flock.platform.isMobile ? 8192 :
             flock.platform.browser.mozilla ? 2048 : 1024;
-    };
-
-
-    /*****************
-     * Node Evalutor *
-     *****************/
-
-    fluid.defaults("flock.nodeEvaluator", {
-        gradeNames: ["fluid.modelComponent"],
-
-        model: "{audioSystem}.model",
-
-        members: {
-            nodes: "{enviro}.nodes",
-            buses: "{busManager}.buses"
-        },
-
-        invokers: {
-            gen: {
-                funcName: "flock.nodeEvaluator.gen",
-                args: ["{that}.nodes"]
-            },
-
-            clearBuses: {
-                funcName: "flock.nodeEvaluator.clearBuses",
-                args: [
-                    "{that}.model.numBuses",
-                    "{that}.model.blockSize",
-                    "{that}.buses"
-                ]
-            }
-        }
-    });
-
-    flock.nodeEvaluator.gen = function (nodes) {
-        var i,
-            node;
-
-        // Now evaluate each node.
-        for (i = 0; i < nodes.length; i++) {
-            node = nodes[i];
-            node.genFn(node);
-        }
-    };
-
-
-    flock.nodeEvaluator.clearBuses = function (numBuses, busLen, buses) {
-        for (var i = 0; i < numBuses; i++) {
-            var bus = buses[i];
-            for (var j = 0; j < busLen; j++) {
-                bus[j] = 0;
-            }
-        }
     };
 
 
@@ -1235,7 +1083,6 @@ var fluid = fluid || require("infusion"),
     // TODO: Factor out buffer logic into a separate component.
     fluid.defaults("flock.enviro", {
         gradeNames: [
-            "flock.nodeList",
             "fluid.modelComponent",
             "fluid.resolveRootSingle"
         ],
@@ -1243,6 +1090,7 @@ var fluid = fluid || require("infusion"),
         singleRootType: "flock.enviro",
 
         members: {
+            nodeList: "@expand:flock.nodeList()",
             buffers: {},
             bufferSources: {}
         },
@@ -1250,10 +1098,6 @@ var fluid = fluid || require("infusion"),
         components: {
             asyncScheduler: {
                 type: "flock.scheduler.async"
-            },
-
-            nodeEvaluator: {
-                type: "flock.nodeEvaluator"
             },
 
             audioSystem: {
@@ -1273,7 +1117,10 @@ var fluid = fluid || require("infusion"),
             /**
              * Generates a block of samples by evaluating all registered nodes.
              */
-            gen: "flock.enviro.gen({that}.nodeEvaluator)",
+            gen: {
+                funcName: "flock.enviro.gen",
+                args: ["{busManager}.buses", "{audioSystem}.model", "{that}.nodeList.nodes"]
+            },
 
             /**
              * Starts generating samples from all synths.
@@ -1347,8 +1194,8 @@ var fluid = fluid || require("infusion"),
             onReset: [
                 "{that}.stop()",
                 "{asyncScheduler}.clearAll()",
-                "{busManager}.reset()",
-                "{that}.clearAll()"
+                "flock.nodeList.clearAll({that}.nodeList)",
+                "{busManager}.reset()"
             ]
         }
     });
@@ -1388,9 +1235,10 @@ var fluid = fluid || require("infusion"),
         return audioSystem.bufferWriter.save(o, o.buffer);
     };
 
-    flock.enviro.gen = function (nodeEvaluator) {
-        nodeEvaluator.clearBuses();
-        nodeEvaluator.gen();
+    flock.enviro.gen = function (buses, audioSettings, nodes) {
+        flock.evaluate.clearBuses(buses,
+            audioSettings.numBuses, audioSettings.blockSize);
+        flock.evaluate.synths(nodes);
     };
 
     flock.enviro.start = function (model, onStart) {
@@ -1424,11 +1272,7 @@ var fluid = fluid || require("infusion"),
     });
 
     flock.autoEnviro.initEnvironment = function () {
-        if (!flock.environment) {
-            flock.init();
-        }
-
-        return flock.environment;
+        return !flock.environment ? flock.init() : flock.environment;
     };
 
 
@@ -1438,10 +1282,6 @@ var fluid = fluid || require("infusion"),
         addToEnvironment: "tail",
 
         model: {},
-
-        members: {
-            genFn: "@expand:fluid.getGlobalValue({that}.options.invokers.gen.funcName)"
-        },
 
         components: {
             enviro: "{flock.enviro}"
@@ -1464,17 +1304,7 @@ var fluid = fluid || require("infusion"),
              * Stops the synth if it is currently playing.
              * This is a convenience method that will remove the synth from the environment's node graph.
              */
-            pause: {
-                funcName: "flock.node.removeFromEnvironment",
-                args: ["{that}", "{that}.enviro"]
-            },
-
-            /**
-             * Must be overridden by implementing grades.
-             */
-            gen: {
-                funcName: "fluid.notImplemented"
-            },
+            pause: "{that}.removeFromEnvironment()",
 
             /**
              * Adds the node to its environment's list of active nodes.
@@ -1484,7 +1314,7 @@ var fluid = fluid || require("infusion"),
              */
             addToEnvironment: {
                 funcName: "flock.node.addToEnvironment",
-                args: ["{that}", "{arguments}.0", "{that}.options", "{that}.enviro"]
+                args: ["{that}", "{arguments}.0", "{enviro}.nodeList"]
             },
 
             /**
@@ -1492,7 +1322,7 @@ var fluid = fluid || require("infusion"),
              */
             removeFromEnvironment: {
                 funcName: "flock.node.removeFromEnvironment",
-                args: ["{that}", "{arguments}.0"]
+                args: ["{that}", "{enviro}.nodeList"]
             }
         },
 
@@ -1507,12 +1337,10 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    flock.node.addToEnvironment = function (node, position, enviro) {
+    flock.node.addToEnvironment = function (node, position, nodeList) {
         if (position === undefined) {
             position = node.options.addToEnvironment;
         }
-
-        enviro = enviro || node.enviro;
 
         // Add this node to the tail of the synthesis environment if appropriate.
         if (position === undefined || position === null || position === false) {
@@ -1521,21 +1349,20 @@ var fluid = fluid || require("infusion"),
 
         var type = typeof (position);
         if (type === "string" && position === "head" || position === "tail") {
-            node.enviro[position](node);
+            flock.nodeList[position](nodeList, node);
         } else if (type === "number") {
-            node.enviro.insert(position, node);
+            flock.nodeList.insert(nodeList, node, position);
         } else {
-            node.enviro.tail(node);
+            flock.nodeList.tail(nodeList, node);
         }
     };
 
-    flock.node.removeFromEnvironment = function (node, enviro) {
-        enviro = enviro || node.enviro;
-        enviro.remove(node);
+    flock.node.removeFromEnvironment = function (node, nodeList) {
+        flock.nodeList.remove(nodeList, node);
     };
 
     flock.node.play = function (node, enviro, addToEnviroFn) {
-        if (enviro.nodes.indexOf(node) === -1) {
+        if (enviro.nodeList.nodes.indexOf(node) === -1) {
             var position = node.options.addToEnvironment || "tail";
             addToEnviroFn(position);
         }
@@ -1609,167 +1436,6 @@ var fluid = fluid || require("infusion"),
     };
 
 
-    fluid.defaults("flock.ugenNodeList", {
-        gradeNames: ["flock.nodeList"],
-
-        invokers: {
-            /**
-             * Inserts a unit generator and all its inputs into the node list,
-             * starting at the specified index.
-             *
-             * Note that the node itself will not be inserted into the list at this index;
-             * its inputs must must be ahead of it in the list.
-             *
-             * @param {Number} idx the index to start adding the new node and its inputs at
-             * @param {UGen} node the node to add, along with its inputs
-             * @return {Number} the index at which the specified node was inserted
-             */
-            insertTree: {
-                funcName: "flock.ugenNodeList.insertTree",
-                args: [
-                    "{arguments}.0", // The index at whcih to add the new node.
-                    "{arguments}.1", // The node to add.
-                    "{that}.insert"
-                ]
-            },
-
-            /**
-             * Removes the specified unit generator and all its inputs from the node list.
-             *
-             * @param {UGen} node the node to remove along with its inputs
-             * @return {Number} the index at which the node was removed
-             */
-            removeTree: {
-                funcName: "flock.ugenNodeList.removeTree",
-                args: [
-                    "{arguments}.0", // The node to remove.
-                    "{that}.remove"
-                ]
-            },
-
-            /**
-             * Replaces one node and all its inputs with a new node and its inputs.
-             *
-             * @param {UGen} newNode the node to add to the list
-             * @param {UGen} oldNode the node to remove from the list
-             * @return {Number} idx the index at which the new node was added
-             */
-            //flock.ugenNodeList.replaceTree = function (newNode, oldNode, insertFn, removeFn) {
-            replaceTree: {
-                funcName: "flock.ugenNodeList.replaceTree",
-                args: [
-                    "{arguments}.0", // The node to add.
-                    "{arguments}.1", // The node to replace.
-                    "{that}.nodes",
-                    "{that}.insert",
-                    "{that}.remove"
-                ]
-            },
-
-            /**
-             * Swaps one node in the list for another in place, attaching the previous unit generator's
-             * inputs to the new one. If a list of inputsToReattach is specified, only these inputs will
-             * be swapped.
-             *
-             * Note that this function will directly modify the nodes in question.
-             *
-             * @param {UGen} newNode the node to add to the list, swapping it in place for the old one
-             * @param {UGen} oldNode the node remove from the list
-             * @param {Array} inputsToReattach a list of inputNames to attach to the new node from the old one
-             * @return the index at which the new node was inserted
-             */
-            //flock.ugenNodeList.swapTree = function (newNode, oldNode, inputsToReattach, removeFn, replaceTreeFn, replaceFn) {
-
-            swapTree: {
-                funcName: "flock.ugenNodeList.swapTree",
-                args: [
-                    "{arguments}.0", // The node to add.
-                    "{arguments}.1", // The node to replace.
-                    "{arguments}.2", // A list of inputs to attach to the new node from the old.
-                    "{that}.remove",
-                    "{that}.replaceTree",
-                    "{that}.replace"
-                ]
-            }
-        }
-    });
-
-    flock.ugenNodeList.insertTree = function (idx, node, insertFn) {
-        var inputs = node.inputs,
-            key,
-            input;
-
-        for (key in inputs) {
-            input = inputs[key];
-            if (flock.isUGen(input)) {
-                idx = flock.ugenNodeList.insertTree(idx, input, insertFn);
-                idx++;
-            }
-        }
-
-        return insertFn(idx, node);
-    };
-
-    flock.ugenNodeList.removeTree = function (node, removeFn) {
-        var inputs = node.inputs,
-            key,
-            input;
-
-        for (key in inputs) {
-            input = inputs[key];
-            if (flock.isUGen(input)) {
-                flock.ugenNodeList.removeTree(input, removeFn);
-            }
-        }
-
-        return removeFn(node);
-    };
-
-    flock.ugenNodeList.replaceTree = function (newNode, oldNode, nodes, insertFn, removeFn) {
-        if (!oldNode) {
-             // Can't use .tail() because it won't recursively add inputs.
-            return flock.ugenNodeList.insertTree(nodes.length, newNode, insertFn);
-        }
-
-        var idx = flock.ugenNodeList.removeTree(oldNode, removeFn);
-        flock.ugenNodeList.insertTree(idx, newNode, insertFn);
-
-        return idx;
-    };
-
-    flock.ugenNodeList.swapTree = function (newNode, oldNode, inputsToReattach, removeFn, replaceTreeFn, replaceFn) {
-        if (!inputsToReattach) {
-            newNode.inputs = oldNode.inputs;
-        } else {
-            flock.ugenNodeList.reattachInputs(newNode, oldNode, inputsToReattach, removeFn);
-            flock.ugenNodeList.replaceInputs(newNode, oldNode, inputsToReattach, replaceTreeFn);
-        }
-
-        return replaceFn(newNode, oldNode);
-    };
-
-    flock.ugenNodeList.reattachInputs = function (newNode, oldNode, inputsToReattach, removeFn) {
-        for (var inputName in oldNode.inputs) {
-            if (inputsToReattach.indexOf(inputName) < 0) {
-                flock.ugenNodeList.removeTree(oldNode.inputs[inputName], removeFn);
-            } else {
-                newNode.inputs[inputName] = oldNode.inputs[inputName];
-            }
-        }
-    };
-
-    flock.ugenNodeList.replaceInputs = function (newNode, oldNode, inputsToReattach, replaceTreeFn) {
-        for (var inputName in newNode.inputs) {
-            if (inputsToReattach.indexOf(inputName) < 0) {
-                replaceTreeFn(
-                    newNode.inputs[inputName],
-                    oldNode.inputs[inputName]
-                );
-            }
-        }
-    };
-
-
     /**
      * Synths represent a collection of signal-generating units,
      * wired together to form an instrument.
@@ -1783,33 +1449,46 @@ var fluid = fluid || require("infusion"),
 
         addToEnvironment: true,
 
+        mergePolicy: {
+            ugens: "nomerge"
+        },
+
+        ugens: {
+            expander: {
+                funcName: "flock.makeUGens",
+                args: [
+                    "{that}.options.synthDef",
+                    "{that}.rate",
+                    "{that}.nodeList",
+                    "{enviro}"
+                ]
+            }
+        },
+
         members: {
             rate: "{that}.options.rate",
-            audioSettings: "{enviro}.audioSystem.model" // TODO: Move this.
+            audioSettings: "{enviro}.audioSystem.model", // TODO: Move this.
+            nodeList: "@expand:flock.nodeList()",
+            out: "{that}.options.ugens",
+            genFn: "@expand:fluid.getGlobalValue(flock.evaluate.ugens)"
         },
 
         model: {
             blockSize: "@expand:flock.synth.calcBlockSize({that}.rate, {enviro}.audioSystem.model)"
         },
 
-        components: {
-            ugens: {
-                type: "flock.synth.ugenTree"
-            }
-        },
-
         invokers: {
             /**
              * Sets the value of the ugen at the specified path.
              *
-             * @param {String} path the ugen's path within the synth graph
-             * @param {Number || UGenDef} val a scalar value (for Value ugens) or a UGenDef object
-             * @param {Boolean} swap ??
+             * @param {String||Object} a keypath or change specification object
+             * @param {Number || UGenDef} val a value to set
+             * @param {Boolean} swap whether or not to reattach the current unit generator's inputs to the new one
              * @return {UGen} the newly created UGen that was set at the specified path
              */
             set: {
                 funcName: "flock.synth.set",
-                args: ["{that}", "{ugenTree}.namedNodes", "{arguments}.0", "{arguments}.1", "{arguments}.2"]
+                args: ["{that}", "{that}.nodeList.namedNodes", "{arguments}.0", "{arguments}.1", "{arguments}.2"]
             },
 
             /**
@@ -1820,7 +1499,7 @@ var fluid = fluid || require("infusion"),
              */
             get: {
                 funcName: "flock.input.get",
-                args: ["{ugenTree}.namedNodes", "{arguments}.0"]
+                args: ["{that}.nodeList.namedNodes", "{arguments}.0"]
             },
 
             /**
@@ -1840,17 +1519,13 @@ var fluid = fluid || require("infusion"),
                     "{that}.get",
                     "{that}.set"
                 ]
-            },
-
-            /**
-             * Generates one block of audio rate signal by evaluating this synth's unit generator graph.
-             */
-            gen: {
-                funcName: "flock.synth.gen",
-                args: "{that}"
             }
         }
     });
+
+    flock.synth.createUGenTree = function (synthDef, rate, enviro) {
+        return new flock.UGenTree(synthDef, rate, enviro);
+    };
 
     flock.synth.calcBlockSize = function (rate, audioSettings) {
         return rate === flock.rates.AUDIO ? audioSettings.blockSize : 1;
@@ -1860,22 +1535,6 @@ var fluid = fluid || require("infusion"),
         return flock.input.set(namedNodes, path, val, undefined, function (ugenDef, path, target, prev) {
             return flock.synth.ugenValueParser(that, ugenDef, prev, swap);
         });
-    };
-
-    flock.synth.gen = function (that) {
-        var nodes = that.ugens.nodes,
-            m = that.model,
-            i,
-            node;
-
-        for (i = 0; i < nodes.length; i++) {
-            node = nodes[i];
-            if (node.gen !== undefined) {
-                node.gen(node.model.blockSize); // TODO: De-thatify.
-            }
-
-            m.value = node.model.value;
-        }
     };
 
     flock.synth.input = function (args, getFn, setFn) {
@@ -1895,7 +1554,7 @@ var fluid = fluid || require("infusion"),
 
         var parsed = flock.parse.ugenDef(ugenDef, {
             audioSettings: that.audioSettings,
-            buses: that.enviro.buses,
+            buses: that.enviro.busManager.buses,
             buffers: that.enviro.buffers
         });
 
@@ -1903,73 +1562,26 @@ var fluid = fluid || require("infusion"),
             oldUGens = flock.isIterable(prev) ? prev : (prev !== undefined ? [prev] : []);
 
         var replaceLen = Math.min(newUGens.length, oldUGens.length),
-            replaceFn = swap ? that.ugens.swapTree : that.ugens.replaceTree,
+            replaceFnName = swap ? "swapTree" : "replaceTree",
             i,
             atIdx,
             j;
 
         // TODO: Improve performance by handling arrays inline instead of repeated function calls.
         for (i = 0; i < replaceLen; i++) {
-            atIdx = replaceFn(newUGens[i], oldUGens[i]);
+            atIdx = flock.ugenNodeList[replaceFnName](that.nodeList, newUGens[i], oldUGens[i]);
         }
 
         for (j = i; j < newUGens.length; j++) {
             atIdx++;
-            that.ugens.insertTree(atIdx, newUGens[j]);
+            flock.ugenNodeList.insertTree(that.nodeList, newUGens[j], atIdx);
         }
 
         for (j = i; j < oldUGens.length; j++) {
-            that.ugens.removeTree(oldUGens[j]);
+            flock.ugenNodeList.removeTree(that.nodeList, oldUGens[j]);
         }
 
         return parsed;
-    };
-
-    // TODO: Should this also take on the role of evaluating nodes?
-    // TODO: Naming.
-    fluid.defaults("flock.synth.ugenTree", {
-        gradeNames: "flock.ugenNodeList",
-
-        synthDef: "{synth}.options.synthDef",
-        rate: "{synth}.options.rate",
-
-        members: {
-            root: null
-        },
-
-        listeners: {
-            onCreate: [
-                {
-                    funcName: "flock.synth.ugenTree.instantiateUGens",
-                    args: [
-                        "{that}",
-                        "{enviro}"
-                    ]
-                }
-            ]
-        }
-    });
-
-    flock.synth.ugenTree.instantiateUGens = function (that, enviro) {
-        if (!that.options.synthDef) {
-            fluid.log(fluid.logLevel.IMPORTANT,
-                "Warning: Instantiating a flock.synth instance with an empty synth def.");
-        }
-
-        // At demand or schedule rates, override the rate of all non-constant ugens.
-        var rate = that.options.rate;
-        var overrideRate = rate === flock.rates.SCHEDULED ||
-            rate === flock.rates.DEMAND;
-
-        // Parse the synthDef into a graph of unit generators.
-        that.root = flock.parse.synthDef(that.options.synthDef, {
-            rate: rate,
-            overrideRate: overrideRate,
-            visitors: that.tail,
-            buffers: enviro.buffers,
-            buses: enviro.busManager.buses,
-            audioSettings: enviro.audioSystem.model
-        });
     };
 
 
@@ -1982,16 +1594,11 @@ var fluid = fluid || require("infusion"),
 
         invokers: {
             value: {
-                funcName: "flock.synth.value.genValue",
-                args: ["{that}.model", "{that}.gen"]
+                funcName: "flock.evaluate.synthValue",
+                args: ["{that}"]
             }
         }
     });
-
-    flock.synth.value.genValue = function (m, genFn) {
-        genFn(1);
-        return m.value;
-    };
 
 
     fluid.defaults("flock.synth.frameRate", {

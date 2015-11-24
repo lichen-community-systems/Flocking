@@ -107,7 +107,7 @@ var fluid = fluid || require("infusion"),
     });
 
     fluid.constructSingle([], {
-        singleRootType: "flock.webAudio.enviroContextDistributor",
+        singleRootType: "flock.enviroContextDistributor",
         type: "flock.webAudio.enviroContextDistributor"
     });
 }());

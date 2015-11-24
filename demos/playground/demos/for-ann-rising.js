@@ -45,7 +45,7 @@ for (var i = 0; i < numSynths; i++) {
 // every 2.8 seconds.
 var adder = sked.repeat(2.8, function () {
     var synth = synths[nextSynthIdx];
-    flock.enviro.shared.tail(synth);
+    synth.addToEnvironment("tail");
 
     nextSynthIdx++;
     if (nextSynthIdx >= numSynths) {

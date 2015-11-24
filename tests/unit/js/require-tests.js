@@ -22,8 +22,8 @@
         require([flockingBuildPath], function (flock) {
             QUnit.ok(flock, "The 'flock' variable should be defined");
 
-            flock.init();
-            QUnit.ok(flock.environment, "The shared environment can successfully be initialized.");
+            var environment = flock.init();
+            QUnit.ok(environment, "The shared environment can successfully be initialized.");
 
             var synth = flock.synth({
                 synthDef: {
@@ -33,8 +33,8 @@
 
             QUnit.ok(synth, "A synth can be correct instantiated.");
 
-            flock.environment.play();
-            flock.environment.stop();
+            environment.play();
+            environment.stop();
 
             QUnit.start();
         });

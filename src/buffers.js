@@ -230,6 +230,8 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.bufferSource", {
         gradeNames: ["fluid.modelComponent"],
 
+        sampleRate: "{flock.enviro}.audioSystem.model.sampleRate",
+
         model: {
             state: "start",
             src: null
@@ -328,6 +330,7 @@ var fluid = fluid || require("infusion"),
                 that.events.onFetch.fire(bufDef);
                 flock.audio.decode({
                     src: bufDef.src,
+                    sampleRate: that.options.sampleRate,
                     success: function (bufDesc) {
                         if (bufDef.id) {
                             bufDesc.id = bufDef.id;
@@ -366,12 +369,16 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.bufferLoader", {
         gradeNames: ["fluid.component"],
 
+        // A list of BufferDef objects to resolve.
+        bufferDefs: [],
+
         members: {
             buffers: []
         },
 
-        // A list of BufferDef objects to resolve.
-        bufferDefs: [],
+        components: {
+            enviro: "{flock.enviro}"
+        },
 
         events: {
             afterBuffersLoaded: null
@@ -380,7 +387,7 @@ var fluid = fluid || require("infusion"),
         listeners: {
             onCreate: {
                 funcName: "flock.bufferLoader.loadBuffers",
-                args: ["{that}.options.bufferDefs", "{that}.buffers", "{that}.events.afterBuffersLoaded.fire"]
+                args: ["{that}"]
             }
         }
     });
@@ -418,16 +425,16 @@ var fluid = fluid || require("infusion"),
         return bufDefs;
     };
 
-    flock.bufferLoader.loadBuffers = function (bufferDefs, decodedBuffers, afterBuffersLoaded) {
-        bufferDefs = fluid.makeArray(bufferDefs);
+    flock.bufferLoader.loadBuffers = function (that) {
+        var bufferDefs = fluid.makeArray(that.options.bufferDefs);
 
         // TODO: This is a sign that flock.parse.bufferForDef is still terribly broken.
         var bufferTarget = {
             setBuffer: function (decoded) {
-                decodedBuffers.push(decoded);
+                that.buffers.push(decoded);
 
-                if (decodedBuffers.length === bufferDefs.length) {
-                    afterBuffersLoaded(decodedBuffers);
+                if (that.buffers.length === that.options.bufferDefs.length) {
+                    that.events.afterBuffersLoaded.fire(that.buffers);
                 }
             }
         };
@@ -439,7 +446,7 @@ var fluid = fluid || require("infusion"),
             }
 
             // TODO: Hardcoded reference to the shared environment.
-            flock.parse.bufferForDef(bufferDefs[i], bufferTarget, flock.environment);
+            flock.parse.bufferForDef(bufferDefs[i], bufferTarget, that.enviro);
         }
     };
 

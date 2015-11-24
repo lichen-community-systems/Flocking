@@ -419,16 +419,20 @@ var fluid = fluid || require("infusion"),
                 chan = that.inputs.channel.output[0],
                 source = that.buffer.data.channels[chan],
                 rate = that.buffer.format.sampleRate,
+                val = source.length / rate,
                 i;
 
             for (i = 0; i < numSamps; i++) {
-                out[i] = source.length / rate;
+                out[i] = val;
             }
 
-            m.unscaledValue = m.value = flock.ugen.lastOutputValue(numSamps, out);
+            m.unscaledValue = val;
+            that.mulAdd(numSamps);
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
         };
 
         that.onInputChanged = function (inputName) {
+            flock.onMulAddInputChanged(that);
             that.onBufferInputChanged(inputName);
         };
 
@@ -478,17 +482,20 @@ var fluid = fluid || require("infusion"),
                 out = that.output,
                 chan = that.inputs.channel.output[0],
                 source = that.buffer.data.channels[chan],
-                len = source.length,
+                val = source.length,
                 i;
 
             for (i = 0; i < numSamps; i++) {
-                out[i] = len;
+                out[i] = val;
             }
 
-            m.value = m.unscaledValue = len;
+            m.unscaledValue = val;
+            that.mulAdd(numSamps);
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
         };
 
         that.onInputChanged = function (inputName) {
+            flock.onMulAddInputChanged(that);
             that.onBufferInputChanged(inputName);
         };
 
@@ -608,6 +615,5 @@ var fluid = fluid || require("infusion"),
         rate: "constant",
         inputs: {}
     });
-
 
 }());

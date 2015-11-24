@@ -38,6 +38,9 @@ module.exports = function(grunt) {
 
         flockingBase: [
             "src/core.js",
+            "src/node-list.js",
+            "src/evaluators.js",
+            "src/synths/model.js",
             "src/synths/group.js",
             "src/synths/polyphonic.js",
             "src/synths/band.js",
@@ -138,12 +141,8 @@ module.exports = function(grunt) {
 
             base: {
                 src: [].concat(
-                    files.amdHeader,
-                    files.jQueryStandalone,
-                    files.infusion,
                     files.miscDeps,
-                    files.flockingBase,
-                    files.amdFooter
+                    files.flockingBase
                 ),
                 dest: "dist/<%= pkg.name %>-base.js"
             }

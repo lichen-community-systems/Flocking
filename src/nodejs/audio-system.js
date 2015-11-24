@@ -127,6 +127,6 @@ fluid.defaults("flock.nodejs.enviroContextDistributor", {
 });
 
 fluid.constructSingle([], {
-    singleRootType: "flock.nodejs.enviroContextDistributor",
+    singleRootType: "flock.enviroContextDistributor",
     type: "flock.nodejs.enviroContextDistributor"
 });

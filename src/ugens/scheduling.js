@@ -128,6 +128,50 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+
+    flock.ugen.listItem = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                out = that.output,
+                list = that.inputs.list,
+                maxIdx = list.length - 1,
+                index = that.inputs.index.output,
+                i,
+                val,
+                j,
+                listIdx;
+
+            for (i = 0, j = 0; i < numSamps; i++, j += m.strides.index) {
+                listIdx = Math.round(index[j] * maxIdx);
+                listIdx = Math.max(0, listIdx);
+                listIdx = Math.min(listIdx, maxIdx);
+                val = list[listIdx];
+                out[i] = val;
+            }
+
+            m.unscaledValue = val;
+            that.mulAdd(numSamps);
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
+        };
+
+        that.onInputChanged();
+        return that;
+    };
+
+    flock.ugenDefaults("flock.ugen.listItem", {
+        rate: "control",
+        inputs: {
+            index: 0, // A value between 0 and 1.0
+            list: [0]
+        },
+        ugenOptions: {
+            strideInputs: ["index"]
+        }
+    });
+
+
     flock.ugen.sequence = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
@@ -253,6 +297,11 @@ var fluid = fluid || require("infusion"),
                 i,
                 val;
 
+            if (m.shouldValidateSequences) {
+                m.shouldValidateSequences = false;
+                flock.ugen.sequencer.validateSequences(durations, values);
+            }
+
             for (i = 0; i < numSamps; i++) {
                 if (values.length === 0 || durations.length === 0) {
                     // Nothing to output.
@@ -289,22 +338,23 @@ var fluid = fluid || require("infusion"),
         };
 
         that.onInputChanged = function (inputName) {
-            var inputs = that.inputs;
+            var m = that.model,
+                inputs = that.inputs;
 
-            if (!inputName || inputName === "durations") {
+            if (inputName === "durations" || inputs.durations !== m.prevDurations) {
+                m.idx = 0;
                 flock.ugen.sequencer.calcDurationsSamps(inputs.durations, that.model);
-                flock.ugen.sequencer.failOnMissingInput("durations", that);
+                flock.ugen.sequencer.validateInput("durations", that);
+                m.prevDurations = inputs.durations;
             }
 
-            if (!inputName || inputName === "values") {
-                flock.ugen.sequencer.failOnMissingInput("values", that);
+            if (inputName === "values" || inputs.values !== m.prevValues) {
+                m.idx = 0;
+                flock.ugen.sequencer.validateInput("values", that);
+                m.prevValues = inputs.values;
             }
 
-            if (inputs.durations.length !== inputs.values.length) {
-                flock.fail("Mismatched durations and values array lengths for flock.ugen.sequencer: " +
-                    fluid.prettyPrintJSON(that.options.ugenDef));
-            }
-
+            that.model.shouldValidateSequences = true;
             flock.onMulAddInputChanged(that);
         };
 
@@ -316,11 +366,18 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    flock.ugen.sequencer.failOnMissingInput = function (inputName, that) {
+    flock.ugen.sequencer.validateInput = function (inputName, that) {
         var input = that.inputs[inputName];
         if (!input || !flock.isIterable(input)) {
             flock.fail("No " + inputName + " array input was specified for flock.ugen.sequencer: " +
                 fluid.prettyPrintJSON(that.options.ugenDef));
+        }
+    };
+
+    flock.ugen.sequencer.validateSequences = function (durations, values) {
+        if (durations.length !== values.length) {
+            flock.fail("Mismatched durations and values array lengths for flock.ugen.sequencer. Durations: " +
+                fluid.prettyPrintJSON(durations) + ", values: " + fluid.prettyPrintJSON(values));
         }
     };
 
@@ -350,7 +407,9 @@ var fluid = fluid || require("infusion"),
                 idx: 0,
                 samplesRemaining: 0,
                 unscaledValue: 0.0,
-                value: 0.0
+                value: 0.0,
+                prevDurations: [],
+                prevValues: []
             },
             resetOnNext: false,
             holdLastvalue: false

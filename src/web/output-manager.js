@@ -35,7 +35,12 @@ var fluid = fluid || require("infusion"),
         invokers: {
             bindAudioProcess: {
                 funcName: "flock.webAudio.outputManager.bindAudioProcess",
-                args: ["{nodeEvaluator}", "{nativeNodeManager}", "{that}.model"]
+                args: [
+                    "{enviro}.nodeList",
+                    "{busManager}.buses",
+                    "{nativeNodeManager}",
+                    "{that}.model"
+                ]
             },
 
             unbindAudioProcess: {
@@ -77,13 +82,13 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-
-    flock.webAudio.outputManager.bindAudioProcess = function (nodeEvaluator,
+    flock.webAudio.outputManager.bindAudioProcess = function (nodeList, buses,
         nativeNodeManager, model) {
         var jsNode = nativeNodeManager.scriptProcessor.node;
 
         jsNode.model = model;
-        jsNode.evaluator = nodeEvaluator;
+        jsNode.nodeList = nodeList;
+        jsNode.buses = buses;
         jsNode.inputNodes = nativeNodeManager.inputNodes;
         jsNode.onaudioprocess = flock.webAudio.outputManager.writeSamples;
     };
@@ -103,14 +108,13 @@ var fluid = fluid || require("infusion"),
      *  - nodeEvaluator: a nodeEvaluator instance
      */
     flock.webAudio.outputManager.writeSamples = function (e) {
-        var numInputNodes = this.inputNodes.length,
-            evaluator = this.evaluator,
-            nodes = evaluator.nodes,
+        var numInputNodes = this.inputNodes ? this.inputNodes.length : 0,
+            nodes = this.nodeList.nodes,
             s = this.model.audioSettings,
             inBufs = e.inputBuffer,
             outBufs = e.outputBuffer,
             numBlocks = s.numBlocks,
-            buses = evaluator.buses,
+            buses = this.buses,
             numBuses = s.numBuses,
             blockSize = s.blockSize,
             chans = s.chans,
@@ -120,9 +124,9 @@ var fluid = fluid || require("infusion"),
             samp;
 
         // If there are no nodes providing samples, write out silence.
-        if (evaluator.nodes.length < 1) {
+        if (nodes.length < 1) {
             for (chan = 0; chan < chans; chan++) {
-                flock.generate.silence(outBufs.getChannelData(chan));
+                flock.clearBuffer(outBufs.getChannelData(chan));
             }
             return;
         }
@@ -132,7 +136,7 @@ var fluid = fluid || require("infusion"),
         for (i = 0; i < numBlocks; i++) {
             var offset = i * blockSize;
 
-            flock.nodeEvaluator.clearBuses(numBuses, blockSize, buses);
+            flock.evaluate.clearBuses(buses, numBuses, blockSize);
 
             // Read this ScriptProcessorNode's input buffers
             // into the environment.
@@ -148,7 +152,7 @@ var fluid = fluid || require("infusion"),
                 }
             }
 
-            flock.nodeEvaluator.gen(nodes);
+            flock.evaluate.synths(nodes);
 
             // Output the environment's signal
             // to this ScriptProcessorNode's output channels.

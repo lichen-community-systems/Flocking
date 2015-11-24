@@ -14,8 +14,8 @@
 
     var $ = fluid.registerNamespace("jQuery");
 
-    flock.init();
-    var sampleRate = flock.environment.audioSystem.model.rates.audio;
+    var environment = flock.init();
+    var sampleRate = environment.audioSystem.model.rates.audio;
 
     module("flock.ugen.phasor");
 
@@ -33,7 +33,7 @@
             if (test.trigger !== undefined) {
                 ugen.input("trigger", test.trigger);
             }
-            synth.gen();
+            flock.evaluate.synth(synth);
             deepEqual(ugen.output, test.expected, test.msg);
         }
     };
@@ -45,7 +45,7 @@
                 synthDef: def,
                 addToEnvironment: false
             });
-            var loop = synth.ugens.namedNodes.looper;
+            var loop = synth.nodeList.namedNodes.looper;
 
             test(testSpec.name, function () {
                 testTriggeredSignals(synth, loop, testSpec.tests);
@@ -64,13 +64,13 @@
                     msg: "The phasor unit generator should output a signal increasing from 1 to 64"
                 },
                 {
-                    expected: flock.generate(64, function (i) {
+                    expected: flock.generateBuffer(64, function (i) {
                         return i === 0 ? 65 : i;
                     }),
                     msg: "Then it should complete the cycle and loop back to the start point."
                 },
                 {
-                    expected: flock.generate(64, function (i) {
+                    expected: flock.generateBuffer(64, function (i) {
                         return i + 2 % 66;
                     }),
                     trigger: 1.0,
@@ -145,7 +145,7 @@
                     msg: "The value at the first control period should be start value."
                 },
                 {
-                    expected: flock.generate(1, 1.0 / sampleRate),
+                    expected: flock.generateBufferWithValue(1, 1.0 / sampleRate),
                     msg: "At the second control point, the value should be the duration of 64 samples."
                 }
             ]

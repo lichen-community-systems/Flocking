@@ -32,14 +32,14 @@
   },
   "dependencies": {
     "jquery": "2.1.4",
-    "infusion": "fluid-project/infusion#a1e3d601478e57276d4143fca5bcbe00f9c6b0cd",
+    "infusion": "2.0.0-dev.20151024T031903Z.3da18aa",
     "codemirror-infusion": "2.0.0",
-    "jsplumb": "sporritt/jsPlumb#1.7.8",
+    "jsplumb": "1.7.9",
     "dagre": "0.7.4",
     "normalize.css": "3.0.3"
   },
   "optionalDependencies": {
-    "speaker": "git://github.com/colinbdclark/node-speaker.git#mpg123-lower-latency",
+    "speaker": "colinbdclark/node-speaker#mpg123-lower-latency",
     "midi": "0.9.4"
   },
   "engines": {

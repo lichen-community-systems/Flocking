@@ -72,6 +72,18 @@ var fluid = fluid || require("infusion"),
             ugenDef.rate = flock.rates.AUDIO;
         }
 
+        if (!flock.hasValue(flock.rates, ugenDef.rate)) {
+            flock.fail("An invalid rate was specified for a unit generator. ugenDef was: " +
+                fluid.prettyPrintJSON(ugenDef));
+
+            if (!flock.debug.failHard) {
+                var oldRate = ugenDef.rate;
+                ugenDef.rate = flock.rates.AUDIO;
+                flock.log.warn("Overriding invalid unit generator rate. Rate is now '" +
+                    ugenDef.rate + "'; was: " + fluid.prettyPrintJSON(oldRate));
+            }
+        }
+
         var sampleRate;
         // Set the ugen's sample rate value according to the rate the user specified.
         if (ugenDef.options && ugenDef.options.sampleRate !== undefined) {
@@ -285,10 +297,9 @@ var fluid = fluid || require("infusion"),
         ugen.options.ugenDef = ugenDef;
 
         if (visitors) {
-            visitors = fluid.makeArray(visitors);
-            fluid.each(visitors, function (visitor) {
-                visitor(ugen, ugenDef, rates);
-            });
+            for(var i = 0; i < visitors.length; i++) {
+                visitors[i](ugen, ugenDef, rates);
+            }
         }
 
         return ugen;
@@ -311,16 +322,23 @@ var fluid = fluid || require("infusion"),
         }
     };
 
+    flock.parse.bufferForDef.createBufferSource = function (enviro) {
+        return flock.bufferSource({
+            sampleRate: enviro.audioSystem.model.sampleRate
+        });
+    };
+
     flock.parse.bufferForDef.findSource = function (defOrDesc, enviro) {
         var source;
 
         if (enviro && defOrDesc.id) {
             source = enviro.bufferSources[defOrDesc.id];
             if (!source) {
-                source = enviro.bufferSources[defOrDesc.id] = flock.bufferSource();
+                source = flock.parse.bufferForDef.createBufferSource(enviro);
+                enviro.bufferSources[defOrDesc.id] = source;
             }
         } else {
-            source = flock.bufferSource();
+            source = flock.parse.bufferForDef.createBufferSource(enviro);
         }
 
         return source;

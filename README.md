@@ -230,16 +230,16 @@ You should instantiate only one <code>flock.enviro</code> for your entire applic
 
 The Flocking _shared environment_ is created by calling <code>flock.init()</code>:
 
-    var enviro = flock.init();
+    var environment = flock.init();
 
 Before you'll hear any sound, the environment needs to be started. You only need to start the environment once.
 This is done using the <code>start()</code> method:
 
-    enviro.start();
+    environment.start();
 
 To stop the environment from generating samples, use the <code>stop()</code> method:
 
-    enviro.stop();
+    environment.stop();
 
 #### Synths and the Environment ####
 
@@ -258,7 +258,7 @@ you can override the <code>addToEnvironment</code> option when you instantiate i
     });
 
 If you need to manage the Environment's list of synths manually,
-you can use the methods provided by the flock.nodeList _grade_.
+you can use the methods provided by the flock.nodeListComponent _grade_.
 
 To add a synth to the head of the graph so that it will be evaluated first:
 

@@ -283,7 +283,7 @@ var fluid = fluid || require("infusion"),
 
         if (!flock.isIterable(envelope.curve)) {
             var numCurves = envelope.levels.length - 1;
-            envelope.curve = flock.generate(new Array(numCurves), envelope.curve);
+            envelope.curve = flock.fillBufferWithValue(new Array(numCurves), envelope.curve);
         }
 
         flock.envelope.validate(envelope, true);

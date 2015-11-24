@@ -204,7 +204,12 @@ var fluid = fluid || require("infusion"),
 
             for (i = 0, j = 0; i < numSamps; i++, j += sourceInc) {
                 currTrig = trig.output[i];
-                out[i] = val = (currTrig > 0.0 && m.prevTrig <= 0.0) ? m.holdVal = source[j] : m.holdVal;
+                if (currTrig > 0.0 && m.prevTrig <= 0.0) {
+                    m.holdVal = source[j];
+                }
+
+                val = m.holdVal;
+                out[i] = val;
                 m.prevTrig = currTrig;
             }
 

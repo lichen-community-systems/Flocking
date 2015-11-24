@@ -32,7 +32,7 @@ var fluid = fluid || require("infusion"),
                 input = that.inputs[op],
                 out = that.output,
                 left = that.inputs.source.output[0],
-                right = flock.generate(that.expandedRight, input.output[0]);
+                right = flock.fillBufferWithValue(that.expandedRight, input.output[0]);
 
             ArrayMath[op](out, left, right);
             m.value = m.unscaledValue = out[out.length - 1];
@@ -56,7 +56,7 @@ var fluid = fluid || require("infusion"),
                 input = that.inputs[op],
                 out = that.output,
                 left = that.inputs.source.output,
-                right = flock.generate(that.expandedRight, input.output[0]);
+                right = flock.fillBufferWithValue(that.expandedRight, input.output[0]);
 
             ArrayMath[op](out, left, right);
             m.value = m.unscaledValue = out[out.length - 1];
@@ -141,17 +141,18 @@ var fluid = fluid || require("infusion"),
                 out = that.output,
                 i,
                 sourceIdx,
-                sum;
+                sourceBuffer;
 
-            for (i = 0; i < numSamps; i++) {
-                sum = 0;
-                for (sourceIdx = 0; sourceIdx < sources.length; sourceIdx++) {
-                    sum += sources[sourceIdx].output[i];
+            flock.clearBuffer(out);
+
+            for (sourceIdx = 0; sourceIdx < sources.length; sourceIdx++) {
+                sourceBuffer = sources[sourceIdx].output;
+                for (i = 0; i < numSamps; i++) {
+                    out[i] += sourceBuffer[i];
                 }
-                out[i] = sum;
             }
 
-            m.unscaledValue = sum;
+            m.unscaledValue = flock.ugen.lastOutputValue(numSamps, out);
             that.mulAdd(numSamps);
             m.value = flock.ugen.lastOutputValue(numSamps, out);
         };

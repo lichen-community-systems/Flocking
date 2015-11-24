@@ -16,7 +16,7 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.test");
 
-    flock.init();
+    var environment = flock.init();
 
 	var testConfigs = [
         {
@@ -40,6 +40,7 @@ var fluid = fluid || require("infusion"),
                 // which it doesn't always do and can't be relied upon.
                 flock.audio.decode({
                     src: config.url,
+                    sampleRate: environment.audioSystem.model.sampleRate,
                     success: emptyFn
                 });
             }
