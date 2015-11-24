@@ -126,7 +126,7 @@ var fluid = fluid || require("infusion"),
         // If there are no nodes providing samples, write out silence.
         if (nodes.length < 1) {
             for (chan = 0; chan < chans; chan++) {
-                flock.generate.silence(outBufs.getChannelData(chan));
+                flock.clearBuffer(outBufs.getChannelData(chan));
             }
             return;
         }

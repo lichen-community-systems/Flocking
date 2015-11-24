@@ -17,7 +17,8 @@ var flock = flock || {};
 
     flock.test.silentBlock64 = new Float32Array(64);
 
-    flock.test.fillBuffer = function (start, end, skip) {
+    // TODO: Promote this to core.
+    flock.test.generateSequence = function (start, end, skip) {
         skip = skip || 1;
 
         var buf = [],
@@ -37,7 +38,7 @@ var flock = flock || {};
         start = start === undefined ? 0 : start;
         step = step === undefined ? 1 : step;
 
-        return flock.generate(numSamps, function (i) {
+        return flock.generateBuffer(numSamps, function (i) {
             return start + (i * step);
         });
     };
@@ -296,12 +297,12 @@ var flock = flock || {};
     };
 
     flock.test.arraySilent = function (buffer, msg) {
-        var silentBuffer = flock.generate(buffer.length, 0.0);
+        var silentBuffer = flock.generateBufferWithValue(buffer.length, 0.0);
         deepEqual(buffer, silentBuffer, msg);
     };
 
     flock.test.arrayExtremelyQuiet = function (buffer, msg) {
-        var expected = flock.generate(buffer.length, 0);
+        var expected = flock.generateBufferWithValue(buffer.length, 0);
         flock.test.arrayEqualRounded(10, buffer, expected, msg);
     };
 
@@ -561,7 +562,7 @@ var flock = flock || {};
     flock.test.ugen.mock.make = function (output, rate, options) {
         options = options || {};
         if (typeof (output) === "function") {
-            output = flock.generate(64, output);
+            output = flock.generateBufferWithValue(64, output);
         }
 
         options.buffer = output;

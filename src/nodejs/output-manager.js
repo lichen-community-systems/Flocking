@@ -110,7 +110,7 @@ flock.nodejs.outputManager.makeSampleWriter = function (that, buses, nodeList) {
 
         if (nodes.length < 1) {
             // If there are no nodes providing samples, write out silence.
-            flock.generate.silence(out);
+            flock.clearBuffer(out);
         } else {
             for (var i = 0, offset = 0; i < krPeriods; i++, offset += m.bytesPerBlock) {
                 flock.evaluate.clearBuses(buses, s.numBuses, s.blockSize);

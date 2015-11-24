@@ -577,24 +577,24 @@ var fluid = fluid || require("infusion"),
                     ugen: "flock.ugen.sequence",
                     rate: "audio",
                     freq: environment.audioSystem.model.rates.audio,
-                    values: flock.test.fillBuffer(1, 64)
+                    values: flock.test.generateSequence(1, 64)
                 }
             }
         });
 
         var passThrough = synth.get("pass");
         synth.genFn(synth.nodeList.nodes, synth.model);
-        deepEqual(passThrough.output, flock.test.fillBuffer(1, 64),
+        deepEqual(passThrough.output, flock.test.generateSequence(1, 64),
             "When first instantiating the synth, a unit generator's inputs should be evaluated first.");
 
         synth.set("pass.source", {
             ugen: "flock.ugen.sequence",
             rate: "audio",
             freq: environment.audioSystem.model.rates.audio,
-            list: flock.test.fillBuffer(64, 127)
+            list: flock.test.generateSequence(64, 127)
         });
         synth.genFn(synth.nodeList.nodes, synth.model);
-        deepEqual(passThrough.output, flock.test.fillBuffer(64, 127),
+        deepEqual(passThrough.output, flock.test.generateSequence(64, 127),
             "After swapping one active unit generator for another, the correct order should be preserved.");
 
         synth.set("pass.source", 1.0);
@@ -608,10 +608,10 @@ var fluid = fluid || require("infusion"),
             ugen: "flock.ugen.sequence",
             rate: "audio",
             freq: environment.audioSystem.model.rates.audio,
-            values: flock.test.fillBuffer(128, 191)
+            values: flock.test.generateSequence(128, 191)
         });
         synth.genFn(synth.nodeList.nodes, synth.model);
-        deepEqual(passThrough.output, flock.test.fillBuffer(128, 191),
+        deepEqual(passThrough.output, flock.test.generateSequence(128, 191),
             "Replacing an inactive ugen for an active one.");
     });
 

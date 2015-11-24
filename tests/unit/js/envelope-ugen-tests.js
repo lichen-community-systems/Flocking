@@ -40,11 +40,11 @@ var fluid = fluid || require("infusion"),
         var line = flock.parse.ugenForDef(lineDef);
 
         line.gen(64);
-        var expected = flock.test.fillBuffer(0, 63);
+        var expected = flock.test.generateSequence(0, 63);
         deepEqual(line.output, expected, "Line should generate all samples for its duration but one.");
 
         line.gen(64);
-        expected = flock.generate(64, 64);
+        expected = flock.generateBufferWithValue(64, 64);
         deepEqual(line.output, expected, "After the line's duration is finished, it should constantly output the end value.");
     });
 
@@ -54,19 +54,19 @@ var fluid = fluid || require("infusion"),
         line.gen(32);
 
         // It's a 64 sample buffer, so split it in half to test it.
-        deepEqual(flock.copyBuffer(line.output, 0, 32), flock.test.fillBuffer(0, 31),
+        deepEqual(flock.copyBuffer(line.output, 0, 32), flock.test.generateSequence(0, 31),
             "The first half of the line's values should but generated.");
-        deepEqual(flock.copyBuffer(line.output, 32), flock.generate(32, 0),
+        deepEqual(flock.copyBuffer(line.output, 32), flock.generateBufferWithValue(32, 0),
             "The last 32 samples of the buffer should be empty.");
 
         line.gen(32);
-        deepEqual(flock.copyBuffer(line.output, 0, 32), flock.test.fillBuffer(32, 63),
+        deepEqual(flock.copyBuffer(line.output, 0, 32), flock.test.generateSequence(32, 63),
             "The second half of the line's values should be generated.");
-        deepEqual(flock.copyBuffer(line.output, 32), flock.generate(32, 0),
+        deepEqual(flock.copyBuffer(line.output, 32), flock.generateBufferWithValue(32, 0),
             "The last 32 samples of the buffer should be empty.");
 
         line.gen(32);
-        deepEqual(flock.copyBuffer(line.output, 0, 32), flock.generate(32, 64),
+        deepEqual(flock.copyBuffer(line.output, 0, 32), flock.generateBufferWithValue(32, 64),
             "After the line's duration is finished, it should constantly output the end value.");
     });
 
@@ -111,7 +111,7 @@ var fluid = fluid || require("infusion"),
 
         // Until the gate is closed, the ugen should just output silence.
         asr.gen(64);
-        deepEqual(asr.output, flock.generate(64, 0.0),
+        deepEqual(asr.output, flock.generateBufferWithValue(64, 0.0),
             "When the gate is open at the beginning, the envelope's output should be 0.0.");
 
         // Trigger the attack stage.
@@ -121,7 +121,7 @@ var fluid = fluid || require("infusion"),
 
         // Output a full control period of the sustain value.
         asr.gen(64);
-        deepEqual(asr.output, flock.generate(64, 1.0),
+        deepEqual(asr.output, flock.generateBufferWithValue(64, 1.0),
             "While the gate is open, the envelope should hold at the sustain level.");
 
         // Release the gate and test the release stage.
@@ -131,7 +131,7 @@ var fluid = fluid || require("infusion"),
 
         // Test a full control period of the end value.
         asr.gen(64);
-        deepEqual(asr.output, flock.generate(64, 0.0),
+        deepEqual(asr.output, flock.generateBufferWithValue(64, 0.0),
             "When the gate is closed and the release stage has completed, the envelope's output should be 0.0.");
 
         // Trigger the attack stage again.
@@ -182,7 +182,7 @@ var fluid = fluid || require("infusion"),
         // Generate another control period of samples, which should be at the sustain level.
         asr.gen(64);
         testEnvelopeStage(flock.copyBuffer(asr.output, 0, 32), 32, 0.7500630021095276, 1.0, "second half of the attack after halfway release second half.");
-        deepEqual(flock.copyBuffer(asr.output, 32), flock.generate(32, 1.0),
+        deepEqual(flock.copyBuffer(asr.output, 32), flock.generateBufferWithValue(32, 1.0),
             "While the gate remains open after a mid-release attack, the envelope should hold at the sustain level.");
     });
 

@@ -19962,33 +19962,57 @@ var fluid = fluid || require("infusion"),
         return Math.random() * 2.0 - 1.0;
     };
 
-    // TODO: Chrome profiler marks this function as unoptimized.
-    // This should probably be factored into separate functions for
-    // new and existing arrays. (e.g. "generate" vs. "fill")
-    flock.generate = function (bufOrSize, generator) {
-        var buf = typeof bufOrSize === "number" ? new Float32Array(bufOrSize) : bufOrSize,
-            isFunc = typeof generator === "function",
-            i;
-
-        for (i = 0; i < buf.length; i++) {
-            buf[i] = isFunc ? generator(i, buf) : generator;
+    flock.fillBuffer = function (buf, fillFn) {
+        for (var i = 0; i < buf.length; i++) {
+            buf[i] = fillFn(i, buf);
         }
 
         return buf;
     };
 
-    flock.generate.silence = function (bufOrSize) {
-        if (typeof bufOrSize === "number") {
-            return new Float32Array(bufOrSize);
+    flock.fillBufferWithValue = function (buf, value) {
+        for (var i = 0; i < buf.length; i++) {
+            buf[i] = value;
         }
 
-        var buf = bufOrSize,
-            i;
-        for (i = 0; i < buf.length; i++) {
+        return buf;
+    };
+
+    flock.generateBuffer = function (length, fillFn) {
+        var buf = new Float32Array(length);
+        return flock.fillBuffer(buf, fillFn);
+    };
+
+    flock.generateBufferWithValue = function (length, value) {
+        var buf = new Float32Array(length);
+        return flock.fillBufferWithValue(buf, value);
+    };
+
+    // Deprecated. Will be removed in Flocking 0.3.0.
+    // Use the faster, non-polymorphic generate/fill functions instead.
+    flock.generate = function (length, fillFn) {
+        var isFn = typeof fillFn === "function",
+            isNum = typeof length === "number";
+
+        var generateFn = isFn ?
+            (isNum ? flock.generateBuffer : flock.fillBuffer) :
+            (isNum ? flock.generateBufferWithValue : flock.fillBufferWithValue);
+
+        return generateFn(length, fillFn);
+    };
+
+    flock.generate.silence = function (length) {
+        return new Float32Array(length);
+    };
+
+    flock.clearBuffer = function (buf) {
+        for (var i = 0; i < buf.length; i++) {
             buf[i] = 0.0;
         }
+
         return buf;
     };
+
 
     /**
      * Performs an in-place reversal of all items in the array.
@@ -20097,7 +20121,7 @@ var fluid = fluid || require("infusion"),
     flock.generateFourierTable = function (size, scale, numHarms, phase, amps) {
         phase *= flock.TWOPI;
 
-        return flock.generate(size, function (i) {
+        return flock.generateBuffer(size, function (i) {
             var harm,
                 amp,
                 w,
@@ -20114,7 +20138,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.generateNormalizedFourierTable = function (size, scale, numHarms, phase, ampGenFn) {
-        var amps = flock.generate(numHarms, function (harm) {
+        var amps = flock.generateBuffer(numHarms, function (harm) {
             return ampGenFn(harm + 1); //  Harmonics are indexed from 1 instead of 0.
         });
 
@@ -20129,7 +20153,7 @@ var fluid = fluid || require("infusion"),
 
     flock.tableGenerators = {
         sin: function (size, scale) {
-            return flock.generate(size, function (i) {
+            return flock.generateBuffer(size, function (i) {
                 return Math.sin(i * scale);
             });
         },
@@ -20160,14 +20184,14 @@ var fluid = fluid || require("infusion"),
 
         hann: function (size) {
             // Hanning envelope: sin^2(i) for i from 0 to pi
-            return flock.generate(size, function (i) {
+            return flock.generateBuffer(size, function (i) {
                 var y = Math.sin(Math.PI * i / size);
                 return y * y;
             });
         },
 
         sinWindow: function (size) {
-            return flock.generate(size, function (i) {
+            return flock.generateBuffer(size, function (i) {
                 return Math.sin(Math.PI * i / size);
             });
         }
@@ -20225,6 +20249,13 @@ var fluid = fluid || require("infusion"),
         }
 
         return target;
+    };
+
+    flock.copyToBuffer = function (source, target) {
+        var len = Math.min(source.length, target.length);
+        for (var i = 0; i < len; i++) {
+            target[i] = source[i];
+        }
     };
 
     flock.parseMidiString = function (midiStr) {
@@ -26287,7 +26318,7 @@ var fluid = fluid || require("infusion"),
         // If there are no nodes providing samples, write out silence.
         if (nodes.length < 1) {
             for (chan = 0; chan < chans; chan++) {
-                flock.generate.silence(outBufs.getChannelData(chan));
+                flock.clearBuffer(outBufs.getChannelData(chan));
             }
             return;
         }
@@ -28137,346 +28168,6 @@ var fluid = fluid || require("infusion"),
         inputs: {}
     });
 
-
-    /**
-     * Provides a bank of buffers that are played back whenever a trigger fires.
-     * In this implementation, buffers are always allowed to play until their end.
-     * A subsequent trigger while a buffer is still blaying won't interrupt it; another will be added to the mix.
-     */
-    // TODO:
-    //   - Remove ridiculous variable assignment block
-    //   - Factor out voice logic into separate functions
-    //   - Add support for speed input and sample rate conversion
-    //   - Source buffers directly from the environment at gen time,
-    //     rather than trying do so proactively (and failing if they're not there)
-    flock.ugen.triggerBuffers = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
-
-        // TODO: add an input that controls playback speed.
-        that.gen = function (numSamps) {
-            var m = that.model,
-                strides = m.strides,
-                out = that.output,
-                inputs = that.inputs,
-                buffers = that.buffers,
-                numBuffers = buffers.length - 1,
-                prevTrigger = m.prevTrigger,
-                maxVoices = m.maxVoices,
-                activeVoices = m.activeVoices,
-                freeVoices = m.freeVoices,
-                trigger = inputs.trigger.output,
-                triggerInc = strides.trigger,
-                triggerIdx = 0,
-                bufferIndex = inputs.bufferIndex.output,
-                bufferIndexInc = strides.bufferIndex,
-                bufferIndexIdx = 0,
-                speed = inputs.speed.output,
-                speedInc = strides.speed,
-                speedIdx = 0,
-                chan = that.inputs.channel.output[0],
-                i,
-                triggerVal,
-                voice,
-                bufIdx,
-                bufDesc,
-                j,
-                buffer,
-                numSampsToWriteForVoice,
-                k,
-                samp;
-
-            // Create a data structure containing all the active voices.
-            for (i = 0; i < numSamps; i++) {
-                triggerVal = trigger[triggerIdx];
-                if (triggerVal > 0.0 && prevTrigger <= 0.0 && activeVoices.length < maxVoices) {
-                    bufIdx = Math.round(bufferIndex[bufferIndexIdx] * numBuffers);
-                    bufIdx = Math.max(0, bufIdx);
-                    bufIdx = Math.min(bufIdx, numBuffers);
-                    bufDesc = buffers[bufIdx];
-                    if (!bufDesc) {
-                        continue;
-                    }
-
-                    // TODO: Split this out into a separate function.
-                    voice = freeVoices.pop();
-                    voice.speed = speed[speedIdx];
-                    voice.currentIdx = 0;
-                    voice.writePos = i;
-                    voice.buffer = bufDesc.data.channels[chan];
-                    //voice.sampleRate = bufDesc.format.sampRate;
-                    activeVoices.push(voice);
-                }
-
-                // Update stride indexes.
-                triggerIdx += triggerInc;
-                speedIdx += speedInc;
-                bufferIndexIdx += bufferIndexInc;
-
-                // Clear out old values in the buffer.
-                out[i] = 0.0;
-
-                prevTrigger = triggerVal;
-            }
-
-            // Loop through each active voice and write it out to the block.
-            for (j = 0; j < activeVoices.length;) {
-                voice = activeVoices[j];
-                buffer = voice.buffer;
-                numSampsToWriteForVoice = Math.min(buffer.length - voice.currentIdx, numSamps);
-
-                for (k = voice.writePos; k < numSampsToWriteForVoice; k++) {
-                    // TODO: deal with speed and sample rate converstion.
-                    samp = that.interpolate ? that.interpolate(voice.currentIdx, buffer) : buffer[voice.currentIdx | 0];
-                    out[k] += samp;
-                    voice.currentIdx++;
-                }
-
-                if (voice.currentIdx >= buffer.length) {
-                    // This voice is done.
-                    freeVoices.push(voice);
-                    activeVoices.splice(j, 1);
-                } else {
-                    voice.writePos = 0;
-                    j++;
-                }
-            }
-
-            m.prevTrigger = prevTrigger;
-            m.unscaledValue = samp;
-            that.mulAdd(numSamps);
-            m.value = flock.ugen.lastOutputValue(numSamps, out);
-        };
-
-        that.init = function () {
-            that.buffers = [];
-            that.allocateVoices();
-            that.onInputChanged();
-        };
-
-        that.allocateVoices = function () {
-            for (var i = 0; i < that.model.maxVoices; i++) {
-                that.model.freeVoices.push({});
-            }
-        };
-
-        that.onInputChanged = function () {
-            // TODO: Hardcoded reference to the shared environment.
-            // Plus is this is a pretty lame way to manage buffers.
-            var enviroBufs = flock.environment.buffers,
-                bufIDs = that.options.bufferIDs,
-                i,
-                bufID,
-                bufDesc;
-
-            // Clear the list of buffers.
-            that.buffers.length = 0;
-
-            // TODO: This is broken.
-            for (i = 0; i < bufIDs.length; i++) {
-                bufID = bufIDs[i];
-                bufDesc = enviroBufs[bufID];
-                that.buffers.push(bufDesc);
-            }
-
-            flock.onMulAddInputChanged(that);
-            that.calculateStrides();
-        };
-
-        that.init();
-        return that;
-    };
-
-    flock.ugenDefaults("flock.ugen.triggerBuffers", {
-        inputs: {
-            trigger: 0,
-            bufferIndex: 0, // A value between 0 and 1.0
-            speed: 1,
-            channel: 0
-        },
-        ugenOptions: {
-            model: {
-                prevTrigger: 0,
-                maxVoices: 128,
-                activeVoices: [],
-                freeVoices: [],
-                channel: 0
-            },
-            bufferIDs: [],
-            strideInputs: ["trigger", "bufferIndex", "speed"]
-        }
-    });
-
-
-    /**
-     * Reads a buffer linearly, randomly moving the playback location
-     * after a period time determined by dividing
-     * the minDuration input by the amount input
-     * (i.e. higher amounts produce shorter samples up to the minimum duration).
-     * An amount of 0.0 will cause this unit generator to behave identically to
-     * flock.ugen.playBuffer.
-     */
-    flock.ugen.chopBuffer = function (inputs, output, options) {
-        var that = flock.ugen(inputs, output, options);
-        flock.ugen.buffer(that);
-
-        that.gen = function (numSamps) {
-            var m = that.model,
-                out = that.output,
-                inputs = that.inputs,
-                loop = inputs.loop.output[0],
-                attack = inputs.attack.output[0],
-                decay = inputs.decay.output[0],
-                start = Math.floor(inputs.start.output[0] * m.lastIdx),
-                end = Math.floor(inputs.end.output[0] * m.lastIdx),
-                source = that.buffer.data.channels[inputs.channel.output[0]],
-                j = 0,
-                k = 0,
-                l = 0,
-                val;
-
-            for (var i = 0; i < numSamps; i++) {
-                var amount = inputs.amount.output[j],
-                    minDuration = inputs.minDuration.output[k],
-                    speed = inputs.speed.output[l];
-
-                flock.ugen.chopBuffer.updateSegmentState(m, amount, minDuration, attack, decay);
-
-                // Time to move the play head again.
-                if (m.sampleCounter >= m.durationSamples) {
-                    // TODO: Determine the attack times and ensure that we're
-                    // picking a start point that won't require us to wrap
-                    // the buffer around unnecessarily.
-                    m.idx = flock.randomValue(start, end);
-                    m.sampleCounter = 0;
-                }
-
-                // We've hit the start or end of the buffer;
-                // wrap around if appropriate, otherwise output silence.
-                if (m.idx < start || m.idx > end) {
-                    if (loop > 0.0) {
-                        m.idx = flock.ugen.playBuffer.resetIndex(speed, start, end);
-                    } else {
-                        out[i] = val = 0.0;
-                        continue;
-                    }
-                }
-
-                val = that.interpolate(m.idx, source);
-                out[i] = val;
-                m.idx += m.stepSize * speed;
-                m.sampleCounter++;
-
-                j += m.strides.amount;
-                k += m.strides.minDuration;
-                l += m.strides.speed;
-            }
-
-            m.unscaledValue = val;
-            that.mulAdd(numSamps);
-            m.value = flock.ugen.lastOutputValue(numSamps, out);
-        };
-
-        that.onInputChanged = function (inputName) {
-            that.onBufferInputChanged(inputName);
-            that.calculateStrides();
-            flock.onMulAddInputChanged(that);
-        };
-
-        that.onBufferReady = function () {
-            var m = that.model,
-                inputs = that.inputs,
-                buf = that.buffer.data.channels[inputs.channel.output[0]],
-                len = buf.length;
-
-            m.idx = Math.floor(that.inputs.end.output[0] * len);
-            m.lastIdx = len - 1;
-            m.stepSize = that.buffer.format.sampleRate / m.sampleRate;
-        };
-
-        that.init = function () {
-            that.initBuffer();
-            that.onInputChanged();
-        };
-
-        that.init();
-        return that;
-    };
-
-    flock.ugen.chopBuffer.numSegmentSamples = function (rate, minDuration, sampleRate) {
-        return rate === 0.0 ? Infinity : (minDuration / rate) * sampleRate;
-    };
-
-    flock.ugen.chopBuffer.numEnvelopeSamples = function (stageDuration, minDuration, sampleRate) {
-        var halfMinDuration = minDuration / 2;
-        return (stageDuration > halfMinDuration ? halfMinDuration : stageDuration) * sampleRate;
-    };
-
-    flock.ugen.chopBuffer.updateSegmentState = function (m, rate, minDuration, attack, decay) {
-        // A change to the duration requires an update to
-        // all the segment parameters, so we can bail after doing everything
-        // to avoid extra work.
-        if (minDuration !== m.prevMinDuration) {
-            m.prevMinDuration = minDuration;
-            m.durationSamples = flock.ugen.chopBuffer.numSegmentSamples(rate,
-                minDuration, m.sampleRate);
-            m.numAttackSamples = flock.ugen.chopBuffer.numEnvelopeSamples(attack,
-                minDuration, m.sampleRate);
-            m.numAttackSamples = flock.ugen.chopBuffer.numEnvelopeSamples(decay,
-                minDuration, m.sampleRate);
-
-            return;
-        }
-
-        if (rate !== m.prevRate) {
-            m.prevRate = rate;
-            m.durationSamples = flock.ugen.chopBuffer.numSegmentSamples(rate,
-                minDuration, m.sampleRate);
-        }
-
-        if (attack !== m.prevAttack) {
-            m.prevAttack = attack;
-            m.numAttackSamples = flock.ugen.chopBuffer.numEnvelopeSamples(attack,
-                minDuration, m.sampleRate);
-        }
-
-        if (decay !== m.prevDecay) {
-            m.prevDecay = decay;
-            m.numAttackSamples = flock.ugen.chopBuffer.numEnvelopeSamples(decay,
-                minDuration, m.sampleRate);
-        }
-    };
-
-    flock.ugenDefaults("flock.ugen.chopBuffer", {
-        inputs: {
-            amount: 1.0,
-            minDuration: 0.1,
-            buffer: null,
-            channel: 0.0,
-            speed: 1.0,
-            loop: 1.0,
-            start: 0.0,
-            end: 1.0,
-            attack: 0.01,
-            decay: 0.01,
-            // gap: 0.0
-        },
-
-        ugenOptions: {
-            model: {
-                idx: 0,
-                sampleCounter: Infinity,
-                lastIdx: 0,
-                stepSize: 0,
-                prevRate: null,
-                prevMinDuration: null,
-                prevAttack: null,
-                prevDecay: null,
-                voices: new Array(2)
-            },
-            interpolation: "linear",
-            strideInputs: ["amount", "minDuration", "speed"]
-        }
-    });
 }());
 ;/*
  * Flocking Debugging Unit Generators
@@ -29159,7 +28850,7 @@ var fluid = fluid || require("infusion"),
 
         if (!flock.isIterable(envelope.curve)) {
             var numCurves = envelope.levels.length - 1;
-            envelope.curve = flock.generate(new Array(numCurves), envelope.curve);
+            envelope.curve = flock.fillBufferWithValue(new Array(numCurves), envelope.curve);
         }
 
         flock.envelope.validate(envelope, true);
@@ -31539,7 +31230,7 @@ var fluid = fluid || require("infusion"),
                 input = that.inputs[op],
                 out = that.output,
                 left = that.inputs.source.output[0],
-                right = flock.generate(that.expandedRight, input.output[0]);
+                right = flock.fillBufferWithValue(that.expandedRight, input.output[0]);
 
             ArrayMath[op](out, left, right);
             m.value = m.unscaledValue = out[out.length - 1];
@@ -31563,7 +31254,7 @@ var fluid = fluid || require("infusion"),
                 input = that.inputs[op],
                 out = that.output,
                 left = that.inputs.source.output,
-                right = flock.generate(that.expandedRight, input.output[0]);
+                right = flock.fillBufferWithValue(that.expandedRight, input.output[0]);
 
             ArrayMath[op](out, left, right);
             m.value = m.unscaledValue = out[out.length - 1];
@@ -31648,17 +31339,18 @@ var fluid = fluid || require("infusion"),
                 out = that.output,
                 i,
                 sourceIdx,
-                sum;
+                sourceBuffer;
 
-            for (i = 0; i < numSamps; i++) {
-                sum = 0;
-                for (sourceIdx = 0; sourceIdx < sources.length; sourceIdx++) {
-                    sum += sources[sourceIdx].output[i];
+            flock.clearBuffer(out);
+
+            for (sourceIdx = 0; sourceIdx < sources.length; sourceIdx++) {
+                sourceBuffer = sources[sourceIdx].output;
+                for (i = 0; i < numSamps; i++) {
+                    out[i] += sourceBuffer[i];
                 }
-                out[i] = sum;
             }
 
-            m.unscaledValue = sum;
+            m.unscaledValue = flock.ugen.lastOutputValue(numSamps, out);
             that.mulAdd(numSamps);
             m.value = flock.ugen.lastOutputValue(numSamps, out);
         };

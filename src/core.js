@@ -205,33 +205,57 @@ var fluid = fluid || require("infusion"),
         return Math.random() * 2.0 - 1.0;
     };
 
-    // TODO: Chrome profiler marks this function as unoptimized.
-    // This should probably be factored into separate functions for
-    // new and existing arrays. (e.g. "generate" vs. "fill")
-    flock.generate = function (bufOrSize, generator) {
-        var buf = typeof bufOrSize === "number" ? new Float32Array(bufOrSize) : bufOrSize,
-            isFunc = typeof generator === "function",
-            i;
-
-        for (i = 0; i < buf.length; i++) {
-            buf[i] = isFunc ? generator(i, buf) : generator;
+    flock.fillBuffer = function (buf, fillFn) {
+        for (var i = 0; i < buf.length; i++) {
+            buf[i] = fillFn(i, buf);
         }
 
         return buf;
     };
 
-    flock.generate.silence = function (bufOrSize) {
-        if (typeof bufOrSize === "number") {
-            return new Float32Array(bufOrSize);
+    flock.fillBufferWithValue = function (buf, value) {
+        for (var i = 0; i < buf.length; i++) {
+            buf[i] = value;
         }
 
-        var buf = bufOrSize,
-            i;
-        for (i = 0; i < buf.length; i++) {
+        return buf;
+    };
+
+    flock.generateBuffer = function (length, fillFn) {
+        var buf = new Float32Array(length);
+        return flock.fillBuffer(buf, fillFn);
+    };
+
+    flock.generateBufferWithValue = function (length, value) {
+        var buf = new Float32Array(length);
+        return flock.fillBufferWithValue(buf, value);
+    };
+
+    // Deprecated. Will be removed in Flocking 0.3.0.
+    // Use the faster, non-polymorphic generate/fill functions instead.
+    flock.generate = function (length, fillFn) {
+        var isFn = typeof fillFn === "function",
+            isNum = typeof length === "number";
+
+        var generateFn = isFn ?
+            (isNum ? flock.generateBuffer : flock.fillBuffer) :
+            (isNum ? flock.generateBufferWithValue : flock.fillBufferWithValue);
+
+        return generateFn(length, fillFn);
+    };
+
+    flock.generate.silence = function (length) {
+        return new Float32Array(length);
+    };
+
+    flock.clearBuffer = function (buf) {
+        for (var i = 0; i < buf.length; i++) {
             buf[i] = 0.0;
         }
+
         return buf;
     };
+
 
     /**
      * Performs an in-place reversal of all items in the array.
@@ -340,7 +364,7 @@ var fluid = fluid || require("infusion"),
     flock.generateFourierTable = function (size, scale, numHarms, phase, amps) {
         phase *= flock.TWOPI;
 
-        return flock.generate(size, function (i) {
+        return flock.generateBuffer(size, function (i) {
             var harm,
                 amp,
                 w,
@@ -357,7 +381,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.generateNormalizedFourierTable = function (size, scale, numHarms, phase, ampGenFn) {
-        var amps = flock.generate(numHarms, function (harm) {
+        var amps = flock.generateBuffer(numHarms, function (harm) {
             return ampGenFn(harm + 1); //  Harmonics are indexed from 1 instead of 0.
         });
 
@@ -372,7 +396,7 @@ var fluid = fluid || require("infusion"),
 
     flock.tableGenerators = {
         sin: function (size, scale) {
-            return flock.generate(size, function (i) {
+            return flock.generateBuffer(size, function (i) {
                 return Math.sin(i * scale);
             });
         },
@@ -403,14 +427,14 @@ var fluid = fluid || require("infusion"),
 
         hann: function (size) {
             // Hanning envelope: sin^2(i) for i from 0 to pi
-            return flock.generate(size, function (i) {
+            return flock.generateBuffer(size, function (i) {
                 var y = Math.sin(Math.PI * i / size);
                 return y * y;
             });
         },
 
         sinWindow: function (size) {
-            return flock.generate(size, function (i) {
+            return flock.generateBuffer(size, function (i) {
                 return Math.sin(Math.PI * i / size);
             });
         }
@@ -468,6 +492,13 @@ var fluid = fluid || require("infusion"),
         }
 
         return target;
+    };
+
+    flock.copyToBuffer = function (source, target) {
+        var len = Math.min(source.length, target.length);
+        for (var i = 0; i < len; i++) {
+            target[i] = source[i];
+        }
     };
 
     flock.parseMidiString = function (midiStr) {

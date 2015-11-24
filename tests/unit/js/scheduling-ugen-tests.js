@@ -45,11 +45,11 @@ var fluid = fluid || require("infusion"),
         var changer = makeUGen(changeDef);
 
         flock.test.evaluateUGen(changer);
-        QUnit.deepEqual(changer.output, flock.generate(64, 1),
+        QUnit.deepEqual(changer.output, flock.generateBufferWithValue(64, 1),
             "For the first sample block, the output should be the initial input's output.");
 
         flock.test.evaluateUGen(changer);
-        QUnit.deepEqual(changer.output, flock.generate(64, 2),
+        QUnit.deepEqual(changer.output, flock.generateBufferWithValue(64, 2),
             "For the second sample block, the output should be the target input's output.");
     });
 
@@ -61,14 +61,14 @@ var fluid = fluid || require("infusion"),
         });
 
         var changer = makeUGen(crossFadeDef),
-            crossfadeBuffer = flock.generate(64, function (i) {
+            crossfadeBuffer = flock.generateBuffer(64, function (i) {
                 var targetLevel = i / 64,
                     initialLevel = 1 - targetLevel;
                 return (1 * initialLevel) + (2 * targetLevel);
             });
 
         flock.test.evaluateUGen(changer);
-        QUnit.deepEqual(changer.output, flock.generate(64, 1),
+        QUnit.deepEqual(changer.output, flock.generateBufferWithValue(64, 1),
             "For the first sample block, the output should be the initial input's output.");
 
         flock.test.evaluateUGen(changer);
@@ -76,7 +76,7 @@ var fluid = fluid || require("infusion"),
             "For the second sample block, the output should crossfade from the initial to the target input.");
 
         flock.test.evaluateUGen(changer);
-        QUnit.deepEqual(changer.output, flock.generate(64, 2),
+        QUnit.deepEqual(changer.output, flock.generateBufferWithValue(64, 2),
             "For the third sample block, the output should be the target input's output.");
     });
 
@@ -180,7 +180,7 @@ var fluid = fluid || require("infusion"),
             durations = [sampleDur * 10, sampleDur * 10],
             values = [1, 2];
 
-        var expectedFirstBlock = flock.generate(64, function (i) {
+        var expectedFirstBlock = flock.generateBuffer(64, function (i) {
             return i < 10 ? 1 : i < 20 ? 2 : 0;
         });
 
@@ -199,7 +199,7 @@ var fluid = fluid || require("infusion"),
         QUnit.deepEqual(sequencer.output, expectedFirstBlock,
             "The first block of the sequencer's signal should have been correctly generated.");
 
-        var expectedSecondBlock = flock.generate(64, 3);
+        var expectedSecondBlock = flock.generateBufferWithValue(64, 3);
         s.set({
             "seq.durations": [sampleDur * 64],
             "seq.values": [3]

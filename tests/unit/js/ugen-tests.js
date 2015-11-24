@@ -198,13 +198,13 @@ var fluid = fluid || require("infusion"),
     };
 
     test("flock.ugen.out()", function () {
-        testOutputs(2, simpleOutDef, 0, flock.generate(64, 1),
+        testOutputs(2, simpleOutDef, 0, flock.generateBufferWithValue(64, 1),
             "The output should be written to the appropriate environment bus.");
     });
 
     test("flock.ugen.out(): multiple out ugens writing to the same bus", function () {
         var outDefs = [simpleOutDef, simpleOutDef];
-        testOutputs(2, outDefs, 0, flock.generate(64, 2),
+        testOutputs(2, outDefs, 0, flock.generateBufferWithValue(64, 2),
             "Multiple outputs to the same buffer should be summed.");
     });
 
@@ -685,7 +685,7 @@ var fluid = fluid || require("infusion"),
     module("flock.ugen.sum() tests");
 
     test("flock.ugen.sum()", function () {
-        var addBuffer = flock.test.fillBuffer(0, 31),
+        var addBuffer = flock.test.generateSequence(0, 31),
             one = flock.test.ugen.mock.make(addBuffer),
             two = flock.test.ugen.mock.make(addBuffer),
             three = flock.test.ugen.mock.make(addBuffer);
@@ -704,7 +704,7 @@ var fluid = fluid || require("infusion"),
             "With a single source, the output should be identical to the source input.");
 
         inputs.sources = [one, two, three];
-        var expected = flock.test.fillBuffer(0, 93, 3);
+        var expected = flock.test.generateSequence(0, 93, 3);
         summer.inputs = inputs;
         summer.gen(32);
         deepEqual(summer.output, new Float32Array(expected),
@@ -932,7 +932,7 @@ var fluid = fluid || require("infusion"),
                     sampleRate: sampleRate
                 },
                 data: {
-                    channels: [flock.test.fillBuffer(1, 64)]
+                    channels: [flock.test.generateSequence(1, 64)]
                 }
             });
             flock.parse.bufferForDef.resolveBuffer(bufDesc, undefined, environment);
@@ -973,7 +973,7 @@ var fluid = fluid || require("infusion"),
             deepEqual(player.output, expected, "With a playback speed of 1.0, the output buffer should be identical to the source buffer.");
 
             player.gen(64);
-            expected = flock.generate(64, 0.0);
+            expected = flock.generateBufferWithValue(64, 0.0);
             deepEqual(player.output, expected, "With looping turned off, the output buffer should be silent once we hit the end of the source buffer.");
 
             player.input("loop", 1.0);
@@ -993,7 +993,7 @@ var fluid = fluid || require("infusion"),
             var player = flock.parse.ugenForDef(def),
                 expected = new Float32Array(64),
                 expectedFirst = new Float32Array([1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63]),
-                expectedSecond = flock.generate(32, 0);
+                expectedSecond = flock.generateBufferWithValue(32, 0);
 
             // Make sure to generate the input's signal if necessary.
             if (player.inputs.speed.rate !== flock.rates.CONSTANT) {
@@ -1007,7 +1007,7 @@ var fluid = fluid || require("infusion"),
                 "At double speed, the output buffer contain odd values from the source buffer, padded with zeros.");
 
             player.gen(64);
-            expected = flock.generate(64, 0.0);
+            expected = flock.generateBufferWithValue(64, 0.0);
             deepEqual(player.output, expected, "With looping turned off, the output buffer should be silent once we hit the end of the source buffer.");
 
             player.input("loop", 1.0);
@@ -1020,7 +1020,7 @@ var fluid = fluid || require("infusion"),
 
         test("backward speed at " + rate + " rate", function () {
             var player = flock.parse.ugenForDef(flock.test.ugen.playBuffer.playbackDef),
-                expected = flock.test.fillBuffer(64, 1);
+                expected = flock.test.generateSequence(64, 1);
 
             player.input("speed", {
                 ugen: "flock.ugen.value",
@@ -1141,7 +1141,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.test.ugen.writeBuffer.makeSynth = function () {
-        var expected = flock.test.fillBuffer(1, 256);
+        var expected = flock.test.generateSequence(1, 256);
 
         var synth = flock.synth({
             synthDef: {
@@ -1229,10 +1229,10 @@ var fluid = fluid || require("infusion"),
             numOutputs: 4
         },
         sources: [
-            flock.test.ugen.writeBuffer.makeMockDef("one", flock.test.fillBuffer(1, 256)),
-            flock.test.ugen.writeBuffer.makeMockDef("two", flock.test.fillBuffer(1000, 1256)),
-            flock.test.ugen.writeBuffer.makeMockDef("three", flock.test.fillBuffer(2000, 2256)),
-            flock.test.ugen.writeBuffer.makeMockDef("four", flock.test.fillBuffer(3000, 3256))
+            flock.test.ugen.writeBuffer.makeMockDef("one", flock.test.generateSequence(1, 256)),
+            flock.test.ugen.writeBuffer.makeMockDef("two", flock.test.generateSequence(1000, 1256)),
+            flock.test.ugen.writeBuffer.makeMockDef("three", flock.test.generateSequence(2000, 2256)),
+            flock.test.ugen.writeBuffer.makeMockDef("four", flock.test.generateSequence(3000, 3256))
         ]
     };
 
@@ -1261,7 +1261,7 @@ var fluid = fluid || require("infusion"),
     flock.test.ugen.writeBuffer.testLooping = function (shouldLoop) {
         var synth = flock.synth({
             synthDef: $.extend(true, {}, flock.test.ugen.writeBuffer.fourChannelDef, {
-                sources: flock.test.ugen.writeBuffer.makeMockDef("one", flock.test.fillBuffer(1, 256)),
+                sources: flock.test.ugen.writeBuffer.makeMockDef("one", flock.test.generateSequence(1, 256)),
                 buffer: "giraffes",
                 loop: shouldLoop ? 1.0 : 0.0,
                 options: {
@@ -1275,7 +1275,7 @@ var fluid = fluid || require("infusion"),
         }
 
         var actual = synth.enviro.buffers.giraffes.data.channels[0],
-            expected = shouldLoop ? flock.test.fillBuffer(129, 256) : flock.test.fillBuffer(1, 128);
+            expected = shouldLoop ? flock.test.generateSequence(129, 256) : flock.test.generateSequence(1, 128);
 
         deepEqual(actual,expected,
             "The unit generator should " + (shouldLoop ? "" : "not ") +
@@ -1301,7 +1301,7 @@ var fluid = fluid || require("infusion"),
             source: {
                 ugen: "flock.test.ugen.mock",
                 options: {
-                    buffer: flock.generate(64, 1.0)
+                    buffer: flock.generateBufferWithValue(64, 1.0)
                 }
             },
             attack: 0.00001
@@ -1322,7 +1322,7 @@ var fluid = fluid || require("infusion"),
         var tracker = flock.parse.ugenForDef(ampConstSignalDef);
         generateAndTestContinuousSamples(tracker, 64);
         // TODO: Why does an attack time of 0.00001 result in a ramp-up time of three samples, instead of just less than half a sample?
-        deepEqual(flock.copyBuffer(tracker.output, 3, 64), flock.generate(61, 1.0),
+        deepEqual(flock.copyBuffer(tracker.output, 3, 64), flock.generateBufferWithValue(61, 1.0),
             "With a negligible attack time and a constant input value of 1.0, the amplitude ugen should ramp up quickly to, and remain at, 1.0.");
     });
 
@@ -1392,13 +1392,13 @@ var fluid = fluid || require("infusion"),
         var gateTestSpecs = [
             {
                 name: "without a separate sideChain input",
-                expectedOutput: flock.generate(64, function (i) {
+                expectedOutput: flock.generateBuffer(64, function (i) {
                     return i > 30 ? i + 1 : 0;
                 })
             },
             {
                 name: "with a separate sideChain input",
-                expectedOutput: flock.generate(64, function (i) {
+                expectedOutput: flock.generateBuffer(64, function (i) {
                     return i > 9 ? i + 1 : 0;
                 }),
                 synthOptions:{
@@ -1415,7 +1415,7 @@ var fluid = fluid || require("infusion"),
             },
             {
                 name: "with holdLastValue enabled",
-                expectedOutput: flock.generate(64, function (i) {
+                expectedOutput: flock.generateBuffer(64, function (i) {
                     return i % 2 ? i + 1 : i;
                 }),
                 synthOptions: {
@@ -1424,7 +1424,7 @@ var fluid = fluid || require("infusion"),
                         sideChain: {
                             ugen: "flock.test.ugen.mock",
                             options: {
-                                buffer: flock.generate(64, function (i) {
+                                buffer: flock.generateBuffer(64, function (i) {
                                     return i % 2 ? 1.0 : 0.0;
                                 })
                             }
@@ -1528,7 +1528,7 @@ var fluid = fluid || require("infusion"),
 
         inSynth.enviro.gen();
         var actual = inSynth.nodeList.namedNodes["in"].output;
-        var expected = flock.generate(64, function (i) {
+        var expected = flock.generateBuffer(64, function (i) {
             return (i + 1) * 2;
         });
         deepEqual(actual, expected,
@@ -1596,7 +1596,7 @@ var fluid = fluid || require("infusion"),
                 source: 2,
                 add: 5
             }
-        }, flock.generate(64, 7), "Value add");
+        }, flock.generateBufferWithValue(64, 7), "Value add");
 
         testMath({
             ugen: "flock.ugen.math",
@@ -1604,7 +1604,7 @@ var fluid = fluid || require("infusion"),
                 source: 3,
                 sub: 2
             }
-        }, flock.generate(64, 1), "Value subtract");
+        }, flock.generateBufferWithValue(64, 1), "Value subtract");
 
         testMath({
             ugen: "flock.ugen.math",
@@ -1612,7 +1612,7 @@ var fluid = fluid || require("infusion"),
                 source: 3,
                 mul: 2
             }
-        }, flock.generate(64, 6), "Value multiply");
+        }, flock.generateBufferWithValue(64, 6), "Value multiply");
 
         testMath({
             ugen: "flock.ugen.math",
@@ -1620,15 +1620,15 @@ var fluid = fluid || require("infusion"),
                 source: 3,
                 div: 2
             }
-        }, flock.generate(64, 1.5), "Value divide");
+        }, flock.generateBufferWithValue(64, 1.5), "Value divide");
     });
 
     test("flock.ugen.math() audio and control rate inputs", function () {
-        var incBuffer = flock.generate(64, function (i) {
+        var incBuffer = flock.generateBuffer(64, function (i) {
             return i + 1;
         });
 
-        var expected = flock.generate(64, function (i) {
+        var expected = flock.generateBuffer(64, function (i) {
             return i + 4;
         });
 
@@ -1648,7 +1648,7 @@ var fluid = fluid || require("infusion"),
         testMath(krArUGenDef, expected, "Audio rate source, value add");
 
         krArUGenDef.inputs.source.rate = "control";
-        testMath(krArUGenDef, flock.generate(64, 4), "Control rate source, value add");
+        testMath(krArUGenDef, flock.generateBufferWithValue(64, 4), "Control rate source, value add");
 
         krArUGenDef.inputs.add = {
             ugen: "flock.ugen.sequence",
@@ -1656,11 +1656,11 @@ var fluid = fluid || require("infusion"),
             list: incBuffer,
             freq: sampleRate
         };
-        testMath(krArUGenDef, flock.generate(64, 2), "Control rate source, control rate add.");
+        testMath(krArUGenDef, flock.generateBufferWithValue(64, 2), "Control rate source, control rate add.");
 
         krArUGenDef.inputs.source.rate = "audio";
         krArUGenDef.inputs.add.rate = "audio";
-        testMath(krArUGenDef, flock.generate(64, function (i) {
+        testMath(krArUGenDef, flock.generateBuffer(64, function (i) {
             var j = i + 1;
             return j + j;
         }), "Audio rate source, audio rate add.");
@@ -2110,8 +2110,8 @@ var fluid = fluid || require("infusion"),
 
 
     test("Trigger running at control rate", function () {
-        var oneBuffer = flock.generate(64, 1);
-        var twoBuffer = flock.generate(64, 2);
+        var oneBuffer = flock.generateBufferWithValue(64, 1);
+        var twoBuffer = flock.generateBufferWithValue(64, 2);
 
         var testSpec = {
             synthDef: {
@@ -2163,22 +2163,22 @@ var fluid = fluid || require("infusion"),
     });
 
     test("Trigger running at audio rate", function () {
-        var outputBuffer =  flock.generate(64, function (i) {
+        var outputBuffer =  flock.generateBuffer(64, function (i) {
             return i + 1;
         });
 
-        var secondTrig = flock.generate(64, 0.0);
+        var secondTrig = flock.generateBufferWithValue(64, 0.0);
         secondTrig[1] = 1.0;
 
-        var secondExpected = flock.generate(64, 2);
+        var secondExpected = flock.generateBufferWithValue(64, 2);
         secondExpected[0] = 1;
 
-        var thirdTrig = flock.generate(64, 0.0);
+        var thirdTrig = flock.generateBufferWithValue(64, 0.0);
         thirdTrig[2] = 1.0;
         thirdTrig[3] = 0.0;
         thirdTrig[4] = 0.001;
 
-        var thirdExpected = flock.generate(64, 5);
+        var thirdExpected = flock.generateBufferWithValue(64, 5);
         thirdExpected[0] = 2; // Hold value is at 2
         thirdExpected[1] = 2;
         thirdExpected[2] = 3; // Two samples have gone by, value will be 3.
@@ -2200,14 +2200,14 @@ var fluid = fluid || require("infusion"),
                     ugen: "flock.test.ugen.mock",
                     rate: "audio",
                     options: {
-                        buffer: flock.generate(64, 0.0)
+                        buffer: flock.generateBufferWithValue(64, 0.0)
                     }
                 }
             },
 
             tests: [
                 {
-                    expected: flock.generate(64, 1), // First value from the source; trigger is closed.
+                    expected: flock.generateBufferWithValue(64, 1), // First value from the source; trigger is closed.
                     rate: "audio",
                     msg: "When the trigger is closed for an entire control period, latch should output only the first value."
                 },
@@ -2249,7 +2249,7 @@ var fluid = fluid || require("infusion"),
         source: {
             ugen: "flock.ugen.sequence",
             rate: "control",
-            list: flock.test.fillBuffer(1, 64)
+            list: flock.test.generateSequence(1, 64)
         }
     };
 
@@ -2380,7 +2380,7 @@ var fluid = fluid || require("infusion"),
                 source: {
                     ugen: "flock.test.ugen.mock",
                     options: {
-                        buffer: flock.generate(64, function (i) {
+                        buffer: flock.generateBuffer(64, function (i) {
                             return i;
                         })
                     }
@@ -2388,7 +2388,7 @@ var fluid = fluid || require("infusion"),
                 trigger: {
                     ugen: "flock.test.ugen.mock",
                     options: {
-                        buffer: flock.generate(64, function (i) {
+                        buffer: flock.generateBuffer(64, function (i) {
                             return i === 31 ? 1.0 : 0.0;
                         })
                     }
@@ -2453,7 +2453,7 @@ var fluid = fluid || require("infusion"),
                 synthDefOverrides: {
                     trigger: {
                         options: {
-                            buffer: flock.generate(64, function (i) {
+                            buffer: flock.generateBuffer(64, function (i) {
                                 return (i === 31 || i === 62) ? 1.0 : 0.0;
                             })
                         }
@@ -2518,7 +2518,7 @@ var fluid = fluid || require("infusion"),
         module("flock.ugen.pan2");
 
         var makePannerSynth = function (panVal) {
-            var ones = flock.generate(64, 1);
+            var ones = flock.generateBufferWithValue(64, 1);
             var panSynthDef = {
                 id: "panner",
                 ugen: "flock.ugen.pan2",
@@ -2564,8 +2564,8 @@ var fluid = fluid || require("infusion"),
         };
 
         test("Audio rate pan2 tests", function () {
-            var fullPower = flock.generate(64, 1),
-                equalPower = flock.generate(64, Math.sqrt(0.5));
+            var fullPower = flock.generateBufferWithValue(64, 1),
+                equalPower = flock.generateBufferWithValue(64, Math.sqrt(0.5));
 
             var pannerTestSpecs = [
                 {
