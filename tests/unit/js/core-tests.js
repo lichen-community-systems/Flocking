@@ -15,7 +15,7 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.test.core");
 
-    var environment = flock.init();
+    var environment = flock.test.initSilentEnvironment();
 
     var $ = fluid.registerNamespace("jQuery");
 

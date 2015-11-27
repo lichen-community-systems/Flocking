@@ -16,7 +16,7 @@ var fluid = fluid || require("infusion"),
 
     var $ = fluid.registerNamespace("jQuery");
 
-    var environment = flock.init();
+    var environment = flock.test.initSilentEnvironment();
 
     var simpleSynthDef = {
         ugen: "flock.ugen.out",
