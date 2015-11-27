@@ -129,6 +129,10 @@ var fluid = fluid || require("infusion");
                             "name": "Read buffer with phasor"
                         },
                         {
+                            "id": "chop-buffer",
+                            "name": "Chop a buffer"
+                        },
+                        {
                             "id": "audio-in",
                             "name": "Live audio input"
                         },

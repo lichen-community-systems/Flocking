@@ -14,7 +14,7 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    var environment = flock.init(),
+    var environment = flock.test.initSilentEnvironment(),
         sampleRate = environment.audioSystem.model.rates.audio;
 
     var $ = fluid.registerNamespace("jQuery");
@@ -437,4 +437,39 @@ var fluid = fluid || require("infusion"),
     };
 
     testBufferDurationAtAllRates();
+
+
+    QUnit.module("flock.ugen.chopBuffer");
+
+
+    QUnit.asyncTest("Static default inputs", function () {
+        var s = flock.synth({
+            synthDef: {
+                id: "chopper",
+                ugen: "flock.ugen.chopBuffer",
+                start: 0.1,
+                buffer: "honey"
+            }
+        });
+
+        var chopper = s.get("chopper");
+
+        flock.bufferLoader({
+            bufferDefs: [
+                {
+                    id: "honey",
+                    url: "../../../demos/shared/audio/where-the-honey-is.mp3"
+                }
+            ],
+            listeners: {
+                afterBuffersLoaded: function () {
+                    flock.evaluate.synth(s);
+                    flock.test.arrayNotSilent(chopper.output, "The output should not be silent.");
+                    flock.test.unbrokenAudioSignalInRange(chopper.output, -1, 1, "The output should be in audio range.");
+                    QUnit.start();
+                }
+            }
+        });
+    });
+
 }());

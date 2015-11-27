@@ -616,4 +616,253 @@ var fluid = fluid || require("infusion"),
         inputs: {}
     });
 
+
+    flock.ugen.chopBuffer = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        flock.ugen.buffer(that);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                out = that.output;
+
+            flock.ugen.chopBuffer.prepareVoices(that, numSamps);
+            flock.ugen.chopBuffer.generateSamplesForAllVoices(that, numSamps);
+
+            m.unscaledValue = flock.ugen.lastOutputValue(numSamps, out);
+            that.mulAdd(numSamps);
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
+        };
+
+        that.onInputChanged = function (inputName) {
+            that.onBufferInputChanged(inputName);
+            that.calculateStrides();
+            flock.onMulAddInputChanged(that);
+        };
+
+        that.onBufferReady = function () {
+            var m = that.model;
+            m.stepSize = that.buffer.format.sampleRate / m.sampleRate;
+            m.lastIdx = that.buffer.format.numSampleFrames - 1;
+        };
+
+        that.init = function () {
+            flock.ugen.chopBuffer.initVoices(that);
+            that.initBuffer();
+            that.onInputChanged();
+
+            var source = that.buffer.data.channels[that.inputs.channel.output[0]];
+            that.model.lastIdx = source.length - 1;
+        };
+
+        that.init();
+
+        return that;
+    };
+
+    flock.ugen.chopBuffer.randomIndex = flock.randomValue;
+
+    flock.ugen.chopBuffer.initVoice = function () {
+        return {
+            currentStage: 4,
+            samplesRemaining: 0,
+            duration: 0.0,
+            attackDur: 0.0,
+            releaseDur: 0.0,
+            hasTriggeredNextVoice: false,
+            idx: 0.0,
+
+            stages: [
+                {
+                    samplesRemaining: 0
+                },
+                {
+                    samplesRemaining: 0
+                },
+                {
+                    samplesRemaining: 0
+                },
+                {
+                    samplesRemaining: 0
+                }
+            ]
+        };
+    };
+
+    flock.ugen.chopBuffer.initVoices = function (that) {
+        var m = that.model;
+        m.voices = new Array(that.options.maxVoices);
+        m.freeVoices = new Array(that.options.maxVoices);
+
+        for (var i = 0; i < that.options.maxVoices; i++) {
+            var voice = flock.ugen.chopBuffer.initVoice(that);
+            m.voices[i] = voice;
+            m.freeVoices[i] = voice;
+        }
+    };
+
+    flock.ugen.chopBuffer.allocateVoice = function (that, numDurationSamps) {
+        var m = that.model,
+            stageSampleState = m.stageSampleState;
+
+        if (m.freeVoices.length < 1) {
+            return; // We're maxed out on voices already.
+        }
+
+        var voice = m.freeVoices.pop();
+        for (var i = 0; i < stageSampleState.length; i++) {
+            var stage = voice.stages[i];
+            stage.samplesRemaining = stageSampleState[i];
+        }
+
+        voice.hasTriggeredNextVoice = false;
+        voice.currentStage = flock.ugen.chopBuffer.stages.WAIT;
+        voice.samplesRemaining = numDurationSamps; // TODO: Does this also need to include wait time?
+
+        var maxStartIdx = that.inputs.end.output[0] - numDurationSamps;
+        maxStartIdx = Math.max(0, maxStartIdx);
+        voice.idx = flock.ugen.chopBuffer.randomIndex(that.inputs.start.output[0], maxStartIdx) * m.lastIdx;
+
+        return voice;
+    };
+
+    flock.ugen.chopBuffer.updateVoiceState = function (that, voice, numDurationSamps) {
+        var stageSampleState = that.model.stageSampleState;
+
+        for (var i = voice.currentStage; i < stageSampleState.length; i++) {
+            var stage = voice.stages[i],
+                stateForStage = stageSampleState[i];
+
+            if (stage.sampsRemaining > stateForStage) {
+                stage.sampsRemaining = stateForStage;
+            }
+        }
+
+        if (voice.sampsRemaining > numDurationSamps) {
+            voice.sampsRemaining = numDurationSamps;
+        }
+    };
+
+    flock.ugen.chopBuffer.prepareVoices = function (that, numSamps) {
+        var m = that.model,
+            inputs = that.inputs,
+            numGapSamps = Math.floor(inputs.gap.output[0] * m.sampleRate),
+            amount = inputs.amount.output[0],
+            minDuration = inputs.minDuration.output[0],
+            halfMinDuration = minDuration / 2,
+            numDurationSamps = amount === 0.0 ? m.lastIdx : Math.floor((minDuration / amount) * m.sampleRate);
+
+        m.stageSampleState[1] = flock.ugen.chopBuffer.envLength(inputs.attack.output[0], halfMinDuration, that.model.sampleRate);
+        m.stageSampleState[3] = flock.ugen.chopBuffer.envLength(inputs.release.output[0], halfMinDuration, that.model.sampleRate);
+        m.stageSampleState[2] = numDurationSamps - m.stageSampleState[1] - m.stageSampleState[3];
+
+        m.numActiveVoices = 0;
+        for (var voiceIdx = 0; voiceIdx < m.voices.length; voiceIdx++) {
+            var voice = m.voices[voiceIdx];
+            flock.ugen.chopBuffer.updateVoiceState(that, voice, numDurationSamps);
+
+            if (voice.currentStage < flock.ugen.chopBuffer.stages.DONE) {
+                m.numActiveVoices++;
+
+                // Allocate the next voice if it should be active within this block.
+                if (!voice.hasTriggeredNextVoice) {
+                    var numWaitSamps = voice.samplesRemaining + numGapSamps;
+                    if (numWaitSamps < numSamps) {
+                        m.stageSampleState[0] = numWaitSamps;
+                        flock.ugen.chopBuffer.allocateVoice(that, numDurationSamps);
+                        voice.hasTriggeredNextVoice = true;
+                    }
+                }
+            }
+        }
+
+        if (m.numActiveVoices === 0) {
+            m.stageSampleState[0] = 0;
+            flock.ugen.chopBuffer.allocateVoice(that, numDurationSamps);
+        }
+    };
+
+    flock.ugen.chopBuffer.generateSamplesForVoice = function (that, voice, numSamps) {
+        var m = that.model,
+            out = that.output,
+            inputs = that.inputs,
+            speed = inputs.speed.output,
+            source = that.buffer.data.channels[inputs.channel.output[0]];
+
+        // TODO: Convert this to a while loop so that
+        // we continue to generate the appropriate samples even
+        // when we've hit the end of a stage and need to move onto the next one.
+        for (var i = 0, j = 0; i < Math.min(numSamps, voice.samplesRemaining); i++, j += m.strides.speed) {
+            var step = m.stepSize * speed[j];
+            out[i] += that.interpolate(voice.idx, source);
+
+            voice.samplesRemaining -= step;
+            voice.stages[voice.currentStage].samplesRemaining -= step;
+            voice.idx += step;
+            if (voice.stages[voice.currentStage].samplesRemaining <= 0) {
+                voice.currentStage++;
+            }
+
+            // TODO: Add support for envelope stages.
+        }
+
+        if (voice.samplesRemaining <= 0) {
+            voice.currentStage++;
+            m.freeVoices.push(voice);
+        }
+    };
+
+    flock.ugen.chopBuffer.generateSamplesForAllVoices = function (that, numSamps) {
+        var m = that.model;
+
+        flock.clearBuffer(that.output);
+
+        for (var voiceIdx = m.voices.length - 1; voiceIdx >= 0; voiceIdx--) {
+            var voice = m.voices[voiceIdx];
+
+            if (voice.currentStage < flock.ugen.chopBuffer.stages.DONE) {
+                flock.ugen.chopBuffer.generateSamplesForVoice(that, voice, numSamps);
+            }
+        }
+    };
+
+    flock.ugen.chopBuffer.envLength = function (stageDuration, halfMinDuration, sampleRate) {
+        return Math.floor((stageDuration > halfMinDuration ?
+            halfMinDuration : stageDuration) * sampleRate);
+    };
+
+    flock.ugen.chopBuffer.stages = {
+        WAIT: 0,
+        ATTACK: 1,
+        SUSTAIN: 2,
+        RELEASE: 3,
+        DONE: 4
+    };
+
+    flock.ugenDefaults("flock.ugen.chopBuffer", {
+        rate: "audio",
+        inputs: {
+            buffer: null,
+            channel: 0.0,       // Constant rate
+            start: 0.0,         // Control, constant rate
+            end: 1.0,           // Control, constant rate
+            speed: 1.0,         // Audio, control, constant rate
+            amount: 1.0,        // Control, constant rate
+            minDuration: 0.1,   // Control, constant rate
+            attack: 0.01,       // Control, constant rate
+            release: 0.01,      // Control, constant rate
+            gap: 0.0            // Control, constant rate
+        },
+        ugenOptions: {
+            model: {
+                stepSize: 1.0,
+                numActiveVoices: 0,
+                voices: [],
+                freeVoices: [],
+                stageSampleState: [0, 0, 0, 0],
+                lastIdx: 0
+            },
+            maxVoices: 2,
+            strideInputs: ["speed"]
+        }
+    });
 }());
