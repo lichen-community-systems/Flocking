@@ -993,7 +993,7 @@ var fluid = fluid || require("infusion"),
 
     flock.test.envGen.testLineGenerator = function (testSpec) {
         test(testSpec.type + " line generator.", function () {
-            var actual = flock.line.fill(testSpec.type, new Float32Array(testSpec.numSamps), 1, 10);
+            var actual = flock.fillBufferWithLine(testSpec.type, new Float32Array(testSpec.numSamps), 1, 10);
             flock.test.arrayEqualBothRounded(6, actual, testSpec.expected,
                 "The " + testSpec.type + " line generator should produce the correct output.");
         });
