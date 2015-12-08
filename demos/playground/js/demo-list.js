@@ -117,7 +117,7 @@ var fluid = fluid || require("infusion");
                             "name": "Play a buffer"
                         },
                         {
-                            "id": "playbuffer-trigger",
+                            "id": "playBuffer-trigger",
                             "name": "Trigger buffer playback"
                         },
                         {
