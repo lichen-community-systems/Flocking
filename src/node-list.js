@@ -77,6 +77,11 @@ var fluid = fluid || require("infusion"),
         }
     };
 
+    flock.nodeList.isNodeActive = function (nodeList, node) {
+        var idx = nodeList.nodes.indexOf(node);
+        return idx > -1;
+    };
+
     flock.nodeList.remove = function (nodeList, node) {
         var idx = nodeList.nodes.indexOf(node);
         if (idx > -1) {
