@@ -388,7 +388,6 @@ var fluid = fluid || require("infusion"),
                 }
 
                 m.unscaledValue = val;
-                m.stepSize = stepSize;
 
                 return buffer;
             }
@@ -883,7 +882,7 @@ var fluid = fluid || require("infusion"),
                 that.lineGen.gen(1, i, out, m);
                 m.numSegmentSamps--;
 
-                if (m.numSegmentSamps === 0) {
+                if (m.numSegmentSamps <= 0) {
                     flock.ugen.envGen.nextStage(that, timeScale);
                 }
             }
@@ -972,7 +971,7 @@ var fluid = fluid || require("infusion"),
             durSamps = Infinity;
         } else {
             dur = envelope.times[m.stage - 1] * timeScale;
-            durSamps = Math.max(1, dur * m.sampleRate);
+            durSamps = Math.max(1, Math.round(dur * m.sampleRate));
         }
 
         m.numSegmentSamps = durSamps;
