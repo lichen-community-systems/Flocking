@@ -464,8 +464,7 @@ var fluid = fluid || require("infusion"),
             listeners: {
                 afterBuffersLoaded: function () {
                     flock.evaluate.synth(s);
-                    flock.test.arrayNotSilent(chopper.output, "The output should not be silent.");
-                    flock.test.unbrokenAudioSignalInRange(chopper.output, -1, 1, "The output should be in audio range.");
+                    flock.test.unbrokenAudioSignalInRange(chopper.output, -1, 1);
                     QUnit.start();
                 }
             }

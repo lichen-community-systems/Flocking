@@ -21165,6 +21165,16 @@ var fluid = fluid || require("infusion"),
             removeFromEnvironment: {
                 funcName: "flock.node.removeFromEnvironment",
                 args: ["{that}", "{enviro}.nodeList"]
+            },
+
+            /**
+             * Returns a boolean describing if this node is currently
+             * active in its environment's list of nodes
+             * (i.e. if it is currently generating samples).
+             */
+            isPlaying: {
+                funcName: "flock.nodeList.isNodeActive",
+                args:["{enviro}.nodeList", "{that}"]
             }
         },
 
@@ -21543,6 +21553,11 @@ var fluid = fluid || require("infusion"),
         if (name) {
             delete nodeList.namedNodes[name];
         }
+    };
+
+    flock.nodeList.isNodeActive = function (nodeList, node) {
+        var idx = nodeList.nodes.indexOf(node);
+        return idx > -1;
     };
 
     flock.nodeList.remove = function (nodeList, node) {
