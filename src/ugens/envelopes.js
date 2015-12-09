@@ -859,7 +859,7 @@ var fluid = fluid || require("infusion"),
                 i += sampsToGen;
                 m.numSegmentSamps -= sampsToGen;
 
-                if (m.numSegmentSamps === 0) {
+                if (m.numSegmentSamps <= 0) {
                     flock.ugen.envGen.nextStage(that, timeScale);
                 }
             }
