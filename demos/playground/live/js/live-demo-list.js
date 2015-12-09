@@ -65,6 +65,14 @@ var fluid = fluid || require("infusion");
                         {
                             "id": "impulse",
                             "name": "Impulse"
+                        },
+                        {
+                            "id": "impulse-pm",
+                            "name": "Impulse Phase Modulation"
+                        },
+                        {
+                            "id": "bandlimited-impulse",
+                            "name": "Bandlimited impulse"
                         }
                     ]
                 },
@@ -98,6 +106,36 @@ var fluid = fluid || require("infusion");
                 },
 
                 {
+                    "name": "Audio Buffers",
+                    "options": [
+                        {
+                            "id": "play-buffer",
+                            "name": "Play a buffer"
+                        },
+                        {
+                            "id": "playBuffer-trigger",
+                            "name": "Trigger buffer playback"
+                        },
+                        {
+                            "id": "readBuffer",
+                            "name": "Read buffer"
+                        },
+                        {
+                            "id": "readBuffer-phasor",
+                            "name": "Read buffer with phasor"
+                        },
+                        {
+                            "id": "audio-in",
+                            "name": "Live audio input"
+                        },
+                        {
+                            "id": "audio-in-granulated",
+                            "name": "Granulated live audio"
+                        }
+                    ]
+                },
+
+                {
                     "name": "Filters",
                     "options": [
                         {
@@ -117,8 +155,16 @@ var fluid = fluid || require("infusion");
                             "name": "Band pass filter"
                         },
                         {
+                            "id": "delay",
+                            "name": "Delay"
+                        },
+                        {
                             "id": "latch",
                             "name": "Sample and hold"
+                        },
+                        {
+                            "id": "moog",
+                            "name": "Moog VCF"
                         }
                     ]
                 },
@@ -129,6 +175,18 @@ var fluid = fluid || require("infusion");
                         {
                             "id": "asr",
                             "name": "Attack/Sustain/Release"
+                        },
+                        {
+                            "id": "adsr",
+                            "name": "ADSR Envelope Generator"
+                        },
+                        {
+                            "id": "custom-envelope",
+                            "name": "Custom Envelope"
+                        },
+                        {
+                            "id": "decay",
+                            "name": "Decay"
                         },
                         {
                             "id": "glissando",
@@ -163,6 +221,24 @@ var fluid = fluid || require("infusion");
                         {
                             "id": "mouse-xy",
                             "name": "Mouse X and Y axes"
+                        },
+                        {
+                            "id": "mouse-click",
+                            "name": "Mouse click"
+                        }
+                    ]
+                },
+
+                {
+                    "name": "Multiple Channels",
+                    "options": [
+                        {
+                            "id": "stereo",
+                            "name": "Stereo"
+                        },
+                        {
+                            "id": "quadraphonic",
+                            "name": "Four channels",
                         }
                     ]
                 },
@@ -171,11 +247,20 @@ var fluid = fluid || require("infusion");
                     "name": "Synths and scheduling",
                     "options": [
                         {
+                            "id": "band",
+                            "name": "Band"
+                        },
+                        {
+                            "id": "sequencer",
+                            "name": "Sequencer"
+                        },
+                        {
                             "id": "sample-accurate-scheduling",
                             "name": "Sample-accurate scheduling"
                         }
                     ]
                 }
+
             ],
 
             defaultOption: "granulator"

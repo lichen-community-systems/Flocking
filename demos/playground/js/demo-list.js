@@ -94,7 +94,7 @@ var fluid = fluid || require("infusion");
                         },
                         {
                             "id": "sum",
-                            "name": "Additive synthesis",
+                            "name": "Additive synthesis"
                         }
                     ]
                 },
