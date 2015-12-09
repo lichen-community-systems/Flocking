@@ -94,7 +94,7 @@ var fluid = fluid || require("infusion");
                         },
                         {
                             "id": "sum",
-                            "name": "Additive synthesis",
+                            "name": "Additive synthesis"
                         }
                     ]
                 },
@@ -117,7 +117,7 @@ var fluid = fluid || require("infusion");
                             "name": "Play a buffer"
                         },
                         {
-                            "id": "playbuffer-trigger",
+                            "id": "playBuffer-trigger",
                             "name": "Trigger buffer playback"
                         },
                         {
@@ -127,6 +127,10 @@ var fluid = fluid || require("infusion");
                         {
                             "id": "readBuffer-phasor",
                             "name": "Read buffer with phasor"
+                        },
+                        {
+                            "id": "chop-buffer",
+                            "name": "Chop a buffer"
                         },
                         {
                             "id": "audio-in",

@@ -5,7 +5,7 @@
 
     fluid.registerNamespace("flock.test.audioFile");
 
-    var environment = flock.init();
+    var environment = flock.test.initSilentEnvironment();
 
     flock.test.audioFile.testTriangleBuffer = function (decoded, sampleRate) {
         var data = decoded.data,

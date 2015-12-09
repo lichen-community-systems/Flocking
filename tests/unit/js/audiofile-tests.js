@@ -14,7 +14,7 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    var environment = flock.init();
+    var environment = flock.test.initSilentEnvironment();
 
     fluid.registerNamespace("flock.test");
 

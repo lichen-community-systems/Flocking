@@ -18101,6 +18101,304 @@ var fluid = fluid || require("infusion"),
         inputs: {}
     });
 
+
+    flock.ugen.chopBuffer = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+        flock.ugen.buffer(that);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                out = that.output;
+
+            flock.ugen.chopBuffer.prepareVoices(that, numSamps);
+            flock.ugen.chopBuffer.generateSamplesForAllVoices(that, numSamps);
+
+            m.unscaledValue = flock.ugen.lastOutputValue(numSamps, out);
+            that.mulAdd(numSamps);
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
+        };
+
+        that.onInputChanged = function (inputName) {
+            that.onBufferInputChanged(inputName);
+            that.calculateStrides();
+            flock.onMulAddInputChanged(that);
+        };
+
+        that.onBufferReady = function () {
+            var m = that.model;
+            m.stepSize = that.buffer.format.sampleRate / m.sampleRate;
+            m.lastIdx = that.buffer.format.numSampleFrames - 1;
+        };
+
+        that.init = function () {
+            flock.ugen.chopBuffer.initVoices(that);
+            that.initBuffer();
+            that.onInputChanged();
+
+            var source = that.buffer.data.channels[that.inputs.channel.output[0]];
+            that.model.lastIdx = source.length - 1;
+        };
+
+        that.init();
+
+        return that;
+    };
+
+    flock.ugen.chopBuffer.initVoice = function () {
+        return {
+            currentStage: 4,
+            samplesRemaining: 0,
+            duration: 0.0,
+            attackDur: 0.0,
+            releaseDur: 0.0,
+            hasTriggeredNextVoice: false,
+            idx: 0.0,
+
+            stages: [
+                {
+                    samplesRemaining: 0
+                },
+                {
+                    samplesRemaining: 0
+                },
+                {
+                    samplesRemaining: 0
+                },
+                {
+                    samplesRemaining: 0
+                }
+            ]
+        };
+    };
+
+    flock.ugen.chopBuffer.initVoices = function (that) {
+        var m = that.model;
+
+        for (var i = 0; i < that.options.maxVoices; i++) {
+            var voice = flock.ugen.chopBuffer.initVoice(that);
+            m.freeVoices[i] = voice;
+        }
+    };
+
+    flock.ugen.chopBuffer.randomIndex = flock.randomValue;
+
+    flock.ugen.chopBuffer.randomStartIndex = function (that) {
+        var m = that.model,
+            inputs = that.inputs,
+            maxStartIdx = inputs.end.output[0] - m.inputState.numDurationSamps;
+
+        maxStartIdx = Math.max(0, maxStartIdx);
+        return flock.ugen.chopBuffer.randomIndex(inputs.start.output[0], maxStartIdx) * m.lastIdx;
+    };
+
+    flock.ugen.chopBuffer.allocateVoice = function (that) {
+        var m = that.model,
+            stageSampleState = m.stageSampleState;
+
+        if (m.freeVoices.length < 1) {
+            return; // We're maxed out on voices already.
+        }
+
+        var voice = m.freeVoices.pop();
+        m.activeVoices.push(voice);
+
+        for (var i = 0; i < stageSampleState.length; i++) {
+            var stage = voice.stages[i];
+            stage.samplesRemaining = stageSampleState[i];
+        }
+
+        voice.hasTriggeredNextVoice = false;
+        voice.currentStage = flock.ugen.chopBuffer.stages.WAIT;
+        voice.samplesRemaining = m.inputState.numDurationSamps + m.inputState.numGapSamps;
+        voice.idx = flock.ugen.chopBuffer.randomStartIndex(that);
+
+        return voice;
+    };
+
+    flock.ugen.chopBuffer.updateVoiceState = function (that, voice) {
+        var m = that.model,
+            stageSampleState = m.stageSampleState,
+            inputState = m.inputState;
+
+        for (var i = voice.currentStage; i < stageSampleState.length; i++) {
+            var stage = voice.stages[i],
+                stateForStage = stageSampleState[i];
+
+            if (stage.samplesRemaining > stateForStage) {
+                stage.samplesRemaining = stateForStage;
+            }
+        }
+
+        if (voice.samplesRemaining > inputState.numDurationSamps) {
+            voice.samplesRemaining = inputState.numDurationSamps;
+
+            if (voice.currentStage === 0) {
+                voice.samplesRemaining += inputState.numGapSamps;
+            }
+        }
+    };
+
+    flock.ugen.chopBuffer.triggerNextVoice = function (that, voice, numSamps, numDurationSamps, numGapSamps) {
+        var numWaitSamps = voice.samplesRemaining + numGapSamps;
+        if (numWaitSamps < numSamps) {
+            that.model.stageSampleState[0] = numWaitSamps;
+            flock.ugen.chopBuffer.allocateVoice(that);
+            voice.hasTriggeredNextVoice = true;
+        }
+    };
+
+    flock.ugen.chopBuffer.envLength = function (stageDuration, halfMinDuration, sampleRate) {
+        return Math.floor((stageDuration > halfMinDuration ?
+            halfMinDuration : stageDuration) * sampleRate);
+    };
+
+    flock.ugen.chopBuffer.deactivateVoice = function (that, voice) {
+        var m = that.model,
+            voiceIdx = m.activeVoices.indexOf(voice);
+
+        if (voiceIdx > -1) {
+            m.activeVoices.splice(voiceIdx, 1);
+        }
+
+        m.freeVoices.push(voice);
+    };
+
+    flock.ugen.chopBuffer.prepareVoice = function (that, voice, numSamps) {
+        flock.ugen.chopBuffer.updateVoiceState(that, voice);
+
+        if (voice.currentStage < flock.ugen.chopBuffer.stages.DONE) {
+            // Allocate the next voice if it should be active within this block.
+            if (!voice.hasTriggeredNextVoice) {
+                flock.ugen.chopBuffer.triggerNextVoice(that, voice, numSamps);
+            }
+        } else {
+            flock.ugen.chopBuffer.deactivateVoice(that, voice);
+        }
+    };
+
+    flock.ugen.chopBuffer.durationSamples = function (minDuration, amount, m) {
+        return amount === 0.0 ? m.lastIdx : Math.floor((minDuration / amount) * m.sampleRate);
+    };
+
+    flock.ugen.chopBuffer.updateInputState = function (inputs, m) {
+        var inputState = m.inputState,
+            amount = inputs.amount.output[0],
+            minDuration = inputs.minDuration.output[0],
+            halfMinDuration = minDuration / 2;
+
+        inputState.numDurationSamps = flock.ugen.chopBuffer.durationSamples(minDuration, amount, m);
+        inputState.numAttackSamps = flock.ugen.chopBuffer.envLength(inputs.attack.output[0], halfMinDuration, m.sampleRate);
+        inputState.numReleaseSamps = flock.ugen.chopBuffer.envLength(inputs.release.output[0], halfMinDuration, m.sampleRate);
+        inputState.numSustainSamps = inputState.numDurationSamps - inputState.numAttackSamps - inputState.numReleaseSamps;
+        inputState.numGapSamps = Math.floor(inputs.gap.output[0] * m.sampleRate);
+
+        return inputState;
+    };
+
+    flock.ugen.chopBuffer.prepareVoices = function (that, numSamps) {
+        var m = that.model;
+
+        // TODO: Sort out the relationship between "inputState" and "stageSampleState".
+        flock.ugen.chopBuffer.updateInputState(that.inputs, m);
+        m.stageSampleState[0] = m.inputState.numGapSamps;
+        m.stageSampleState[1] = m.inputState.numAttackSamps;
+        m.stageSampleState[3] = m.inputState.numReleaseSamps;
+        m.stageSampleState[2] = m.inputState.numSustainSamps;
+
+        for (var voiceIdx = 0; voiceIdx < m.activeVoices.length; voiceIdx++) {
+            var voice = m.activeVoices[voiceIdx];
+            flock.ugen.chopBuffer.prepareVoice(that, voice, numSamps);
+        }
+
+        if (m.activeVoices.length === 0) {
+            flock.ugen.chopBuffer.allocateVoice(that);
+        }
+    };
+
+    flock.ugen.chopBuffer.generateSamplesForVoice = function (that, voice, numSamps) {
+        var m = that.model,
+            out = that.output,
+            inputs = that.inputs,
+            speed = inputs.speed.output,
+            source = that.buffer.data.channels[inputs.channel.output[0]];
+
+        for (var i = 0, j = 0; i < Math.min(numSamps, voice.samplesRemaining); i++, j += m.strides.speed) {
+            if (voice.currentStage >= flock.ugen.chopBuffer.stages.DONE) {
+                break;
+            }
+
+            var step = m.stepSize * speed[j],
+                stage = voice.stages[voice.currentStage];
+
+            out[i] += that.interpolate(voice.idx, source);
+            voice.samplesRemaining -= step;
+            stage.samplesRemaining -= step;
+            voice.idx += step;
+
+            if (stage.samplesRemaining <= 0) {
+                voice.currentStage++;
+            }
+        }
+
+        if (voice.samplesRemaining <= 0 && voice.currentStage < flock.ugen.chopBuffer.stages.DONE) {
+            voice.currentStage = flock.ugen.chopBuffer.stages.DONE;
+        }
+    };
+
+    flock.ugen.chopBuffer.generateSamplesForAllVoices = function (that, numSamps) {
+        var m = that.model;
+
+        flock.clearBuffer(that.output);
+
+        for (var voiceIdx = m.activeVoices.length - 1; voiceIdx >= 0; voiceIdx--) {
+            var voice = m.activeVoices[voiceIdx];
+            flock.ugen.chopBuffer.generateSamplesForVoice(that, voice, numSamps);
+        }
+    };
+
+    flock.ugen.chopBuffer.stages = {
+        WAIT: 0,
+        ATTACK: 1,
+        SUSTAIN: 2,
+        RELEASE: 3,
+        DONE: 4
+    };
+
+    flock.ugenDefaults("flock.ugen.chopBuffer", {
+        rate: "audio",
+        inputs: {
+            buffer: null,
+            channel: 0.0,       // Constant rate
+            start: 0.0,         // Control, constant rate
+            end: 1.0,           // Control, constant rate
+            speed: 1.0,         // Audio, control, constant rate
+            amount: 1.0,        // Control, constant rate
+            minDuration: 0.1,   // Control, constant rate
+            attack: 0.01,       // Control, constant rate
+            release: 0.01,      // Control, constant rate
+            gap: 0.0            // Control, constant rate
+        },
+        ugenOptions: {
+            model: {
+                stepSize: 1.0,
+                activeVoices: [],
+                freeVoices: [],
+                stageSampleState: [0, 0, 0, 0],
+                lastIdx: 0,
+                inputState: {
+                    numAttackSamps: 0,
+                    numSustainSamps: 0,
+                    numReleaseSamps: 0,
+                    numDurationSamps: 0,
+                    numGapSamps: 0
+                }
+            },
+            interpolation: "linear",
+            envelopeType: "linear",
+            maxVoices: 2,
+            strideInputs: ["speed"]
+        }
+    });
 }());
 ;/*
  * Flocking Debugging Unit Generators
@@ -18748,14 +19046,14 @@ var fluid = fluid || require("infusion"),
             }
 
             fluid.each(curve, function (curveName) {
-                var lineGen = flock.line.generator(curveName);
+                var lineGen = flock.lineGenerator(curveName);
                 if (!lineGen) {
                     report.curve = "'" + curveName + "' is not a valid curve type. curve: " + curve;
                 }
             });
         }
 
-        var lineGen = flock.line.generator(curve);
+        var lineGen = flock.lineGenerator(curve);
         if (!lineGen) {
             report.curve = "'" + curve + "' is not a valid curve type.";
         }
@@ -18792,45 +19090,54 @@ var fluid = fluid || require("infusion"),
     };
 
 
+
+    // TODO: Unit tests!
+    // e.g. flock.fillBufferWithLine("linear", new Float32Array(64), 0, 1);
+    flock.fillBufferWithLine = function (type, buffer, start, end, startIdx, endIdx) {
+        startIdx = startIdx === undefined ? 0 : startIdx;
+        endIdx = endIdx === undefined ? buffer.length : endIdx;
+
+        var numSamps = endIdx - startIdx,
+            m = flock.fillBufferWithLine.singletonModel;
+
+        m.unscaledValue = start;
+        m.destination = end;
+        m.numSegmentSamps = numSamps - 1;
+
+        if (typeof type === "number") {
+            m.currentCurve = type;
+            type = "curve";
+        }
+
+        var generator = flock.line[type];
+        if (!generator) {
+            flock.fail("No line generator could be found for type " + type);
+        }
+        generator.init(m);
+
+        return generator.gen(numSamps, startIdx, buffer, m);
+    };
+
+    // Unsupported API.
+    flock.fillBufferWithLine.singletonModel = {
+        unscaledValue: 0.0,
+        value: 0.0,
+        destination: 1.0
+    };
+
+
+    flock.lineGenerator = function (lineType) {
+        var type = typeof lineType;
+
+        return type === "string" ? flock.line[lineType] :
+            type === "number" ? flock.line.curve : flock.line.linear;
+    };
+
     /****************************
      * Line Generator Functions *
      ****************************/
 
     flock.line = {
-        // TODO: Unit tests!
-        // e.g. flock.line.fill("linear", new Float32Array(64), 0, 1);
-        fill: function (type, buffer, start, end, startIdx, endIdx) {
-            startIdx = startIdx === undefined ? 0 : startIdx;
-            endIdx = endIdx === undefined ? buffer.length : endIdx;
-
-            var numSamps = endIdx - startIdx,
-                m = flock.line.fill.model;
-
-            m.unscaledValue = start;
-            m.destination = end;
-            m.numSegmentSamps = numSamps - 1;
-
-            if (typeof type === "number") {
-                m.currentCurve = type;
-                type = "curve";
-            }
-
-            var generator = flock.line[type];
-            if (!generator) {
-                flock.fail("No line generator could be found for type " + type);
-            }
-            generator.init(m);
-
-            return generator.gen(numSamps, startIdx, buffer, m);
-        },
-
-        generator: function (curve) {
-            var type = typeof curve;
-
-            return type === "string" ? flock.line[curve] :
-                type === "number" ? flock.line.curve : flock.line.linear;
-        },
-
         constant: {
             init: function (m) {
                 m.stepSize = 0;
@@ -19064,12 +19371,6 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    // Unsupported API.
-    flock.line.fill.model = {
-        unscaledValue: 0.0,
-        value: 0.0,
-        destination: 1.0
-    };
 
     /****************************
      * Envelope Unit Generators *
@@ -19487,7 +19788,7 @@ var fluid = fluid || require("infusion"),
         } else {
             curveValue = curve[m.stage - 1];
             m.currentCurve = curveValue;
-            lineGen = flock.line.generator(curveValue);
+            lineGen = flock.lineGenerator(curveValue);
         }
 
         flock.ugen.envGen.setupStage(timeScale, envelope, m);

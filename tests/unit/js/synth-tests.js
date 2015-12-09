@@ -16,7 +16,7 @@ var fluid = fluid || require("infusion"),
 
     var $ = fluid.registerNamespace("jQuery");
 
-    var environment = flock.init();
+    var environment = flock.test.initSilentEnvironment();
 
     var simpleSynthDef = {
         ugen: "flock.ugen.out",
@@ -94,12 +94,36 @@ var fluid = fluid || require("infusion"),
         }, 2000);
     };
 
+    test("Synth.isPlaying()", function () {
+        var s = flock.synth({
+            synthDef: {
+                ugen: "flock.ugen.sin"
+            },
+
+            addToEnvironment: false
+        });
+
+        ok(!s.isPlaying(), "The synth should not be playing initially.");
+
+        s.play();
+        ok(s.isPlaying(),
+            "The synth should should be playing after invoking the play() method.");
+        ok(s.enviro.nodeList.nodes.indexOf(s) > -1,
+            "The synth should actually be a member of the environment's node list.");
+
+        s.pause();
+        ok(!s.isPlaying(),
+            "The synth should not be playing after pause() has been invoked.");
+        ok(s.enviro.nodeList.nodes.indexOf(s) < 0,
+            "The synth should no longer be a member of the environment's node list.");
+    });
+
     asyncTest("Auto add to the environment", function () {
         var synth = flock.test.genReportSynth();
         environment.play();
 
         testEnviroGraph(function () {
-            ok(environment.nodeList.nodes.indexOf(synth) > -1,
+            ok(synth.isPlaying(),
                 "The synth should have been automatically added to the environment.");
             ok(synth.model.didGen,
                 "The synth should have been evaluated.");
@@ -113,7 +137,7 @@ var fluid = fluid || require("infusion"),
         environment.play();
 
         testEnviroGraph(function () {
-            ok(environment.nodeList.nodes.indexOf(synth) === -1,
+            ok(!synth.isPlaying(),
                 "The synth should not have been automatically added to the environment.");
             ok(!synth.model.didGen,
                 "The synth should not have been evaluated.");
@@ -128,7 +152,7 @@ var fluid = fluid || require("infusion"),
             waitDur = (audioSettings.bufferSize / audioSettings.rates.audio) * 1000 * 2;
 
         setTimeout(function () {
-            ok(environment.nodeList.nodes.indexOf(synth) > -1,
+            ok(synth.isPlaying(),
                 "The synth should have been automatically added to the environment.");
             ok(synth.model.didGen,
                 "The synth should have been evaluated.");
@@ -155,7 +179,7 @@ var fluid = fluid || require("infusion"),
         environment.play();
 
         setTimeout(function () {
-            ok(environment.nodeList.nodes.indexOf(synth) > -1,
+            ok(synth.isPlaying(),
                 "The synth should have been automatically added to the environment.");
             ok(synth.model.didGen,
                 "The synth should have been evaluated.");

@@ -237,7 +237,7 @@
     // TODO: Remove this condition when Safari fixes its
     // MediaElementAudioSourceNode implementation.
     if (!flock.platform.browser.safari) {
-        environment = flock.init();
+        environment = flock.test.initSilentEnvironment();
 
         var sampleRate = environment.audioSystem.context.sampleRate,
             testFilePath = flock.test.webaudio.getTestFilePath(sampleRate);

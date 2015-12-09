@@ -13,7 +13,7 @@ var flock = flock || {};
 (function () {
     "use strict";
 
-    flock.init();
+    flock.test.initSilentEnvironment();
 
     module("flock.ugen.value tests");
 

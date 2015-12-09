@@ -14,7 +14,7 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    flock.init();
+    flock.test.initSilentEnvironment();
 
     module("Time Converters");
 

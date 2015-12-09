@@ -248,14 +248,14 @@ var fluid = fluid || require("infusion"),
             }
 
             fluid.each(curve, function (curveName) {
-                var lineGen = flock.line.generator(curveName);
+                var lineGen = flock.lineGenerator(curveName);
                 if (!lineGen) {
                     report.curve = "'" + curveName + "' is not a valid curve type. curve: " + curve;
                 }
             });
         }
 
-        var lineGen = flock.line.generator(curve);
+        var lineGen = flock.lineGenerator(curve);
         if (!lineGen) {
             report.curve = "'" + curve + "' is not a valid curve type.";
         }
@@ -292,45 +292,54 @@ var fluid = fluid || require("infusion"),
     };
 
 
+
+    // TODO: Unit tests!
+    // e.g. flock.fillBufferWithLine("linear", new Float32Array(64), 0, 1);
+    flock.fillBufferWithLine = function (type, buffer, start, end, startIdx, endIdx) {
+        startIdx = startIdx === undefined ? 0 : startIdx;
+        endIdx = endIdx === undefined ? buffer.length : endIdx;
+
+        var numSamps = endIdx - startIdx,
+            m = flock.fillBufferWithLine.singletonModel;
+
+        m.unscaledValue = start;
+        m.destination = end;
+        m.numSegmentSamps = numSamps - 1;
+
+        if (typeof type === "number") {
+            m.currentCurve = type;
+            type = "curve";
+        }
+
+        var generator = flock.line[type];
+        if (!generator) {
+            flock.fail("No line generator could be found for type " + type);
+        }
+        generator.init(m);
+
+        return generator.gen(numSamps, startIdx, buffer, m);
+    };
+
+    // Unsupported API.
+    flock.fillBufferWithLine.singletonModel = {
+        unscaledValue: 0.0,
+        value: 0.0,
+        destination: 1.0
+    };
+
+
+    flock.lineGenerator = function (lineType) {
+        var type = typeof lineType;
+
+        return type === "string" ? flock.line[lineType] :
+            type === "number" ? flock.line.curve : flock.line.linear;
+    };
+
     /****************************
      * Line Generator Functions *
      ****************************/
 
     flock.line = {
-        // TODO: Unit tests!
-        // e.g. flock.line.fill("linear", new Float32Array(64), 0, 1);
-        fill: function (type, buffer, start, end, startIdx, endIdx) {
-            startIdx = startIdx === undefined ? 0 : startIdx;
-            endIdx = endIdx === undefined ? buffer.length : endIdx;
-
-            var numSamps = endIdx - startIdx,
-                m = flock.line.fill.model;
-
-            m.unscaledValue = start;
-            m.destination = end;
-            m.numSegmentSamps = numSamps - 1;
-
-            if (typeof type === "number") {
-                m.currentCurve = type;
-                type = "curve";
-            }
-
-            var generator = flock.line[type];
-            if (!generator) {
-                flock.fail("No line generator could be found for type " + type);
-            }
-            generator.init(m);
-
-            return generator.gen(numSamps, startIdx, buffer, m);
-        },
-
-        generator: function (curve) {
-            var type = typeof curve;
-
-            return type === "string" ? flock.line[curve] :
-                type === "number" ? flock.line.curve : flock.line.linear;
-        },
-
         constant: {
             init: function (m) {
                 m.stepSize = 0;
@@ -564,12 +573,6 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    // Unsupported API.
-    flock.line.fill.model = {
-        unscaledValue: 0.0,
-        value: 0.0,
-        destination: 1.0
-    };
 
     /****************************
      * Envelope Unit Generators *
@@ -987,7 +990,7 @@ var fluid = fluid || require("infusion"),
         } else {
             curveValue = curve[m.stage - 1];
             m.currentCurve = curveValue;
-            lineGen = flock.line.generator(curveValue);
+            lineGen = flock.lineGenerator(curveValue);
         }
 
         flock.ugen.envGen.setupStage(timeScale, envelope, m);

@@ -15,7 +15,7 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.test.core");
 
-    var environment = flock.init();
+    var environment = flock.test.initSilentEnvironment();
 
     var $ = fluid.registerNamespace("jQuery");
 
@@ -31,6 +31,8 @@ var fluid = fluid || require("infusion"),
         flock.nodeList.head(nl, testNodes[0]);
         equal(nl.nodes.length, 1,
             "The node should have been added to the list.");
+        ok(flock.nodeList.isNodeActive(nl, testNodes[0]),
+            "The node should be active in the list.");
         equal(nl.nodes[0], testNodes[0],
             "The node should have been added at the correct index.");
         equal(1, Object.keys(nl.namedNodes).length,
@@ -39,6 +41,8 @@ var fluid = fluid || require("infusion"),
         flock.nodeList.remove(nl, testNodes[0]);
         equal(nl.nodes.length, 0,
             "The node should have been removed from the list");
+        ok(!flock.nodeList.isNodeActive(nl, testNodes[0]),
+            "The node should not be active in the list.");
         equal(0, Object.keys(nl.namedNodes).length,
             "The node should have also been removed from the collection of namedNodes.");
 
