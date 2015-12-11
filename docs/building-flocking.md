@@ -8,6 +8,7 @@ The build system will generate a single file that is easy to include in your web
 
 Install grunt and related dependencies:
 
+    npm install -g grunt-cli
     npm install
 
 To make a build, simply run:
