@@ -2479,17 +2479,87 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+    fluid.defaults("flock.nodeListComponent", {
+        gradeNames: "fluid.component",
+
+        members: {
+            nodeList: "@expand:flock.nodeList()"
+        },
+
+        invokers: {
+            /**
+             * Inserts a new node at the specified index.
+             *
+             * @param {flock.node} nodeToInsert the node to insert
+             * @param {Number} index the index to insert it at
+             * @return {Number} the index at which the new node was added
+             */
+            insert: "flock.nodeList.insert({that}.nodeList, {arguments}.0, {arguments}.1)",
+
+            /**
+             * Inserts a new node at the head of the node list.
+             *
+             * @param {flock.node} nodeToInsert the node to insert
+             * @return {Number} the index at which the new node was added
+             */
+            head: "flock.nodeList.head({that}.nodeList, {arguments}.0)",
+
+            /**
+             * Inserts a new node at the head of the node list.
+             *
+             * @param {flock.node} nodeToInsert the node to insert
+             * @return {Number} the index at which the new node was added
+             */
+            tail: "flock.nodeList.tail({that}.nodeList, {arguments}.0)",
+
+            /**
+             * Adds a node before another node.
+             *
+             * @param {flock.node} nodeToInsert the node to add
+             * @param {flock.node} targetNode the node to insert the new one before
+             * @return {Number} the index the new node was added at
+             */
+            before: "flock.nodeList.before({that}.nodeList, {arguments}.0, {arguments}.1)",
+
+            /**
+             * Adds a node after another node.
+             *
+             * @param {flock.node} nodeToInsert the node to add
+             * @param {flock.node} targetNode the node to insert the new one after
+             * @return {Number} the index the new node was added at
+             */
+            after: "flock.nodeList.after({that}.nodeList, {arguments}.0, {arguments}.1)",
+
+            /**
+             * Removes the specified node.
+             *
+             * @param {flock.node} nodeToRemove the node to remove
+             * @return {Number} the index of the removed node
+             */
+            remove: "flock.nodeList.remove({that}.nodeList, {arguments}.0)",
+
+            /**
+             * Replaces a node with another, removing the old one and adding the new one.
+             *
+             * @param {flock.node} nodeToInsert the node to add
+             * @param {flock.node} nodeToReplace the node to replace
+             * @return {Number} the index the new node was added at
+             */
+            replace: "flock.nodeList.after({that}.nodeList, {arguments}.0, {arguments}.1)"
+        }
+    });
+
     // TODO: Factor out buffer logic into a separate component.
     fluid.defaults("flock.enviro", {
         gradeNames: [
             "fluid.modelComponent",
+            "flock.nodeListComponent",
             "fluid.resolveRootSingle"
         ],
 
         singleRootType: "flock.enviro",
 
         members: {
-            nodeList: "@expand:flock.nodeList()",
             buffers: {},
             bufferSources: {}
         },

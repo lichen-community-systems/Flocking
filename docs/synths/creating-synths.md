@@ -120,6 +120,9 @@ The <code>addToEnvironment</code> option supports several possible values:
     </tr>
 </table>
 
+If you want to dynamically change the evaluation order of synths, you can use
+the [<code>flock.nodeListComponent</code> API](../../src//core.js#L1083) provided by the Environment.
+
 
 ## Defining Your Own Synth Grade
 
