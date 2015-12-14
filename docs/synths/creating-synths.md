@@ -114,6 +114,10 @@ The <code>addToEnvironment</code> option supports several possible values:
         <td><code>"head"</code></td>
         <td>The synth will be added to the head of the environment's list of active nodes.</td>
     </tr>
+    <tr>
+        <td><code>Number</code></td>
+        <td>The synth will be added to the environment's list of active nodes at the specified index.</td>
+    </tr>
 </table>
 
 
