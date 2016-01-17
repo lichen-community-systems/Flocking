@@ -381,7 +381,8 @@ var fluid = fluid || require("infusion"),
         },
 
         events: {
-            afterBuffersLoaded: null
+            afterBuffersLoaded: null,
+            onError: null
         },
 
         listeners: {
@@ -425,29 +426,49 @@ var fluid = fluid || require("infusion"),
         return bufDefs;
     };
 
+    // TODO: Resolve this with the expansion logic in the interpeter.
+    // This operates similar but conflicting logic; strings are expanded as URLs
+    // instead of IDs.
+    flock.bufferLoader.expandBufferDef = function (bufDef) {
+        if (typeof bufDef === "string") {
+            bufDef = {
+                url: bufDef
+            };
+        }
+
+        if (bufDef.id === undefined && bufDef.url !== undefined) {
+            bufDef.id = flock.bufferLoader.idFromURL(bufDef.url);
+        }
+
+        return bufDef;
+    };
+
+    flock.bufferLoader.expandBufferDefs = function (bufferDefs) {
+        return fluid.transform(bufferDefs, flock.bufferLoader.expandBufferDef);
+    };
+
     flock.bufferLoader.loadBuffers = function (that) {
         var bufferDefs = fluid.makeArray(that.options.bufferDefs);
+        var expandedBufferDefs = flock.bufferLoader.expandBufferDefs(bufferDefs);
+        var bufferDefIdx = 1;
 
         // TODO: This is a sign that flock.parse.bufferForDef is still terribly broken.
         var bufferTarget = {
             setBuffer: function (decoded) {
                 that.buffers.push(decoded);
 
+                // TODO: This is not robust and provides no means for error notification!
                 if (that.buffers.length === that.options.bufferDefs.length) {
                     that.events.afterBuffersLoaded.fire(that.buffers);
+                } else if (bufferDefIdx < expandedBufferDefs.length){
+                    var nextBufferDef = expandedBufferDefs[bufferDefIdx];
+                    flock.parse.bufferForDef(nextBufferDef, bufferTarget, that.enviro);
+                    bufferDefIdx++;
                 }
             }
         };
 
-        for (var i = 0; i < bufferDefs.length; i++) {
-            var bufDef = bufferDefs[i];
-            if (bufDef.id === undefined && bufDef.url !== undefined) {
-                bufDef.id = flock.bufferLoader.idFromURL(bufDef.url);
-            }
-
-            // TODO: Hardcoded reference to the shared environment.
-            flock.parse.bufferForDef(bufferDefs[i], bufferTarget, that.enviro);
-        }
+        flock.parse.bufferForDef(expandedBufferDefs[0], bufferTarget, that.enviro);
     };
 
 }());

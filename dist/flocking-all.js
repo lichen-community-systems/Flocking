@@ -1,4 +1,4 @@
-/*! Flocking 0.2.0-dev, Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.2.0-dev, Copyright 2016 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.4
@@ -20135,7 +20135,7 @@ var fluid = fluid || require("infusion"),
     };
 
     /**
-     * Randomly selects an item from an array-like object.
+     * Selects an item from an array-like object using the specified strategy.
      *
      * @param {Array-like object} arr the array to choose from
      * @param {Function} a selection strategy; defaults to flock.randomIndex
@@ -20165,6 +20165,29 @@ var fluid = fluid || require("infusion"),
         key = flock.arrayChoose(collection.keys, strategy);
         val = collection[key];
         return val;
+    };
+
+    /**
+     * Shuffles an array-like object in place.
+     * Uses the Fisher-Yates/Durstenfeld/Knuth algorithm, which is
+     * described here:
+     *   https://www.frankmitchell.org/2015/01/fisher-yates/
+     * and here:
+     *   https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#The_modern_algorithm
+     *
+     * @param arr the array to shuffle
+     * @return the shuffled array
+     */
+    // TODO: Unit tests!
+    flock.shuffle = function (arr) {
+        for (var i = arr.length - 1; i > 0; i -= 1) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var temp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = temp;
+        }
+
+        return arr;
     };
 
     /**
@@ -21107,7 +21130,8 @@ var fluid = fluid || require("infusion"),
                 "{that}.stop()",
                 "{asyncScheduler}.clearAll()",
                 "flock.nodeList.clearAll({that}.nodeList)",
-                "{busManager}.reset()"
+                "{busManager}.reset()",
+                "fluid.clear({that}.buffers)"
             ]
         }
     });
@@ -22765,7 +22789,8 @@ var fluid = fluid || require("infusion"),
         },
 
         events: {
-            afterBuffersLoaded: null
+            afterBuffersLoaded: null,
+            onError: null
         },
 
         listeners: {
@@ -22809,29 +22834,49 @@ var fluid = fluid || require("infusion"),
         return bufDefs;
     };
 
+    // TODO: Resolve this with the expansion logic in the interpeter.
+    // This operates similar but conflicting logic; strings are expanded as URLs
+    // instead of IDs.
+    flock.bufferLoader.expandBufferDef = function (bufDef) {
+        if (typeof bufDef === "string") {
+            bufDef = {
+                url: bufDef
+            };
+        }
+
+        if (bufDef.id === undefined && bufDef.url !== undefined) {
+            bufDef.id = flock.bufferLoader.idFromURL(bufDef.url);
+        }
+
+        return bufDef;
+    };
+
+    flock.bufferLoader.expandBufferDefs = function (bufferDefs) {
+        return fluid.transform(bufferDefs, flock.bufferLoader.expandBufferDef);
+    };
+
     flock.bufferLoader.loadBuffers = function (that) {
         var bufferDefs = fluid.makeArray(that.options.bufferDefs);
+        var expandedBufferDefs = flock.bufferLoader.expandBufferDefs(bufferDefs);
+        var bufferDefIdx = 1;
 
         // TODO: This is a sign that flock.parse.bufferForDef is still terribly broken.
         var bufferTarget = {
             setBuffer: function (decoded) {
                 that.buffers.push(decoded);
 
+                // TODO: This is not robust and provides no means for error notification!
                 if (that.buffers.length === that.options.bufferDefs.length) {
                     that.events.afterBuffersLoaded.fire(that.buffers);
+                } else if (bufferDefIdx < expandedBufferDefs.length){
+                    var nextBufferDef = expandedBufferDefs[bufferDefIdx];
+                    flock.parse.bufferForDef(nextBufferDef, bufferTarget, that.enviro);
+                    bufferDefIdx++;
                 }
             }
         };
 
-        for (var i = 0; i < bufferDefs.length; i++) {
-            var bufDef = bufferDefs[i];
-            if (bufDef.id === undefined && bufDef.url !== undefined) {
-                bufDef.id = flock.bufferLoader.idFromURL(bufDef.url);
-            }
-
-            // TODO: Hardcoded reference to the shared environment.
-            flock.parse.bufferForDef(bufferDefs[i], bufferTarget, that.enviro);
-        }
+        flock.parse.bufferForDef(expandedBufferDefs[0], bufferTarget, that.enviro);
     };
 
 }());
