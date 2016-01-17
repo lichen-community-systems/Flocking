@@ -373,7 +373,8 @@ var fluid = fluid || require("infusion"),
         bufferDefs: [],
 
         members: {
-            buffers: []
+            buffers: [],
+            bufferDefs: "@expand:flock.bufferLoader.expandBufferDefs({that}.options.bufferDefs)"
         },
 
         components: {
@@ -448,6 +449,11 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.bufferLoader.expandBufferDefs = function (bufferDefs) {
+        if (!bufferDefs) {
+            return [];
+        }
+
+        bufferDefs = fluid.makeArray(bufferDefs);
         return fluid.transform(bufferDefs, flock.bufferLoader.expandBufferDef);
     };
 
@@ -460,8 +466,6 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.bufferLoader.loadBuffers = function (that) {
-        var bufferDefs = fluid.makeArray(that.options.bufferDefs);
-        var expandedBufferDefs = flock.bufferLoader.expandBufferDefs(bufferDefs);
         var bufferDefIdx = 1;
 
         // TODO: This is a sign that flock.parse.bufferForDef is still terribly broken.
@@ -472,15 +476,15 @@ var fluid = fluid || require("infusion"),
                 // TODO: This is not robust and provides no means for error notification!
                 if (that.buffers.length === that.options.bufferDefs.length) {
                     that.events.afterBuffersLoaded.fire(that.buffers);
-                } else if (bufferDefIdx < expandedBufferDefs.length){
-                    var nextBufferDef = expandedBufferDefs[bufferDefIdx];
+                } else if (bufferDefIdx < that.bufferDefs.length){
+                    var nextBufferDef = that.bufferDefs[bufferDefIdx];
                     flock.bufferLoader.loadBuffer(nextBufferDef, bufferTarget, that);
                     bufferDefIdx++;
                 }
             }
         };
 
-        flock.bufferLoader.loadBuffer(expandedBufferDefs[0], bufferTarget, that);
+        flock.bufferLoader.loadBuffer(that.bufferDefs[0], bufferTarget, that);
     };
 
 }());

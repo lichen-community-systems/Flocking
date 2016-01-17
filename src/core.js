@@ -26,7 +26,11 @@ var fluid = fluid || require("infusion"),
 
     flock.fluid = fluid;
 
+    // TODO: It appears to be impossible to instantiate an environment
+    // without calling this function.
     flock.init = function (options) {
+        // TODO: Distribute these from top level on the environment to the audioSystem
+        // so that users can more easily specify them in their environment's defaults.
         var enviroOpts = !options ? undefined : {
             components: {
                 audioSystem: {
