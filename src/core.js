@@ -293,7 +293,7 @@ var fluid = fluid || require("infusion"),
     };
 
     /**
-     * Randomly selects an item from an array-like object.
+     * Selects an item from an array-like object using the specified strategy.
      *
      * @param {Array-like object} arr the array to choose from
      * @param {Function} a selection strategy; defaults to flock.randomIndex
@@ -323,6 +323,29 @@ var fluid = fluid || require("infusion"),
         key = flock.arrayChoose(collection.keys, strategy);
         val = collection[key];
         return val;
+    };
+
+    /**
+     * Shuffles an array-like object in place.
+     * Uses the Fisher-Yates/Durstenfeld/Knuth algorithm, which is
+     * described here:
+     *   https://www.frankmitchell.org/2015/01/fisher-yates/
+     * and here:
+     *   https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#The_modern_algorithm
+     *
+     * @param arr the array to shuffle
+     * @return the shuffled array
+     */
+    // TODO: Unit tests!
+    flock.shuffle = function (arr) {
+        for (var i = arr.length - 1; i > 0; i -= 1) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var temp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = temp;
+        }
+
+        return arr;
     };
 
     /**
@@ -1265,7 +1288,8 @@ var fluid = fluid || require("infusion"),
                 "{that}.stop()",
                 "{asyncScheduler}.clearAll()",
                 "flock.nodeList.clearAll({that}.nodeList)",
-                "{busManager}.reset()"
+                "{busManager}.reset()",
+                "fluid.clear({that}.buffers)"
             ]
         }
     });
