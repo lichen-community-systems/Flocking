@@ -12645,6 +12645,10 @@ var fluid = fluid || require("infusion"),
             onCreate: {
                 funcName: "flock.bufferLoader.loadBuffers",
                 args: ["{that}"]
+            },
+
+            "onError.logError": {
+                funcName: "flock.log.fail"
             }
         }
     });
@@ -12703,6 +12707,14 @@ var fluid = fluid || require("infusion"),
         return fluid.transform(bufferDefs, flock.bufferLoader.expandBufferDef);
     };
 
+    flock.bufferLoader.loadBuffer = function (bufDef, bufferTarget, that) {
+        try {
+            flock.parse.bufferForDef(bufDef, bufferTarget, that.enviro);
+        } catch (e) {
+            that.events.onError.fire(e.message);
+        }
+    };
+
     flock.bufferLoader.loadBuffers = function (that) {
         var bufferDefs = fluid.makeArray(that.options.bufferDefs);
         var expandedBufferDefs = flock.bufferLoader.expandBufferDefs(bufferDefs);
@@ -12718,13 +12730,13 @@ var fluid = fluid || require("infusion"),
                     that.events.afterBuffersLoaded.fire(that.buffers);
                 } else if (bufferDefIdx < expandedBufferDefs.length){
                     var nextBufferDef = expandedBufferDefs[bufferDefIdx];
-                    flock.parse.bufferForDef(nextBufferDef, bufferTarget, that.enviro);
+                    flock.bufferLoader.loadBuffer(nextBufferDef, bufferTarget, that);
                     bufferDefIdx++;
                 }
             }
         };
 
-        flock.parse.bufferForDef(expandedBufferDefs[0], bufferTarget, that.enviro);
+        flock.bufferLoader.loadBuffer(expandedBufferDefs[0], bufferTarget, that);
     };
 
 }());
