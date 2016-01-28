@@ -14,7 +14,7 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    flock.test.initSilentEnvironment();
+    flock.silentEnviro();
 
     var testPort = {
         manufacturer: "KORG INC.",

@@ -16,7 +16,7 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.test.buffer");
 
-    flock.test.initSilentEnvironment();
+    flock.silentEnviro();
 
     module("Buffers");
 

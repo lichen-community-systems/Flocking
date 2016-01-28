@@ -17,22 +17,6 @@ var flock = flock || {};
 
     flock.test.silentBlock64 = new Float32Array(64);
 
-    flock.test.initSilentEnvironment = function () {
-        var environment = flock.init();
-        // TODO: Add some kind of pre-output gain Control
-        // for the Node.js audioSystem.
-        if (environment.audioSystem.nativeNodeManager) {
-            environment.audioSystem.nativeNodeManager.createOutputNode({
-                node: "Gain",
-                params: {
-                    gain: 0
-                }
-            });
-        }
-
-        return environment;
-    };
-
     // TODO: Promote this to core.
     flock.test.generateSequence = function (start, end, skip) {
         skip = skip || 1;
