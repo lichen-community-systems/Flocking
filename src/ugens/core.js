@@ -167,6 +167,7 @@ var fluid = fluid || require("infusion"),
         options = options || {};
 
         var that = {
+            enviro: options.enviro || flock.environment,
             rate: options.rate || flock.rates.AUDIO,
             inputs: inputs,
             output: output,
@@ -197,7 +198,7 @@ var fluid = fluid || require("infusion"),
                     return;
                 }
 
-                return flock.parse.ugenDef(ugenDef, {
+                return flock.parse.ugenDef(ugenDef, that.enviro, {
                     audioSettings: that.options.audioSettings,
                     buses: that.buses,
                     buffers: that.buffers
@@ -296,7 +297,7 @@ var fluid = fluid || require("infusion"),
                 that.tags.push(tags[i]);
             }
 
-            s = o.audioSettings = o.audioSettings || flock.environment.audioSystem.model;
+            s = o.audioSettings = o.audioSettings || that.enviro.audioSystem.model;
             m.sampleRate = o.sampleRate || s.rates[that.rate];
             m.nyquistRate = m.sampleRate;
             m.blockSize = that.rate === flock.rates.AUDIO ? s.blockSize : 1;
@@ -318,7 +319,7 @@ var fluid = fluid || require("infusion"),
 
             if (that.rate === flock.rates.DEMAND && that.inputs.freq) {
                 valueDef = flock.parse.ugenDefForConstantValue(1.0);
-                that.inputs.freq = flock.parse.ugenDef(valueDef);
+                that.inputs.freq = flock.parse.ugenDef(valueDef, that.enviro);
             }
         };
 
@@ -378,7 +379,7 @@ var fluid = fluid || require("infusion"),
 
             if (m.bufDef !== inputs.buffer || inputName === "buffer") {
                 m.bufDef = inputs.buffer;
-                flock.parse.bufferForDef(m.bufDef, that, flock.environment); // TODO: Shared enviro reference.
+                flock.parse.bufferForDef(m.bufDef, that, that.enviro);
             }
         };
 
@@ -744,7 +745,7 @@ var fluid = fluid || require("infusion"),
 
         that.init = function () {
             // TODO: Direct reference to the shared environment.
-            var busNum = flock.environment.audioSystem.inputDeviceManager.openAudioDevice(options);
+            var busNum = that.enviro.audioSystem.inputDeviceManager.openAudioDevice(options);
             that.bus = that.options.buses[busNum];
             that.onInputChanged();
         };

@@ -276,6 +276,9 @@ var fluid = fluid || require("infusion"),
                 funcName: "fluid.log",
                 args: [fluid.logLevel.WARN, "MIDI Access Error: ", "{arguments}.0"]
             }
+
+            // TODO: Provide an onDestroy listener
+            // that will close any ports that are open.
         }
     });
 

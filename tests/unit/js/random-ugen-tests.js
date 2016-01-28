@@ -99,7 +99,7 @@ var fluid = fluid || require("infusion"),
     flock.test.noise.ugenInAudioRange = function (ugenName) {
         var pink = flock.parse.ugenDef({
             ugen: ugenName
-        }, {
+        }, undefined, {
             audioSettings: {
                 blockSize: 100000
             }

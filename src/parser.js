@@ -23,17 +23,17 @@ var fluid = fluid || require("infusion"),
     var $ = fluid.registerNamespace("jQuery");
     fluid.registerNamespace("flock.parse");
 
-    flock.parse.synthDef = function (ugenDef, options) {
+    flock.parse.synthDef = function (ugenDef, enviro, options) {
         if (!ugenDef) {
             ugenDef = [];
         }
 
         if (!flock.parse.synthDef.hasOutUGen(ugenDef)) {
             // We didn't get an out ugen specified, so we need to make one.
-            ugenDef = flock.parse.synthDef.makeOutUGen(ugenDef, options);
+            ugenDef = flock.parse.synthDef.makeOutUGenDef(ugenDef, options);
         }
 
-        return flock.parse.ugenForDef(ugenDef, options);
+        return flock.parse.ugenForDef(ugenDef, enviro, options);
     };
 
     flock.parse.synthDef.hasOutUGen = function (synthDef) {
@@ -45,7 +45,7 @@ var fluid = fluid || require("infusion"),
         );
     };
 
-    flock.parse.synthDef.makeOutUGen = function (ugenDef, options) {
+    flock.parse.synthDef.makeOutUGenDef = function (ugenDef, options) {
         ugenDef = {
             id: flock.OUT_UGEN_ID,
             ugen: "flock.ugen.valueOut",
@@ -63,7 +63,7 @@ var fluid = fluid || require("infusion"),
         return ugenDef;
     };
 
-    flock.parse.makeUGen = function (ugenDef, parsedInputs, options) {
+    flock.parse.makeUGen = function (ugenDef, parsedInputs, enviro, options) {
         var rates = options.audioSettings.rates,
             blockSize = options.audioSettings.blockSize;
 
@@ -119,6 +119,7 @@ var fluid = fluid || require("infusion"),
         var ugenOpts = fluid.copy(ugenDef.options);
         ugenOpts.buffers = options.buffers;
         ugenOpts.buses = options.buses;
+        ugenOpts.enviro = enviro;
 
         return flock.invoke(undefined, ugenDef.ugen, [
             parsedInputs,
@@ -192,9 +193,9 @@ var fluid = fluid || require("infusion"),
         return ugenDef;
     };
 
-    flock.parse.ugenDef = function (ugenDefs, options) {
+    flock.parse.ugenDef = function (ugenDefs, enviro, options) {
         var parseFn = flock.isIterable(ugenDefs) ? flock.parse.ugensForDefs : flock.parse.ugenForDef;
-        var parsed = parseFn(ugenDefs, options);
+        var parsed = parseFn(ugenDefs, enviro, options);
         return parsed;
     };
 
@@ -211,11 +212,11 @@ var fluid = fluid || require("infusion"),
         return $.extend(true, {}, defaults, ugenDef);
     };
 
-    flock.parse.ugensForDefs = function (ugenDefs, options) {
+    flock.parse.ugensForDefs = function (ugenDefs, enviro, options) {
         var parsed = [],
             i;
         for (i = 0; i < ugenDefs.length; i++) {
-            parsed[i] = flock.parse.ugenForDef(ugenDefs[i], options);
+            parsed[i] = flock.parse.ugenForDef(ugenDefs[i], enviro, options);
         }
         return parsed;
     };
@@ -239,11 +240,13 @@ var fluid = fluid || require("infusion"),
      *           {Array of Functions} visitors an optional list of visitor functions to invoke when the ugen has been created
      * @return the parsed unit generator object
      */
-    flock.parse.ugenForDef = function (ugenDef, options) {
+    flock.parse.ugenForDef = function (ugenDef, enviro, options) {
+        enviro = enviro || flock.environment;
+
         options = $.extend(true, {
-            audioSettings: flock.environment.audioSystem.model,
-            buses: flock.environment.busManager.buses,
-            buffers: flock.environment.buffers
+            audioSettings: enviro.audioSystem.model,
+            buses: enviro.busManager.buses,
+            buffers: enviro.buffers
         }, options);
 
         var o = options,
@@ -255,7 +258,7 @@ var fluid = fluid || require("infusion"),
 
         // We received an array of ugen defs.
         if (flock.isIterable(ugenDef)) {
-            return flock.parse.ugensForDefs(ugenDef, options);
+            return flock.parse.ugensForDefs(ugenDef, enviro, options);
         }
 
         ugenDef = flock.parse.expandInputs(ugenDef);
@@ -280,7 +283,7 @@ var fluid = fluid || require("infusion"),
 
             // Create ugens for all inputs except special inputs.
             inputs[inputDef] = flock.input.shouldExpand(inputDef, ugenDef) ?
-                flock.parse.ugenForDef(inputDefVal, options) : // Parse the ugendef and create a ugen instance.
+                flock.parse.ugenForDef(inputDefVal, enviro, options) : // Parse the ugendef and create a ugen instance.
                 inputDefVal; // Don't instantiate a ugen, just pass the def on as-is.
         }
 
@@ -289,7 +292,7 @@ var fluid = fluid || require("infusion"),
                 "can't initialize the synth graph. Value: " + fluid.prettyPrintJSON(ugenDef));
         }
 
-        var ugen = flock.parse.makeUGen(ugenDef, inputs, options);
+        var ugen = flock.parse.makeUGen(ugenDef, inputs, enviro, options);
         if (ugenDef.id) {
             ugen.id = ugenDef.id;
         }

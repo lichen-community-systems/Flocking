@@ -359,9 +359,8 @@ var fluid = fluid || require("infusion"),
         };
 
         that.init = function () {
-            var nativeNodeManager = flock.environment.audioSystem.nativeNodeManager,
+            var nativeNodeManager = that.enviro.audioSystem.nativeNodeManager,
                 mediaEl = $(that.options.element),
-                // TODO: Direct reference to the shared environment.
                 // TODO: Factor this out into a utility that can be injected
                 // into unit generators without requiring a full reference
                 // to either the environment or the nativeNodeManager.

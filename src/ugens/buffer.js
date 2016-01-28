@@ -740,9 +740,8 @@ var fluid = fluid || require("infusion"),
         };
 
         that.onInputChanged = function () {
-            // TODO: Hardcoded reference to the shared environment.
-            // Plus is this is a pretty lame way to manage buffers.
-            var enviroBufs = flock.environment.buffers,
+            // TODO: This is a pretty lame way to manage buffers.
+            var enviroBufs = that.enviro.buffers,
                 bufIDs = that.options.bufferIDs,
                 i,
                 bufID,

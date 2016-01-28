@@ -242,8 +242,8 @@ var fluid = fluid || require("infusion"),
      * the browser's Web Audio Context.
      */
     flock.audio.decode.webAudio = function (o) {
-        // TODO: Reference to shared environment.
-        var ctx = flock.environment.audioSystem.context,
+        // TODO: Raw reference to the Web Audio context singleton.
+        var ctx = flock.webAudio.audioSystem.audioContextSingleton,
             success = function (audioBuffer) {
                 var bufDesc = flock.bufferDesc.fromAudioBuffer(audioBuffer);
                 o.success(bufDesc);

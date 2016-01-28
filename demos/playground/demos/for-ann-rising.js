@@ -1,6 +1,6 @@
 // James Tenney's For Ann Rising.
 
-var sked = flock.enviro.shared.asyncScheduler,
+var sked = flock.environment.asyncScheduler,
     numSynths = 240,
     synths = [],
 	nextSynthIdx = 0,

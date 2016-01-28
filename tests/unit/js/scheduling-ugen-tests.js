@@ -30,7 +30,7 @@ var fluid = fluid || require("infusion"),
     };
 
     var makeUGen = function (def) {
-        return flock.parse.ugenForDef(fluid.copy(def), {
+        return flock.parse.ugenForDef(fluid.copy(def), undefined, {
             audioSettings: {
                 rates: {
                     audio: 48000
@@ -284,7 +284,7 @@ var fluid = fluid || require("infusion"),
 
     QUnit.test("Audio rate", function () {
         flock.init();
-        
+
         seqUGenDef.rate = "audio";
         var seq = flock.parse.ugenDef(seqUGenDef);
 

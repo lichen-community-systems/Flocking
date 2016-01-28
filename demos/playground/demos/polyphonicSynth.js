@@ -57,7 +57,7 @@ var score = [
 ];
 
 var idx = 0;
-flock.environment.asyncScheduler.repeat(0.5, function () {
+polySynth.enviro.asyncScheduler.repeat(0.5, function () {
     if (idx >= score.length) {
         idx = 0;
     }

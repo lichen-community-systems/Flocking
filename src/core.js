@@ -43,10 +43,6 @@ var fluid = fluid || require("infusion"),
 
         var enviro = flock.enviro(enviroOpts);
 
-        // flock.enviro.shared is deprecated. Use "flock.environment"
-        // or an IoC reference to {enviro} instead
-        flock.environment = flock.enviro.shared = enviro;
-
         return enviro;
     };
 
@@ -1187,6 +1183,8 @@ var fluid = fluid || require("infusion"),
 
         singleRootType: "flock.enviro",
 
+        isGlobalSingleton: true,
+
         members: {
             buffers: {},
             bufferSources: {}
@@ -1280,6 +1278,10 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
+            onCreate: [
+                "flock.enviro.registerGlobalSingleton({that})"
+            ],
+
             onStart: [
                 "{that}.applier.change(isPlaying, true)",
             ],
@@ -1294,9 +1296,21 @@ var fluid = fluid || require("infusion"),
                 "flock.nodeList.clearAll({that}.nodeList)",
                 "{busManager}.reset()",
                 "fluid.clear({that}.buffers)"
+            ],
+
+            onDestroy: [
+                "{that}.reset()"
             ]
         }
     });
+
+    flock.enviro.registerGlobalSingleton = function (that) {
+        if (that.options.isGlobalSingleton) {
+            // flock.enviro.shared is deprecated. Use "flock.environment"
+            // or an IoC reference to {enviro} instead
+            flock.environment = flock.enviro.shared = that;
+        }
+    };
 
     flock.enviro.registerBuffer = function (bufDesc, buffers) {
         if (bufDesc.id) {
@@ -1370,9 +1384,40 @@ var fluid = fluid || require("infusion"),
     });
 
     flock.autoEnviro.initEnvironment = function () {
+        // TODO: The last vestige of globalism! Remove reference to shared environment.
         return !flock.environment ? flock.init() : flock.environment;
     };
 
+
+    /**
+     * An environment grade that is configured to always output
+     * silence using a Web Audio GainNode. This is useful for unit testing,
+     * where failures could produce painful or unexpected output.
+     *
+     * Note: this grade does not currently function in Node.js
+     */
+    fluid.defaults("flock.silentEnviro", {
+        gradeNames: "flock.enviro",
+
+        listeners: {
+            onCreate: [
+                "flock.silentEnviro.insertOutputGainNode({that})"
+            ]
+        }
+    });
+
+    flock.silentEnviro.insertOutputGainNode = function (that) {
+        // TODO: Add some kind of pre-output gain Control
+        // for the Node.js audioSystem.
+        if (that.audioSystem.nativeNodeManager) {
+            that.audioSystem.nativeNodeManager.createOutputNode({
+                node: "Gain",
+                params: {
+                    gain: 0
+                }
+            });
+        }
+    };
 
     fluid.defaults("flock.node", {
         gradeNames: ["flock.autoEnviro", "fluid.modelComponent"],
@@ -1660,7 +1705,7 @@ var fluid = fluid || require("infusion"),
             return prev;
         }
 
-        var parsed = flock.parse.ugenDef(ugenDef, {
+        var parsed = flock.parse.ugenDef(ugenDef, that.enviro, {
             audioSettings: that.audioSettings,
             buses: that.enviro.busManager.buses,
             buffers: that.enviro.buffers
