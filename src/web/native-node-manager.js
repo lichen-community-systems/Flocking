@@ -205,8 +205,13 @@ var fluid = fluid || require("infusion"),
             ],
 
             onReset: [
-                "{that}.removeAllInputs",
+                "{that}.removeAllInputs()",
                 "{that}.events.onCreateScriptProcessor.fire()"
+            ],
+
+            onDestroy: [
+                "{that}.removeAllInputs()",
+                "flock.webAudio.nativeNodeManager.disconnectOutput({that})"
             ]
         }
     });
@@ -224,6 +229,12 @@ var fluid = fluid || require("infusion"),
     flock.webAudio.nativeNodeManager.connectOutput = function (jsNode, outputNode) {
         if (jsNode !== outputNode) {
             jsNode.connect(outputNode);
+        }
+    };
+
+    flock.webAudio.nativeNodeManager.disconnectOutput = function (that) {
+        if (that.outputNode) {
+            that.outputNode.disconnect(0);
         }
     };
 
@@ -264,10 +275,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.webAudio.nativeNodeManager.insertOutput = function (that, node) {
-        if (that.outputNode) {
-            that.outputNode.disconnect(0);
-        }
-
+        flock.webAudio.nativeNodeManager.disconnectOutput(that);
         that.outputNode = node;
 
         return node;

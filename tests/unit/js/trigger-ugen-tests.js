@@ -15,7 +15,7 @@ var fluid = fluid || require("infusion"),
     "use strict";
 
     var $ = fluid.registerNamespace("jQuery"),
-        environment = flock.test.initSilentEnvironment(),
+        environment = flock.silentEnviro(),
         sampleRate = environment.audioSystem.model.rates.audio;
 
     QUnit.module("flock.ugen.t2a");

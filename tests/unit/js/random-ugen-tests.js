@@ -14,7 +14,7 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    var environment = flock.test.initSilentEnvironment(),
+    var environment = flock.silentEnviro(),
         sampleRate = environment.audioSystem.model.rates.audio;
 
     QUnit.module("LFNoise tests");
@@ -99,7 +99,7 @@ var fluid = fluid || require("infusion"),
     flock.test.noise.ugenInAudioRange = function (ugenName) {
         var pink = flock.parse.ugenDef({
             ugen: ugenName
-        }, {
+        }, undefined, {
             audioSettings: {
                 blockSize: 100000
             }

@@ -83,6 +83,10 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.nodeList.remove = function (nodeList, node) {
+        if (!nodeList) {
+            return;
+        }
+
         var idx = nodeList.nodes.indexOf(node);
         if (idx > -1) {
             nodeList.nodes.splice(idx, 1);
@@ -214,7 +218,7 @@ var fluid = fluid || require("infusion"),
             rate === flock.rates.DEMAND;
 
         // Parse the synthDef into a graph of unit generators.
-        return flock.parse.synthDef(synthDef, {
+        return flock.parse.synthDef(synthDef, enviro, {
             rate: rate,
             overrideRate: overrideRate,
             visitors: [flock.makeUGens.visitor(ugenList)],

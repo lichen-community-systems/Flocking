@@ -14,7 +14,7 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    var environment = flock.test.initSilentEnvironment(),
+    var environment = flock.silentEnviro(),
         sampleRate = environment.audioSystem.model.rates.audio;
 
     var $ = fluid.registerNamespace("jQuery");
@@ -67,7 +67,7 @@ var fluid = fluid || require("infusion"),
             }
 
             player.gen(64);
-            var expected = flock.enviro.shared.buffers[def.inputs.buffer.id].data.channels[0];
+            var expected = flock.environment.buffers[def.inputs.buffer.id].data.channels[0];
             QUnit.deepEqual(player.output, expected, "With a playback speed of 1.0, the output buffer should be identical to the source buffer.");
 
             player.gen(64);
@@ -76,7 +76,7 @@ var fluid = fluid || require("infusion"),
 
             player.input("loop", 1.0);
             player.gen(64);
-            expected = flock.enviro.shared.buffers[def.inputs.buffer.id].data.channels[0];
+            expected = flock.environment.buffers[def.inputs.buffer.id].data.channels[0];
             QUnit.deepEqual(player.output, expected, "With looping turned on, the output buffer should repeat the source buffer from the beginning.");
         });
 

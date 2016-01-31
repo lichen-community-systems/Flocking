@@ -16,7 +16,7 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.test.blit");
 
-    var environment = flock.test.initSilentEnvironment();
+    var environment = flock.silentEnviro();
 
     flock.test.blit.baseTests = [
         {

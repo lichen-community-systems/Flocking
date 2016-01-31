@@ -14,7 +14,7 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    var environment = flock.test.initSilentEnvironment(),
+    var environment = flock.silentEnviro(),
         sampleRate = environment.audioSystem.model.rates.audio;
 
     QUnit.module("flock.ugen.osc() tests");

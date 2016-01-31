@@ -470,7 +470,7 @@ var fluid = fluid || require("infusion"),
         };
 
         if (!flock.parse.synthDef.hasOutUGen(synthDef)) {
-            synthDef = flock.parse.synthDef.makeOutUGen(synthDef, options);
+            synthDef = flock.parse.synthDef.makeOutUGenDef(synthDef, options);
         }
 
         return flock.ui.nodeRenderer.synth.expandAllInputs(synthDef, options);

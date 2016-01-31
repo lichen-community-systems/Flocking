@@ -9733,10 +9733,6 @@ var fluid = fluid || require("infusion"),
 
         var enviro = flock.enviro(enviroOpts);
 
-        // flock.enviro.shared is deprecated. Use "flock.environment"
-        // or an IoC reference to {enviro} instead
-        flock.environment = flock.enviro.shared = enviro;
-
         return enviro;
     };
 
@@ -10877,6 +10873,8 @@ var fluid = fluid || require("infusion"),
 
         singleRootType: "flock.enviro",
 
+        isGlobalSingleton: true,
+
         members: {
             buffers: {},
             bufferSources: {}
@@ -10970,6 +10968,10 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
+            onCreate: [
+                "flock.enviro.registerGlobalSingleton({that})"
+            ],
+
             onStart: [
                 "{that}.applier.change(isPlaying, true)",
             ],
@@ -10984,9 +10986,21 @@ var fluid = fluid || require("infusion"),
                 "flock.nodeList.clearAll({that}.nodeList)",
                 "{busManager}.reset()",
                 "fluid.clear({that}.buffers)"
+            ],
+
+            onDestroy: [
+                "{that}.reset()"
             ]
         }
     });
+
+    flock.enviro.registerGlobalSingleton = function (that) {
+        if (that.options.isGlobalSingleton) {
+            // flock.enviro.shared is deprecated. Use "flock.environment"
+            // or an IoC reference to {enviro} instead
+            flock.environment = flock.enviro.shared = that;
+        }
+    };
 
     flock.enviro.registerBuffer = function (bufDesc, buffers) {
         if (bufDesc.id) {
@@ -11060,9 +11074,40 @@ var fluid = fluid || require("infusion"),
     });
 
     flock.autoEnviro.initEnvironment = function () {
+        // TODO: The last vestige of globalism! Remove reference to shared environment.
         return !flock.environment ? flock.init() : flock.environment;
     };
 
+
+    /**
+     * An environment grade that is configured to always output
+     * silence using a Web Audio GainNode. This is useful for unit testing,
+     * where failures could produce painful or unexpected output.
+     *
+     * Note: this grade does not currently function in Node.js
+     */
+    fluid.defaults("flock.silentEnviro", {
+        gradeNames: "flock.enviro",
+
+        listeners: {
+            onCreate: [
+                "flock.silentEnviro.insertOutputGainNode({that})"
+            ]
+        }
+    });
+
+    flock.silentEnviro.insertOutputGainNode = function (that) {
+        // TODO: Add some kind of pre-output gain Control
+        // for the Node.js audioSystem.
+        if (that.audioSystem.nativeNodeManager) {
+            that.audioSystem.nativeNodeManager.createOutputNode({
+                node: "Gain",
+                params: {
+                    gain: 0
+                }
+            });
+        }
+    };
 
     fluid.defaults("flock.node", {
         gradeNames: ["flock.autoEnviro", "fluid.modelComponent"],
@@ -11350,7 +11395,7 @@ var fluid = fluid || require("infusion"),
             return prev;
         }
 
-        var parsed = flock.parse.ugenDef(ugenDef, {
+        var parsed = flock.parse.ugenDef(ugenDef, that.enviro, {
             audioSettings: that.audioSettings,
             buses: that.enviro.busManager.buses,
             buffers: that.enviro.buffers
@@ -11507,6 +11552,10 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.nodeList.remove = function (nodeList, node) {
+        if (!nodeList) {
+            return;
+        }
+
         var idx = nodeList.nodes.indexOf(node);
         if (idx > -1) {
             nodeList.nodes.splice(idx, 1);
@@ -11638,7 +11687,7 @@ var fluid = fluid || require("infusion"),
             rate === flock.rates.DEMAND;
 
         // Parse the synthDef into a graph of unit generators.
-        return flock.parse.synthDef(synthDef, {
+        return flock.parse.synthDef(synthDef, enviro, {
             rate: rate,
             overrideRate: overrideRate,
             visitors: [flock.makeUGens.visitor(ugenList)],
@@ -12773,17 +12822,17 @@ var fluid = fluid || require("infusion"),
     var $ = fluid.registerNamespace("jQuery");
     fluid.registerNamespace("flock.parse");
 
-    flock.parse.synthDef = function (ugenDef, options) {
+    flock.parse.synthDef = function (ugenDef, enviro, options) {
         if (!ugenDef) {
             ugenDef = [];
         }
 
         if (!flock.parse.synthDef.hasOutUGen(ugenDef)) {
             // We didn't get an out ugen specified, so we need to make one.
-            ugenDef = flock.parse.synthDef.makeOutUGen(ugenDef, options);
+            ugenDef = flock.parse.synthDef.makeOutUGenDef(ugenDef, options);
         }
 
-        return flock.parse.ugenForDef(ugenDef, options);
+        return flock.parse.ugenForDef(ugenDef, enviro, options);
     };
 
     flock.parse.synthDef.hasOutUGen = function (synthDef) {
@@ -12795,7 +12844,7 @@ var fluid = fluid || require("infusion"),
         );
     };
 
-    flock.parse.synthDef.makeOutUGen = function (ugenDef, options) {
+    flock.parse.synthDef.makeOutUGenDef = function (ugenDef, options) {
         ugenDef = {
             id: flock.OUT_UGEN_ID,
             ugen: "flock.ugen.valueOut",
@@ -12813,7 +12862,7 @@ var fluid = fluid || require("infusion"),
         return ugenDef;
     };
 
-    flock.parse.makeUGen = function (ugenDef, parsedInputs, options) {
+    flock.parse.makeUGen = function (ugenDef, parsedInputs, enviro, options) {
         var rates = options.audioSettings.rates,
             blockSize = options.audioSettings.blockSize;
 
@@ -12869,6 +12918,7 @@ var fluid = fluid || require("infusion"),
         var ugenOpts = fluid.copy(ugenDef.options);
         ugenOpts.buffers = options.buffers;
         ugenOpts.buses = options.buses;
+        ugenOpts.enviro = enviro;
 
         return flock.invoke(undefined, ugenDef.ugen, [
             parsedInputs,
@@ -12942,9 +12992,9 @@ var fluid = fluid || require("infusion"),
         return ugenDef;
     };
 
-    flock.parse.ugenDef = function (ugenDefs, options) {
+    flock.parse.ugenDef = function (ugenDefs, enviro, options) {
         var parseFn = flock.isIterable(ugenDefs) ? flock.parse.ugensForDefs : flock.parse.ugenForDef;
-        var parsed = parseFn(ugenDefs, options);
+        var parsed = parseFn(ugenDefs, enviro, options);
         return parsed;
     };
 
@@ -12961,11 +13011,11 @@ var fluid = fluid || require("infusion"),
         return $.extend(true, {}, defaults, ugenDef);
     };
 
-    flock.parse.ugensForDefs = function (ugenDefs, options) {
+    flock.parse.ugensForDefs = function (ugenDefs, enviro, options) {
         var parsed = [],
             i;
         for (i = 0; i < ugenDefs.length; i++) {
-            parsed[i] = flock.parse.ugenForDef(ugenDefs[i], options);
+            parsed[i] = flock.parse.ugenForDef(ugenDefs[i], enviro, options);
         }
         return parsed;
     };
@@ -12989,11 +13039,13 @@ var fluid = fluid || require("infusion"),
      *           {Array of Functions} visitors an optional list of visitor functions to invoke when the ugen has been created
      * @return the parsed unit generator object
      */
-    flock.parse.ugenForDef = function (ugenDef, options) {
+    flock.parse.ugenForDef = function (ugenDef, enviro, options) {
+        enviro = enviro || flock.environment;
+
         options = $.extend(true, {
-            audioSettings: flock.environment.audioSystem.model,
-            buses: flock.environment.busManager.buses,
-            buffers: flock.environment.buffers
+            audioSettings: enviro.audioSystem.model,
+            buses: enviro.busManager.buses,
+            buffers: enviro.buffers
         }, options);
 
         var o = options,
@@ -13005,7 +13057,7 @@ var fluid = fluid || require("infusion"),
 
         // We received an array of ugen defs.
         if (flock.isIterable(ugenDef)) {
-            return flock.parse.ugensForDefs(ugenDef, options);
+            return flock.parse.ugensForDefs(ugenDef, enviro, options);
         }
 
         ugenDef = flock.parse.expandInputs(ugenDef);
@@ -13030,7 +13082,7 @@ var fluid = fluid || require("infusion"),
 
             // Create ugens for all inputs except special inputs.
             inputs[inputDef] = flock.input.shouldExpand(inputDef, ugenDef) ?
-                flock.parse.ugenForDef(inputDefVal, options) : // Parse the ugendef and create a ugen instance.
+                flock.parse.ugenForDef(inputDefVal, enviro, options) : // Parse the ugendef and create a ugen instance.
                 inputDefVal; // Don't instantiate a ugen, just pass the def on as-is.
         }
 
@@ -13039,7 +13091,7 @@ var fluid = fluid || require("infusion"),
                 "can't initialize the synth graph. Value: " + fluid.prettyPrintJSON(ugenDef));
         }
 
-        var ugen = flock.parse.makeUGen(ugenDef, inputs, options);
+        var ugen = flock.parse.makeUGen(ugenDef, inputs, enviro, options);
         if (ugenDef.id) {
             ugen.id = ugenDef.id;
         }
@@ -13380,8 +13432,8 @@ var fluid = fluid || require("infusion"),
      * the browser's Web Audio Context.
      */
     flock.audio.decode.webAudio = function (o) {
-        // TODO: Reference to shared environment.
-        var ctx = flock.environment.audioSystem.context,
+        // TODO: Raw reference to the Web Audio context singleton.
+        var ctx = flock.webAudio.audioSystem.audioContextSingleton,
             success = function (audioBuffer) {
                 var bufDesc = flock.bufferDesc.fromAudioBuffer(audioBuffer);
                 o.success(bufDesc);
@@ -15483,6 +15535,9 @@ var fluid = fluid || require("infusion"),
                 funcName: "fluid.log",
                 args: [fluid.logLevel.WARN, "MIDI Access Error: ", "{arguments}.0"]
             }
+
+            // TODO: Provide an onDestroy listener
+            // that will close any ports that are open.
         }
     });
 
@@ -16199,8 +16254,13 @@ var fluid = fluid || require("infusion"),
             ],
 
             onReset: [
-                "{that}.removeAllInputs",
+                "{that}.removeAllInputs()",
                 "{that}.events.onCreateScriptProcessor.fire()"
+            ],
+
+            onDestroy: [
+                "{that}.removeAllInputs()",
+                "flock.webAudio.nativeNodeManager.disconnectOutput({that})"
             ]
         }
     });
@@ -16218,6 +16278,12 @@ var fluid = fluid || require("infusion"),
     flock.webAudio.nativeNodeManager.connectOutput = function (jsNode, outputNode) {
         if (jsNode !== outputNode) {
             jsNode.connect(outputNode);
+        }
+    };
+
+    flock.webAudio.nativeNodeManager.disconnectOutput = function (that) {
+        if (that.outputNode) {
+            that.outputNode.disconnect(0);
         }
     };
 
@@ -16258,10 +16324,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.webAudio.nativeNodeManager.insertOutput = function (that, node) {
-        if (that.outputNode) {
-            that.outputNode.disconnect(0);
-        }
-
+        flock.webAudio.nativeNodeManager.disconnectOutput(that);
         that.outputNode = node;
 
         return node;
@@ -16626,6 +16689,7 @@ var fluid = fluid || require("infusion"),
         options = options || {};
 
         var that = {
+            enviro: options.enviro || flock.environment,
             rate: options.rate || flock.rates.AUDIO,
             inputs: inputs,
             output: output,
@@ -16656,7 +16720,7 @@ var fluid = fluid || require("infusion"),
                     return;
                 }
 
-                return flock.parse.ugenDef(ugenDef, {
+                return flock.parse.ugenDef(ugenDef, that.enviro, {
                     audioSettings: that.options.audioSettings,
                     buses: that.buses,
                     buffers: that.buffers
@@ -16755,7 +16819,7 @@ var fluid = fluid || require("infusion"),
                 that.tags.push(tags[i]);
             }
 
-            s = o.audioSettings = o.audioSettings || flock.environment.audioSystem.model;
+            s = o.audioSettings = o.audioSettings || that.enviro.audioSystem.model;
             m.sampleRate = o.sampleRate || s.rates[that.rate];
             m.nyquistRate = m.sampleRate;
             m.blockSize = that.rate === flock.rates.AUDIO ? s.blockSize : 1;
@@ -16777,7 +16841,7 @@ var fluid = fluid || require("infusion"),
 
             if (that.rate === flock.rates.DEMAND && that.inputs.freq) {
                 valueDef = flock.parse.ugenDefForConstantValue(1.0);
-                that.inputs.freq = flock.parse.ugenDef(valueDef);
+                that.inputs.freq = flock.parse.ugenDef(valueDef, that.enviro);
             }
         };
 
@@ -16837,7 +16901,7 @@ var fluid = fluid || require("infusion"),
 
             if (m.bufDef !== inputs.buffer || inputName === "buffer") {
                 m.bufDef = inputs.buffer;
-                flock.parse.bufferForDef(m.bufDef, that, flock.environment); // TODO: Shared enviro reference.
+                flock.parse.bufferForDef(m.bufDef, that, that.enviro);
             }
         };
 
@@ -17203,7 +17267,7 @@ var fluid = fluid || require("infusion"),
 
         that.init = function () {
             // TODO: Direct reference to the shared environment.
-            var busNum = flock.environment.audioSystem.inputDeviceManager.openAudioDevice(options);
+            var busNum = that.enviro.audioSystem.inputDeviceManager.openAudioDevice(options);
             that.bus = that.options.buses[busNum];
             that.onInputChanged();
         };
@@ -18375,9 +18439,8 @@ var fluid = fluid || require("infusion"),
         };
 
         that.onInputChanged = function () {
-            // TODO: Hardcoded reference to the shared environment.
-            // Plus is this is a pretty lame way to manage buffers.
-            var enviroBufs = flock.environment.buffers,
+            // TODO: This is a pretty lame way to manage buffers.
+            var enviroBufs = that.enviro.buffers,
                 bufIDs = that.options.bufferIDs,
                 i,
                 bufID,
@@ -24245,9 +24308,8 @@ var fluid = fluid || require("infusion"),
         };
 
         that.init = function () {
-            var nativeNodeManager = flock.environment.audioSystem.nativeNodeManager,
+            var nativeNodeManager = that.enviro.audioSystem.nativeNodeManager,
                 mediaEl = $(that.options.element),
-                // TODO: Direct reference to the shared environment.
                 // TODO: Factor this out into a utility that can be injected
                 // into unit generators without requiring a full reference
                 // to either the environment or the nativeNodeManager.
