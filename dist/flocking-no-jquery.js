@@ -9716,8 +9716,6 @@ var fluid = fluid || require("infusion"),
 
     flock.fluid = fluid;
 
-    // TODO: It appears to be impossible to instantiate an environment
-    // without calling this function.
     flock.init = function (options) {
         // TODO: Distribute these from top level on the environment to the audioSystem
         // so that users can more easily specify them in their environment's defaults.
@@ -11303,7 +11301,8 @@ var fluid = fluid || require("infusion"),
                     "{that}.options.synthDef",
                     "{that}.rate",
                     "{that}.nodeList",
-                    "{enviro}"
+                    "{enviro}",
+                    "{that}.audioSettings"
                 ]
             }
         },
@@ -11451,9 +11450,11 @@ var fluid = fluid || require("infusion"),
 
         fps: 60,
 
-        audioSettings: {
-            rates: {
-                scheduled: "{that}.options.fps"
+        members: {
+            audioSettings: {
+                rates: {
+                    scheduled: "{that}.options.fps"
+                }
             }
         }
     });
@@ -11675,7 +11676,7 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    flock.makeUGens = function (synthDef, rate, ugenList, enviro) {
+    flock.makeUGens = function (synthDef, rate, ugenList, enviro, audioSettings) {
         if (!synthDef) {
             fluid.log(fluid.logLevel.IMPORTANT,
                 "Warning: An empy synthDef was found while instantiating a unit generator tree." +
@@ -11693,7 +11694,7 @@ var fluid = fluid || require("infusion"),
             visitors: [flock.makeUGens.visitor(ugenList)],
             buffers: enviro.buffers,
             buses: enviro.busManager.buses,
-            audioSettings: enviro.audioSystem.model
+            audioSettings: audioSettings || enviro.audioSystem.model
         });
     };
 

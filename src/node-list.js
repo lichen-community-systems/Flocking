@@ -206,7 +206,7 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    flock.makeUGens = function (synthDef, rate, ugenList, enviro) {
+    flock.makeUGens = function (synthDef, rate, ugenList, enviro, audioSettings) {
         if (!synthDef) {
             fluid.log(fluid.logLevel.IMPORTANT,
                 "Warning: An empy synthDef was found while instantiating a unit generator tree." +
@@ -224,7 +224,7 @@ var fluid = fluid || require("infusion"),
             visitors: [flock.makeUGens.visitor(ugenList)],
             buffers: enviro.buffers,
             buses: enviro.busManager.buses,
-            audioSettings: enviro.audioSystem.model
+            audioSettings: audioSettings || enviro.audioSystem.model
         });
     };
 

@@ -861,6 +861,25 @@ var fluid = fluid || require("infusion"),
 
     testSynthModelState(modelStateTestSpecs);
 
+
+    test("Frame rate synth gets set up with the correct scheduled rate", function () {
+        var s = flock.synth.frameRate({
+            fps: 60,
+
+            synthDef: {
+                id: "oscillator",
+                ugen: "flock.ugen.sin",
+                freq: 1
+            }
+        });
+
+        equal(s.audioSettings.rates.scheduled, 60,
+            "The frame rate should have been specified as the synth's scheduled rate.");
+        equal(s.get("oscillator").model.sampleRate, 60,
+            "The unit generator should have its sample rate set to 60 fps.");
+    });
+
+
     flock.test.synth.testNoteEvents = function (testSpec) {
         var baseOpts = {
             synthDef: {
