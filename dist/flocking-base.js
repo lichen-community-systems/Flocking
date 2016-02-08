@@ -3450,11 +3450,6 @@ var fluid = fluid || require("infusion"),
             return synth.model.value;
         },
 
-        modelSynth: function (synth) {
-            synth.genFn(synth.nodeList.nodes);
-            synth.applier.change("value", synth.out.model.value);
-        },
-
         synths: function (synths) {
             for (var i = 0; i < synths.length; i++) {
                 flock.evaluate.synth(synths[i]);
@@ -3525,10 +3520,22 @@ var fluid = fluid || require("infusion"),
         },
 
         invokers: {
-            value: {
-                funcName: "flock.evaluate.modelSynth",
-                args: ["{that}"]
-            }
+            value: "{that}.events.onEvaluate.fire()"
+        },
+
+        events: {
+            onEvaluate: null
+        },
+
+        listeners: {
+            onEvaluate: [
+                "{that}.genFn({that}.nodeList.nodes)",
+
+                {
+                    changePath: "value",
+                    value: "{that}.out.model.value"
+                }
+            ]
         }
     });
 

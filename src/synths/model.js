@@ -39,10 +39,22 @@ var fluid = fluid || require("infusion"),
         },
 
         invokers: {
-            value: {
-                funcName: "flock.evaluate.modelSynth",
-                args: ["{that}"]
-            }
+            value: "{that}.events.onEvaluate.fire()"
+        },
+
+        events: {
+            onEvaluate: null
+        },
+
+        listeners: {
+            onEvaluate: [
+                "{that}.genFn({that}.nodeList.nodes)",
+
+                {
+                    changePath: "value",
+                    value: "{that}.out.model.value"
+                }
+            ]
         }
     });
 
