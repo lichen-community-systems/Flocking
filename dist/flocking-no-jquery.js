@@ -11741,6 +11741,11 @@ var fluid = fluid || require("infusion"),
             return synth.model.value;
         },
 
+        modelSynth: function (synth) {
+            synth.genFn(synth.nodeList.nodes);
+            synth.applier.change("value", synth.out.model.value);
+        },
+
         synths: function (synths) {
             for (var i = 0; i < synths.length; i++) {
                 flock.evaluate.synth(synths[i]);
@@ -11808,6 +11813,13 @@ var fluid = fluid || require("infusion"),
                     args: ["{that}.set", "{that}.options.ugens", "{change}"]
                 }
             ]
+        },
+
+        invokers: {
+            value: {
+                funcName: "flock.evaluate.modelSynth",
+                args: ["{that}"]
+            }
         }
     });
 

@@ -121,4 +121,39 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.test.modelSynth.setValueTests(flock.test.modelSynth.setValueTestSpecs);
+
+    fluid.defaults("flock.test.modelSynth.valueSynth", {
+        gradeNames: ["flock.synth.value", "flock.modelSynth"],
+
+        model: {
+            value: 0
+        },
+
+        synthDef: {
+            ugen: "flock.ugen.value",
+            value: 42
+        },
+
+        modelListeners: {
+            value: {
+                excludeSource: "init",
+                funcName: "flock.test.modelSynth.valueTester",
+                args: ["{that}", "{change}"]
+            }
+        }
+    });
+
+    flock.test.modelSynth.valueTester = function (synth, change) {
+        QUnit.equal(synth.model.value, 42,
+            "The synth's model should have been updated.");
+        QUnit.equal(change.value, 42,
+            "The model listener's change spec should reflect the change.");
+    };
+
+    QUnit.test("value() updates the synth's model", function () {
+        QUnit.expect(2);
+
+        var s = flock.test.modelSynth.valueSynth();
+        s.value();
+    });
 }());

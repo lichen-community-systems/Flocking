@@ -36,6 +36,13 @@ var fluid = fluid || require("infusion"),
                     args: ["{that}.set", "{that}.options.ugens", "{change}"]
                 }
             ]
+        },
+
+        invokers: {
+            value: {
+                funcName: "flock.evaluate.modelSynth",
+                args: ["{that}"]
+            }
         }
     });
 
