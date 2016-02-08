@@ -3517,6 +3517,25 @@ var fluid = fluid || require("infusion"),
                     args: ["{that}.set", "{that}.options.ugens", "{change}"]
                 }
             ]
+        },
+
+        invokers: {
+            value: "{that}.events.onEvaluate.fire()"
+        },
+
+        events: {
+            onEvaluate: null
+        },
+
+        listeners: {
+            onEvaluate: [
+                "{that}.genFn({that}.nodeList.nodes)",
+
+                {
+                    changePath: "value",
+                    value: "{that}.out.model.value"
+                }
+            ]
         }
     });
 
