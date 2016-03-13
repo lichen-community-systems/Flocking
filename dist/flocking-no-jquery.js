@@ -18345,13 +18345,12 @@ var fluid = fluid || require("infusion"),
     // TODO:
     //   - Remove ridiculous variable assignment block
     //   - Factor out voice logic into separate functions
-    //   - Add support for speed input and sample rate conversion
+    //   - Add support for sample rate conversion
     //   - Source buffers directly from the environment at gen time,
     //     rather than trying do so proactively (and failing if they're not there)
     flock.ugen.triggerBuffers = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
-        // TODO: add an input that controls playback speed.
         that.gen = function (numSamps) {
             var m = that.model,
                 strides = m.strides,
@@ -18427,7 +18426,7 @@ var fluid = fluid || require("infusion"),
                     // TODO: deal with speed and sample rate converstion.
                     samp = that.interpolate ? that.interpolate(voice.currentIdx, buffer) : buffer[voice.currentIdx | 0];
                     out[k] += samp;
-                    voice.currentIdx++;
+                    voice.currentIdx += voice.speed;
                 }
 
                 if (voice.currentIdx >= buffer.length) {
