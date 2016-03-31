@@ -143,7 +143,7 @@ var fluid = fluid || require("infusion"),
 
         // If we have no mul or add inputs, bail immediately.
         if (!mul && !add) {
-            that.mulAdd = flock.noOp;
+            that.mulAdd = that.mulAddFn = flock.noOp;
             return;
         }
 
@@ -157,8 +157,10 @@ var fluid = fluid || require("infusion"),
                 (add.rate !== flock.rates.AUDIO ? flock.mulKrAdd : flock.mulAdd);
         }
 
+        that.mulAddFn = fn;
+
         that.mulAdd = function (numSamps) {
-            fn(numSamps, that.output, mul, add);
+            that.mulAddFn(numSamps, that.output, that.inputs.mul, that.inputs.add);
         };
     };
 
@@ -564,13 +566,14 @@ var fluid = fluid || require("infusion"),
                     //       with more sources than available buffers.
                     bus[j] = bus[j] + val;
                 }
+
+                that.mulAddFn(numSamps, bus, that.inputs.mul, that.inputs.add);
             }
 
             // TODO: Consider how we should handle "value" when the number
             // of input channels for "sources" can be variable.
             // In the meantime, we just output the last source's last sample.
             m.value = m.unscaledValue = val;
-            that.mulAdd(numSamps); // TODO: Does this even work?
         };
 
         that.init = function () {
