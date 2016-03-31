@@ -398,7 +398,7 @@ Typically, you want to record into a buffer and then use the [Flocking Scheduler
         environment.saveBuffer({
             type: "wav",
             format: "float32",
-            buffer: "recording"
+            buffer: "recording",
             path: "my-recording.wav"
         });
     });
