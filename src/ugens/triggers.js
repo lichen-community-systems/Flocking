@@ -43,7 +43,7 @@ var fluid = fluid || require("infusion"),
         that.onInputChanged = function (inputName) {
             that.calculateStrides();
 
-            if (inputName === "source") {
+            if (inputName === "source" && that.options.triggerOnSetSameValue) {
                 // Force a trigger to be output whenever the input is changed,
                 // even if it's the same value as was previously held.
                 that.model.prevVal = null;
@@ -67,6 +67,7 @@ var fluid = fluid || require("infusion"),
                 prevVal: 0.0
             },
 
+            triggerOnSetSameValue: true,
             strideInputs: ["source"]
         }
     });
