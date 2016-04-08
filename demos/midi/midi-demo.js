@@ -13,9 +13,19 @@
 
             midiConnector: {
                 type: "flock.ui.midiConnector",
-                container: "{that}.container",
+                container: "{that}.dom.midiPortSelector",
                 options: {
                     listeners: {
+                        message: {
+                            func: "flock.midiDemo.logRawMIDIMessage",
+                            args: [
+                                "{midiDemo}.dom.messageRegion",
+                                "{midiDemo}.options.strings.midiMessage",
+                                "{arguments}.0",
+                                "{arguments}.1"
+                            ]
+                        },
+
                         noteOn: {
                             func: "{synth}.noteOn",
                             args: [
@@ -41,9 +51,28 @@
             onCreate: [
                 "{enviro}.start()"
             ]
+        },
+
+        selectors: {
+            midiPortSelector: "#midi-port-selector",
+            messageRegion: "#midiMessageRegion"
+        },
+
+        strings: {
+            midiMessage: "%manufacturer %name: %msg"
         }
     });
 
+    flock.midiDemo.logRawMIDIMessage = function (messageRegion, msgTemplate, msg, rawEvent) {
+        var port = rawEvent.target,
+            messageText = fluid.stringTemplate(msgTemplate, {
+                manufacturer: port.manufacturer,
+                name: port.name,
+                msg: fluid.prettyPrintJSON(msg)
+            });
+
+        messageRegion.text(messageText);
+    };
 
     // Imperative equivalent to the above.
     flock.programmaticMIDIDemo = function (container) {

@@ -614,15 +614,15 @@ var fluid = fluid || require("infusion"),
         var model = flock.midi.read(midiEvent.data),
             eventForType = model.type ? events[model.type] : undefined;
 
-        events.message.fire(model);
+        events.message.fire(model, midiEvent);
 
         // TODO: Remove this special-casing of noteOn/noteOff events into note events.
         if (model.type === "noteOn" || model.type === "noteOff") {
-            events.note.fire(model);
+            events.note.fire(model, midiEvent);
         }
 
         if (eventForType) {
-            eventForType.fire(model);
+            eventForType.fire(model, midiEvent);
         }
     };
 

@@ -4,6 +4,12 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
+        <style>
+            #midiMessageRegion {
+                font-family: monospace;
+            }
+        </style>
+
         <title>Flocking MIDI Demo</title>
 
         <link rel="stylesheet" type="text/css" href="../shared/css/demos.css" />
@@ -61,6 +67,10 @@
             <h1>Flocking MIDI Demo</h1>
             <p class="instructions">This demo allows you to select a MIDI controller from the dropdown menu.
             Note events from the selected controller will trigger the envelope of a Flocking synth.</p>
+
+            <div id="midi-port-selector"></div>
+
+            <ul id="midiMessageRegion"></ul>
         </main>
 
         <script>
