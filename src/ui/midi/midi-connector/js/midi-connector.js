@@ -26,7 +26,7 @@ var fluid = fluid || require("infusion");
                 }
             },
 
-            midiConnection: {
+            connection: {
                 createOnEvent: "onPortSelected",
                 type: "flock.midi.connection",
                 options: {
@@ -39,7 +39,7 @@ var fluid = fluid || require("infusion");
 
                     // TODO: These are ultimately midi.connection events.
                     // Is there a better way to "distribute" listeners from this
-                    // parent "facade" object to its midiConnection subcomponent?
+                    // parent "facade" object to its connection subcomponent?
                     events: {
                         raw: "{midiConnector}.events.raw",
                         message: "{midiConnector}.events.message",
@@ -50,13 +50,20 @@ var fluid = fluid || require("infusion");
                         program: "{midiConnector}.events.program",
                         aftertouch: "{midiConnector}.events.aftertouch",
                         pitchbend: "{midiConnector}.events.pitchbend"
+                    },
+
+                    listeners: {
+                        onCreate: [
+                            "{midiConnector}.events.afterConnectionOpen.fire()"
+                        ]
                     }
                 }
             }
         },
 
         events: {
-            onPortSelected: null
+            onPortSelected: null,
+            afterConnectionOpen: null
         }
     });
 

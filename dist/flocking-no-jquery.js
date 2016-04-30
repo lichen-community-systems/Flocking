@@ -15863,7 +15863,7 @@ var fluid = fluid || require("infusion"),
             open: {
                 funcName: "flock.midi.connection.bind",
                 args: [
-                    "{system}.ports",
+                    "{that}.system.ports",
                     "{that}.options.ports",
                     "{that}.events.onReady.fire",
                     "{that}.events.raw.fire",
@@ -15874,7 +15874,7 @@ var fluid = fluid || require("infusion"),
             close: {
                 funcName: "flock.midi.connection.close",
                 args: [
-                    "{system}.ports",
+                    "{that}.system.ports",
                     "{that}.events.raw.fire"
                 ]
             }
@@ -15902,7 +15902,7 @@ var fluid = fluid || require("infusion"),
             onPortsAvailable: {
                 funcName: "flock.midi.connection.autoOpen",
                 args: [
-                    "{connection}.options.openImmediately", "{connection}.open"
+                    "{that}.options.openImmediately", "{that}.open"
                 ]
             },
 
