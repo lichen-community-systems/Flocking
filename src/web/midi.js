@@ -631,8 +631,19 @@ var fluid = fluid || require("infusion"),
         gradeNames: ["fluid.component"],
 
         members: {
-            controlMap: "@expand:flock.midi.controller.optimizeControlMap({that}.options.controlMap)",
-            noteMap: "{that}.options.noteMap"
+            controlMap: {
+                expander: {
+                    funcName: "flock.midi.controller.optimizeMIDIMap",
+                    args: ["{that}.options.controlMap"]
+                }
+            },
+
+            noteMap: {
+                expander: {
+                    funcName: "flock.midi.controller.optimizeNoteMap",
+                    args: ["{that}.options.noteMap"]
+                }
+            }
         },
 
         controlMap: {},                       // Control and note maps
@@ -650,16 +661,7 @@ var fluid = fluid || require("infusion"),
                         input: "*"              // Connect to the first available input port.
                     },
 
-                    openImmediately: true,    // Immediately upon instantiating the connection.
-
-                    listeners: {
-                        control: {
-                            func: "{controller}.mapControl"
-                        },
-                        note: {
-                            func: "{controller}.mapNote"
-                        }
-                    }
+                    openImmediately: true    // Immediately upon instantiating the connection.
                 }
             }
         },
@@ -674,17 +676,34 @@ var fluid = fluid || require("infusion"),
                 funcName: "flock.midi.controller.mapNote",
                 args: ["{arguments}.0", "{that}.synthContext", "{that}.noteMap"]
             }
+        },
+
+        events: {
+            control: "{that}.connection.events.control",
+            note: "{that}.connection.events.note"
+        },
+
+        listeners: {
+            control: "{that}.mapControl({arguments}.0)",
+            note: "{that}.mapNote({arguments}.0)"
         }
     });
 
-    flock.midi.controller.optimizeControlMap = function (controlMap) {
-        var controlMapArray = new Array(127);
-        fluid.each(controlMap, function (mapSpec, controlNum) {
-            var idx = Number(controlNum);
-            controlMapArray[idx] = mapSpec;
+    flock.midi.controller.optimizeMIDIMap = function (map) {
+        var mapArray = new Array(127);
+        fluid.each(map, function (mapSpecs, midiNum) {
+            var idx = Number(midiNum);
+            mapArray[idx] = fluid.makeArray(mapSpecs);
         });
 
-        return controlMapArray;
+        return mapArray;
+    };
+
+    flock.midi.controller.optimizeNoteMap = function (noteMap) {
+        return {
+            note: flock.midi.controller.optimizeMIDIMap(noteMap.note),
+            velocity: flock.midi.controller.optimizeMIDIMap(noteMap.velocity)
+        };
     };
 
     flock.midi.controller.expandControlMapSpec = function (valueUGenID, mapSpec) {
@@ -753,38 +772,39 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.midi.controller.setMappedValue = function (value, map, synthContext) {
-        if (!map) {
-            return;
-        }
-
         value = map.transform ? flock.midi.controller.transformValue(value, map) : value;
         var synth = synthContext[map.synth] || synthContext;
 
         synth.set(map.input, value);
     };
 
+    flock.midi.controller.mapMIDIValue = function (value, maps, synthContext) {
+        if (!maps || maps.length < 1) {
+            return;
+        }
+
+        for (var i = 0; i < maps.length; i++) {
+            var map = maps[i];
+            flock.midi.controller.setMappedValue(value, map, synthContext);
+        }
+    };
+
     flock.midi.controller.mapControl = function (midiMsg, synthContext, controlMap) {
-        var map = controlMap[midiMsg.number],
+        var maps = controlMap[midiMsg.number],
             value = midiMsg.value;
 
-        flock.midi.controller.setMappedValue(value, map, synthContext);
+        flock.midi.controller.mapMIDIValue(value, maps, synthContext);
     };
 
     // TODO: Add support for defining listener filters or subsets
     // of all midi notes (e.g. for controllers like the Quneo).
     flock.midi.controller.mapNote = function (midiMsg, synthContext, noteMap) {
-        var keyMap = noteMap.note,
+        var keyMaps = noteMap.note,
             key = midiMsg.note,
-            velMap = noteMap.velocity,
+            velMaps = noteMap.velocity,
             vel = midiMsg.velocity;
 
-        if (keyMap) {
-            flock.midi.controller.setMappedValue(key, keyMap, synthContext);
-        }
-
-        if (velMap) {
-            flock.midi.controller.setMappedValue(vel, velMap, synthContext);
-        }
+        flock.midi.controller.mapMIDIValue(key, keyMaps, synthContext);
+        flock.midi.controller.mapMIDIValue(vel, velMaps, synthContext);
     };
-
 }());
