@@ -1,4 +1,4 @@
-/*! Flocking 0.1.5 (October 19, 2015), Copyright 2015 Colin Clark | flockingjs.org */
+/*! Flocking 0.1.5 (May 2, 2016), Copyright 2016 Colin Clark | flockingjs.org */
 
 (function (root, factory) {
     if (typeof exports === "object") {
@@ -14536,7 +14536,6 @@ var fluid = fluid || require("infusion"),
             var s = ctx.createBufferSource();
             s.connect(jsNode);
             s.start(0);
-            s.stop(0);
             s.disconnect(0);
             applier.change("shouldInitIOS", false);
         }

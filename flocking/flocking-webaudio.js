@@ -360,7 +360,6 @@ var fluid = fluid || require("infusion"),
             var s = ctx.createBufferSource();
             s.connect(jsNode);
             s.start(0);
-            s.stop(0);
             s.disconnect(0);
             applier.change("shouldInitIOS", false);
         }
