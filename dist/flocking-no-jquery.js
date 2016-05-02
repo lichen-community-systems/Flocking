@@ -16665,7 +16665,11 @@ var fluid = fluid || require("infusion"),
                     priority: "last",
                     funcName: "flock.webAudio.outputManager.iOSStart",
                     args: [
-                        "{that}", "{audioSystem}.context", "{scriptProcessor}.node"
+                        "{that}",
+                        "{audioSystem}.context",
+                        // "{scriptProcessor}.node", // Resolves to undefined, doesn't error.
+                        "{nativeNodeManager}.scriptProcessor.node", // Resolves correctly.
+                        "{scriptProcessor}"          // Resolves to undefined
                     ]
                 }
             ],
@@ -16765,7 +16769,7 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    flock.webAudio.outputManager.iOSStart = function (that, ctx, jsNode) {
+    flock.webAudio.outputManager.iOSStart = function (that, ctx, jsNode, scriptProcessor) {
         // Work around a bug in iOS Safari where it now requires a noteOn()
         // message to be invoked before sound will work at all. Just connecting a
         // ScriptProcessorNode inside a user event handler isn't sufficient.
@@ -16773,7 +16777,7 @@ var fluid = fluid || require("infusion"),
             var s = ctx.createBufferSource();
             s.connect(jsNode);
             s.start(0);
-            s.stop(0);
+            // s.stop(0); // Appears to have been removed from iOS's WebAudio implementation.
             s.disconnect(0);
             that.applier.change("shouldInitIOS", false);
         }
