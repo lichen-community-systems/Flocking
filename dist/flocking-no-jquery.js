@@ -16665,7 +16665,9 @@ var fluid = fluid || require("infusion"),
                     priority: "last",
                     funcName: "flock.webAudio.outputManager.iOSStart",
                     args: [
-                        "{that}", "{audioSystem}.context", "{scriptProcessor}.node"
+                        "{that}",
+                        "{audioSystem}.context",
+                        "{nativeNodeManager}.scriptProcessor.node"
                     ]
                 }
             ],
@@ -16773,7 +16775,6 @@ var fluid = fluid || require("infusion"),
             var s = ctx.createBufferSource();
             s.connect(jsNode);
             s.start(0);
-            s.stop(0);
             s.disconnect(0);
             that.applier.change("shouldInitIOS", false);
         }
