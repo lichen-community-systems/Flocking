@@ -1004,9 +1004,12 @@ var fluid = fluid || require("infusion"),
         inputs: {
             envelope: "flock.envelope.adsr",
             gate: 0.0,
-            timeScale: 1.0,     // Timescale is control-rate (or lower) only.
-            mul: null,          // This is equivalent to SC's levelScale parameter.
-            add: null           // And this to SC's levelBias.
+            timeScale: 1.0,     // Scales the durations of the segments.
+                                // Timescale is control-rate (or lower) only.
+            mul: null,          // Scales the levels of the breakpoints;
+                                // (this is equivalent to SC's levelScale parameter)
+            add: null           // Offsets the levels of the breakpoints.
+                                // (this is equivalent to SC's levelBias)
         },
 
         ugenOptions: {

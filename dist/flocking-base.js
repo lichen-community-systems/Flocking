@@ -7662,18 +7662,27 @@ var fluid = fluid || require("infusion"),
 
             mapNote: {
                 funcName: "flock.midi.controller.mapNote",
-                args: ["{arguments}.0", "{that}.synthContext", "{that}.noteMap"]
+                args: [
+                    "{arguments}.0", // Note type.
+                    "{arguments}.1", // Note spec.
+                    "{that}.synthContext",
+                    "{that}.noteMap"
+                ]
             }
         },
 
         events: {
             control: "{that}.connection.events.control",
-            note: "{that}.connection.events.note"
+            note: "{that}.connection.events.note",
+            noteOn: "{that}.connection.events.noteOn",
+            noteOff: "{that}.connection.events.noteOff"
         },
 
         listeners: {
             control: "{that}.mapControl({arguments}.0)",
-            note: "{that}.mapNote({arguments}.0)"
+            note: "{that}.mapNote(note, {arguments}.0)",
+            noteOn: "{that}.mapNote(noteOn, {arguments}.0)",
+            noteOff: "{that}.mapNote(noteOff, {arguments}.0)"
         }
     });
 
@@ -7689,8 +7698,10 @@ var fluid = fluid || require("infusion"),
 
     flock.midi.controller.optimizeNoteMap = function (noteMap) {
         return {
-            note: flock.midi.controller.optimizeMIDIMap(noteMap.note),
-            velocity: flock.midi.controller.optimizeMIDIMap(noteMap.velocity)
+            note: fluid.makeArray(noteMap.note),
+            noteOn: fluid.makeArray(noteMap.noteOn),
+            noteOff: fluid.makeArray(noteMap.noteOff),
+            velocity: fluid.makeArray(noteMap.velocity)
         };
     };
 
@@ -7760,7 +7771,13 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.midi.controller.setMappedValue = function (value, map, synthContext) {
-        value = map.transform ? flock.midi.controller.transformValue(value, map) : value;
+        // A map specification's value always overrides the incoming midi value.
+        // This is typically used when manually closing gates with noteOff events
+        // fired by controllers that specify key release speed as velocity.
+        value = map.value !== undefined ? map.value :
+            map.transform ? flock.midi.controller.transformValue(value, map) :
+            value;
+
         var synth = synthContext[map.synth] || synthContext;
 
         synth.set(map.input, value);
@@ -7786,8 +7803,11 @@ var fluid = fluid || require("infusion"),
 
     // TODO: Add support for defining listener filters or subsets
     // of all midi notes (e.g. for controllers like the Quneo).
-    flock.midi.controller.mapNote = function (midiMsg, synthContext, noteMap) {
-        var keyMaps = noteMap.note,
+    // TODO: The current implementation is somewhere between inefficient
+    // and broken. In particular, we doubly apply velocity for
+    // each noteOn or noteOff event.
+    flock.midi.controller.mapNote = function (type, midiMsg, synthContext, noteMap) {
+        var keyMaps = noteMap[type],
             key = midiMsg.note,
             velMaps = noteMap.velocity,
             vel = midiMsg.velocity;
@@ -8155,7 +8175,9 @@ var fluid = fluid || require("infusion"),
                     priority: "last",
                     funcName: "flock.webAudio.outputManager.iOSStart",
                     args: [
-                        "{that}", "{audioSystem}.context", "{scriptProcessor}.node"
+                        "{that}",
+                        "{audioSystem}.context",
+                        "{nativeNodeManager}.scriptProcessor.node"
                     ]
                 }
             ],
@@ -8263,7 +8285,6 @@ var fluid = fluid || require("infusion"),
             var s = ctx.createBufferSource();
             s.connect(jsNode);
             s.start(0);
-            s.stop(0);
             s.disconnect(0);
             that.applier.change("shouldInitIOS", false);
         }
