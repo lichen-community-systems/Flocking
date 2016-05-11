@@ -2,7 +2,7 @@
  * Flocking Web MIDI
  * http://github.com/colinbdclark/flocking
  *
- * Copyright 2014, Colin Clark
+ * Copyright 2014-2016, Colin Clark
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
 
@@ -627,6 +627,10 @@ var fluid = fluid || require("infusion"),
     };
 
 
+    // TODO:
+    //  * Mappings should be defined for each of the MIDI messages (noteOn, noteOff, control)
+    //  * Velocity mapping should always be scoped to a particular noteon/off handler.
+    //  * Provide a "listener filter" that allows for mapping to only certain notes.
     fluid.defaults("flock.midi.controller", {
         gradeNames: ["fluid.component"],
 
