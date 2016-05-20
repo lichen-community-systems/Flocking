@@ -123,6 +123,8 @@ var fluid = fluid || require("infusion"),
             chan = status & 0xf,
             fn;
 
+        // TODO: Factor this into a lookup table by providing a generic
+        // flock.midi.read.note that determines if it should be forwarded to noteOn/Off.
         switch (type) {
             case 8:
                 fn = flock.midi.read.noteOff;
@@ -146,10 +148,11 @@ var fluid = fluid || require("infusion"),
                 fn = flock.midi.read.pitchbend;
                 break;
             case 15:
-                fn = flock.midi.read.sysex;
+                fn = flock.midi.read.system;
                 break;
             default:
-                throw new Error("Recieved an unrecognized MIDI message: " + data);
+                return flock.fail("Received an unrecognized MIDI message: " +
+                    fluid.prettyPrintJSON(data));
         }
 
         return fn(chan, data);
@@ -214,14 +217,100 @@ var fluid = fluid || require("infusion"),
         };
     };
 
-    flock.midi.read.sysex = function (chan, data) {
+    flock.midi.read.system = function (status, data) {
+        if (status === 0 || status === 7) {
+            return flock.midi.messageFailure("sysex");
+        } else if (status === 1) {
+            return flock.midi.messageFailure("quarter frame MTC");
+        }
+
+        var fn;
+        // TODO: Factor this into a lookup table.
+        switch (status) {
+            case 2:
+                fn = flock.midi.read.songPointer;
+                break;
+            case 3:
+                fn = flock.midi.read.songSelect;
+                break;
+            case 6:
+                fn = flock.midi.read.tuneRequest;
+                break;
+            case 8:
+                fn = flock.midi.read.clock;
+                break;
+            case 10:
+                fn = flock.midi.read.start;
+                break;
+            case 11:
+                fn = flock.midi.read.continue;
+                break;
+            case 12:
+                fn = flock.midi.read.stop;
+                break;
+            case 14:
+                fn = flock.midi.read.activeSense;
+                break;
+            case 15:
+                fn = flock.midi.read.reset;
+                break;
+            default:
+                return flock.fail("Received an unrecognized MIDI system message: " +
+                    fluid.prettyPrintJSON(data));
+        }
+
+        return fn(data);
+    };
+
+    flock.midi.messageFailure = function (type) {
+        flock.fail("Flocking does not currently support MIDI " + type + " messages.");
+        return;
+    };
+
+    flock.midi.read.valueMessage = function (type, value) {
         return {
-            type: "system",
-            chan: chan,
-            data: data.subarray(1)
+            type: type,
+            value: value
         };
     };
 
+    flock.midi.read.songPointer = function (data) {
+        var val = (data[1] << 7) | data[2];
+        return flock.midi.read.valueMessage("songPointer", val);
+    };
+
+    flock.midi.read.songSelect = function (data) {
+        return flock.midi.read.valueMessage("songSelect", data[1]);
+    };
+
+    flock.midi.read.tuneRequest = function () {
+        return {
+            type: "tuneRequest"
+        };
+    };
+
+    flock.midi.systemRealtimeMessages = [
+        "tuneRequest",
+        "clock",
+        "start",
+        "continue",
+        "stop",
+        "activeSense",
+        "reset"
+    ];
+
+    flock.midi.createSystemRealtimeMessageReaders = function (systemRealtimeMessages) {
+        fluid.each(systemRealtimeMessages, function (type) {
+            flock.midi.read[type] = function () {
+                return {
+                    type: type
+                };
+            };
+        });
+
+    };
+
+    flock.midi.createSystemRealtimeMessageReaders(flock.midi.systemRealtimeMessages);
 
     /**
      * Represents the overall Web MIDI system,
