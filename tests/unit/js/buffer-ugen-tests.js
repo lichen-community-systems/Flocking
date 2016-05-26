@@ -441,14 +441,21 @@ var fluid = fluid || require("infusion"),
 
     QUnit.module("flock.ugen.chopBuffer");
 
-
-    QUnit.asyncTest("Static default inputs", function () {
+    QUnit.asyncTest("Constant rate inputs", function () {
         var s = flock.synth({
             synthDef: {
                 id: "chopper",
                 ugen: "flock.ugen.chopBuffer",
-                start: 0.1,
+                start: 0.25,
+                end: 0.5,
                 buffer: "honey"
+            },
+
+            members: {
+                audioSettings: {
+                    // Ensure we're generating a large enough buffer to get some sound.
+                    blockSize: 2048
+                }
             }
         });
 
