@@ -217,13 +217,15 @@ var fluid = fluid || require("infusion"),
 
         var def = $.extend.apply(null, extendArgs);
 
-        flock.init({
-            rates: {
-                audio: 48000
-            }
-        });
         return flock.synth({
-            synthDef: def
+            synthDef: def,
+            members: {
+                audioSettings: {
+                    rates: {
+                        audio: 48000
+                    }
+                }
+            }
         });
     };
 
