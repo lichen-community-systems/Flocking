@@ -40,7 +40,7 @@
             return function () {
                 flock.audio.decode({
                     src: config.src,
-                    sampleRate: environment.audioSystem.model.sampleRate,
+                    sampleRate: environment.audioSystem.model.rates.audio,
                     decoder: config.decoder,
                     success: function (decoded) {
                         flock.test.audioFile.testTriangleBuffer(decoded,
