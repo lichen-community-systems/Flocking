@@ -164,7 +164,7 @@ var fluid = fluid || require("infusion"),
             asyncTest("Encode in " + format + " format, then decode it again.", function () {
                 flock.audio.decode({
                     src: "../../shared/audio/long-triangle-int16-44100.wav",
-                    sampleRate: environment.audioSystem.model.sampleRate,
+                    sampleRate: environment.audioSystem.model.rates.audio,
                     success: function (original) {
                         flock.test.audioFile.encodeThenDecode(original, format);
                     },
