@@ -417,7 +417,7 @@ Multiple synths can be recorded by using Flocking's interconnect bus feature, wh
         }
     });
 
-    var synthA = flock.synth({
+    var synthB = flock.synth({
         synthDef: {
             ugen: "flock.ugen.out",
             bus: 5,
