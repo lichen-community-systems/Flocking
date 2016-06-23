@@ -1455,7 +1455,7 @@ var fluid = fluid || require("infusion"),
              */
             addToEnvironment: {
                 funcName: "flock.node.addToEnvironment",
-                args: ["{that}", "{arguments}.0", "{enviro}.nodeList"]
+                args: ["{that}", "{arguments}.0", "{that}.enviro.nodeList"]
             },
 
             /**
@@ -1463,7 +1463,7 @@ var fluid = fluid || require("infusion"),
              */
             removeFromEnvironment: {
                 funcName: "flock.node.removeFromEnvironment",
-                args: ["{that}", "{enviro}.nodeList"]
+                args: ["{that}", "{that}.enviro.nodeList"]
             },
 
             /**
@@ -1473,7 +1473,7 @@ var fluid = fluid || require("infusion"),
              */
             isPlaying: {
                 funcName: "flock.nodeList.isNodeActive",
-                args:["{enviro}.nodeList", "{that}"]
+                args:["{that}.enviro.nodeList", "{that}"]
             }
         },
 
