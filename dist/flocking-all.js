@@ -21510,7 +21510,7 @@ var fluid = fluid || require("infusion"),
     flock.enviro.registerGlobalSingleton = function (that) {
         if (that.options.isGlobalSingleton) {
             // flock.enviro.shared is deprecated. Use "flock.environment"
-            // or an IoC reference to {enviro} instead
+            // or an IoC reference to {flock.enviro} instead
             flock.environment = flock.enviro.shared = that;
         }
     };
@@ -22811,6 +22811,7 @@ var fluid = fluid || require("infusion"),
         ],
 
         childListeners: {
+            // TODO: This is likely unnecessary and quite possibly error-prone.
             "{band}.events.onDestroy": {
                 func: "{that}.destroy"
             }
