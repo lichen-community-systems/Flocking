@@ -268,7 +268,7 @@ var fluid = fluid || require("infusion"),
 
         listeners: {
             onFadeIn: [
-                "{enviro}.start()",
+                "{that}.enviro.start()",
                 "{fader}.fadeIn(1.0)"
             ],
 
@@ -278,7 +278,7 @@ var fluid = fluid || require("infusion"),
                 {
                     funcName: "flock.ui.enviroPlayButton.renableAfterFadeOutDelay",
                     args: [
-                        "{enviro}",
+                        "{that}.enviro",
                         "{that}.model",
                         "{that}.applier",
                         "{that}.resetTime",

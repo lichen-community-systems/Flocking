@@ -11482,7 +11482,7 @@ var fluid = fluid || require("infusion"),
              */
             addToEnvironment: {
                 funcName: "flock.node.addToEnvironment",
-                args: ["{that}", "{arguments}.0", "{enviro}.nodeList"]
+                args: ["{that}", "{arguments}.0", "{that}.enviro.nodeList"]
             },
 
             /**
@@ -11490,7 +11490,7 @@ var fluid = fluid || require("infusion"),
              */
             removeFromEnvironment: {
                 funcName: "flock.node.removeFromEnvironment",
-                args: ["{that}", "{enviro}.nodeList"]
+                args: ["{that}", "{that}.enviro.nodeList"]
             },
 
             /**
@@ -11500,7 +11500,7 @@ var fluid = fluid || require("infusion"),
              */
             isPlaying: {
                 funcName: "flock.nodeList.isNodeActive",
-                args:["{enviro}.nodeList", "{that}"]
+                args:["{that}.enviro.nodeList", "{that}"]
             }
         },
 
@@ -11638,7 +11638,7 @@ var fluid = fluid || require("infusion"),
                     "{that}.options.synthDef",
                     "{that}.rate",
                     "{that}.nodeList",
-                    "{enviro}",
+                    "{that}.enviro",
                     "{that}.audioSettings"
                 ]
             }
@@ -11646,14 +11646,14 @@ var fluid = fluid || require("infusion"),
 
         members: {
             rate: "{that}.options.rate",
-            audioSettings: "{enviro}.audioSystem.model", // TODO: Move this.
+            audioSettings: "{that}.enviro.audioSystem.model", // TODO: Move this.
             nodeList: "@expand:flock.nodeList()",
             out: "{that}.options.ugens",
             genFn: "@expand:fluid.getGlobalValue(flock.evaluate.ugens)"
         },
 
         model: {
-            blockSize: "@expand:flock.synth.calcBlockSize({that}.rate, {enviro}.audioSystem.model)"
+            blockSize: "@expand:flock.synth.calcBlockSize({that}.rate, {that}.enviro.audioSystem.model)"
         },
 
         invokers: {
@@ -12897,7 +12897,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.bufferSource", {
         gradeNames: ["fluid.modelComponent"],
 
-        sampleRate: "{flock.enviro}.audioSystem.model.sampleRate",
+        sampleRate: "{enviro}.audioSystem.model.sampleRate",
 
         model: {
             state: "start",

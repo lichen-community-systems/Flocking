@@ -39,7 +39,7 @@
 
         listeners: {
             onCreate: [
-                "{enviro}.start()"
+                "{that}.enviro.start()"
             ]
         }
     });
