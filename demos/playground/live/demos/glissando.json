@@ -1,5 +1,5 @@
 {
-    "description": "An ascending sinOsc glissando using a line ugen.",
+    "description": "An descending sinOsc glissando using a line ugen.",
     "synthDef": {
         "ugen": "flock.ugen.sinOsc",
         "freq": {

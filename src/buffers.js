@@ -230,7 +230,7 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.bufferSource", {
         gradeNames: ["fluid.modelComponent"],
 
-        sampleRate: "{flock.enviro}.audioSystem.model.sampleRate",
+        sampleRate: "{enviro}.audioSystem.model.sampleRate",
 
         model: {
             state: "start",
