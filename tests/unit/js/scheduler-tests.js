@@ -6,26 +6,29 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, module, test, asyncTest, start, expect, ok, equal, deepEqual*/
+/*global require*/
 
 var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
     flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
 
+    var QUnit = fluid.registerNamespace("QUnit");
+
     flock.silentEnviro();
 
-    module("Time Converters");
+    QUnit.module("Time Converters");
 
-    test("flock.convert.seconds", function () {
+    QUnit.test("flock.convert.seconds", function () {
         var converter = flock.convert.seconds();
 
-        equal(converter.value(1.5), 1500, "1.5 seconds should convert to 1500 ms.");
-        equal(converter.value(0), 0, "0 seconds should convert to 0 ms.");
+        QUnit.equal(converter.value(1.5), 1500, "1.5 seconds should convert to 1500 ms.");
+        QUnit.equal(converter.value(0), 0, "0 seconds should convert to 0 ms.");
     });
 
-    test("flock.convert.beats", function () {
+    QUnit.test("flock.convert.beats", function () {
         var bpm = 60,
             oneBeatMin = 1 / bpm,
             oneBeatSec = oneBeatMin * 60,
@@ -36,27 +39,27 @@ var fluid = fluid || require("infusion"),
             expected;
 
         expected = 4 * oneBeatMs;
-        equal(converter.value(4), expected,
+        QUnit.equal(converter.value(4), expected,
             "4 beats at 60 bpm seconds should convert to " + expected + " ms.");
-        equal(converter.value(0), 0, "0 beats at 60 bpm should convert to 0 ms.");
+        QUnit.equal(converter.value(0), 0, "0 beats at 60 bpm should convert to 0 ms.");
 
         converter = flock.convert.beats({
             bpm: 0
         });
-        equal(converter.value(100), 0,
+        QUnit.equal(converter.value(100), 0,
             "100 beats at 0 bpm should convert to 0 ms.");
     });
 
 
     var sked;
 
-    module("Asynchronous Scheduler tests", {
+    QUnit.module("Asynchronous Scheduler tests", {
         teardown: function () {
             sked.end();
         }
     });
 
-    asyncTest("flock.scheduler.async.repeat() multiple listeners", function () {
+    QUnit.asyncTest("flock.scheduler.async.repeat() multiple listeners", function () {
         var interval = 100,
             numRuns = 10,
             runs = 0,
@@ -91,20 +94,20 @@ var fluid = fluid || require("infusion"),
                 } else {
                     sked.repeatScheduler.clear(interval, listener2);
                     sked.repeatScheduler.clear(interval, testingListener);
-                    expect(numRuns * 2);
-                    start();
+                    QUnit.expect(numRuns * 2);
+                    QUnit.start();
                 }
                 fluid.clear(fired);
                 return;
             }
 
             if (both) {
-                deepEqual(fired, {
+                QUnit.deepEqual(fired, {
                     listener1: true,
                     listener2: true
                 }, "Both listeners should fire.");
             } else {
-                deepEqual(fired, {
+                QUnit.deepEqual(fired, {
                     listener2: true
                 }, "After the first listener has been removed, only the second should fire.");
             }
@@ -119,7 +122,7 @@ var fluid = fluid || require("infusion"),
 
 
     var testClearScheduler = function (name, clearFnName) {
-        asyncTest(name, function () {
+        QUnit.asyncTest(name, function () {
             var interval = 100,
                 numRuns = 10,
                 runs = 0,
@@ -144,7 +147,7 @@ var fluid = fluid || require("infusion"),
                     runs = 0;
                     sked.repeat(interval, stage);
                 } else {
-                    start();
+                    QUnit.start();
                 }
             };
 
@@ -168,7 +171,7 @@ var fluid = fluid || require("infusion"),
                 makeRecordingListener(fired, "listener2")
             ];
 
-            expect(stages.length * 2);
+            QUnit.expect(stages.length * 2);
             runNextTestStage();
         });
     };
@@ -176,7 +179,7 @@ var fluid = fluid || require("infusion"),
     testClearScheduler("flock.scheduler.repeat.clearInterval()", "clearInterval");
     testClearScheduler("flock.scheduler.async.clearAll()", "clearAll");
 
-    module("Declarative scheduling");
+    QUnit.module("Declarative scheduling");
 
     fluid.defaults("flock.scheduler.tests.targetingSynth", {
         gradeNames: ["fluid.component"],
@@ -218,16 +221,16 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    asyncTest("Targeting changes at synth using the scheduler's synthContext", function () {
+    QUnit.asyncTest("Targeting changes at synth using the scheduler's synthContext", function () {
         var testComponent = flock.scheduler.tests.targetingSynth();
-        equal(440, testComponent.synthy.get("sin.freq"),
+        QUnit.equal(440, testComponent.synthy.get("sin.freq"),
             "The target synth's initial frequency should be as configured.");
 
         setTimeout(function () {
-            equal(110, testComponent.synthy.get("sin.freq"),
+            QUnit.equal(110, testComponent.synthy.get("sin.freq"),
                 "The target synth's frequency input should have been updated correctly.");
             testComponent.sked.end();
-            start();
+            QUnit.start();
         }, 200);
     });
 
