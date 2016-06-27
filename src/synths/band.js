@@ -66,6 +66,7 @@ var fluid = fluid || require("infusion"),
         ],
 
         childListeners: {
+            // TODO: This is likely unnecessary and quite possibly error-prone.
             "{band}.events.onDestroy": {
                 func: "{that}.destroy"
             }
