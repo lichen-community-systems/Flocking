@@ -6,7 +6,7 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global fluid, ok, equal, deepEqual, Float32Array*/
+/*global fluid, ArrayMath, Float32Array, ok, equal, deepEqual*/
 
 var flock = flock || {};
 
@@ -208,6 +208,17 @@ var flock = flock || {};
         return buffer;
     };
 
+    flock.test.subtract = function (a, b, normalizeToValue) {
+        var subtracted = new Float32Array(b.length);
+        ArrayMath.sub(subtracted, a,b);
+
+        if (normalizeToValue !== undefined) {
+            flock.normalize(subtracted, normalizeToValue);
+        }
+
+        return subtracted;
+    };
+
     /**
      * Concatenates all arguments (arrays or individual objects)
      * into a single array.
@@ -239,6 +250,20 @@ var flock = flock || {};
         return parseFloat(value.toFixed(numDecimals));
     };
 
+    flock.test.truncateTo = function (value, numDecimals) {
+        var valueString = value.toString(),
+            decIdx = valueString.indexOf(".");
+
+        if (decIdx < 0) {
+            return value;
+        }
+
+        var endIdx = decIdx + 1 + numDecimals,
+            trimmed = valueString.substr(0, endIdx);
+
+        return parseFloat(trimmed);
+    };
+
     flock.test.equalRounded = function (numDecimals, actual, expected, msg) {
         var rounded = flock.test.roundTo(actual, numDecimals);
         equal(rounded, expected, msg);
@@ -259,7 +284,7 @@ var flock = flock || {};
         deepEqual(roundedActual, expected, msg);
     };
 
-    flock.test.arrayEqualBothRounded = function (numDecimals, actual, expected, msg) {
+    flock.test.arrayEqualWithDecimalConverter = function (numDecimals, converter, actual, expected, msg) {
         if (!actual) {
             ok(false, msg + " - the actual array was undefined.");
             return;
@@ -271,15 +296,25 @@ var flock = flock || {};
             return;
         }
 
-        var roundedActual = [],
-            roundedExpected = [];
+        var convertedActual = [],
+            convertedExpected = [];
 
         for (var i = 0; i < actual.length; i++) {
-            roundedActual[i] = flock.test.roundTo(actual[i], numDecimals);
-            roundedExpected[i] = flock.test.roundTo(expected[i], numDecimals);
+            convertedActual[i] = converter(actual[i], numDecimals);
+            convertedExpected[i] = converter(expected[i], numDecimals);
         }
 
-        deepEqual(roundedActual, roundedExpected, msg);
+        deepEqual(convertedActual, convertedExpected, msg);
+    };
+
+    flock.test.arrayEqualBothRounded = function (numDecimals, actual, expected, msg) {
+        flock.test.arrayEqualWithDecimalConverter(numDecimals,
+            flock.test.roundTo, actual, expected, msg);
+    };
+
+    flock.test.arrayEqualBothTruncated = function (numDecimals, actual, expected, msg) {
+        flock.test.arrayEqualWithDecimalConverter(numDecimals,
+            flock.test.truncateTo, actual, expected, msg);
     };
 
     flock.test.arrayNotSilent = function (buffer, msg) {

@@ -73,71 +73,39 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-
-    flock.audio.encode.writeAsPCM = function (formatSpec, offset, dv, buf) {
-        if (formatSpec.setter === "setFloat32" && buf instanceof Float32Array) {
+    flock.audio.encode.writeAsPCM = function (convertSpec, offset, dv, buf) {
+        if (convertSpec.setter === "setFloat32" && buf instanceof Float32Array) {
             return flock.audio.encode.writeFloat32Array(offset, dv, buf);
         }
 
         for (var i = 0; i < buf.length; i++) {
-            // Clamp to within bounds.
-            var s = Math.min(1.0, buf[i]);
-            s = Math.max(-1.0, s);
-
-            // Scale to the otuput number format.
-            s = s < 0 ? s * formatSpec.scaleNeg : s * formatSpec.scalePos;
+            var s = flock.audio.convert.floatToInt(buf[i], convertSpec);
 
             // Write the sample to the DataView.
-            dv[formatSpec.setter](offset, s, true);
-            offset += formatSpec.width;
+            dv[convertSpec.setter](offset, s, true);
+            offset += convertSpec.width;
         }
 
         return dv;
     };
 
-    flock.audio.pcm = {
-        int16: {
-            scalePos: 32767,
-            scaleNeg: 32768,
-            setter: "setInt16",
-            width: 2
-        },
-
-        int32: {
-            scalePos: 2147483647,
-            scaleNeg: 2147483648,
-            setter: "setInt32",
-            width: 4
-        },
-
-        float32: {
-            scalePos: 1,
-            scaleNeg: 1,
-            setter: "setFloat32",
-            width: 4
-        }
-    };
-
     flock.audio.encode.wav = function (bufDesc, format) {
-        format = format || flock.audio.pcm.int16;
+        format = format || flock.audio.convert.pcm.int16;
 
-        var formatSpec = typeof format === "string" ? flock.audio.pcm[format] : format;
-        if (!formatSpec) {
-            flock.fail("Flocking does not support encoding " + format + " format PCM wave files.");
-        }
-
-        var interleaved = flock.audio.interleave(bufDesc),
+        var convertSpec = flock.audio.convert.specForPCMType(format),
+            interleaved = flock.audio.interleave(bufDesc),
             numChans = bufDesc.format.numChannels,
             sampleRate = bufDesc.format.sampleRate,
-            isPCM = formatSpec.setter !== "setFloat32",
+            isPCM = convertSpec.setter !== "setFloat32",
             riffHeaderSize = 8,
             formatHeaderSize = 12,
             formatBodySize = 16,
             formatTag = 1,
             dataHeaderSize = 8,
-            dataBodySize = interleaved.length * formatSpec.width,
+            dataBodySize = interleaved.length * convertSpec.width,
             dataChunkSize = dataHeaderSize + dataBodySize,
-            bitsPerSample = 8 * formatSpec.width;
+            bytesPerFrame = convertSpec.width * numChans,
+            bitsPerSample = 8 * convertSpec.width;
 
         if (numChans > 2 || !isPCM) {
             var factHeaderSize = 8,
@@ -174,8 +142,8 @@ var fluid = fluid || require("infusion"),
         dv.setUint16(20, formatTag, true); // wFormatTag
         dv.setUint16(22, numChans, true); // nChannels
         dv.setUint32(24, sampleRate, true); // nSamplesPerSec
-        dv.setUint32(28, sampleRate * 4, true); // nAvgBytesPerSec (sample rate * block align)
-        dv.setUint16(32, numChans * formatSpec.width, true); //nBlockAlign (channel count * bytes per sample)
+        dv.setUint32(28, sampleRate * bytesPerFrame, true); // nAvgBytesPerSec (sample rate * byte width * channels)
+        dv.setUint16(32, bytesPerFrame, true); //nBlockAlign (channel count * bytes per sample)
         dv.setUint16(34, bitsPerSample, true); // wBitsPerSample
 
         var offset = 36;
@@ -197,7 +165,7 @@ var fluid = fluid || require("infusion"),
             offset = flock.audio.encode.wav.writeFactChunk(dv, offset, bufDesc.format.numSampleFrames);
         }
 
-        flock.audio.encode.wav.writeDataChunk(formatSpec, offset, dv, interleaved, dataBodySize);
+        flock.audio.encode.wav.writeDataChunk(convertSpec, offset, dv, interleaved, dataBodySize);
 
         return dv.buffer;
     };
@@ -235,13 +203,13 @@ var fluid = fluid || require("infusion"),
         return offset;
     };
 
-    flock.audio.encode.wav.writeDataChunk = function (formatSpec, offset, dv, interleaved, numSampleBytes) {
+    flock.audio.encode.wav.writeDataChunk = function (convertSpec, offset, dv, interleaved, numSampleBytes) {
         // Data chunk Header
         flock.audio.encode.setString(dv, offset, "data");
         offset += 4;
         dv.setUint32(offset, numSampleBytes, true); // Length of the datahunk.
         offset += 4;
 
-        flock.audio.encode.writeAsPCM(formatSpec, offset, dv, interleaved);
+        flock.audio.encode.writeAsPCM(convertSpec, offset, dv, interleaved);
     };
 }());

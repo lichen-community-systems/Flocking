@@ -6,19 +6,21 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, module, asyncTest, deepEqual, start*/
+/*global require*/
 
 var fluid = fluid || require("infusion"),
-flock = fluid.registerNamespace("flock");
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
+    flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
 
-    flock.init();
+    var QUnit = fluid.registerNamespace("QUnit");
 
+    flock.init();
     fluid.registerNamespace("flock.test");
 
-    module("flock.audio.decode.chunked() tests");
+    QUnit.module("flock.audio.decode.chunked() tests");
 
     var audioFormatTestSpecs = [
         {
@@ -79,7 +81,7 @@ flock = fluid.registerNamespace("flock");
     ];
 
     var testAudioFileFormat = function (config) {
-        asyncTest(config.name + ".", function () {
+        QUnit.asyncTest(config.name + ".", function () {
             flock.file.readBufferFromDataUrl({
                 src: config.src,
                 success: function (dataBuffer) {
@@ -89,9 +91,9 @@ flock = fluid.registerNamespace("flock");
                     // Remove the sample data, since it's tested below.
                     delete actual.data.channels;
 
-                    deepEqual(actual, expected,
+                    QUnit.deepEqual(actual, expected,
                         "The decoded audio file info should contain valid container, format, and data structures.");
-                    start();
+                    QUnit.start();
                 }
             });
         });
@@ -155,7 +157,7 @@ flock = fluid.registerNamespace("flock");
         }
     ];
 
-    module("flock.audio.decode() mixed decoder tests");
+    QUnit.module("flock.audio.decode() mixed decoder tests");
     flock.test.audioFile.testDecoder(decoderTestSpecs);
 
     var specifyDecoderType = function (decoderType, specs) {
@@ -167,10 +169,10 @@ flock = fluid.registerNamespace("flock");
         return typedSpecs;
     };
 
-    module("flock.audio.decode() pure JavaScript async decoder tests");
+    QUnit.module("flock.audio.decode() pure JavaScript async decoder tests");
     flock.test.audioFile.testDecoder(specifyDecoderType(flock.audio.decode.workerAsync, decoderTestSpecs));
 
-    module("flock.audio.decode() pure JavaScript sync decoder tests");
+    QUnit.module("flock.audio.decode() pure JavaScript sync decoder tests");
     flock.test.audioFile.testDecoder(specifyDecoderType(flock.audio.decode.sync, decoderTestSpecs));
 
 }());
