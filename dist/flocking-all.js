@@ -23747,6 +23747,8 @@ var fluid = fluid || require("infusion"),
 
     "use strict";
 
+    var atob = typeof (window) !== "undefined" ? window.atob : require("atob");
+
     /**
      * Applies the specified function in the next round of the event loop.
      */
@@ -24010,7 +24012,7 @@ var fluid = fluid || require("infusion"),
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
 
-/*global require */
+/*global require, self, global */
 /*jshint white: false, newcap: true, regexp: true, browser: true,
 forin: false, nomen: true, bitwise: false, maxerr: 100,
 indent: 4, plusplus: false, curly: true, eqeqeq: true,
@@ -24024,6 +24026,9 @@ var fluid = fluid || require("infusion"),
 (function () {
 
     "use strict";
+
+    var g = typeof (window) !== "undefined" ? window :
+        typeof (self) !== "undefined" ? self : global;
 
     fluid.registerNamespace("flock.audio.convert");
 
@@ -24097,7 +24102,7 @@ var fluid = fluid || require("infusion"),
         }
 
         var arrayType = "Int" + (8 * formatSpec.width) + "Array",
-            converted = new window[arrayType](buf.length);
+            converted = new g[arrayType](buf.length);
 
         for (var i = 0; i < buf.length; i++) {
             var floatVal = buf[i],

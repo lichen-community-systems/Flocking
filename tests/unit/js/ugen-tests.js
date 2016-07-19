@@ -6,13 +6,16 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, QUnit, Float32Array*/
+/*global require, Float32Array*/
 
 var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
     flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
+
+    var QUnit = fluid.registerNamespace("QUnit");
 
     fluid.registerNamespace("flock.test");
 
@@ -76,7 +79,7 @@ var fluid = fluid || require("infusion"),
         setAndCheckInput(ugen, inputName, vals);
         QUnit.ok(flock.isIterable(ugen.input(inputName)), "The input should be set to an array of unit generators.");
         QUnit.equal(ugen.input(inputName).length, vals.length, "There should be " + vals.length + " unit generators in the array.");
-        $.each(vals, comparisonFn);
+        fluid.each(vals, comparisonFn);
     };
 
     QUnit.test("Get special path segments", function () {
@@ -137,7 +140,7 @@ var fluid = fluid || require("infusion"),
                 ugen: "flock.test.ugen.mock"
             }
         ];
-        setAndCheckArrayInput(mockUGen, "cat", defs, function (i, def) {
+        setAndCheckArrayInput(mockUGen, "cat", defs, function (def, i) {
             QUnit.equal(mockUGen.input("cat")[i].id, def.id);
         });
 
@@ -147,7 +150,7 @@ var fluid = fluid || require("infusion"),
 
         // And an array of scalars.
         var vals = [100, 200, 300];
-        setAndCheckArrayInput(mockUGen, "fish", vals, function (i, val) {
+        setAndCheckArrayInput(mockUGen, "fish", vals, function (val, i) {
             QUnit.equal(mockUGen.input("fish")[i].model.value, val);
         });
     });
@@ -307,8 +310,8 @@ var fluid = fluid || require("infusion"),
         var synths = [],
             i;
 
-        defs = $.makeArray(defs);
-        $.each(defs, function (i, def) {
+        defs = fluid.makeArray(defs);
+        fluid.each(defs, function (def) {
             var synth = flock.synth({
                 synthDef: def
             });
@@ -320,7 +323,7 @@ var fluid = fluid || require("infusion"),
             QUnit.deepEqual(environment.busManager.buses[bus], expectedOutput, i + ": " + msg);
         }
 
-        $.each(synths, function (i, synth) {
+        fluid.each(synths, function (synth) {
             synth.removeFromEnvironment();
         });
 
@@ -442,7 +445,7 @@ var fluid = fluid || require("infusion"),
         source: {
             ugen: "flock.ugen.sequence",
             rate: "control",
-            list: flock.test.generateSequence(1, 64)
+            values: flock.test.generateSequence(1, 64)
         }
     };
 

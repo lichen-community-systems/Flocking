@@ -6,13 +6,16 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, QUnit, Float32Array*/
+/*global require, Float32Array*/
 
 var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
     flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
+
+    var QUnit = fluid.registerNamespace("QUnit");
 
     var environment = flock.silentEnviro(),
         sampleRate = environment.audioSystem.model.rates.audio;
@@ -431,7 +434,7 @@ var fluid = fluid || require("infusion"),
 
     var testBufferDurationAtAllRates = function () {
         var supportedRates = ["constant", "control"];
-        $.each(supportedRates, function (i, rate) {
+        fluid.each(supportedRates, function (rate) {
             testBufferDuration(rate);
         });
     };
@@ -465,7 +468,7 @@ var fluid = fluid || require("infusion"),
             bufferDefs: [
                 {
                     id: "honey",
-                    url: "../../../demos/shared/audio/where-the-honey-is.mp3"
+                    url: flock.test.pathForResource("../../../demos/shared/audio/hillier-first-chord.wav")
                 }
             ],
             listeners: {

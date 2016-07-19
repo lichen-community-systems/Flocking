@@ -6,11 +6,17 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global fluid, flock, module, test, asyncTest, $, start, equal, ok, deepEqual*/
+/*global require*/
+
+var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
+    flock = fluid.registerNamespace("flock");
 
 (function () {
-
     "use strict";
+
+    var $ = fluid.registerNamespace("jQuery"),
+        QUnit = fluid.registerNamespace("QUnit");
 
     fluid.registerNamespace("flock.test.webaudio");
 
@@ -43,7 +49,7 @@
     };
 
     var environment;
-    module("flock.ugen.mediaIn", {
+    QUnit.module("flock.ugen.mediaIn", {
         setup: function () {
             environment = flock.init({
                 numInputBuses: 4
@@ -104,16 +110,16 @@
                 synth.pause();
 
                 testFn(audioEl, synth);
-                start();
+                QUnit.start();
             });
         });
     };
 
-    test("Web Audio input node is created.", function () {
+    QUnit.test("Web Audio input node is created.", function () {
         var audioSystem = environment.audioSystem,
             nodeManager = audioSystem.nativeNodeManager;
 
-        equal(nodeManager.inputNodes.length, 0,
+        QUnit.equal(nodeManager.inputNodes.length, 0,
             "Prior to creating any input nodes, there shouldn't be any in the environment.");
 
         var testFilePath = flock.test.webaudio.getTestFilePath(audioSystem.context.sampleRate),
@@ -122,19 +128,19 @@
         flock.test.createRecordingMediaSynth(audioEl);
 
         var mediaElementNode = nodeManager.inputNodes[0];
-        equal(nodeManager.inputNodes.length, 1,
+        QUnit.equal(nodeManager.inputNodes.length, 1,
             "After to creating a MediaIn unit generator, there should be one input node.");
 
         // WebKit implementations store a reference to the audio element itself.
         // NOTE: This property isn't in the spec, and could change at any time,
         // however the extra assurance this test provides makes it worth the potential brittleness.
         if (flock.browser.webkit) {
-            equal(mediaElementNode.mediaElement, audioEl,
+            QUnit.equal(mediaElementNode.mediaElement, audioEl,
                 "The MediaElementSourceNode should have been initialized with the audio element.");
         }
     });
 
-    test("Create more input nodes than the configured maxium", function () {
+    QUnit.test("Create more input nodes than the configured maxium", function () {
         function createMediaInDef (id) {
             var def = {
                 ugen: "flock.ugen.mediaIn",
@@ -163,20 +169,20 @@
                 }
             });
 
-            ok(false, "An error should have been raised when too many inputs were created.");
+            QUnit.ok(false, "An error should have been raised when too many inputs were created.");
         } catch (e) {
-            ok(e.message.indexOf("too many input nodes") > 0,
+            QUnit.ok(e.message.indexOf("too many input nodes") > 0,
                 "An error was raised when too many inputs were created.");
         }
     });
 
-    test("Audio settings are correctly pushed from the Web Audio context.", function () {
+    QUnit.test("Audio settings are correctly pushed from the Web Audio context.", function () {
         var environment = flock.init({
             chans: flock.ALL_CHANNELS,
             sampleRate: 192000
         });
 
-        equal(environment.audioSystem.model.rates.audio,
+        QUnit.equal(environment.audioSystem.model.rates.audio,
             environment.audioSystem.context.sampleRate,
             "The correct sample rate was pushed.");
 
@@ -188,11 +194,11 @@
             addToEnvironment: false
         });
 
-        equal(synth.audioSettings.rates.audio,
+        QUnit.equal(synth.audioSettings.rates.audio,
             environment.audioSystem.context.sampleRate,
             "And newly instantiated synths receive the correct sample rate.");
 
-        equal(synth.get("sine").model.sampleRate,
+        QUnit.equal(synth.get("sine").model.sampleRate,
             environment.audioSystem.context.sampleRate,
             "Unit generators also receive the correct sample rate.");
     });
@@ -227,7 +233,7 @@
                 // Firefox obviously uses two different strategies for decoding
                 // audio between the <audio> tag and audioContext.decodeAudioBuffer().
                 // As a result, this test is too brittle to run in Firefox.
-                deepEqual(actualShort, expectedShort,
+                QUnit.deepEqual(actualShort, expectedShort,
                     "The audio element's data should have been read. Note: this test may fail " +
                     "if run on a device running at a sample rate other than 44.1, 48, 82.2 or 96 KHz.");
             }
@@ -242,14 +248,14 @@
         var sampleRate = environment.audioSystem.context.sampleRate,
             testFilePath = flock.test.webaudio.getTestFilePath(sampleRate);
 
-        asyncTest("Reading input samples.", function () {
+        QUnit.asyncTest("Reading input samples.", function () {
             flock.audio.decode({
                 src: testFilePath,
                 sampleRate: environment.audioSystem.model.sampleRate,
                 success: flock.test.webaudio.runMediaElementSourceNodeTest,
                 error: function (msg) {
-                    ok(false, msg);
-                    start();
+                    QUnit.ok(false, msg);
+                    QUnit.start();
                 }
             });
         });

@@ -2,7 +2,7 @@
 * Flocking - Creative audio synthesis for the Web!
 * http://github.com/colinbdclark/flocking
 *
-* Copyright 2012, Colin Clark
+* Copyright 2012-2016, Colin Clark
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
@@ -15,98 +15,93 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
+    var atob = typeof (window) !== "undefined" ? window.atob : require("atob");
     var environment = flock.silentEnviro();
     var QUnit = fluid.registerNamespace("QUnit");
 
-    fluid.registerNamespace("flock.test");
+    fluid.registerNamespace("flock.test.audioFile");
 
     QUnit.module("flock.file.readBufferFromDataUrl() tests");
 
-    (function () {
-        var expectedUnencoded = window.atob(flock.test.audio.b64Int16WAVData),
-            expectedArrayBuffer = flock.file.stringToBuffer(expectedUnencoded),
-            dataFormatCombinations = [
-                {
-                    name: "Read a base64-encoded data URL with a MIME type",
-                    src: flock.test.audio.triangleInt16WAV
-                },
-                {
-                    name: "Read a non-base64 data URL with a MIME type",
-                    src: "data:audio/wav," + expectedUnencoded
-                },
-                {
-                    name: "Read a base64-encoded with no MIME type",
-                    src: "data:;base64," + flock.test.audio.b64Int16WAVData
-                },
-                {
-                    name: "Read a non-base64 data URL with no MIME type",
-                    src: "data:," + expectedUnencoded
+    var expectedUnencoded = atob(flock.test.audio.b64Int16WAVData),
+        expectedArrayBuffer = flock.file.stringToBuffer(expectedUnencoded),
+        dataFormatCombinations = [
+            {
+                name: "Read a base64-encoded data URL with a MIME type",
+                src: flock.test.audio.triangleInt16WAV
+            },
+            {
+                name: "Read a non-base64 data URL with a MIME type",
+                src: "data:audio/wav," + expectedUnencoded
+            },
+            {
+                name: "Read a base64-encoded with no MIME type",
+                src: "data:;base64," + flock.test.audio.b64Int16WAVData
+            },
+            {
+                name: "Read a non-base64 data URL with no MIME type",
+                src: "data:," + expectedUnencoded
+            }
+        ];
+
+    fluid.each(dataFormatCombinations, function (formatSpec) {
+        QUnit.asyncTest(formatSpec.name, function () {
+            flock.file.readBufferFromDataUrl({
+                src: formatSpec.src,
+                success: function (data) {
+                    QUnit.deepEqual(
+                        new Int8Array(data),
+                        new Int8Array(expectedArrayBuffer),
+                        "readBufferFromDataUrl() should correctly parse and decode a data URL that is " + formatSpec.name
+                    );
+
+                    QUnit.start();
                 }
-            ];
-
-        fluid.each(dataFormatCombinations, function (formatSpec) {
-            QUnit.asyncTest(formatSpec.name, function () {
-                flock.file.readBufferFromDataUrl({
-                    src: formatSpec.src,
-                    success: function (data) {
-                        QUnit.deepEqual(
-                            new Int8Array(data),
-                            new Int8Array(expectedArrayBuffer),
-                            "readBufferFromDataUrl() should correctly parse and decode a data URL that is " + formatSpec.name
-                        );
-
-                        QUnit.start();
-                    }
-                });
             });
         });
-    })();
+    });
 
-    (function () {
-        var mimeTypeCombinations = {
-            "wav": [
-                "data:audio/wav;base64,xyz",
-                "data:audio/wave;base64,xyz",
-                "data:audio/x-wav;base64,xyz",
-                "data:audio/wav,xyz",
-                "data:audio/wave,xyz",
-                "data:audio/x-wav,xyz"
-            ],
-            "aiff": [
-                "data:audio/aiff;base64,xyz",
-                "data:sound/aiff;base64,xyz",
-                "data:audio/x-aiff;base64,xyz",
-                "data:audio/aiff,xyz",
-                "data:sound/aiff,xyz",
-                "data:audio/x-aiff,xyz"
-            ]
-        };
+    var mimeTypeCombinations = {
+        "wav": [
+            "data:audio/wav;base64,xyz",
+            "data:audio/wave;base64,xyz",
+            "data:audio/x-wav;base64,xyz",
+            "data:audio/wav,xyz",
+            "data:audio/wave,xyz",
+            "data:audio/x-wav,xyz"
+        ],
+        "aiff": [
+            "data:audio/aiff;base64,xyz",
+            "data:sound/aiff;base64,xyz",
+            "data:audio/x-aiff;base64,xyz",
+            "data:audio/aiff,xyz",
+            "data:sound/aiff,xyz",
+            "data:audio/x-aiff,xyz"
+        ]
+    };
 
-        var testMimeType = function (url, expectedType) {
-            QUnit.asyncTest("Parse data URL with " + expectedType + " MIME type.", function () {
-                flock.file.readBufferFromDataUrl({
-                    src: url,
-                    success: function (data, actualType) {
-                        QUnit.equal(
-                            actualType,
-                            expectedType,
-                            "readBufferFromDataUrl() should recognize " + url + " as a " + expectedType + " file."
-                        );
-                        QUnit.start();
-                    }
-                });
+    var testMimeType = function (url, expectedType) {
+        QUnit.asyncTest("Parse data URL with " + expectedType + " MIME type.", function () {
+            flock.file.readBufferFromDataUrl({
+                src: url,
+                success: function (data, actualType) {
+                    QUnit.equal(
+                        actualType,
+                        expectedType,
+                        "readBufferFromDataUrl() should recognize " + url + " as a " + expectedType + " file."
+                    );
+                    QUnit.start();
+                }
             });
-        };
+        });
+    };
 
-        var expectedType, urls, i, url;
-        for (expectedType in mimeTypeCombinations) {
-            urls = mimeTypeCombinations[expectedType];
-            for (i = 0; i < urls.length; i++) {
-                url = urls[i];
-                testMimeType(url, expectedType);
-            }
-        }
-    })();
+    fluid.each(mimeTypeCombinations, function (expectedType) {
+        var urls = mimeTypeCombinations[expectedType];
+        fluid.each(urls, function (url) {
+            testMimeType(url, expectedType);
+        });
+    });
 
 
     QUnit.module("flock.audio.decode() Web Audio API decoder tests");
@@ -152,8 +147,7 @@ var fluid = fluid || require("infusion"),
     flock.test.audioFile.encodeThenDecode = function (original, encodedFormat) {
         var originalChannelData = original.data.channels[0];
 
-        flock.test.signalInRange(originalChannelData, -1.0, 1.0,
-            "The decoded original should be generally sane.");
+        flock.test.signalInRange(originalChannelData, -1.0, 1.0);
 
         var encoded = flock.audio.encode.wav(original, encodedFormat);
 
@@ -164,8 +158,7 @@ var fluid = fluid || require("infusion"),
                 originalInt16 = flock.audio.convert.floatsToInts(originalChannelData,
                     flock.audio.convert.pcm.int16);
 
-            flock.test.signalInRange(redecodedChannelData, -1.0, 1.0,
-                "The redecoded buffer should be generally sane.");
+            flock.test.signalInRange(redecodedChannelData, -1.0, 1.0);
 
             jqUnit.assertLeftHand("The buffer's format metadata should be the same as the original.",
                 original.format, redecoded.format);
@@ -174,7 +167,9 @@ var fluid = fluid || require("infusion"),
                 "The channel data should be the same as the original after being decoded.",
                 originalInt16, redecodedInt16);
 
-            flock.test.audioFile.drawBufferData(originalChannelData, redecodedChannelData);
+            if (flock.platform.isBrowser) {
+                flock.test.audioFile.drawBufferData(originalChannelData, redecodedChannelData);
+            }
 
             QUnit.start();
         };
@@ -187,7 +182,22 @@ var fluid = fluid || require("infusion"),
             rawData: encoded,
             success: afterRedecoded,
             error: function (e) {
-                QUnit.ok(false, "There was a decoding error while decoding the encoded buffer. " + e);
+                QUnit.ok(false, "There was a error while decoding the encoded buffer. " + e);
+                QUnit.start();
+            }
+        });
+    };
+
+    flock.test.audioFile.encodeDecode = function (fileName, sampleRate, decodedFormat) {
+        flock.audio.registerDecoderStrategy("default", flock.audio.decode.sync);
+        flock.audio.decode({
+            src: flock.test.audioFilePath(fileName),
+            sampleRate: sampleRate,
+            success: function (original) {
+                flock.test.audioFile.encodeThenDecode(original, decodedFormat);
+            },
+            error: function (msg) {
+                QUnit.ok(false, "There was an error while decoding the original audio file. " + msg);
                 QUnit.start();
             }
         });
@@ -195,24 +205,21 @@ var fluid = fluid || require("infusion"),
 
     flock.test.audioFile.testEncodeDecode = function (formats) {
         fluid.each(formats, function (format) {
-            QUnit.asyncTest("Encode in " + format + " format, then decode it again.", function () {
-                flock.audio.registerDecoderStrategy("default", flock.audio.decode.sync);
-                flock.audio.decode({
-                    src: "../../shared/audio/long-triangle-int16-96000.wav",
-                    sampleRate: environment.audioSystem.model.rates.audio,
-                    success: function (original) {
-                        flock.test.audioFile.encodeThenDecode(original, format);
-                    },
-                    error: function (msg) {
-                        QUnit.ok(false, "There was an error while decoding the original audio file. " + msg);
-                        QUnit.start();
-                    }
+            fluid.each(flock.test.audioFile.triangleFiles.int16, function (fileSpec) {
+                var currentSampleRate = environment.audioSystem.model.rates.audio;
+
+                var testName = "Decode a " + fileSpec.sampleRate + " .wav file, " +
+                    "encode in " + format + " format at the current sample rate (" +
+                    currentSampleRate + "), then decode it again.";
+
+                QUnit.asyncTest(testName, function () {
+                    flock.test.audioFile.encodeDecode(fileSpec.fileName,
+                        currentSampleRate, format);
                 });
             });
         });
     };
 
-    // Only Safari seems to support decoding WAVE files at higher bit depths.
-    var formats = flock.platform.browser.safari ? ["int16", "int32", "float32"] : ["int16"];
+    var formats = ["int16", "int32", "float32"];
     flock.test.audioFile.testEncodeDecode(formats);
 })();

@@ -6,13 +6,16 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, module, test, ok, equal, expect, deepEqual*/
+/*global require*/
 
 var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
     flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
+
+    var QUnit = fluid.registerNamespace("QUnit");
 
     var $ = fluid.registerNamespace("jQuery");
     var environment = flock.init();
@@ -24,7 +27,7 @@ var fluid = fluid || require("infusion"),
      * Line Unit Generator Tests *
      *****************************/
 
-    module("flock.ugen.line");
+    QUnit.module("flock.ugen.line");
 
     var lineDef = {
         ugen: "flock.ugen.line",
@@ -36,37 +39,37 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    test("Generate a full line.", function () {
+    QUnit.test("Generate a full line.", function () {
         var line = flock.parse.ugenForDef(lineDef);
 
         line.gen(64);
         var expected = flock.test.generateSequence(0, 63);
-        deepEqual(line.output, expected, "Line should generate all samples for its duration but one.");
+        QUnit.deepEqual(line.output, expected, "Line should generate all samples for its duration but one.");
 
         line.gen(64);
         expected = flock.generateBufferWithValue(64, 64);
-        deepEqual(line.output, expected, "After the line's duration is finished, it should constantly output the end value.");
+        QUnit.deepEqual(line.output, expected, "After the line's duration is finished, it should constantly output the end value.");
     });
 
-    test("Generate a partial line.", function () {
+    QUnit.test("Generate a partial line.", function () {
         var line = flock.parse.ugenForDef(lineDef);
 
         line.gen(32);
 
         // It's a 64 sample buffer, so split it in half to test it.
-        deepEqual(flock.copyBuffer(line.output, 0, 32), flock.test.generateSequence(0, 31),
+        QUnit.deepEqual(flock.copyBuffer(line.output, 0, 32), flock.test.generateSequence(0, 31),
             "The first half of the line's values should but generated.");
-        deepEqual(flock.copyBuffer(line.output, 32), flock.generateBufferWithValue(32, 0),
+        QUnit.deepEqual(flock.copyBuffer(line.output, 32), flock.generateBufferWithValue(32, 0),
             "The last 32 samples of the buffer should be empty.");
 
         line.gen(32);
-        deepEqual(flock.copyBuffer(line.output, 0, 32), flock.test.generateSequence(32, 63),
+        QUnit.deepEqual(flock.copyBuffer(line.output, 0, 32), flock.test.generateSequence(32, 63),
             "The second half of the line's values should be generated.");
-        deepEqual(flock.copyBuffer(line.output, 32), flock.generateBufferWithValue(32, 0),
+        QUnit.deepEqual(flock.copyBuffer(line.output, 32), flock.generateBufferWithValue(32, 0),
             "The last 32 samples of the buffer should be empty.");
 
         line.gen(32);
-        deepEqual(flock.copyBuffer(line.output, 0, 32), flock.generateBufferWithValue(32, 64),
+        QUnit.deepEqual(flock.copyBuffer(line.output, 0, 32), flock.generateBufferWithValue(32, 64),
             "After the line's duration is finished, it should constantly output the end value.");
     });
 
@@ -75,7 +78,7 @@ var fluid = fluid || require("infusion"),
      * ASR UGen Tests *
      ******************/
 
-    module("flock.ugen.asr");
+    QUnit.module("flock.ugen.asr");
 
     var asrDef = {
         ugen: "flock.ugen.asr",
@@ -89,9 +92,9 @@ var fluid = fluid || require("infusion"),
     };
 
     var testEnvelopeStage = function (buffer, numSamps, expectedStart, expectedEnd, stageName) {
-        equal(buffer[0], expectedStart,
+        QUnit.equal(buffer[0], expectedStart,
             "During the " + stageName + " stage, the starting level should be " + expectedStart + ".");
-        equal(buffer[numSamps - 1], expectedEnd,
+        QUnit.equal(buffer[numSamps - 1], expectedEnd,
             "At the end of the " + stageName + " stage, the expected end level should have been reached.");
         flock.test.arrayUnbroken(buffer, "The output should not contain any dropouts.");
         flock.test.arrayWithinRange(buffer, 0.0, 1.0,
@@ -106,12 +109,12 @@ var fluid = fluid || require("infusion"),
             expectedEnd + ".");
     };
 
-    test("Constant values for all inputs", function () {
+    QUnit.test("Constant values for all inputs", function () {
         var asr = flock.parse.ugenForDef(asrDef);
 
         // Until the gate is closed, the ugen should just output silence.
         asr.gen(64);
-        deepEqual(asr.output, flock.generateBufferWithValue(64, 0.0),
+        QUnit.deepEqual(asr.output, flock.generateBufferWithValue(64, 0.0),
             "When the gate is open at the beginning, the envelope's output should be 0.0.");
 
         // Trigger the attack stage.
@@ -121,7 +124,7 @@ var fluid = fluid || require("infusion"),
 
         // Output a full control period of the sustain value.
         asr.gen(64);
-        deepEqual(asr.output, flock.generateBufferWithValue(64, 1.0),
+        QUnit.deepEqual(asr.output, flock.generateBufferWithValue(64, 1.0),
             "While the gate is open, the envelope should hold at the sustain level.");
 
         // Release the gate and test the release stage.
@@ -131,7 +134,7 @@ var fluid = fluid || require("infusion"),
 
         // Test a full control period of the end value.
         asr.gen(64);
-        deepEqual(asr.output, flock.generateBufferWithValue(64, 0.0),
+        QUnit.deepEqual(asr.output, flock.generateBufferWithValue(64, 0.0),
             "When the gate is closed and the release stage has completed, the envelope's output should be 0.0.");
 
         // Trigger the attack stage again.
@@ -145,7 +148,7 @@ var fluid = fluid || require("infusion"),
         testEnvelopeStage(asr.output, 64, 1.0, 0.0, "second release");
     });
 
-    test("Release midway through attack", function () {
+    QUnit.test("Release midway through attack", function () {
         var asr = flock.parse.ugenForDef(asrDef);
         asr.input("gate", 1.0);
         asr.gen(32);
@@ -161,7 +164,7 @@ var fluid = fluid || require("infusion"),
         testEnvelopeStage(asr.output, 64, 1.0, 0.0, "release");
     });
 
-    test("Attack midway through release", function () {
+    QUnit.test("Attack midway through release", function () {
         var asr = flock.parse.ugenForDef(asrDef);
 
         // Trigger the attack stage, then the release stage immediately.
@@ -182,7 +185,7 @@ var fluid = fluid || require("infusion"),
         // Generate another control period of samples, which should be at the sustain level.
         asr.gen(64);
         testEnvelopeStage(flock.copyBuffer(asr.output, 0, 32), 32, 0.7500630021095276, 1.0, "second half of the attack after halfway release second half.");
-        deepEqual(flock.copyBuffer(asr.output, 32), flock.generateBufferWithValue(32, 1.0),
+        QUnit.deepEqual(flock.copyBuffer(asr.output, 32), flock.generateBufferWithValue(32, 1.0),
             "While the gate remains open after a mid-release attack, the envelope should hold at the sustain level.");
     });
 
@@ -193,7 +196,7 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.test.envGen");
 
-    module("Envelope validity");
+    QUnit.module("Envelope validity");
 
     flock.test.envGen.customADSREnvelopeSynth = {
         id: "env",
@@ -244,31 +247,31 @@ var fluid = fluid || require("infusion"),
                 envelope: envelope
             });
 
-            ok(true, "The " + name + " envelope is valid.");
+            QUnit.ok(true, "The " + name + " envelope is valid.");
         } catch (e){
-            ok(false, "A validation error occurred while instantiating an envGen instance " +
+            QUnit.ok(false, "A validation error occurred while instantiating an envGen instance " +
                 "with a " + name + " envelope. " + envelope);
         }
     };
 
     flock.test.envGen.testEnvelopeInvalidity = function (testSpec) {
-        test("Invalid envelope " + testSpec.name, function () {
+        QUnit.test("Invalid envelope " + testSpec.name, function () {
             try {
                 flock.envelope.validate(testSpec.envelope);
-                ok(false, "An envelope " + testSpec.name + " passed validation.");
+                QUnit.ok(false, "An envelope " + testSpec.name + " passed validation.");
             } catch (e) {
-                ok(true, "The envelope " + testSpec.name + " correctly failed validation.");
+                QUnit.ok(true, "The envelope " + testSpec.name + " correctly failed validation.");
             }
         });
     };
 
-    test("Validity of built-in envelope defaults", function () {
+    QUnit.test("Validity of built-in envelope defaults", function () {
         fluid.each(flock.test.envGen.envelopeCreatorsToTest, function (spec) {
             flock.test.envGen.testUGenEnvelopeValidity(spec.name, spec.creator());
         });
     });
 
-    test("Validity of customized envelopes", function () {
+    QUnit.test("Validity of customized envelopes", function () {
         // This test only tests that the envelope creator functions return
         // valid envSpecs when the user provides options. It doesn't test
         // that the envSpecs produce the requested envelope shape.
@@ -388,7 +391,7 @@ var fluid = fluid || require("infusion"),
     fluid.each(invalidEnvs, flock.test.envGen.testEnvelopeInvalidity);
 
 
-    module("flock.ugen.envGen normal output");
+    QUnit.module("flock.ugen.envGen normal output");
 
     flock.test.envGen.curveNames = [];
     fluid.each(flock.lineGen, function (lineGenerator, name) {
@@ -412,7 +415,7 @@ var fluid = fluid || require("infusion"),
     };
 
     fluid.each(flock.test.envGen.curveNames, function (curveName){
-        test("A " + curveName + " segment produces normal output", function () {
+        QUnit.test("A " + curveName + " segment produces normal output", function () {
             var synth = flock.test.envGen.makeSynth(flock.test.envGen.customADSREnvelopeSynth, {
                 envelope: {
                     curve: curveName,
@@ -428,7 +431,7 @@ var fluid = fluid || require("infusion"),
         });
     });
 
-    module("flock.ugen.envGen envelope stages");
+    QUnit.module("flock.ugen.envGen envelope stages");
 
     flock.test.envGen.silentBlock = new Float32Array(64);
 
@@ -514,7 +517,7 @@ var fluid = fluid || require("infusion"),
     flock.test.envGen.runEnvelopeCurveTest = function (synthDef, curveSpec, expectedSegments, testSpec) {
         var testName = curveSpec.name + (curveSpec.value ? " value " + curveSpec.value : "") + ", " + testSpec.name;
 
-        test(testName, function () {
+        QUnit.test(testName, function () {
             var synth = flock.test.envGen.makeSynthForCurveSpec(synthDef, testSpec.synthDef, curveSpec),
                 envUGen = synth.get("env");
 
@@ -524,9 +527,9 @@ var fluid = fluid || require("infusion"),
                 flock.evaluate.synth(synth);
 
                 if (curveSpec.round && curveSpec.round[expectedPath]) {
-                    flock.test.arrayEqualBothRounded(curveSpec.round[expectedPath], envUGen.output, expectedBuffer, test.name + expectedPath);
+                    flock.test.arrayEqualBothRounded(curveSpec.round[expectedPath], envUGen.output, expectedBuffer, testSpec.name + expectedPath);
                 } else {
-                    deepEqual(envUGen.output, expectedBuffer, test.name + expectedPath);
+                    QUnit.deepEqual(envUGen.output, expectedBuffer, testSpec.name + expectedPath);
                 }
 
                 var change = testSpec.changes ? testSpec.changes[i] : undefined;
@@ -798,7 +801,7 @@ var fluid = fluid || require("infusion"),
     flock.test.envGen.testEnvelopeCurves(flock.test.envGen.customADSREnvelopeTestSpec);
 
 
-    module("flock.ugen.envGen segment start and end values");
+    QUnit.module("flock.ugen.envGen segment start and end values");
 
     flock.test.envGen.checkStartAndEnd = function (stages, stageSpecs, allSamples) {
         var startIdx = 0,
@@ -848,8 +851,8 @@ var fluid = fluid || require("infusion"),
             curveSpec = flock.test.envGen.expandCurveSpec(curveSpec);
             var testName = curveSpec.name + (curveSpec.value ? " value " + curveSpec.value : "");
 
-            test(testName, function () {
-                expect(2 * stages.length);
+            QUnit.test(testName, function () {
+                QUnit.expect(2 * stages.length);
 
                 var synth = flock.test.envGen.makeSynthForCurveSpec(testSpec.synthDef, {gate: 1.0}, curveSpec),
                     stageSpecs = testSpec.segmentSpecs,
@@ -881,7 +884,7 @@ var fluid = fluid || require("infusion"),
     );
 
 
-    module("Line generators");
+    QUnit.module("Line generators");
 
     flock.test.envGen.lineGeneratorTests = [
         {
@@ -994,7 +997,7 @@ var fluid = fluid || require("infusion"),
     ];
 
     flock.test.envGen.testLineGenerator = function (testSpec) {
-        test(testSpec.type + " line generator.", function () {
+        QUnit.test(testSpec.type + " line generator.", function () {
             var actual = flock.fillBufferWithLine(testSpec.type, new Float32Array(testSpec.numSamps), 1, 10);
             flock.test.arrayEqualBothRounded(6, actual, testSpec.expected,
                 "The " + testSpec.type + " line generator should produce the correct output.");

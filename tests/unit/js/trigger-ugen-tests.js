@@ -6,13 +6,16 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, QUnit, Float32Array*/
+/*global require, Float32Array*/
 
 var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
     flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
+
+    var QUnit = fluid.registerNamespace("QUnit");
 
     var $ = fluid.registerNamespace("jQuery"),
         environment = flock.silentEnviro(),
@@ -53,7 +56,7 @@ var fluid = fluid || require("infusion"),
 
         synth.set("converter.source", {
             ugen: "flock.ugen.sequence",
-            list: new Float32Array(64),
+            values: new Float32Array(64),
             freq: sampleRate
         });
         flock.evaluate.synth(synth);

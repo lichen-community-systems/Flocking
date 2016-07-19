@@ -131,14 +131,14 @@ var fluid = fluid || require("infusion"),
             bitDepth: 32,
             dataSize: eightBitSampleSize * 4,
             src: flock.test.audio.triangleInt32WAV,
-            decoder: flock.audio.decode.workerAsync
+            decoder: flock.audio.decode.sync
         },
         {
             name: "int32 AIFF file",
             bitDepth: 32,
             dataSize: (eightBitSampleSize * 4) + 4 + 4,
             src: flock.test.audio.triangleInt32AIFF,
-            decoder: flock.audio.decode.workerAsync
+            decoder: flock.audio.decode.sync
 
         },
         {
@@ -146,14 +146,14 @@ var fluid = fluid || require("infusion"),
             bitDepth: 32,
             dataSize: eightBitSampleSize * 4,
             src: flock.test.audio.triangleFloatWAV,
-            decoder: flock.audio.decode.workerAsync
+            decoder: flock.audio.decode.sync
         },
         {
             name: "float AIFF file",
             bitDepth: 32,
             dataSize: (eightBitSampleSize * 4) + 4 + 4,
             src: flock.test.audio.triangleFloatAIFF,
-            decoder: flock.audio.decode.workerAsync
+            decoder: flock.audio.decode.sync
         }
     ];
 
@@ -169,10 +169,16 @@ var fluid = fluid || require("infusion"),
         return typedSpecs;
     };
 
-    QUnit.module("flock.audio.decode() pure JavaScript async decoder tests");
-    flock.test.audioFile.testDecoder(specifyDecoderType(flock.audio.decode.workerAsync, decoderTestSpecs));
-
     QUnit.module("flock.audio.decode() pure JavaScript sync decoder tests");
-    flock.test.audioFile.testDecoder(specifyDecoderType(flock.audio.decode.sync, decoderTestSpecs));
+    flock.test.audioFile.testDecoder(specifyDecoderType(flock.audio.decode.sync,
+        decoderTestSpecs));
+
+    // Currently, there is no asynchronous decoding on Node.js,
+    // hence this test is only run if we're in a browser.
+    if (flock.platform.isBrowser) {
+        QUnit.module("flock.audio.decode() pure JavaScript async decoder tests");
+        flock.test.audioFile.testDecoder(specifyDecoderType(flock.audio.decode.workerAsync,
+            decoderTestSpecs));
+    }
 
 }());

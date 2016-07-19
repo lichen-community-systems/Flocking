@@ -1,6 +1,8 @@
-/*global fluid, flock*/
+/*global require*/
 
-var jqUnit = jqUnit || fluid.require("node-jqunit");
+var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
+    flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
@@ -10,6 +12,27 @@ var jqUnit = jqUnit || fluid.require("node-jqunit");
     var environment = flock.silentEnviro();
     var $ = fluid.registerNamespace("jQuery");
     var QUnit = fluid.registerNamespace("QUnit");
+
+    flock.test.audioFile.triangleFiles = {
+        int16: [
+            {
+                sampleRate: 44100,
+                fileName: "long-triangle-int16-44100.wav"
+            },
+            {
+                sampleRate: 48000,
+                fileName: "long-triangle-int16-48000.wav"
+            },
+            {
+                sampleRate: 88200,
+                fileName: "long-triangle-int16-88200.wav"
+            },
+            {
+                sampleRate: 96000,
+                fileName: "long-triangle-int16-96000.wav"
+            }
+        ]
+    };
 
     flock.test.audioFile.testTriangleBuffer = function (decoded, sampleRate) {
         var data = decoded.data,

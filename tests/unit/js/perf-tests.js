@@ -6,16 +6,20 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global module, test, ok*/
+/*global require*/
 
-var flock = flock || {};
+var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
+    flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
 
+    var QUnit = fluid.registerNamespace("QUnit");
+
     flock.silentEnviro();
 
-    module("flock.ugen.value tests");
+    QUnit.module("flock.ugen.value tests");
 
     // TODO: Normalize this with the real node evaluation algorithm in Synth (i.e. break it out and reuse it.)
     var gen = function (ugens, duration) {
@@ -53,10 +57,10 @@ var flock = flock || {};
     };
 
     var assertCeiling = function (actual, expectedCeiling, msg) {
-        ok(actual <= expectedCeiling, msg + " Actual is: " + actual + ".");
+        QUnit.ok(actual <= expectedCeiling, msg + " Actual is: " + actual + ".");
     };
 
-    test("flock.ugen.value with stereo flock.ugen.out", function () {
+    QUnit.test("flock.ugen.value with stereo flock.ugen.out", function () {
         var synth = flock.synth({
             synthDef: {
                 id: flock.OUT_UGEN_ID,
@@ -79,7 +83,7 @@ var flock = flock || {};
             "Generating and outputting 1 second of stereo signal from flock.ugen.value should take less than 5 ms.");
     });
 
-    module("flock.ugen.sinOsc tests");
+    QUnit.module("flock.ugen.sinOsc tests");
 
     var checkUGen = function (ugenDef, expectedCeil, msg) {
         var ugen = flock.parse.ugenForDef(ugenDef),
@@ -187,7 +191,7 @@ var flock = flock || {};
     ];
 
     var runTest = function (ugenDef, maxDur, msg) {
-        test(msg, function () {
+        QUnit.test(msg, function () {
             checkUGen(ugenDef, maxDur, "Should take no longer than " + maxDur + " ms.");
         });
     };

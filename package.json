@@ -28,7 +28,8 @@
     "grunt-contrib-jshint": "~0.8.0",
     "grunt-contrib-uglify": "~0.3.2",
     "grunt-contrib-watch": "^0.6.1",
-    "sheep-benchmark": "colinbdclark/sheep.js"
+    "sheep-benchmark": "colinbdclark/sheep.js",
+    "node-jqunit": "1.1.4"
   },
   "dependencies": {
     "jquery": "2.1.4",
@@ -36,14 +37,16 @@
     "codemirror-infusion": "colinbdclark/codemirror-infusion#gh-6",
     "jsplumb": "1.7.9",
     "dagre": "0.7.4",
-    "normalize.css": "3.0.3"
+    "normalize.css": "3.0.3",
+    "atob": "2.0.3"
   },
   "optionalDependencies": {
     "speaker": "colinbdclark/node-speaker#mpg123-lower-latency",
     "midi": "0.9.4"
   },
   "scripts": {
-    "test": "npm run browser-test",
-    "browser-test": "testem ci --file tests/unit/testem.json"
+    "test": "npm run node-test && npm run browser-test",
+    "browser-test": "testem ci --file tests/unit/testem.json",
+    "node-test": "node tests/unit/nodejs/all-node-tests.js"
   }
 }

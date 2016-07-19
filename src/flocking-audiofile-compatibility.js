@@ -436,7 +436,11 @@ var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undef
     flock.audio.decodeArrayBuffer = function (data, type) {
         var formatSpec = flock.audio.formats[type];
         if (!formatSpec) {
-            throw new Error("There is no decoder available for " + type + " files. Did you forget to specify a decoder 'type' option?");
+            var msg = "There is no decoder available for " + type + " files.";
+            if (!type) {
+                msg += " Did you forget to specify a decoder 'type' option?";
+            }
+            throw new Error(msg);
         }
 
         return formatSpec.reader(data, formatSpec);

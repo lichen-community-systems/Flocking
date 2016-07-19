@@ -6,16 +6,18 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, QUnit*/
+/*global require*/
 
 var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
     flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
 
-    var $ = fluid.registerNamespace("jQuery"),
-        environment = flock.silentEnviro(),
+    var QUnit = fluid.registerNamespace("QUnit");
+
+    var environment = flock.silentEnviro(),
         sampleRate = environment.audioSystem.model.rates.audio;
 
     QUnit.test("flock.ugen.delay", function () {
@@ -105,16 +107,16 @@ var fluid = fluid || require("infusion"),
     };
 
     var checkCoefficients = function (model) {
-        $.each(model.coeffs, function (i, coefficientArray) {
-            $.each(coefficientArray, function (i, coefficient) {
+        fluid.each(model.coeffs, function (coefficientArray) {
+            fluid.each(coefficientArray, function (coefficient) {
                 checkCoefficient(coefficient);
             });
         });
     };
 
     var forEachFilterType = function (fn) {
-        $.each(flock.coefficients, function (recipeName, recipe) {
-            $.each(recipe, function (filterType, calculator) {
+        fluid.each(flock.coefficients, function (recipe, recipeName) {
+            fluid.each(recipe, function (calculator, filterType) {
                 // TODO: This suggests that the payload for filter recipes isn't quite right.
                 if (filterType === "sizes") {
                     return;
@@ -126,7 +128,7 @@ var fluid = fluid || require("infusion"),
 
     var testEachFilterInputValue = function (name, fn) {
         QUnit.test(name, function () {
-            $.each(filterInputValues, function (i, inputs) {
+            fluid.each(filterInputValues, function (inputs) {
                 fn(inputs);
             });
         });
