@@ -18,6 +18,7 @@ var fluid = fluid || require("infusion"),
     var atob = typeof (window) !== "undefined" ? window.atob : require("atob");
     var environment = flock.silentEnviro();
     var QUnit = fluid.registerNamespace("QUnit");
+    var $ = fluid.registerNamespace("jQuery");
 
     fluid.registerNamespace("flock.test.audioFile");
 
@@ -144,39 +145,77 @@ var fluid = fluid || require("infusion"),
         });
     };
 
-    flock.test.audioFile.encodeThenDecode = function (original, encodedFormat) {
-        var originalChannelData = original.data.channels[0];
+    flock.test.audioFile.formatConversionExpectations = {
+        int16: {},
 
-        flock.test.signalInRange(originalChannelData, -1.0, 1.0);
+        int32: {
+            bitRate: 32,
+            blockAlign: 4
+        },
 
-        var encoded = flock.audio.encode.wav(original, encodedFormat);
+        float32: {
+            audioFormatType: 3,
+            bitRate: 32,
+            blockAlign: 4,
+            size: 30 // Format body size + fact chunk size + extension size.
+        }
+    };
 
-        var afterRedecoded = function (redecoded) {
-            var redecodedChannelData = redecoded.data.channels[0],
-                redecodedInt16 = flock.audio.convert.floatsToInts(redecodedChannelData,
-                    flock.audio.convert.pcm.int16),
-                originalInt16 = flock.audio.convert.floatsToInts(originalChannelData,
-                    flock.audio.convert.pcm.int16);
+    flock.test.audioFile.mergeFormatConversionExpectations = function (format, previouslyDecoded) {
+        var staticFormatSpecificOverrides = flock.test.audioFile.formatConversionExpectations[format];
+        var expected = $.extend({}, previouslyDecoded, staticFormatSpecificOverrides);
 
-            flock.test.signalInRange(redecodedChannelData, -1.0, 1.0);
+        if (format !== "int16") {
+            expected.avgBytesPerSecond = previouslyDecoded.sampleRate * 4;
+        }
 
-            jqUnit.assertLeftHand("The buffer's format metadata should be the same as the original.",
-                original.format, redecoded.format);
+        return expected;
+    };
 
-            jqUnit.assertDeepEq(
-                "The channel data should be the same as the original after being decoded.",
-                originalInt16, redecodedInt16);
+    flock.test.audioFile.compareOriginalToRedecoded = function (encodedFormat, original, redecoded) {
+        var originalChannelData = original.data.channels[0],
+            redecodedChannelData = redecoded.data.channels[0],
+            redecodedInt16 = flock.audio.convert.floatsToInts(redecodedChannelData,
+                flock.audio.convert.pcm.int16),
+            originalInt16 = flock.audio.convert.floatsToInts(originalChannelData,
+                flock.audio.convert.pcm.int16);
 
-            if (flock.platform.isBrowser) {
-                flock.test.audioFile.drawBufferData(originalChannelData, redecodedChannelData);
-            }
+        flock.test.signalInRange(redecodedChannelData, -1.0, 1.0);
 
-            QUnit.start();
-        };
+        var expectedFormat = flock.test.audioFile.mergeFormatConversionExpectations(encodedFormat,
+            original.format);
+
+        jqUnit.assertLeftHand("The buffer's format metadata should be the same as the original.",
+            expectedFormat, redecoded.format);
+
+        jqUnit.assertDeepEq(
+            "The channel data should be the same as the original after being decoded.",
+            originalInt16, redecodedInt16);
+
+        if (flock.platform.isBrowser) {
+            flock.test.audioFile.drawBufferData(originalChannelData, redecodedChannelData);
+        }
+    };
+
+    flock.test.audioFile.sanityCheckOriginal = function (original, encoded) {
+        // General sanity of the original decoded buffer and its encoding.
+        flock.test.signalInRange(original.data.channels[0], -1.0, 1.0);
 
         QUnit.ok(encoded instanceof ArrayBuffer,
             "The encoded buffer should be an array buffer");
+    };
 
+    flock.test.audioFile.encodeThenDecode = function (encodedFormat, original) {
+        var encoded = flock.audio.encode.wav(original, encodedFormat);
+
+        flock.test.audioFile.sanityCheckOriginal(original, encoded);
+
+        var afterRedecoded = function (redecoded) {
+            flock.test.audioFile.compareOriginalToRedecoded(encodedFormat, original, redecoded);
+            QUnit.start();
+        };
+
+        // TODO: Parameterize this to test all available decoding strategies on the platform.
         flock.audio.decode.sync({
             type: "wav",
             rawData: encoded,
@@ -190,11 +229,12 @@ var fluid = fluid || require("infusion"),
 
     flock.test.audioFile.encodeDecode = function (fileName, sampleRate, decodedFormat) {
         flock.audio.registerDecoderStrategy("default", flock.audio.decode.sync);
+
         flock.audio.decode({
             src: flock.test.audioFilePath(fileName),
             sampleRate: sampleRate,
             success: function (original) {
-                flock.test.audioFile.encodeThenDecode(original, decodedFormat);
+                flock.test.audioFile.encodeThenDecode(decodedFormat, original);
             },
             error: function (msg) {
                 QUnit.ok(false, "There was an error while decoding the original audio file. " + msg);
@@ -203,23 +243,26 @@ var fluid = fluid || require("infusion"),
         });
     };
 
+    flock.test.audioFile.testEncodeDecodeForFormat = function (format, fileSpec) {
+        var currentSampleRate = environment.audioSystem.model.rates.audio;
+
+        var testName = "Decode a " + fileSpec.sampleRate + " .wav file, " +
+            "encode in " + format + " format at the current sample rate (" +
+            currentSampleRate + "), then decode it again.";
+
+        QUnit.asyncTest(testName, function () {
+            flock.test.audioFile.encodeDecode(fileSpec.fileName,
+                currentSampleRate, format);
+        });
+    };
+
     flock.test.audioFile.testEncodeDecode = function (formats) {
         fluid.each(formats, function (format) {
             fluid.each(flock.test.audioFile.triangleFiles.int16, function (fileSpec) {
-                var currentSampleRate = environment.audioSystem.model.rates.audio;
-
-                var testName = "Decode a " + fileSpec.sampleRate + " .wav file, " +
-                    "encode in " + format + " format at the current sample rate (" +
-                    currentSampleRate + "), then decode it again.";
-
-                QUnit.asyncTest(testName, function () {
-                    flock.test.audioFile.encodeDecode(fileSpec.fileName,
-                        currentSampleRate, format);
-                });
+                flock.test.audioFile.testEncodeDecodeForFormat(format, fileSpec);
             });
         });
     };
 
-    var formats = ["int16", "int32", "float32"];
-    flock.test.audioFile.testEncodeDecode(formats);
+    flock.test.audioFile.testEncodeDecode(["int16", "int32", "float32"]);
 })();
