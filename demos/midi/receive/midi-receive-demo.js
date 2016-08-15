@@ -5,11 +5,28 @@
 
     var environment = flock.init();
 
+    fluid.defaults("flock.demo.midiReceive.messageView", {
+        gradeNames: "fluid.codeMirror",
+
+        codeMirrorOptions: {
+            readOnly: true
+        },
+
+        theme: "flockingcm",
+        lineNumbers: true,
+        readOnly: true
+    });
+
     fluid.defaults("flock.midiDemo", {
         gradeNames: "fluid.viewComponent",
 
         components: {
             enviro: "{flock.enviro}",
+
+            midiMessageView: {
+                type: "flock.demo.midiReceive.messageView",
+                container: "{that}.dom.messageRegion"
+            },
 
             midiConnector: {
                 type: "flock.ui.midiConnector",
@@ -17,9 +34,9 @@
                 options: {
                     listeners: {
                         message: {
-                            func: "flock.midiDemo.logRawMIDIMessage",
+                            func: "flock.midiDemo.logMIDIMessage",
                             args: [
-                                "{midiDemo}.dom.messageRegion",
+                                "{midiDemo}.midiMessageView",
                                 "{midiDemo}.options.strings.midiMessage",
                                 "{arguments}.0",
                                 "{arguments}.1"
@@ -59,45 +76,28 @@
         },
 
         strings: {
-            midiMessage: "%manufacturer %name: %msg"
+            midiMessage: "%hours:%minutes:%seconds.%millis - %manufacturer %name: %msg"
         }
     });
 
-    flock.midiDemo.logRawMIDIMessage = function (messageRegion, msgTemplate, msg, rawEvent) {
+    flock.midiDemo.logMIDIMessage = function (midiMessageView, msgTemplate, msg, rawEvent) {
+        var content = midiMessageView.getContent(),
+            nowDate = new Date();
+
         var port = rawEvent.target,
             messageText = fluid.stringTemplate(msgTemplate, {
+                hours: nowDate.getHours(),
+                minutes: nowDate.getMinutes(),
+                seconds: nowDate.getSeconds(),
+                millis: nowDate.getMilliseconds(),
                 manufacturer: port.manufacturer,
                 name: port.name,
                 msg: fluid.prettyPrintJSON(msg)
             });
 
-        messageRegion.text(messageText);
+        content += messageText + "\n\n";
+        midiMessageView.setContent(content);
     };
-
-    // Imperative equivalent to the above.
-    flock.programmaticMIDIDemo = function (container) {
-        var that = {
-            midiConnector: flock.ui.midiConnector(container),
-            synth: flock.midiDemo.synth()
-        };
-
-        that.midiConnector.events.noteOn.addListener(function (noteEvent) {
-            that.synth.noteOn(noteEvent.note, {
-                "freq.note": noteEvent.note,
-                "amp.velocity": noteEvent.velocity,
-                "env.gate": 1.0
-            });
-        });
-
-        that.midiConnector.events.noteOff.addListener(function (noteEvent) {
-            that.synth.noteOff(noteEvent.note);
-        });
-
-        environment.start();
-
-        return that;
-    };
-
 
     fluid.defaults("flock.midiDemo.synth", {
         gradeNames: ["flock.synth.polyphonic"],

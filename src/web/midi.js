@@ -428,8 +428,12 @@ var fluid = fluid || require("infusion"),
         ports: 0,
 
         invokers: {
+            sendRaw: {
+                func: "{that}.events.onSendRaw.fire"
+            },
+
             send: {
-                func: "{that}.events.onSendMessage.fire"
+                funcName: "flock.midi.connection.send"
             },
 
             open: {
@@ -439,7 +443,7 @@ var fluid = fluid || require("infusion"),
                     "{that}.options.ports",
                     "{that}.events.onReady.fire",
                     "{that}.events.raw.fire",
-                    "{that}.events.onSendMessage"
+                    "{that}.events.onSendRaw"
                 ]
             },
 
@@ -467,7 +471,7 @@ var fluid = fluid || require("infusion"),
             onPortsAvailable: null,
             onReady: null,
             onError: null,
-            onSendMessage: null
+            onSendRaw: null
         },
 
         listeners: {
@@ -493,6 +497,10 @@ var fluid = fluid || require("infusion"),
             ]
         }
     });
+
+    flock.midi.connection.send = function () {
+        flock.fail("Sending MIDI messages is not currently supported.");
+    };
 
     flock.midi.connection.autoOpen = function (openImmediately, openFn) {
         if (openImmediately) {
@@ -623,12 +631,12 @@ var fluid = fluid || require("infusion"),
         });
     };
 
-    flock.midi.connection.bindSender = function (port, onSendMessage, openPromises) {
+    flock.midi.connection.bindSender = function (port, onSendRaw, openPromises) {
         var ports = fluid.makeArray(port);
 
         fluid.each(ports, function (port) {
             flock.midi.connection.openPort(port, openPromises);
-            onSendMessage.addListener(port.send.bind(port));
+            onSendRaw.addListener(port.send.bind(port));
         });
 
         return openPromises;
@@ -642,7 +650,7 @@ var fluid = fluid || require("infusion"),
         Promise.all(openPromises).then(onReady);
     };
 
-    flock.midi.connection.bind = function (ports, portSpec, onReady, onRaw, onSendMessage) {
+    flock.midi.connection.bind = function (ports, portSpec, onReady, onRaw, onSendRaw) {
         portSpec = flock.midi.connection.expandPortSpec(portSpec);
 
         var input = flock.midi.findPorts(ports.inputs, portSpec.input),
@@ -656,7 +664,7 @@ var fluid = fluid || require("infusion"),
         }
 
         if (output && output.length > 0) {
-            flock.midi.connection.bindSender(output, onSendMessage, openPromises);
+            flock.midi.connection.bindSender(output, onSendRaw, openPromises);
         } else if (portSpec.output !== undefined) {
             flock.midi.connection.logNoMatchedPorts("output", portSpec);
         }
