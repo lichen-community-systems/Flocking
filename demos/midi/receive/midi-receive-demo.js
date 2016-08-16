@@ -5,18 +5,6 @@
 
     var environment = flock.init();
 
-    fluid.defaults("flock.demo.midiReceive.messageView", {
-        gradeNames: "fluid.codeMirror",
-
-        codeMirrorOptions: {
-            readOnly: true
-        },
-
-        theme: "flockingcm",
-        lineNumbers: true,
-        readOnly: true
-    });
-
     fluid.defaults("flock.midiDemo", {
         gradeNames: "fluid.viewComponent",
 
@@ -24,7 +12,7 @@
             enviro: "{flock.enviro}",
 
             midiMessageView: {
-                type: "flock.demo.midiReceive.messageView",
+                type: "flock.ui.midiMessageView",
                 container: "{that}.dom.messageRegion"
             },
 
@@ -33,16 +21,6 @@
                 container: "{that}.dom.midiPortSelector",
                 options: {
                     listeners: {
-                        message: {
-                            func: "flock.midiDemo.logMIDIMessage",
-                            args: [
-                                "{midiDemo}.midiMessageView",
-                                "{midiDemo}.options.strings.midiMessage",
-                                "{arguments}.0",
-                                "{arguments}.1"
-                            ]
-                        },
-
                         noteOn: {
                             func: "{synth}.noteOn",
                             args: [
@@ -73,31 +51,9 @@
         selectors: {
             midiPortSelector: "#midi-port-selector",
             messageRegion: "#midiMessageRegion"
-        },
-
-        strings: {
-            midiMessage: "%hours:%minutes:%seconds.%millis - %manufacturer %name: %msg"
         }
     });
 
-    flock.midiDemo.logMIDIMessage = function (midiMessageView, msgTemplate, msg, rawEvent) {
-        var content = midiMessageView.getContent(),
-            nowDate = new Date();
-
-        var port = rawEvent.target,
-            messageText = fluid.stringTemplate(msgTemplate, {
-                hours: nowDate.getHours(),
-                minutes: nowDate.getMinutes(),
-                seconds: nowDate.getSeconds(),
-                millis: nowDate.getMilliseconds(),
-                manufacturer: port.manufacturer,
-                name: port.name,
-                msg: fluid.prettyPrintJSON(msg)
-            });
-
-        content += messageText + "\n\n";
-        midiMessageView.setContent(content);
-    };
 
     fluid.defaults("flock.midiDemo.synth", {
         gradeNames: ["flock.synth.polyphonic"],

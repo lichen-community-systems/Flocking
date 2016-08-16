@@ -10,7 +10,7 @@
         lineNumbers: true,
 
         model: {
-            content: ""
+            content: "F0 7E 7F 06 01 F7"
         },
 
         invokers: {
@@ -18,6 +18,10 @@
                 funcName: "flock.demo.rawMIDIInputView.updatedContentModel",
                 args: ["{that}"]
             }
+        },
+
+        listeners: {
+            onCreate: "{that}.setContent({that}.model.content)"
         }
     });
 
