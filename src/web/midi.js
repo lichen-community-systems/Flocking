@@ -218,15 +218,16 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.midi.read.system = function (status, data) {
-        if (status === 0 || status === 7) {
-            return flock.midi.messageFailure("sysex");
-        } else if (status === 1) {
+        if (status === 1) {
             return flock.midi.messageFailure("quarter frame MTC");
         }
 
         var fn;
         // TODO: Factor this into a lookup table.
         switch (status) {
+            case 0:
+                fn = flock.midi.read.sysex;
+                break;
             case 2:
                 fn = flock.midi.read.songPointer;
                 break;
@@ -265,6 +266,13 @@ var fluid = fluid || require("infusion"),
     flock.midi.messageFailure = function (type) {
         flock.fail("Flocking does not currently support MIDI " + type + " messages.");
         return;
+    };
+
+    flock.midi.read.sysex = function (data) {
+        return {
+            type: "sysex",
+            data: data
+        };
     };
 
     flock.midi.read.valueMessage = function (type, value) {
