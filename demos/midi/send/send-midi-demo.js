@@ -6,8 +6,14 @@
     fluid.defaults("flock.demo.rawMIDIInputView", {
         gradeNames: "fluid.codeMirror",
 
+        codeMirrorOptions: {
+            lineWrapping: true,
+            readOnly: true
+        },
+
         theme: "flockingcm",
         lineNumbers: true,
+        lineWrapping: true,
 
         model: {
             content: "F0 7E 7F 06 01 F7"

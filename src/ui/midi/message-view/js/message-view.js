@@ -19,16 +19,14 @@ var fluid = fluid || require("infusion");
         gradeNames: "fluid.codeMirror",
 
         codeMirrorOptions: {
+            lineWrapping: true,
             readOnly: true
         },
 
         theme: "flockingcm",
         lineNumbers: true,
+        lineWrapping: true,
         readOnly: true,
-
-        strings: {
-            midiLogMessage: "%hours:%minutes:%seconds.%millis - %manufacturer %name: %msg"
-        },
 
         distributeOptions: {
             // TODO: This is probably, umm, a bit heavy-handed.
@@ -46,25 +44,56 @@ var fluid = fluid || require("infusion");
                     }
                 }
             }
+        },
+
+        strings: {
+            midiLogMessage: "%hours:%minutes:%seconds.%millis - %manufacturer %name: %msg"
         }
     });
 
+    flock.ui.midiMessageView.typedArrayReplacer = function (key, value) {
+        if (!ArrayBuffer.isView(value) || value instanceof DataView) {
+            return value;
+        }
+
+        var arr = new Array(value.length);
+        for (var i = 0; i < value.length; i++) {
+            arr[i] = value[i];
+        }
+
+        return arr;
+    };
+
+    /**
+     * Pads a number to four digits with zeros.
+     */
+    flock.ui.midiMessageView.zeroPad = function (num) {
+        if (num >= 10000) {
+            return num;
+        }
+
+        return ("0000" + num).slice(-4);
+    };
+
+    flock.ui.midiMessageView.renderMIDILog = function (msgTemplate, msg, port) {
+        var nowDate = new Date();
+
+        return fluid.stringTemplate(msgTemplate, {
+            hours: nowDate.getHours(),
+            minutes: nowDate.getMinutes(),
+            seconds: nowDate.getSeconds(),
+            millis: flock.ui.midiMessageView.zeroPad(nowDate.getMilliseconds()),
+            manufacturer: port.manufacturer,
+            name: port.name,
+            msg: JSON.stringify(msg, flock.ui.midiMessageView.typedArrayReplacer)
+        });
+    };
+
     flock.ui.midiMessageView.logMIDI = function (that, msgTemplate, msg, rawEvent) {
-        var content = that.getContent(),
-            nowDate = new Date();
-
         var port = rawEvent.target,
-            messageText = fluid.stringTemplate(msgTemplate, {
-                hours: nowDate.getHours(),
-                minutes: nowDate.getMinutes(),
-                seconds: nowDate.getSeconds(),
-                millis: nowDate.getMilliseconds(),
-                manufacturer: port.manufacturer,
-                name: port.name,
-                msg: fluid.prettyPrintJSON(msg)
-            });
+            messageText = flock.ui.midiMessageView.renderMIDILog(msgTemplate, msg, port),
+            lastLinePos = CodeMirror.Pos(that.editor.lastLine());
 
-        var lastLinePos = CodeMirror.Pos(that.editor.lastLine());
-        that.editor.replaceRange(messageText + "\n\n", lastLinePos);
+        that.editor.replaceRange(messageText + "\n", lastLinePos);
     };
 }());

@@ -3,7 +3,7 @@
 (function () {
     "use strict";
 
-    var environment = flock.init();
+    flock.init();
 
     fluid.defaults("flock.midiDemo", {
         gradeNames: "fluid.viewComponent",
@@ -20,6 +20,14 @@
                 type: "flock.ui.midiConnector",
                 container: "{that}.dom.midiPortSelector",
                 options: {
+                    components: {
+                        connection: {
+                            options: {
+                                sysex: true
+                            }
+                        }
+                    },
+
                     listeners: {
                         noteOn: {
                             func: "{synth}.noteOn",
