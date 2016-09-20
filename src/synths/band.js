@@ -26,7 +26,7 @@ var fluid = fluid || require("infusion"),
     // TODO: Unit tests.
     fluid.defaults("flock.band", {
         gradeNames: ["fluid.component"],
-        synthGrade: "flock.synth",
+        synthGrade: "flock.noteTarget",
         invokers: {
             play: {
                 func: "{that}.events.onPlay.fire"
