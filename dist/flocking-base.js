@@ -5226,35 +5226,41 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.audio.convert");
 
+    flock.audio.convert.maxFloatValue = function (formatSpec) {
+        return 1 - 1 / formatSpec.scale;
+    };
+
     flock.audio.convert.pcm = {
         int8: {
-            scalePos: 127,
-            scaleNeg: 128,
+            scale: 128,
             setter: "setInt8",
             width: 1
         },
 
         int16: {
-            scalePos: 32767,
-            scaleNeg: 32768,
+            scale: 32768,
             setter: "setInt16",
             width: 2
         },
 
         int32: {
-            scalePos: 2147483647,
-            scaleNeg: 2147483648,
+            scale: 2147483648,
             setter: "setInt32",
             width: 4
         },
 
         float32: {
-            scalePos: 1,
-            scaleNeg: 1,
+            scale: 1,
             setter: "setFloat32",
             width: 4
         }
     };
+
+    // Precompute the maximum representable float value for each format.
+    for (var key in flock.audio.convert.pcm) {
+        var formatSpec = flock.audio.convert.pcm[key];
+        formatSpec.maxFloatValue = flock.audio.convert.maxFloatValue(formatSpec);
+    }
 
     // Unsupported, non-API function.
     flock.audio.convert.specForPCMType = function (format) {
@@ -5277,11 +5283,11 @@ var fluid = fluid || require("infusion"),
      */
     flock.audio.convert.floatToInt = function (value, formatSpec) {
         // Clamp to within bounds.
-        var s = Math.min(1.0, value);
+        var s = Math.min(formatSpec.maxFloatValue, value);
         s = Math.max(-1.0, s);
 
         // Scale to the output number format.
-        s = s < 0 ? s * formatSpec.scaleNeg : s * formatSpec.scalePos;
+        s = s * formatSpec.scale;
 
         // Round to the nearest whole sample.
         // TODO: A dither here would be optimal.
@@ -5317,10 +5323,7 @@ var fluid = fluid || require("infusion"),
      * @return {Number} the value converted to float format
      */
     flock.audio.convert.intToFloat = function (value, formatSpec) {
-        var s = Math.min(formatSpec.scalePos, value);
-        s = Math.max(-formatSpec.scaleNeg, s);
-
-        return s < 0 ? s / formatSpec.scaleNeg : s / formatSpec.scalePos;
+        return value / formatSpec.scale;
     };
 
     flock.audio.convert.intsToFloats = function (buf, formatSpec) {

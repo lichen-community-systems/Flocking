@@ -26,7 +26,7 @@ require("./src/synths/band.js");
 require("./src/buffers.js");
 require("./src/parser.js");
 require("./src/audiofile.js");
-require("./src/audiofile-converters.js");
+require("./src/flocking-audiofile-converters.js");
 require("./src/audiofile-encoder.js");
 require("./src/flocking-audiofile-compatibility.js");
 require("./src/scheduler.js");

@@ -47,7 +47,7 @@ module.exports = function(grunt) {
             "src/buffers.js",
             "src/parser.js",
             "src/audiofile.js",
-            "src/audiofile-converters.js",
+            "src/flocking-audiofile-converters.js",
             "src/audiofile-encoder.js",
             // flocking-audiofile-compatibility.js is intentionally omitted
             // to reduce the size of the default Flocking build.
@@ -177,7 +177,8 @@ module.exports = function(grunt) {
                     flatten: true,
                     src: [
                         "src/flocking-audiofile-compatibility.js",
-                        "src/flocking-audiofile-worker.js"
+                        "src/flocking-audiofile-worker.js",
+                        "src/flocking-audiofile-converters.js"
                     ],
                     dest: "dist/",
                     filter: "isFile"
