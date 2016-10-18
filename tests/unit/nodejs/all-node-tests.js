@@ -21,6 +21,9 @@ fluid.require("%flocking/tests/shared/js/audiofile-dataurls.js");
 
 // Test files.
 var testIncludes = [
+    "../js/perf-tests.js",       // Note: This runs first because it's
+                                 // an unreliable, timing-dependent test.
+                                 // It needs to be refactored or replaced.
     "../js/audiofile-decoder-tests.js",
     "../js/audiofile-tests.js",
     "../js/bandlimited-ugen-tests.js",
@@ -40,7 +43,6 @@ var testIncludes = [
     "../js/multichannel-ugen-tests.js",
     "../js/osc-ugen-tests.js",
     "../js/parser-tests.js",
-    // "../js/perf-tests.js",       // TODO: Failure due to timing issues.
     "../js/phasor-ugen-tests.js",
     "../js/random-ugen-tests.js",
     "../js/scheduler-tests.js",

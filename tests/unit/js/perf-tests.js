@@ -19,7 +19,7 @@ var fluid = fluid || require("infusion"),
 
     var environment = flock.silentEnviro();
 
-    QUnit.module("flock.ugen.value tests");
+    QUnit.module("flock.ugen.value performance tests");
 
     // TODO: Normalize this with the real node evaluation algorithm in Synth (i.e. break it out and reuse it.)
     var gen = function (ugens, duration) {
@@ -83,7 +83,7 @@ var fluid = fluid || require("infusion"),
             "Generating and outputting 1 second of stereo signal from flock.ugen.value should take less than 5 ms.");
     });
 
-    QUnit.module("flock.ugen.sinOsc tests");
+    QUnit.module("flock.ugen.sinOsc performance tests");
 
     var checkUGen = function (ugenDef, expectedCeil, msg) {
         var ugen = flock.parse.ugenForDef(ugenDef),
