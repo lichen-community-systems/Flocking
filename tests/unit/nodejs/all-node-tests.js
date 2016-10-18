@@ -29,7 +29,7 @@ var testIncludes = [
     "../js/core-tests.js",
     "../js/core-utilities-tests.js",
     "../js/dynamics-ugen-tests.js",
-    // "../js/envelope-ugen-tests.js", // TODO: Legitimate failures.
+    "../js/envelope-ugen-tests.js",
     "../js/filter-ugen-tests.js",
     "../js/gate-ugen-tests.js",
     "../js/ioc-integration-tests.js",
