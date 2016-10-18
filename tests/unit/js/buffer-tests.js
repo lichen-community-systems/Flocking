@@ -19,9 +19,16 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.test.buffer");
 
-    flock.silentEnviro();
+    var environment;
 
-    QUnit.module("Buffers");
+    QUnit.module("Buffers", {
+        setup: function () {
+            environment = flock.silentEnviro();
+        },
+        teardown: function () {
+            environment.destroy();
+        }
+    });
 
     var unwrappedSampleData = new Float32Array([1, 2, 3, 4, 5]);
     var testDesc = {

@@ -262,4 +262,5 @@ var fluid = fluid || require("infusion"),
         runLatchTests(testSpec);
     });
 
+    environment.destroy();
 }());

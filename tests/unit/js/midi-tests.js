@@ -17,7 +17,7 @@ var fluid = fluid || require("infusion"),
 
     var QUnit = fluid.registerNamespace("QUnit");
 
-    flock.silentEnviro();
+    var environment = flock.silentEnviro();
 
     var testPort = {
         manufacturer: "KORG INC.",
@@ -195,4 +195,5 @@ var fluid = fluid || require("infusion"),
         ]);
     });
 
+    environment.destroy();
 }());

@@ -16,8 +16,6 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.test.core");
 
-    var environment = flock.silentEnviro();
-
     var QUnit = fluid.registerNamespace("QUnit");
 
     QUnit.module("nodeList and ugenNodeList");
@@ -424,6 +422,8 @@ var fluid = fluid || require("infusion"),
     QUnit.module("flock.band tests");
 
     QUnit.test("flock.band with multiple addToEnvironment synths", function () {
+        var environment = flock.silentEnviro();
+
         flock.nodeList.clearAll(environment.nodeList);
 
         var def = {
@@ -469,6 +469,7 @@ var fluid = fluid || require("infusion"),
             environment.nodeList.nodes,
             "The synths' enviro's audio strategy's node evaluator should share the same node list" +
             "as the environment itself.");
+        environment.destroy();
     });
 
     QUnit.test("getSynths", function () {
@@ -527,6 +528,7 @@ var fluid = fluid || require("infusion"),
             "The environment's number of input buses should be clamped at " + defaultInputBusRange.max);
         QUnit.ok(enviro.audioSystem.model.numInputBuses >= defaultInputBusRange.min,
             "The environment should have at least " + defaultInputBusRange.min + " input buses.");
+        enviro.destroy();
 
         enviro = flock.init({
             chans: 1,
@@ -534,6 +536,7 @@ var fluid = fluid || require("infusion"),
         });
         QUnit.ok(enviro.audioSystem.model.numBuses >= 2,
             "The environment should always have two or more buses.");
+        enviro.destroy();
 
         enviro = flock.init({
             chans: 8,
@@ -541,6 +544,7 @@ var fluid = fluid || require("infusion"),
         });
         QUnit.ok(enviro.audioSystem.model.numBuses >= enviro.audioSystem.model.chans,
             "The environment should always have at least as many buses as channels.");
+        enviro.destroy();
     });
 
     QUnit.test("Options merging", function () {
@@ -558,6 +562,7 @@ var fluid = fluid || require("infusion"),
 
         QUnit.equal(enviro.busManager.buses.length, 24,
             "The environment should actually have the specified number of buses.");
+        enviro.destroy();
     });
 
 
@@ -584,6 +589,7 @@ var fluid = fluid || require("infusion"),
                 "The correct error should be thrown when trying to acquire " +
                 "more than the available number of buses.");
         }
+        enviro.destroy();
     };
 
     QUnit.test("Input bus acquisition", function () {
@@ -627,6 +633,7 @@ var fluid = fluid || require("infusion"),
         enviro.reset();
         flock.test.core.testBusAcquisition(enviro, 4,
             "The first interconnectBus should have been acquired again after resetting the environment.");
+        enviro.destroy();
     });
 
 

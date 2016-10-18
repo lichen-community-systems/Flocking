@@ -186,4 +186,6 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.test.blit.runTests(flock.test.blit.baseTests, flock.test.blit.typeSpecificTests);
+
+    environment.destroy();
 }());

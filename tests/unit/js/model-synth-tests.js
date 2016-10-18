@@ -17,7 +17,15 @@ var fluid = fluid || require("infusion"),
 
     var QUnit = fluid.registerNamespace("QUnit");
 
-    flock.init();
+    var environment;
+    QUnit.module("Model synths", {
+        setup: function () {
+            environment = flock.silentEnviro();
+        },
+        teardown: function () {
+            environment.destroy();
+        }
+    });
 
     fluid.registerNamespace("flock.test.modelSynth");
 
@@ -159,4 +167,5 @@ var fluid = fluid || require("infusion"),
         var s = flock.test.modelSynth.valueSynth();
         s.value();
     });
+
 }());

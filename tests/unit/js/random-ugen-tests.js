@@ -199,4 +199,6 @@ var fluid = fluid || require("infusion"),
         dust.inputs.density = flock.ugen.value({value: density}, new Float32Array(sampleRate));
         checkDensity(dust, density);
     });
+
+    environment.destroy();
 }());

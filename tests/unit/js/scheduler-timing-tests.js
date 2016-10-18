@@ -19,6 +19,8 @@ var fluid = fluid || require("infusion"),
 
     var QUnit = fluid.registerNamespace("QUnit");
 
+    QUnit.module("Scheduler timing (these may fail periodically!)");
+
     var checkScheduledCallback = function (expectedInterval, reportedInterval, scheduledAt, receivedAt, maxOutlier) {
         var duration = receivedAt - scheduledAt,
             minDur = expectedInterval - maxOutlier,

@@ -230,4 +230,6 @@ var fluid = fluid || require("infusion"),
     ];
 
     runTriggerCallbackTests(triggerCallbackTestSpecs);
+
+    environment.destroy();
 }());

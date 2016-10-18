@@ -15,12 +15,31 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    var QUnit = fluid.registerNamespace("QUnit");
+    var QUnit = fluid.registerNamespace("QUnit"),
+        $ = fluid.registerNamespace("jQuery");
 
     fluid.registerNamespace("flock.test");
 
-    var $ = fluid.registerNamespace("jQuery"),
-        environment = flock.init();
+    var environment;
+    QUnit.testStart(function () {
+        environment = flock.silentEnviro({
+            components: {
+                audioSystem: {
+                    options: {
+                        model: {
+                            audioSettings: {
+                                numBuses: 16
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+
+    QUnit.testDone(function () {
+        environment.destroy();
+    });
 
     QUnit.module("UGen interpolation configuration tests");
 
@@ -290,12 +309,7 @@ var fluid = fluid || require("infusion"),
 
 
     // TODO: Create these graphs declaratively!
-    QUnit.module("Output tests", {
-        setup: function () {
-            // TODO: This should be accomplishable via IoC references
-            environment = flock.enviro();
-        }
-    });
+    QUnit.module("Output tests");
 
     var simpleOutDef = {
         ugen: "flock.ugen.out",
@@ -342,15 +356,7 @@ var fluid = fluid || require("infusion"),
     });
 
 
-    QUnit.module("flock.ugen.in", {
-        setup: function () {
-            environment = flock.enviro({
-                audioSettings: {
-                    numBuses: 16
-                }
-            });
-        }
-    });
+    QUnit.module("flock.ugen.in");
 
     var outSynthDef = {
         ugen: "flock.ugen.out",

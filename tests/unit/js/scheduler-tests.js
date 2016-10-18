@@ -17,7 +17,14 @@ var fluid = fluid || require("infusion"),
 
     var QUnit = fluid.registerNamespace("QUnit");
 
-    flock.silentEnviro();
+    var environment;
+    QUnit.testStart(function () {
+        environment = flock.silentEnviro();
+    });
+
+    QUnit.testDone(function () {
+        environment.destroy();
+    });
 
     QUnit.module("Time Converters");
 
@@ -233,5 +240,4 @@ var fluid = fluid || require("infusion"),
             QUnit.start();
         }, 200);
     });
-
 }());

@@ -37,6 +37,10 @@ var fluid = fluid || require("infusion"),
                 }
             });
             flock.parse.bufferForDef.resolveBuffer(bufDesc, undefined, environment);
+        },
+
+        teardown: function () {
+            environment.destroy();
         }
     });
 
@@ -407,6 +411,10 @@ var fluid = fluid || require("infusion"),
                 }
             });
             flock.parse.bufferForDef.resolveBuffer(bufDesc, undefined, environment);
+        },
+
+        teardown: function () {
+            environment.destroy();
         }
     });
 

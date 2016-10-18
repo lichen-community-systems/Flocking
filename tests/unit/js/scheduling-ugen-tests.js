@@ -18,7 +18,7 @@ var fluid = fluid || require("infusion"),
 
     var QUnit = fluid.registerNamespace("QUnit"),
         $ = fluid.registerNamespace("jQuery"),
-        environment = flock.init(),
+        environment = flock.silentEnviro(),
         sampleRate = environment.audioSystem.model.rates.audio;
 
     QUnit.module("flock.ugen.change");
@@ -345,4 +345,6 @@ var fluid = fluid || require("infusion"),
             ]
         });
     });
+
+    environment.destroy();
 }());

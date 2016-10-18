@@ -228,4 +228,6 @@ var fluid = fluid || require("infusion"),
         actual = genOneSecondImpulse(2.0, 1.0);
         testImpulses(actual, [0, sampleRate / 2], "With a frequency of 2 Hz and phase of 1");
     });
+
+    environment.destroy();
 }());

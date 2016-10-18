@@ -181,4 +181,6 @@ var fluid = fluid || require("infusion"),
         });
     });
     */
+
+    environment.destroy();
 }());

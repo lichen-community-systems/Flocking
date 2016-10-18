@@ -81,4 +81,6 @@ var fluid = fluid || require("infusion"),
                 "The amplitude tracker should follow the contour of its source.");
         }
     });
+
+    environment.destroy();
 }());

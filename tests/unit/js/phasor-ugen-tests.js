@@ -43,7 +43,7 @@ var fluid = fluid || require("infusion"),
     };
 
     var testPhasorUGen = function (testSpecs) {
-        $.each(testSpecs, function (i, testSpec) {
+        fluid.each(testSpecs, function (testSpec) {
             var def = $.extend(true, {rate: testSpec.rate, id: "looper"}, testSpec.def);
             var synth = flock.synth({
                 synthDef: def,
@@ -158,4 +158,5 @@ var fluid = fluid || require("infusion"),
 
     testPhasorUGen(phasorTestSpecs);
 
+    environment.destroy();
 }());

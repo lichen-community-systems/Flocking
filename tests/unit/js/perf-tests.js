@@ -17,7 +17,7 @@ var fluid = fluid || require("infusion"),
 
     var QUnit = fluid.registerNamespace("QUnit");
 
-    flock.silentEnviro();
+    var environment = flock.silentEnviro();
 
     QUnit.module("flock.ugen.value tests");
 
@@ -220,4 +220,6 @@ var fluid = fluid || require("infusion"),
     };
 
     testConfigurations(testConfigs);
+
+    environment.destroy();
 }());

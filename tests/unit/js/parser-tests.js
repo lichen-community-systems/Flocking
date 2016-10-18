@@ -19,7 +19,7 @@ var fluid = fluid || require("infusion"),
 
     QUnit.module("flock.parse.ugenForDef");
 
-    flock.init();
+    var environment = flock.silentEnviro();
 
     QUnit.test("Special input handling", function () {
         var def = {
@@ -91,4 +91,6 @@ var fluid = fluid || require("infusion"),
         QUnit.equal(ugen.inputs.phase.model.value, 1.0,
             "The ugen's default phase input should be overridden by the ugenDef.");
     });
+
+    environment.destroy();
 }());

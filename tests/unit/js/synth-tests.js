@@ -18,7 +18,14 @@ var fluid = fluid || require("infusion"),
     var $ = fluid.registerNamespace("jQuery");
     var QUnit = fluid.registerNamespace("QUnit");
 
-    var environment = flock.silentEnviro();
+    var environment;
+    QUnit.testStart(function () {
+        environment = flock.silentEnviro();
+    });
+
+    QUnit.testDone(function () {
+        environment.destroy();
+    });
 
     var simpleSynthDef = {
         ugen: "flock.ugen.out",
@@ -51,11 +58,7 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.test.synth");
 
-    QUnit.module("Synth tests", {
-        teardown: function () {
-            environment.reset();
-        }
-    });
+    QUnit.module("Synth tests");
 
     fluid.defaults("flock.test.genReportSynth", {
         gradeNames: ["flock.synth"],

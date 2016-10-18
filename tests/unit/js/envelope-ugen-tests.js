@@ -18,16 +18,28 @@ var fluid = fluid || require("infusion"),
     var QUnit = fluid.registerNamespace("QUnit");
 
     var $ = fluid.registerNamespace("jQuery");
-    var environment = flock.init();
 
-    var sampleRate = environment.audioSystem.model.rates.audio;
+    var environment,
+        sampleRate;
+
+    var lifecycleEvents = {
+        setup: function () {
+            environment = flock.init();
+            sampleRate = environment.audioSystem.model.rates.audio;
+        },
+
+        teardown: function () {
+            environment.destroy();
+        }
+    };
+
 
 
     /*****************************
      * Line Unit Generator Tests *
      *****************************/
 
-    QUnit.module("flock.ugen.line");
+    QUnit.module("flock.ugen.line", lifecycleEvents);
 
     var lineDef = {
         ugen: "flock.ugen.line",
@@ -78,7 +90,7 @@ var fluid = fluid || require("infusion"),
      * ASR UGen Tests *
      ******************/
 
-    QUnit.module("flock.ugen.asr");
+    QUnit.module("flock.ugen.asr", lifecycleEvents);
 
     var asrDef = {
         ugen: "flock.ugen.asr",
@@ -196,7 +208,7 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.test.envGen");
 
-    QUnit.module("Envelope validity");
+    QUnit.module("Envelope validity", lifecycleEvents);
 
     flock.test.envGen.customADSREnvelopeSynth = {
         id: "env",
@@ -391,7 +403,7 @@ var fluid = fluid || require("infusion"),
     fluid.each(invalidEnvs, flock.test.envGen.testEnvelopeInvalidity);
 
 
-    QUnit.module("flock.ugen.envGen normal output");
+    QUnit.module("flock.ugen.envGen normal output", lifecycleEvents);
 
     flock.test.envGen.curveNames = [];
     fluid.each(flock.lineGen, function (lineGenerator, name) {
@@ -431,7 +443,7 @@ var fluid = fluid || require("infusion"),
         });
     });
 
-    QUnit.module("flock.ugen.envGen envelope stages");
+    QUnit.module("flock.ugen.envGen envelope stages", lifecycleEvents);
 
     flock.test.envGen.silentBlock = new Float32Array(64);
 
@@ -801,7 +813,7 @@ var fluid = fluid || require("infusion"),
     flock.test.envGen.testEnvelopeCurves(flock.test.envGen.customADSREnvelopeTestSpec);
 
 
-    QUnit.module("flock.ugen.envGen segment start and end values");
+    QUnit.module("flock.ugen.envGen segment start and end values", lifecycleEvents);
 
     flock.test.envGen.checkStartAndEnd = function (stages, stageSpecs, allSamples) {
         var startIdx = 0,
@@ -884,7 +896,7 @@ var fluid = fluid || require("infusion"),
     );
 
 
-    QUnit.module("Line generators");
+    QUnit.module("Line generators", lifecycleEvents);
 
     flock.test.envGen.lineGeneratorTests = [
         {

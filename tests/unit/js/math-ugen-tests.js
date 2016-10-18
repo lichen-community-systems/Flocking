@@ -138,4 +138,6 @@ var fluid = fluid || require("infusion"),
         QUnit.deepEqual(summer.output, new Float32Array(expected),
             "With three sources, the output consist of the inputs added together.");
     });
+
+    environment.destroy();
 }());
