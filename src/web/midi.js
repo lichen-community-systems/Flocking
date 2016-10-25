@@ -209,11 +209,15 @@ var fluid = fluid || require("infusion"),
         };
     };
 
+    flock.midi.read.twoByteValue = function (data) {
+        return (data[2] << 7) | data[1];
+    };
+
     flock.midi.read.pitchbend = function (chan, data) {
         return {
             type: "pitchbend",
             chan: chan,
-            value: (data[1] << 7) | data[2]
+            value: flock.midi.read.twoByteValue(data)
         };
     };
 
@@ -283,7 +287,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.midi.read.songPointer = function (data) {
-        var val = (data[1] << 7) | data[2];
+        var val = flock.midi.read.twoByteValue(data);
         return flock.midi.read.valueMessage("songPointer", val);
     };
 
