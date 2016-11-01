@@ -351,7 +351,7 @@ Compatibility
 -------------
 
 Flocking is currently tested on the latest versions of Firefox, Chrome, Safari, and Microsoft Edge
-on Mac, Windows, Linux, iOS, and Android. Node.js 0.12.x is also supported.
+on Mac, Windows, Linux, iOS, and Android. Node.js 6.x is also supported.
 
 
 License
