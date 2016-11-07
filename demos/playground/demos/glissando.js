@@ -1,4 +1,4 @@
-// An ascending glissando using a line ugen.
+// An descending glissando using a line ugen.
 
 flock.synth({
     synthDef: {

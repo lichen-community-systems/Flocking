@@ -33,7 +33,6 @@ fluid.defaults("flock.demo.nodejs.midiBand", {
     },
 
     modelRelay: {
-        source: "{midiConnection}.model.controlValue",
         target: "freq",
         singleTransform: {
             type: "fluid.transforms.free",
