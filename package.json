@@ -42,7 +42,7 @@
   },
   "optionalDependencies": {
     "speaker": "colinbdclark/node-speaker#mpg123-lower-latency",
-    "midi": "0.9.4"
+    "midi": "0.9.5"
   },
   "scripts": {
     "test": "npm run node-test && npm run browser-test",
