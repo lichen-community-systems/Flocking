@@ -4,7 +4,7 @@ Flocking ships with pre-built development and production files in the <code>dist
 
 For more advanced users, however, Flocking includes a build system that takes care of linting, concatenating, minifying, and organizing the Flocking source tree. The build system is powered by [Grunt](http://gruntjs.com).
 
-The build system will generate a single file that is easy to include in your web page. Before you start, you'll need to have [Node.js](http://nodejs.org) installed. Once you've installed it, you simply need to install Flocking's depedencies and then run _grunt_.
+The build system will generate a single file that is easy to include in your web page. Before you start, you'll need to have [Node.js](http://nodejs.org) installed. Flocking supports the latest Node.js LTS release (currently, that's Node.js 6.x with npm 3). Once you've installed it, you simply need to install Flocking's depedencies and then run _grunt_.
 
 Install grunt and related dependencies:
 
