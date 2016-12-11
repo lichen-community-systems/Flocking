@@ -22771,7 +22771,7 @@ var fluid = fluid || require("infusion"),
     // TODO: Unit tests.
     fluid.defaults("flock.band", {
         gradeNames: ["fluid.component"],
-
+        synthGrade: "flock.noteTarget",
         invokers: {
             play: {
                 func: "{that}.events.onPlay.fire"
@@ -22784,10 +22784,9 @@ var fluid = fluid || require("infusion"),
             set: {
                 func: "{that}.events.onSet.fire"
             },
-
             getSynths: {
-                funcName: "flock.band.getSynths",
-                args: ["{that}"]
+                funcName: "fluid.queryIoCSelector",
+                args: ["{that}", "{that}.options.synthGrade"]
             }
         },
 
@@ -22831,17 +22830,6 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
-
-    flock.band.getSynths = function (that) {
-        var synths = [];
-        fluid.each(that.options.components, function (componentDef, name) {
-            if (fluid.hasGrade(that[name].options, "flock.synth")) {
-                synths.push(that[name]);
-            }
-        });
-
-        return synths;
-    };
 }());
 ;/*
 * Flocking Audio Buffers
@@ -30645,7 +30633,7 @@ var fluid = fluid || require("infusion"),
                 targetLevel = that.inputs.sustain.output[0];
                 stageTime = that.inputs.attack.output[0];
                 stepsNeedRecalc = true;
-            } else if (gate <= 0 && currentStep >= numSteps) {
+            } else if (prevGate >= 0 && gate <= 0 && currentStep >= numSteps) {
                 // Starting a new release stage.
                 targetLevel = that.inputs.start.output[0];
                 stageTime = that.inputs.release.output[0];
@@ -30655,8 +30643,12 @@ var fluid = fluid || require("infusion"),
             // TODO: Can we get rid of this extra branch without introducing code duplication?
             if (stepsNeedRecalc) {
                 numSteps = Math.round(stageTime * m.sampleRate);
-                stepInc = (targetLevel - level) / numSteps;
+                stepInc = numSteps > 0 ? (targetLevel - level) / numSteps : 0;
                 currentStep = 0;
+
+                if (numSteps < 1) {
+                    level = targetLevel;
+                }
             }
 
             // Output the the envelope's sample data.
