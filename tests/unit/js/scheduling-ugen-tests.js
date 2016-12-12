@@ -7,16 +7,18 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, QUnit*/
+/*global require*/
 
 var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
     flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
 
-    var $ = fluid.registerNamespace("jQuery"),
-        environment = flock.init(),
+    var QUnit = fluid.registerNamespace("QUnit"),
+        $ = fluid.registerNamespace("jQuery"),
+        environment = flock.silentEnviro(),
         sampleRate = environment.audioSystem.model.rates.audio;
 
     QUnit.module("flock.ugen.change");
@@ -244,7 +246,7 @@ var fluid = fluid || require("infusion"),
             freq: (sampleRate / 64) * 4,
             start: 0.0,
             loop: 0.0,
-            list: [12, 24, 48]
+            values: [12, 24, 48]
         }
     };
 
@@ -343,4 +345,6 @@ var fluid = fluid || require("infusion"),
             ]
         });
     });
+
+    environment.destroy();
 }());

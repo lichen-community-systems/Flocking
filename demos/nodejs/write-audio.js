@@ -91,7 +91,7 @@ enviro.asyncScheduler.once(10, function () {
 
 enviro.asyncScheduler.once(15, function () {
     enviro.stop();
-    console.log("Saving audio file...");
+    console.log("Saving a", enviro.audioSystem.model.rates.audio, "Hz audio file...");
     enviro.saveBuffer({
         type: "wav",
         format: "int16",

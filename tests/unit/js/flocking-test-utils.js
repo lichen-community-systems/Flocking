@@ -6,16 +6,31 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global fluid, ok, equal, deepEqual, Float32Array*/
+/*jshint browser:true, node:true*/
+/*global require*/
 
-var flock = flock || {};
+var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
+    flock = fluid.registerNamespace("flock"),
+    ArrayMath = flock.requireModule("webarraymath", "ArrayMath");
 
 (function () {
     "use strict";
 
+    var QUnit = fluid.registerNamespace("QUnit");
+
     fluid.registerNamespace("flock.test");
 
     flock.test.silentBlock64 = new Float32Array(64);
+
+    flock.test.pathForResource = function (path) {
+        return flock.platform.isBrowser ? path : __dirname + "/" + path;
+    };
+
+    flock.test.audioFilePath = function (fileName) {
+        var relativePath = "../../shared/audio/" + fileName;
+        return flock.test.pathForResource(relativePath);
+    };
 
     // TODO: Promote this to core.
     flock.test.generateSequence = function (start, end, skip) {
@@ -208,6 +223,17 @@ var flock = flock || {};
         return buffer;
     };
 
+    flock.test.subtract = function (a, b, normalizeToValue) {
+        var subtracted = new Float32Array(b.length);
+        ArrayMath.sub(subtracted, a,b);
+
+        if (normalizeToValue !== undefined) {
+            flock.normalize(subtracted, normalizeToValue);
+        }
+
+        return subtracted;
+    };
+
     /**
      * Concatenates all arguments (arrays or individual objects)
      * into a single array.
@@ -232,16 +258,30 @@ var flock = flock || {};
             }
         }
 
-        equal(failures.length, 0, msg + (failures.length ? " NaN values found at indices: " + failures : ""));
+        QUnit.equal(failures.length, 0, msg + (failures.length ? " NaN values found at indices: " + failures : ""));
     };
 
     flock.test.roundTo = function (value, numDecimals) {
         return parseFloat(value.toFixed(numDecimals));
     };
 
+    flock.test.truncateTo = function (value, numDecimals) {
+        var valueString = value.toString(),
+            decIdx = valueString.indexOf(".");
+
+        if (decIdx < 0) {
+            return value;
+        }
+
+        var endIdx = decIdx + 1 + numDecimals,
+            trimmed = valueString.substr(0, endIdx);
+
+        return parseFloat(trimmed);
+    };
+
     flock.test.equalRounded = function (numDecimals, actual, expected, msg) {
         var rounded = flock.test.roundTo(actual, numDecimals);
-        equal(rounded, expected, msg);
+        QUnit.equal(rounded, expected, msg);
     };
 
     flock.test.makeNewArrayLike = function (arr) {
@@ -256,30 +296,40 @@ var flock = flock || {};
             roundedActual[i] = flock.test.roundTo(actual[i], numDecimals);
         }
 
-        deepEqual(roundedActual, expected, msg);
+        QUnit.deepEqual(roundedActual, expected, msg);
     };
 
-    flock.test.arrayEqualBothRounded = function (numDecimals, actual, expected, msg) {
+    flock.test.arrayEqualWithDecimalConverter = function (numDecimals, converter, actual, expected, msg) {
         if (!actual) {
-            ok(false, msg + " - the actual array was undefined.");
+            QUnit.ok(false, msg + " - the actual array was undefined.");
             return;
         }
 
         if (actual.length !== expected.length) {
-            ok(false, msg + " - the actual array was a different length (" +
+            QUnit.ok(false, msg + " - the actual array was a different length (" +
                 actual.length + " instead of " + expected.length + ")");
             return;
         }
 
-        var roundedActual = [],
-            roundedExpected = [];
+        var convertedActual = [],
+            convertedExpected = [];
 
         for (var i = 0; i < actual.length; i++) {
-            roundedActual[i] = flock.test.roundTo(actual[i], numDecimals);
-            roundedExpected[i] = flock.test.roundTo(expected[i], numDecimals);
+            convertedActual[i] = converter(actual[i], numDecimals);
+            convertedExpected[i] = converter(expected[i], numDecimals);
         }
 
-        deepEqual(roundedActual, roundedExpected, msg);
+        QUnit.deepEqual(convertedActual, convertedExpected, msg);
+    };
+
+    flock.test.arrayEqualBothRounded = function (numDecimals, actual, expected, msg) {
+        flock.test.arrayEqualWithDecimalConverter(numDecimals,
+            flock.test.roundTo, actual, expected, msg);
+    };
+
+    flock.test.arrayEqualBothTruncated = function (numDecimals, actual, expected, msg) {
+        flock.test.arrayEqualWithDecimalConverter(numDecimals,
+            flock.test.truncateTo, actual, expected, msg);
     };
 
     flock.test.arrayNotSilent = function (buffer, msg) {
@@ -293,12 +343,12 @@ var flock = flock || {};
             }
         }
 
-        ok(numNonZero > (buffer.length / 10), msg + " First silent sample found at: " + foundAt);
+        QUnit.ok(numNonZero > (buffer.length / 10), msg + " First silent sample found at: " + foundAt);
     };
 
     flock.test.arraySilent = function (buffer, msg) {
         var silentBuffer = flock.generateBufferWithValue(buffer.length, 0.0);
-        deepEqual(buffer, silentBuffer, msg);
+        QUnit.deepEqual(buffer, silentBuffer, msg);
     };
 
     flock.test.arrayExtremelyQuiet = function (buffer, msg) {
@@ -322,7 +372,7 @@ var flock = flock || {};
                 break;
             }
         }
-        ok(!isBroken, msg + " Last silent sample found at: " + foundAt);
+        QUnit.ok(!isBroken, msg + " Last silent sample found at: " + foundAt);
     };
 
     flock.test.arrayWithinRange = function (buffer, min, max, msg) {
@@ -340,7 +390,7 @@ var flock = flock || {};
             }
         }
 
-        equal(outOfRanges.length, 0, msg +
+        QUnit.equal(outOfRanges.length, 0, msg +
             (outOfRanges.length > 0 ? " Out of range values found at: " +
             fluid.prettyPrintJSON(outOfRanges) : ""));
     };
@@ -361,7 +411,8 @@ var flock = flock || {};
             }
             previous = current;
         }
-        equal(unexpected.length, 0, msg + (unexpected.length ? " Unexpected values: " +
+
+        QUnit.equal(unexpected.length, 0, msg + (unexpected.length ? " Unexpected values: " +
             fluid.prettyPrintJSON(unexpected) : ""));
     };
 
@@ -371,6 +422,7 @@ var flock = flock || {};
             current,
             isExpectedDirection = false,
             i;
+
         for (i = 1; i < buffer.length; i++) {
             current = buffer[i];
             isExpectedDirection = isAscending ? current > previous : current < previous;
@@ -382,7 +434,7 @@ var flock = flock || {};
                 });
             }
         }
-        equal(unexpected.length, 0, msg + (unexpected.length ? " Unexpected values: " + unexpected : ""));
+        QUnit.equal(unexpected.length, 0, msg + (unexpected.length ? " Unexpected values: " + unexpected : ""));
     };
 
     flock.test.sineishArray = function (buffer, max, isAscending, msg) {
@@ -420,7 +472,8 @@ var flock = flock || {};
             }
         }
 
-        equal(unexpected.length, 0, msg + (unexpected.length ? " Unexpected values: " + unexpected : ""));
+        QUnit.equal(unexpected.length, 0, msg +
+            (unexpected.length ? " Unexpected values: " + unexpected : ""));
     };
 
     flock.test.arrayContainsOnlyValues = function (buffer, values, msg) {
@@ -446,7 +499,7 @@ var flock = flock || {};
             }
         }
 
-        equal(outlierVals.length, 0, msg);
+        QUnit.equal(outlierVals.length, 0, msg);
     };
 
     flock.test.valueCount = function (buffer, value, expectedNum, msg) {
@@ -459,7 +512,7 @@ var flock = flock || {};
             }
         }
 
-        equal(count, expectedNum, msg);
+        QUnit.equal(count, expectedNum, msg);
     };
 
     flock.test.containsSoleProperty = function (obj, prop, value, msg) {
@@ -467,9 +520,9 @@ var flock = flock || {};
             value = true;
         }
 
-        equal(obj[prop], value,
+        QUnit.equal(obj[prop], value,
             msg + " The expected property should have the correct value.");
-        equal(Object.keys(obj).length, 1,
+        QUnit.equal(Object.keys(obj).length, 1,
             msg + " There should be no other properties in the object.");
     };
 
@@ -481,7 +534,7 @@ var flock = flock || {};
                 break;
             }
         }
-        ok(passesCheck, msg);
+        QUnit.ok(passesCheck, msg);
     };
 
     flock.test.containsNegativeValues = function (output) {

@@ -6,13 +6,16 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, QUnit, Float32Array*/
+/*global require, Float32Array*/
 
 var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
     flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
+
+    var QUnit = fluid.registerNamespace("QUnit");
 
     var environment = flock.silentEnviro(),
         sampleRate = environment.audioSystem.model.rates.audio;
@@ -34,6 +37,10 @@ var fluid = fluid || require("infusion"),
                 }
             });
             flock.parse.bufferForDef.resolveBuffer(bufDesc, undefined, environment);
+        },
+
+        teardown: function () {
+            environment.destroy();
         }
     });
 
@@ -404,6 +411,10 @@ var fluid = fluid || require("infusion"),
                 }
             });
             flock.parse.bufferForDef.resolveBuffer(bufDesc, undefined, environment);
+        },
+
+        teardown: function () {
+            environment.destroy();
         }
     });
 
@@ -431,7 +442,7 @@ var fluid = fluid || require("infusion"),
 
     var testBufferDurationAtAllRates = function () {
         var supportedRates = ["constant", "control"];
-        $.each(supportedRates, function (i, rate) {
+        fluid.each(supportedRates, function (rate) {
             testBufferDuration(rate);
         });
     };
@@ -441,14 +452,21 @@ var fluid = fluid || require("infusion"),
 
     QUnit.module("flock.ugen.chopBuffer");
 
-
-    QUnit.asyncTest("Static default inputs", function () {
+    QUnit.asyncTest("Constant rate inputs", function () {
         var s = flock.synth({
             synthDef: {
                 id: "chopper",
                 ugen: "flock.ugen.chopBuffer",
-                start: 0.1,
+                start: 0.25,
+                end: 0.5,
                 buffer: "honey"
+            },
+
+            members: {
+                audioSettings: {
+                    // Ensure we're generating a large enough buffer to get some sound.
+                    blockSize: 2048
+                }
             }
         });
 
@@ -458,7 +476,7 @@ var fluid = fluid || require("infusion"),
             bufferDefs: [
                 {
                     id: "honey",
-                    url: "../../../demos/shared/audio/where-the-honey-is.mp3"
+                    url: flock.test.pathForResource("../../../demos/shared/audio/hillier-first-chord.wav")
                 }
             ],
             listeners: {

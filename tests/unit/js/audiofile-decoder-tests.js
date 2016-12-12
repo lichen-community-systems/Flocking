@@ -6,19 +6,21 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, module, asyncTest, deepEqual, start*/
+/*global require*/
 
 var fluid = fluid || require("infusion"),
-flock = fluid.registerNamespace("flock");
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
+    flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
 
-    flock.init();
+    var QUnit = fluid.registerNamespace("QUnit");
 
+    flock.init();
     fluid.registerNamespace("flock.test");
 
-    module("flock.audio.decode.chunked() tests");
+    QUnit.module("flock.audio.decode.chunked() tests");
 
     var audioFormatTestSpecs = [
         {
@@ -79,7 +81,7 @@ flock = fluid.registerNamespace("flock");
     ];
 
     var testAudioFileFormat = function (config) {
-        asyncTest(config.name + ".", function () {
+        QUnit.asyncTest(config.name + ".", function () {
             flock.file.readBufferFromDataUrl({
                 src: config.src,
                 success: function (dataBuffer) {
@@ -89,9 +91,9 @@ flock = fluid.registerNamespace("flock");
                     // Remove the sample data, since it's tested below.
                     delete actual.data.channels;
 
-                    deepEqual(actual, expected,
+                    QUnit.deepEqual(actual, expected,
                         "The decoded audio file info should contain valid container, format, and data structures.");
-                    start();
+                    QUnit.start();
                 }
             });
         });
@@ -129,14 +131,14 @@ flock = fluid.registerNamespace("flock");
             bitDepth: 32,
             dataSize: eightBitSampleSize * 4,
             src: flock.test.audio.triangleInt32WAV,
-            decoder: flock.audio.decode.workerAsync
+            decoder: flock.audio.decode.sync
         },
         {
             name: "int32 AIFF file",
             bitDepth: 32,
             dataSize: (eightBitSampleSize * 4) + 4 + 4,
             src: flock.test.audio.triangleInt32AIFF,
-            decoder: flock.audio.decode.workerAsync
+            decoder: flock.audio.decode.sync
 
         },
         {
@@ -144,18 +146,18 @@ flock = fluid.registerNamespace("flock");
             bitDepth: 32,
             dataSize: eightBitSampleSize * 4,
             src: flock.test.audio.triangleFloatWAV,
-            decoder: flock.audio.decode.workerAsync
+            decoder: flock.audio.decode.sync
         },
         {
             name: "float AIFF file",
             bitDepth: 32,
             dataSize: (eightBitSampleSize * 4) + 4 + 4,
             src: flock.test.audio.triangleFloatAIFF,
-            decoder: flock.audio.decode.workerAsync
+            decoder: flock.audio.decode.sync
         }
     ];
 
-    module("flock.audio.decode() mixed decoder tests");
+    QUnit.module("flock.audio.decode() mixed decoder tests");
     flock.test.audioFile.testDecoder(decoderTestSpecs);
 
     var specifyDecoderType = function (decoderType, specs) {
@@ -167,10 +169,16 @@ flock = fluid.registerNamespace("flock");
         return typedSpecs;
     };
 
-    module("flock.audio.decode() pure JavaScript async decoder tests");
-    flock.test.audioFile.testDecoder(specifyDecoderType(flock.audio.decode.workerAsync, decoderTestSpecs));
+    QUnit.module("flock.audio.decode() pure JavaScript sync decoder tests");
+    flock.test.audioFile.testDecoder(specifyDecoderType(flock.audio.decode.sync,
+        decoderTestSpecs));
 
-    module("flock.audio.decode() pure JavaScript sync decoder tests");
-    flock.test.audioFile.testDecoder(specifyDecoderType(flock.audio.decode.sync, decoderTestSpecs));
+    // Currently, there is no asynchronous decoding on Node.js,
+    // hence this test is only run if we're in a browser.
+    if (flock.platform.isBrowser) {
+        QUnit.module("flock.audio.decode() pure JavaScript async decoder tests");
+        flock.test.audioFile.testDecoder(specifyDecoderType(flock.audio.decode.workerAsync,
+            decoderTestSpecs));
+    }
 
 }());

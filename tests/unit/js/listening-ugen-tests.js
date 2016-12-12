@@ -6,13 +6,16 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, QUnit*/
+/*global require*/
 
 var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
     flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
+
+    var QUnit = fluid.registerNamespace("QUnit");
 
     var environment = flock.silentEnviro(),
         sampleRate = environment.audioSystem.model.rates.audio;
@@ -78,4 +81,6 @@ var fluid = fluid || require("infusion"),
                 "The amplitude tracker should follow the contour of its source.");
         }
     });
+
+    environment.destroy();
 }());

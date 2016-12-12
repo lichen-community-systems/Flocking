@@ -6,13 +6,16 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, QUnit, Float32Array*/
+/*global require, Float32Array*/
 
 var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
     flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
+
+    var QUnit = fluid.registerNamespace("QUnit");
 
     var environment = flock.silentEnviro(),
         sampleRate = environment.audioSystem.model.rates.audio;
@@ -225,4 +228,6 @@ var fluid = fluid || require("infusion"),
         actual = genOneSecondImpulse(2.0, 1.0);
         testImpulses(actual, [0, sampleRate / 2], "With a frequency of 2 Hz and phase of 1");
     });
+
+    environment.destroy();
 }());

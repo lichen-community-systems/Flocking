@@ -6,13 +6,16 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, module, test*/
+/*global require*/
 
 var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
     flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
+
+    var QUnit = fluid.registerNamespace("QUnit");
 
     fluid.registerNamespace("flock.test.blit");
 
@@ -124,7 +127,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.test.blit.testAssertions = function (testSpec, actual) {
-        test(testSpec.name, function () {
+        QUnit.test(testSpec.name, function () {
             fluid.each(testSpec.assertions, function (assertion) {
                 flock.test.blit.runAssertion(assertion, actual);
             });
@@ -162,7 +165,7 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.test.blit.runTestModule = function (testSpecs, typeSpecificTestSpecs, ugenPath) {
-        module(ugenPath + " tests");
+        QUnit.module(ugenPath + " tests");
         fluid.each(testSpecs, function (testSpec) {
             if (!testSpec.assertions) {
                 testSpec.assertions = typeSpecificTestSpecs.assertions;
@@ -183,4 +186,6 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.test.blit.runTests(flock.test.blit.baseTests, flock.test.blit.typeSpecificTests);
+
+    environment.destroy();
 }());

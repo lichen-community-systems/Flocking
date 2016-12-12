@@ -6,7 +6,10 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global fluid, flock*/
+/*global require*/
+
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";

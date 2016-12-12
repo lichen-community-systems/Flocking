@@ -6,21 +6,22 @@
  * Dual licensed under the MIT or GPL Version 2 licenses.
  */
 
-/*global require, module, test, expect, ok, equal, deepEqual*/
+/*global require*/
 
 var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
     flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
 
-    var $ = fluid.registerNamespace("jQuery");
+    var QUnit = fluid.registerNamespace("QUnit");
 
     fluid.registerNamespace("flock.test.core");
 
-    module("Utility tests");
+    QUnit.module("Utility tests");
 
-    test("flock.isIterable()", function () {
+    QUnit.test("flock.isIterable()", function () {
         var iterable = [
             {
                 val: ["cat", "dog"],
@@ -68,19 +69,19 @@ var fluid = fluid || require("infusion"),
         ];
 
         fluid.each(iterable, function (testSpec) {
-            ok(flock.isIterable(testSpec.val), testSpec.msg);
+            QUnit.ok(flock.isIterable(testSpec.val), testSpec.msg);
         });
 
         fluid.each(notIterable, function (testSpec) {
-            ok(!flock.isIterable(testSpec.val), testSpec.msg);
+            QUnit.ok(!flock.isIterable(testSpec.val), testSpec.msg);
         });
 
     });
 
-    test("flock.parseMidiString", function () {
+    QUnit.test("flock.parseMidiString", function () {
         function runMidiStringTest(testSpec) {
             var actual = flock.parseMidiString(testSpec.note);
-            deepEqual(actual, testSpec.expected, testSpec.name);
+            QUnit.deepEqual(actual, testSpec.expected, testSpec.name);
         }
 
         var testSpecs = [
@@ -131,13 +132,13 @@ var fluid = fluid || require("infusion"),
     });
 
     var defaultFailMode = flock.debug.failHard;
-    module("Path utilities", {
+    QUnit.module("Path utilities", {
         teardown: function () {
             flock.debug.failHard = defaultFailMode;
         }
     });
 
-    test("flock.set()", function () {
+    QUnit.test("flock.set()", function () {
         var root = {
             cat: "meow",
             dog: {
@@ -183,39 +184,39 @@ var fluid = fluid || require("infusion"),
             }
         ];
 
-        $.each(tests, function (i, spec) {
+        fluid.each(tests, function (spec) {
             flock.set(root, spec.path, spec.value);
-            equal(flock.get(root, spec.path), spec.expected || spec.value, spec.msg);
+            QUnit.equal(flock.get(root, spec.path), spec.expected || spec.value, spec.msg);
         });
 
         // Error cases
         try {
             flock.set(root, "cat.claws.count", 25);
-            ok(false);
+            QUnit.ok(false);
         } catch (e) {
-            ok(e.message.indexOf("cat") !== -1);
+            QUnit.ok(e.message.indexOf("cat") !== -1);
         }
     });
 
     var assertNoErrorThrown = function (fn) {
         try {
             fn();
-            ok(true, "A hard error shouldn't be thrown.");
+            QUnit.ok(true, "A hard error shouldn't be thrown.");
         } catch (e) {
-            ok(false, "A hard error shouldn't be thrown.");
+            QUnit.ok(false, "A hard error shouldn't be thrown.");
         }
     };
 
     var assertErrorThrown = function (fn) {
         try {
             fn();
-            ok(false, "A hard error should be thrown.");
+            QUnit.ok(false, "A hard error should be thrown.");
         } catch (e) {
-            ok(true, "A hard error should be thrown.");
+            QUnit.ok(true, "A hard error should be thrown.");
         }
     };
 
-    test("Getting and setting invalid paths with soft failure enabled", function () {
+    QUnit.test("Getting and setting invalid paths with soft failure enabled", function () {
         flock.debug.failHard = false;
 
         assertNoErrorThrown(function () {
@@ -227,7 +228,7 @@ var fluid = fluid || require("infusion"),
         });
     });
 
-    test("Getting and setting invalid paths with hard failure enabled", function () {
+    QUnit.test("Getting and setting invalid paths with hard failure enabled", function () {
         flock.debug.failHard = true;
 
         assertErrorThrown(function () {
@@ -240,14 +241,14 @@ var fluid = fluid || require("infusion"),
     });
 
     var testInputPathExpansion = function (testSpecs) {
-        $.each(testSpecs, function (i, spec) {
+        fluid.each(testSpecs, function (spec) {
             var actual = flock.input.pathExpander(spec.path);
-            equal(actual, spec.expected, spec.msg,
+            QUnit.equal(actual, spec.expected, spec.msg,
                 "Setting to a non-container type should cause an error to be thrown.");
         });
     };
 
-    test("flock.synth.inputPathExpander()", function () {
+    QUnit.test("flock.synth.inputPathExpander()", function () {
         testInputPathExpansion([
             {
                 path: "cat.dog",
@@ -322,50 +323,50 @@ var fluid = fluid || require("infusion"),
         ]);
     });
 
-    test("flock.generateBufferWithValue()", function () {
+    QUnit.test("flock.generateBufferWithValue()", function () {
         // Buffer size and static number for the generator.
         var expected = new Float32Array([1.0, 1.0, 1.0]);
         var actual = flock.generateBufferWithValue(3, 1.0);
-        deepEqual(actual, expected, "Buffer size as a number and generator as a scalar.");
+        QUnit.deepEqual(actual, expected, "Buffer size as a number and generator as a scalar.");
     });
 
-    test("flock.generateBuffer()", function () {
+    QUnit.test("flock.generateBuffer()", function () {
         // Buffer size and generator function
         var expected = new Float32Array([0, 42, 0, 42, 0]);
         var actual = flock.generateBuffer(5, function (i) {
             return i % 2 > 0 ? 42 : 0;
         });
-        deepEqual(actual, expected, "Buffer size as a number and generator function.");
+        QUnit.deepEqual(actual, expected, "Buffer size as a number and generator function.");
     });
 
-    test("flock.fillBufferWithValue()", function () {
+    QUnit.test("flock.fillBufferWithValue()", function () {
         // Pre-existing buffer and a static number for the generator.
         var expected = new Float32Array(5);
         var actual = flock.fillBufferWithValue(expected, 42.0);
-        equal(actual, expected, "When a buffer is supplied as the first argument, it should operated on in place.");
+        QUnit.equal(actual, expected, "When a buffer is supplied as the first argument, it should operated on in place.");
     });
 
-    test("flock.fillBuffer()", function () {
+    QUnit.test("flock.fillBuffer()", function () {
         // Pre-existing buffer and a generator function.
         var expected = new Float32Array([99.9, 199.8]);
         var inputBuffer = new Float32Array(2);
         var actual = flock.fillBuffer(inputBuffer, function (i) {
             return 99.9 * (i + 1);
         });
-        equal(actual, inputBuffer,
+        QUnit.equal(actual, inputBuffer,
             "When a buffer is supplied as the first argument and a generator as the second, the buffer should operated on in place.");
-        deepEqual(actual, expected,
+        QUnit.deepEqual(actual, expected,
             "The generator should be invoked with the increment value as its first argument, and its output should be placed in the buffer.");
     });
 
 
     var testNormalize = function (normal, unnormalized, expected) {
-        var actual = flock.normalize($.map(unnormalized, fluid.identity), normal);
-        deepEqual(actual, expected, "Buffer normalized to " + normal + ".");
+        var actual = flock.normalize(unnormalized, normal);
+        QUnit.deepEqual(actual, expected, "Buffer normalized to " + normal + ".");
     };
 
-    test("flock.reverse()", function () {
-        expect(5);
+    QUnit.test("flock.reverse()", function () {
+        QUnit.expect(5);
 
         var forwardRaw = [1, 2, 3, 4, 5],
             forwardTyped = new Float32Array(forwardRaw),
@@ -373,26 +374,26 @@ var fluid = fluid || require("infusion"),
             reverseTyped = new Float32Array(reverseRaw),
             actual = flock.reverse(forwardTyped);
 
-        deepEqual(actual, reverseTyped, "A typed array should be reversed as expected.");
+        QUnit.deepEqual(actual, reverseTyped, "A typed array should be reversed as expected.");
 
         actual = flock.reverse(forwardRaw);
-        deepEqual(actual, reverseRaw, "A plain JS array should be reversed as expected.");
+        QUnit.deepEqual(actual, reverseRaw, "A plain JS array should be reversed as expected.");
 
         var empty = [];
         actual = flock.reverse(empty);
-        equal(actual, empty, "An empty array should be returned as is.");
+        QUnit.equal(actual, empty, "An empty array should be returned as is.");
 
         var oneItemList = ["Cat"];
         actual = flock.reverse(oneItemList);
-        equal(actual, oneItemList, "A single-item list should be returned as is.");
+        QUnit.equal(actual, oneItemList, "A single-item list should be returned as is.");
 
         var nonArray = {a: "cat", b: new Float32Array([1, 2, 3])};
         actual = flock.reverse(nonArray);
-        equal(actual, nonArray, "A non array argument should be returned as is.");
+        QUnit.equal(actual, nonArray, "A non array argument should be returned as is.");
     });
 
-    test("flock.normalize()", function () {
-        expect(6);
+    QUnit.test("flock.normalize()", function () {
+        QUnit.expect(6);
         var unnormalized = [0.0, 0.5, 1.0, 1.5, 2.0];
         testNormalize(1.0, unnormalized, [0.0, 0.25, 0.5, 0.75, 1.0]);
         testNormalize(0.5, unnormalized, [0.0, 0.125, 0.25, 0.375, 0.5]);

@@ -6,13 +6,16 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, QUnit*/
+/*global require*/
 
 var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
     flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
+
+    var QUnit = fluid.registerNamespace("QUnit");
 
     var environment = flock.init(),
         sampleRate = environment.audioSystem.model.rates.audio;
@@ -139,7 +142,7 @@ var fluid = fluid || require("infusion"),
                     ugen: "flock.ugen.sequence",
                     loop: 1.0,
                     rate: "control",
-                    list: [1, 2, 3, 4],
+                    values: [1, 2, 3, 4],
                     freq: sampleRate / 64
                 },
                 trigger: 0.0
@@ -211,7 +214,7 @@ var fluid = fluid || require("infusion"),
                     ugen: "flock.ugen.sequence",
                     loop: 1.0,
                     rate: "audio",
-                    list: outputBuffer,
+                    values: outputBuffer,
                     freq: sampleRate
                 },
                 trigger: {
@@ -259,4 +262,5 @@ var fluid = fluid || require("infusion"),
         runLatchTests(testSpec);
     });
 
+    environment.destroy();
 }());
