@@ -3963,6 +3963,7 @@ var fluid = fluid || require("infusion"),
      * flock.band provides an IoC-friendly interface for a collection of named synths.
      */
     // TODO: Unit tests.
+    // TODO: It seems likely that this component should be a flock.node, too.
     fluid.defaults("flock.band", {
         gradeNames: ["fluid.component"],
         synthGrade: "flock.noteTarget",
