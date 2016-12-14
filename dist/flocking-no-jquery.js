@@ -12591,6 +12591,7 @@ var fluid = fluid || require("infusion"),
      * flock.band provides an IoC-friendly interface for a collection of named synths.
      */
     // TODO: Unit tests.
+    // TODO: It seems likely that this component should be a flock.node, too.
     fluid.defaults("flock.band", {
         gradeNames: ["fluid.component"],
         synthGrade: "flock.noteTarget",
@@ -18124,14 +18125,17 @@ var fluid = fluid || require("infusion"),
                 j,
                 k,
                 trigVal,
+                prevTrigVal,
                 speedVal,
                 samp;
 
             for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.trigger, k += m.strides.speed) {
                 trigVal = trig[j];
+                prevTrigVal = m.prevTrig;
                 speedVal = speed[k];
+                m.prevTrig = trigVal;
 
-                if (trigVal > 0.0 && m.prevTrig <= 0.0) {
+                if (trigVal > 0.0 && prevTrigVal <= 0.0) {
                     bufIdx = flock.ugen.playBuffer.resetIndex(speedVal, start, end);
                 } else if (bufIdx < start || bufIdx > end) {
                     if (loop > 0.0 && trigVal > 0.0) {
@@ -18141,7 +18145,6 @@ var fluid = fluid || require("infusion"),
                         continue;
                     }
                 }
-                m.prevTrig = trig[j];
 
                 samp = that.interpolate(bufIdx, source);
                 out[i] = samp;
