@@ -17,26 +17,35 @@ var fluid = fluid || require("infusion"),
 
     var QUnit = fluid.registerNamespace("QUnit");
 
-    var environment = flock.silentEnviro(),
-        sampleRate = environment.audioSystem.model.rates.audio;
+    var environment = flock.silentEnviro();
 
     var $ = fluid.registerNamespace("jQuery");
     fluid.registerNamespace("flock.test");
 
+    flock.test.registerBuffer = function (enviro, id, left, right) {
+        var bufDesc = flock.bufferDesc({
+            id: id,
+            format: {
+                sampleRate: enviro.audioSystem.model.rates.audio
+            },
+            data: {
+                channels: right ? [left, right] : [left]
+            }
+        });
+
+        // TODO: Why this instead of enviroment.registerBuffer(bufDesc)?
+        flock.parse.bufferForDef.resolveBuffer(bufDesc, undefined, enviro);
+    };
+
+    fluid.registerNamespace("flock.test.ugen.playBuffer");
+
     QUnit.module("flock.ugen.playBuffer", {
         setup: function () {
             environment = flock.init();
-
-            var bufDesc = flock.bufferDesc({
-                id: flock.test.ugen.playBuffer.playbackDef.inputs.buffer.id,
-                format: {
-                    sampleRate: sampleRate
-                },
-                data: {
-                    channels: [flock.test.generateSequence(1, 64)]
-                }
-            });
-            flock.parse.bufferForDef.resolveBuffer(bufDesc, undefined, environment);
+            flock.test.registerBuffer(environment,
+                "playBuffer-unit-tests-ascending", flock.test.generateSequence(1, 64));
+            flock.test.registerBuffer(environment,
+                "playBuffer-unit-tests-ones", flock.generateBufferWithValue(64, 1));
         },
 
         teardown: function () {
@@ -44,13 +53,12 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    fluid.registerNamespace("flock.test.ugen.playBuffer");
 
     flock.test.ugen.playBuffer.playbackDef = {
         ugen: "flock.ugen.playBuffer",
         inputs: {
             buffer: {
-                id: "playBuffer-unit-tests"
+                id: "playBuffer-unit-tests-ascending"
             },
 
             speed: 1.0
@@ -175,6 +183,43 @@ var fluid = fluid || require("infusion"),
         });
     });
 
+    QUnit.test("Trigger resets buffer playback", function () {
+        var ugenDef = {
+            ugen: "flock.ugen.playBuffer",
+            start: 0,
+            end: {
+                ugen: "flock.ugen.value",
+                rate: "control",
+                value: 1.0
+            }, // To trigger gh-202
+            trigger: 0.0,
+            buffer: {
+                id: "playBuffer-unit-tests-ones"
+            }
+        };
+
+        var player = flock.parse.ugenForDef(ugenDef);
+        player.gen(64);
+
+        // Sanity check silence.
+        QUnit.deepEqual(player.output, flock.test.silentBlock64,
+            "Before the trigger has opened, the unit generator should be silent");
+
+        player.input("trigger", 1.0);
+        player.gen(64);
+        QUnit.deepEqual(player.output, flock.generateBufferWithValue(64, 1.0),
+            "When the trigger has opened, the unit generator should output the buffer");
+
+        player.input("trigger", 0.0);
+        player.gen(64);
+        QUnit.deepEqual(player.output, flock.test.silentBlock64,
+            "After the buffer has run to its end, the unit generator should be silent");
+
+        player.input("trigger", 1.0);
+        player.gen(64);
+        QUnit.deepEqual(player.output, flock.generateBufferWithValue(64, 1.0),
+            "When the trigger has fired again, the unit generator should output the buffer");
+    });
 
     flock.test.ugen.playBuffer.rawBufferArray = new Float32Array([
         0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0,
@@ -399,7 +444,8 @@ var fluid = fluid || require("infusion"),
 
     QUnit.module("flock.ugen.bufferDuration tests", {
         setup: function () {
-            var environment = flock.init();
+            var environment = flock.init(),
+                sampleRate = environment.audioSystem.model.rates.audio;
 
             var bufDesc = flock.bufferDesc({
                 id: "bufferDurationTests",
