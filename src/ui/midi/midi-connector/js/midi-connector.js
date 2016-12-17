@@ -15,31 +15,38 @@ var fluid = fluid || require("infusion");
     fluid.defaults("flock.ui.midiConnector", {
         gradeNames: ["flock.midi.receiver", "fluid.viewComponent"],
 
+        portType: "input",
+
         components: {
-            midiInputSelector: {
-                type: "flock.ui.midiInputSelector",
+            midiPortSelector: {
+                type: "flock.ui.midiPortSelector",
                 container: "{that}.container",
                 options: {
+                    portType: "{midiConnector}.options.portType",
                     events: {
                         onPortSelected: "{midiConnector}.events.onPortSelected"
                     }
                 }
             },
 
-            midiConnection: {
+            connection: {
                 createOnEvent: "onPortSelected",
                 type: "flock.midi.connection",
                 options: {
                     openImmediately: true,
                     ports: {
-                        input: {
-                            id: "{midiInputSelector}.selectBox.model.selection"
+                        expander: {
+                            funcName: "flock.ui.midiConnector.generatePortSpecification",
+                            args: [
+                                "{midiConnector}.options.portType",
+                                "{midiPortSelector}.selectBox.model.selection"
+                            ]
                         }
                     },
 
                     // TODO: These are ultimately midi.connection events.
-                    // Is there a better way to "distribute" listeners from this
-                    // parent "facade" object to its midiConnection subcomponent?
+                    // Is there a better way to distribute listeners from this
+                    // parent "facade" object to its connection subcomponent?
                     events: {
                         raw: "{midiConnector}.events.raw",
                         message: "{midiConnector}.events.message",
@@ -50,14 +57,29 @@ var fluid = fluid || require("infusion");
                         program: "{midiConnector}.events.program",
                         aftertouch: "{midiConnector}.events.aftertouch",
                         pitchbend: "{midiConnector}.events.pitchbend"
+                    },
+
+                    listeners: {
+                        onCreate: [
+                            "{midiConnector}.events.afterConnectionOpen.fire()"
+                        ]
                     }
                 }
             }
         },
 
         events: {
-            onPortSelected: null
+            onPortSelected: null,
+            afterConnectionOpen: null
         }
     });
 
+    flock.ui.midiConnector.generatePortSpecification = function (portType, portIDs) {
+        var spec = {};
+        spec[portType] = {
+            id: portIDs
+        };
+
+        return spec;
+    };
 }());

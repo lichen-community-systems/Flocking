@@ -16,11 +16,13 @@ var fluid = fluid || require("infusion"),
     // TODO: add support for rendering errors
     // TODO: add user-friendly rendering in the case when no midi ports are available
     // TODO: move selectBox container rendering into the selectBox component
-    fluid.defaults("flock.ui.midiInputSelector", {
+    fluid.defaults("flock.ui.midiPortSelector", {
         gradeNames: "fluid.viewComponent",
 
+        portType: "input",
+
         model: {
-            inputs: []
+            ports: []
         },
 
         components: {
@@ -30,11 +32,11 @@ var fluid = fluid || require("infusion"),
                 container: "{that}.dom.selectBox",
                 options: {
                     model: {
-                        options: "{midiInputSelector}.model.inputs"
+                        options: "{midiPortSelector}.model.ports"
                     },
 
                     events: {
-                        onSelect: "{midiInputSelector}.events.onPortSelected"
+                        onSelect: "{midiPortSelector}.events.onPortSelected"
                     }
                 }
             },
@@ -43,7 +45,7 @@ var fluid = fluid || require("infusion"),
                 type: "flock.midi.system",
                 options: {
                     events: {
-                        onPortsAvailable: "{midiInputSelector}.events.onPortsAvailable"
+                        onPortsAvailable: "{midiPortSelector}.events.onPortsAvailable"
                     }
                 }
             }
@@ -75,7 +77,7 @@ var fluid = fluid || require("infusion"),
             // TODO: Move the selectBox portions of this to the selectBox component.
             onRender: [
                 {
-                    funcName: "flock.ui.midiInputSelector.render",
+                    funcName: "flock.ui.midiPortSelector.render",
                     args: [
                         "{that}.container",
                         "{that}.options.markup.label",
@@ -83,7 +85,7 @@ var fluid = fluid || require("infusion"),
                     ]
                 },
                 {
-                    funcName: "flock.ui.midiInputSelector.render",
+                    funcName: "flock.ui.midiPortSelector.render",
                     args: [
                         "{that}.container",
                         "{that}.options.markup.selectBox",
@@ -91,7 +93,7 @@ var fluid = fluid || require("infusion"),
                     ]
                 },
                 {
-                    funcName: "flock.ui.midiInputSelector.renderRefreshButton",
+                    funcName: "flock.ui.midiPortSelector.renderRefreshButton",
                     args: [
                         "{that}.container",
                         "{that}.options.markup.refreshButton",
@@ -110,12 +112,12 @@ var fluid = fluid || require("infusion"),
 
             onPortsAvailable: [
                 {
-                    changePath: "inputs",
+                    changePath: "ports",
                     type: "DELETE"
                 },
                 {
-                    changePath: "inputs",
-                    value: "{arguments}.0.inputs"
+                    funcName: "flock.ui.midiPortSelector.updatePortsModel",
+                    args: ["{that}.options.portType", "{arguments}.0", "{that}"]
                 }
             ]
         },
@@ -133,7 +135,7 @@ var fluid = fluid || require("infusion"),
         },
 
         strings: {
-            selectBoxLabel: "MIDI Input",
+            selectBoxLabel: "MIDI Port",
             refreshButtonLabel: "Refresh"
         },
 
@@ -142,9 +144,19 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+    flock.ui.midiPortSelector.updatePortsModel = function (portType, ports, that) {
+        if (portType === "input") {
+            portType = "inputs";
+        } else if (portType === "output") {
+            portType = "outputs";
+        }
+
+        var portsForType = ports[portType];
+        that.applier.change("ports", portsForType);
+    };
 
     // TODO: Move to the selectBox component.
-    flock.ui.midiInputSelector.render = function (container, markup, strings) {
+    flock.ui.midiPortSelector.render = function (container, markup, strings) {
         var rendered = fluid.stringTemplate(markup, strings),
             el = jQuery(rendered);
 
@@ -153,8 +165,8 @@ var fluid = fluid || require("infusion"),
         return el;
     };
 
-    flock.ui.midiInputSelector.renderRefreshButton = function (container, markup, strings, onRefresh) {
-        var button = flock.ui.midiInputSelector.render(container, markup, strings);
+    flock.ui.midiPortSelector.renderRefreshButton = function (container, markup, strings, onRefresh) {
+        var button = flock.ui.midiPortSelector.render(container, markup, strings);
         button.click(function () {
             onRefresh();
             return false;
