@@ -33,7 +33,7 @@
   "dependencies": {
     "jquery": "2.1.4",
     "infusion": "2.0.0-dev.20160519T222603Z.754d2c6",
-    "codemirror-infusion": "colinbdclark/codemirror-infusion#gh-6",
+    "codemirror-infusion": "2.1.0",
     "jsplumb": "1.7.9",
     "dagre": "0.7.4",
     "normalize.css": "3.0.3"
