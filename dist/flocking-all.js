@@ -29650,6 +29650,51 @@ var fluid = fluid || require("infusion"),
 
 
     /**
+     * A simple tanh distortion effect.
+     *
+     * Inputs:
+     *   - source: the input signal to distort
+     */
+    flock.ugen.distortion.tanh = function (inputs, output, options) {
+        var that = flock.ugen(inputs, output, options);
+
+        that.gen = function (numSamps) {
+            var m = that.model,
+                out = that.output,
+                source = that.inputs.source.output,
+                sourceInc = m.strides.source,
+                dist,
+                i,
+                j;
+
+            for (i = j = 0; i < numSamps; i++, j += sourceInc) {
+                dist = Math.tanh( source[i] );
+                out[i] = dist;
+            }
+
+            m.unscaledValue = dist;
+            that.mulAdd(numSamps);
+            m.value = flock.ugen.lastOutputValue(numSamps, out);
+        };
+
+        that.onInputChanged();
+
+        return that;
+    };
+
+    flock.ugenDefaults("flock.ugen.distortion.tanh", {
+        rate: "audio",
+        inputs: {
+            source: null
+        },
+        ugenOptions: {
+            strideInputs: ["source"]
+        }
+    });
+
+
+
+    /**
      * A simple waveshaper-based distortion effect by Bram de Jonge.
      * http://www.musicdsp.org/showone.php?id=41
      *
