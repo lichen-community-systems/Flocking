@@ -20,7 +20,7 @@
     // To hell with isolationism.
     window.jQuery = jQuery;
 ;/*!
- * Fluid Infusion v2.0
+ * Fluid Infusion v2.0.0
  *
  * Infusion is distributed under the Educational Community License 2.0 and new BSD licenses:
  * http://wiki.fluidproject.org/display/fluid/Fluid+Licensing
@@ -33,9 +33,10 @@ Copyright 2007-2010 University of Cambridge
 Copyright 2007-2009 University of Toronto
 Copyright 2007-2009 University of California, Berkeley
 Copyright 2010-2011 Lucendo Development Ltd.
-Copyright 2010 OCAD University
+Copyright 2010-2015 OCAD University
 Copyright 2011 Charly Molter
-Copyright 2014-2015 Raising the Floor - International
+Copyright 2012-2014 Raising the Floor - US
+Copyright 2014-2016 Raising the Floor - International
 
 Licensed under the Educational Community License (ECL), Version 2.0 or the New
 BSD license. You may not use this file except in compliance with one these
@@ -195,7 +196,7 @@ var fluid = fluid || fluid_2_0_0;
         this.message = togo.message;
         try { // This technique is necessary on IE11 since otherwise the stack entry is not filled in
             throw togo;
-        } catch (togo) { // jshint ignore:line
+        } catch (togo) {
             this.stack = togo.stack;
         }
         return this;
@@ -274,7 +275,7 @@ var fluid = fluid || fluid_2_0_0;
     fluid.setLogging = function (enabled) {
         var logLevel;
         if (typeof enabled === "boolean") {
-            logLevel = fluid.logLevel[enabled? "INFO" : "IMPORTANT"];
+            logLevel = fluid.logLevel[enabled ? "INFO" : "IMPORTANT"];
         } else if (fluid.isLogLevel(enabled)) {
             logLevel = enabled;
         } else {
@@ -288,7 +289,7 @@ var fluid = fluid || fluid_2_0_0;
 
     /** Undo the effect of the most recent "setLogging", returning the logging system to its previous state **/
     fluid.popLogging = function () {
-        var togo = logLevelStack.length === 1? logLevelStack[0] : logLevelStack.shift();
+        var togo = logLevelStack.length === 1 ? logLevelStack[0] : logLevelStack.shift();
         fluid.defeatLogging = !fluid.isLogging();
         return togo;
     };
@@ -352,7 +353,7 @@ var fluid = fluid || fluid_2_0_0;
     /** Determines whether the supplied object is a plain JSON-forming container - that is, it is either a plain Object
      * or a plain Array. Note that this differs from jQuery's isPlainObject which does not pass Arrays.
      * @param totest {Any} The object to be tested
-     * @param strict {Boolean} (optional) If `true`, plain Arrays will fail the test rather than passing. 
+     * @param strict {Boolean} (optional) If `true`, plain Arrays will fail the test rather than passing.
      */
     fluid.isPlainObject = function (totest, strict) {
         var string = Object.prototype.toString.call(totest);
@@ -387,6 +388,14 @@ var fluid = fluid || fluid_2_0_0;
         return obj && obj.constructor === fluid.componentConstructor;
     };
 
+    fluid.isUncopyable = function (totest) {
+        return fluid.isPrimitive(totest) || !fluid.isPlainObject(totest);
+    };
+
+    fluid.isApplicable = function (totest) {
+        return totest.apply && typeof(totest.apply) === "function";
+    };
+
     /** A basic utility that returns its argument unchanged */
 
     fluid.identity = function (arg) {
@@ -399,18 +408,20 @@ var fluid = fluid || fluid_2_0_0;
         fluid.fail("This operation is not implemented");
     };
 
+    /** Returns the first of its arguments if it is not `undefined`, otherwise returns the second.
+     * @param a {Any} The first argument to be tested for being `undefined`
+     * @param b {Any} The fallback argument, to be returned if `a` is `undefined`
+     * @return {Any} `a` if it is not `undefined`, else `b`.
+     */
+
+    fluid.firstDefined = function (a, b) {
+        return a === undefined ? b : a;
+    };
+
     /** Return an empty container as the same type as the argument (either an
      * array or hash */
     fluid.freshContainer = function (tocopy) {
         return fluid.isArrayable(tocopy) ? [] : {};
-    };
-
-    fluid.isUncopyable = function (totest) {
-        return fluid.isPrimitive(totest) || !fluid.isPlainObject(totest);
-    };
-
-    fluid.isApplicable = function (totest) {
-        return totest.apply && typeof(totest.apply) === "function";
     };
 
     fluid.copyRecurse = function (tocopy, segs) {
@@ -450,7 +461,7 @@ var fluid = fluid || fluid_2_0_0;
                 togo.push(arg);
             }
             else {
-                for (var i = 0; i < arg.length; ++ i) {
+                for (var i = 0; i < arg.length; ++i) {
                     togo[i] = arg[i];
                 }
             }
@@ -639,8 +650,8 @@ var fluid = fluid || fluid_2_0_0;
 
     fluid.generate = function (n, generator, applyFunc) {
         var togo = [];
-        for (var i = 0; i < n; ++ i) {
-            togo[i] = applyFunc? generator(i) : generator;
+        for (var i = 0; i < n; ++i) {
+            togo[i] = applyFunc ? generator(i) : generator;
         }
         return togo;
     };
@@ -758,8 +769,8 @@ var fluid = fluid || fluid_2_0_0;
 
     fluid.stableSort = function (array, func) {
         for (var i = 0; i < array.length; i++) {
-            var k = array[i];
-            for (var j = i; j > 0 && func(k, array[j - 1]) < 0; j--) {
+            var j, k = array[i];
+            for (j = i; j > 0 && func(k, array[j - 1]) < 0; j--) {
                 array[j] = array[j - 1];
             }
             array[j] = k;
@@ -980,7 +991,7 @@ var fluid = fluid || fluid_2_0_0;
         }
         if (create && root[segment] === undefined) {
             // This optimisation in this heavily used function has a fair effect
-            return root[segment] = {}; // jshint ignore:line
+            return root[segment] = {};
         }
         return root[segment];
     };
@@ -1053,8 +1064,8 @@ var fluid = fluid || fluid_2_0_0;
 
     /** Even more optimised version which assumes segs are parsed and no configuration **/
     fluid.getImmediate = function (root, segs, i) {
-        var limit = (i === undefined ? segs.length: i + 1);
-        for (var j = 0; j < limit; ++ j) {
+        var limit = (i === undefined ? segs.length : i + 1);
+        for (var j = 0; j < limit; ++j) {
             root = root ? root[segs[j]] : undefined;
         }
         return root;
@@ -1267,7 +1278,7 @@ var fluid = fluid || fluid_2_0_0;
             var offset = constraint.type === "after" ? 1 : 0;
             var target = matchIndex + offset;
             var temp = array[c];
-            for (var shift = c; shift >= target; -- shift) {
+            for (var shift = c; shift >= target; --shift) {
                 array[shift] = array[shift - 1];
             }
             array[target] = temp;
@@ -1289,7 +1300,7 @@ var fluid = fluid || fluid_2_0_0;
                 return array;
             }
             var oldFirstConstraint = firstConstraint;
-            for (var c = firstConstraint; c < array.length; ++ c) {
+            for (var c = firstConstraint; c < array.length; ++c) {
                 var applied = fluid.honourConstraint(array, firstConstraint, c);
                 if (applied) {
                     ++firstConstraint;
@@ -1298,7 +1309,7 @@ var fluid = fluid || fluid_2_0_0;
             if (firstConstraint === oldFirstConstraint) {
                 var holders = array.slice(firstConstraint);
                 fluid.fail("Could not find targets for any constraints in " + holders[0].priority.site + " ", holders, ": none of the targets (" + fluid.getMembers(holders, "priority.constraint.target").join(", ") +
-                    ") matched any namespaces of the elements in (", array.slice(0, firstConstraint) + ") - this is caused by either an invalid or circular reference");
+                    ") matched any namespaces of the elements in (", array.slice(0, firstConstraint), ") - this is caused by either an invalid or circular reference");
             }
         }
     };
@@ -1337,7 +1348,7 @@ var fluid = fluid || fluid_2_0_0;
         var togo = [];
         fluid.each(listeners, function (oneNamespace) {
             var headHard; // notify only the first listener with hard namespace - or else all if all are soft
-            for (var i = 0; i < oneNamespace.length; ++ i) {
+            for (var i = 0; i < oneNamespace.length; ++i) {
                 var thisListener = oneNamespace[i];
                 if (!thisListener.softNamespace && !headHard) {
                     headHard = thisListener;
@@ -1701,7 +1712,7 @@ var fluid = fluid || fluid_2_0_0;
     // builds up gradeStructure.gradeChain pushed from strongest to weakest (reverse defaults order)
     fluid.resolveGradesImpl = function (gs, gradeNames) {
         gradeNames = fluid.makeArray(gradeNames);
-        for (var i = gradeNames.length - 1; i >= 0; -- i) { // from stronger to weaker
+        for (var i = gradeNames.length - 1; i >= 0; --i) { // from stronger to weaker
             var gradeName = gradeNames[i];
             if (gradeName && !gs.gradeHash[gradeName]) {
                 var isDynamic = fluid.isIoCReference(gradeName);
@@ -1711,7 +1722,7 @@ var fluid = fluid || fluid_2_0_0;
                 gs.gradeHash[gradeName] = true;
                 gs.gradeChain.push(gradeName);
                 var oGradeNames = fluid.makeArray(options.gradeNames);
-                for (var j = oGradeNames.length - 1; j >= 0; -- j) { // from stronger to weaker grades
+                for (var j = oGradeNames.length - 1; j >= 0; --j) { // from stronger to weaker grades
                     // TODO: in future, perhaps restore mergedDefaultsCache function of storing resolved gradeNames for bare grades
                     fluid.resolveGradesImpl(gs, oGradeNames[j]);
                 }
@@ -1741,12 +1752,14 @@ var fluid = fluid || fluid_2_0_0;
     // unsupported, NON-API function
     fluid.resolveGrade = function (defaults, defaultName, gradeNames) {
         var gradeStruct = fluid.resolveGradeStructure(defaultName, gradeNames);
-        var mergeArgs = fluid.transform(gradeStruct.gradeChain, fluid.rawDefaults);
+        // TODO: Fault in the merging algorithm does not actually treat arguments as immutable - failure in FLUID-5082 tests
+        // due to listeners mergePolicy
+        var mergeArgs = fluid.transform(gradeStruct.gradeChain, fluid.rawDefaults, fluid.copy);
         fluid.remove_if(mergeArgs, function (options) {
             return !options;
         });
         var mergePolicy = {};
-        for (var i = 0; i < mergeArgs.length; ++ i) {
+        for (var i = 0; i < mergeArgs.length; ++i) {
             if (mergeArgs[i] && mergeArgs[i].mergePolicy) {
                 mergePolicy = $.extend(true, mergePolicy, mergeArgs[i].mergePolicy);
             }
@@ -1774,11 +1787,11 @@ var fluid = fluid || fluid_2_0_0;
         if (mergedDefaults) {
             var lastTick = 0; // check if cache should be invalidated through real latest tick being later than the one stored
             var searchGrades = mergedDefaults.defaults.gradeNames || [];
-            for (var i = 0; i < searchGrades.length; ++ i) {
+            for (var i = 0; i < searchGrades.length; ++i) {
                 lastTick = Math.max(lastTick, gradeTickStore[searchGrades[i]] || 0);
             }
             if (lastTick > mergedDefaults.lastTick) {
-                fluid.log("Clearing cache for component " + defaultName + " with gradeNames ", searchGrades);
+                fluid.log(fluid.logLevel.TRACE, "Clearing cache for component " + defaultName + " with gradeNames ", searchGrades);
                 mergedDefaults = null;
             }
         }
@@ -1793,6 +1806,13 @@ var fluid = fluid || fluid_2_0_0;
     };
 
     // unsupported, NON-API function
+    /** Upgrades an element of an IoC record which designates a function to prepare for a {func, args} representation.
+     * @param rec {Any} If the record is of a primitive type,
+     * @param key {String} The key in the returned record to hold the function, this will default to `funcName` if `rec` is a `string` *not*
+     * holding an IoC reference, or `func` otherwise
+     * @return {Object} The original `rec` if it was not of primitive type, else a record holding { key : rec } if it was of primitive type.
+     */
+
     fluid.upgradePrimitiveFunc = function (rec, key) {
         if (rec && fluid.isPrimitive(rec)) {
             var togo = {};
@@ -1849,12 +1869,12 @@ var fluid = fluid || fluid_2_0_0;
     // unsupported, NON-API function
     fluid.doIndexDefaults = function (defaultName, defaults, index, indexSpec) {
         var requiredGrades = fluid.makeArray(indexSpec.gradeNames);
-        for (var i = 0; i < requiredGrades.length; ++ i) {
+        for (var i = 0; i < requiredGrades.length; ++i) {
             if (!fluid.hasGrade(defaults, requiredGrades[i])) { return; }
         }
         var indexFunc = typeof(indexSpec.indexFunc) === "function" ? indexSpec.indexFunc : fluid.getGlobalValue(indexSpec.indexFunc);
         var keys = indexFunc(defaults) || [];
-        for (var j = 0; j < keys.length; ++ j) {
+        for (var j = 0; j < keys.length; ++j) {
             fluid.pushArray(index, keys[j], defaultName);
         }
     };
@@ -1908,7 +1928,7 @@ var fluid = fluid || fluid_2_0_0;
                 fluid.fail("Cannot make component creator for type " + componentName + " which does not have any gradeNames defined");
             } else if (!defaults.initFunction) {
                 var blankGrades = [];
-                for (var i = 0; i < defaults.gradeNames.length; ++ i) {
+                for (var i = 0; i < defaults.gradeNames.length; ++i) {
                     var gradeName = defaults.gradeNames[i];
                     var rawDefaults = fluid.rawDefaults(gradeName);
                     if (!rawDefaults) {
@@ -1933,10 +1953,10 @@ var fluid = fluid || fluid_2_0_0;
         fluid.setGlobalValue(componentName, creator);
     };
 
-    var emptyPolicy = {};
+    fluid.emptyPolicy = fluid.freezeRecursive({});
     // unsupported, NON-API function
     fluid.derefMergePolicy = function (policy) {
-        return (policy? policy["*"]: emptyPolicy) || emptyPolicy;
+        return (policy ? policy["*"] : fluid.emptyPolicy) || fluid.emptyPolicy;
     };
 
     // unsupported, NON-API function
@@ -1957,7 +1977,7 @@ var fluid = fluid || fluid_2_0_0;
             }
             else if (!fluid.isDefaultValueMergePolicy(value)) {
                 var split = value.split(/\s*,\s*/);
-                for (var i = 0; i < split.length; ++ i) {
+                for (var i = 0; i < split.length; ++i) {
                     parsed[split[i]] = true;
                 }
             }
@@ -2010,16 +2030,16 @@ var fluid = fluid || fluid_2_0_0;
     // since at each regeneration step driving the RHS we are discarding the "cursor arguments" these
     // would have to be regenerated at each step - although in practice this can only happen once for
     // each object for all time, since after first resolution it will be concrete.
-    function regenerateCursor (source, segs, limit, sourceStrategy) {
-        for (var i = 0; i < limit; ++ i) {
+    function regenerateCursor(source, segs, limit, sourceStrategy) {
+        for (var i = 0; i < limit; ++i) {
             source = sourceStrategy(source, segs[i], i, fluid.makeArray(segs)); // copy for FLUID-5243
         }
         return source;
     }
 
-    function regenerateSources (sources, segs, limit, sourceStrategies) {
+    function regenerateSources(sources, segs, limit, sourceStrategies) {
         var togo = [];
-        for (var i = 0; i < sources.length; ++ i) {
+        for (var i = 0; i < sources.length; ++i) {
             var thisSource = regenerateCursor(sources[i], segs, limit, sourceStrategies[i]);
             if (thisSource !== undefined) {
                 togo.push(thisSource);
@@ -2029,9 +2049,9 @@ var fluid = fluid || fluid_2_0_0;
     }
 
     // unsupported, NON-API function
-    fluid.fetchMergeChildren = function (target, i, segs, sources, mergePolicy, options) { /* unused parameter left for documentation purposes */ // jshint ignore:line
+    fluid.fetchMergeChildren = function (target, i, segs, sources, mergePolicy, options) {
         var thisPolicy = fluid.derefMergePolicy(mergePolicy);
-        for (var j = sources.length - 1; j >= 0; -- j) { // this direction now irrelevant - control is in the strategy
+        for (var j = sources.length - 1; j >= 0; --j) { // this direction now irrelevant - control is in the strategy
             var source = sources[j];
             // NB - this detection relies on strategy return being complete objects - which they are
             // although we need to set up the roots separately. We need to START the process of evaluating each
@@ -2043,13 +2063,16 @@ var fluid = fluid || fluid_2_0_0;
             // traversal of concrete properties to do the final merge.
             if (source !== undefined) {
                 fluid.each(source, function (newSource, name) {
-                    if (!(name in target)) { // only request each new target key once -- all sources will be queried per strategy
+                    var childPolicy = fluid.concreteTrundler(mergePolicy, name);
+                    // 2nd arm of condition is an Outrageous bodge to fix FLUID-4930 further. See fluid.tests.retrunking in FluidIoCTests.js
+                    // We make extra use of the old "evaluateFully" flag and ensure to flood any trunk objects again during final "initter" phase of merging.
+                    // The problem is that a custom mergePolicy may have replaced the system generated trunk with a differently structured object which we must not
+                    // corrupt. This work should properly be done with a set of dedicated provenance/progress records in a separate structure
+                    if (!(name in target) || (options.evaluateFully && childPolicy === undefined && !fluid.isPrimitive(target[name]))) { // only request each new target key once -- all sources will be queried per strategy
                         segs[i] = name;
-                        if (!fluid.getImmediate(options.exceptions, segs, i)) {
-                            options.strategy(target, name, i + 1, segs, sources, mergePolicy);
-                        }
+                        options.strategy(target, name, i + 1, segs, sources, mergePolicy);
                     }
-                });  /* function in loop */ // jshint ignore:line
+                });
                 if (thisPolicy.replace) { // this branch primarily deals with a policy of replace at the root
                     break;
                 }
@@ -2100,16 +2123,15 @@ var fluid = fluid || fluid_2_0_0;
                 sources = regenerateSources(options.sources, segs, i - 1, options.sourceStrategies);
                 policy = regenerateCursor(options.mergePolicy, segs, i - 1, fluid.concreteTrundler);
             }
-            // var thisPolicy = fluid.derefMergePolicy(policy);
             var newPolicyHolder = fluid.concreteTrundler(policy, name);
             var newPolicy = fluid.derefMergePolicy(newPolicyHolder);
 
             var start, limit, mul;
             if (newPolicy.replace) {
-                start = 1 - sources.length; limit = 0; mul = -1; /* on one line for easier visual comparison of the two algorithms  */ // jshint ignore:line
+                start = 1 - sources.length; limit = 0; mul = -1;
             }
             else {
-                start = 0; limit = sources.length - 1; mul = +1; /* on one line for easier visual comparison of the two algorithms  */ // jshint ignore:line
+                start = 0; limit = sources.length - 1; mul = +1;
             }
             var newSources = [];
             var thisTarget;
@@ -2118,7 +2140,9 @@ var fluid = fluid || fluid_2_0_0;
                 var k = mul * j;
                 var thisSource = options.sourceStrategies[k](sources[k], name, i, segs); // Run the RH algorithm in "driving" mode
                 if (thisSource !== undefined) {
-                    newSources[k] = thisSource;
+                    if (!fluid.isPrimitive(thisSource)) {
+                        newSources[k] = thisSource;
+                    }
                     if (oldTarget === undefined) {
                         if (mul === -1) { // if we are going backwards, it is "replace"
                             thisTarget = target[name] = thisSource;
@@ -2154,7 +2178,7 @@ var fluid = fluid || fluid_2_0_0;
     // A simple stand-in for "fluid.get" where the material is covered by a single strategy
     fluid.driveStrategy = function (root, pathSegs, strategy) {
         pathSegs = fluid.makeArray(pathSegs);
-        for (var i = 0; i < pathSegs.length; ++ i) {
+        for (var i = 0; i < pathSegs.length; ++i) {
             if (!root) {
                 return undefined;
             }
@@ -2166,7 +2190,7 @@ var fluid = fluid || fluid_2_0_0;
     // A very simple "new inner trundler" that just performs concrete property access
     // Note that every "strategy" is also a "trundler" of this type, considering just the first two arguments
     fluid.concreteTrundler = function (source, seg) {
-        return !source? undefined : source[seg];
+        return !source ? undefined : source[seg];
     };
 
     /** Merge a collection of options structures onto a target, following an optional policy.
@@ -2247,7 +2271,7 @@ var fluid = fluid || fluid_2_0_0;
             var blocks = fluid.findMergeBlocks(mergeBlocks, recordType);
             fluid.each(blocks, function (block) {
                 var source = block.source ? "source" : "target"; // TODO: Problem here with irregular presentation of options which consist of a reference in their entirety
-                block[block.simple || source === "target" ? "target": "source"] = fluid.transformOptions(block[source], transformOptions);
+                block[block.simple || source === "target" ? "target" : "source"] = fluid.transformOptions(block[source], transformOptions);
             });
         });
     };
@@ -2294,7 +2318,7 @@ var fluid = fluid || fluid_2_0_0;
         } else if (request.type === "ADD") {
             fluid.model.setSimple(model, request.segs, request.value);
         } else {
-            for (var i = 0; i < segs.length - 1; ++ i) {
+            for (var i = 0; i < segs.length - 1; ++i) {
                 model = model[segs[i]];
                 if (!model) {
                     return;
@@ -2369,7 +2393,7 @@ var fluid = fluid || fluid_2_0_0;
         mergeOptions.mergeBlocks = mergeBlocks;
         mergeOptions.updateBlocks = updateBlocks;
         mergeOptions.destroyValue = function (segs) { // This method is a temporary hack to assist FLUID-5091
-            for (var i = 0; i < mergeBlocks.length; ++ i) {
+            for (var i = 0; i < mergeBlocks.length; ++i) {
                 fluid.destroyValue(mergeBlocks[i].target, segs);
             }
             fluid.destroyValue(baseMergeOptions.target, segs);
@@ -2392,10 +2416,10 @@ var fluid = fluid || fluid_2_0_0;
         if (compiledPolicy.hasDefaults) {
             if (fluid.generateExpandBlock) {
                 mergeBlocks.push(fluid.generateExpandBlock({
-                        options: compiledPolicy.defaultValues,
-                        recordType: "defaultValueMerge",
-                        priority: fluid.mergeRecordTypes.defaultValueMerge
-                    }, that, {}));
+                    options: compiledPolicy.defaultValues,
+                    recordType: "defaultValueMerge",
+                    priority: fluid.mergeRecordTypes.defaultValueMerge
+                }, that, {}));
                 updateBlocks();
             }
             else {
@@ -2462,7 +2486,7 @@ var fluid = fluid || fluid_2_0_0;
     fluid.distributeOptionsPolicy = function (target, source) {
         target = target || {};
         if (fluid.isArrayable(source)) {
-            for (var i = 0; i < source.length; ++ i) {
+            for (var i = 0; i < source.length; ++i) {
                 fluid.mergeOneDistribution(target, source[i]);
             }
         } else if (typeof(source.target) === "string") {
@@ -2598,7 +2622,7 @@ var fluid = fluid || fluid_2_0_0;
 
         // TODO: ****THIS**** is the point we must deliver and suspend!! Construct the "component skeleton" first, and then continue
         // for as long as we can continue to find components.
-        for (var i = 0; i < mergeOptions.mergeBlocks.length; ++ i) {
+        for (var i = 0; i < mergeOptions.mergeBlocks.length; ++i) {
             mergeOptions.mergeBlocks[i].initter();
         }
         mergeOptions.initter();
@@ -2658,8 +2682,8 @@ var fluid = fluid || fluid_2_0_0;
         var errors = fluid.validateListenersImplemented(that);
         if (errors.length > 0) {
             fluid.fail(fluid.transform(errors, function (error) {
-                return "Error constructing component ", that, " - the listener for event " + error.name + " with namespace " + error.namespace + (
-                    (error.componentSource ? " which was defined in grade " + error.componentSource : "") + " needs to be overridden with a concrete implementation");
+                return ["Error constructing component ", that, " - the listener for event " + error.name + " with namespace " + error.namespace + (
+                    (error.componentSource ? " which was defined in grade " + error.componentSource : "") + " needs to be overridden with a concrete implementation")];
             })).join("\n");
         }
         if (that.lifecycleStatus === "constructing") {
@@ -2807,6 +2831,8 @@ Copyright 2007-2009 University of Toronto
 Copyright 2007-2009 University of California, Berkeley
 Copyright 2010 OCAD University
 Copyright 2010-2011 Lucendo Development Ltd.
+Copyright 2012 Raising the Floor - US
+Copyright 2014-2015 Raising the Floor - International
 
 Licensed under the Educational Community License (ECL), Version 2.0 or the New
 BSD license. You may not use this file except in compliance with one these
@@ -2845,7 +2871,7 @@ var fluid = fluid || fluid_2_0_0;
     fluid.tracing.summarisePathCount = function (pathCount) {
         pathCount = pathCount || fluid.tracing.pathCount;
         var togo = {};
-        for (var i = 0; i < pathCount.length; ++ i) {
+        for (var i = 0; i < pathCount.length; ++i) {
             var path = pathCount[i];
             if (!togo[path]) {
                 togo[path] = 1;
@@ -2865,13 +2891,13 @@ var fluid = fluid || fluid_2_0_0;
     fluid.tracing.condensePathCount = function (prefixes, pathCount) {
         prefixes = fluid.makeArray(prefixes);
         var prefixCount = {};
-        fluid.each(prefixes, function(prefix) {
+        fluid.each(prefixes, function (prefix) {
             prefixCount[prefix] = 0;
         });
         var togo = [];
         fluid.each(pathCount, function (el) {
             var path = el.path;
-            if (!fluid.find(prefixes, function(prefix) {
+            if (!fluid.find(prefixes, function (prefix) {
                 if (path.indexOf(prefix) === 0) {
                     prefixCount[prefix] += el.count;
                     return true;
@@ -2880,7 +2906,7 @@ var fluid = fluid || fluid_2_0_0;
                 togo.push(el);
             }
         });
-        fluid.each(prefixCount, function(count, path) {
+        fluid.each(prefixCount, function (count, path) {
             togo.unshift({path: path, count: count});
         });
         return togo;
@@ -2894,14 +2920,14 @@ var fluid = fluid || fluid_2_0_0;
         var stackStyle = {
             offset: 0
         };
-        if (e["arguments"]) {
+        if (e.arguments) {
             style = "chrome";
         } else if (typeof window !== "undefined" && window.opera && e.stacktrace) {
             style = "opera10";
         } else if (e.stack) {
             style = "firefox";
             // Detect FireFox 4-style stacks which are 1 level less deep
-            stackStyle.offset = e.stack.indexOf("Trace exception") === -1? 1 : 0;
+            stackStyle.offset = e.stack.indexOf("Trace exception") === -1 ? 1 : 0;
         } else if (typeof window !== "undefined" && window.opera && !("stacktrace" in e)) { //Opera 9-
             style = "opera";
         }
@@ -2936,7 +2962,7 @@ var fluid = fluid || fluid_2_0_0;
         return fluid.transform(lines, function (line) {
             line = line.replace(/\)/g, "");
             var atind = line.indexOf(delimiter);
-            return atind === -1? [line] : [line.substring(atind + delimiter.length), line.substring(0, atind)];
+            return atind === -1 ? [line] : [line.substring(atind + delimiter.length), line.substring(0, atind)];
         });
     };
 
@@ -2969,7 +2995,7 @@ var fluid = fluid || fluid_2_0_0;
     // UNOPTIMISED
     fluid.generatePadding = function (c, count) {
         var togo = "";
-        for (var i = 0; i < count; ++ i) {
+        for (var i = 0; i < count; ++i) {
             togo += c;
         }
         return togo;
@@ -2984,7 +3010,7 @@ var fluid = fluid || fluid_2_0_0;
         return desc && !desc.get ? obj[key] : fluid.SYNTHETIC_PROPERTY;
     };
 
-    function printImpl (obj, small, options) {
+    function printImpl(obj, small, options) {
         function out(str) {
             options.output += str;
         }
@@ -3013,7 +3039,7 @@ var fluid = fluid || fluid_2_0_0;
                     out("[]");
                 } else {
                     out("[\n" + big);
-                    for (i = 0; i < obj.length; ++ i) {
+                    for (i = 0; i < obj.length; ++i) {
                         if (printImpl(obj[i], big, options)) {
                             return true;
                         }
@@ -3027,7 +3053,7 @@ var fluid = fluid || fluid_2_0_0;
             else {
                 out("{" + (isFunction ? " Function" : "") + "\n" + big); // NB - Function object invalid for JSON interchange
                 var keys = fluid.keys(obj);
-                for (i = 0; i < keys.length; ++ i) {
+                for (i = 0; i < keys.length; ++i) {
                     var key = keys[i];
                     var value = fluid.getSafeProperty(obj, key);
                     out(JSON.stringify(key) + ": ");
@@ -3079,7 +3105,7 @@ var fluid = fluid || fluid_2_0_0;
         }
         if (!element.nodeType && fluid.isArrayable(element)) {
             togo = "[";
-            for (var i = 0; i < element.length; ++ i) {
+            for (var i = 0; i < element.length; ++i) {
                 togo += fluid.dumpEl(element[i]);
                 if (i < element.length - 1) {
                     togo += ", ";
@@ -3100,8 +3126,10 @@ var fluid = fluid || fluid_2_0_0;
 
 })(jQuery, fluid_2_0_0);
 ;/*
-Copyright 2011-2013 OCAD University
-Copyright 2010-2015 Lucendo Development Ltd.
+Copyright 2011-2016 OCAD University
+Copyright 2010-2011 Lucendo Development Ltd.
+Copyright 2012-2014 Raising the Floor - US
+Copyright 2014-2016 Raising the Floor - International
 
 Licensed under the Educational Community License (ECL), Version 2.0 or the New
 BSD license. You may not use this file except in compliance with one these
@@ -3169,7 +3197,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
         var visitorWrapper = function (component, name, segs) {
             thatStack.length = 1;
             contextHashes.length = 1;
-            for (var i = 0; i < segs.length; ++ i) {
+            for (var i = 0; i < segs.length; ++i) {
                 var child = thatStack[i][segs[i]];
                 thatStack[i + 1] = child;
                 contextHashes[i + 1] = fluid.getContextHash(instantiator, child) || {};
@@ -3220,7 +3248,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
             if (i <= prefix.length) { // Avoid OOB to not trigger deoptimisation!
                 return;
             }
-            for (var j = 0; j < prefix.length; ++ j) {
+            for (var j = 0; j < prefix.length; ++j) {
                 if (segs[j] !== prefix[j]) {
                     return;
                 }
@@ -3239,7 +3267,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
 
     fluid.memberFromRecord = function (memberrecs, name, that) {
         var togo;
-        for (var i = 0; i < memberrecs.length; ++ i) { // memberrecs is the special "fluid.mergingArray" type which is not Arrayable
+        for (var i = 0; i < memberrecs.length; ++i) { // memberrecs is the special "fluid.mergingArray" type which is not Arrayable
             var expanded = fluid.expandImmediate(memberrecs[i], that);
             if (!fluid.isPlainObject(togo)) { // poor man's "merge" algorithm to hack FLUID-5668 for now
                 togo = expanded;
@@ -3374,10 +3402,10 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
             fluid.registerCollectedClearer(shadows[shadows.length - 1], parentShadow, memberNames[memberNames.length - 1]);
         }
         var distributedBlocks = [];
-        for (var i = 0; i < thatStack.length - 1; ++ i) {
-            fluid.each(shadows[i].distributions, function (distribution) {
+        for (var i = 0; i < thatStack.length - 1; ++i) {
+            fluid.each(shadows[i].distributions, function (distribution) { // eslint-disable-line no-loop-func
                 fluid.collectDistributions(distributedBlocks, parentShadow, distribution, thatStack, contextHashes, memberNames, i);
-            });  /* function in loop */ /* jshint ignore:line */
+            });
         }
         return distributedBlocks;
     };
@@ -3387,7 +3415,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
         while (i < path1.length && i < path2.length && path1[i] === path2[i]) {
             ++i;
         }
-        return path1.length + path2.length - 2*i;
+        return path1.length + path2.length - 2*i; // eslint-disable-line space-infix-ops
     };
 
     // Called from applyDistributions (immediate application route) as well as mergeRecordsToList (pre-instantiation route) AS WELL AS assembleCreatorArguments (pre-pre-instantiation route)
@@ -3568,7 +3596,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
             }
             targetComp = targetComp || fluid.resolveContext(context, that);
             if (!targetComp) {
-                fluid.fail("Error in options distribution record ", record, " - could not resolve context {"+context+"} to a root component");
+                fluid.fail("Error in options distribution record ", record, " - could not resolve context {" + context + "} to a root component");
             }
             var targetSegs = fluid.model.parseEL(targetRef.path);
             var preBlocks;
@@ -3640,7 +3668,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
         fluid.cacheShadowGrades(that, shadow);
         shadow.mergeOptions = mergeOptions;
     };
-    
+
     /** Dynamic grade closure algorithm - the following 4 functions share access to a small record structure "rec" which is
      * constructed at the start of fluid.computeDynamicGrades
      */
@@ -3662,7 +3690,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
         var newDefaults = fluid.copy(fluid.getMergedDefaults(rec.that.typeName, rec.gradeNames));
         rec.gradeNames.length = 0; // acquire derivatives of dynamic grades (FLUID-5054)
         rec.gradeNames.push.apply(rec.gradeNames, newDefaults.gradeNames);
-        
+
         fluid.each(rec.gradeNames, function (gradeName) {
             if (!fluid.isIoCReference(gradeName)) {
                 rec.seenGrades[gradeName] = true;
@@ -3680,10 +3708,10 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
         rec.defaultsBlock.source = newDefaults;
         shadow.mergeOptions.updateBlocks();
         shadow.mergeOptions.computeMergePolicy(); // TODO: we should really only do this if its content changed - this implies moving all options evaluation over to some (cheap) variety of the ChangeApplier
-        
+
         fluid.accumulateDynamicGrades(rec, newDefaults.gradeNames);
     };
-    
+
     // Filter some newly discovered grades into their plain and dynamic queues
     fluid.accumulateDynamicGrades = function (rec, newGradeNames) {
         fluid.each(newGradeNames, function (gradeName) {
@@ -3704,7 +3732,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
         gradeNames.length = 0;
         // TODO: In complex distribution cases, a component might end up with multiple default blocks
         var defaultsBlock = fluid.findMergeBlocks(shadow.mergeOptions.mergeBlocks, "defaults")[0];
-        
+
         var rec = {
             that: that,
             shadow: shadow,
@@ -3914,48 +3942,69 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
     };
 
     fluid.dumpThatStack = function (thatStack, instantiator) {
-        var togo = fluid.transform(thatStack, function(that) {
+        var togo = fluid.transform(thatStack, function (that) {
             var path = instantiator.idToPath(that.id);
-            return fluid.dumpThat(that) + (path? (" - path: " + path) : "");
+            return fluid.dumpThat(that) + (path ? (" - path: " + path) : "");
         });
         return togo.join("\n");
+    };
+
+    fluid.dumpComponentPath = function (that) {
+        var path = fluid.pathForComponent(that);
+        return path ? fluid.pathUtil.composeSegments(path) : "** no path registered for component **";
     };
 
     fluid.resolveContext = function (context, that, fast) {
         if (context === "that") {
             return that;
         }
-        var foundComponent;
-        var instantiator = fluid.globalInstantiator; // fluid.getInstantiator(that); // this hash lookup takes over 1us!
-        if (fast) {
-            var shadow = instantiator.idToShadow[that.id];
-            return shadow.ownScope[context];
+        // TODO: Check performance impact of this type check introduced for FLUID-5903 in a very sensitive corner
+        if (typeof(context) === "object") {
+            var innerContext = fluid.resolveContext(context.context, that, fast);
+            if (!fluid.isComponent(innerContext)) {
+                fluid.triggerMismatchedPathError(context.context, that);
+            }
+            var rawValue = fluid.getForComponent(innerContext, context.path);
+            // TODO: Terrible, slow dispatch for this route
+            var expanded = fluid.expandOptions(rawValue, that);
+            if (!fluid.isComponent(expanded)) {
+                fluid.fail("Unable to resolve recursive context expression " + fluid.renderContextReference(context) + ": the directly resolved value of " + rawValue +
+                     " did not resolve to a component in the scope of component ", that, ": got ", expanded);
+            }
+            return expanded;
         } else {
-            var thatStack = instantiator.getFullStack(that);
-            fluid.visitComponentsForVisibility(instantiator, thatStack, function (component, name) {
-                var shadow = fluid.shadowForComponent(component);
-                // TODO: Some components, e.g. the static environment and typeTags do not have a shadow, which slows us down here
-                if (context === name || shadow && shadow.contextHash && shadow.contextHash[context] || context === component.typeName) {
-                    foundComponent = component;
-                    return true; // YOUR VISIT IS AT AN END!!
-                }
-                if (fluid.getForComponent(component, ["options", "components", context]) && !component[context]) {
-      // This is an expensive guess since we make it for every component up the stack - must apply the WAVE OF EXPLOSIONS (FLUID-4925) to discover all components first
-      // This line attempts a hopeful construction of components that could be guessed by nickname through finding them unconstructed
-      // in options. In the near future we should eagerly BEGIN the process of constructing components, discovering their
-      // types and then attaching them to the tree VERY EARLY so that we get consistent results from different strategies.
-                    foundComponent = fluid.getForComponent(component, context);
-                    return true;
-                }
-            });
-            return foundComponent;
+            var foundComponent;
+            var instantiator = fluid.globalInstantiator; // fluid.getInstantiator(that); // this hash lookup takes over 1us!
+            if (fast) {
+                var shadow = instantiator.idToShadow[that.id];
+                return shadow.ownScope[context];
+            } else {
+                var thatStack = instantiator.getFullStack(that);
+                fluid.visitComponentsForVisibility(instantiator, thatStack, function (component, name) {
+                    var shadow = fluid.shadowForComponent(component);
+                    // TODO: Some components, e.g. the static environment and typeTags do not have a shadow, which slows us down here
+                    if (context === name || shadow && shadow.contextHash && shadow.contextHash[context] || context === component.typeName) {
+                        foundComponent = component;
+                        return true; // YOUR VISIT IS AT AN END!!
+                    }
+                    if (fluid.getForComponent(component, ["options", "components", context]) && !component[context]) {
+          // This is an expensive guess since we make it for every component up the stack - must apply the WAVE OF EXPLOSIONS (FLUID-4925) to discover all components first
+          // This line attempts a hopeful construction of components that could be guessed by nickname through finding them unconstructed
+          // in options. In the near future we should eagerly BEGIN the process of constructing components, discovering their
+          // types and then attaching them to the tree VERY EARLY so that we get consistent results from different strategies.
+                        foundComponent = fluid.getForComponent(component, context);
+                        return true;
+                    }
+                });
+                return foundComponent;
+            }
         }
     };
-    
+
     fluid.triggerMismatchedPathError = function (parsed, parentThat) {
         var ref = fluid.renderContextReference(parsed);
         fluid.fail("Failed to resolve reference " + ref + " - could not match context with name " +
-            parsed.context + " from component " + fluid.dumpThat(parentThat) + " at path " + fluid.pathForComponent(parentThat).join(".") + " component: " , parentThat);
+            parsed.context + " from component " + fluid.dumpThat(parentThat) + " at path " + fluid.dumpComponentPath(parentThat) + " component: " , parentThat);
     };
 
     fluid.makeStackFetcher = function (parentThat, localRecord, fast) {
@@ -4044,7 +4093,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
                 var path = shadow.path;
                 var parsed = that.parseEL(path);
                 var root = that.pathToComponent[""], togo = [];
-                for (var i = 0; i < parsed.length; ++ i) {
+                for (var i = 0; i < parsed.length; ++i) {
                     root = root[parsed[i]];
                     togo.push(root);
                 }
@@ -4053,7 +4102,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
             else { return [];}
         };
         that.getFullStack = function (component) {
-            var thatStack = component? that.getThatStack(component) : [];
+            var thatStack = component ? that.getThatStack(component) : [];
             thatStack.unshift(fluid.resolveRootComponent);
             return thatStack;
         };
@@ -4102,11 +4151,24 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
                 fluid.fail("Cannot record non-component with value ", component, " at path \"" + name + "\" of parent ", parent);
             }
         };
-        that.clearComponent = function (component, name, child, options, noModTree, path) {
+        that.clearConcreteComponent = function (record) {
+            // Clear injected instance of this component from all other paths - historically we didn't bother
+            // to do this since injecting into a shorter scope is an error - but now we have resolveRoot area
+            fluid.each(record.childShadow.injectedPaths, function (troo, injectedPath) {
+                var parentPath = fluid.model.getToTailPath(injectedPath);
+                var otherParent = that.pathToComponent[parentPath];
+                that.clearComponent(otherParent, fluid.model.getTailPath(injectedPath), record.child);
+            });
+            fluid.clearDistributions(record.childShadow);
+            fluid.clearListeners(record.childShadow);
+            fluid.fireEvent(record.child, "afterDestroy", [record.child, record.name, record.component]);
+            delete that.idToShadow[record.child.id];
+        };
+        that.clearComponent = function (component, name, child, options, nested, path) {
             // options are visitor options for recursive driving
             var shadow = that.idToShadow[component.id];
             // use flat recursion since we want to use our own recursion rather than rely on "visited" records
-            options = options || {flat: true, instantiator: that};
+            options = options || {flat: true, instantiator: that, destroyRecs: []};
             child = child || component[name];
             path = path || shadow.path;
             if (path === undefined) {
@@ -4116,7 +4178,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
 
             var childPath = that.composePath(path, name);
             var childShadow = that.idToShadow[child.id];
-            if (!childShadow) { // Explicit FLUID-5812 check - this can be eliminated once we move visitComponentChildren to instantiator's records 
+            if (!childShadow) { // Explicit FLUID-5812 check - this can be eliminated once we move visitComponentChildren to instantiator's records
                 return;
             }
             var created = childShadow.path === childPath;
@@ -4125,31 +4187,25 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
             // only recurse on components which were created in place - if the id record disagrees with the
             // recurse path, it must have been injected
             if (created) {
-                // Clear injected instance of this component from all other paths - historically we didn't bother
-                // to do this since injecting into a shorter scope is an error - but now we have resolveRoot area
-                fluid.each(childShadow.injectedPaths, function (troo, injectedPath) {
-                    var parentPath = fluid.model.getToTailPath(injectedPath);
-                    var otherParent = that.pathToComponent[parentPath];
-                    that.clearComponent(otherParent, fluid.model.getTailPath(injectedPath), child);
-                });
-                fluid.visitComponentChildren(child, function(gchild, gchildname, segs, i) {
+                fluid.visitComponentChildren(child, function (gchild, gchildname, segs, i) {
                     var parentPath = that.composeSegments.apply(null, segs.slice(0, i));
                     that.clearComponent(child, gchildname, null, options, true, parentPath);
                 }, options, that.parseEL(childPath));
-                fluid.doDestroy(child, name, component);
-                fluid.clearDistributions(childShadow);
-                fluid.clearListeners(childShadow);
-                fluid.fireEvent(child, "afterDestroy", [child, name, component]);
-                delete that.idToShadow[child.id];
+                fluid.doDestroy(child, name, component); // call "onDestroy", null out events and invokers, setting lifecycleStatus to "destroyed"
+                options.destroyRecs.push({child: child, childShadow: childShadow, name: name, component: component});
             } else {
                 fluid.remove_if(childShadow.injectedPaths, function (troo, path) {
                     return path === childPath;
                 });
             }
             fluid.clearChildrenScope(that, shadow, child, childShadow);
+            // Note that "pathToComponent" will not be available during afterDestroy. This is so that we can synchronously recreate the component
+            // in an afterDestroy listener (FLUID-5931). We don't clear up the shadow itself until after afterDestroy.
             delete that.pathToComponent[childPath];
-            if (!noModTree) {
+            if (!nested) {
                 delete component[name]; // there may be no entry - if creation is not concluded
+                // Do actual destruction for the whole tree here, including "afterDestroy" and deleting shadows
+                fluid.each(options.destroyRecs, that.clearConcreteComponent);
             }
         };
         return that;
@@ -4205,6 +4261,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
      */
 
 // TODO: Can we move outerExpandOptions to 2nd place? only user of 3 and 4 is fluid.makeExpandBlock
+// TODO: Actually we want localRecord in 2nd place since outerExpandOptions is now almost disused
     fluid.expandOptions = function (args, that, mergePolicy, localRecord, outerExpandOptions) {
         if (!args) {
             return args;
@@ -4363,7 +4420,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
         var findKeys = Object.keys(argMap).concat(["type"]);
 
         fluid.each(findKeys, function (name) {
-            for (var i = 0; i < distributions.length; ++ i) { // Apply non-options material from distributions (FLUID-5013)
+            for (var i = 0; i < distributions.length; ++i) { // Apply non-options material from distributions (FLUID-5013)
                 if (distributions[i][name] !== undefined) {
                     localRecord[name] = distributions[i][name];
                 }
@@ -4422,7 +4479,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
         fluid.pushActivity("initDependent", "instantiating dependent component at path \"%path\" with record %record as child of %parent",
             {path: shadow.path + "." + name, record: component, parent: that});
 
-        if (typeof(component) === "string") {
+        if (typeof(component) === "string" || component.expander) {
             that[name] = fluid.inEvaluationMarker;
             instance = fluid.expandImmediate(component, that);
             if (instance) {
@@ -4449,7 +4506,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
 
     fluid.bindDeferredComponent = function (that, componentName, component) {
         var events = fluid.makeArray(component.createOnEvent);
-        fluid.each(events, function(eventName) {
+        fluid.each(events, function (eventName) {
             var event = fluid.isIoCReference(eventName) ? fluid.expandOptions(eventName, that) : that.events[eventName];
             if (!event || !event.addListener) {
                 fluid.fail("Error instantiating createOnEvent component with name " + componentName + " of parent ", that, " since event specification " +
@@ -4461,15 +4518,16 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
                 if (that[componentName]) {
                     fluid.globalInstantiator.clearComponent(that, componentName);
                 }
-                fluid.initDependent(that, componentName);
+                var localRecord = {"arguments": fluid.makeArray(arguments)};
+                fluid.initDependent(that, componentName, localRecord);
                 fluid.popActivity();
             }, null, component.priority);
         });
     };
 
     fluid.priorityForComponent = function (component) {
-        return component.priority? component.priority :
-            (component.type === "fluid.typeFount" || fluid.hasGrade(fluid.defaults(component.type), "fluid.typeFount"))?
+        return component.priority ? component.priority :
+            (component.type === "fluid.typeFount" || fluid.hasGrade(fluid.defaults(component.type), "fluid.typeFount")) ?
             "first" : undefined;
     };
 
@@ -4510,7 +4568,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
 
         fluid.popActivity();
     };
-    
+
     fluid.assessTreeConstruction = function (that, shadow) {
         var instantiator = fluid.globalInstantiator;
         var thatStack = instantiator.getThatStack(that);
@@ -4523,7 +4581,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
             fluid.markSubtree(instantiator, that, shadow.path, "treeConstructed");
         }
     };
-    
+
     fluid.markSubtree = function (instantiator, that, path, state) {
         that.lifecycleStatus = state;
         fluid.visitComponentChildren(that, function (child, name) {
@@ -4539,11 +4597,16 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
 
     /** BEGIN NEXUS METHODS **/
 
+    /** Given a component reference, returns the path of that component within its component tree
+     * @param component {Component} A reference to a component
+     * @param instantiator {Instantiator} (optional) An instantiator to use for the lookup
+     * @return {Array of String} An array of path segments of the component within its tree, or `null` if the reference does not hold a live component
+     */
     fluid.pathForComponent = function (component, instantiator) {
-        instantiator = instantiator || fluid.getInstantiator(component);
+        instantiator = instantiator || fluid.getInstantiator(component) || fluid.globalInstantiator;
         var shadow = instantiator.idToShadow[component.id];
         if (!shadow) {
-            fluid.fail("Cannot get path for ", component, " which is not a component");
+            return null;
         }
         return instantiator.parseEL(shadow.path);
     };
@@ -4586,7 +4649,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
             memberName: memberName
         };
     };
-    
+
    /** Construct an instance of a component as a child of the specified parent, with a well-known, unique name derived from its typeName
     * @param parentPath {String|Array of String} Parent of path where the new component is to be constructed, represented as a string or array of segments
     * @param options {String|Object} Options encoding the component to be constructed. If this is of type String, it is assumed to represent the component's typeName with no options
@@ -4646,13 +4709,19 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
         fluid.constructSingle([], linkageName);
     };
 
+    /** Retrieves a component by global path.
+    * @param path {String|Array of String} The global path of the component to look up
+    * @return The component at the specified path, or undefined if none is found
+    */
+    fluid.componentForPath = function (path) {
+        return fluid.globalInstantiator.pathToComponent[fluid.isArrayable(path) ? path.join(".") : path];
+    };
+
     /** END NEXUS METHODS **/
 
     /** BEGIN IOC DEBUGGING METHODS **/
     fluid["debugger"] = function () {
-        /* jshint ignore:start */
-        debugger;
-        /* jshint ignore:end */
+        debugger; // eslint-disable-line no-debugger
     };
 
     fluid.defaults("fluid.debuggingProbe", {
@@ -4763,25 +4832,30 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
         var invokePre = fluid.preExpand(invokerec.args);
         var localRecord = {};
         var expandOptions = fluid.makeStackResolverOptions(that, localRecord, true);
-        func = func || (invokerec.funcName? fluid.getGlobalValueNonComponent(invokerec.funcName, "an invoker") : fluid.expandImmediate(invokerec.func, that));
+        func = func || (invokerec.funcName ? fluid.getGlobalValueNonComponent(invokerec.funcName, "an invoker") : fluid.expandImmediate(invokerec.func, that));
         if (!func || !func.apply) {
             fluid.fail("Error in invoker record: could not resolve members func, funcName or method to a function implementation - got " + func + " from ", invokerec);
         } else if (func === fluid.notImplemented) {
             fluid.fail("Error constructing component ", that, " - the invoker named " + name + " which was defined in grade " + invokerec.componentSource + " needs to be overridden with a concrete implementation");
         }
-        return function invokeInvoker () {
+        return function invokeInvoker() {
             if (fluid.defeatLogging === false) {
-                fluid.pushActivity("invokeInvoker", "invoking invoker with name %name and record %record from component %that", {name: name, record: invokerec, that: that});
+                fluid.pushActivity("invokeInvoker", "invoking invoker with name %name and record %record from path %path holding component %that",
+                    {name: name, record: invokerec, path: fluid.dumpComponentPath(that), that: that});
             }
             var togo, finalArgs;
-            localRecord["arguments"] = arguments;
-            if (invokerec.args === undefined || invokerec.args === fluid.NO_VALUE) {
-                finalArgs = arguments;
+            if (that.lifecycleStatus === "destroyed") {
+                fluid.log(fluid.logLevel.WARN, "Ignoring call to invoker " + name + " of component ", that, " which has been destroyed");
             } else {
-                fluid.expandImmediateImpl(invokePre, expandOptions);
-                finalArgs = invokePre.source;
+                localRecord.arguments = arguments;
+                if (invokerec.args === undefined || invokerec.args === fluid.NO_VALUE) {
+                    finalArgs = arguments;
+                } else {
+                    fluid.expandImmediateImpl(invokePre, expandOptions);
+                    finalArgs = invokePre.source;
+                }
+                togo = func.apply(null, finalArgs);
             }
-            togo = func.apply(null, finalArgs);
             if (fluid.defeatLogging === false) {
                 fluid.popActivity();
             }
@@ -4794,17 +4868,16 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
         var shadow = fluid.shadowForComponent(source);
         return function (event) {
             return {addListener: function (listener, namespace, priority, softNamespace, listenerId) {
-                    fluid.recordListener(event, listener, shadow, listenerId);
-                    event.addListener.apply(null, arguments);
-                }
-            };
+                fluid.recordListener(event, listener, shadow, listenerId);
+                event.addListener.apply(null, arguments);
+            }};
         };
     };
 
     fluid.event.listenerEngine = function (eventSpec, callback, adder) {
         var argstruc = {};
         function checkFire() {
-            var notall = fluid.find(eventSpec, function(value, key) {
+            var notall = fluid.find(eventSpec, function (value, key) {
                 if (argstruc[key] === undefined) {
                     return true;
                 }
@@ -4838,7 +4911,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
             }
 
             var args = indirectArgs ? arguments[0] : arguments, finalArgs;
-            localRecord["arguments"] = args;
+            localRecord.arguments = args;
             if (eventSpec.args !== undefined && eventSpec.args !== fluid.NO_VALUE) {
                 fluid.expandImmediateImpl(dispatchPre, expandOptions);
                 finalArgs = dispatchPre.source;
@@ -4994,15 +5067,16 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
     // The material they produce is no longer recognised for component resolution.
 
     fluid.withEnvironment = function (envAdd, func, root) {
+        var key;
         root = root || fluid.globalThreadLocal();
         try {
-            for (var key in envAdd) {
+            for (key in envAdd) {
                 root[key] = envAdd[key];
             }
             $.extend(root, envAdd);
             return func();
         } finally {
-            for (var key in envAdd) { /* jshint ignore:line */ /* duplicate "key" */
+            for (key in envAdd) {
                 delete root[key]; // TODO: users may want a recursive "scoping" model
             }
         }
@@ -5014,17 +5088,17 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
         if (elResolver) {
             parsed = elResolver(parsed, env);
         }
-        var base = parsed.context? env[parsed.context] : directModel;
+        var base = parsed.context ? env[parsed.context] : directModel;
         if (!base) {
             var resolveExternal = externalFetcher && externalFetcher(parsed);
             return resolveExternal || base;
         }
-        return parsed.noDereference? parsed.path : fluid.get(base, parsed.path);
+        return parsed.noDereference ? parsed.path : fluid.get(base, parsed.path);
     };
 
     fluid.makeEnvironmentFetcher = function (directModel, elResolver, envGetter, externalFetcher) {
         envGetter = envGetter || fluid.globalThreadLocal;
-        return function(parsed) {
+        return function (parsed) {
             var env = envGetter();
             return fluid.fetchContextReference(parsed, directModel, env, elResolver, externalFetcher);
         };
@@ -5141,17 +5215,36 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
         if (fluid.isIoCReference(EL)) {
             return fluid.parseContextReference(EL);
         }
-        return EL? {path: EL} : EL;
+        return EL ? {path: EL} : EL;
     };
 
+    /** Parse the string form of a contextualised IoC reference into an object.
+     * @param reference {String} The reference to be parsed. The character at position `index` is assumed to be `{`
+     * @param index {String} [optional] The index into the string to start parsing at, if omitted, defaults to 0
+     * @param delimiter {Character} [optional] A character which will delimit the end of the context expression. If omitted, the expression continues to the end of the string.
+     * @return {ParsedContext} A structure holding the parsed structure, with members
+     *    context {String|ParsedContext} The context portion of the reference. This will be a `string` for a flat reference, or a further `ParsedContext` for a recursive reference
+     *    path {String} The string portion of the reference
+     *    endpos {Integer} The position in the string where parsing stopped [this member is not supported and will be removed in a future release]
+     */
     fluid.parseContextReference = function (reference, index, delimiter) {
         index = index || 0;
-        var endcpos = reference.indexOf("}", index + 1);
+        var isNested = reference.charAt(index + 1) === "{", endcpos, context, nested;
+        if (isNested) {
+            nested = fluid.parseContextReference(reference, index + 1, "}");
+            endcpos = nested.endpos;
+        } else {
+            endcpos = reference.indexOf("}", index + 1);
+        }
         if (endcpos === -1) {
             fluid.fail("Cannot parse context reference \"" + reference + "\": Malformed context reference without }");
         }
-        var context = reference.substring(index + 1, endcpos);
-        var endpos = delimiter? reference.indexOf(delimiter, endcpos + 1) : reference.length;
+        if (isNested) {
+            context = nested;
+        } else {
+            context = reference.substring(index + 1, endcpos);
+        }
+        var endpos = delimiter ? reference.indexOf(delimiter, endcpos + 1) : reference.length;
         var path = reference.substring(endcpos + 1, endpos);
         if (path.charAt(0) === ".") {
             path = path.substring(1);
@@ -5160,15 +5253,16 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
     };
 
     fluid.renderContextReference = function (parsed) {
-        return "{" + parsed.context + "}" + (parsed.path ? "." + parsed.path : "");
+        var context = parsed.context;
+        return "{" + (typeof(context) === "string" ? context : fluid.renderContextReference(context)) + "}" + (parsed.path ? "." + parsed.path : "");
     };
 
-    // TODO: Once we eliminate expandSource, all of this tree of functions can be hived off to RendererUtilities
+    // TODO: Once we eliminate expandSource (in favour of fluid.expander.fetch), all of this tree of functions can be hived off to RendererUtilities
     fluid.resolveContextValue = function (string, options) {
         function fetch(parsed) {
-            fluid.pushActivity("resolveContextValue", "resolving context value %string", {string: string});
+            fluid.pushActivity("resolveContextValue", "resolving context value %parsed", {parsed: parsed});
             var togo = options.fetcher(parsed);
-            fluid.pushActivity("resolvedContextValue", "resolved value %string to value %value", {string: string, value: togo});
+            fluid.pushActivity("resolvedContextValue", "resolved value %parsed to value %value", {parsed: parsed, value: togo});
             fluid.popActivity(2);
             return togo;
         }
@@ -5200,7 +5294,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
                 if (subs === undefined || subs === null) {
                     return subs;
                 }
-                string = all? subs : string.substring(0, i1) + subs + string.substring(i2 + 1);
+                string = all ? subs : string.substring(0, i1) + subs + string.substring(i2 + 1);
             }
             else {
                 break;
@@ -5246,8 +5340,8 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
     // TODO: This method is unnecessary and will quadratic inefficiency if RHS block is not concrete.
     // The driver should detect "homogeneous uni-strategy trundling" and agree to preserve the extra
     // "cursor arguments" which should be advertised somehow (at least their number)
-    function regenerateCursor (source, segs, limit, sourceStrategy) {
-        for (var i = 0; i < limit; ++ i) {
+    function regenerateCursor(source, segs, limit, sourceStrategy) {
+        for (var i = 0; i < limit; ++i) {
             // copy segs to avoid aliasing with FLUID-5243
             source = sourceStrategy(source, segs[i], i, fluid.makeArray(segs));
         }
@@ -5412,7 +5506,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
     // High performance expander for situations such as invokers, listeners, where raw materials can be cached - consumes "root" structure produced by preExpand
     fluid.expandImmediateImpl = function (root, options) {
         var expanders = root.expanders;
-        for (var i = 0; i < expanders.length; ++ i) {
+        for (var i = 0; i < expanders.length; ++i) {
             var expander = expanders[i];
             expander.holder[expander.member] = expander.expander.typeFunc(null, expander, options);
         }
@@ -5428,21 +5522,24 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
 
     fluid.registerNamespace("fluid.expander");
 
+    // "deliverer" is null in the new (fast) pathway, this is a relic of the old "source expander" signature. It appears we can already globally remove this
     fluid.expander.fetch = function (deliverer, source, options) {
         var localRecord = options.localRecord, context = source.expander.context, segs = source.expander.segs;
+        // TODO: Either type-check on context as string or else create fetchSlow
         var inLocal = localRecord[context] !== undefined;
+        var contextStatus = options.contextThat.lifecycleStatus;
         // somewhat hack to anticipate "fits" for FLUID-4925 - we assume that if THIS component is in construction, its reference target might be too
-        var component = inLocal ? localRecord[context] : fluid.resolveContext(context, options.contextThat, options.contextThat.lifecycleStatus === "treeConstructed");
+        // if context is destroyed, we are most likely in an afterDestroy listener and so path records have been destroyed
+        var fast = contextStatus === "treeConstructed" || contextStatus === "destroyed";
+        var component = inLocal ? localRecord[context] : fluid.resolveContext(context, options.contextThat, fast);
         if (component) {
             var root = component;
-            if (inLocal || component.lifecycleStatus === "constructed" || component.lifecycleStatus === "treeConstructed") {
-                for (var i = 0; i < segs.length; ++ i) {
+            if (inLocal || component.lifecycleStatus !== "constructing") {
+                for (var i = 0; i < segs.length; ++i) { // fast resolution of paths when no ginger process active
                     root = root ? root[segs[i]] : undefined;
                 }
-            } else if (component.lifecycleStatus !== "destroyed") {
-                root = fluid.getForComponent(component, segs);
             } else {
-                fluid.fail("Cannot resolve path " + segs.join(".") + " into component ", component, " which has been destroyed");
+                root = fluid.getForComponent(component, segs);
             }
             if (root === undefined && !inLocal) { // last-ditch attempt to get exotic EL value from component
                 root = fluid.getForComponent(component, segs);
@@ -5491,6 +5588,8 @@ Copyright 2008-2010 University of Cambridge
 Copyright 2008-2009 University of Toronto
 Copyright 2010-2011 Lucendo Development Ltd.
 Copyright 2010-2014 OCAD University
+Copyright 2012-2014 Raising the Floor - US
+Copyright 2014-2016 Raising the Floor - International
 
 Licensed under the Educational Community License (ECL), Version 2.0 or the New
 BSD license. You may not use this file except in compliance with one these
@@ -5543,7 +5642,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
                 return root;
             }
             var accepted;
-            for (var j = 0; j < strategies.length; ++ j) {
+            for (var j = 0; j < strategies.length; ++j) {
                 accepted = strategies[j](root, segs[i], i + 1, segs);
                 if (accepted !== undefined) {
                     break; // May now short-circuit with stateless strategies
@@ -5706,7 +5805,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
     // supported, PUBLIC API function
     fluid.pathUtil.composeSegments = function () {
         var path = "";
-        for (var i = 0; i < arguments.length; ++ i) {
+        for (var i = 0; i < arguments.length; ++i) {
             path = fluid.pathUtil.composePath(path, arguments[i]);
         }
         return path;
@@ -5719,7 +5818,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
         if (end - start !== toMatch.length) {
             return false;
         }
-        for (var i = start; i < end; ++ i) {
+        for (var i = start; i < end; ++i) {
             if (segs[i] !== toMatch[i - start]) {
                 return false;
             }
@@ -6103,7 +6202,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
                 // We are in the middle of parsing a contextualised relay, and this call has arrived via its parseImplicitRelay.
                 // Rather than bind source-source, instead register the "half-transactional" listener which binds changes
                 // from the relay itself onto the target
-                fluid.registerDirectChangeRelay(target, targetSegs, source, [], linkId+"-transform", options.forwardAdapter, {transactional: true, sourceApplier: options.forwardApplier}, npOptions);
+                fluid.registerDirectChangeRelay(target, targetSegs, source, [], linkId + "-transform", options.forwardAdapter, {transactional: true, sourceApplier: options.forwardApplier}, npOptions);
             }
         } else { // more efficient branch where relay is uncontextualised
             fluid.registerDirectChangeRelay(target, targetSegs, source, sourceSegs, linkId, options.forwardAdapter, {transactional: false}, npOptions);
@@ -6302,7 +6401,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
     fluid.model.notifyExternal = function (transRec) {
         var allChanges = transRec ? fluid.values(transRec.externalChanges) : [];
         fluid.sortByPriority(allChanges);
-        for (var i = 0; i < allChanges.length; ++ i) {
+        for (var i = 0; i < allChanges.length; ++i) {
             var change = allChanges[i];
             var targetApplier = change.args[5]; // NOTE: This argument gets here via fluid.model.storeExternalChange from fluid.notifyModelChanges
             if (!targetApplier.destroyed) { // 3rd point of guarding for FLUID-5592
@@ -6351,7 +6450,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
 
         var enlist = fluid.enlistModelComponent(that);
         fluid.each(optionsMR, function (mrrec, key) {
-            for (var i = 0; i < mrrec.length; ++ i) {
+            for (var i = 0; i < mrrec.length; ++i) {
                 fluid.parseModelRelay(that, mrrec[i], key);
             }
         });
@@ -6365,7 +6464,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
         var instantiator = fluid.getInstantiator(that);
 
         function updateRelays(transaction) {
-            while (fluid.model.updateRelays(instantiator, transaction.id) > 0){}
+            while (fluid.model.updateRelays(instantiator, transaction.id) > 0) {} // eslint-disable-line no-empty
         }
 
         function commitRelays(transaction, applier, code) {
@@ -6528,7 +6627,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
     };
 
     fluid.model.isChangedPath = function (changeMap, segs) {
-        for (var i = 0; i <= segs.length; ++ i) {
+        for (var i = 0; i <= segs.length; ++i) {
             if (typeof(changeMap) === "string") {
                 return true;
             }
@@ -6606,7 +6705,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
     };
 
     fluid.model.stepTargetAccess = function (target, type, segs, startpos, endpos, options) {
-        for (var i = startpos; i < endpos; ++ i) {
+        for (var i = startpos; i < endpos; ++i) {
             if (!target) {
                 continue;
             }
@@ -6717,7 +6816,7 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
         var outSegs = ["model"];
         var wildcard = false;
         var togo = [];
-        for (var i = 0; i < specSegs.length; ++ i) {
+        for (var i = 0; i < specSegs.length; ++i) {
             var seg = specSegs[i];
             if (seg === "*") {
                 if (i === specSegs.length - 1) {
@@ -6757,13 +6856,13 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
             return;
         }
         var transRec = transaction && fluid.getModelTransactionRec(that, transaction.id);
-        for (var i = 0; i < listeners.length; ++ i) {
+        for (var i = 0; i < listeners.length; ++i) {
             var spec = listeners[i];
             var multiplePaths = spec.segsArray.length > 1; // does this spec listen on multiple paths? If so, don't rebase arguments and just report once per transaction
-            for (var j = 0; j < spec.segsArray.length; ++ j) {
+            for (var j = 0; j < spec.segsArray.length; ++j) {
                 var invalidPaths = fluid.matchChanges(changeMap, spec.segsArray[j], newHolder);
                 // We only have multiple invalidPaths here if there is a wildcard
-                for (var k = 0; k < invalidPaths.length; ++ k) {
+                for (var k = 0; k < invalidPaths.length; ++k) {
                     if (applier.destroyed) { // 2nd guarding point for FLUID-5592
                         return;
                     }
@@ -6981,7 +7080,9 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
 })(jQuery, fluid_2_0_0);
 ;/*
 Copyright 2010 University of Toronto
-Copyright 2010-2011 OCAD University
+Copyright 2010-2014 OCAD University
+Copyright 2012-2014 Raising the Floor - US
+Copyright 2014-2016 Raising the Floor - International
 
 Licensed under the Educational Community License (ECL), Version 2.0 or the New
 BSD license. You may not use this file except in compliance with one these
@@ -7133,10 +7234,6 @@ var fluid = fluid || fluid_2_0_0;
         return stats.unchanged === 0 ? 0
             : (partialMatches ? 0xffffff000000 - 0x1000000 * stats.changes + stats.unchanged :
             (stats.changes ? 0 : 0xffffff000000 + stats.unchanged));
-    };
-
-    fluid.firstDefined = function (a, b) {
-        return a === undefined ? b : a;
     };
 
     fluid.model.transform.invertPaths = function (transformSpec, transformer) {
@@ -7409,15 +7506,6 @@ var fluid = fluid || fluid_2_0_0;
         return { defaults: defaults, typeName: typeName};
     };
 
-    // A utility which is helpful in computing inverses involving compound values.
-    // For example, with the valueMapper, compound input values are accepted as literals implicitly,
-    // whereas as output values they must be escaped. This utility escapes a value if it is not primitive.
-    fluid.model.transform.literaliseValue = function (value) {
-        return fluid.isPrimitive(value) ? value : {
-            literalValue: value
-        };
-    };
-
     // unsupported, NON-API function
     fluid.model.transform.processRule = function (rule, transformer) {
         if (typeof(rule) === "string") {
@@ -7455,7 +7543,7 @@ var fluid = fluid || fluid_2_0_0;
             if (key !== "transform") {
                 transformer.outputPrefixOp.push(key);
                 var togo = transformer.expand(value, transformer);
-                // Value expanders and arrays as rules implicitly outputs, unless they have nothing (undefined) to output
+                // Value expanders and arrays as rules implicitly output, unless they have nothing (undefined) to output
                 if (togo !== undefined) {
                     fluid.model.transform.setValue(null, togo, transformer);
                     // ensure that expanders further up does not try to output this value as well.
@@ -7667,8 +7755,9 @@ var fluid = fluid || fluid_2_0_0;
 })(jQuery, fluid_2_0_0);
 ;/*
 Copyright 2010 University of Toronto
-Copyright 2010-2011 OCAD University
-Copyright 2013, 2016 Raising the Floor - International
+Copyright 2010-2015 OCAD University
+Copyright 2013-2014 Raising the Floor - US
+Copyright 2013-2016 Raising the Floor - International
 
 Licensed under the Educational Community License (ECL), Version 2.0 or the New
 BSD license. You may not use this file except in compliance with one these
@@ -7826,7 +7915,7 @@ var fluid = fluid || fluid_2_0_0;
             transformSpec.factor = (transformSpec.factor === 0) ? 0 : 1 / transformSpec.factor;
         }
         if (transformSpec.offset !== undefined) {
-            transformSpec.offset = - transformSpec.offset * (transformSpec.factor !== undefined ? transformSpec.factor : 1);
+            transformSpec.offset = -transformSpec.offset * (transformSpec.factor !== undefined ? transformSpec.factor : 1);
         }
         return transformSpec;
     };
@@ -7890,128 +7979,114 @@ var fluid = fluid || fluid_2_0_0;
         collectInputPaths: "fluid.transforms.valueMapper.collect"
     });
 
-    // unsupported, NON-API function
+    /* unsupported, NON-API function
+     * sorts by the object's 'matchValue' property, where higher is better.
+     * Tiebreaking is done via the `index` property, where a lower index takes priority
+     */
     fluid.model.transform.compareMatches = function (speca, specb) {
-        return specb.matchValue - speca.matchValue;
-    };
-
-    // unsupported, NON-API function
-    fluid.model.transform.matchValueMapperFull = function (outerValue, transformSpec, transformer) {
-        var o = transformSpec.options;
-        if (o.length === 0) {
-            fluid.fail("valueMapper supplied empty list of options: ", transformSpec);
-        }
-        var matchPower = [];
-        for (var i = 0; i < o.length; ++i) {
-            var option = o[i];
-            var value = fluid.firstDefined(fluid.model.transform.getValue(option.inputPath, undefined, transformer),
-                outerValue);
-            var matchValue = fluid.model.transform.matchValue(option.undefinedInputValue ? undefined :
-                (option.inputValue === undefined ? transformSpec.defaultInputValue : option.inputValue), value, transformSpec.partialMatches || option.partialMatches);
-            matchPower[i] = {index: i, matchValue: matchValue};
-        }
-        matchPower.sort(fluid.model.transform.compareMatches);
-        return (matchPower[0].matchValue <= 0 || o.length > 1 && matchPower[0].matchValue === matchPower[1].matchValue) ? -1 : matchPower[0].index;
+        var matchDiff = specb.matchValue - speca.matchValue;
+        return matchDiff === 0 ? speca.index - specb.index : matchDiff; // tiebreak using 'index'
     };
 
     fluid.transforms.valueMapper = function (transformSpec, transformer) {
-        if (!transformSpec.options) {
-            fluid.fail("valueMapper requires a list or hash of options at path named \"options\", supplied ", transformSpec);
+        if (!transformSpec.match) {
+            fluid.fail("valueMapper requires an array or hash of matches at path named \"match\", supplied ", transformSpec);
         }
-        var value = fluid.model.transform.getValue(transformSpec.inputPath, undefined, transformer);
-        var deref = fluid.isArrayable(transformSpec.options) ? // long form with list of records
-            function (testVal) {
-                var index = fluid.model.transform.matchValueMapperFull(testVal, transformSpec, transformer);
-                return index === -1 ? null : transformSpec.options[index];
-            } :
-            function (testVal) {
-                return transformSpec.options[testVal];
-            };
+        var value = fluid.model.transform.getValue(transformSpec.defaultInputPath, undefined, transformer);
 
-        var indexed = deref(value);
-        if (!indexed) {
-            // if no branch matches, try again using this value - WARNING, this seriously
-            // threatens invertibility
-            indexed = deref(transformSpec.defaultInputValue);
+        var matchedEntry = (fluid.isArrayable(transformSpec.match)) ? // long form with array of records?
+            fluid.transforms.valueMapper.longFormMatch(value, transformSpec, transformer) :
+            transformSpec.match[value];
+
+        if (matchedEntry === undefined) { // if no matches found, default to noMatch
+            matchedEntry = transformSpec.noMatch;
         }
-        if (!indexed) {
+
+        if (matchedEntry === undefined) { // if there was no noMatch directive, return undefined
             return;
         }
 
-        var outputPath = indexed.outputPath === undefined ? transformSpec.defaultOutputPath : indexed.outputPath;
+        var outputPath = matchedEntry.outputPath === undefined ? transformSpec.defaultOutputPath : matchedEntry.outputPath;
         transformer.outputPrefixOp.push(outputPath);
+
         var outputValue;
-        if (fluid.isPrimitive(indexed)) {
-            outputValue = indexed;
+        if (fluid.isPrimitive(matchedEntry)) {
+            outputValue = matchedEntry;
+        } else if (matchedEntry.outputUndefinedValue) { // if outputUndefinedValue is set, outputValue `undefined`
+            outputValue = undefined;
         } else {
-            // if undefinedOutputValue is set, outputValue should be undefined
-            if (indexed.undefinedOutputValue) {
-                outputValue = undefined;
-            } else {
-                // get value from outputValue or outputValuePath. If none is found set the outputValue to be that of defaultOutputValue (or undefined)
-                outputValue = fluid.model.transform.resolveParam(indexed, transformer, "outputValue", undefined);
-                outputValue = (outputValue === undefined) ? transformSpec.defaultOutputValue : outputValue;
-            }
+            // get value from outputValue. If none is found set the outputValue to be that of defaultOutputValue (or undefined)
+            outputValue = fluid.model.transform.resolveParam(matchedEntry, transformer, "outputValue", undefined);
+            outputValue = (outputValue === undefined) ? transformSpec.defaultOutputValue : outputValue;
         }
-        // output if outputPath or defaultOutputPath have been specified and the relevant child hasn't done the outputting
+        // output if we have a path and something to output
         if (typeof(outputPath) === "string" && outputValue !== undefined) {
             fluid.model.transform.setValue(undefined, outputValue, transformer, transformSpec.merge);
-            outputValue = undefined;
+            outputValue = undefined; // make sure we don't also return value
         }
         transformer.outputPrefixOp.pop();
         return outputValue;
     };
 
+    // unsupported, NON-API function
+    fluid.transforms.valueMapper.longFormMatch = function (valueFromDefaultPath, transformSpec, transformer) {
+        var o = transformSpec.match;
+        if (o.length === 0) {
+            fluid.fail("valueMapper supplied empty list of matches: ", transformSpec);
+        }
+        var matchPower = [];
+        for (var i = 0; i < o.length; ++i) {
+            var option = o[i];
+            var value = option.inputPath ?
+                fluid.model.transform.getValue(option.inputPath, undefined, transformer) : valueFromDefaultPath;
+
+            var matchValue = fluid.model.transform.matchValue(option.inputValue, value, option.partialMatches);
+            matchPower[i] = {index: i, matchValue: matchValue};
+        }
+        matchPower.sort(fluid.model.transform.compareMatches);
+        return matchPower[0].matchValue <= 0 ? undefined : o[matchPower[0].index];
+    };
+
     fluid.transforms.valueMapper.invert = function (transformSpec, transformer) {
-        var options = [];
+        var match = [];
         var togo = {
             type: "fluid.transforms.valueMapper",
-            options: options
+            match: match
         };
-        var isArray = fluid.isArrayable(transformSpec.options);
-        var findCustom = function (name) {
-            return fluid.find(transformSpec.options, function (option) {
-                if (option[name]) {
-                    return true;
-                }
-            });
-        };
-        var anyCustomOutput = findCustom("outputPath");
-        var anyCustomInput = findCustom("inputPath");
-        if (!anyCustomOutput) {
-            togo.inputPath = fluid.model.composePaths(transformer.outputPrefix, transformSpec.defaultOutputPath);
-        }
-        if (!anyCustomInput) {
-            togo.defaultOutputPath = fluid.model.composePaths(transformer.inputPrefix, transformSpec.inputPath);
-        }
+        var isArray = fluid.isArrayable(transformSpec.match);
+
+        togo.defaultInputPath = fluid.model.composePaths(transformer.outputPrefix, transformSpec.defaultOutputPath);
+        togo.defaultOutputPath = fluid.model.composePaths(transformer.inputPrefix, transformSpec.defaultInputPath);
+
         var def = fluid.firstDefined;
-        fluid.each(transformSpec.options, function (option, key) {
+        fluid.each(transformSpec.match, function (option, key) {
+            if (option.outputUndefinedValue === true) {
+                return; // don't attempt to invert undefined output value entries
+            }
             var outOption = {};
             var origInputValue = def(isArray ? option.inputValue : key, transformSpec.defaultInputValue);
             if (origInputValue === undefined) {
                 fluid.fail("Failure inverting configuration for valueMapper - inputValue could not be resolved for record " + key + ": ", transformSpec);
             }
-            outOption.outputValue = fluid.model.transform.literaliseValue(origInputValue);
-            var origOutputValue = def(option.outputValue, transformSpec.defaultOutputValue);
-            outOption.inputValue = fluid.model.transform.getValue(option.outputValuePath, origOutputValue, transformer);
-            if (anyCustomOutput) {
+            outOption.outputValue = origInputValue;
+            outOption.inputValue = !isArray && fluid.isPrimitive(option) ?
+                option : def(option.outputValue, transformSpec.defaultOutputValue);
+
+            if (option.outputPath) {
                 outOption.inputPath = fluid.model.composePaths(transformer.outputPrefix, def(option.outputPath, transformSpec.outputPath));
             }
-            if (anyCustomInput) {
+            if (option.inputPath) {
                 outOption.outputPath = fluid.model.composePaths(transformer.inputPrefix, def(option.inputPath, transformSpec.inputPath));
             }
-            if (option.outputValuePath) {
-                outOption.inputValuePath = option.outputValuePath;
-            }
-            options.push(outOption);
+            match.push(outOption);
         });
         return togo;
     };
 
     fluid.transforms.valueMapper.collect = function (transformSpec, transformer) {
         var togo = [];
-        fluid.model.transform.accumulateInputPath(transformSpec.inputPath, transformer, togo);
-        fluid.each(transformSpec.options, function (option) {
+        fluid.model.transform.accumulateInputPath(transformSpec.defaultInputPath, transformer, togo);
+        fluid.each(transformSpec.match, function (option) {
             fluid.model.transform.accumulateInputPath(option.inputPath, transformer, togo);
         });
         return togo;
@@ -8423,8 +8498,8 @@ var fluid = fluid || fluid_2_0_0;
 })(jQuery, fluid_2_0_0);
 ;/*
 Copyright 2008-2009 University of Toronto
-Copyright 2010-2011 OCAD University
-Copyright 2015 Raising the Floor (International)
+Copyright 2010-2016 OCAD University
+Copyright 2015-2016 Raising the Floor - International
 
 Licensed under the Educational Community License (ECL), Version 2.0 or the New
 BSD license. You may not use this file except in compliance with one these
@@ -8624,6 +8699,20 @@ var fluid_2_0_0 = fluid_2_0_0 || {};
     fluid.contextAware.makeChecks({
         "fluid.browser": {
             funcName: "fluid.contextAware.isBrowser"
+        }
+    });
+
+    // Context awareness for the reported browser platform name (operating system)
+
+    fluid.registerNamespace("fluid.contextAware.browser");
+
+    fluid.contextAware.browser.getPlatformName = function () {
+        return typeof(navigator) !== "undefined" && navigator.platform ? navigator.platform : undefined;
+    };
+
+    fluid.contextAware.makeChecks({
+        "fluid.browser.platformName": {
+            funcName: "fluid.contextAware.browser.getPlatformName"
         }
     });
 
@@ -12591,9 +12680,10 @@ var fluid = fluid || require("infusion"),
      * flock.band provides an IoC-friendly interface for a collection of named synths.
      */
     // TODO: Unit tests.
+    // TODO: It seems likely that this component should be a flock.node, too.
     fluid.defaults("flock.band", {
         gradeNames: ["fluid.component"],
-
+        synthGrade: "flock.noteTarget",
         invokers: {
             play: {
                 func: "{that}.events.onPlay.fire"
@@ -12606,10 +12696,9 @@ var fluid = fluid || require("infusion"),
             set: {
                 func: "{that}.events.onSet.fire"
             },
-
             getSynths: {
-                funcName: "flock.band.getSynths",
-                args: ["{that}"]
+                funcName: "fluid.queryIoCSelector",
+                args: ["{that}", "{that}.options.synthGrade"]
             }
         },
 
@@ -12653,17 +12742,6 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
-
-    flock.band.getSynths = function (that) {
-        var synths = [];
-        fluid.each(that.options.components, function (componentDef, name) {
-            if (fluid.hasGrade(that[name].options, "flock.synth")) {
-                synths.push(that[name]);
-            }
-        });
-
-        return synths;
-    };
 }());
 ;/*
 * Flocking Audio Buffers
@@ -15734,7 +15812,7 @@ var fluid = fluid || require("infusion"),
  * Flocking Web MIDI
  * http://github.com/colinbdclark/flocking
  *
- * Copyright 2014, Colin Clark
+ * Copyright 2014-2016, Colin Clark
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
 
@@ -15749,6 +15827,7 @@ var fluid = fluid || require("infusion"),
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
 
+// TODO: Factor out the cross-platform parts of this file.
 (function () {
 
     "use strict";
@@ -15854,6 +15933,8 @@ var fluid = fluid || require("infusion"),
             chan = status & 0xf,
             fn;
 
+        // TODO: Factor this into a lookup table by providing a generic
+        // flock.midi.read.note that determines if it should be forwarded to noteOn/Off.
         switch (type) {
             case 8:
                 fn = flock.midi.read.noteOff;
@@ -15877,10 +15958,11 @@ var fluid = fluid || require("infusion"),
                 fn = flock.midi.read.pitchbend;
                 break;
             case 15:
-                fn = flock.midi.read.sysex;
+                fn = flock.midi.read.system;
                 break;
             default:
-                throw new Error("Recieved an unrecognized MIDI message: " + data);
+                return flock.fail("Received an unrecognized MIDI message: " +
+                    fluid.prettyPrintJSON(data));
         }
 
         return fn(chan, data);
@@ -15937,22 +16019,120 @@ var fluid = fluid || require("infusion"),
         };
     };
 
+    flock.midi.read.twoByteValue = function (data) {
+        return (data[2] << 7) | data[1];
+    };
+
     flock.midi.read.pitchbend = function (chan, data) {
         return {
             type: "pitchbend",
             chan: chan,
-            value: (data[1] << 7) | data[2]
+            value: flock.midi.read.twoByteValue(data)
         };
     };
 
-    flock.midi.read.sysex = function (chan, data) {
+    flock.midi.read.system = function (status, data) {
+        if (status === 1) {
+            return flock.midi.messageFailure("quarter frame MTC");
+        }
+
+        var fn;
+        // TODO: Factor this into a lookup table.
+        switch (status) {
+            case 0:
+                fn = flock.midi.read.sysex;
+                break;
+            case 2:
+                fn = flock.midi.read.songPointer;
+                break;
+            case 3:
+                fn = flock.midi.read.songSelect;
+                break;
+            case 6:
+                fn = flock.midi.read.tuneRequest;
+                break;
+            case 8:
+                fn = flock.midi.read.clock;
+                break;
+            case 10:
+                fn = flock.midi.read.start;
+                break;
+            case 11:
+                fn = flock.midi.read.continue;
+                break;
+            case 12:
+                fn = flock.midi.read.stop;
+                break;
+            case 14:
+                fn = flock.midi.read.activeSense;
+                break;
+            case 15:
+                fn = flock.midi.read.reset;
+                break;
+            default:
+                return flock.fail("Received an unrecognized MIDI system message: " +
+                    fluid.prettyPrintJSON(data));
+        }
+
+        return fn(data);
+    };
+
+    flock.midi.messageFailure = function (type) {
+        flock.fail("Flocking does not currently support MIDI " + type + " messages.");
+        return;
+    };
+
+    flock.midi.read.sysex = function (data) {
         return {
-            type: "system",
-            chan: chan,
-            data: data.subarray(1)
+            type: "sysex",
+            data: data
         };
     };
 
+    flock.midi.read.valueMessage = function (type, value) {
+        return {
+            type: type,
+            value: value
+        };
+    };
+
+    flock.midi.read.songPointer = function (data) {
+        var val = flock.midi.read.twoByteValue(data);
+        return flock.midi.read.valueMessage("songPointer", val);
+    };
+
+    flock.midi.read.songSelect = function (data) {
+        return flock.midi.read.valueMessage("songSelect", data[1]);
+    };
+
+    flock.midi.read.tuneRequest = function () {
+        return {
+            type: "tuneRequest"
+        };
+    };
+
+    flock.midi.systemRealtimeMessages = [
+        "tuneRequest",
+        "clock",
+        "start",
+        "continue",
+        "stop",
+        "activeSense",
+        "reset"
+    ];
+
+    flock.midi.createSystemRealtimeMessageReaders = function (systemRealtimeMessages) {
+        fluid.each(systemRealtimeMessages, function (type) {
+            flock.midi.read[type] = function () {
+                return {
+                    type: type
+                };
+            };
+        });
+
+    };
+
+    flock.midi.createSystemRealtimeMessageReaders(flock.midi.systemRealtimeMessages);
 
     /**
      * Represents the overall Web MIDI system,
@@ -16070,25 +16250,29 @@ var fluid = fluid || require("infusion"),
         ports: 0,
 
         invokers: {
+            sendRaw: {
+                func: "{that}.events.onSendRaw.fire"
+            },
+
             send: {
-                func: "{that}.events.onSendMessage.fire"
+                funcName: "flock.midi.connection.send"
             },
 
             open: {
                 funcName: "flock.midi.connection.bind",
                 args: [
-                    "{system}.ports",
+                    "{that}.system.ports",
                     "{that}.options.ports",
                     "{that}.events.onReady.fire",
                     "{that}.events.raw.fire",
-                    "{that}.events.onSendMessage"
+                    "{that}.events.onSendRaw"
                 ]
             },
 
             close: {
                 funcName: "flock.midi.connection.close",
                 args: [
-                    "{system}.ports",
+                    "{that}.system.ports",
                     "{that}.events.raw.fire"
                 ]
             }
@@ -16109,14 +16293,14 @@ var fluid = fluid || require("infusion"),
             onPortsAvailable: null,
             onReady: null,
             onError: null,
-            onSendMessage: null
+            onSendRaw: null
         },
 
         listeners: {
             onPortsAvailable: {
                 funcName: "flock.midi.connection.autoOpen",
                 args: [
-                    "{connection}.options.openImmediately", "{connection}.open"
+                    "{that}.options.openImmediately", "{that}.open"
                 ]
             },
 
@@ -16135,6 +16319,10 @@ var fluid = fluid || require("infusion"),
             ]
         }
     });
+
+    flock.midi.connection.send = function () {
+        flock.fail("Sending MIDI messages is not currently supported.");
+    };
 
     flock.midi.connection.autoOpen = function (openImmediately, openFn) {
         if (openImmediately) {
@@ -16265,12 +16453,12 @@ var fluid = fluid || require("infusion"),
         });
     };
 
-    flock.midi.connection.bindSender = function (port, onSendMessage, openPromises) {
+    flock.midi.connection.bindSender = function (port, onSendRaw, openPromises) {
         var ports = fluid.makeArray(port);
 
         fluid.each(ports, function (port) {
             flock.midi.connection.openPort(port, openPromises);
-            onSendMessage.addListener(port.send.bind(port));
+            onSendRaw.addListener(port.send.bind(port));
         });
 
         return openPromises;
@@ -16284,7 +16472,7 @@ var fluid = fluid || require("infusion"),
         Promise.all(openPromises).then(onReady);
     };
 
-    flock.midi.connection.bind = function (ports, portSpec, onReady, onRaw, onSendMessage) {
+    flock.midi.connection.bind = function (ports, portSpec, onReady, onRaw, onSendRaw) {
         portSpec = flock.midi.connection.expandPortSpec(portSpec);
 
         var input = flock.midi.findPorts(ports.inputs, portSpec.input),
@@ -16298,7 +16486,7 @@ var fluid = fluid || require("infusion"),
         }
 
         if (output && output.length > 0) {
-            flock.midi.connection.bindSender(output, onSendMessage, openPromises);
+            flock.midi.connection.bindSender(output, onSendRaw, openPromises);
         } else if (portSpec.output !== undefined) {
             flock.midi.connection.logNoMatchedPorts("output", portSpec);
         }
@@ -16346,25 +16534,56 @@ var fluid = fluid || require("infusion"),
         var model = flock.midi.read(midiEvent.data),
             eventForType = model.type ? events[model.type] : undefined;
 
-        events.message.fire(model);
+        events.message.fire(model, midiEvent);
 
         // TODO: Remove this special-casing of noteOn/noteOff events into note events.
         if (model.type === "noteOn" || model.type === "noteOff") {
-            events.note.fire(model);
+            events.note.fire(model, midiEvent);
         }
 
         if (eventForType) {
-            eventForType.fire(model);
+            eventForType.fire(model, midiEvent);
         }
     };
 
+}());
+;/*
+ * Flocking MIDI Controller
+ * http://github.com/colinbdclark/flocking
+ *
+ * Copyright 2014-2016, Colin Clark
+ * Dual licensed under the MIT and GPL Version 2 licenses.
+ */
 
+/*global require*/
+
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
+
+(function () {
+    "use strict";
+
+    // TODO:
+    //  * Mappings should be defined for each of the MIDI messages (noteOn, noteOff, control)
+    //  * Velocity mapping should always be scoped to a particular noteon/off handler.
+    //  * Provide a "listener filter" that allows for mapping to only certain notes.
     fluid.defaults("flock.midi.controller", {
         gradeNames: ["fluid.component"],
 
         members: {
-            controlMap: "@expand:flock.midi.controller.optimizeControlMap({that}.options.controlMap)",
-            noteMap: "{that}.options.noteMap"
+            controlMap: {
+                expander: {
+                    funcName: "flock.midi.controller.optimizeMIDIMap",
+                    args: ["{that}.options.controlMap"]
+                }
+            },
+
+            noteMap: {
+                expander: {
+                    funcName: "flock.midi.controller.optimizeNoteMap",
+                    args: ["{that}.options.noteMap"]
+                }
+            }
         },
 
         controlMap: {},                       // Control and note maps
@@ -16382,16 +16601,7 @@ var fluid = fluid || require("infusion"),
                         input: "*"              // Connect to the first available input port.
                     },
 
-                    openImmediately: true,    // Immediately upon instantiating the connection.
-
-                    listeners: {
-                        control: {
-                            func: "{controller}.mapControl"
-                        },
-                        note: {
-                            func: "{controller}.mapNote"
-                        }
-                    }
+                    openImmediately: true    // Immediately upon instantiating the connection.
                 }
             }
         },
@@ -16404,19 +16614,47 @@ var fluid = fluid || require("infusion"),
 
             mapNote: {
                 funcName: "flock.midi.controller.mapNote",
-                args: ["{arguments}.0", "{that}.synthContext", "{that}.noteMap"]
+                args: [
+                    "{arguments}.0", // Note type.
+                    "{arguments}.1", // Note spec.
+                    "{that}.synthContext",
+                    "{that}.noteMap"
+                ]
             }
+        },
+
+        events: {
+            control: "{that}.connection.events.control",
+            note: "{that}.connection.events.note",
+            noteOn: "{that}.connection.events.noteOn",
+            noteOff: "{that}.connection.events.noteOff"
+        },
+
+        listeners: {
+            control: "{that}.mapControl({arguments}.0)",
+            note: "{that}.mapNote(note, {arguments}.0)",
+            noteOn: "{that}.mapNote(noteOn, {arguments}.0)",
+            noteOff: "{that}.mapNote(noteOff, {arguments}.0)"
         }
     });
 
-    flock.midi.controller.optimizeControlMap = function (controlMap) {
-        var controlMapArray = new Array(127);
-        fluid.each(controlMap, function (mapSpec, controlNum) {
-            var idx = Number(controlNum);
-            controlMapArray[idx] = mapSpec;
+    flock.midi.controller.optimizeMIDIMap = function (map) {
+        var mapArray = new Array(127);
+        fluid.each(map, function (mapSpecs, midiNum) {
+            var idx = Number(midiNum);
+            mapArray[idx] = fluid.makeArray(mapSpecs);
         });
 
-        return controlMapArray;
+        return mapArray;
+    };
+
+    flock.midi.controller.optimizeNoteMap = function (noteMap) {
+        return {
+            note: fluid.makeArray(noteMap.note),
+            noteOn: fluid.makeArray(noteMap.noteOn),
+            noteOff: fluid.makeArray(noteMap.noteOff),
+            velocity: fluid.makeArray(noteMap.velocity)
+        };
     };
 
     flock.midi.controller.expandControlMapSpec = function (valueUGenID, mapSpec) {
@@ -16485,40 +16723,50 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.midi.controller.setMappedValue = function (value, map, synthContext) {
-        if (!map) {
-            return;
-        }
+        // A map specification's value always overrides the incoming midi value.
+        // This is typically used when manually closing gates with noteOff events
+        // fired by controllers that specify key release speed as velocity.
+        value = map.value !== undefined ? map.value :
+            map.transform ? flock.midi.controller.transformValue(value, map) :
+            value;
 
-        value = map.transform ? flock.midi.controller.transformValue(value, map) : value;
         var synth = synthContext[map.synth] || synthContext;
 
         synth.set(map.input, value);
     };
 
+    flock.midi.controller.mapMIDIValue = function (value, maps, synthContext) {
+        if (!maps || maps.length < 1) {
+            return;
+        }
+
+        for (var i = 0; i < maps.length; i++) {
+            var map = maps[i];
+            flock.midi.controller.setMappedValue(value, map, synthContext);
+        }
+    };
+
     flock.midi.controller.mapControl = function (midiMsg, synthContext, controlMap) {
-        var map = controlMap[midiMsg.number],
+        var maps = controlMap[midiMsg.number],
             value = midiMsg.value;
 
-        flock.midi.controller.setMappedValue(value, map, synthContext);
+        flock.midi.controller.mapMIDIValue(value, maps, synthContext);
     };
 
     // TODO: Add support for defining listener filters or subsets
     // of all midi notes (e.g. for controllers like the Quneo).
-    flock.midi.controller.mapNote = function (midiMsg, synthContext, noteMap) {
-        var keyMap = noteMap.note,
+    // TODO: The current implementation is somewhere between inefficient
+    // and broken. In particular, we doubly apply velocity for
+    // each noteOn or noteOff event.
+    flock.midi.controller.mapNote = function (type, midiMsg, synthContext, noteMap) {
+        var keyMaps = noteMap[type],
             key = midiMsg.note,
-            velMap = noteMap.velocity,
+            velMaps = noteMap.velocity,
             vel = midiMsg.velocity;
 
-        if (keyMap) {
-            flock.midi.controller.setMappedValue(key, keyMap, synthContext);
-        }
-
-        if (velMap) {
-            flock.midi.controller.setMappedValue(vel, velMap, synthContext);
-        }
+        flock.midi.controller.mapMIDIValue(key, keyMaps, synthContext);
+        flock.midi.controller.mapMIDIValue(vel, velMaps, synthContext);
     };
-
 }());
 ;/*
  * Flocking Web Audio Native Node Manager
@@ -18251,14 +18499,17 @@ var fluid = fluid || require("infusion"),
                 j,
                 k,
                 trigVal,
+                prevTrigVal,
                 speedVal,
                 samp;
 
             for (i = 0, j = 0, k = 0; i < numSamps; i++, j += m.strides.trigger, k += m.strides.speed) {
                 trigVal = trig[j];
+                prevTrigVal = m.prevTrig;
                 speedVal = speed[k];
+                m.prevTrig = trigVal;
 
-                if (trigVal > 0.0 && m.prevTrig <= 0.0) {
+                if (trigVal > 0.0 && prevTrigVal <= 0.0) {
                     bufIdx = flock.ugen.playBuffer.resetIndex(speedVal, start, end);
                 } else if (bufIdx < start || bufIdx > end) {
                     if (loop > 0.0 && trigVal > 0.0) {
@@ -18268,7 +18519,6 @@ var fluid = fluid || require("infusion"),
                         continue;
                     }
                 }
-                m.prevTrig = trig[j];
 
                 samp = that.interpolate(bufIdx, source);
                 out[i] = samp;
@@ -20412,7 +20662,7 @@ var fluid = fluid || require("infusion"),
                 targetLevel = that.inputs.sustain.output[0];
                 stageTime = that.inputs.attack.output[0];
                 stepsNeedRecalc = true;
-            } else if (gate <= 0 && currentStep >= numSteps) {
+            } else if (prevGate >= 0 && gate <= 0 && currentStep >= numSteps) {
                 // Starting a new release stage.
                 targetLevel = that.inputs.start.output[0];
                 stageTime = that.inputs.release.output[0];
@@ -20422,8 +20672,12 @@ var fluid = fluid || require("infusion"),
             // TODO: Can we get rid of this extra branch without introducing code duplication?
             if (stepsNeedRecalc) {
                 numSteps = Math.round(stageTime * m.sampleRate);
-                stepInc = (targetLevel - level) / numSteps;
+                stepInc = numSteps > 0 ? (targetLevel - level) / numSteps : 0;
                 currentStep = 0;
+
+                if (numSteps < 1) {
+                    level = targetLevel;
+                }
             }
 
             // Output the the envelope's sample data.
@@ -20661,9 +20915,12 @@ var fluid = fluid || require("infusion"),
         inputs: {
             envelope: "flock.envelope.adsr",
             gate: 0.0,
-            timeScale: 1.0,     // Timescale is control-rate (or lower) only.
-            mul: null,          // This is equivalent to SC's levelScale parameter.
-            add: null           // And this to SC's levelBias.
+            timeScale: 1.0,     // Scales the durations of the segments.
+                                // Timescale is control-rate (or lower) only.
+            mul: null,          // Scales the levels of the breakpoints;
+                                // (this is equivalent to SC's levelScale parameter)
+            add: null           // Offsets the levels of the breakpoints.
+                                // (this is equivalent to SC's levelBias)
         },
 
         ugenOptions: {

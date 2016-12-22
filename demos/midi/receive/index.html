@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <style>
+            #midiMessageRegion {
+                font-family: monospace;
+            }
+        </style>
+
+        <title>Flocking MIDI Input Demo</title>
+
+        <link rel="stylesheet" type="text/css" href="../../shared/css/demos.css" />
+        <link rel="stylesheet" type="text/css" href="../../../src/ui/shared/css/flocking-icon-font.css" />
+        <link rel="stylesheet" href="../../../node_modules/codemirror/lib/codemirror.css" />
+        <link rel="stylesheet" type="text/css" href="../../../src/ui/editor/css/editor.css" />
+
+        <script src="../../../node_modules/jquery/dist/jquery.js"></script>
+
+        <script src="../../../node_modules/infusion/src/framework/core/js/Fluid.js"></script>
+        <script src="../../../node_modules/infusion/src/framework/core/js/FluidDebugging.js"></script>
+        <script src="../../../node_modules/infusion/src/framework/core/js/FluidIoC.js"></script>
+        <script src="../../../node_modules/infusion/src/framework/core/js/DataBinding.js"></script>
+        <script src="../../../node_modules/infusion/src/framework/core/js/ModelTransformation.js"></script>
+        <script src="../../../node_modules/infusion/src/framework/core/js/ModelTransformationTransforms.js"></script>
+        <script src="../../../node_modules/infusion/src/framework/enhancement/js/ContextAwareness.js"></script>
+        <script src="../../../node_modules/infusion/src/framework/core/js/FluidDocument.js"></script>
+        <script src="../../../node_modules/infusion/src/framework/core/js/FluidDOMUtilities.js"></script>
+        <script src="../../../node_modules/infusion/src/framework/core/js/FluidView.js"></script>
+
+        <script src="../../../third-party/webarraymath/js/webarraymath.js"></script>
+        <script src="../../../third-party/simjs/js/random-0.26.js"></script>
+
+        <script src="../../../src/core.js"></script>
+        <script src="../../../src/node-list.js"></script>
+        <script src="../../../src/evaluators.js"></script>
+        <script src="../../../src/synths/model.js"></script>
+        <script src="../../../src/synths/group.js"></script>
+        <script src="../../../src/synths/polyphonic.js"></script>
+        <script src="../../../src/buffers.js"></script>
+        <script src="../../../src/audiofile.js"></script>
+        <script src="../../../src/audiofile-encoder.js"></script>
+        <script src="../../../src/scheduler.js"></script>
+        <script src="../../../src/web/webaudio-core.js"></script>
+        <script src="../../../src/web/audio-system.js"></script>
+        <script src="../../../src/web/buffer-writer.js"></script>
+        <script src="../../../src/web/input-device-manager.js"></script>
+        <script src="../../../src/web/midi.js"></script>
+        <script src="../../../src/midi/controller.js"></script>
+        <script src="../../../src/web/native-node-manager.js"></script>
+        <script src="../../../src/web/output-manager.js"></script>
+        <script src="../../../src/parser.js"></script>
+
+        <script src="../../../src/ugens/core.js"></script>
+        <script src="../../../src/ugens/bandlimited.js"></script>
+        <script src="../../../src/ugens/envelopes.js"></script>
+        <script src="../../../src/ugens/midi.js"></script>
+
+        <script src="../../../src/ui/selectbox/js/selectbox.js"></script>
+        <script src="../../../src/ui/midi/midi-port-selector/js/midi-port-selector.js"></script>
+        <script src="../../../src/ui/midi/midi-connector/js/midi-connector.js"></script>
+        <script src="../../../src/ui/midi/message-view/js/message-view.js"></script>
+
+        <script src="../../../node_modules//codemirror/lib/codemirror.js"></script>
+        <script src="../../../node_modules/codemirror-infusion/src/codemirror-infusion.js"></script>
+
+        <script src="midi-receive-demo.js"></script>
+    </head>
+
+    <body>
+        <main>
+            <h1>Flocking MIDI Input Demo</h1>
+            <p class="instructions">This demo allows you to select a MIDI controller from the dropdown menu.
+            Note events from the selected controller will trigger the envelope of a Flocking synth.</p>
+
+            <div id="midi-port-selector"></div>
+
+            <div id="midiMessageRegion"></ul>
+        </main>
+
+        <script>
+            window.midiDemo = flock.midiDemo("main");
+        </script>
+    </body>
+</html>

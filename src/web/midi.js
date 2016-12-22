@@ -2,7 +2,7 @@
  * Flocking Web MIDI
  * http://github.com/colinbdclark/flocking
  *
- * Copyright 2014, Colin Clark
+ * Copyright 2014-2016, Colin Clark
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
 
@@ -17,6 +17,7 @@
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
 
+// TODO: Factor out the cross-platform parts of this file.
 (function () {
 
     "use strict";
@@ -122,6 +123,8 @@ var fluid = fluid || require("infusion"),
             chan = status & 0xf,
             fn;
 
+        // TODO: Factor this into a lookup table by providing a generic
+        // flock.midi.read.note that determines if it should be forwarded to noteOn/Off.
         switch (type) {
             case 8:
                 fn = flock.midi.read.noteOff;
@@ -145,10 +148,11 @@ var fluid = fluid || require("infusion"),
                 fn = flock.midi.read.pitchbend;
                 break;
             case 15:
-                fn = flock.midi.read.sysex;
+                fn = flock.midi.read.system;
                 break;
             default:
-                throw new Error("Recieved an unrecognized MIDI message: " + data);
+                return flock.fail("Received an unrecognized MIDI message: " +
+                    fluid.prettyPrintJSON(data));
         }
 
         return fn(chan, data);
@@ -205,22 +209,120 @@ var fluid = fluid || require("infusion"),
         };
     };
 
+    flock.midi.read.twoByteValue = function (data) {
+        return (data[2] << 7) | data[1];
+    };
+
     flock.midi.read.pitchbend = function (chan, data) {
         return {
             type: "pitchbend",
             chan: chan,
-            value: (data[1] << 7) | data[2]
+            value: flock.midi.read.twoByteValue(data)
         };
     };
 
-    flock.midi.read.sysex = function (chan, data) {
+    flock.midi.read.system = function (status, data) {
+        if (status === 1) {
+            return flock.midi.messageFailure("quarter frame MTC");
+        }
+
+        var fn;
+        // TODO: Factor this into a lookup table.
+        switch (status) {
+            case 0:
+                fn = flock.midi.read.sysex;
+                break;
+            case 2:
+                fn = flock.midi.read.songPointer;
+                break;
+            case 3:
+                fn = flock.midi.read.songSelect;
+                break;
+            case 6:
+                fn = flock.midi.read.tuneRequest;
+                break;
+            case 8:
+                fn = flock.midi.read.clock;
+                break;
+            case 10:
+                fn = flock.midi.read.start;
+                break;
+            case 11:
+                fn = flock.midi.read.continue;
+                break;
+            case 12:
+                fn = flock.midi.read.stop;
+                break;
+            case 14:
+                fn = flock.midi.read.activeSense;
+                break;
+            case 15:
+                fn = flock.midi.read.reset;
+                break;
+            default:
+                return flock.fail("Received an unrecognized MIDI system message: " +
+                    fluid.prettyPrintJSON(data));
+        }
+
+        return fn(data);
+    };
+
+    flock.midi.messageFailure = function (type) {
+        flock.fail("Flocking does not currently support MIDI " + type + " messages.");
+        return;
+    };
+
+    flock.midi.read.sysex = function (data) {
         return {
-            type: "system",
-            chan: chan,
-            data: data.subarray(1)
+            type: "sysex",
+            data: data
         };
     };
 
+    flock.midi.read.valueMessage = function (type, value) {
+        return {
+            type: type,
+            value: value
+        };
+    };
+
+    flock.midi.read.songPointer = function (data) {
+        var val = flock.midi.read.twoByteValue(data);
+        return flock.midi.read.valueMessage("songPointer", val);
+    };
+
+    flock.midi.read.songSelect = function (data) {
+        return flock.midi.read.valueMessage("songSelect", data[1]);
+    };
+
+    flock.midi.read.tuneRequest = function () {
+        return {
+            type: "tuneRequest"
+        };
+    };
+
+    flock.midi.systemRealtimeMessages = [
+        "tuneRequest",
+        "clock",
+        "start",
+        "continue",
+        "stop",
+        "activeSense",
+        "reset"
+    ];
+
+    flock.midi.createSystemRealtimeMessageReaders = function (systemRealtimeMessages) {
+        fluid.each(systemRealtimeMessages, function (type) {
+            flock.midi.read[type] = function () {
+                return {
+                    type: type
+                };
+            };
+        });
+
+    };
+
+    flock.midi.createSystemRealtimeMessageReaders(flock.midi.systemRealtimeMessages);
 
     /**
      * Represents the overall Web MIDI system,
@@ -338,25 +440,29 @@ var fluid = fluid || require("infusion"),
         ports: 0,
 
         invokers: {
+            sendRaw: {
+                func: "{that}.events.onSendRaw.fire"
+            },
+
             send: {
-                func: "{that}.events.onSendMessage.fire"
+                funcName: "flock.midi.connection.send"
             },
 
             open: {
                 funcName: "flock.midi.connection.bind",
                 args: [
-                    "{system}.ports",
+                    "{that}.system.ports",
                     "{that}.options.ports",
                     "{that}.events.onReady.fire",
                     "{that}.events.raw.fire",
-                    "{that}.events.onSendMessage"
+                    "{that}.events.onSendRaw"
                 ]
             },
 
             close: {
                 funcName: "flock.midi.connection.close",
                 args: [
-                    "{system}.ports",
+                    "{that}.system.ports",
                     "{that}.events.raw.fire"
                 ]
             }
@@ -377,14 +483,14 @@ var fluid = fluid || require("infusion"),
             onPortsAvailable: null,
             onReady: null,
             onError: null,
-            onSendMessage: null
+            onSendRaw: null
         },
 
         listeners: {
             onPortsAvailable: {
                 funcName: "flock.midi.connection.autoOpen",
                 args: [
-                    "{connection}.options.openImmediately", "{connection}.open"
+                    "{that}.options.openImmediately", "{that}.open"
                 ]
             },
 
@@ -403,6 +509,10 @@ var fluid = fluid || require("infusion"),
             ]
         }
     });
+
+    flock.midi.connection.send = function () {
+        flock.fail("Sending MIDI messages is not currently supported.");
+    };
 
     flock.midi.connection.autoOpen = function (openImmediately, openFn) {
         if (openImmediately) {
@@ -533,12 +643,12 @@ var fluid = fluid || require("infusion"),
         });
     };
 
-    flock.midi.connection.bindSender = function (port, onSendMessage, openPromises) {
+    flock.midi.connection.bindSender = function (port, onSendRaw, openPromises) {
         var ports = fluid.makeArray(port);
 
         fluid.each(ports, function (port) {
             flock.midi.connection.openPort(port, openPromises);
-            onSendMessage.addListener(port.send.bind(port));
+            onSendRaw.addListener(port.send.bind(port));
         });
 
         return openPromises;
@@ -552,7 +662,7 @@ var fluid = fluid || require("infusion"),
         Promise.all(openPromises).then(onReady);
     };
 
-    flock.midi.connection.bind = function (ports, portSpec, onReady, onRaw, onSendMessage) {
+    flock.midi.connection.bind = function (ports, portSpec, onReady, onRaw, onSendRaw) {
         portSpec = flock.midi.connection.expandPortSpec(portSpec);
 
         var input = flock.midi.findPorts(ports.inputs, portSpec.input),
@@ -566,7 +676,7 @@ var fluid = fluid || require("infusion"),
         }
 
         if (output && output.length > 0) {
-            flock.midi.connection.bindSender(output, onSendMessage, openPromises);
+            flock.midi.connection.bindSender(output, onSendRaw, openPromises);
         } else if (portSpec.output !== undefined) {
             flock.midi.connection.logNoMatchedPorts("output", portSpec);
         }
@@ -614,176 +724,15 @@ var fluid = fluid || require("infusion"),
         var model = flock.midi.read(midiEvent.data),
             eventForType = model.type ? events[model.type] : undefined;
 
-        events.message.fire(model);
+        events.message.fire(model, midiEvent);
 
         // TODO: Remove this special-casing of noteOn/noteOff events into note events.
         if (model.type === "noteOn" || model.type === "noteOff") {
-            events.note.fire(model);
+            events.note.fire(model, midiEvent);
         }
 
         if (eventForType) {
-            eventForType.fire(model);
-        }
-    };
-
-
-    fluid.defaults("flock.midi.controller", {
-        gradeNames: ["fluid.component"],
-
-        members: {
-            controlMap: "@expand:flock.midi.controller.optimizeControlMap({that}.options.controlMap)",
-            noteMap: "{that}.options.noteMap"
-        },
-
-        controlMap: {},                       // Control and note maps
-        noteMap: {},                          // need to be specified by the user.
-
-        components: {
-            synthContext: {                   // Also user-specified. Typically a flock.band instance,
-                type: "flock.band"            // but can be anything that has a set of named synths,
-            },                                // including a synth itself.
-
-            connection: {
-                type: "flock.midi.connection",
-                options: {
-                    ports: {
-                        input: "*"              // Connect to the first available input port.
-                    },
-
-                    openImmediately: true,    // Immediately upon instantiating the connection.
-
-                    listeners: {
-                        control: {
-                            func: "{controller}.mapControl"
-                        },
-                        note: {
-                            func: "{controller}.mapNote"
-                        }
-                    }
-                }
-            }
-        },
-
-        invokers: {
-            mapControl: {
-                funcName: "flock.midi.controller.mapControl",
-                args: ["{arguments}.0", "{that}.synthContext", "{that}.controlMap"]
-            },
-
-            mapNote: {
-                funcName: "flock.midi.controller.mapNote",
-                args: ["{arguments}.0", "{that}.synthContext", "{that}.noteMap"]
-            }
-        }
-    });
-
-    flock.midi.controller.optimizeControlMap = function (controlMap) {
-        var controlMapArray = new Array(127);
-        fluid.each(controlMap, function (mapSpec, controlNum) {
-            var idx = Number(controlNum);
-            controlMapArray[idx] = mapSpec;
-        });
-
-        return controlMapArray;
-    };
-
-    flock.midi.controller.expandControlMapSpec = function (valueUGenID, mapSpec) {
-        mapSpec.transform.id = valueUGenID;
-
-        // TODO: The key "valuePath" is confusing;
-        // it actually points to the location in the
-        // transform synth where the value will be set.
-        mapSpec.valuePath = mapSpec.valuePath || "value";
-
-        if (!mapSpec.transform.ugen) {
-            mapSpec.transform.ugen = "flock.ugen.value";
-        }
-
-        return mapSpec;
-    };
-
-    flock.midi.controller.makeValueSynth = function (value, id, mapSpec) {
-        mapSpec = flock.midi.controller.expandControlMapSpec(id, mapSpec);
-
-        var transform = mapSpec.transform,
-            valuePath = mapSpec.valuePath;
-
-        flock.set(transform, valuePath, value);
-
-        // Instantiate the new value synth.
-        var valueSynth = flock.synth.value({
-            synthDef: transform
-        });
-
-        // Update the value path so we can quickly update the synth's input value.
-        mapSpec.valuePath = id + "." + valuePath;
-
-        return valueSynth;
-    };
-
-    flock.midi.controller.transformValue = function (value, mapSpec) {
-        var transform = mapSpec.transform,
-            type = typeof transform;
-
-        if (type === "function") {
-            return transform(value);
-        }
-        // TODO: Add support for string-based transforms
-        // that bind to globally-defined synths
-        // (e.g. "flock.synth.midiFreq" or "flock.synth.midiAmp")
-        // TODO: Factor this into a separate function.
-        if (!mapSpec.transformSynth) {
-            // We have a raw synthDef.
-            // Instantiate a value synth to transform incoming control values.
-
-            // TODO: In order to support multiple inputs (e.g. a multi-arg OSC message),
-            // this special path needs to be scoped to the argument name. In the case of MIDI,
-            // this would be the CC number. In the case of OSC, it would be a combination of
-            // OSC message address and argument index.
-            mapSpec.transformSynth = flock.midi.controller.makeValueSynth(
-                value, "flock-midi-controller-in", mapSpec);
-        } else {
-            // TODO: When the new node architecture is in in place, we can directly connect this
-            // synth to the target synth at instantiation time.
-            // TODO: Add support for arrays of values, such as multi-arg OSC messages.
-            mapSpec.transformSynth.set(mapSpec.valuePath, value);
-        }
-
-        return mapSpec.transformSynth.value();
-    };
-
-    flock.midi.controller.setMappedValue = function (value, map, synthContext) {
-        if (!map) {
-            return;
-        }
-
-        value = map.transform ? flock.midi.controller.transformValue(value, map) : value;
-        var synth = synthContext[map.synth] || synthContext;
-
-        synth.set(map.input, value);
-    };
-
-    flock.midi.controller.mapControl = function (midiMsg, synthContext, controlMap) {
-        var map = controlMap[midiMsg.number],
-            value = midiMsg.value;
-
-        flock.midi.controller.setMappedValue(value, map, synthContext);
-    };
-
-    // TODO: Add support for defining listener filters or subsets
-    // of all midi notes (e.g. for controllers like the Quneo).
-    flock.midi.controller.mapNote = function (midiMsg, synthContext, noteMap) {
-        var keyMap = noteMap.note,
-            key = midiMsg.note,
-            velMap = noteMap.velocity,
-            vel = midiMsg.velocity;
-
-        if (keyMap) {
-            flock.midi.controller.setMappedValue(key, keyMap, synthContext);
-        }
-
-        if (velMap) {
-            flock.midi.controller.setMappedValue(vel, velMap, synthContext);
+            eventForType.fire(model, midiEvent);
         }
     };
 

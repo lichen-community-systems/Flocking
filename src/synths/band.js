@@ -24,9 +24,10 @@ var fluid = fluid || require("infusion"),
      * flock.band provides an IoC-friendly interface for a collection of named synths.
      */
     // TODO: Unit tests.
+    // TODO: It seems likely that this component should be a flock.node, too.
     fluid.defaults("flock.band", {
         gradeNames: ["fluid.component"],
-
+        synthGrade: "flock.noteTarget",
         invokers: {
             play: {
                 func: "{that}.events.onPlay.fire"
@@ -39,10 +40,9 @@ var fluid = fluid || require("infusion"),
             set: {
                 func: "{that}.events.onSet.fire"
             },
-
             getSynths: {
-                funcName: "flock.band.getSynths",
-                args: ["{that}"]
+                funcName: "fluid.queryIoCSelector",
+                args: ["{that}", "{that}.options.synthGrade"]
             }
         },
 
@@ -86,15 +86,4 @@ var fluid = fluid || require("infusion"),
             }
         }
     });
-
-    flock.band.getSynths = function (that) {
-        var synths = [];
-        fluid.each(that.options.components, function (componentDef, name) {
-            if (fluid.hasGrade(that[name].options, "flock.synth")) {
-                synths.push(that[name]);
-            }
-        });
-
-        return synths;
-    };
 }());

@@ -3,7 +3,7 @@
 (function () {
     "use strict";
 
-    var environment = flock.init();
+    flock.init();
 
     fluid.defaults("flock.midiDemo", {
         gradeNames: "fluid.viewComponent",
@@ -11,10 +11,23 @@
         components: {
             enviro: "{flock.enviro}",
 
+            midiMessageView: {
+                type: "flock.ui.midiMessageView",
+                container: "{that}.dom.messageRegion"
+            },
+
             midiConnector: {
                 type: "flock.ui.midiConnector",
-                container: "{that}.container",
+                container: "{that}.dom.midiPortSelector",
                 options: {
+                    components: {
+                        connection: {
+                            options: {
+                                sysex: true
+                            }
+                        }
+                    },
+
                     listeners: {
                         noteOn: {
                             func: "{synth}.noteOn",
@@ -41,33 +54,13 @@
             onCreate: [
                 "{that}.enviro.start()"
             ]
+        },
+
+        selectors: {
+            midiPortSelector: "#midi-port-selector",
+            messageRegion: "#midiMessageRegion"
         }
     });
-
-
-    // Imperative equivalent to the above.
-    flock.programmaticMIDIDemo = function (container) {
-        var that = {
-            midiConnector: flock.ui.midiConnector(container),
-            synth: flock.midiDemo.synth()
-        };
-
-        that.midiConnector.events.noteOn.addListener(function (noteEvent) {
-            that.synth.noteOn(noteEvent.note, {
-                "freq.note": noteEvent.note,
-                "amp.velocity": noteEvent.velocity,
-                "env.gate": 1.0
-            });
-        });
-
-        that.midiConnector.events.noteOff.addListener(function (noteEvent) {
-            that.synth.noteOff(noteEvent.note);
-        });
-
-        environment.start();
-
-        return that;
-    };
 
 
     fluid.defaults("flock.midiDemo.synth", {

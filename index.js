@@ -31,6 +31,7 @@ require("./src/audiofile-encoder.js");
 require("./src/flocking-audiofile-compatibility.js");
 require("./src/scheduler.js");
 require("./src/web/midi.js");
+require("./src/midi/controller.js");
 
 // Unit generators
 require("./src/ugens/core.js");

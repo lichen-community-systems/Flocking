@@ -189,6 +189,34 @@ var fluid = fluid || require("infusion"),
             "While the gate remains open after a mid-release attack, the envelope should hold at the sustain level.");
     });
 
+    QUnit.test("Square envelope (zero attack, zero decay)", function () {
+        var squareASRDef = {
+            ugen: "flock.ugen.asr",
+            rate: "audio",
+            attack: 0,
+            sustain: 0.25,
+            release: 0
+        };
+
+        var asr = flock.parse.ugenForDef(squareASRDef);
+        asr.gen(64);
+        flock.test.arraySilent(asr.output,
+            "Before the gate has been opened, the output should be silent");
+
+        asr.input("gate", 1.0);
+        asr.gen(64);
+        QUnit.deepEqual(asr.output, flock.generateBufferWithValue(64, 0.25),
+            "When the gate is opened the target sustain level is reached immediately");
+
+        asr.gen(64);
+        QUnit.deepEqual(asr.output, flock.generateBufferWithValue(64, 0.25),
+            "While the envelope is sustaining, it continues to output at the target level");
+
+        asr.input("gate", 0.0);
+        asr.gen(64);
+        flock.test.arraySilent(asr.output,
+            "As soon as the gate is closed, the envelope should be silent.");
+    });
 
     /****************
      * EnvGen Tests *
