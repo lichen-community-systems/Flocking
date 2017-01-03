@@ -1,4 +1,4 @@
-/*! Flocking 0.2.0-dev, Copyright 2016 Colin Clark | flockingjs.org */
+/*! Flocking 0.2.0-dev, Copyright 2017 Colin Clark | flockingjs.org */
 
 // -*- mode: javascript; tab-width: 2; indent-tabs-mode: nil; -*-
 //------------------------------------------------------------------------------
@@ -2445,6 +2445,10 @@ var fluid = fluid || require("infusion"),
                     interconnect: 0
                 }
             }
+        },
+
+        listeners: {
+            "onDestroy.reset": "{that}.reset()"
         }
     });
 
@@ -2693,10 +2697,6 @@ var fluid = fluid || require("infusion"),
                 "flock.nodeList.clearAll({that}.nodeList)",
                 "{busManager}.reset()",
                 "fluid.clear({that}.buffers)"
-            ],
-
-            onDestroy: [
-                "{that}.reset()"
             ]
         }
     });
@@ -3993,23 +3993,11 @@ var fluid = fluid || require("infusion"),
 
         distributeOptions: [
             {
-                source: "{that}.options.childListeners",
-                removeSource: true,
-                target: "{that fluid.component}.options.listeners"
-            },
-            {
                 source: "{that}.options.synthListeners",
                 removeSource: true,
                 target: "{that flock.synth}.options.listeners"
             }
         ],
-
-        childListeners: {
-            // TODO: This is likely unnecessary and quite possibly error-prone.
-            "{band}.events.onDestroy": {
-                func: "{that}.destroy"
-            }
-        },
 
         synthListeners: {
             "{band}.events.onPlay": {
@@ -5606,8 +5594,16 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.scheduler.clock", {
         gradeNames: ["fluid.component"],
 
+        invokers: {
+            end: "fluid.mustBeOverridden"
+        },
+
         events: {
             tick: null
+        },
+
+        listeners: {
+            "onDestroy.end": "{that}.end()"
         }
     });
 
@@ -5774,6 +5770,13 @@ var fluid = fluid || require("infusion"),
             onCreate: {
                 funcName: "flock.scheduler.webWorkerClock.init",
                 args: ["{that}"]
+            },
+
+            "onDestroy.clearAllScheduled": "{that}.clearAll",
+
+            "onDestroy.endWorker": {
+                priority: "after:clearAllScheduled",
+                func: "{that}.end"
             }
         },
 
@@ -5940,7 +5943,7 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onClearAll: [
+            "onClearAll.clearClock": [
                 "{that}.clock.clearAll()"
             ]
         }
@@ -6325,8 +6328,7 @@ var fluid = fluid || require("infusion"),
 
         listeners: {
             onCreate: "{that}.schedule({that}.options.score)",
-            onEnd: "{that}.clearAll",
-            onDestroy: "{that}.end()"
+            onEnd: "{that}.clearAll"
         }
     });
 
@@ -8202,6 +8204,7 @@ var fluid = fluid || require("infusion"),
 
             onCreateScriptProcessor: null,
             onConnect: null,
+            onDisconnectNodes: null,
             onDisconnect: null
         },
 
@@ -8239,7 +8242,7 @@ var fluid = fluid || require("infusion"),
                 "{that}.disconnect()"
             ],
 
-            onDisconnect: [
+            onDisconnectNodes: [
                 {
                     "this": "{merger}.node",
                     method: "disconnect",
@@ -8257,12 +8260,17 @@ var fluid = fluid || require("infusion"),
                 }
             ],
 
+            "onDisconnect.onDisconnectNodes": {
+                 func: "{that}.events.onDisconnectNodes.fire",
+            },
+
             onReset: [
                 "{that}.removeAllInputs()",
                 "{that}.events.onCreateScriptProcessor.fire()"
             ],
 
             onDestroy: [
+                "{that}.events.onDisconnectNodes.fire()",
                 "{that}.removeAllInputs()",
                 "flock.webAudio.nativeNodeManager.disconnectOutput({that})"
             ]
@@ -8422,7 +8430,9 @@ var fluid = fluid || require("infusion"),
                     func: "{that}.applier.change",
                     args: ["isGenerating", false]
                 }
-            ]
+            ],
+
+            "onDestroy.unbindAudioProcess": "{that}.unbindAudioProcess()"
         }
     });
 

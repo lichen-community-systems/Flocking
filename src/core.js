@@ -1046,6 +1046,10 @@ var fluid = fluid || require("infusion"),
                     interconnect: 0
                 }
             }
+        },
+
+        listeners: {
+            "onDestroy.reset": "{that}.reset()"
         }
     });
 
@@ -1294,10 +1298,6 @@ var fluid = fluid || require("infusion"),
                 "flock.nodeList.clearAll({that}.nodeList)",
                 "{busManager}.reset()",
                 "fluid.clear({that}.buffers)"
-            ],
-
-            onDestroy: [
-                "{that}.reset()"
             ]
         }
     });

@@ -80,7 +80,9 @@ var fluid = fluid || require("infusion"),
                     func: "{that}.applier.change",
                     args: ["isGenerating", false]
                 }
-            ]
+            ],
+
+            "onDestroy.unbindAudioProcess": "{that}.unbindAudioProcess()"
         }
     });
 

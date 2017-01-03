@@ -70,7 +70,8 @@ fluid.defaults("flock.nodejs.outputManager", {
         },
 
         "onDestroy.stopGenerating": {
-            func: "{that}.stop"
+            funcName: "flock.nodejs.outputManager.stopGeneratingSamples",
+            args: ["{that}"]
         },
 
         "onDestroy.close": {
