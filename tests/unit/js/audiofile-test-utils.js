@@ -1,3 +1,11 @@
+/*!
+* Flocking Audio File Test Utilities
+* http://github.com/colinbdclark/flocking
+*
+* Copyright 2012-2017, Colin Clark
+* Dual licensed under the MIT or GPL Version 2 licenses.
+*/
+
 /*global require*/
 
 var fluid = fluid || require("infusion"),
@@ -9,7 +17,6 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.test.audioFile");
 
-    var environment = flock.silentEnviro();
     var $ = fluid.registerNamespace("jQuery");
     var QUnit = fluid.registerNamespace("QUnit");
 
@@ -62,28 +69,25 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    flock.test.audioFile.testDecoder = function (configs) {
-        var makeTester = function (config) {
-            return function () {
-                flock.audio.decode({
-                    src: config.src,
-                    sampleRate: environment.audioSystem.model.rates.audio,
-                    decoder: config.decoder,
-                    success: function (decoded) {
-                        flock.test.audioFile.testTriangleBuffer(decoded,
-                            environment.audioSystem.model.rates.audio);
-                        QUnit.start();
-                    }
-                });
-            };
-        };
+    flock.test.audioFile.testDecoderConfig = function (config, module) {
+        QUnit.asyncTest("Decode " + config.name, function () {
+            flock.audio.decode({
+                src: config.src,
+                sampleRate: module.environment.audioSystem.model.rates.audio,
+                decoder: config.decoder,
+                success: function (decoded) {
+                    flock.test.audioFile.testTriangleBuffer(decoded,
+                        module.environment.audioSystem.model.rates.audio);
+                    QUnit.start();
+                }
+            });
+        });
+    };
 
-        var i, config, tester;
-        for (i = 0; i < configs.length; i++) {
-            config = configs[i];
-            tester = makeTester(config);
-            QUnit.asyncTest("Decode " + config.name, tester);
-        }
+    flock.test.audioFile.testDecoder = function (configs, module) {
+        fluid.each(configs, function (config) {
+            flock.test.audioFile.testDecoderConfig(config, module);
+        });
     };
 
     flock.test.audioFile.drawBuffer = function (buffer, options) {

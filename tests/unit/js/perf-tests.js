@@ -1,8 +1,8 @@
 /*!
-* Flocking - Creative audio synthesis for the Web!
+* Flocking UGen Performance Tests
 * http://github.com/colinbdclark/flocking
 *
-* Copyright 2011, Colin Clark
+* Copyright 2011-2017, Colin Clark
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
@@ -17,9 +17,9 @@ var fluid = fluid || require("infusion"),
 
     var QUnit = fluid.registerNamespace("QUnit");
 
-    var environment = flock.silentEnviro();
-
-    QUnit.module("flock.ugen.value performance tests");
+    flock.test.module({
+        name: "flock.ugen.value performance tests"
+    });
 
     // TODO: Normalize this with the real node evaluation algorithm in Synth (i.e. break it out and reuse it.)
     var gen = function (ugens, duration) {
@@ -83,7 +83,9 @@ var fluid = fluid || require("infusion"),
             "Generating and outputting 1 second of stereo signal from flock.ugen.value should take less than 5 ms.");
     });
 
-    QUnit.module("flock.ugen.sinOsc performance tests");
+    flock.test.module({
+        name: "flock.ugen.sinOsc performance tests"
+    });
 
     var checkUGen = function (ugenDef, expectedCeil, msg) {
         var ugen = flock.parse.ugenForDef(ugenDef),
@@ -220,6 +222,4 @@ var fluid = fluid || require("infusion"),
     };
 
     testConfigurations(testConfigs);
-
-    environment.destroy();
 }());

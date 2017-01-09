@@ -1,8 +1,8 @@
 /*!
-* Flocking - Creative audio synthesis for the Web!
+* Flocking Audio File Tests
 * http://github.com/colinbdclark/flocking
 *
-* Copyright 2012-2016, Colin Clark
+* Copyright 2012-2017, Colin Clark
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
@@ -16,13 +16,14 @@ var fluid = fluid || require("infusion"),
     "use strict";
 
     var atob = typeof (window) !== "undefined" ? window.atob : require("atob");
-    var environment = flock.silentEnviro();
     var QUnit = fluid.registerNamespace("QUnit");
     var $ = fluid.registerNamespace("jQuery");
 
     fluid.registerNamespace("flock.test.audioFile");
 
-    QUnit.module("flock.file.readBufferFromDataUrl() tests");
+    var module = flock.test.module({
+        name: "flock.file.readBufferFromDataUrl() tests"
+    });
 
     var expectedUnencoded = atob(flock.test.audio.b64Int16WAVData),
         expectedArrayBuffer = flock.file.stringToBuffer(expectedUnencoded),
@@ -105,7 +106,9 @@ var fluid = fluid || require("infusion"),
     });
 
 
-    QUnit.module("flock.audio.decode() Web Audio API decoder tests");
+    module = flock.test.module({
+        name: "flock.audio.decode() Web Audio API decoder tests"
+    });
 
     var eightBitSampleSize = 42;
     flock.test.audioFile.testDecoder([
@@ -113,12 +116,13 @@ var fluid = fluid || require("infusion"),
             name: "int 16 WAV file",
             bitDepth: 16,
             dataSize: eightBitSampleSize * 2,
-            src: flock.test.audio.triangleInt16WAV,
-            sampleRate: environment.audioSystem.model.rates.audio
+            src: flock.test.audio.triangleInt16WAV
         }
-    ]);
+    ], module);
 
-    QUnit.module("Audio encoding");
+    module = flock.test.module({
+        name: "Audio encoding"
+    });
 
     QUnit.test("flock.audio.interleave", function () {
         var bufDesc = flock.bufferDesc.fromChannelArray([
@@ -244,13 +248,13 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.test.audioFile.testEncodeDecodeForFormat = function (format, fileSpec) {
-        var currentSampleRate = environment.audioSystem.model.rates.audio;
-
         var testName = "Decode a " + fileSpec.sampleRate + " .wav file, " +
-            "encode in " + format + " format at the current sample rate (" +
-            currentSampleRate + "), then decode it again.";
+            "encode in " + format +
+            " format at the current sample rate, then decode it again.";
 
         QUnit.asyncTest(testName, function () {
+            var currentSampleRate = module.environment.audioSystem.model.rates.audio;
+
             flock.test.audioFile.encodeDecode(fileSpec.fileName,
                 currentSampleRate, format);
         });

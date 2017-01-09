@@ -2,7 +2,7 @@
  * Flocking Core Utilities Tests
  * http://github.com/colinbdclark/flocking
  *
- * Copyright 2011-2015, Colin Clark
+ * Copyright 2011-2017, Colin Clark
  * Dual licensed under the MIT or GPL Version 2 licenses.
  */
 
@@ -22,6 +22,8 @@ var fluid = fluid || require("infusion"),
     QUnit.module("Utility tests");
 
     QUnit.test("flock.isIterable()", function () {
+        QUnit.expect(9);
+
         var iterable = [
             {
                 val: ["cat", "dog"],
@@ -75,10 +77,11 @@ var fluid = fluid || require("infusion"),
         fluid.each(notIterable, function (testSpec) {
             QUnit.ok(!flock.isIterable(testSpec.val), testSpec.msg);
         });
-
     });
 
     QUnit.test("flock.parseMidiString", function () {
+        QUnit.expect(8);
+
         function runMidiStringTest(testSpec) {
             var actual = flock.parseMidiString(testSpec.note);
             QUnit.deepEqual(actual, testSpec.expected, testSpec.name);

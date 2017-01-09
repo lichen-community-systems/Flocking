@@ -1,8 +1,8 @@
 /*!
- * Flocking - Creative audio synthesis for the Web!
+ * Flocking Buffer Tests
  * http://github.com/colinbdclark/flocking
  *
- * Copyright 2015, Colin Clark
+ * Copyright 2015-2017, Colin Clark
  * Dual licensed under the MIT or GPL Version 2 licenses.
  */
 
@@ -19,15 +19,8 @@ var fluid = fluid || require("infusion"),
 
     fluid.registerNamespace("flock.test.buffer");
 
-    var environment;
-
-    QUnit.module("Buffers", {
-        setup: function () {
-            environment = flock.silentEnviro();
-        },
-        teardown: function () {
-            environment.destroy();
-        }
+    flock.test.module({
+        name: "Buffers"
     });
 
     var unwrappedSampleData = new Float32Array([1, 2, 3, 4, 5]);

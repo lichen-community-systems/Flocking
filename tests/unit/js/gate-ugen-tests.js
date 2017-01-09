@@ -1,8 +1,8 @@
 /*!
-* Flocking Gate Unit Generator Unit Tests
+* Flocking Gate Unit Generator Tests
 * http://github.com/colinbdclark/flocking
 *
-* Copyright 2011-2015, Colin Clark
+* Copyright 2011-2017, Colin Clark
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
@@ -17,7 +17,7 @@ var fluid = fluid || require("infusion"),
 
     var QUnit = fluid.registerNamespace("QUnit");
 
-    var environment = flock.init(),
+    var environment = flock.silentEnviro(),
         sampleRate = environment.audioSystem.model.rates.audio;
 
     QUnit.module("flock.ugen.gate() tests");

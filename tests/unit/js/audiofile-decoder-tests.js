@@ -1,8 +1,8 @@
 /*!
-* Flocking - Creative audio synthesis for the Web!
+* Flocking Audio File Decoder Tests
 * http://github.com/colinbdclark/flocking
 *
-* Copyright 2012, Colin Clark
+* Copyright 2012-2017, Colin Clark
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
@@ -16,11 +16,11 @@ var fluid = fluid || require("infusion"),
     "use strict";
 
     var QUnit = fluid.registerNamespace("QUnit");
-
-    flock.init();
     fluid.registerNamespace("flock.test");
 
-    QUnit.module("flock.audio.decode.chunked() tests");
+    var module = flock.test.module({
+        name: "flock.audio.decode.chunked() tests"
+    });
 
     var audioFormatTestSpecs = [
         {
@@ -99,11 +99,7 @@ var fluid = fluid || require("infusion"),
         });
     };
 
-    var i, spec;
-    for (i = 0; i < audioFormatTestSpecs.length; i++) {
-        spec = audioFormatTestSpecs[i];
-        testAudioFileFormat(spec);
-    }
+    fluid.each(audioFormatTestSpecs, testAudioFileFormat);
 
 
     var eightBitSampleSize = 42;
@@ -157,8 +153,11 @@ var fluid = fluid || require("infusion"),
         }
     ];
 
-    QUnit.module("flock.audio.decode() mixed decoder tests");
-    flock.test.audioFile.testDecoder(decoderTestSpecs);
+    module = flock.test.module({
+        name: "flock.audio.decode() mixed decoder tests"
+    });
+
+    flock.test.audioFile.testDecoder(decoderTestSpecs, module);
 
     var specifyDecoderType = function (decoderType, specs) {
         var typedSpecs = fluid.copy(specs);
@@ -169,16 +168,21 @@ var fluid = fluid || require("infusion"),
         return typedSpecs;
     };
 
-    QUnit.module("flock.audio.decode() pure JavaScript sync decoder tests");
+    module = flock.test.module({
+        name: "flock.audio.decode() pure JavaScript sync decoder tests"
+    });
+
     flock.test.audioFile.testDecoder(specifyDecoderType(flock.audio.decode.sync,
-        decoderTestSpecs));
+        decoderTestSpecs), module);
 
     // Currently, there is no asynchronous decoding on Node.js,
     // hence this test is only run if we're in a browser.
     if (flock.platform.isBrowser) {
-        QUnit.module("flock.audio.decode() pure JavaScript async decoder tests");
-        flock.test.audioFile.testDecoder(specifyDecoderType(flock.audio.decode.workerAsync,
-            decoderTestSpecs));
-    }
+        module = flock.test.module({
+            name: "flock.audio.decode() pure JavaScript async decoder tests"
+        });
 
+        flock.test.audioFile.testDecoder(specifyDecoderType(flock.audio.decode.workerAsync,
+            decoderTestSpecs), module);
+    }
 }());

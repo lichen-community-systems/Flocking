@@ -1,8 +1,8 @@
 /*!
-* Flocking - Creative audio synthesis for the Web!
+* Flocking Test Utilities
 * http://github.com/colinbdclark/flocking
 *
-* Copyright 2011, Colin Clark
+* Copyright 2011-2017, Colin Clark
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
@@ -22,6 +22,10 @@ var fluid = fluid || require("infusion"),
     fluid.registerNamespace("flock.test");
 
     flock.test.silentBlock64 = new Float32Array(64);
+
+    flock.test.createStereoBuffer = function (blockSize) {
+        return new Float32Array(blockSize * 2);
+    };
 
     flock.test.pathForResource = function (path) {
         return flock.platform.isBrowser ? path : __dirname + "/" + path;
@@ -708,4 +712,68 @@ var fluid = fluid || require("infusion"),
         }
     };
 
+    fluid.defaults("flock.test.module", {
+        gradeNames: "fluid.component",
+
+        name: "Unnamed module",
+
+        distributeOptions: {
+            "enviroOptions": {
+                source: "{that}.options.enviroOptions",
+                target: "{that environment}.options"
+            }
+        },
+
+        environmentOptions: {},
+
+        components: {
+            environment: {
+                createOnEvent: "onSetup",
+                type: "flock.silentEnviro",
+                options: {
+                    events: {
+                        onDestroy: "{module}.events.onTeardown"
+                    }
+                }
+            }
+        },
+
+        events: {
+            onSetup: null,
+            onTeardown: null
+        },
+
+        listeners: {
+            "onCreate.registerModule": "flock.test.module.register({that})"
+        }
+    });
+
+    flock.test.module.register = function (that) {
+        QUnit.module(that.options.name, {
+            setup: that.events.onSetup.fire,
+            teardown: that.events.onTeardown.fire
+        });
+    };
+
+
+    fluid.defaults("flock.test.testEnvironment", {
+        gradeNames: "fluid.test.testEnvironment",
+
+        audioSystemOptions: {},
+
+        components: {
+            environment: {
+                type: "flock.silentEnviro",
+                options: {
+                    components: {
+                        audioSystem: {
+                            options: {
+                                model: "{testEnvironment}.options.audioSystemOptions"
+                            }
+                        }
+                    }
+                }
+            },
+        }
+    });
 }());
