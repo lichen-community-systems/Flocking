@@ -17,104 +17,132 @@ var fluid = fluid || require("infusion"),
 
     var QUnit = fluid.registerNamespace("QUnit");
 
-    var environment = flock.silentEnviro(),
-        sampleRate = environment.audioSystem.model.rates.audio;
+    fluid.defaults("flock.test.ugen.delay", {
+        gradeNames: "flock.test.module",
 
-    QUnit.test("flock.ugen.delay", function () {
-        var sourceBuffer = flock.test.ascendingBuffer(64, 1),
-            sampGenCount = 0,
-            incrementingMock = {
-                ugen: "flock.test.ugen.mock",
-                options: {
-                    buffer: sourceBuffer,
-                    gen: function (that, numSamps) {
-                        var i;
-                        for (i = 0; i < numSamps; i++) {
-                            that.output[i] = that.options.buffer[i] + sampGenCount;
-                        }
-                        sampGenCount += numSamps;
-                    }
-                }
-            },
-            delayLineDef = {
-                id: "delay",
-                ugen: "flock.ugen.delay",
-                inputs: {
-                    source: incrementingMock,
-                    time: 64 / sampleRate
-                }
-            };
+        name: "flock.ugen.delay",
 
-        var delaySynth = flock.synth({
-            synthDef:delayLineDef
-        });
-        var delay = delaySynth.nodeList.namedNodes.delay;
-        flock.evaluate.synth(delaySynth);
-
-        // First block should be silent.
-        var expected = new Float32Array(64);
-        QUnit.deepEqual(delay.output, expected,
-            "With a delay time equal to the length of a block, the first output block should be silent.");
-
-        // Second should contain the first block's contents.
-        flock.evaluate.synth(delaySynth);
-        expected = flock.test.ascendingBuffer(64, 1);
-        QUnit.deepEqual(delay.output, expected,
-            "The delay's second block should contain the source's first block of samples.");
-
-        // Third block should be similarly delayed.
-        flock.evaluate.synth(delaySynth);
-        expected = flock.test.ascendingBuffer(64, 65);
-        QUnit.deepEqual(delay.output, expected,
-            "The delay's third block should contain the source's second block of samples.");
+        listeners: {
+            onCreate: {
+                funcName: "flock.test.ugen.delay.runTests",
+                args: "{that}"
+            }
+        }
     });
 
+    flock.test.ugen.delay.runTests = function (module) {
+        QUnit.test("flock.ugen.delay", function () {
+            var sampleRate = module.environment.audioSystem.model.rates.audio;
 
-    QUnit.module("flock.ugen.filter tests");
+            var sourceBuffer = flock.test.ascendingBuffer(64, 1),
+                sampGenCount = 0,
+                incrementingMock = {
+                    ugen: "flock.test.ugen.mock",
+                    options: {
+                        buffer: sourceBuffer,
+                        gen: function (that, numSamps) {
+                            var i;
+                            for (i = 0; i < numSamps; i++) {
+                                that.output[i] = that.options.buffer[i] + sampGenCount;
+                            }
+                            sampGenCount += numSamps;
+                        }
+                    }
+                },
+                delayLineDef = {
+                    id: "delay",
+                    ugen: "flock.ugen.delay",
+                    inputs: {
+                        source: incrementingMock,
+                        time: 64 / sampleRate
+                    }
+                };
 
-    var filterInputValues = [
-        {
-            freq: 440,
-            q: 1.0
-        },
-        {
-            freq: 880,
-            q: 0.5
-        },
-        {
-            freq: 22050,
-            q: 0.1
-        },
-        {
-            freq: 440,
-            q: 10
-        },
-        {
-            freq: 880,
-            q: 20
-        },
-        {
-            freq: 22050,
-            q: 100
+            var delaySynth = flock.synth({
+                synthDef: delayLineDef
+            });
+            var delay = delaySynth.nodeList.namedNodes.delay;
+            flock.evaluate.synth(delaySynth);
+
+            // First block should be silent.
+            var expected = new Float32Array(64);
+            QUnit.deepEqual(delay.output, expected,
+                "With a delay time equal to the length of a block, the first output block should be silent.");
+
+            // Second should contain the first block's contents.
+            flock.evaluate.synth(delaySynth);
+            expected = flock.test.ascendingBuffer(64, 1);
+            QUnit.deepEqual(delay.output, expected,
+                "The delay's second block should contain the source's first block of samples.");
+
+            // Third block should be similarly delayed.
+            flock.evaluate.synth(delaySynth);
+            expected = flock.test.ascendingBuffer(64, 65);
+            QUnit.deepEqual(delay.output, expected,
+                "The delay's third block should contain the source's second block of samples.");
+        });
+    };
+
+    flock.test.ugen.delay();
+
+
+    fluid.defaults("flock.test.ugen.filter", {
+        gradeNames: "flock.test.module",
+
+        name: "flock.ugen.filter tests",
+
+        filterInputValues: [
+            {
+                freq: 440,
+                q: 1.0
+            },
+            {
+                freq: 880,
+                q: 0.5
+            },
+            {
+                freq: 22050,
+                q: 0.1
+            },
+            {
+                freq: 440,
+                q: 10
+            },
+            {
+                freq: 880,
+                q: 20
+            },
+            {
+                freq: 22050,
+                q: 100
+            }
+        ],
+
+        listeners: {
+            onCreate: {
+                funcName: "flock.test.ugen.filter.runTests",
+                args: "{that}"
+            }
         }
-    ];
+    })
 
-    var checkCoefficient = function (coefficient) {
+
+    flock.test.ugen.filter.checkCoefficient = function (coefficient) {
         QUnit.ok(!isNaN(coefficient), "The coefficient should never be NaN");
         QUnit.ok(coefficient !== Infinity, "The coefficient should never be Infinity");
         QUnit.ok(coefficient !== Number.NEGATIVE_INFINITY, "The coefficient should never be negative Infinity");
         //ok(coefficient >= -1.0 && coefficient <= 1.0, "The coefficient should be in the range of -1.0 to 1.0");
     };
 
-    var checkCoefficients = function (model) {
+    flock.test.ugen.filter.checkCoefficients = function (model) {
         fluid.each(model.coeffs, function (coefficientArray) {
             fluid.each(coefficientArray, function (coefficient) {
-                checkCoefficient(coefficient);
+                flock.test.ugen.filter.checkCoefficient(coefficient);
             });
         });
     };
 
-    var forEachFilterType = function (fn) {
+    flock.test.ugen.filter.forEachFilterType = function (fn) {
         fluid.each(flock.coefficients, function (recipe, recipeName) {
             fluid.each(recipe, function (calculator, filterType) {
                 // TODO: This suggests that the payload for filter recipes isn't quite right.
@@ -126,31 +154,36 @@ var fluid = fluid || require("infusion"),
         });
     };
 
-    var testEachFilterInputValue = function (name, fn) {
+    flock.test.ugen.filter.testEachFilterInputValue = function (module, name, fn) {
         QUnit.test(name, function () {
-            fluid.each(filterInputValues, function (inputs) {
-                fn(inputs);
+            fluid.each(module.options.filterInputValues, function (inputs) {
+                fn(inputs, module);
             });
         });
     };
 
     // Test all coefficient recipes.
-    forEachFilterType(function (recipeName, receipe, filterType, fn) {
-        var name = "flock.coefficients." + recipeName + "." + filterType;
+    flock.test.ugen.filter.runTests = function (module) {
+        flock.test.ugen.filter.forEachFilterType(function (recipeName, receipe, filterType, fn) {
+            var name = "flock.coefficients." + recipeName + "." + filterType;
 
-        testEachFilterInputValue(name, function (inputs) {
-            var model = {
-                coeffs: {
-                    a: new Float32Array(2),
-                    b: new Float32Array(3)
-                },
-                sampleRate: sampleRate
-            };
+            flock.test.ugen.filter.testEachFilterInputValue(module, name, function (inputs, module) {
+                var model = {
+                    coeffs: {
+                        a: new Float32Array(2),
+                        b: new Float32Array(3)
+                    },
+                    sampleRate: module.environment.audioSystem.model.rates.audio
 
-            fn(model, inputs.freq, inputs.q);
-            checkCoefficients(model);
+                };
+
+                fn(model, inputs.freq, inputs.q);
+                flock.test.ugen.filter.checkCoefficients(model);
+            });
         });
-    });
+    };
+
+    flock.test.ugen.filter();
 
     // Test the flock.ugen.filter unit generator with all filter types and a set of generic input values.
     /*
@@ -181,6 +214,4 @@ var fluid = fluid || require("infusion"),
         });
     });
     */
-
-    environment.destroy();
 }());
