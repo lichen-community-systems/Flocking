@@ -79,8 +79,8 @@ var fluid = fluid || require("infusion"),
         });
 
         var avg = runTimingTest(synth.nodeList.nodes, 50);
-        assertCeiling(avg, 5,
-            "Generating and outputting 1 second of stereo signal from flock.ugen.value should take less than 5 ms.");
+        assertCeiling(avg, 7,
+            "Generating and outputting 1 second of stereo signal from flock.ugen.value should take less than 7 ms.");
     });
 
     flock.test.module({

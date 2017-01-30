@@ -6,7 +6,7 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, Float32Array*/
+/*global require*/
 
 var fluid = fluid || require("infusion"),
     jqUnit = jqUnit || fluid.require("node-jqunit"),
@@ -15,12 +15,11 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    var QUnit = fluid.registerNamespace("QUnit"),
-        $ = fluid.registerNamespace("jQuery");
+    var QUnit = fluid.registerNamespace("QUnit");
 
     fluid.registerNamespace("flock.test.ugen.bufferDuration");
 
-    module = flock.test.module({
+    var module = flock.test.module({
         name: "flock.ugen.bufferDuration tests",
 
         enviroOptions: {

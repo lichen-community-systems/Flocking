@@ -6,7 +6,7 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, Float32Array*/
+/*global require*/
 
 var fluid = fluid || require("infusion"),
     jqUnit = jqUnit || fluid.require("node-jqunit"),
