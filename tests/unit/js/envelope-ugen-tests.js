@@ -16,7 +16,6 @@ var fluid = fluid || require("infusion"),
     "use strict";
 
     var QUnit = fluid.registerNamespace("QUnit");
-    var $ = fluid.registerNamespace("jQuery");
 
     /*****************************
      * Line Unit Generator Tests *

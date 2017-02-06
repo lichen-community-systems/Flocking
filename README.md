@@ -78,14 +78,14 @@ Documentation and Demos
 Getting Started
 ---------------
 
-The latest stable release of Flocking is version 0.1.2. It can be downloaded from the [Flocking releases](https://github.com/colinbdclark/Flocking/releases) page.
+The latest stable release of Flocking can be downloaded from the [Flocking releases](https://github.com/colinbdclark/Flocking/releases) page.
 
 Concatenated and minified Flocking builds, suitable for development and production respectively,
 are included in the [dist directory](dist/). Flocking can also be built manually using Grunt.
 
 Here's how to include Flocking's development file in your HTML page:
 
-    <!-- This includes Flocking and all its dependencies, including jQuery 2.1.3 and Infusion -->
+    <!-- This includes Flocking and all its dependencies, including jQuery 2.x and Infusion -->
     <script src="flocking/dist/flocking-all.js"></script>
 
 

@@ -124,7 +124,7 @@ var fluid = fluid || require("infusion"),
                 args: "{that}"
             }
         }
-    })
+    });
 
 
     flock.test.ugen.filter.checkCoefficient = function (coefficient) {
