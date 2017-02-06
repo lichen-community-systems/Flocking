@@ -57,8 +57,16 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.scheduler.clock", {
         gradeNames: ["fluid.component"],
 
+        invokers: {
+            end: "fluid.mustBeOverridden"
+        },
+
         events: {
             tick: null
+        },
+
+        listeners: {
+            "onDestroy.end": "{that}.end()"
         }
     });
 
@@ -225,6 +233,13 @@ var fluid = fluid || require("infusion"),
             onCreate: {
                 funcName: "flock.scheduler.webWorkerClock.init",
                 args: ["{that}"]
+            },
+
+            "onDestroy.clearAllScheduled": "{that}.clearAll",
+
+            "onDestroy.endWorker": {
+                priority: "after:clearAllScheduled",
+                func: "{that}.end"
             }
         },
 
@@ -391,7 +406,7 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onClearAll: [
+            "onClearAll.clearClock": [
                 "{that}.clock.clearAll()"
             ]
         }
@@ -776,8 +791,7 @@ var fluid = fluid || require("infusion"),
 
         listeners: {
             onCreate: "{that}.schedule({that}.options.score)",
-            onEnd: "{that}.clearAll",
-            onDestroy: "{that}.end()"
+            onEnd: "{that}.clearAll"
         }
     });
 

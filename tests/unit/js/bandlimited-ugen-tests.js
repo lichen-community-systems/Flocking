@@ -1,113 +1,140 @@
 /*!
-* Flocking - Creative audio synthesis for the Web!
+* Flocking Bandlimited Unit Generator Tests
 * http://github.com/colinbdclark/flocking
 *
-* Copyright 2015, Colin Clark
+* Copyright 2015-2017, Colin Clark
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, module, test*/
+/*global require*/
 
 var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
     flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
 
+    var QUnit = fluid.registerNamespace("QUnit");
+
     fluid.registerNamespace("flock.test.blit");
 
-    var environment = flock.silentEnviro();
+    fluid.defaults("flock.tests.blit.tester", {
+        gradeNames: "fluid.component",
 
-    flock.test.blit.baseTests = [
-        {
-            name: "440 freq",
-            def: {
-                freq: 440
-            }
-        },
-        {
-            name: "10000 freq",
-            def: {
-                freq: 10000,
-                leakRate: 0.15
-            }
-        },
-        {
-            name: "freq modulated",
-            def: {
-                freq: {
-                    ugen: "flock.ugen.sinOsc",
-                    freq: 2,
-                    mul: 440,
-                    add: 444
+        baseTests: [
+            {
+                name: "440 freq",
+                def: {
+                    freq: 440
+                }
+            },
+            {
+                name: "10000 freq",
+                def: {
+                    freq: 10000,
+                    leakRate: 0.15
+                }
+            },
+            {
+                name: "freq modulated",
+                def: {
+                    freq: {
+                        ugen: "flock.ugen.sinOsc",
+                        freq: 2,
+                        mul: 440,
+                        add: 444
+                    }
                 }
             }
-        }
-    ];
+        ],
 
-    flock.test.blit.impulseAssertions = [
-        {
-            funcName: "flock.test.arrayNotNaN",
-            msg: "There should be no NaN values"
+        impulseAssertions: [
+            {
+                funcName: "flock.test.arrayNotNaN",
+                msg: "There should be no NaN values"
+            },
+            {
+                funcName: "flock.test.arrayWithinRange",
+                args: [-1, 1],
+                msg: "The array should be within the appropriate amplitude range."
+            }
+        ],
+
+        waveformAssertions: [
+            {
+                funcName: "flock.test.unbrokenAudioSignalInRange",
+                args: [-1, 1, null],
+                msg: "The array should be within the appropriate amplitude range."
+            }
+        ],
+
+        continuousWaveformAssertions: [
+            {
+                funcName: "flock.test.continuousArray",
+                args: [0.5],
+                msg: "The array should be continuous."
+            }
+        ],
+
+        allContinuousWaveformAssertions: {
+            expander: {
+                "this": "{that}.options.waveformAssertions",
+                method: "concat",
+                args: ["{that}.options.continuousWaveformAssertions"]
+            }
         },
-        {
-            funcName: "flock.test.arrayWithinRange",
-            args: [-1, 1],
-            msg: "The array should be within the appropriate amplitude range."
-        }
-    ];
 
-    flock.test.blit.waveformAssertions = [
-        {
-            funcName: "flock.test.unbrokenAudioSignalInRange",
-            args: [-1, 1, null],
-            msg: "The array should be within the appropriate amplitude range."
-        }
-    ];
+        typeSpecificTests: {
+            "flock.ugen.blit": {
+                assertions: "{that}.options.impulseAssertions",
 
-    flock.test.blit.continuousWaveformAssertions = flock.test.blit.waveformAssertions.concat([
-        {
-            funcName: "flock.test.continuousArray",
-            args: [0.5],
-            msg: "The array should be continuous."
-        }
-    ]);
-
-    flock.test.blit.typeSpecificTests = {
-        "flock.ugen.blit": {
-            assertions: flock.test.blit.impulseAssertions,
-
-            additionalTests: [
-                {
-                    name: "0 freq",
-                    def: {
-                        freq: 0
-                    },
-                    numBlocks: 2,
-                    assertions: [
-                        {
-                            funcName: "flock.test.arrayNotNaN",
-                            msg: "There should be no NaN values"
+                additionalTests: [
+                    {
+                        name: "0 freq",
+                        def: {
+                            freq: 0
                         },
-                        {
-                            funcName: "deepEqual",
-                            args: [new Float32Array(environment.audioSystem.model.blockSize * 2)]
-                        }
-                    ]
-                }
-            ]
+                        numBlocks: 2,
+                        assertions: [
+                            {
+                                funcName: "flock.test.arrayNotNaN",
+                                msg: "There should be no NaN values"
+                            },
+                            {
+                                funcName: "deepEqual",
+                                args: [
+                                    {
+                                        expander: {
+                                            funcName: "flock.test.createStereoBuffer",
+                                            args: [64]
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            "flock.ugen.saw": {
+                assertions: "{that}.options.waveformAssertions"
+            },
+            "flock.ugen.square": {
+                assertions: "{that}.options.waveformAssertions"
+            },
+            "flock.ugen.tri": {
+                assertions: "{that}.options.waveformAssertions"
+            }
         },
 
-        "flock.ugen.saw": {
-            assertions: flock.test.blit.waveformAssertions
-        },
-        "flock.ugen.square": {
-            assertions: flock.test.blit.waveformAssertions
-        },
-        "flock.ugen.tri": {
-            assertions: flock.test.blit.continuousWaveformAssertions
+        listeners: {
+            "onCreate.runTests": {
+                funcName: "flock.test.blit.runTests",
+                args: ["{that}.options.baseTests", "{that}.options.typeSpecificTests"]
+            }
         }
-    };
+    });
+
 
     flock.test.blit.runAssertion = function (assertion, actual) {
         if (typeof assertion === "string") {
@@ -124,14 +151,12 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.test.blit.testAssertions = function (testSpec, actual) {
-        test(testSpec.name, function () {
-            fluid.each(testSpec.assertions, function (assertion) {
-                flock.test.blit.runAssertion(assertion, actual);
-            });
+        fluid.each(testSpec.assertions, function (assertion) {
+            flock.test.blit.runAssertion(assertion, actual);
         });
     };
 
-    flock.test.blit.generateOutput = function (synth, testSpec) {
+    flock.test.blit.generateOutput = function (synth, testSpec, environment) {
         // Create a buffer that can hold about a second's worth of audio.
         var blockSize = environment.audioSystem.model.blockSize,
             fullSize = blockSize * testSpec.numBlocks,
@@ -147,28 +172,33 @@ var fluid = fluid || require("infusion"),
         return actual;
     };
 
-    flock.test.blit.runTest = function (testSpec, ugenPath) {
-        testSpec = fluid.copy(testSpec);
+    flock.test.blit.runTest = function (testSpec, ugenPath, module) {
+        QUnit.test(testSpec.name, function () {
+            testSpec = fluid.copy(testSpec);
 
-        testSpec.numBlocks = testSpec.numBlocks || 750;
-        testSpec.def.id = "blit";
-        testSpec.def.ugen = ugenPath;
+            testSpec.numBlocks = testSpec.numBlocks || 750;
+            testSpec.def.id = "blit";
+            testSpec.def.ugen = ugenPath;
 
-        var synth = flock.synth({
-            synthDef: testSpec.def
+            var synth = flock.synth({
+                synthDef: testSpec.def
+            });
+            var actual = flock.test.blit.generateOutput(synth, testSpec, module.environment);
+            flock.test.blit.testAssertions(testSpec, actual);
         });
-        var actual = flock.test.blit.generateOutput(synth, testSpec);
-        flock.test.blit.testAssertions(testSpec, actual);
     };
 
     flock.test.blit.runTestModule = function (testSpecs, typeSpecificTestSpecs, ugenPath) {
-        module(ugenPath + " tests");
+        var module = flock.test.module({
+            name: ugenPath + " tests"
+        });
+
         fluid.each(testSpecs, function (testSpec) {
             if (!testSpec.assertions) {
                 testSpec.assertions = typeSpecificTestSpecs.assertions;
             }
 
-            flock.test.blit.runTest(testSpec, ugenPath);
+            flock.test.blit.runTest(testSpec, ugenPath, module);
         });
     };
 
@@ -182,5 +212,5 @@ var fluid = fluid || require("infusion"),
         });
     };
 
-    flock.test.blit.runTests(flock.test.blit.baseTests, flock.test.blit.typeSpecificTests);
+    flock.tests.blit.tester();
 }());

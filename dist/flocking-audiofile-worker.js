@@ -21,7 +21,8 @@ var flock = {};
 
     // TODO: Allow toggling of these files with a production concatenated build.
     importScripts(
-        "./flocking-audiofile-compatibility.js"
+        "./flocking-audiofile-compatibility.js",
+        "./flocking-audiofile-converters.js"
     );
 
     flock.audio.workerDecoder.sendBuffer = function (buffer, type) {

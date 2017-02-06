@@ -28,21 +28,27 @@
     "grunt-contrib-jshint": "~0.8.0",
     "grunt-contrib-uglify": "~0.3.2",
     "grunt-contrib-watch": "^0.6.1",
-    "sheep-benchmark": "colinbdclark/sheep.js"
+    "sheep-benchmark": "colinbdclark/sheep.js",
+    "node-jqunit": "1.1.4",
+    "requirejs": "2.3.2"
   },
   "dependencies": {
-    "jquery": "2.1.4",
-    "infusion": "2.0.0-dev.20160519T222603Z.754d2c6",
-    "codemirror-infusion": "2.1.0",
+    "jquery": "2.2.4",
+    "infusion": "2.0.0",
+    "codemirror-infusion": "2.2.0",
     "jsplumb": "1.7.9",
     "dagre": "0.7.4",
-    "normalize.css": "3.0.3"
+    "normalize.css": "3.0.3",
+    "atob": "2.0.3"
   },
   "optionalDependencies": {
     "speaker": "colinbdclark/node-speaker#mpg123-lower-latency",
     "midi": "0.9.5"
   },
-  "engines": {
-    "node": ">=0.10.x"
+  "scripts": {
+    "test": "npm run node-test && npm run browser-test",
+    "browser-test": "testem ci --file tests/unit/testem.json",
+    "node-test": "node tests/unit/nodejs/all-node-tests.js",
+    "linux-vm-test": "vagrant ssh -c 'cd /home/vagrant/sync/; DISPLAY=:0 npm test'"
   }
 }

@@ -1,20 +1,25 @@
 /*!
-* Flocking Random Unit Generator Unit Tests
+* Flocking Dynamics Unit Generator Tests
 * http://github.com/colinbdclark/flocking
 *
-* Copyright 2011-15, Colin Clark
+* Copyright 2011-2017, Colin Clark
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, QUnit*/
+/*global require*/
 
 var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
     flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
 
-    QUnit.module("Normalizer");
+    var QUnit = fluid.registerNamespace("QUnit");
+
+    var module = flock.test.module({
+        name: "Normalizer"
+    });
 
     QUnit.test("flock.ugen.normalize()", function () {
         var testBuffer = flock.test.ascendingBuffer(64, -31),
@@ -54,4 +59,6 @@ var fluid = fluid || require("infusion"),
         QUnit.deepEqual(normalizer.output, expected,
             "When the 'max' input is changed to 0.5, the signal should be normalized to 0.5");
     });
+
+    module.destroy();
 }());

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Example of Triggering a Flocking playBuffer Unit Generator with a Button</title>
+        <style type="text/css">
+            button {
+                width: 10em;
+                height: 5em;
+                margin: 2em;
+            }
+        </style>
+        <script src="../../../dist/flocking-all.js"></script>
+        <script src="../../../dist/flocking-audiofile-compatibility.js"></script>
+    </head>
+
+    <body>
+		<div class="left">
+    		<button id="play">Open Gate</button>
+    		<button id="pause">Close Gate</button>
+	    </div>
+
+        <script>
+		    "use strict";
+
+            // Initialize Flocking.
+            var environment = flock.init({
+                bufferSize: 512
+            });
+
+            // Instantiate a new synth.
+		    var mySynth = flock.synth({
+                synthDef: {
+                    id: "player",
+                    ugen: "flock.ugen.playBuffer",
+                    buffer: {
+                        id: "hockey",
+                        src: "hockey.aiff" // NOTE: A .wav file works fine.
+                    },
+                    speed: 1.0, // NOTE: At a speed of 0.99999, playback is fine.
+                    loop: 1.0,
+                    trigger: 0.0
+                }
+            });
+
+            // Bind the start, pause, and stop buttons.
+            document.querySelector("#play").addEventListener("click", function () {
+                if (!environment.model.isPlaying) {
+                    // The Flocking environment should be started as the result of
+                    // the user clicking play; this is required on iOS.
+                    // Other browsers will allow Flocking to be started at any time.
+                    environment.start();
+
+                    // Starting a synth will add it to the environment's list of
+                    // active nodes, causing it to make sound.
+                    mySynth.play();
+                }
+
+                mySynth.set({
+                    "player.trigger": 1.0,
+                    "player.end": 1.0
+                });
+            }, false);
+
+            document.querySelector("#pause").addEventListener("click", function () {
+                mySynth.set({
+                    "player.trigger": 0.0,
+                    "player.end": 0.0
+                });
+            }, false);
+        </script>
+    </body>
+</html>

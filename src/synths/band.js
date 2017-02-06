@@ -54,23 +54,11 @@ var fluid = fluid || require("infusion"),
 
         distributeOptions: [
             {
-                source: "{that}.options.childListeners",
-                removeSource: true,
-                target: "{that fluid.component}.options.listeners"
-            },
-            {
                 source: "{that}.options.synthListeners",
                 removeSource: true,
                 target: "{that flock.synth}.options.listeners"
             }
         ],
-
-        childListeners: {
-            // TODO: This is likely unnecessary and quite possibly error-prone.
-            "{band}.events.onDestroy": {
-                func: "{that}.destroy"
-            }
-        },
 
         synthListeners: {
             "{band}.events.onPlay": {

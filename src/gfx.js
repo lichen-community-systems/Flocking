@@ -19,18 +19,20 @@ var fluid = fluid || require("infusion"),
 
 (function () {
     "use strict";
-    
+
+    var $ = fluid.registerNamespace("jQuery");
+
     fluid.registerNamespace("flock.view");
-    
+
     // TODO: Infusionize.
     flock.view.scope = function (canvas, model) {
         var that = {
             model: model || {
                 values: []
             },
-            canvas: typeof (canvas) === "string" ? document.querySelector(canvas) : canvas
+            canvas: $(canvas)[0]
         };
-        
+
         that.refreshView = function () {
             var ctx = that.ctx,
                 h = that.model.height,
@@ -42,7 +44,7 @@ var fluid = fluid || require("infusion"),
                 i,
                 x,
                 y;
-        
+
             ctx.clearRect(0, 0, w, h);
             ctx.beginPath();
             for (i = 0; i < len; i++) {
@@ -52,13 +54,13 @@ var fluid = fluid || require("infusion"),
             }
             ctx.stroke();
         };
-        
+
         that.init = function () {
             that.ctx = that.canvas.getContext("2d");
             that.ctx.fillStyle = that.model.fill || that.ctx.fillStyle;
             that.ctx.strokeStyle = that.model.strokeColor || that.ctx.strokeStyle;
             that.ctx.lineWidth = that.model.strokeWidth || that.ctx.lineWidth;
-        
+
             that.model.min = that.model.min || -1.0;
             that.model.max = that.model.max || 1.0;
             that.model.height = that.canvas.height;
@@ -66,12 +68,39 @@ var fluid = fluid || require("infusion"),
             that.model.width = that.canvas.width;
             that.model.scaleX = that.model.scaleX || that.model.scale || 1.0;
             that.model.scaleY = that.model.scaleY || that.model.scale || 1.0;
-            
+
             that.refreshView();
         };
-        
+
         that.init();
         return that;
     };
-    
+
+
+    /**
+     * Returns a Canvas element with the buffer drawn in it using
+     * the flock.view.scope component.
+     *
+     * @param {Array-like} buffer the buffer to draw
+     * @param {Object} options configuration options
+     *                   - height the height of the canvas in pixels, defaults to 200px
+     *                   - width the width of the canvas in pixels, defaults to 1000px
+     */
+    flock.view.drawBuffer = function (buffer, o) {
+        o = o || {};
+        o.height = o.height || 200;
+        o.width = o.width || 1000;
+
+        var markup = fluid.stringTemplate(flock.view.drawBuffer.markupTemplate, o);
+        var canvas = $(markup);
+        flock.view.scope(canvas[0], {
+            values: buffer
+        });
+
+        return canvas;
+    };
+
+    flock.view.drawBuffer.markupTemplate = "<canvas height='%height' width='%width'></canvas>";
+
+
 }());

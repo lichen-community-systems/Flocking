@@ -149,6 +149,7 @@ var fluid = fluid || require("infusion"),
 
             onCreateScriptProcessor: null,
             onConnect: null,
+            onDisconnectNodes: null,
             onDisconnect: null
         },
 
@@ -186,7 +187,7 @@ var fluid = fluid || require("infusion"),
                 "{that}.disconnect()"
             ],
 
-            onDisconnect: [
+            onDisconnectNodes: [
                 {
                     "this": "{merger}.node",
                     method: "disconnect",
@@ -204,12 +205,17 @@ var fluid = fluid || require("infusion"),
                 }
             ],
 
+            "onDisconnect.onDisconnectNodes": {
+                 func: "{that}.events.onDisconnectNodes.fire",
+            },
+
             onReset: [
                 "{that}.removeAllInputs()",
                 "{that}.events.onCreateScriptProcessor.fire()"
             ],
 
             onDestroy: [
+                "{that}.events.onDisconnectNodes.fire()",
                 "{that}.removeAllInputs()",
                 "flock.webAudio.nativeNodeManager.disconnectOutput({that})"
             ]

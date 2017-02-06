@@ -6,18 +6,22 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global module, test, deepEqual, Float32Array, fluid, flock*/
+/*global require, Float32Array*/
+
+var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
+    flock = fluid.registerNamespace("flock");
 
 (function () {
-
     "use strict";
 
+    var QUnit = fluid.registerNamespace("QUnit");
     var $ = fluid.registerNamespace("jQuery");
 
     var environment = flock.init();
     var sampleRate = environment.audioSystem.model.rates.audio;
 
-    module("flock.ugen.phasor");
+    QUnit.module("flock.ugen.phasor");
 
     var phasorDef = {
         ugen: "flock.ugen.phasor",
@@ -34,12 +38,12 @@
                 ugen.input("trigger", test.trigger);
             }
             flock.evaluate.synth(synth);
-            deepEqual(ugen.output, test.expected, test.msg);
+            QUnit.deepEqual(ugen.output, test.expected, test.msg);
         }
     };
 
     var testPhasorUGen = function (testSpecs) {
-        $.each(testSpecs, function (i, testSpec) {
+        fluid.each(testSpecs, function (testSpec) {
             var def = $.extend(true, {rate: testSpec.rate, id: "looper"}, testSpec.def);
             var synth = flock.synth({
                 synthDef: def,
@@ -47,7 +51,7 @@
             });
             var loop = synth.nodeList.namedNodes.looper;
 
-            test(testSpec.name, function () {
+            QUnit.test(testSpec.name, function () {
                 testTriggeredSignals(synth, loop, testSpec.tests);
             });
         });
@@ -154,4 +158,5 @@
 
     testPhasorUGen(phasorTestSpecs);
 
+    environment.destroy();
 }());

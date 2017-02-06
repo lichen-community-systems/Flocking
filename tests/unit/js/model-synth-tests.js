@@ -6,15 +6,26 @@
  * Dual licensed under the MIT or GPL Version 2 licenses.
  */
 
-/*global require, QUnit*/
+/*global require*/
 
 var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
     flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
 
-    flock.init();
+    var QUnit = fluid.registerNamespace("QUnit");
+
+    var environment;
+    QUnit.module("Model synths", {
+        setup: function () {
+            environment = flock.silentEnviro();
+        },
+        teardown: function () {
+            environment.destroy();
+        }
+    });
 
     fluid.registerNamespace("flock.test.modelSynth");
 
@@ -156,4 +167,5 @@ var fluid = fluid || require("infusion"),
         var s = flock.test.modelSynth.valueSynth();
         s.value();
     });
+
 }());
