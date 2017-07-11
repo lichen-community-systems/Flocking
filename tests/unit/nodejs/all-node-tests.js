@@ -54,6 +54,11 @@ var testIncludes = [
     "../js/scheduler-timing-tests.js",
     "../js/scheduling-ugen-tests.js",
     // "../js/synth-tests.js", // TODO: This test still needs to be refactored for Node.js.
+    // "../js/synth-environment-tests.js", // TODO: This also needs to be refactored for Node.js.
+    "../js/synth-group-tests.js",
+    "../js/synth-instantiation-tests.js",
+    "../js/synth-note-target-tests.js",
+    "../js/synth-scheduled-tests.js",
     "../js/trigger-ugen-tests.js",
     "../js/ugen-tests.js",
     "../js/writebuffer-ugen-tests.js"
