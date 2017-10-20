@@ -732,6 +732,7 @@ var fluid = fluid || require("infusion"),
                 type: "flock.silentEnviro",
                 options: {
                     events: {
+                        onCreate: "{module}.events.afterEnvironmentCreated",
                         onDestroy: "{module}.events.onTeardown"
                     }
                 }
@@ -740,11 +741,16 @@ var fluid = fluid || require("infusion"),
 
         events: {
             onSetup: null,
+            afterEnvironmentCreated: null,
             onTeardown: null
         },
 
         listeners: {
-            "onCreate.registerModule": "flock.test.module.register({that})"
+            "onCreate.registerModule": {
+                priority: "first",
+                funcName: "flock.test.module.register",
+                args: "{that}"
+            }
         }
     });
 
