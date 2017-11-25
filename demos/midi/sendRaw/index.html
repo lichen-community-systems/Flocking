@@ -10,7 +10,7 @@
             }
         </style>
 
-        <title>Flocking MIDI Send Demo</title>
+        <title>Flocking Raw MIDI Send Demo</title>
 
         <link rel="stylesheet" type="text/css" href="../../shared/css/demos.css" />
         <link rel="stylesheet" type="text/css" href="../../../src/ui/shared/css/flocking-icon-font.css" />
@@ -66,89 +66,20 @@
         <script src="../../../src/ui/midi/midi-port-selector/js/midi-port-selector.js"></script>
         <script src="../../../src/ui/midi/midi-connector/js/midi-connector.js"></script>
 
-        <script src="send-midi-demo.js"></script>
+        <script src="sendRaw-midi-demo.js"></script>
     </head>
 
     <body>
         <main>
-            <h1>Flocking MIDI Send Demo</h1>
-            <p class="instructions">This demo allows you to send noteOn and noteOf MIDI messages to a connected device.</p>
+            <h1>Flocking Raw MIDI Send Demo</h1>
+            <p class="instructions">This demo allows you to send raw MIDI messages to a device.</p>
             <div id="midi-port-selector"></div>
-
-            <hr/>
-            <table>
-                <tbody>
-                    <tr>
-                        <th>Message Type</th>
-                        <td>
-                            <select class="type">
-                                <option value='"noteOn"'>Note On</option>
-                                <option value='"noteOff"'>Note Off</option>
-                            </select>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th>Channel (0-16)</th>
-                        <td>
-                            <select class="channel">
-                                <option value="1">1</option>
-                                <option value="2">2</option>
-                                <option value="3">3</option>
-                                <option value="4">4</option>
-                                <option value="5">5</option>
-                                <option value="6">6</option>
-                                <option value="7">7</option>
-                                <option value="8">8</option>
-                                <option value="9">9</option>
-                                <option value="10">10</option>
-                                <option value="11">11</option>
-                                <option value="12">12</option>
-                                <option value="13">13</option>
-                                <option value="14">14</option>
-                                <option value="15">15</option>
-                            </select>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th>Note</th>
-                        <td>
-                            <select class="note">
-                                <option value="60">C5</option>
-                                <option value="59">B4</option>
-                                <option value="58">A#4</option>
-                                <option value="57">A4</option>
-                                <option value="56">G#4</option>
-                                <option value="55">G4</option>
-                                <option value="54">F#4</option>
-                                <option value="53">F4</option>
-                                <option value="52">E4</option>
-                                <option value="51">D#4</option>
-                                <option value="50">D4</option>
-                                <option value="49">C#4</option>
-                                <option value="48">C4</option>
-                            </select>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th>Velocity</th>
-                        <td>
-                            <select class="velocity">
-                                <option value="0">0</option>
-                                <option value="32">32</option>
-                                <option value="64">64</option>
-                                <option value="76">76</option>
-                                <option value="127">127</option>
-                            </select>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-
+            <div id="code"></div>
             <p><button class="send">Send</button></p>
         </main>
 
         <script>
-            window.MIDISender = flock.demo.MIDISender("main");
+            window.rawMIDISender = flock.demo.rawMIDISender("main");
         </script>
     </body>
 </html>

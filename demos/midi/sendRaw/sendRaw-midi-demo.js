@@ -3,7 +3,7 @@
 (function () {
     "use strict";
 
-    fluid.defaults("flock.demo.MIDIInputView", {
+    fluid.defaults("flock.demo.rawMIDIInputView", {
         gradeNames: "fluid.codeMirror",
 
         codeMirrorOptions: {
@@ -21,7 +21,7 @@
 
         invokers: {
             updateContent: {
-                funcName: "flock.demo.MIDIInputView.updatedContentModel",
+                funcName: "flock.demo.rawMIDIInputView.updatedContentModel",
                 args: ["{that}"]
             }
         },
@@ -31,12 +31,12 @@
         }
     });
 
-    flock.demo.MIDIInputView.updatedContentModel = function (that) {
+    flock.demo.rawMIDIInputView.updatedContentModel = function (that) {
         var content = that.getContent();
         that.applier.change("content", content);
     };
 
-    fluid.defaults("flock.demo.MIDIParser", {
+    fluid.defaults("flock.demo.rawMIDIParser", {
         gradeNames: "fluid.modelComponent",
 
         model: {
@@ -47,13 +47,13 @@
             target: "commands",
             singleTransform: {
                 type: "fluid.transforms.free",
-                func: "flock.demo.MIDIParser.parseMIDICommands",
+                func: "flock.demo.rawMIDIParser.parseMIDICommands",
                 args: ["{midiInputView}.model.content"]
             }
         }
     });
 
-    flock.demo.MIDIParser.parseMIDIByteString = function (byteString, i) {
+    flock.demo.rawMIDIParser.parseMIDIByteString = function (byteString, i) {
         if (byteString.length < 1) {
             return;
         }
@@ -68,7 +68,7 @@
         return byte;
     };
 
-    flock.demo.MIDIParser.parseMIDICommand = function (commandString) {
+    flock.demo.rawMIDIParser.parseMIDICommand = function (commandString) {
         if (commandString.length < 1) {
             return;
         }
@@ -77,7 +77,7 @@
             bytes = [];
 
         fluid.each(midiByteStrings, function (byteString, i) {
-            var byte = flock.demo.MIDIParser.parseMIDIByteString(byteString, i);
+            var byte = flock.demo.rawMIDIParser.parseMIDIByteString(byteString, i);
             if (byte) {
                 bytes.push(byte);
             }
@@ -86,12 +86,12 @@
         return new Uint8Array(bytes);
     };
 
-    flock.demo.MIDIParser.parseMIDICommands = function (midiString) {
+    flock.demo.rawMIDIParser.parseMIDICommands = function (midiString) {
         var commandStrings = midiString.split("\n"),
             commands = [];
 
         fluid.each(commandStrings, function (commandString) {
-            var command = flock.demo.MIDIParser.parseMIDICommand(commandString);
+            var command = flock.demo.rawMIDIParser.parseMIDICommand(commandString);
             if (command) {
                 commands.push(command);
             }
@@ -100,8 +100,23 @@
         return commands;
     };
 
-    fluid.defaults("flock.demo.MIDISender", {
+    fluid.defaults("flock.demo.rawMIDISender", {
         gradeNames: "fluid.viewComponent",
+
+        commandDelay: 0.1,
+
+        model: {
+            commandScore: []
+        },
+
+        modelRelay: {
+            target: "commandScore",
+            singleTransform: {
+                type: "fluid.transforms.free",
+                func: "flock.demo.rawMIDISender.schedulerScoreForCommands",
+                args: ["{that}.parser.model.commands", "{that}"]
+            }
+        },
 
         invokers: {
             send: "{that}.events.onSend.fire"
@@ -121,6 +136,19 @@
                         }
                     }
                 }
+            },
+
+            parser: {
+                type: "flock.demo.rawMIDIParser"
+            },
+
+            midiInputView: {
+                type: "flock.demo.rawMIDIInputView",
+                container: "{that}.dom.rawMIDIArea"
+            },
+
+            scheduler: {
+                type: "flock.scheduler.async"
             }
         },
 
@@ -139,29 +167,47 @@
 
             onSend: [
                 {
+                    priority: "first",
+                    func: "{midiInputView}.updateContent"
+                },
+                {
                     priority: "last",
-                    funcName: "flock.demo.MIDISender.sendCommand",
-                    args:     ["{that}"]
+                    funcName: "flock.demo.rawMIDISender.enqueueMIDICommands",
+                    args: ["{that}.model.commandScore", "{that}"]
                 }
             ]
         },
+
         selectors: {
-            type:             ".type",
-            channel:          ".channel",
-            note:             ".note",
-            velocity:         ".velocity",
-            sendButton:       "button.send",
+            rawMIDIArea: "#code",
+            sendButton: "button.send",
             midiPortSelector: "#midi-port-selector"
         }
     });
 
-    flock.demo.MIDISender.sendCommand = function (that) {
-        var command = {};
-        // TODO: Discuss using gpii-binder here.
-        fluid.each(["type", "channel", "note", "velocity"], function (param) {
-            var element = that.locate(param);
-            command[param] = JSON.parse(element.val());
+    flock.demo.rawMIDISender.sendCommand = function (command, that) {
+        that.connector.connection.sendRaw(command);
+    };
+
+    flock.demo.rawMIDISender.schedulerScoreForCommands = function (commands, that) {
+        return fluid.transform(commands, function (command, i) {
+            return {
+                interval: "once",
+                time: i * that.options.commandDelay,
+                change: function () {
+                    flock.demo.rawMIDISender.sendCommand(command, that);
+                }
+            };
         });
-        that.connector.connection.send(command);
+    };
+
+    flock.demo.rawMIDISender.enqueueMIDICommands = function (commandScore, that) {
+        if (commandScore.length < 1 || !that.connector.connection) {
+            return;
+        }
+
+        // Stop any currently-queued MIDI commands prior to sending new ones.
+        that.scheduler.clearAll();
+        that.scheduler.schedule(commandScore);
     };
 }());
