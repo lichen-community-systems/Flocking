@@ -6,15 +6,18 @@
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global require, QUnit*/
+/*global require*/
 
 var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
     flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
 
-    flock.silentEnviro();
+    var QUnit = fluid.registerNamespace("QUnit");
+
+    var environment = flock.silentEnviro();
 
     var testPort = {
         manufacturer: "KORG INC.",
@@ -171,7 +174,7 @@ var fluid = fluid || require("infusion"),
             note: {
                 ugen: "flock.ugen.sequence",
                 rate: "control",
-                list: [21, 22, 23],
+                values: [21, 22, 23],
                 freq: 10000
             }
         });
@@ -192,4 +195,5 @@ var fluid = fluid || require("infusion"),
         ]);
     });
 
+    environment.destroy();
 }());

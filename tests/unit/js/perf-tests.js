@@ -1,21 +1,25 @@
 /*!
-* Flocking - Creative audio synthesis for the Web!
+* Flocking UGen Performance Tests
 * http://github.com/colinbdclark/flocking
 *
-* Copyright 2011, Colin Clark
+* Copyright 2011-2017, Colin Clark
 * Dual licensed under the MIT or GPL Version 2 licenses.
 */
 
-/*global module, test, ok*/
+/*global require*/
 
-var flock = flock || {};
+var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
+    flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
 
-    flock.silentEnviro();
+    var QUnit = fluid.registerNamespace("QUnit");
 
-    module("flock.ugen.value tests");
+    flock.test.module({
+        name: "flock.ugen.value performance tests"
+    });
 
     // TODO: Normalize this with the real node evaluation algorithm in Synth (i.e. break it out and reuse it.)
     var gen = function (ugens, duration) {
@@ -53,10 +57,10 @@ var flock = flock || {};
     };
 
     var assertCeiling = function (actual, expectedCeiling, msg) {
-        ok(actual <= expectedCeiling, msg + " Actual is: " + actual + ".");
+        QUnit.ok(actual <= expectedCeiling, msg + " Actual is: " + actual + ".");
     };
 
-    test("flock.ugen.value with stereo flock.ugen.out", function () {
+    QUnit.test("flock.ugen.value with stereo flock.ugen.out", function () {
         var synth = flock.synth({
             synthDef: {
                 id: flock.OUT_UGEN_ID,
@@ -75,11 +79,13 @@ var flock = flock || {};
         });
 
         var avg = runTimingTest(synth.nodeList.nodes, 50);
-        assertCeiling(avg, 5,
-            "Generating and outputting 1 second of stereo signal from flock.ugen.value should take less than 5 ms.");
+        assertCeiling(avg, 7,
+            "Generating and outputting 1 second of stereo signal from flock.ugen.value should take less than 7 ms.");
     });
 
-    module("flock.ugen.sinOsc tests");
+    flock.test.module({
+        name: "flock.ugen.sinOsc performance tests"
+    });
 
     var checkUGen = function (ugenDef, expectedCeil, msg) {
         var ugen = flock.parse.ugenForDef(ugenDef),
@@ -187,7 +193,7 @@ var flock = flock || {};
     ];
 
     var runTest = function (ugenDef, maxDur, msg) {
-        test(msg, function () {
+        QUnit.test(msg, function () {
             checkUGen(ugenDef, maxDur, "Should take no longer than " + maxDur + " ms.");
         });
     };

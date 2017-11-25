@@ -1,24 +1,27 @@
 /*!
- * Flocking - Creative audio synthesis for the Web!
+ * Flocking Buffer Tests
  * http://github.com/colinbdclark/flocking
  *
- * Copyright 2015, Colin Clark
+ * Copyright 2015-2017, Colin Clark
  * Dual licensed under the MIT or GPL Version 2 licenses.
  */
 
-/*global require, module, test, asyncTest, expect, ok, equal, deepEqual, start*/
+/*global require*/
 
 var fluid = fluid || require("infusion"),
+    jqUnit = jqUnit || fluid.require("node-jqunit"),
     flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";
 
+    var QUnit = fluid.registerNamespace("QUnit");
+
     fluid.registerNamespace("flock.test.buffer");
 
-    flock.silentEnviro();
-
-    module("Buffers");
+    flock.test.module({
+        name: "Buffers"
+    });
 
     var unwrappedSampleData = new Float32Array([1, 2, 3, 4, 5]);
     var testDesc = {
@@ -30,7 +33,7 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    test("BufferDesc expansion: raw sample array", function () {
+    QUnit.test("BufferDesc expansion: raw sample array", function () {
         var actual = flock.bufferDesc(unwrappedSampleData);
         var expected = {
             container: {},
@@ -47,11 +50,11 @@ var fluid = fluid || require("infusion"),
             }
         };
 
-        deepEqual(actual, expected,
+        QUnit.deepEqual(actual, expected,
             "A raw buffer of samples should be wrapped buffer desc.");
     });
 
-    test("BufferDesc expansion: raw multiple channels", function () {
+    QUnit.test("BufferDesc expansion: raw multiple channels", function () {
         var channels = [new Float32Array(), new Float32Array()],
             actual = flock.bufferDesc(channels, 44100, 2),
             expected = {
@@ -67,18 +70,18 @@ var fluid = fluid || require("infusion"),
                 }
             };
 
-        deepEqual(actual, expected,
+        QUnit.deepEqual(actual, expected,
             "When an array of channel data is provided, the correct bufDesc should be returned.");
     });
 
-    test("BufferDesc expansion: single channel sample array with numChannels specified", function () {
+    QUnit.test("BufferDesc expansion: single channel sample array with numChannels specified", function () {
         var bufferDesc = fluid.copy(testDesc);
         var actual = flock.bufferDesc(bufferDesc);
-        deepEqual(actual.data.channels, [unwrappedSampleData],
+        QUnit.deepEqual(actual.data.channels, [unwrappedSampleData],
             "A raw buffer of samples should be wrapped in an array if we know we have a single channel.");
     });
 
-    test("BufferDesc expansion: empty buffer description", function () {
+    QUnit.test("BufferDesc expansion: empty buffer description", function () {
         var actual = flock.bufferDesc(),
             expected = {
                 container: {},
@@ -93,11 +96,11 @@ var fluid = fluid || require("infusion"),
                 }
             };
 
-        deepEqual(actual, expected,
+        QUnit.deepEqual(actual, expected,
             "A valid but empty bufferDesc should be returned when no arguments are provided to flock.bufferDesc().");
     });
 
-    test("BufferDesc expansion: mismatched channel data", function () {
+    QUnit.test("BufferDesc expansion: mismatched channel data", function () {
         var bufferDesc = fluid.copy(testDesc);
         bufferDesc.format.numChannels = 2;
 
@@ -110,7 +113,7 @@ var fluid = fluid || require("infusion"),
             thrown = true;
         }
 
-        ok(thrown, "An exception should have been thrown when mismatching sample data was provided.");
+        QUnit.ok(thrown, "An exception should have been thrown when mismatching sample data was provided.");
     });
 
     var bufferTestSynthDef = {
@@ -129,7 +132,7 @@ var fluid = fluid || require("infusion"),
 
         that.onBufferReady = function () {
             options.assertion(that);
-            start();
+            QUnit.start();
         };
 
         that.onInputChanged = function (inputName) {
@@ -139,14 +142,14 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    asyncTest("Setting a bufferDef", function () {
+    QUnit.asyncTest("Setting a bufferDef", function () {
         var s = flock.synth({
             synthDef: {
                 id: "play",
                 ugen: "flock.test.mockBufferUGen",
                 options: {
                     assertion: function (ugen) {
-                        deepEqual(ugen.buffer, s.enviro.buffers.hamster,
+                        QUnit.deepEqual(ugen.buffer, s.enviro.buffers.hamster,
                             "After setting a bufferDef, the buffer should have been correctly delivered to the ugen.");
                     }
                 }
@@ -159,7 +162,7 @@ var fluid = fluid || require("infusion"),
         });
     });
 
-    test("Setting a bufferDesc", function () {
+    QUnit.test("Setting a bufferDesc", function () {
         var s = flock.synth({
             synthDef: bufferTestSynthDef
         });
@@ -172,13 +175,13 @@ var fluid = fluid || require("infusion"),
             }
         });
         s.set("play.buffer", hamsterDesc);
-        deepEqual(play.inputs.buffer, hamsterDesc,
+        QUnit.deepEqual(play.inputs.buffer, hamsterDesc,
             "After setting a bufferDesc, the input should reflect the value actually set.");
-        deepEqual(play.buffer, hamsterDesc,
+        QUnit.deepEqual(play.buffer, hamsterDesc,
             "And the actual buffer should be the correct bufferDesc from the environment.");
     });
 
-    test("Setting a buffer id reference", function () {
+    QUnit.test("Setting a buffer id reference", function () {
         var s = flock.synth({
             synthDef: bufferTestSynthDef
         });
@@ -207,51 +210,51 @@ var fluid = fluid || require("infusion"),
             id: "cat"
         };
         s.set("play.buffer", catIdBufDef);
-        deepEqual(play.inputs.buffer, catIdBufDef,
+        QUnit.deepEqual(play.inputs.buffer, catIdBufDef,
             "After setting an object id reference, the actual input should reflect the bufDef.");
-        deepEqual(play.buffer, s.enviro.buffers.cat,
+        QUnit.deepEqual(play.buffer, s.enviro.buffers.cat,
             "And the actual buffer should be the correct bufferDesc from the environment.");
 
         // Set a raw id reference.
         s.set("play.buffer", "dog");
-        equal(play.inputs.buffer, "dog",
+        QUnit.equal(play.inputs.buffer, "dog",
             "After setting a raw id reference, the actual input should reflect the value actually set.");
-        deepEqual(play.buffer, s.enviro.buffers.dog,
+        QUnit.deepEqual(play.buffer, s.enviro.buffers.dog,
             "And the actual buffer should be the correct bufferDesc from the environment.");
     });
 
-    asyncTest("Buffer Loader", function () {
+    QUnit.asyncTest("Buffer Loader", function () {
         var bufDefs = [
             {
                 id: "cat",
-                url: "../../shared/audio/long-triangle-int16-44100.wav"
+                url: flock.test.audioFilePath("long-triangle-int16-44100.wav")
             },
             {
-                url: "../../shared/audio/long-triangle-int16-48000.wav"
+                url: flock.test.audioFilePath("long-triangle-int16-48000.wav")
             },
             {
                 id: "fish",
-                url: "../../../demos/shared/audio/hillier-first-chord.wav"
+                url: flock.test.pathForResource("../../../demos/shared/audio/hillier-first-chord.wav")
             }
         ];
 
         var loader;
         var listener = function (decodedBuffers) {
-            expect(7);
-            equal(decodedBuffers.length, 3, "All buffers should have been loaded.");
-            equal(decodedBuffers[0].id, "cat",
+            QUnit.expect(7);
+            QUnit.equal(decodedBuffers.length, 3, "All buffers should have been loaded.");
+            QUnit.equal(decodedBuffers[0].id, "cat",
                 "The first buffer should have the correct id.");
-            equal(decodedBuffers[1].id, "long-triangle-int16-48000",
+            QUnit.equal(decodedBuffers[1].id, "long-triangle-int16-48000",
                 "A buffer with no id should be given an autogenerated id.");
-            equal(decodedBuffers[2].id, "fish",
+            QUnit.equal(decodedBuffers[2].id, "fish",
                 "The fourth buffer should have the correct id.");
 
             fluid.each(decodedBuffers, function (bufDesc) {
-                ok(bufDesc.data.channels[0].length > 0,
+                QUnit.ok(bufDesc.data.channels[0].length > 0,
                     "The buffer should contain channel data.");
             });
 
-            start();
+            QUnit.start();
         };
 
         loader = flock.bufferLoader({

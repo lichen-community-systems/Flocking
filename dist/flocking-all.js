@@ -1,4 +1,4 @@
-/*! Flocking 0.2.0-dev, Copyright 2016 Colin Clark | flockingjs.org */
+/*! Flocking 0.2.0, Copyright 2017 Colin Clark | flockingjs.org */
 
 /*!
  * jQuery JavaScript Library v2.1.4
@@ -21251,6 +21251,10 @@ var fluid = fluid || require("infusion"),
                     interconnect: 0
                 }
             }
+        },
+
+        listeners: {
+            "onDestroy.reset": "{that}.reset()"
         }
     });
 
@@ -21499,10 +21503,6 @@ var fluid = fluid || require("infusion"),
                 "flock.nodeList.clearAll({that}.nodeList)",
                 "{busManager}.reset()",
                 "fluid.clear({that}.buffers)"
-            ],
-
-            onDestroy: [
-                "{that}.reset()"
             ]
         }
     });
@@ -22799,23 +22799,11 @@ var fluid = fluid || require("infusion"),
 
         distributeOptions: [
             {
-                source: "{that}.options.childListeners",
-                removeSource: true,
-                target: "{that fluid.component}.options.listeners"
-            },
-            {
                 source: "{that}.options.synthListeners",
                 removeSource: true,
                 target: "{that flock.synth}.options.listeners"
             }
         ],
-
-        childListeners: {
-            // TODO: This is likely unnecessary and quite possibly error-prone.
-            "{band}.events.onDestroy": {
-                func: "{that}.destroy"
-            }
-        },
 
         synthListeners: {
             "{band}.events.onPlay": {
@@ -23736,6 +23724,8 @@ var fluid = fluid || require("infusion"),
 
     "use strict";
 
+    var atob = typeof (window) !== "undefined" ? window.atob : require("atob");
+
     /**
      * Applies the specified function in the next round of the event loop.
      */
@@ -23992,6 +23982,151 @@ var fluid = fluid || require("infusion"),
     };
 }());
 ;/*
+ * Flocking Audio Converters
+ * http://github.com/colinbdclark/flocking
+ *
+ * Copyright 2015, Colin Clark
+ * Dual licensed under the MIT and GPL Version 2 licenses.
+ */
+
+/*global require, self, global */
+/*jshint white: false, newcap: true, regexp: true, browser: true,
+forin: false, nomen: true, bitwise: false, maxerr: 100,
+indent: 4, plusplus: false, curly: true, eqeqeq: true,
+freeze: true, latedef: true, noarg: true, nonew: true, quotmark: double, undef: true,
+unused: true, strict: true, asi: false, boss: false, evil: false, expr: false,
+funcscope: false*/
+
+var fluid = fluid || require("infusion"),
+    flock = fluid.registerNamespace("flock");
+
+(function () {
+
+    "use strict";
+
+    var g = typeof (window) !== "undefined" ? window :
+        typeof (self) !== "undefined" ? self : global;
+
+    fluid.registerNamespace("flock.audio.convert");
+
+    flock.audio.convert.maxFloatValue = function (formatSpec) {
+        return 1 - 1 / formatSpec.scale;
+    };
+
+    flock.audio.convert.pcm = {
+        int8: {
+            scale: 128,
+            setter: "setInt8",
+            width: 1
+        },
+
+        int16: {
+            scale: 32768,
+            setter: "setInt16",
+            width: 2
+        },
+
+        int32: {
+            scale: 2147483648,
+            setter: "setInt32",
+            width: 4
+        },
+
+        float32: {
+            scale: 1,
+            setter: "setFloat32",
+            width: 4
+        }
+    };
+
+    // Precompute the maximum representable float value for each format.
+    for (var key in flock.audio.convert.pcm) {
+        var formatSpec = flock.audio.convert.pcm[key];
+        formatSpec.maxFloatValue = flock.audio.convert.maxFloatValue(formatSpec);
+    }
+
+    // Unsupported, non-API function.
+    flock.audio.convert.specForPCMType = function (format) {
+        var convertSpec = typeof format === "string" ? flock.audio.convert.pcm[format] : format;
+        if (!convertSpec) {
+            flock.fail("Flocking does not support " + format + " format PCM wave files.");
+        }
+
+        return convertSpec;
+    };
+
+
+    /**
+     * Converts the value from float to integer format
+     * using the specified format specification.
+     *
+     * @param {Number} value the float to convert
+     * @param {Object} formatSpec a specification of the format conversion
+     * @return {Number} the value converted to int format, constrained to the bounds defined by formatSpec
+     */
+    flock.audio.convert.floatToInt = function (value, formatSpec) {
+        // Clamp to within bounds.
+        var s = Math.min(formatSpec.maxFloatValue, value);
+        s = Math.max(-1.0, s);
+
+        // Scale to the output number format.
+        s = s * formatSpec.scale;
+
+        // Round to the nearest whole sample.
+        // TODO: A dither here would be optimal.
+        s = Math.round(s);
+
+        return s;
+    };
+
+    flock.audio.convert.floatsToInts = function (buf, formatSpec) {
+        if (!buf) {
+            return;
+        }
+
+        var arrayType = "Int" + (8 * formatSpec.width) + "Array",
+            converted = new g[arrayType](buf.length);
+
+        for (var i = 0; i < buf.length; i++) {
+            var floatVal = buf[i],
+                intVal = flock.audio.convert.floatToInt(floatVal, formatSpec);
+
+            converted[i] = intVal;
+        }
+
+        return converted;
+    };
+
+    /**
+     * Converts the value from integer to floating format
+     * using the specified format specification.
+     *
+     * @param {Number} value the integer to convert
+     * @param {Object} formatSpec a specification of the format conversion
+     * @return {Number} the value converted to float format
+     */
+    flock.audio.convert.intToFloat = function (value, formatSpec) {
+        return value / formatSpec.scale;
+    };
+
+    flock.audio.convert.intsToFloats = function (buf, formatSpec) {
+        if (!buf) {
+            return;
+        }
+
+        var converted = new Float32Array(buf.length);
+
+        for (var i = 0; i < buf.length; i++) {
+            var intVal = buf[i],
+                floatVal = flock.audio.convert.intToFloat(intVal, formatSpec);
+
+            converted[i] = floatVal;
+        }
+
+        return converted;
+    };
+}());
+;/*
  * Flocking Audio Encoders
  * http://github.com/colinbdclark/flocking
  *
@@ -24066,71 +24201,39 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-
-    flock.audio.encode.writeAsPCM = function (formatSpec, offset, dv, buf) {
-        if (formatSpec.setter === "setFloat32" && buf instanceof Float32Array) {
+    flock.audio.encode.writeAsPCM = function (convertSpec, offset, dv, buf) {
+        if (convertSpec.setter === "setFloat32" && buf instanceof Float32Array) {
             return flock.audio.encode.writeFloat32Array(offset, dv, buf);
         }
 
         for (var i = 0; i < buf.length; i++) {
-            // Clamp to within bounds.
-            var s = Math.min(1.0, buf[i]);
-            s = Math.max(-1.0, s);
-
-            // Scale to the otuput number format.
-            s = s < 0 ? s * formatSpec.scaleNeg : s * formatSpec.scalePos;
+            var s = flock.audio.convert.floatToInt(buf[i], convertSpec);
 
             // Write the sample to the DataView.
-            dv[formatSpec.setter](offset, s, true);
-            offset += formatSpec.width;
+            dv[convertSpec.setter](offset, s, true);
+            offset += convertSpec.width;
         }
 
         return dv;
     };
 
-    flock.audio.pcm = {
-        int16: {
-            scalePos: 32767,
-            scaleNeg: 32768,
-            setter: "setInt16",
-            width: 2
-        },
-
-        int32: {
-            scalePos: 2147483647,
-            scaleNeg: 2147483648,
-            setter: "setInt32",
-            width: 4
-        },
-
-        float32: {
-            scalePos: 1,
-            scaleNeg: 1,
-            setter: "setFloat32",
-            width: 4
-        }
-    };
-
     flock.audio.encode.wav = function (bufDesc, format) {
-        format = format || flock.audio.pcm.int16;
+        format = format || flock.audio.convert.pcm.int16;
 
-        var formatSpec = typeof format === "string" ? flock.audio.pcm[format] : format;
-        if (!formatSpec) {
-            flock.fail("Flocking does not support encoding " + format + " format PCM wave files.");
-        }
-
-        var interleaved = flock.audio.interleave(bufDesc),
+        var convertSpec = flock.audio.convert.specForPCMType(format),
+            interleaved = flock.audio.interleave(bufDesc),
             numChans = bufDesc.format.numChannels,
             sampleRate = bufDesc.format.sampleRate,
-            isPCM = formatSpec.setter !== "setFloat32",
+            isPCM = convertSpec.setter !== "setFloat32",
             riffHeaderSize = 8,
             formatHeaderSize = 12,
             formatBodySize = 16,
             formatTag = 1,
             dataHeaderSize = 8,
-            dataBodySize = interleaved.length * formatSpec.width,
+            dataBodySize = interleaved.length * convertSpec.width,
             dataChunkSize = dataHeaderSize + dataBodySize,
-            bitsPerSample = 8 * formatSpec.width;
+            bytesPerFrame = convertSpec.width * numChans,
+            bitsPerSample = 8 * convertSpec.width;
 
         if (numChans > 2 || !isPCM) {
             var factHeaderSize = 8,
@@ -24167,8 +24270,8 @@ var fluid = fluid || require("infusion"),
         dv.setUint16(20, formatTag, true); // wFormatTag
         dv.setUint16(22, numChans, true); // nChannels
         dv.setUint32(24, sampleRate, true); // nSamplesPerSec
-        dv.setUint32(28, sampleRate * 4, true); // nAvgBytesPerSec (sample rate * block align)
-        dv.setUint16(32, numChans * formatSpec.width, true); //nBlockAlign (channel count * bytes per sample)
+        dv.setUint32(28, sampleRate * bytesPerFrame, true); // nAvgBytesPerSec (sample rate * byte width * channels)
+        dv.setUint16(32, bytesPerFrame, true); //nBlockAlign (channel count * bytes per sample)
         dv.setUint16(34, bitsPerSample, true); // wBitsPerSample
 
         var offset = 36;
@@ -24190,7 +24293,7 @@ var fluid = fluid || require("infusion"),
             offset = flock.audio.encode.wav.writeFactChunk(dv, offset, bufDesc.format.numSampleFrames);
         }
 
-        flock.audio.encode.wav.writeDataChunk(formatSpec, offset, dv, interleaved, dataBodySize);
+        flock.audio.encode.wav.writeDataChunk(convertSpec, offset, dv, interleaved, dataBodySize);
 
         return dv.buffer;
     };
@@ -24228,14 +24331,14 @@ var fluid = fluid || require("infusion"),
         return offset;
     };
 
-    flock.audio.encode.wav.writeDataChunk = function (formatSpec, offset, dv, interleaved, numSampleBytes) {
+    flock.audio.encode.wav.writeDataChunk = function (convertSpec, offset, dv, interleaved, numSampleBytes) {
         // Data chunk Header
         flock.audio.encode.setString(dv, offset, "data");
         offset += 4;
         dv.setUint32(offset, numSampleBytes, true); // Length of the datahunk.
         offset += 4;
 
-        flock.audio.encode.writeAsPCM(formatSpec, offset, dv, interleaved);
+        flock.audio.encode.writeAsPCM(convertSpec, offset, dv, interleaved);
     };
 }());
 ;/*
@@ -24297,8 +24400,16 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.scheduler.clock", {
         gradeNames: ["fluid.component"],
 
+        invokers: {
+            end: "fluid.mustBeOverridden"
+        },
+
         events: {
             tick: null
+        },
+
+        listeners: {
+            "onDestroy.end": "{that}.end()"
         }
     });
 
@@ -24465,6 +24576,13 @@ var fluid = fluid || require("infusion"),
             onCreate: {
                 funcName: "flock.scheduler.webWorkerClock.init",
                 args: ["{that}"]
+            },
+
+            "onDestroy.clearAllScheduled": "{that}.clearAll",
+
+            "onDestroy.endWorker": {
+                priority: "after:clearAllScheduled",
+                func: "{that}.end"
             }
         },
 
@@ -24631,7 +24749,7 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onClearAll: [
+            "onClearAll.clearClock": [
                 "{that}.clock.clearAll()"
             ]
         }
@@ -25016,8 +25134,7 @@ var fluid = fluid || require("infusion"),
 
         listeners: {
             onCreate: "{that}.schedule({that}.options.score)",
-            onEnd: "{that}.clearAll",
-            onDestroy: "{that}.end()"
+            onEnd: "{that}.clearAll"
         }
     });
 
@@ -26893,6 +27010,7 @@ var fluid = fluid || require("infusion"),
 
             onCreateScriptProcessor: null,
             onConnect: null,
+            onDisconnectNodes: null,
             onDisconnect: null
         },
 
@@ -26930,7 +27048,7 @@ var fluid = fluid || require("infusion"),
                 "{that}.disconnect()"
             ],
 
-            onDisconnect: [
+            onDisconnectNodes: [
                 {
                     "this": "{merger}.node",
                     method: "disconnect",
@@ -26948,12 +27066,17 @@ var fluid = fluid || require("infusion"),
                 }
             ],
 
+            "onDisconnect.onDisconnectNodes": {
+                 func: "{that}.events.onDisconnectNodes.fire",
+            },
+
             onReset: [
                 "{that}.removeAllInputs()",
                 "{that}.events.onCreateScriptProcessor.fire()"
             ],
 
             onDestroy: [
+                "{that}.events.onDisconnectNodes.fire()",
                 "{that}.removeAllInputs()",
                 "flock.webAudio.nativeNodeManager.disconnectOutput({that})"
             ]
@@ -27113,7 +27236,9 @@ var fluid = fluid || require("infusion"),
                     func: "{that}.applier.change",
                     args: ["isGenerating", false]
                 }
-            ]
+            ],
+
+            "onDestroy.unbindAudioProcess": "{that}.unbindAudioProcess()"
         }
     });
 
@@ -34644,18 +34769,20 @@ var fluid = fluid || require("infusion"),
 
 (function () {
     "use strict";
-    
+
+    var $ = fluid.registerNamespace("jQuery");
+
     fluid.registerNamespace("flock.view");
-    
+
     // TODO: Infusionize.
     flock.view.scope = function (canvas, model) {
         var that = {
             model: model || {
                 values: []
             },
-            canvas: typeof (canvas) === "string" ? document.querySelector(canvas) : canvas
+            canvas: $(canvas)[0]
         };
-        
+
         that.refreshView = function () {
             var ctx = that.ctx,
                 h = that.model.height,
@@ -34667,7 +34794,7 @@ var fluid = fluid || require("infusion"),
                 i,
                 x,
                 y;
-        
+
             ctx.clearRect(0, 0, w, h);
             ctx.beginPath();
             for (i = 0; i < len; i++) {
@@ -34677,13 +34804,13 @@ var fluid = fluid || require("infusion"),
             }
             ctx.stroke();
         };
-        
+
         that.init = function () {
             that.ctx = that.canvas.getContext("2d");
             that.ctx.fillStyle = that.model.fill || that.ctx.fillStyle;
             that.ctx.strokeStyle = that.model.strokeColor || that.ctx.strokeStyle;
             that.ctx.lineWidth = that.model.strokeWidth || that.ctx.lineWidth;
-        
+
             that.model.min = that.model.min || -1.0;
             that.model.max = that.model.max || 1.0;
             that.model.height = that.canvas.height;
@@ -34691,14 +34818,41 @@ var fluid = fluid || require("infusion"),
             that.model.width = that.canvas.width;
             that.model.scaleX = that.model.scaleX || that.model.scale || 1.0;
             that.model.scaleY = that.model.scaleY || that.model.scale || 1.0;
-            
+
             that.refreshView();
         };
-        
+
         that.init();
         return that;
     };
-    
+
+
+    /**
+     * Returns a Canvas element with the buffer drawn in it using
+     * the flock.view.scope component.
+     *
+     * @param {Array-like} buffer the buffer to draw
+     * @param {Object} options configuration options
+     *                   - height the height of the canvas in pixels, defaults to 200px
+     *                   - width the width of the canvas in pixels, defaults to 1000px
+     */
+    flock.view.drawBuffer = function (buffer, o) {
+        o = o || {};
+        o.height = o.height || 200;
+        o.width = o.width || 1000;
+
+        var markup = fluid.stringTemplate(flock.view.drawBuffer.markupTemplate, o);
+        var canvas = $(markup);
+        flock.view.scope(canvas[0], {
+            values: buffer
+        });
+
+        return canvas;
+    };
+
+    flock.view.drawBuffer.markupTemplate = "<canvas height='%height' width='%width'></canvas>";
+
+
 }());
 ;/*
 * Flocking Browser-Dependent Unit Generators

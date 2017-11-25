@@ -48,17 +48,36 @@ fluid.defaults("flock.nodejs.outputManager", {
             args: "Audio input is not currently supported on Node.js"
         },
 
-        stopReadingAudioInput: "{that}.startReadingAudioInput"
+        stopReadingAudioInput: {
+            func: "{that}.startReadingAudioInput"
+        },
+
+        close: {
+            funcName: "flock.nodejs.outputManager.close",
+            args: ["{that}"]
+        }
     },
 
     listeners: {
-        "onStart.startGenerating": [
-            "flock.nodejs.outputManager.startGeneratingSamples({that}, {busManager}.buses, {enviro}.nodeList)"
-        ],
+        "onStart.startGenerating": {
+            funcName: "flock.nodejs.outputManager.startGeneratingSamples",
+            args: ["{that}", "{busManager}.buses", "{enviro}.nodeList"]
+        },
 
-        "onStop.stopGenerating": [
-            "flock.nodejs.outputManager.stopGeneratingSamples({that})"
-        ]
+        "onStop.stopGenerating": {
+            funcName: "flock.nodejs.outputManager.stopGeneratingSamples",
+            args: ["{that}"]
+        },
+
+        "onDestroy.stopGenerating": {
+            funcName: "flock.nodejs.outputManager.stopGeneratingSamples",
+            args: ["{that}"]
+        },
+
+        "onDestroy.close": {
+            priority: "last",
+            func: "{that}.close"
+        }
     }
 });
 
@@ -89,8 +108,12 @@ flock.nodejs.outputManager.startGeneratingSamples = function (that, buses, nodeL
 };
 
 flock.nodejs.outputManager.stopGeneratingSamples = function (that) {
-    that.outputStream._read = undefined;
+    that.outputStream._read = flock.noOp;
     that.outputStream.unpipe(that.speaker);
+};
+
+flock.nodejs.outputManager.close = function (that) {
+    that.speaker.close();
 };
 
 flock.nodejs.outputManager.makeSampleWriter = function (that, buses, nodeList) {

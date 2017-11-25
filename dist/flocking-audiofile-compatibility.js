@@ -312,7 +312,7 @@ var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undef
 
     flock.audio.decode.convertSampleRate = function (buf, originalSampleRate, sampleRate) {
         var dur = buf.length / originalSampleRate,
-            resampledLen = Math.ceil(dur * sampleRate),
+            resampledLen = Math.round(dur * sampleRate),
             resampled = new Float32Array(resampledLen),
             stepSize = originalSampleRate / sampleRate,
             step = 0;
@@ -322,15 +322,17 @@ var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undef
             step += stepSize;
         }
 
-        return buf;
+        return resampled;
     };
 
     flock.audio.decode.resample = function (bufDesc, sampleRate) {
-        if (!sampleRate || bufDesc.format.sampleRate === sampleRate) {
+        var fmt = bufDesc.format;
+
+        if (!sampleRate || fmt.sampleRate === sampleRate) {
             return bufDesc;
         }
 
-        var originalSampleRate = bufDesc.format.sampleRate,
+        var originalSampleRate = fmt.sampleRate,
             channels = bufDesc.data.channels;
 
         for (var chan = 0; chan < channels.length; chan++) {
@@ -338,7 +340,11 @@ var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undef
                 originalSampleRate, sampleRate);
         }
 
-        bufDesc.format.sampleRate = sampleRate;
+        fmt.sampleRate = sampleRate;
+        fmt.avgBytesPerSecond = fmt.sampleRate * fmt.numChannels * fmt.blockAlign;
+        fmt.numSampleFrames = channels[0].length;
+         // Resampling may involve a one sample or so shift in duration.
+        fmt.duration = fmt.numSampleFrames / fmt.sampleRate;
 
         return bufDesc;
     };
@@ -353,7 +359,7 @@ var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undef
             options.success(buffer, options.type);
         } catch (e) {
             if (options.error) {
-                options.error(e.msg);
+                options.error(e);
             } else {
                 throw e;
             }
@@ -430,7 +436,11 @@ var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undef
     flock.audio.decodeArrayBuffer = function (data, type) {
         var formatSpec = flock.audio.formats[type];
         if (!formatSpec) {
-            throw new Error("There is no decoder available for " + type + " files.");
+            var msg = "There is no decoder available for " + type + " files.";
+            if (!type) {
+                msg += " Did you forget to specify a decoder 'type' option?";
+            }
+            throw new Error(msg);
         }
 
         return formatSpec.reader(data, formatSpec);
@@ -438,12 +448,14 @@ var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undef
 
     flock.audio.decode.deinterleaveSampleData = function (dataType, bits, numChans, interleaved) {
         var numFrames = interleaved.length / numChans,
+            format = dataType.toLowerCase() + bits,
+            convertSpec = flock.audio.convert.specForPCMType(format),
             chans = [],
             i,
-            samp = 0,
-            max,
+            sampIdx = 0,
             frame,
-            chan;
+            chan,
+            s;
 
         // Initialize each channel.
         for (i = 0; i < numChans; i++) {
@@ -451,18 +463,18 @@ var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undef
         }
 
         if (dataType === "Int") {
-            max = Math.pow(2, bits - 1);
             for (frame = 0; frame < numFrames; frame++) {
                 for (chan = 0; chan < numChans; chan++) {
-                    chans[chan][frame] = interleaved[samp] / max;
-                    samp++;
+                    s = flock.audio.convert.intToFloat(interleaved[sampIdx], convertSpec);
+                    chans[chan][frame] = s;
+                    sampIdx++;
                 }
             }
         } else {
             for (frame = 0; frame < numFrames; frame++) {
                 for (chan = 0; chan < numChans; chan++) {
-                    chans[chan][frame] = interleaved[samp];
-                    samp++;
+                    chans[chan][frame] = interleaved[sampIdx];
+                    sampIdx++;
                 }
             }
 
@@ -485,7 +497,8 @@ var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undef
         var l = data.size;
 
         // Now that we've got the actual data size, correctly set the number of sample frames if it wasn't already present.
-        format.numSampleFrames = format.numSampleFrames || (l / (format.bitRate / 8)) / format.numChannels;
+        format.numSampleFrames = format.numSampleFrames ||
+            (l / (format.bitRate / 8)) / format.numChannels;
         format.duration = format.numSampleFrames / format.sampleRate;
 
         // Read the channel data.
