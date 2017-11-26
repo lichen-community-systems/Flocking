@@ -21,9 +21,10 @@ fluid.require("%flocking/tests/shared/js/audiofile-dataurls.js");
 
 // Test files.
 var testIncludes = [
-    "../js/perf-tests.js",       // Note: This runs first because it's
-                                 // an unreliable, timing-dependent test.
-                                 // It needs to be refactored or replaced.
+    "../js/perf-tests.js",       // Note: This test must run first
+                                 // because it is unreliable and
+                                 // timing-dependent. It needs to be
+                                 // refactored or replaced.
     "../js/audiofile-decoder-tests.js",
     "../js/audiofile-tests.js",
     "../js/band-tests.js",
@@ -53,8 +54,8 @@ var testIncludes = [
     "../js/scheduler-tests.js",
     "../js/scheduler-timing-tests.js",
     "../js/scheduling-ugen-tests.js",
-    // "../js/synth-tests.js", // TODO: This test still needs to be refactored for Node.js.
-    // "../js/synth-environment-tests.js", // TODO: This also needs to be refactored for Node.js.
+    "../js/synth-tests.js", // TODO: This test still needs to be refactored for Node.js.
+    "../js/synth-environment-tests.js", // TODO: This also needs to be refactored for Node.js.
     "../js/synth-group-tests.js",
     "../js/synth-instantiation-tests.js",
     "../js/synth-note-target-tests.js",

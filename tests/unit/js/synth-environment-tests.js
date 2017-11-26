@@ -51,7 +51,7 @@ var fluid = fluid || require("infusion"),
 
     fluid.defaults("flock.test.synth.environmental.tests", {
         gradeNames: "flock.test.module",
-        name: "Synth environmental tests",
+        name: "Synth autoAddToEnviro tests",
 
         components: {
             autoAddedSynth: {
@@ -94,67 +94,145 @@ var fluid = fluid || require("infusion"),
             flock.test.synth.testEnviroGraph(function () {
                 jqUnit.assertTrue("The synth with autoAddToEnvironment: false should not have been automatically added to the environment.",
                     !module.notAutoAddedSynth.isPlaying());
-                jqUnit.assertTrue("The synth with autoAddToEnvironment: falseshould not have been evaluated.",
+                jqUnit.assertTrue("The synth with autoAddToEnvironment: false should not have been evaluated.",
                     !module.notAutoAddedSynth.model.didGen);
-                QUnit.start();
+                jqUnit.start();
             });
         });
     };
 
     flock.test.synth.environmental.tests();
 
-    // QUnit.asyncTest("Remove from the environment", function () {
-    //     var synth = flock.test.synth.genReporter();
-    //     environment.play();
+    fluid.defaults("flock.test.synthEnvironmentTests", {
+        gradeNames: "flock.test.testEnvironment",
 
-    //     var audioSettings = environment.audioSystem.model,
-    //         waitDur = (audioSettings.bufferSize / audioSettings.rates.audio) * 1000 * 2;
+        components: {
+            synth: {
+                type: "flock.test.synth.genReporter",
+                options: {
+                    components: {
+                        enviro: "{synthEnvironmentTests}.environment"
+                    }
+                }
+            },
 
-    //     setTimeout(function () {
-    //         QUnit.ok(synth.isPlaying(),
-    //             "The synth should have been automatically added to the environment.");
-    //         QUnit.ok(synth.model.didGen,
-    //             "The synth should have been evaluated.");
+            tester: {
+                type: "flock.test.synthEnvironmentTester"
+            }
+        }
+    });
 
-    //         synth.pause();
+    fluid.defaults("flock.test.synthEnvironmentTester", {
+        gradeNames: "fluid.test.testCaseHolder",
 
-    //         QUnit.ok(environment.nodeList.nodes.indexOf(synth) === -1,
-    //             "The synth should have been removed from the environment.");
+        invokers: {
+            evaluate2Secs: {
+                funcName: "flock.test.synthEnvironmentTester.evaluate2Secs",
+                args: ["{testEnvironment}", "{that}.events.afterTwoSeconds.fire"]
+            }
+        },
 
-    //         synth.reset();
-    //         setTimeout(function () {
-    //             QUnit.ok(!synth.model.didGen,
-    //                 "The synth should not have been evaluated after being removed from the environment.");
-    //             QUnit.start();
-    //         }, waitDur);
-    //     }, waitDur);
-    // });
+        events: {
+            afterTwoSeconds: null
+        },
 
-    // QUnit.asyncTest("destroy() removes a synth from the environment", function () {
-    //     var synth = flock.test.synth.genReporter();
-    //     var audioSettings = environment.audioSystem.model,
-    //         waitDur = (audioSettings.bufferSize / audioSettings.rates.audio) * 1000 * 2;
+        modules: [
+            {
+                name: "Synth environmental tests",
+                tests: [
+                    {
+                        expect: 5,
+                        name: "Remove synth from the environment",
+                        sequence: [
+                            {
+                                func: "{environment}.play"
+                            },
+                            {
+                                func: "{that}.evaluate2Secs"
+                            },
+                            {
+                                event: "{that}.events.afterTwoSeconds",
+                                listener: "flock.test.synthEnvironmentTester.synthWasEvaluated"
+                            },
+                            {
+                                func: "{synth}.pause"
+                            },
+                            {
+                                funcName: "flock.test.synthEnvironmentTester.synthWasRemoved",
+                                args: ["{testEnvironment}"]
+                            },
+                            {
+                                func: "{synth}.reset"
+                            },
+                            {
+                                func: "{that}.evaluate2Secs"
+                            },
+                            {
+                                event: "{that}.events.afterTwoSeconds",
+                                listener: "flock.test.synthEnvironmentTester.synthWasNotEvaluated"
+                            }
+                        ]
+                    },
+                    {
+                        expect: 3,
+                        name: "Destroying a synth removes it from the environment",
+                        sequence: [
+                            {
+                                func: "{synth}.play"
+                            },
+                            {
+                                func: "{that}.evaluate2Secs"
+                            },
+                            {
+                                event: "{that}.events.afterTwoSeconds",
+                                listener: "flock.test.synthEnvironmentTester.synthWasEvaluated"
+                            },
+                            {
+                                func: "{synth}.destroy"
+                            },
+                            {
+                                funcName: "flock.test.synthEnvironmentTester.synthWasRemoved",
+                                args: ["{testEnvironment}"]
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    });
 
-    //     environment.play();
+    flock.test.synthEnvironmentTester.evaluate2Secs = function (testEnvironment, testFn) {
+        var audioSettings = testEnvironment.environment.audioSystem.model;
+        var waitDur = (audioSettings.bufferSize / audioSettings.rates.audio) * 1000 * 2;
 
-    //     setTimeout(function () {
-    //         QUnit.ok(synth.isPlaying(),
-    //             "The synth should have been automatically added to the environment.");
-    //         QUnit.ok(synth.model.didGen,
-    //             "The synth should have been evaluated.");
+        setTimeout(function () {
+            testFn(testEnvironment);
+        }, waitDur);
+    };
 
-    //         synth.reset();
-    //         synth.destroy();
-    //         QUnit.ok(environment.nodeList.nodes.indexOf(synth) === -1,
-    //             "The synth should have been removed from the environment.");
+    // TODO: Remove duplication with tests above.
+    flock.test.synthEnvironmentTester.synthWasEvaluated = function (testEnvironment) {
+        jqUnit.assertTrue("The synth should have been added to the environment.",
+        testEnvironment.synth.isPlaying());
 
-    //         setTimeout(function () {
-    //             QUnit.ok(!synth.model.didGen,
-    //                 "The synth should not have been evaluated after being destroyed.");
-    //             QUnit.start();
-    //         }, waitDur);
-    //     }, waitDur);
-    // });
+        jqUnit.assertTrue("The synth should have been evaluated.",
+        testEnvironment.synth.model.didGen);
+    };
+
+    flock.test.synthEnvironmentTester.synthWasRemoved = function (testEnvironment) {
+        jqUnit.assertEquals("The synth should have been removed from the environment.",
+        testEnvironment.environment.nodeList.nodes.indexOf(testEnvironment.synth),
+        -1);
+    };
+
+    flock.test.synthEnvironmentTester.synthWasNotEvaluated = function (testEnvironment) {
+        jqUnit.assertTrue("The synth, after having been paused, should not be playing.",
+        !testEnvironment.synth.isPlaying());
+        jqUnit.assertTrue("The synth, after having been paused, should not have been evaluated.",
+        !testEnvironment.synth.model.didGen);
+    };
+
+    fluid.test.runTests("flock.test.synthEnvironmentTests");
 
     // var testAddToEnvironment = function (synthOptions, expectedOrder, message) {
     //     flock.nodeList.clearAll(environment.nodeList);
