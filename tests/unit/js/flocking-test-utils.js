@@ -762,6 +762,19 @@ var fluid = fluid || require("infusion"),
     };
 
 
+    fluid.defaults("flock.test.module.runOnCreate", {
+        gradeNames: "flock.test.module",
+
+        invokers: {
+            run: "fluid.notImplemented()"
+        },
+
+        listeners: {
+            "onCreate.runTests": "{that}.run()"
+        }
+    });
+
+
     fluid.defaults("flock.test.testEnvironment", {
         gradeNames: "fluid.test.testEnvironment",
 
@@ -779,7 +792,7 @@ var fluid = fluid || require("infusion"),
                         }
                     }
                 }
-            },
+            }
         }
     });
 }());

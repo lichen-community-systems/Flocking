@@ -49,8 +49,27 @@ var fluid = fluid || require("infusion"),
         }, 2000);
     };
 
-    fluid.defaults("flock.test.synth.environmental.tests", {
-        gradeNames: "flock.test.module",
+    fluid.registerNamespace("flock.test.synth.environmental");
+
+    flock.test.synth.environmental.assertSynthWasEvaluated = function (synth) {
+        jqUnit.assertTrue("The synth should have been added to the environment.",
+        synth.isPlaying());
+
+        jqUnit.assertTrue("The synth should have been evaluated.",
+        synth.model.didGen);
+    };
+
+    flock.test.synth.environmental.assertSynthWasNotEvaluated = function (synth) {
+        jqUnit.assertFalse("The synth should have been added to the environment.",
+        synth.isPlaying());
+
+        jqUnit.assertFalse("The synth should have been evaluated.",
+        synth.model.didGen);
+    };
+
+    fluid.defaults("flock.test.synth.environmental.autoAddTests", {
+        gradeNames: "flock.test.module.runOnCreate",
+
         name: "Synth autoAddToEnviro tests",
 
         components: {
@@ -70,40 +89,30 @@ var fluid = fluid || require("infusion"),
 
         invokers: {
             run: {
-                funcName: "flock.test.synth.environmental.tests.run",
+                funcName: "flock.test.synth.environmental.autoAddTests.run",
                 args: "{that}"
             }
-        },
-
-        listeners: {
-            "onCreate.runTests": "{that}.run()"
         }
     });
 
-    flock.test.synth.environmental.tests.run = function (module) {
+    flock.test.synth.environmental.autoAddTests.run = function (module) {
         jqUnit.asyncTest("Auto add to the environment", function () {
             module.environment.start();
 
             flock.test.synth.testEnviroGraph(function () {
-                jqUnit.assertTrue("The synth with default options should have been automatically added to the environment.",
-                    module.autoAddedSynth.isPlaying());
-                jqUnit.assertTrue("The synth with default options should have been evaluated.",
-                    module.autoAddedSynth.model.didGen);
+                flock.test.synth.environmental.assertSynthWasEvaluated(module.autoAddedSynth);
             });
 
             flock.test.synth.testEnviroGraph(function () {
-                jqUnit.assertTrue("The synth with autoAddToEnvironment: false should not have been automatically added to the environment.",
-                    !module.notAutoAddedSynth.isPlaying());
-                jqUnit.assertTrue("The synth with autoAddToEnvironment: false should not have been evaluated.",
-                    !module.notAutoAddedSynth.model.didGen);
+                flock.test.synth.environmental.assertSynthWasNotEvaluated(module.notAutoAddedSynth);
                 jqUnit.start();
             });
         });
     };
 
-    flock.test.synth.environmental.tests();
+    flock.test.synth.environmental.autoAddTests();
 
-    fluid.defaults("flock.test.synthEnvironmentTests", {
+    fluid.defaults("flock.test.synth.environment.removeDestroyTests", {
         gradeNames: "flock.test.testEnvironment",
 
         components: {
@@ -111,23 +120,23 @@ var fluid = fluid || require("infusion"),
                 type: "flock.test.synth.genReporter",
                 options: {
                     components: {
-                        enviro: "{synthEnvironmentTests}.environment"
+                        enviro: "{removeDestroyTests}.environment"
                     }
                 }
             },
 
             tester: {
-                type: "flock.test.synthEnvironmentTester"
+                type: "flock.test.synth.environment.removeDestroyTester"
             }
         }
     });
 
-    fluid.defaults("flock.test.synthEnvironmentTester", {
+    fluid.defaults("flock.test.synth.environment.removeDestroyTester", {
         gradeNames: "fluid.test.testCaseHolder",
 
         invokers: {
             evaluate2Secs: {
-                funcName: "flock.test.synthEnvironmentTester.evaluate2Secs",
+                funcName: "flock.test.synth.environment.removeDestroyTester.evaluate2Secs",
                 args: ["{testEnvironment}", "{that}.events.afterTwoSeconds.fire"]
             }
         },
@@ -152,13 +161,13 @@ var fluid = fluid || require("infusion"),
                             },
                             {
                                 event: "{that}.events.afterTwoSeconds",
-                                listener: "flock.test.synthEnvironmentTester.synthWasEvaluated"
+                                listener: "flock.test.synth.environment.removeDestroyTester.synthWasEvaluated"
                             },
                             {
                                 func: "{synth}.pause"
                             },
                             {
-                                funcName: "flock.test.synthEnvironmentTester.synthWasRemoved",
+                                funcName: "flock.test.synth.environment.removeDestroyTester.synthWasRemoved",
                                 args: ["{testEnvironment}"]
                             },
                             {
@@ -169,7 +178,7 @@ var fluid = fluid || require("infusion"),
                             },
                             {
                                 event: "{that}.events.afterTwoSeconds",
-                                listener: "flock.test.synthEnvironmentTester.synthWasNotEvaluated"
+                                listener: "flock.test.synth.environment.removeDestroyTester.synthWasNotEvaluated"
                             }
                         ]
                     },
@@ -185,13 +194,13 @@ var fluid = fluid || require("infusion"),
                             },
                             {
                                 event: "{that}.events.afterTwoSeconds",
-                                listener: "flock.test.synthEnvironmentTester.synthWasEvaluated"
+                                listener: "flock.test.synth.environment.removeDestroyTester.synthWasEvaluated"
                             },
                             {
                                 func: "{synth}.destroy"
                             },
                             {
-                                funcName: "flock.test.synthEnvironmentTester.synthWasRemoved",
+                                funcName: "flock.test.synth.environment.removeDestroyTester.synthWasRemoved",
                                 args: ["{testEnvironment}"]
                             }
                         ]
@@ -201,7 +210,7 @@ var fluid = fluid || require("infusion"),
         ]
     });
 
-    flock.test.synthEnvironmentTester.evaluate2Secs = function (testEnvironment, testFn) {
+    flock.test.synth.environment.removeDestroyTester.evaluate2Secs = function (testEnvironment, testFn) {
         var audioSettings = testEnvironment.environment.audioSystem.model;
         var waitDur = (audioSettings.bufferSize / audioSettings.rates.audio) * 1000 * 2;
 
@@ -210,124 +219,144 @@ var fluid = fluid || require("infusion"),
         }, waitDur);
     };
 
-    // TODO: Remove duplication with tests above.
-    flock.test.synthEnvironmentTester.synthWasEvaluated = function (testEnvironment) {
-        jqUnit.assertTrue("The synth should have been added to the environment.",
-        testEnvironment.synth.isPlaying());
-
-        jqUnit.assertTrue("The synth should have been evaluated.",
-        testEnvironment.synth.model.didGen);
+    flock.test.synth.environment.removeDestroyTester.synthWasEvaluated = function (testEnvironment) {
+        flock.test.synth.environmental.assertSynthWasEvaluated(testEnvironment.synth);
     };
 
-    flock.test.synthEnvironmentTester.synthWasRemoved = function (testEnvironment) {
+    flock.test.synth.environment.removeDestroyTester.synthWasRemoved = function (testEnvironment) {
         jqUnit.assertEquals("The synth should have been removed from the environment.",
         testEnvironment.environment.nodeList.nodes.indexOf(testEnvironment.synth),
         -1);
     };
 
-    flock.test.synthEnvironmentTester.synthWasNotEvaluated = function (testEnvironment) {
-        jqUnit.assertTrue("The synth, after having been paused, should not be playing.",
-        !testEnvironment.synth.isPlaying());
-        jqUnit.assertTrue("The synth, after having been paused, should not have been evaluated.",
-        !testEnvironment.synth.model.didGen);
+    flock.test.synth.environment.removeDestroyTester.synthWasNotEvaluated = function (testEnvironment) {
+        flock.test.synth.environmental.assertSynthWasNotEvaluated(testEnvironment.synth);
     };
 
-    fluid.test.runTests("flock.test.synthEnvironmentTests");
+    // TODO: These tests irregularly cause exceptions on Node.js
+    // in node-speaker and are not viable.
+    // We either need to 1) replace node-speaker; 2) mock out the
+    // audio backend; or both.
+    if (flock.platform.isBrowser) {
+        fluid.test.runTests("flock.test.synth.environment.removeDestroyTests");
+    }
 
-    // var testAddToEnvironment = function (synthOptions, expectedOrder, message) {
-    //     flock.nodeList.clearAll(environment.nodeList);
+    fluid.defaults("flock.test.synth.environment.orderTests", {
+        gradeNames: "flock.test.module.runOnCreate",
 
-    //     var synths = [];
-    //     fluid.each(synthOptions, function (synthOption) {
-    //         synths.push(flock.synth(synthOption));
-    //     });
+        name: "Synth addToEnviro order tests",
 
-    //     var actualOrder = fluid.transform(synths, function (synth) {
-    //         return environment.nodeList.nodes.indexOf(synth);
-    //     });
+        synthOptions: {
+            synthDef: {
+                ugen: "flock.ugen.sinOsc"
+            }
+        },
 
-    //     QUnit.deepEqual(actualOrder, expectedOrder, message);
-    // };
+        invokers: {
+            run: {
+                funcName: "flock.test.synth.environment.orderTests.run",
+                args: [
+                    "{that}",
+                    "{that}.options.synthOptions",
+                    "{that}.options.testSpecs"
+                ]
+            }
+        },
 
-    // var runAddToEnvironmentTest = function (testSpec) {
-    //     var def = {
-    //         ugen: "flock.ugen.sinOsc"
-    //     };
+        testSpecs: [
+            {
+                addToEnvironment: [false],
+                expectedOrder: [-1],
+                msg: "The synth should not have been added to the environment " +
+                    "when its addToEnvironment option was false."
+            },
+            {
+                addToEnvironment: [undefined],
+                expectedOrder: [0],
+                msg: "The synth should have been added to the environment " +
+                    "when its addToEnvironment option was undefined, because flock.synth's default " +
+                    "behaviour is to add itself to the environment at the tail."
+            },
+            {
+                addToEnvironment: [null],
+                expectedOrder: [-1],
+                msg: "The synth should not have been added to the environment " +
+                    "when its addToEnvironment option was null."
+            },
+            {
+                addToEnvironment: [true],
+                expectedOrder: [0],
+                msg: "The synth should have been added to the environment " +
+                    "when its addToEnvironment option was set to true."
+            },
+            {
+                addToEnvironment: ["tail", "tail", "head"],
+                expectedOrder: [1, 2, 0],
+                msg: "The synth should have been added to the head of the environment when its " +
+                    "addToEnvironment option is set to 'head'."
+            },
+            {
+                addToEnvironment: ["head", "head", "head", 2],
+                expectedOrder: [3, 1, 0, 2],
+                msg: "The synth should have been added to the environment at the correct index " +
+                    "when its addToEnvironment option was set to an integer."
+            },
+            {
+                addToEnvironment: [true, "head", 2, "tail"],
+                expectedOrder: [1, 0, 2, 3],
+                msg: "The node order should be correct when specifying a variety of types of " +
+                    "addToEnvironment options."
+            },
+            {
+                addToEnvironment: ["tail", "cat"],
+                expectedOrder: [0, 1],
+                msg: "The synth should be added to tail of the environment " +
+                    "when its addToEnvironment option was invalid."
+            }
+        ]
+    });
 
-    //     var synthOptions = [];
+    flock.test.synth.environment.orderTests.testEnvironmentOrder = function (environment, synthOptions, testSpec) {
+        var synths = fluid.transform(synthOptions, function (synthOption) {
+            return flock.synth(synthOption);
+        });
 
-    //     var addToEnvironmentOptions = fluid.makeArray(testSpec.addToEnvironment);
-    //     fluid.each(addToEnvironmentOptions, function (addToEnvironment) {
-    //         synthOptions.push({
-    //             synthDef: def,
-    //             addToEnvironment: addToEnvironment
-    //         });
-    //     });
+        var actualOrder = fluid.transform(synths, function (synth) {
+            return environment.nodeList.nodes.indexOf(synth);
+        });
 
-    //     testAddToEnvironment(synthOptions, testSpec.expectedOrder, testSpec.msg);
-    // };
+        jqUnit.assertDeepEq(testSpec.msg, testSpec.expectedOrder, actualOrder);
+    };
 
-    // var runAddToEnvironmentTests = function (testSpecs) {
-    //     fluid.each(testSpecs, function (testSpec) {
-    //         runAddToEnvironmentTest(testSpec);
-    //     });
-    // };
+    flock.test.synth.environment.orderTests.prepareSynthOptions = function (synthOptionsTemplate, testSpec) {
+        var addToEnvironmentOptions = testSpec.addToEnvironment;
 
-    // QUnit.test("addToEnvironment", function () {
+        return fluid.transform(addToEnvironmentOptions, function (addToEnvironment) {
+            var synthOptions = fluid.copy(synthOptionsTemplate);
+            synthOptions.addToEnvironment = addToEnvironment;
 
-    //     var testSpecs = [
-    //         {
-    //             addToEnvironment: [false],
-    //             expectedOrder: [-1],
-    //             msg: "The synth should not have been added to the environment " +
-    //                 "when its addToEnvironment option was false."
-    //         },
-    //         {
-    //             addToEnvironment: [undefined],
-    //             expectedOrder: [0],
-    //             msg: "The synth should have been added to the environment " +
-    //                 "when its addToEnvironment option was undefined, because flock.synth's default " +
-    //                 "behaviour is to add itself to the environment at the tail."
-    //         },
-    //         {
-    //             addToEnvironment: [null],
-    //             expectedOrder: [-1],
-    //             msg: "The synth should not have been added to the environment " +
-    //                 "when its addToEnvironment option was null."
-    //         },
-    //         {
-    //             addToEnvironment: [true],
-    //             expectedOrder: [0],
-    //             msg: "The synth should have been added to the environment " +
-    //                 "when its addToEnvironment option was set to true."
-    //         },
-    //         {
-    //             addToEnvironment: ["tail", "tail", "head"],
-    //             expectedOrder: [1, 2, 0],
-    //             msg: "The synth should have been added to the head of the environment when its " +
-    //                 "addToEnvironment option is set to 'head'."
-    //         },
-    //         {
-    //             addToEnvironment: ["head", "head", "head", 2],
-    //             expectedOrder: [3, 1, 0, 2],
-    //             msg: "The synth should have been added to the environment at the correct index " +
-    //                 "when its addToEnvironment option was set to an integer."
-    //         },
-    //         {
-    //             addToEnvironment: [true, "head", 2, "tail"],
-    //             expectedOrder: [1, 0, 2, 3],
-    //             msg: "The node order should be correct when specifying a variety of types of " +
-    //                 "addToEnvironment options."
-    //         },
-    //         {
-    //             addToEnvironment: ["tail", "cat"],
-    //             expectedOrder: [0, 1],
-    //             msg: "The synth should be added to tail of the environment " +
-    //                 "when its addToEnvironment option was invalid."
-    //         }
-    //     ];
+            return synthOptions;
+        });
+    };
 
-    //     runAddToEnvironmentTests(testSpecs);
-    // });
+    flock.test.synth.environment.orderTests.runTest = function (environment, synthOptionsTemplate, testSpec) {
+        flock.nodeList.clearAll(environment.nodeList);
 
+        var synthOptions = flock.test.synth.environment.orderTests.prepareSynthOptions(synthOptionsTemplate, testSpec);
+
+        flock.test.synth.environment.orderTests.testEnvironmentOrder(environment, synthOptions, testSpec);
+
+    };
+
+    flock.test.synth.environment.orderTests.run = function (that, synthOptionsTemplate, testSpecs) {
+        jqUnit.test("addToEnvironment results in the correct node order", function () {
+            jqUnit.expect(8);
+
+            fluid.each(testSpecs, function (testSpec) {
+                flock.test.synth.environment.orderTests.runTest(that.environment, synthOptionsTemplate, testSpec);
+            });
+        });
+    };
+
+    flock.test.synth.environment.orderTests();
 }());

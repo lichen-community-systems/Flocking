@@ -49,6 +49,6 @@
     "test": "npm run node-test && npm run browser-test",
     "browser-test": "testem ci --file tests/unit/testem.json",
     "node-test": "node tests/unit/nodejs/all-node-tests.js",
-    "linux-vm-test": "vagrant ssh -c 'cd /home/vagrant/sync/; npm install; DISPLAY=:0 npm test'"
+    "linux-vm-test": "vagrant ssh -c 'cd /home/vagrant/sync/; npm install; DISPLAY=:0 npm run node-test'"
   }
 }
