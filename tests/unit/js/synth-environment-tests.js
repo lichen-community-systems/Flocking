@@ -15,56 +15,10 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    fluid.defaults("flock.test.synth.genReporter", {
-        gradeNames: ["flock.synth"],
-
-        model: {
-            didGen: false
-        },
-
-        members: {
-            genFn: "{that}.gen"
-        },
-
-        synthDef: {
-            ugen: "flock.ugen.silence"
-        },
-
-        invokers: {
-            gen: {
-                changePath: "didGen",
-                value: true
-            },
-
-            reset: {
-                changePath: "didGen",
-                value: false
-            }
-        }
-    });
-
     flock.test.synth.testEnviroGraph = function (fn) {
         setTimeout(function () {
             fn();
         }, 2000);
-    };
-
-    fluid.registerNamespace("flock.test.synth.environmental");
-
-    flock.test.synth.environmental.assertSynthWasEvaluated = function (synth) {
-        jqUnit.assertTrue("The synth should have been added to the environment.",
-        synth.isPlaying());
-
-        jqUnit.assertTrue("The synth should have been evaluated.",
-        synth.model.didGen);
-    };
-
-    flock.test.synth.environmental.assertSynthWasNotEvaluated = function (synth) {
-        jqUnit.assertFalse("The synth should have been added to the environment.",
-        synth.isPlaying());
-
-        jqUnit.assertFalse("The synth should have been evaluated.",
-        synth.model.didGen);
     };
 
     fluid.defaults("flock.test.synth.environmental.autoAddTests", {
@@ -100,11 +54,11 @@ var fluid = fluid || require("infusion"),
             module.environment.start();
 
             flock.test.synth.testEnviroGraph(function () {
-                flock.test.synth.environmental.assertSynthWasEvaluated(module.autoAddedSynth);
+                flock.test.synth.genReporter.assertWasEvaluated(module.autoAddedSynth);
             });
 
             flock.test.synth.testEnviroGraph(function () {
-                flock.test.synth.environmental.assertSynthWasNotEvaluated(module.notAutoAddedSynth);
+                flock.test.synth.genReporter.assertWasNotEvaluated(module.notAutoAddedSynth);
                 jqUnit.start();
             });
         });
@@ -112,134 +66,6 @@ var fluid = fluid || require("infusion"),
 
     flock.test.synth.environmental.autoAddTests();
 
-    fluid.defaults("flock.test.synth.environment.removeDestroyTests", {
-        gradeNames: "flock.test.testEnvironment",
-
-        components: {
-            synth: {
-                type: "flock.test.synth.genReporter",
-                options: {
-                    components: {
-                        enviro: "{removeDestroyTests}.environment"
-                    }
-                }
-            },
-
-            tester: {
-                type: "flock.test.synth.environment.removeDestroyTester"
-            }
-        }
-    });
-
-    fluid.defaults("flock.test.synth.environment.removeDestroyTester", {
-        gradeNames: "fluid.test.testCaseHolder",
-
-        invokers: {
-            evaluate2Secs: {
-                funcName: "flock.test.synth.environment.removeDestroyTester.evaluate2Secs",
-                args: ["{testEnvironment}", "{that}.events.afterTwoSeconds.fire"]
-            }
-        },
-
-        events: {
-            afterTwoSeconds: null
-        },
-
-        modules: [
-            {
-                name: "Synth environmental tests",
-                tests: [
-                    {
-                        expect: 5,
-                        name: "Remove synth from the environment",
-                        sequence: [
-                            {
-                                func: "{environment}.play"
-                            },
-                            {
-                                func: "{that}.evaluate2Secs"
-                            },
-                            {
-                                event: "{that}.events.afterTwoSeconds",
-                                listener: "flock.test.synth.environment.removeDestroyTester.synthWasEvaluated"
-                            },
-                            {
-                                func: "{synth}.pause"
-                            },
-                            {
-                                funcName: "flock.test.synth.environment.removeDestroyTester.synthWasRemoved",
-                                args: ["{testEnvironment}"]
-                            },
-                            {
-                                func: "{synth}.reset"
-                            },
-                            {
-                                func: "{that}.evaluate2Secs"
-                            },
-                            {
-                                event: "{that}.events.afterTwoSeconds",
-                                listener: "flock.test.synth.environment.removeDestroyTester.synthWasNotEvaluated"
-                            }
-                        ]
-                    },
-                    {
-                        expect: 3,
-                        name: "Destroying a synth removes it from the environment",
-                        sequence: [
-                            {
-                                func: "{synth}.play"
-                            },
-                            {
-                                func: "{that}.evaluate2Secs"
-                            },
-                            {
-                                event: "{that}.events.afterTwoSeconds",
-                                listener: "flock.test.synth.environment.removeDestroyTester.synthWasEvaluated"
-                            },
-                            {
-                                func: "{synth}.destroy"
-                            },
-                            {
-                                funcName: "flock.test.synth.environment.removeDestroyTester.synthWasRemoved",
-                                args: ["{testEnvironment}"]
-                            }
-                        ]
-                    }
-                ]
-            }
-        ]
-    });
-
-    flock.test.synth.environment.removeDestroyTester.evaluate2Secs = function (testEnvironment, testFn) {
-        var audioSettings = testEnvironment.environment.audioSystem.model;
-        var waitDur = (audioSettings.bufferSize / audioSettings.rates.audio) * 1000 * 2;
-
-        setTimeout(function () {
-            testFn(testEnvironment);
-        }, waitDur);
-    };
-
-    flock.test.synth.environment.removeDestroyTester.synthWasEvaluated = function (testEnvironment) {
-        flock.test.synth.environmental.assertSynthWasEvaluated(testEnvironment.synth);
-    };
-
-    flock.test.synth.environment.removeDestroyTester.synthWasRemoved = function (testEnvironment) {
-        jqUnit.assertEquals("The synth should have been removed from the environment.",
-        testEnvironment.environment.nodeList.nodes.indexOf(testEnvironment.synth),
-        -1);
-    };
-
-    flock.test.synth.environment.removeDestroyTester.synthWasNotEvaluated = function (testEnvironment) {
-        flock.test.synth.environmental.assertSynthWasNotEvaluated(testEnvironment.synth);
-    };
-
-    // TODO: These tests irregularly cause exceptions on Node.js
-    // in node-speaker and are not viable.
-    // We either need to 1) replace node-speaker; 2) mock out the
-    // audio backend; or both.
-    if (flock.platform.isBrowser) {
-        fluid.test.runTests("flock.test.synth.environment.removeDestroyTests");
-    }
 
     fluid.defaults("flock.test.synth.environment.orderTests", {
         gradeNames: "flock.test.module.runOnCreate",
