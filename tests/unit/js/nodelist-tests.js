@@ -359,8 +359,6 @@ var fluid = fluid || require("infusion"),
             "The old ugen should have been replaced by the new one.");
         QUnit.equal(synth.nodeList.namedNodes.gerbil.inputs.ear, expectedInput,
             "The old ugen's input should have been copied over to the new one.");
-        // TODO: Why is this failing?
-        //deepEqual(synth.out.inputs.sources.inputs.gerbil, newUGen, "The new ugen's output should be wired back up.");
     });
 
 }());

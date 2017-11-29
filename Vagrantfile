@@ -24,7 +24,7 @@ ram = ENV["VM_RAM"] || 2048
 
 Vagrant.configure(2) do |config|
 
-  config.vm.box = "inclusivedesign/fedora24"
+  config.vm.box = "inclusivedesign/fedora27"
 
   # Your working directory will be synced to /home/vagrant/sync in the VM.
   config.vm.synced_folder ".", "#{app_directory}"

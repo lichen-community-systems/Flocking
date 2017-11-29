@@ -21,20 +21,20 @@
   "readmeFilename": "README.md",
   "main": "index.js",
   "devDependencies": {
-    "grunt": "~0.4.2",
-    "grunt-contrib-clean": "~0.4.1",
-    "grunt-contrib-concat": "~0.3.0",
-    "grunt-contrib-copy": "~0.4.1",
-    "grunt-contrib-jshint": "~0.8.0",
-    "grunt-contrib-uglify": "~0.3.2",
-    "grunt-contrib-watch": "^0.6.1",
+    "grunt": "1.0.1",
+    "grunt-contrib-clean": "1.1.0",
+    "grunt-contrib-concat": "1.0.1",
+    "grunt-contrib-copy": "1.0.0",
+    "grunt-contrib-jshint": "1.1.0",
+    "grunt-contrib-uglify": "3.1.0",
+    "grunt-contrib-watch": "1.0.0",
     "sheep-benchmark": "colinbdclark/sheep.js",
     "node-jqunit": "1.1.4",
-    "requirejs": "2.3.2"
+    "requirejs": "2.3.5"
   },
   "dependencies": {
     "jquery": "2.2.4",
-    "infusion": "2.0.0",
+    "infusion": "3.0.0-dev.20171121T212609Z.9b4fde781",
     "codemirror-infusion": "2.2.0",
     "jsplumb": "1.7.9",
     "dagre": "0.7.4",
@@ -42,13 +42,13 @@
     "atob": "2.0.3"
   },
   "optionalDependencies": {
-    "speaker": "colinbdclark/node-speaker#mpg123-lower-latency",
-    "midi": "0.9.5"
+    "midi": "0.9.5",
+    "speaker": "github:colinbdclark/node-speaker#c3f0740482864f3e750ebf4d4da8c49a407edbae"
   },
   "scripts": {
     "test": "npm run node-test && npm run browser-test",
     "browser-test": "testem ci --file tests/unit/testem.json",
     "node-test": "node tests/unit/nodejs/all-node-tests.js",
-    "linux-vm-test": "vagrant ssh -c 'cd /home/vagrant/sync/; npm install; DISPLAY=:0 npm test'"
+    "linux-vm-test": "vagrant ssh -c 'cd /home/vagrant/sync/; npm install; DISPLAY=:0 npm run node-test'"
   }
 }
