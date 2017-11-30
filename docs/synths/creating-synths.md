@@ -155,7 +155,7 @@ When you've decided on a namespace, you can define your synth grades within it. 
         }
     });
 
-The <code>gradeNames</code> option allows you declare any parent grades that you'd like to mix into your component. In this case, we're extending <code>flock.synth</code>, so we specify it as the first parent grade name. The <code>autoInit</code> grade tells the Infusion framework that you want it to automatically provide a creator function for your grade and place it in your namespace.
+The <code>gradeNames</code> option allows you declare any parent grades that you'd like to mix into your component. In this case, we're extending <code>flock.synth</code>, so we specify it as the first parent grade name.
 
 New instances of your custom synth can then be instantiated like this:
 

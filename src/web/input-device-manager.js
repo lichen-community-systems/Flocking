@@ -41,6 +41,7 @@ var fluid = fluid || require("infusion"),
     var webAudioShims = {
         AudioContext: window.AudioContext || window.webkitAudioContext,
 
+        // TODO: Shim navigator.mediaDevices.getUserMedia
         getUserMediaImpl: navigator.getUserMedia || navigator.webkitGetUserMedia ||
             navigator.mozGetUserMedia || navigator.msGetUserMedia || flock.webAudio.mediaStreamFailure,
 
