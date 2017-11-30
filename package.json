@@ -33,7 +33,7 @@
     "requirejs": "2.3.5"
   },
   "dependencies": {
-    "jquery": "2.2.4",
+    "jquery": "3.2.1",
     "infusion": "3.0.0-dev.20171121T212609Z.9b4fde781",
     "codemirror-infusion": "2.2.0",
     "jsplumb": "1.7.9",
