@@ -23,6 +23,7 @@ var fluid = fluid || require("infusion"),
     // Based on Brian Cavalier and John Hann's Tiny Promises library.
     // https://github.com/unscriptable/promises/blob/master/src/Tiny2.js
     function Promise() {
+        /* jshint ignore:start */
         var resolve = function (result) {
             complete("resolve", result);
             promise.state = "fulfilled";
@@ -99,6 +100,7 @@ var fluid = fluid || require("infusion"),
         }
 
         return promise;
+        /* jshint ignore:end */
     }
 
     fluid.defaults("flock.promise", {

@@ -38,13 +38,6 @@ var fluid = fluid || require("infusion"),
         });
     };
 
-    var checkOsc = function (testSpec, expected, msg) {
-        var osc = makeOsc(testSpec.freq, testSpec.table, testSpec.numSamps, testSpec.sampleRate);
-        expected = paddedBuffer(expected, osc.output.length);
-        osc.gen(testSpec.numSamps);
-        QUnit.deepEqual(osc.output, expected, msg);
-    };
-
     var paddedBuffer = function (values, length) {
         var buf = new Float32Array(length),
             i;
@@ -52,6 +45,13 @@ var fluid = fluid || require("infusion"),
             buf[i] = values[i];
         }
         return buf;
+    };
+
+    var checkOsc = function (testSpec, expected, msg) {
+        var osc = makeOsc(testSpec.freq, testSpec.table, testSpec.numSamps, testSpec.sampleRate);
+        expected = paddedBuffer(expected, osc.output.length);
+        osc.gen(testSpec.numSamps);
+        QUnit.deepEqual(osc.output, expected, msg);
     };
 
     QUnit.test("flock.ugen.osc() empty table", function () {

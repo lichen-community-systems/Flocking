@@ -603,6 +603,7 @@ var fluid = fluid || require("infusion"),
 
     flock.test.ugen.mock = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
+        that.didOnInputChangedFire = false;
 
         that.gen = function (numSamps) {
             if (that.options.gen) {
@@ -613,6 +614,15 @@ var fluid = fluid || require("infusion"),
                 }
             }
         };
+
+        that.onInputChanged = function () {
+            that.didOnInputChangedFire = true;
+        };
+
+        that.reset = function () {
+            that.didOnInputChangedFire = false;
+        };
+
         return that;
     };
 
@@ -732,6 +742,7 @@ var fluid = fluid || require("infusion"),
                 type: "flock.silentEnviro",
                 options: {
                     events: {
+                        onCreate: "{module}.events.afterEnvironmentCreated",
                         onDestroy: "{module}.events.onTeardown"
                     }
                 }
@@ -740,11 +751,16 @@ var fluid = fluid || require("infusion"),
 
         events: {
             onSetup: null,
+            afterEnvironmentCreated: null,
             onTeardown: null
         },
 
         listeners: {
-            "onCreate.registerModule": "flock.test.module.register({that})"
+            "onCreate.registerModule": {
+                priority: "first",
+                funcName: "flock.test.module.register",
+                args: "{that}"
+            }
         }
     });
 
@@ -754,6 +770,19 @@ var fluid = fluid || require("infusion"),
             teardown: that.events.onTeardown.fire
         });
     };
+
+
+    fluid.defaults("flock.test.module.runOnCreate", {
+        gradeNames: "flock.test.module",
+
+        invokers: {
+            run: "fluid.notImplemented()"
+        },
+
+        listeners: {
+            "onCreate.runTests": "{that}.run()"
+        }
+    });
 
 
     fluid.defaults("flock.test.testEnvironment", {
@@ -773,7 +802,83 @@ var fluid = fluid || require("infusion"),
                         }
                     }
                 }
-            },
+            }
         }
     });
+
+
+    fluid.defaults("flock.test.synth.genReporter", {
+        gradeNames: ["flock.synth"],
+
+        model: {
+            didGen: false
+        },
+
+        members: {
+            genFn: "{that}.gen"
+        },
+
+        synthDef: {
+            ugen: "flock.ugen.silence"
+        },
+
+        invokers: {
+            gen: {
+                changePath: "didGen",
+                value: true
+            },
+
+            reset: {
+                changePath: "didGen",
+                value: false
+            }
+        }
+    });
+
+    flock.test.synth.genReporter.assertWasEvaluated = function (synth) {
+        jqUnit.assertTrue("The synth should have been added to the environment.",
+        synth.isPlaying());
+
+        jqUnit.assertTrue("The synth should have been evaluated.",
+        synth.model.didGen);
+    };
+
+    flock.test.synth.genReporter.assertWasNotEvaluated = function (synth) {
+        jqUnit.assertFalse("The synth should have been added to the environment.",
+        synth.isPlaying());
+
+        jqUnit.assertFalse("The synth should have been evaluated.",
+        synth.model.didGen);
+    };
+
+    flock.test.synthDefs = {
+        amplitudeModulation: {
+            ugen: "flock.ugen.out",
+            inputs: {
+                sources: {
+                    id: "sine",
+                    ugen: "flock.ugen.sinOsc",
+                    inputs: {
+                        freq: 440,
+                        mul: {
+                            id: "mod",
+                            ugen: "flock.ugen.sinOsc",
+                            inputs: {
+                                freq: 1.0
+                            }
+                        }
+                    }
+                },
+                bus: 0
+            }
+        },
+
+        sequencer: {
+            id: "seq",
+            ugen: "flock.ugen.sequence",
+            freq: 750,
+            values: [1, 2, 3, 5]
+        }
+    };
+
 }());

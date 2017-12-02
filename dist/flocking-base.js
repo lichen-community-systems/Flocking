@@ -2058,7 +2058,7 @@ var fluid = fluid || require("infusion"),
 
     flock.pathParseError = function (root, path, token) {
         var msg = "Error parsing path '" + path + "'. Segment '" + token +
-            "' could not be resolved. Root object was: " + fluid.prettyPrintJSON(root);
+            "' could not be resolved.";
 
         flock.fail(msg);
     };
@@ -4039,6 +4039,7 @@ var fluid = fluid || require("infusion"),
     // Based on Brian Cavalier and John Hann's Tiny Promises library.
     // https://github.com/unscriptable/promises/blob/master/src/Tiny2.js
     function Promise() {
+        /* jshint ignore:start */
         var resolve = function (result) {
             complete("resolve", result);
             promise.state = "fulfilled";
@@ -4115,6 +4116,7 @@ var fluid = fluid || require("infusion"),
         }
 
         return promise;
+        /* jshint ignore:end */
     }
 
     fluid.defaults("flock.promise", {
@@ -6936,6 +6938,7 @@ var fluid = fluid || require("infusion"),
     var webAudioShims = {
         AudioContext: window.AudioContext || window.webkitAudioContext,
 
+        // TODO: Shim navigator.mediaDevices.getUserMedia
         getUserMediaImpl: navigator.getUserMedia || navigator.webkitGetUserMedia ||
             navigator.mozGetUserMedia || navigator.msGetUserMedia || flock.webAudio.mediaStreamFailure,
 
