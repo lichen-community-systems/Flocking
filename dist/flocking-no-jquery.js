@@ -17789,6 +17789,14 @@ var fluid = fluid || require("infusion"),
         }
     };
 
+    flock.copyUGenDefinition = function (ugenName, alias) {
+        var defaults = flock.ugenDefaults(ugenName),
+            value = fluid.getGlobalValue(ugenName);
+
+        fluid.setGlobalValue(alias, value);
+        flock.ugenDefaults(alias, fluid.copy(defaults));
+    };
+
     flock.krMul = function (numSamps, output, mulInput) {
         var mul = mulInput.output[0],
             i;
@@ -20108,8 +20116,9 @@ var fluid = fluid || require("infusion"),
     "use strict";
 
     /**
-     * A simple waveshaper-based distortion effect.
+     * A simple waveshaper-based distortion effect by Jon Watte.
      * Uses the polynomial y = (3/2) * x - (1/2) * x^3.
+     *
      * http://www.musicdsp.org/showone.php?id=114
      *
      * Inputs:
@@ -20161,7 +20170,7 @@ var fluid = fluid || require("infusion"),
 
 
     /**
-     * A simple tanh distortion effect.
+     * A tanh distortion effect.
      *
      * Inputs:
      *   - source: the input signal to distort
@@ -20179,7 +20188,7 @@ var fluid = fluid || require("infusion"),
                 j;
 
             for (i = j = 0; i < numSamps; i++, j += sourceInc) {
-                dist = Math.tanh( source[i] );
+                dist = Math.tanh(source[j]);
                 out[i] = dist;
             }
 
@@ -20206,7 +20215,7 @@ var fluid = fluid || require("infusion"),
 
 
     /**
-     * A simple waveshaper-based distortion effect by Bram de Jonge.
+     * A waveshaper-based distortion effect by Bram de Jong.
      * http://www.musicdsp.org/showone.php?id=41
      *
      * Inputs:
@@ -20214,7 +20223,7 @@ var fluid = fluid || require("infusion"),
      *   - amount: a value between 1 and Infinity that represents the amount of distortion
      *             to apply.
      */
-    flock.ugen.distortion.deJonge = function (inputs, output, options) {
+    flock.ugen.distortion.deJong = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
         that.gen = function (numSamps) {
@@ -20250,7 +20259,7 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    flock.ugenDefaults("flock.ugen.distortion.deJonge", {
+    flock.ugenDefaults("flock.ugen.distortion.deJong", {
         rate: "audio",
         inputs: {
             source: null,
@@ -20261,9 +20270,15 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+    // Aliases the deJong distortion unit generator to its
+    // original, misspelled name for backwards compatibility.
+    //
+    // The name "flock.ugen.distortion.deJonge" is deprecated
+    // and will be removed in Flocking 0.3.0.
+    flock.copyUGenDefinition("flock.ugen.distortion.deJong", "flock.ugen.distortion.deJonge");
 
     /**
-     * A simple waveshaper-based distortion effect by Partice Tarrabia and Bram de Jong.
+     * A waveshaper-based distortion effect by Partice Tarrabia and Bram de Jong.
      * http://www.musicdsp.org/showone.php?id=46
      *
      * Inputs:
@@ -20271,7 +20286,7 @@ var fluid = fluid || require("infusion"),
      *   - amount: a value between -1 and 1 that represents the amount of distortion
      *             to apply.
      */
-    flock.ugen.distortion.tarrabiaDeJonge = function (inputs, output, options) {
+    flock.ugen.distortion.tarrabiaDeJong = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 
         that.gen = function (numSamps) {
@@ -20316,16 +20331,24 @@ var fluid = fluid || require("infusion"),
         return that;
     };
 
-    flock.ugenDefaults("flock.ugen.distortion.tarrabiaDeJonge", {
+    flock.ugenDefaults("flock.ugen.distortion.tarrabiaDeJong", {
         rate: "audio",
         inputs: {
             source: null,
-            amount: 10
+            amount: 1.0
         },
         ugenOptions: {
             strideInputs: ["source", "amount"]
         }
     });
+
+
+    // Alias the tarrabiaDeJong distortion unit generator to its
+    // original, misspelled name for backwards compatibility.
+    //
+    // The name "flock.ugen.distortion.tarrabiaDeJonge" is deprecated
+    // and will be removed in Flocking 0.3.0.
+    flock.copyUGenDefinition("flock.ugen.distortion.tarrabiaDeJong", "flock.ugen.distortion.tarrabiaDeJonge");
 
 
     /**
@@ -21275,10 +21298,8 @@ var fluid = fluid || require("infusion"),
     // Included for backwards compatibility.
     // The name "flock.ugen.env.simpleASR is deprecated.
     // Please use flock.ugen.asr instead.
-    // This will be removed before Flocking 1.0.
-    flock.ugen.env = {};
-    flock.ugen.env.simpleASR  = flock.ugen.asr;
-    flock.ugenDefaults("flock.ugen.env.simpleASR", fluid.copy(flock.ugenDefaults("flock.ugen.asr")));
+    // This will be removed in Flocking 0.3.0.
+    flock.copyUGenDefinition("flock.ugen.asr", "flock.ugen.env.simpleASR");
 
     flock.ugen.envGen = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);

@@ -1,7 +1,7 @@
 // Frequency-modulated saw wave by ring-modulated square wave through modulated distortion
 flock.synth({
     synthDef: {
-        ugen: "flock.ugen.distortion.tarrabiaDeJonge",
+        ugen: "flock.ugen.distortion.tarrabiaDeJong",
         amount: {
             ugen: "flock.ugen.sin",
             rate: "control",
@@ -15,7 +15,7 @@ flock.synth({
                     ugen: "flock.ugen.sin",
                     mul: 30,
                     freq: 2
-                }, 
+                },
                 add: 100
             }
         }

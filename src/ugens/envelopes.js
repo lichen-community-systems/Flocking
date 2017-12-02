@@ -838,10 +838,8 @@ var fluid = fluid || require("infusion"),
     // Included for backwards compatibility.
     // The name "flock.ugen.env.simpleASR is deprecated.
     // Please use flock.ugen.asr instead.
-    // This will be removed before Flocking 1.0.
-    flock.ugen.env = {};
-    flock.ugen.env.simpleASR  = flock.ugen.asr;
-    flock.ugenDefaults("flock.ugen.env.simpleASR", fluid.copy(flock.ugenDefaults("flock.ugen.asr")));
+    // This will be removed in Flocking 0.3.0.
+    flock.copyUGenDefinition("flock.ugen.asr", "flock.ugen.env.simpleASR");
 
     flock.ugen.envGen = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);

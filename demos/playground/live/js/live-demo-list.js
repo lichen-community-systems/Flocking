@@ -204,6 +204,25 @@ var fluid = fluid || require("infusion");
                 },
 
                 {
+                    "name": "Distortion",
+                    "options": [
+                        {
+                            "id": "dejong-distortion",
+                            "name": "de Jong Waveshaping distortion"
+                        },
+                        {
+                            "id": "tanh-distortion",
+                            "name": "tanh Distortion"
+                        },
+                        {
+                            "id": "tarrabia-dejong-distortion",
+                            "name": "Tarrabia-de Jong Waveshaping distortion"
+
+                        }
+                    ]
+                },
+
+                {
                     "name": "Browser unit generators",
                     "options": [
                         {

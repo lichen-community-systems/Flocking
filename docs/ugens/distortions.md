@@ -1,12 +1,12 @@
-# Distortion UGENs #
+# Distortion Unit Generators #
 
-Flocking includes a collection of distortion algorithms. 
+Flocking includes a collection of distortion algorithms:
 
- * `flock.ugen.distortion`, A simple waveshaper-based distortion effect.
- * `flock.ugen.distortion.deJonge`, A simple waveshaper-based distortion effect by Bram de Jonge
- * `flock.ugen.distortion.tarrabiaDeJonge`, A simple waveshaper-based distortion effect by Partice Tarrabia and Bram de Jong
- * `flock.ugen.distortion.gloubiBoulga`, Waveshaper distortion by Laurent de Sora
- * `flock.ugen.distortion.tanh`, A simple tanh distorition
+ * `flock.ugen.distortion`, a simple waveshaper distortion
+ * `flock.ugen.distortion.deJong`, a waveshaper distortion by Bram de Jong
+ * `flock.ugen.distortion.tarrabiaDeJong`, a waveshaper distortion by Partice Tarrabia and Bram de Jong
+ * `flock.ugen.distortion.gloubiBoulga`, waveshaper distortion by Laurent de Sora
+ * `flock.ugen.distortion.tanh`, tanh-based distortion
 
 All distortions support the following rates:
 
@@ -14,7 +14,7 @@ All distortions support the following rates:
 
 ## flock.ugen.distortion ##
 
-A simple waveshaper-based distortion effect.
+A simple [waveshaper-based distortion effect](http://www.musicdsp.org/showone.php?id=114) by Jon Watte, which uses the polynomial y = (3/2) * x - (1/2) * x^3.
 
 ### Inputs ###
 
@@ -38,10 +38,28 @@ A simple waveshaper-based distortion effect.
     </tr>
 </table>
 
+#### source ####
+<table>
+    <tr>
+        <th>description</th>
+        <td>the source signal to distort</td>
+    </tr>
+    <tr>
+        <th>rates</th>
+        <td>`control`, `audio`</td>
+    </tr>
+    <tr>
+        <th>default</th>
+        <td>`null`</td>
+    </tr>
+</table>
 
-## flock.ugen.distortion.deJonge ##
 
-A simple waveshaper-based distortion effect by Bram de Jonge.
+## flock.ugen.distortion.deJong ##
+
+A [waveshaper-based distortion effect by Bram de Jong](http://www.musicdsp.org/showone.php?id=41).
+
+"If amount is 1, it results in a slight distortion and with bigger values the signal gets more funky. A good thing about the shaper is that feeding it with bigger-than-one amounts, doesn't create strange fx. The maximum this function will reach is 1.2 for for amount=1."
 
 ### Inputs ###
 
@@ -53,7 +71,7 @@ A simple waveshaper-based distortion effect by Bram de Jonge.
     </tr>
     <tr>
         <th>range</th>
-        <td>`1`..`Infity`</td>
+        <td>`1`..`Infinity`</td>
     </tr>
     <tr>
         <th>rates</th>
@@ -65,11 +83,25 @@ A simple waveshaper-based distortion effect by Bram de Jonge.
     </tr>
 </table>
 
-## flock.ugen.distortion.tarrabiaDeJonge ##
+#### source ####
+<table>
+    <tr>
+        <th>description</th>
+        <td>the source signal to distort</td>
+    </tr>
+    <tr>
+        <th>rates</th>
+        <td>`control`, `audio`</td>
+    </tr>
+    <tr>
+        <th>default</th>
+        <td>`null`</td>
+    </tr>
+</table>
 
-A simple waveshaper-based distortion effect by Partice Tarrabia and Bram de Jong.
+## flock.ugen.distortion.tarrabiaDeJong ##
 
-http://www.musicdsp.org/showone.php?id=46
+A [waveshaper-based distortion effect by Partice Tarrabia and Bram de Jong](http://www.musicdsp.org/showone.php?id=46).
 
 ### Inputs ###
 
@@ -89,15 +121,29 @@ http://www.musicdsp.org/showone.php?id=46
     </tr>
     <tr>
         <th>default</th>
-        <td>`10` (constant)</td>
+        <td>`1.0` (constant)</td>
+    </tr>
+</table>
+
+#### source ####
+<table>
+    <tr>
+        <th>description</th>
+        <td>the source signal to distort</td>
+    </tr>
+    <tr>
+        <th>rates</th>
+        <td>`control`, `audio`</td>
+    </tr>
+    <tr>
+        <th>default</th>
+        <td>`null`</td>
     </tr>
 </table>
 
 ## flock.ugen.distortion.gloubiBoulga ##
 
-Waveshaper distortion by Laurent de Soras
-
-http://www.musicdsp.org/showone.php?id=86
+A more processor-intensive [waveshaper distortion by Laurent de Soras](http://www.musicdsp.org/showone.php?id=86).
 
 ### Inputs ###
 
@@ -121,6 +167,22 @@ http://www.musicdsp.org/showone.php?id=86
     </tr>
 </table>
 
+#### source ####
+<table>
+    <tr>
+        <th>description</th>
+        <td>the source signal to distort</td>
+    </tr>
+    <tr>
+        <th>rates</th>
+        <td>`control`, `audio`</td>
+    </tr>
+    <tr>
+        <th>default</th>
+        <td>`null`</td>
+    </tr>
+</table>
+
 ## flock.ugen.distortion.tanh ##
 
 ### Inputs ###
@@ -129,14 +191,14 @@ http://www.musicdsp.org/showone.php?id=86
 <table>
     <tr>
         <th>description</th>
-        <td>source ugen</td>
+        <td>the source signal to distort</td>
     </tr>
     <tr>
         <th>rates</th>
-        <td>`constant`, `control`, `audio`</td>
+        <td>`control`, `audio`</td>
     </tr>
     <tr>
         <th>default</th>
-        <td>empty</td>
+        <td>`null`</td>
     </tr>
 </table>
