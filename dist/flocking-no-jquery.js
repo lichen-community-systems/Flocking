@@ -11247,7 +11247,7 @@ var fluid = fluid || require("infusion"),
 
     flock.pathParseError = function (root, path, token) {
         var msg = "Error parsing path '" + path + "'. Segment '" + token +
-            "' could not be resolved. Root object was: " + fluid.prettyPrintJSON(root);
+            "' could not be resolved.";
 
         flock.fail(msg);
     };
@@ -25455,9 +25455,16 @@ var fluid = fluid || require("infusion"),
             return 0.0;
         }
 
-        var size = target[m.dimension](),
-            offset = target.offset(),
-            pos = m.mousePosition;
+        // Note: jQuery > 3 will simply throw an error if
+        // offset() receives an element without client rects
+        // (i.e. document, window, html, body, etc.).
+        // This is a fix for
+        // https://github.com/colinbdclark/Flocking/issues/205
+        var offset = target.getClientRects ? target.offset() :
+            undefined;
+
+        var pos = m.mousePosition,
+            size = target[m.dimension]();
 
         if (offset) {
             pos -= offset[m.offsetProp];
@@ -25465,6 +25472,7 @@ var fluid = fluid || require("infusion"),
 
         return pos / size;
     };
+
 
     flock.ugenDefaults("flock.ugen.mouse.cursor", {
         rate: "control",
