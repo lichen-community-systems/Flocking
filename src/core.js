@@ -659,7 +659,7 @@ var fluid = fluid || require("infusion"),
 
     flock.pathParseError = function (root, path, token) {
         var msg = "Error parsing path '" + path + "'. Segment '" + token +
-            "' could not be resolved. Root object was: " + fluid.prettyPrintJSON(root);
+            "' could not be resolved.";
 
         flock.fail(msg);
     };

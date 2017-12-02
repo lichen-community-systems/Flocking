@@ -750,4 +750,25 @@ var fluid = fluid || require("infusion"),
         s.set("seq.list", newList);
         jqUnit.assertDeepEq("After setting a 'special input' on a unit generator, it should have been set correctly.", newList, seqUGen.inputs.list);
     });
+
+
+    jqUnit.module("Synth get() error tests");
+
+    jqUnit.test("Calling Synth.get() with an invalid path should immediately raise an error.", function () {
+        flock.debug.failHard = true;
+
+        var s = flock.synth({
+            synthDef: {
+                ugen: "flock.ugen.sinOsc"
+            }
+        });
+
+        try {
+            s.get("cat.dog");
+            jqUnit.fail("An error should have been raised when calling Synth.get() with an invalid key path.");
+        } catch (err) {
+            jqUnit.assertTrue("An error should have been raised when calling Synth.get() with an invalid key path.", err.message.indexOf("'cat' could not be resolved") > -1);
+        }
+    });
+
 }());
