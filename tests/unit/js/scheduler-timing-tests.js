@@ -80,7 +80,9 @@ var fluid = fluid || require("infusion"),
             interval: "once",
             time: 100,
             maxOutlier: 65,
-            averageDrift: 10,
+            averageDrift: 15, // TODO: This time is also too high.
+                              // But set this way because of timing
+                              // issues within a Windows VM.
             scheduler: {
                 type: "flock.scheduler.async",
                 options: {
