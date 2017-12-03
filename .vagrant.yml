@@ -41,7 +41,7 @@ setup_win_job:
       refreshenv
     - |
       npm config -g set msvs_version 2015
-      doit -c 'npm install -g testem node-gyp'
+      doit -c 'npm install -g node-gyp'
       refreshenv
     - |
       npm install
@@ -53,7 +53,7 @@ test_win_job:
     - windows
   script:              # Only one multiline script to execute
     - do.ps1 -c "npm test"
- 
+
 
 setup_linux_job:
   stage: setup_linux   # name of the stage
@@ -74,4 +74,4 @@ test_linux_job:
     - linux
   script:              # Only one multiline script to execute
     - npm test
- 
+
