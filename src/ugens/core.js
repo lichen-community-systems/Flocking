@@ -60,6 +60,14 @@ var fluid = fluid || require("infusion"),
         }
     };
 
+    flock.copyUGenDefinition = function (ugenName, alias) {
+        var defaults = flock.ugenDefaults(ugenName),
+            value = fluid.getGlobalValue(ugenName);
+
+        fluid.setGlobalValue(alias, value);
+        flock.ugenDefaults(alias, fluid.copy(defaults));
+    };
+
     flock.krMul = function (numSamps, output, mulInput) {
         var mul = mulInput.output[0],
             i;
