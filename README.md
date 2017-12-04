@@ -408,7 +408,7 @@ huge influence on my work. I hope you find this library useful enough to create 
 beautiful and inspiring as Jim's _Flocking_.
 
 ### Thanks to:###
- * [Adam Tindale](http://adamtindale.com) for several of the Playground demos
+ * [Adam Tindale](http://adamtindale.com) for the tanh distortion unit generator, documentation improvements, and several of the Playground demos
  * [Alfredo Matas](https://github.com/amatas) for test automation on Windows and Linux
  * [Johnny Taylor](https://github.com/abledaccess) for styling improvements to the Playground
  * [Dan Stowell](https://github.com/danstowell) for the Freeverb and Delay1 unit generators
