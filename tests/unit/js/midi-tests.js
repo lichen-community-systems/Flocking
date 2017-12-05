@@ -195,5 +195,311 @@ var fluid = fluid || require("infusion"),
         ]);
     });
 
+    var testEncoding = function (testDef) {
+        var expectedRawMidi = flock.midi.rawMIDIParser.parseMIDICommand(testDef.expected);
+        var encodedRawMidi = flock.midi.jsonToMidiMessage(testDef.input);
+        jqUnit.assertDeepEq(testDef.message, expectedRawMidi, encodedRawMidi);
+    };
+
+    var testDecoding = function (testDef) {
+        var rawMidiInput = flock.midi.rawMIDIParser.parseMIDICommand(testDef.input);
+        var decodedMidiAsJson = flock.midi.read(rawMidiInput);
+        jqUnit.assertDeepEq(testDef.message, testDef.expected, decodedMidiAsJson);
+    };
+
+    QUnit.test("Encoding of JSON as raw MIDI", function () {
+        var encodingTestSpecs = {
+            noteOn: {
+                message: "We should be able to encode a noteOn message.",
+                input: {
+                    "chan": 0,
+                    "note": 60,
+                    "type": "noteOn",
+                    "velocity": 69
+                },
+                expected: "90 3C 45"
+            },
+            noteOff: {
+                message: "We should be able to encode a noteOff message.",
+                input: {
+                    "chan": 0,
+                    "note": 60,
+                    "type": "noteOff",
+                    "velocity": 0
+                },
+                expected: "90 3C 00"
+            },
+            afterTouch: {
+                message: "We should be able to encode an aftertouch (non poly) message.",
+                input: {
+                    "chan": 0,
+                    "type": "aftertouch",
+                    "pressure": 87
+                },
+                expected: "D0 57"
+            },
+            control: {
+                message: "We should be able to encode a control message.",
+                input: {
+                    "chan": 2,
+                    "number": 74,
+                    "type": "control",
+                    "value": 116
+                },
+                expected: "B2 4A 74"
+            },
+            program: {
+                message: "We should be able to encode a program message.",
+                input: {
+                    "chan": 2,
+                    "program": 7,
+                    "type": "program"
+                },
+                expected: "C2 07"
+            },
+            pitchbend: {
+                message: "We should be able to encode a pitchbend message.",
+                input: {
+                    "chan": 1,
+                    "type": "pitchbend",
+                    "value": 5888
+                },
+                expected: "E1 00 2E"
+            },
+            sysex: {
+                message:  "We should be able to encode a sysex message.",
+                input: {
+                    "data": {
+                        "0": 240,
+                        "1": 0,
+                        "2": 32,
+                        "3": 8,
+                        "4": 16,
+                        "5": 127,
+                        "6": 0,
+                        "7": 1,
+                        "8": 247
+                    },
+                    "type": "sysex"
+                },
+                expected: "F0 00 20 08 10 7F 00 01 F7"
+
+            },
+            songPointer: {
+                message:  "We should be able to encode a songPointer message.",
+                input: {
+                    "type": "songPointer",
+                    "value": 1
+                },
+                expected: "F2 01"
+            },
+            songSelect: {
+                message:  "We should be able to encode a songSelect message.",
+                input: {
+                    "type": "songSelect",
+                    "value": 1
+                },
+                expected: "F3 01"
+            },
+            tuneRequest: {
+                message:  "We should be able to encode a tuneRequest message.",
+                input: {
+                    "type": "tuneRequest"
+                },
+                expected: "F6"
+            },
+            clock: {
+                message:  "We should be able to encode a clock message.",
+                input: {
+                    "type": "clock"
+                },
+                expected: "F8"
+            },
+            start: {
+                message:  "We should be able to encode a start message.",
+                input: {
+                    "type": "start"
+                },
+                expected: "FA"
+            },
+            continue: {
+                message:  "We should be able to encode a continue message.",
+                input: {
+                    "type": "continue"
+                },
+                expected: "FB"
+            },
+            stop: {
+                message:  "We should be able to encode a stop message.",
+                input: {
+                    "type": "stop"
+                },
+                expected: "FC"
+            },
+            reset: {
+                message:  "We should be able to encode a reset message.",
+                input: {
+                    "type": "reset"
+                },
+                expected: "FF"
+            },
+            activeSense: {
+                message:  "We should be able to encode an activeSense message.",
+                input: {
+                    "type": "activeSense"
+                },
+                expected: "FE"
+            }
+        };
+        fluid.each(encodingTestSpecs, testEncoding);
+    });
+
+    QUnit.test("Decoding of raw MIDI into JSON", function () {
+        var decodingTestSpecs = {
+            noteOn: {
+                message:  "We should be able to decode a noteOn message.",
+                input:    "90 3C 45",
+                expected: {
+                    "chan": 0,
+                    "note": 60,
+                    "type": "noteOn",
+                    "velocity": 69
+                }
+            },
+            noteOff: {
+                message:  "We should be able to decode a noteOff message.",
+                input:    "90 3C 00",
+                expected: {
+                    "chan": 0,
+                    "note": 60,
+                    "type": "noteOff",
+                    "velocity": 0
+                }
+            },
+            afterTouch: {
+                message: "We should be able to decode an aftertouch (non poly) message.",
+                input:   "D0 57",
+                expected: {
+                    "chan": 0,
+                    "type": "aftertouch",
+                    "pressure": 87
+                }
+            },
+            control: {
+                message: "We should be able to decode a control message.",
+                input:   "B2 4A 74",
+                expected: {
+                    "chan": 2,
+                    "number": 74,
+                    "type": "control",
+                    "value": 116
+                }
+            },
+            program: {
+                message: "We should be able to decode a program message.",
+                input:   "C2 07",
+                expected: {
+                    "chan": 2,
+                    "program": 7,
+                    "type": "program"
+                }
+            },
+            pitchbend: {
+                message: "We should be able to decode a pitchbend message.",
+                input:   "E1 00 2E",
+                expected: {
+                    "chan": 1,
+                    "type": "pitchbend",
+                    "value": 5888
+                }
+            },
+            sysex: {
+                message:  "We should be able to decode a sysex message.",
+                input:    "F0 00 20 08 10 7F 00 01 F7",
+                expected: {
+                    "data": {
+                        "0": 240,
+                        "1": 0,
+                        "2": 32,
+                        "3": 8,
+                        "4": 16,
+                        "5": 127,
+                        "6": 0,
+                        "7": 1,
+                        "8": 247
+                    },
+                    "type": "sysex"
+                }
+
+            },
+            songPointer: {
+                message:  "We should be able to decode a songPointer message.",
+                input:    "F2 01",
+                expected: {
+                    "type": "songPointer",
+                    "value": 1
+                }
+            },
+            songSelect: {
+                message:  "We should be able to decode a songSelect message.",
+                input:    "F3 01",
+                expected: {
+                    "type": "songSelect",
+                    "value": 1
+                }
+            },
+            tuneRequest: {
+                message:  "We should be able to decode a tuneRequest message.",
+                input:    "F6",
+                expected: {
+                    "type": "tuneRequest"
+                }
+            },
+            clock: {
+                message:  "We should be able to decode a clock message.",
+                    input:    "F8",
+                    expected: {
+                    "type": "clock"
+                }
+            },
+            start: {
+                message:  "We should be able to decode a start message.",
+                input:    "FA",
+                expected: {
+                    "type": "start"
+                }
+            },
+            continue: {
+                message:  "We should be able to decode a continue message.",
+                input:    "FB",
+                expected: {
+                    "type": "continue"
+                }
+            },
+            stop: {
+                message:  "We should be able to decode a stop message.",
+                input:    "FC",
+                expected: {
+                    "type": "stop"
+                }
+            },
+            reset: {
+                message:  "We should be able to decode a reset message.",
+                input:    "FF",
+                expected: {
+                    "type": "reset"
+                }
+            },
+            activeSense: {
+                message:  "We should be able to decode an activeSense message.",
+                input:    "FE",
+                expected: {
+                    "type": "activeSense"
+                }
+            }
+        };
+        fluid.each(decodingTestSpecs, testDecoding);
+    });
+
     environment.destroy();
 }());
