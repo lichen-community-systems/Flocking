@@ -197,11 +197,11 @@ var fluid = fluid || require("infusion"),
 
     var testEncoding = function (testDef) {
         var encodedRawMidi = flock.midi.jsonToMidiMessage(testDef.input);
-        jqUnit.assertDeepEq(testDef.message, testDef.expected, encodedRawMidi);
+        jqUnit.assertDeepEq(testDef.message, new Uint8Array(testDef.expected), encodedRawMidi);
     };
 
     var testDecoding = function (testDef) {
-        var decodedMidiAsJson = flock.midi.read(testDef.input);
+        var decodedMidiAsJson = flock.midi.read(new Uint8Array(testDef.input));
         jqUnit.assertDeepEq(testDef.message, testDef.expected, decodedMidiAsJson);
     };
 
