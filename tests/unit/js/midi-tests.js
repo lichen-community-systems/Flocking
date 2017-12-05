@@ -196,14 +196,12 @@ var fluid = fluid || require("infusion"),
     });
 
     var testEncoding = function (testDef) {
-        var expectedRawMidi = flock.midi.rawMIDIParser.parseMIDICommand(testDef.expected);
         var encodedRawMidi = flock.midi.jsonToMidiMessage(testDef.input);
-        jqUnit.assertDeepEq(testDef.message, expectedRawMidi, encodedRawMidi);
+        jqUnit.assertDeepEq(testDef.message, testDef.expected, encodedRawMidi);
     };
 
     var testDecoding = function (testDef) {
-        var rawMidiInput = flock.midi.rawMIDIParser.parseMIDICommand(testDef.input);
-        var decodedMidiAsJson = flock.midi.read(rawMidiInput);
+        var decodedMidiAsJson = flock.midi.read(testDef.input);
         jqUnit.assertDeepEq(testDef.message, testDef.expected, decodedMidiAsJson);
     };
 
@@ -217,7 +215,7 @@ var fluid = fluid || require("infusion"),
                     "type": "noteOn",
                     "velocity": 69
                 },
-                expected: "90 3C 45"
+                expected: [ 0x90, 0x3C, 0x45]
             },
             noteOff: {
                 message: "We should be able to encode a noteOff message.",
@@ -227,7 +225,7 @@ var fluid = fluid || require("infusion"),
                     "type": "noteOff",
                     "velocity": 0
                 },
-                expected: "90 3C 00"
+                expected: [0x90, 0x3C, 0x00]
             },
             afterTouch: {
                 message: "We should be able to encode an aftertouch (non poly) message.",
@@ -236,7 +234,7 @@ var fluid = fluid || require("infusion"),
                     "type": "aftertouch",
                     "pressure": 87
                 },
-                expected: "D0 57"
+                expected: [0xD0, 0x57]
             },
             control: {
                 message: "We should be able to encode a control message.",
@@ -246,7 +244,7 @@ var fluid = fluid || require("infusion"),
                     "type": "control",
                     "value": 116
                 },
-                expected: "B2 4A 74"
+                expected: [0xB2, 0x4A, 0x74]
             },
             program: {
                 message: "We should be able to encode a program message.",
@@ -255,7 +253,7 @@ var fluid = fluid || require("infusion"),
                     "program": 7,
                     "type": "program"
                 },
-                expected: "C2 07"
+                expected: [0xC2, 0x07]
             },
             pitchbend: {
                 message: "We should be able to encode a pitchbend message.",
@@ -264,7 +262,7 @@ var fluid = fluid || require("infusion"),
                     "type": "pitchbend",
                     "value": 5888
                 },
-                expected: "E1 00 2E"
+                expected: [0xE1, 0x00, 0x2E]
             },
             sysex: {
                 message:  "We should be able to encode a sysex message.",
@@ -282,7 +280,7 @@ var fluid = fluid || require("infusion"),
                     },
                     "type": "sysex"
                 },
-                expected: "F0 00 20 08 10 7F 00 01 F7"
+                expected: [0xF0, 0x00, 0x20, 0x08, 0x10, 0x7F, 0x00, 0x01, 0xF7]
 
             },
             songPointer: {
@@ -291,7 +289,7 @@ var fluid = fluid || require("infusion"),
                     "type": "songPointer",
                     "value": 1
                 },
-                expected: "F2 01"
+                expected: [0xF2, 0x01]
             },
             songSelect: {
                 message:  "We should be able to encode a songSelect message.",
@@ -299,56 +297,56 @@ var fluid = fluid || require("infusion"),
                     "type": "songSelect",
                     "value": 1
                 },
-                expected: "F3 01"
+                expected: [0xF3, 0x01]
             },
             tuneRequest: {
                 message:  "We should be able to encode a tuneRequest message.",
                 input: {
                     "type": "tuneRequest"
                 },
-                expected: "F6"
+                expected: [0xF6]
             },
             clock: {
                 message:  "We should be able to encode a clock message.",
                 input: {
                     "type": "clock"
                 },
-                expected: "F8"
+                expected: [0xF8]
             },
             start: {
                 message:  "We should be able to encode a start message.",
                 input: {
                     "type": "start"
                 },
-                expected: "FA"
+                expected: [0xFA]
             },
             continue: {
                 message:  "We should be able to encode a continue message.",
                 input: {
                     "type": "continue"
                 },
-                expected: "FB"
+                expected: [0xFB]
             },
             stop: {
                 message:  "We should be able to encode a stop message.",
                 input: {
                     "type": "stop"
                 },
-                expected: "FC"
+                expected: [0xFC]
             },
             reset: {
                 message:  "We should be able to encode a reset message.",
                 input: {
                     "type": "reset"
                 },
-                expected: "FF"
+                expected: [0xFF]
             },
             activeSense: {
                 message:  "We should be able to encode an activeSense message.",
                 input: {
                     "type": "activeSense"
                 },
-                expected: "FE"
+                expected: [0xFE]
             }
         };
         fluid.each(encodingTestSpecs, testEncoding);
@@ -358,7 +356,7 @@ var fluid = fluid || require("infusion"),
         var decodingTestSpecs = {
             noteOn: {
                 message:  "We should be able to decode a noteOn message.",
-                input:    "90 3C 45",
+                input:    [0x90, 0x3C, 0x45],
                 expected: {
                     "chan": 0,
                     "note": 60,
@@ -368,7 +366,7 @@ var fluid = fluid || require("infusion"),
             },
             noteOff: {
                 message:  "We should be able to decode a noteOff message.",
-                input:    "90 3C 00",
+                input:    [0x90, 0x3C, 0x00],
                 expected: {
                     "chan": 0,
                     "note": 60,
@@ -378,7 +376,7 @@ var fluid = fluid || require("infusion"),
             },
             afterTouch: {
                 message: "We should be able to decode an aftertouch (non poly) message.",
-                input:   "D0 57",
+                input:   [0xD0, 0x57],
                 expected: {
                     "chan": 0,
                     "type": "aftertouch",
@@ -387,7 +385,7 @@ var fluid = fluid || require("infusion"),
             },
             control: {
                 message: "We should be able to decode a control message.",
-                input:   "B2 4A 74",
+                input:   [0xB2, 0x4A, 0x74],
                 expected: {
                     "chan": 2,
                     "number": 74,
@@ -397,7 +395,7 @@ var fluid = fluid || require("infusion"),
             },
             program: {
                 message: "We should be able to decode a program message.",
-                input:   "C2 07",
+                input:   [0xC2, 0x07],
                 expected: {
                     "chan": 2,
                     "program": 7,
@@ -406,7 +404,7 @@ var fluid = fluid || require("infusion"),
             },
             pitchbend: {
                 message: "We should be able to decode a pitchbend message.",
-                input:   "E1 00 2E",
+                input:   [0xE1, 0x00, 0x2E],
                 expected: {
                     "chan": 1,
                     "type": "pitchbend",
@@ -415,7 +413,7 @@ var fluid = fluid || require("infusion"),
             },
             sysex: {
                 message:  "We should be able to decode a sysex message.",
-                input:    "F0 00 20 08 10 7F 00 01 F7",
+                input:    [0xF0, 0x00, 0x20, 0x08, 0x10, 0x7F, 0x00, 0x01, 0xF7],
                 expected: {
                     "data": {
                         "0": 240,
@@ -434,7 +432,7 @@ var fluid = fluid || require("infusion"),
             },
             songPointer: {
                 message:  "We should be able to decode a songPointer message.",
-                input:    "F2 01",
+                input:    [0xF2, 0x01],
                 expected: {
                     "type": "songPointer",
                     "value": 1
@@ -442,7 +440,7 @@ var fluid = fluid || require("infusion"),
             },
             songSelect: {
                 message:  "We should be able to decode a songSelect message.",
-                input:    "F3 01",
+                input:    [0xF3, 0x01],
                 expected: {
                     "type": "songSelect",
                     "value": 1
@@ -450,49 +448,49 @@ var fluid = fluid || require("infusion"),
             },
             tuneRequest: {
                 message:  "We should be able to decode a tuneRequest message.",
-                input:    "F6",
+                input:    [0xF6],
                 expected: {
                     "type": "tuneRequest"
                 }
             },
             clock: {
                 message:  "We should be able to decode a clock message.",
-                    input:    "F8",
+                input:    [0xF8],
                     expected: {
                     "type": "clock"
                 }
             },
             start: {
                 message:  "We should be able to decode a start message.",
-                input:    "FA",
+                input:    [0xFA],
                 expected: {
                     "type": "start"
                 }
             },
             continue: {
                 message:  "We should be able to decode a continue message.",
-                input:    "FB",
+                input:    [0xFB],
                 expected: {
                     "type": "continue"
                 }
             },
             stop: {
                 message:  "We should be able to decode a stop message.",
-                input:    "FC",
+                input:    [0xFC],
                 expected: {
                     "type": "stop"
                 }
             },
             reset: {
                 message:  "We should be able to decode a reset message.",
-                input:    "FF",
+                input:    [0xFF],
                 expected: {
                     "type": "reset"
                 }
             },
             activeSense: {
                 message:  "We should be able to decode an activeSense message.",
-                input:    "FE",
+                input:    [0xFE],
                 expected: {
                     "type": "activeSense"
                 }
