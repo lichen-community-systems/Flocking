@@ -36,6 +36,70 @@
         that.applier.change("content", content);
     };
 
+    fluid.defaults("flock.demo.rawMIDIParser", {
+        gradeNames: "fluid.modelComponent",
+
+        model: {
+            commands: []
+        },
+
+        modelRelay: {
+            target: "commands",
+            singleTransform: {
+                type: "fluid.transforms.free",
+                func: "flock.demo.rawMIDIParser.parseMIDICommands",
+                args: ["{midiInputView}.model.content"]
+            }
+        }
+    });
+
+    flock.demo.rawMIDIParser.parseMIDIByteString = function (byteString, i) {
+        if (byteString.length < 1) {
+            return;
+        }
+
+        if (byteString.length !== 2) {
+            flock.fail("An invalid byte was found at token index " + i + ": " + byteString);
+            return;
+        }
+
+        var byte = parseInt(byteString, 16);
+
+        return byte;
+    };
+
+    flock.demo.rawMIDIParser.parseMIDICommand = function (commandString) {
+        if (commandString.length < 1) {
+            return;
+        }
+
+        var midiByteStrings = commandString.split(" "),
+            bytes = [];
+
+        fluid.each(midiByteStrings, function (byteString, i) {
+            var byte = flock.demo.rawMIDIParser.parseMIDIByteString(byteString, i);
+            if (byte) {
+                bytes.push(byte);
+            }
+        });
+
+        return new Uint8Array(bytes);
+    };
+
+    flock.demo.rawMIDIParser.parseMIDICommands = function (midiString) {
+        var commandStrings = midiString.split("\n"),
+            commands = [];
+
+        fluid.each(commandStrings, function (commandString) {
+            var command = flock.demo.rawMIDIParser.parseMIDICommand(commandString);
+            if (command) {
+                commands.push(command);
+            }
+        });
+
+        return commands;
+    };
+
     fluid.defaults("flock.demo.rawMIDISender", {
         gradeNames: "fluid.viewComponent",
 
@@ -74,7 +138,7 @@
                 }
             },
             parser: {
-                type: "flock.midi.rawMIDIParser"
+                type: "flock.demo.rawMIDIParser"
             },
 
             midiInputView: {
