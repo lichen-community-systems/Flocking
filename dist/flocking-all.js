@@ -27357,19 +27357,28 @@ var fluid = fluid || require("infusion"),
         });
     };
 
-    flock.webAudio.mediaStreamFailure = function () {
-        flock.fail("Media Capture and Streams are not supported on this browser.");
+    flock.webAudio.mediaStreamFailure = function (onError) {
+        var msg = "This browser does not support getUserMedia() or the Media Streams API.";
+
+        if (!onError) {
+            fluid.log(fluid.logLevel.IMPORTANT, msg);
+        } else {
+            onError(new Error(msg));
+        }
     };
 
     var webAudioShims = {
         AudioContext: window.AudioContext || window.webkitAudioContext,
 
-        // TODO: Shim navigator.mediaDevices.getUserMedia
-        getUserMediaImpl: navigator.getUserMedia || navigator.webkitGetUserMedia ||
-            navigator.mozGetUserMedia || navigator.msGetUserMedia || flock.webAudio.mediaStreamFailure,
-
-        getUserMedia: function () {
-            flock.shim.getUserMediaImpl.apply(navigator, arguments);
+        getUserMedia: function (constraints, onAccess, onError) {
+            if (navigator.mediaDevices) {
+                var p = navigator.mediaDevices.getUserMedia(constraints);
+                p.then(onAccess).catch(onError);
+            } else if (navigator.getUserMedia) {
+                navigator.getUserMedia(constraints, onAccess, onError);
+            } else {
+                flock.webAudio.mediaStreamFailure(onError);
+            }
         },
 
         getMediaDevicesImpl: navigator.getMediaDevices ? navigator.getMediaDevices :
