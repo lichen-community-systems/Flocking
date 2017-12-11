@@ -352,6 +352,8 @@ var fluid = fluid || require("infusion"),
         },
 
         invokers: {
+            test: "fluid.notImplemented",
+
             run: {
                 funcName: "flock.test.midi.messageTests.run",
                 args: "{that}"
@@ -361,7 +363,7 @@ var fluid = fluid || require("infusion"),
 
     flock.test.midi.messageTests.run = function (that) {
         fluid.each(that.options.testSpecs, function (testSpec, name) {
-            that.test(testSpec, name)
+            that.test(testSpec, name);
         });
     };
 
