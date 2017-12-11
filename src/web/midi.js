@@ -505,6 +505,10 @@ var fluid = fluid || require("infusion"),
      * @returns {Uint8Array} - an array containing the encoded MIDI message's bytes
      *
      */
+    // TODO: We should reduce the amount of garbage produced by
+    // this function by allocating a 3-byte Uint8Array at the start
+    // and creating subviews if necessary for smaller messages or
+    // special casing the various system messages.
     flock.midi.write = function (midiMessage) {
         var dataBytes = [],
             channel = midiMessage.channel ? midiMessage.channel : 0,
@@ -607,6 +611,8 @@ var fluid = fluid || require("infusion"),
      * @returns {Array} - An array of two 7-bit values
      *
      */
+    // TODO: Also avoid memory allocation if possible here
+    // by taking data, offset arguments.
     flock.midi.write.valueToTwoByteArray =  function (value) {
         return [
             value & 0x7f,       // LSB
@@ -614,6 +620,16 @@ var fluid = fluid || require("infusion"),
         ];
     };
 
+    // TODO: Improve performance:
+    //    This algorithm requires a complete memory copy
+    //    of "data" into "framedData", which is slow.
+    //    We could perhaps avoid this entirely if we
+    //    mandate either that:
+    //      a) users always do their own framing,
+    //      b) they always omit the framing bytes
+    //         (since it's cheaper to create a subview
+    //         of the incoming bytes in flock.midi.read
+    //         than to do what we're doing here).
     flock.midi.write.sysex = function (midiMessage) {
         var data = midiMessage.data,
             len = data.length,
