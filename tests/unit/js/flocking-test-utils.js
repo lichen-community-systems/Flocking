@@ -771,6 +771,18 @@ var fluid = fluid || require("infusion"),
         });
     };
 
+    // TODO: The flock.test.module grades should be flipped so that
+    // the one containing an environment is additive on the
+    // base module grade (and all the tests updated accordingly).
+    fluid.defaults("flock.test.module.noEnvironment", {
+        gradeNames: "flock.test.module",
+
+        components: {
+            environment: {
+                type: "fluid.component"
+            }
+        }
+    });
 
     fluid.defaults("flock.test.module.runOnCreate", {
         gradeNames: "flock.test.module",

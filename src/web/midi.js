@@ -40,12 +40,10 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.midi.getPorts = function (access) {
-        var ports = {},
-            portCollector = typeof access.inputs === "function" ?
-                flock.midi.collectPortsLegacy : flock.midi.collectPorts;
+        var ports = {};
 
-        portCollector("inputs", access, ports);
-        portCollector("outputs", access, ports);
+        flock.midi.collectPorts("inputs", access, ports);
+        flock.midi.collectPorts("outputs", access, ports);
 
         return ports;
     };
@@ -95,9 +93,6 @@ var fluid = fluid || require("infusion"),
         var portsForType = ports[type] = ports[type] || [],
             iterator = access[type].values();
 
-        // TODO: Switch to ES6 for..of syntax when it's safe to do so
-        // across all supported Flocking environments
-        // (i.e. when Node.js and eventually IE support it).
         var next = iterator.next();
         while (!next.done) {
             portsForType.push(next.value);
@@ -107,20 +102,11 @@ var fluid = fluid || require("infusion"),
         return ports;
     };
 
-    // TODO: Remove this when the new Web MIDI API makes it
-    // into the Chrome release channel.
-    flock.midi.collectPortsLegacy = function (type, access, ports) {
-        if (access[type]) {
-            ports[type] = access[type]();
-        }
-
-        return ports;
-    };
 
     flock.midi.read = function (data) {
         var status = data[0],
             type = status >> 4,
-            chan = status & 0xf,
+            channel = status & 0xf,
             fn;
 
         // TODO: Factor this into a lookup table by providing a generic
@@ -155,56 +141,56 @@ var fluid = fluid || require("infusion"),
                     fluid.prettyPrintJSON(data));
         }
 
-        return fn(chan, data);
+        return fn(channel, data);
     };
 
-    flock.midi.read.note = function (type, chan, data) {
+    flock.midi.read.note = function (type, channel, data) {
         return {
             type: type,
-            chan: chan,
+            channel: channel,
             note: data[1],
             velocity: data[2]
         };
     };
 
-    flock.midi.read.noteOn = function (chan, data) {
-        return flock.midi.read.note("noteOn", chan, data);
+    flock.midi.read.noteOn = function (channel, data) {
+        return flock.midi.read.note("noteOn", channel, data);
     };
 
-    flock.midi.read.noteOff = function (chan, data) {
-        return flock.midi.read.note("noteOff", chan, data);
+    flock.midi.read.noteOff = function (channel, data) {
+        return flock.midi.read.note("noteOff", channel, data);
     };
 
-    flock.midi.read.polyAftertouch = function (chan, data) {
+    flock.midi.read.polyAftertouch = function (channel, data) {
         return {
             type: "aftertouch",
-            chan: chan,
+            channel: channel,
             note: data[1],
             pressure: data[2]
         };
     };
 
-    flock.midi.read.controlChange = function (chan, data) {
+    flock.midi.read.controlChange = function (channel, data) {
         return {
             type: "control",
-            chan: chan,
+            channel: channel,
             number: data[1],
             value: data[2]
         };
     };
 
-    flock.midi.read.programChange = function (chan, data) {
+    flock.midi.read.programChange = function (channel, data) {
         return {
             type: "program",
-            chan: chan,
+            channel: channel,
             program: data[1]
         };
     };
 
-    flock.midi.read.channelAftertouch = function (chan, data) {
+    flock.midi.read.channelAftertouch = function (channel, data) {
         return {
             type: "aftertouch",
-            chan: chan,
+            channel: channel,
             pressure: data[1]
         };
     };
@@ -213,10 +199,10 @@ var fluid = fluid || require("infusion"),
         return (data[2] << 7) | data[1];
     };
 
-    flock.midi.read.pitchbend = function (chan, data) {
+    flock.midi.read.pitchbend = function (channel, data) {
         return {
             type: "pitchbend",
-            chan: chan,
+            channel: channel,
             value: flock.midi.read.twoByteValue(data)
         };
     };
@@ -301,23 +287,6 @@ var fluid = fluid || require("infusion"),
         };
     };
 
-    fluid.registerNamespace("flock.midi.write");
-
-    /**
-     *
-     * Convert a large numeric value to an array of two separate bytes.
-     *
-     * @param originalValue {Number} A 16 bit integer.
-     * @returns {Array} - An array of two 8-bit values.
-     *
-     */
-    flock.midi.write.valueToTwoByteArray =  function (originalValue) {
-        return [
-            originalValue >> 8 & 0xff, // First byte of the two byte number.
-            originalValue & 0xff       // Second byte.
-        ];
-    };
-
     flock.midi.systemRealtimeMessages = [
         "tuneRequest",
         "clock",
@@ -336,7 +305,6 @@ var fluid = fluid || require("infusion"),
                 };
             };
         });
-
     };
 
     flock.midi.createSystemRealtimeMessageReaders(flock.midi.systemRealtimeMessages);
@@ -528,93 +496,91 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+
     /**
      *
-     * Take a JSON structure describing a MIDI message and convert it to a 2-byte MIDI message.
+     * Take a MIDI messages object and convert it to an array of raw bytes suitable for sending to a MIDI device.
      *
-     * @param jsonData
-     * @returns {Array} - A 2-byte array representing the JSON payload as a MIDI message.
+     * @param {Object} midiMessage a MIDI messageSpec object
+     * @returns {Uint8Array} - an array containing the encoded MIDI message's bytes
      *
      */
-    flock.midi.jsonToMidiMessage = function (jsonData) {
-        var statusInt, dataBytes = false;
-        var channel = jsonData.chan ? jsonData.chan + 1 : 0;
+    flock.midi.write = function (midiMessage) {
+        var dataBytes = [],
+            channel = midiMessage.channel ? midiMessage.channel : 0,
+            statusInt;
 
-        switch (jsonData.type) {
+        switch (midiMessage.type) {
             case "noteOn":
                 statusInt = 9;
-                dataBytes = [jsonData.note, jsonData.velocity];
+                dataBytes = [midiMessage.note, midiMessage.velocity];
                 break;
             case "noteOff":
                 statusInt = 8;
-                dataBytes = [jsonData.note, jsonData.velocity];
+                dataBytes = [midiMessage.note, midiMessage.velocity];
                 break;
             case "aftertouch":
                 // polyAfterTouch
-                if (jsonData.note) {
+                if (midiMessage.note) {
                     statusInt = 10;
-                    dataBytes = [jsonData.note, jsonData.pressure];
+                    dataBytes = [midiMessage.note, midiMessage.pressure];
                 }
                 // afterTouch
                 else {
                     statusInt = 13;
-                    dataBytes = [jsonData.pressure];
+                    dataBytes = [midiMessage.pressure];
                 }
                 break;
             case "control":
                 statusInt = 11;
-                dataBytes = [jsonData.number, jsonData.value];
+                dataBytes = [midiMessage.number, midiMessage.value];
                 break;
             case "program":
                 statusInt = 12;
-                dataBytes = [jsonData.program];
+                dataBytes = [midiMessage.program];
                 break;
             case "pitchbend":
                 statusInt = 14;
-                dataBytes = flock.midi.write.valueToTwoByteArray(jsonData.value);
+                dataBytes = flock.midi.write.valueToTwoByteArray(midiMessage.value);
                 break;
-
             case "sysex":
-                channel   = 0;
-                statusInt = 15;
-                dataBytes = jsonData.data;
-                break;
+                return flock.midi.write.sysex(midiMessage);
             case "songPointer":
-                channel   = 2;
+                channel = 2;
                 statusInt = 15;
-                dataBytes = flock.midi.write.valueToTwoByteArray(jsonData.value);
+                dataBytes = flock.midi.write.valueToTwoByteArray(midiMessage.value);
                 break;
             case "songSelect":
-                channel   = 3;
+                channel = 3;
                 statusInt = 15;
-                dataBytes = flock.midi.write.valueToTwoByteArray(jsonData.value);
+                dataBytes = flock.midi.write.valueToTwoByteArray(midiMessage.value);
                 break;
             case "tuneRequest":
-                channel   = 6;
+                channel = 6;
                 statusInt = 15;
                 break;
             case "clock":
-                channel   = 8;
+                channel = 8;
                 statusInt = 15;
                 break;
             case "start":
-                channel   = 10;
+                channel = 10;
                 statusInt = 15;
                 break;
             case "continue":
-                channel   = 11;
+                channel = 11;
                 statusInt = 15;
                 break;
             case "stop":
-                channel   = 12;
+                channel = 12;
                 statusInt = 15;
                 break;
             case "activeSense":
-                channel   = 14;
+                channel = 14;
                 statusInt = 15;
                 break;
             case "reset":
-                channel   = 15;
+                channel = 15;
                 statusInt = 15;
                 break;
             // TODO: Discuss with Colin, this should never be hit
@@ -622,7 +588,7 @@ var fluid = fluid || require("infusion"),
             //     statusInt = 15;
             //     break;
             default:
-                flock.fail("Cannot handle MIDI message of type '" + jsonData.type + "'.");
+                flock.fail("Cannot handle MIDI message of type '" + midiMessage.type + "'.");
         }
 
         var midiMessage = new Uint8Array(dataBytes.length + 1);
@@ -635,14 +601,53 @@ var fluid = fluid || require("infusion"),
 
     /**
      *
-     * Send a JSON message as a MIDI message to all outputs.
+     * Convert a large numeric value to an array of two separate bytes.
      *
-     * @param that {Object} - The flock.midi.connection component itself.
-     * @param jsonData {Object} - A JSON representation of a MIDI message.
+     * @param value {Number} A 14-bit integer to convert
+     * @returns {Array} - An array of two 7-bit values
+     *
      */
-    flock.midi.connection.send = function (that, jsonData) {
-        var midiMessage = flock.midi.jsonToMidiMessage(jsonData);
-        that.events.onSendRaw.fire(midiMessage);
+    flock.midi.write.valueToTwoByteArray =  function (value) {
+        return [
+            value & 0x7f,       // LSB
+            (value >> 7) & 0x7f // MSB
+        ];
+    };
+
+    flock.midi.write.sysex = function (midiMessage) {
+        var data = midiMessage.data,
+            len = data.length,
+            framedData = new Uint8Array(data);
+
+        // TODO: Reduce duplication.
+        if (data[0] !== 0xF0 && data[len - 1] !== 0xF7) {
+            framedData = new Uint8Array(len + 2);
+            framedData[0] = 0xF0;
+            framedData[len + 1] = 0xF7;
+            framedData.set(data, 1);
+        } else if (data[0] !== 0xF0) {
+            framedData = new Uint8Array(len + 1);
+            framedData[0] = 0xF0;
+            framedData.set(data, 1);
+        } else if (data[len - 1] !== 0xF7) {
+            framedData = new Uint8Array(len + 1);
+            framedData[len] = 0xF7;
+            framedData.set(data, 0);
+        }
+
+        return framedData;
+    };
+
+    /**
+     *
+     * Sends a MIDI message.
+     *
+     * @param that {Object} - the flock.midi.connection component itself
+     * @param midiMessage {Object} - a MIDI messageSpec
+     */
+    flock.midi.connection.send = function (that, midiMessage) {
+        var midiBytes = flock.midi.write(midiMessage);
+        that.events.onSendRaw.fire(midiBytes);
     };
 
     flock.midi.connection.autoOpen = function (openImmediately, openFn) {

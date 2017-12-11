@@ -13,48 +13,28 @@ var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");
 
 (function () {
+
     "use strict";
 
-    var QUnit = fluid.registerNamespace("QUnit");
+    fluid.defaults("flock.test.midi.portMatcherTests", {
+        gradeNames: [
+            "flock.test.module.noEnvironment",
+            "flock.test.module.runOnCreate"
+        ],
 
-    var environment = flock.silentEnviro();
+        name: "flock.midi.findPorts.lowerCaseContainsMatcher tests",
 
-    var testPort = {
-        manufacturer: "KORG INC.",
-        name: "SLIDER/KNOB"
-    };
+        testPort: {
+            manufacturer: "KORG INC.",
+            name: "SLIDER/KNOB"
+        },
 
-    var testMatch = function (name, matcherType, matchSpec, port, matchExpected) {
-        QUnit.test(name, function () {
-            var matcher = fluid.invokeGlobalFunction(matcherType, [matchSpec]);
-            var didMatch = matcher(port);
-
-            var msg = matchExpected ? "The match specification should have matched the port." :
-                "The match specification should not have matched the port.";
-
-            QUnit.equal(didMatch, matchExpected, msg);
-        });
-    };
-
-    var runMatchTests = function (testSpecsByType) {
-        for (var matcherType in testSpecsByType) {
-            var testSpecs = testSpecsByType[matcherType];
-            QUnit.module("Port Matcher: " + matcherType);
-            for (var i = 0; i < testSpecs.length; i++) {
-                var spec = testSpecs[i];
-                testMatch(spec.name, matcherType, spec.matchSpec, spec.port, spec.shouldMatch);
-            }
-        }
-    };
-
-    var matchTestSpecs = {
-        "flock.midi.findPorts.lowerCaseContainsMatcher": [
+        testSpecs: [
             {
                 name: "Single-property complete match",
                 matchSpec: {
                     manufacturer: "KORG INC."
                 },
-                port: testPort,
                 shouldMatch: true
             },
             {
@@ -62,7 +42,6 @@ var fluid = fluid || require("infusion"),
                 matchSpec: {
                     manufacturer: "AKAI"
                 },
-                port: testPort,
                 shouldMatch: false
             },
             {
@@ -71,7 +50,6 @@ var fluid = fluid || require("infusion"),
                     manufacturer: "KORG INC.",
                     name: "SLIDER/KNOB"
                 },
-                port: testPort,
                 shouldMatch: true
             },
             {
@@ -80,7 +58,6 @@ var fluid = fluid || require("infusion"),
                     manufacturer: "AKAI",
                     name: "SLIDER/KNOB"
                 },
-                port: testPort,
                 shouldMatch: false
             },
             {
@@ -88,7 +65,6 @@ var fluid = fluid || require("infusion"),
                 matchSpec: {
                     manufacturer: "KORG"
                 },
-                port: testPort,
                 shouldMatch: true
             },
             {
@@ -97,7 +73,6 @@ var fluid = fluid || require("infusion"),
                     manufacturer: "KORG",
                     name: "SLIDER"
                 },
-                port: testPort,
                 shouldMatch: true
             },
             {
@@ -105,7 +80,6 @@ var fluid = fluid || require("infusion"),
                 matchSpec: {
                     name: "*"
                 },
-                port: testPort,
                 shouldMatch: true
             },
             {
@@ -114,18 +88,57 @@ var fluid = fluid || require("infusion"),
                     manufacturer: "KORG INC.",
                     name: "*"
                 },
-                port: testPort,
                 shouldMatch: true
             }
-        ]
+        ],
+
+        invokers: {
+            run: {
+                funcName: "flock.test.midi.portMatcherTests.run",
+                args: [
+                    "{that}.options.testPort",
+                    "{that}.options.testSpecs"
+                ]
+            }
+        }
+    });
+
+
+    flock.test.midi.portMatcherTests.test = function (testPort, testSpec) {
+        jqUnit.test(testSpec.name, function () {
+            var matcher = flock.midi.findPorts.lowerCaseContainsMatcher(testSpec.matchSpec);
+
+            var msg = testSpec.shouldMatch ? "The match specification should have matched the port." :
+                "The match specification should not have matched the port.";
+
+            var didMatch = matcher(testPort);
+
+            jqUnit.assertEquals(msg, testSpec.shouldMatch, didMatch);
+        });
     };
 
-    runMatchTests(matchTestSpecs);
+    flock.test.midi.portMatcherTests.run = function (testPort, testSpecs) {
+        fluid.each(testSpecs, function (testSpec) {
+            flock.test.midi.portMatcherTests.test(testPort, testSpec);
+        });
+    };
+
+    flock.test.midi.portMatcherTests();
 
 
-    QUnit.module("flock.ugen.midiFreq tests");
+    fluid.defaults("flock.test.midi.midiFreqUGenTests", {
+        gradeNames: "flock.test.module.runOnCreate",
 
-    var testNoteControl = function (ugen, midiNote, expected, msg) {
+        name: "flock.ugen.midiFreq tests",
+
+        invokers: {
+            run: {
+                funcName: "flock.test.midi.midiFreqUGenTests.run"
+            }
+        }
+    });
+
+    flock.test.midi.midiFreqUGenTests.testNoteControl = function (ugen, midiNote, bytes, msg) {
         if (midiNote) {
             ugen.set("note", midiNote);
         }
@@ -134,370 +147,313 @@ var fluid = fluid || require("infusion"),
             ugen.get("note").gen(1);
         }
         ugen.gen(1);
-        flock.test.equalRounded(2, ugen.output[0], expected, msg);
+        flock.test.equalRounded(2, ugen.output[0], bytes, msg);
     };
 
-    var testNotesControl = function (ugen, testSpecs) {
+    flock.test.midi.midiFreqUGenTests.testNotesControl = function (ugen, testSpecs) {
         fluid.each(testSpecs, function (testSpec) {
-            testNoteControl(ugen, testSpec.midiNote, testSpec.expectedFreq, testSpec.msg);
+            flock.test.midi.midiFreqUGenTests.testNoteControl(ugen, testSpec.midiNote, testSpec.bytesFreq, testSpec.msg);
         });
     };
 
-    QUnit.test("12TET/A440, constant rate input", function () {
-        var midiFreq = flock.parse.ugenDef({
-            ugen: "flock.ugen.midiFreq",
-            note: 60
+    flock.test.midi.midiFreqUGenTests.run = function () {
+        jqUnit.test("12TET/A440, constant rate messageSpec", function () {
+            var midiFreq = flock.parse.ugenDef({
+                ugen: "flock.ugen.midiFreq",
+                note: 60
+            });
+
+            flock.test.midi.midiFreqUGenTests.testNotesControl(midiFreq, [
+                {
+                    midiNote: 60,
+                    bytesFreq: 261.63,
+                    msg: "C4 (MIDI 60) should be converted to 261.64 Hz."
+                },
+                {
+                    midiNote: 21,
+                    bytesFreq: 27.50,
+                    msg: "A0 (MIDI 21) should be converted to 27.5 Hz."
+                },
+                {
+                    midiNote: 108,
+                    bytesFreq: 4186.01,
+                    msg: "C8 (MIDI 108) should be converted to 4186 Hz."
+                }
+            ]);
         });
 
-        testNotesControl(midiFreq, [
-            {
-                midiNote: 60,
-                expectedFreq: 261.63,
-                msg: "C4 (MIDI 60) should be converted to 261.64 Hz."
-            },
-            {
-                midiNote: 21,
-                expectedFreq: 27.50,
-                msg: "A0 (MIDI 21) should be converted to 27.5 Hz."
-            },
-            {
-                midiNote: 108,
-                expectedFreq: 4186.01,
-                msg: "C8 (MIDI 108) should be converted to 4186 Hz."
-            }
-        ]);
-    });
+        jqUnit.test("12TET/A440, control rate messageSpec", function () {
+            var midiFreq = flock.parse.ugenDef({
+                ugen: "flock.ugen.midiFreq",
+                note: {
+                    ugen: "flock.ugen.sequence",
+                    rate: "control",
+                    values: [21, 22, 23],
+                    freq: 10000
+                }
+            });
 
-    QUnit.test("12TET/A440, control rate input", function () {
-        var midiFreq = flock.parse.ugenDef({
-            ugen: "flock.ugen.midiFreq",
-            note: {
-                ugen: "flock.ugen.sequence",
-                rate: "control",
-                values: [21, 22, 23],
-                freq: 10000
-            }
+            flock.test.midi.midiFreqUGenTests.testNotesControl(midiFreq, [
+                {
+                    bytesFreq: 27.50,
+                    msg: "The frequency value of the first item in the sequence should be returned (MIDI 21)."
+                },
+                {
+                    bytesFreq: 29.14,
+                    msg: "The frequency value of the next item in the sequence should be returned (MIDI 22)."
+                },
+                {
+                    bytesFreq: 30.87,
+                    msg: "The frequency value of the last item in the sequence should be returned (MIDI 23)."
+                }
+            ]);
         });
-
-        testNotesControl(midiFreq, [
-            {
-                expectedFreq: 27.50,
-                msg: "The frequency value of the first item in the sequence should be returned (MIDI 21)."
-            },
-            {
-                expectedFreq: 29.14,
-                msg: "The frequency value of the next item in the sequence should be returned (MIDI 22)."
-            },
-            {
-                expectedFreq: 30.87,
-                msg: "The frequency value of the last item in the sequence should be returned (MIDI 23)."
-            }
-        ]);
-    });
-
-    var testEncoding = function (testDef) {
-        var encodedRawMidi = flock.midi.jsonToMidiMessage(testDef.input);
-        jqUnit.assertDeepEq(testDef.message, new Uint8Array(testDef.expected), encodedRawMidi);
     };
 
-    var testDecoding = function (testDef) {
-        var decodedMidiAsJson = flock.midi.read(new Uint8Array(testDef.input));
-        jqUnit.assertDeepEq(testDef.message, testDef.expected, decodedMidiAsJson);
-    };
+    flock.test.midi.midiFreqUGenTests();
 
-    QUnit.test("Encoding of JSON as raw MIDI", function () {
-        var encodingTestSpecs = {
-            noteOn: {
-                message: "We should be able to encode a noteOn message.",
-                input: {
-                    "chan": 0,
-                    "note": 60,
-                    "type": "noteOn",
-                    "velocity": 69
+
+    fluid.defaults("flock.test.midi.messageTests", {
+        gradeNames: [
+            "flock.test.module.runOnCreate",
+            "fluid.test.module.noEnvironment"
+        ],
+
+        testSpecs: {
+            "note on": {
+                messageSpec: {
+                    type: "noteOn",
+                    chan: 0,
+                    note: 60,
+                    velocity: 69
                 },
-                expected: [ 0x90, 0x3C, 0x45]
+                bytes: [0x90, 0x3C, 0x45]
             },
-            noteOff: {
-                message: "We should be able to encode a noteOff message.",
-                input: {
-                    "chan": 0,
-                    "note": 60,
-                    "type": "noteOff",
-                    "velocity": 0
+
+            "note off": {
+                messageSpec: {
+                    chan: 0,
+                    note: 60,
+                    type: "noteOff",
+                    velocity: 0
                 },
-                expected: [0x90, 0x3C, 0x00]
+                bytes: [0x80, 0x3C, 0x00]
             },
-            afterTouch: {
-                message: "We should be able to encode an aftertouch (non poly) message.",
-                input: {
-                    "chan": 0,
-                    "type": "aftertouch",
-                    "pressure": 87
+
+            "aftertouch (non-poly)": {
+                messageSpec: {
+                    type: "aftertouch",
+                    chan: 0,
+                    pressure: 87
                 },
-                expected: [0xD0, 0x57]
+                bytes: [0xD0, 0x57]
             },
-            control: {
-                message: "We should be able to encode a control message.",
-                input: {
-                    "chan": 2,
-                    "number": 74,
-                    "type": "control",
-                    "value": 116
+
+            "control": {
+                messageSpec: {
+                    type: "control",
+                    chan: 2,
+                    number: 74,
+                    value: 116
                 },
-                expected: [0xB2, 0x4A, 0x74]
+                bytes: [0xB2, 0x4A, 0x74]
             },
-            program: {
-                message: "We should be able to encode a program message.",
-                input: {
-                    "chan": 2,
-                    "program": 7,
-                    "type": "program"
+
+            "program change": {
+                messageSpec: {
+                    program: 7,
+                    chan: 2,
+                    type: "program"
                 },
-                expected: [0xC2, 0x07]
+                bytes: [0xC2, 0x07]
             },
-            pitchbend: {
-                message: "We should be able to encode a pitchbend message.",
-                input: {
-                    "chan": 1,
+
+            "pitchbend": {
+                messageSpec: {
                     "type": "pitchbend",
+                    "chan": 1,
                     "value": 5888
                 },
-                expected: [0xE1, 0x00, 0x2E]
+                bytes: [0xE1, 0x00, 0x2E]
             },
-            sysex: {
-                message:  "We should be able to encode a sysex message.",
-                input: {
-                    "data": {
-                        "0": 240,
-                        "1": 0,
-                        "2": 32,
-                        "3": 8,
-                        "4": 16,
-                        "5": 127,
-                        "6": 0,
-                        "7": 1,
-                        "8": 247
-                    },
-                    "type": "sysex"
-                },
-                expected: [0xF0, 0x00, 0x20, 0x08, 0x10, 0x7F, 0x00, 0x01, 0xF7]
 
-            },
-            songPointer: {
-                message:  "We should be able to encode a songPointer message.",
-                input: {
-                    "type": "songPointer",
-                    "value": 1
+            "sysex with framing bytes included": {
+                messageSpec: {
+                    type: "sysex",
+                    data: [0xF0, 0, 32, 8, 16, 127, 0, 1, 0xF7]
                 },
-                expected: [0xF2, 0x01]
+                bytes: [0xF0, 0x00, 0x20, 0x08, 0x10, 0x7F, 0x00, 0x01, 0xF7]
             },
-            songSelect: {
-                message:  "We should be able to encode a songSelect message.",
-                input: {
-                    "type": "songSelect",
-                    "value": 1
+
+            "song position pointer": {
+                messageSpec: {
+                    type: "songPointer",
+                    value: 1
                 },
-                expected: [0xF3, 0x01]
+                bytes: [0xF2, 0x01, 0x00]
             },
-            tuneRequest: {
-                message:  "We should be able to encode a tuneRequest message.",
-                input: {
-                    "type": "tuneRequest"
+
+            "song select": {
+                messageSpec: {
+                    type: "songSelect",
+                    value: 1
                 },
-                expected: [0xF6]
+                bytes: [0xF3, 0x01, 0x00]
             },
-            clock: {
-                message:  "We should be able to encode a clock message.",
-                input: {
-                    "type": "clock"
+
+            "tune request": {
+                messageSpec: {
+                    type: "tuneRequest"
                 },
-                expected: [0xF8]
+                bytes: [0xF6]
             },
-            start: {
-                message:  "We should be able to encode a start message.",
-                input: {
-                    "type": "start"
+
+            "clock": {
+                messageSpec: {
+                    type: "clock"
                 },
-                expected: [0xFA]
+                bytes: [0xF8]
             },
-            continue: {
-                message:  "We should be able to encode a continue message.",
-                input: {
-                    "type": "continue"
+
+            "clock start": {
+                messageSpec: {
+                    type: "start"
                 },
-                expected: [0xFB]
+                bytes: [0xFA]
             },
-            stop: {
-                message:  "We should be able to encode a stop message.",
-                input: {
-                    "type": "stop"
+
+            "clock continue": {
+                messageSpec: {
+                    type: "continue"
                 },
-                expected: [0xFC]
+                bytes: [0xFB]
             },
-            reset: {
-                message:  "We should be able to encode a reset message.",
-                input: {
-                    "type": "reset"
+
+            "clock stop": {
+                messageSpec: {
+                    type: "stop"
                 },
-                expected: [0xFF]
+                bytes: [0xFC]
             },
-            activeSense: {
-                message:  "We should be able to encode an activeSense message.",
-                input: {
-                    "type": "activeSense"
+
+            "reset": {
+                messageSpec: {
+                    type: "reset"
                 },
-                expected: [0xFE]
+                bytes: [0xFF]
+            },
+
+            "active sense": {
+                messageSpec: {
+                    type: "activeSense"
+                },
+                bytes: [0xFE]
             }
-        };
-        fluid.each(encodingTestSpecs, testEncoding);
+        },
+
+        invokers: {
+            run: {
+                funcName: "flock.test.midi.messageTests.run",
+                args: "{that}"
+            }
+        }
     });
 
-    QUnit.test("Decoding of raw MIDI into JSON", function () {
-        var decodingTestSpecs = {
-            noteOn: {
-                message:  "We should be able to decode a noteOn message.",
-                input:    [0x90, 0x3C, 0x45],
-                expected: {
-                    "chan": 0,
-                    "note": 60,
-                    "type": "noteOn",
-                    "velocity": 69
-                }
-            },
-            noteOff: {
-                message:  "We should be able to decode a noteOff message.",
-                input:    [0x90, 0x3C, 0x00],
-                expected: {
-                    "chan": 0,
-                    "note": 60,
-                    "type": "noteOff",
-                    "velocity": 0
-                }
-            },
-            afterTouch: {
-                message: "We should be able to decode an aftertouch (non poly) message.",
-                input:   [0xD0, 0x57],
-                expected: {
-                    "chan": 0,
-                    "type": "aftertouch",
-                    "pressure": 87
-                }
-            },
-            control: {
-                message: "We should be able to decode a control message.",
-                input:   [0xB2, 0x4A, 0x74],
-                expected: {
-                    "chan": 2,
-                    "number": 74,
-                    "type": "control",
-                    "value": 116
-                }
-            },
-            program: {
-                message: "We should be able to decode a program message.",
-                input:   [0xC2, 0x07],
-                expected: {
-                    "chan": 2,
-                    "program": 7,
-                    "type": "program"
-                }
-            },
-            pitchbend: {
-                message: "We should be able to decode a pitchbend message.",
-                input:   [0xE1, 0x00, 0x2E],
-                expected: {
-                    "chan": 1,
-                    "type": "pitchbend",
-                    "value": 5888
-                }
-            },
-            sysex: {
-                message:  "We should be able to decode a sysex message.",
-                input:    [0xF0, 0x00, 0x20, 0x08, 0x10, 0x7F, 0x00, 0x01, 0xF7],
-                expected: {
-                    "data": {
-                        "0": 240,
-                        "1": 0,
-                        "2": 32,
-                        "3": 8,
-                        "4": 16,
-                        "5": 127,
-                        "6": 0,
-                        "7": 1,
-                        "8": 247
-                    },
-                    "type": "sysex"
-                }
+    flock.test.midi.messageTests.run = function (that) {
+        fluid.each(that.options.testSpecs, function (testSpec, name) {
+            that.test(testSpec, name)
+        });
+    };
 
+
+    fluid.defaults("flock.test.midi.encodingTests", {
+        gradeNames: "flock.test.midi.messageTests",
+
+        name: "MIDI encoding tests",
+
+        testSpecs: {
+            "sysex without framing bytes": {
+                messageSpec: {
+                    type: "sysex",
+                    data: [0, 32, 8, 16, 127, 0, 1]
+                },
+                bytes: [0xF0, 0x00, 0x20, 0x08, 0x10, 0x7F, 0x00, 0x01, 0xF7]
             },
-            songPointer: {
-                message:  "We should be able to decode a songPointer message.",
-                input:    [0xF2, 0x01],
-                expected: {
-                    "type": "songPointer",
-                    "value": 1
-                }
+
+            "sysex with only the closing byte": {
+                messageSpec: {
+                    type: "sysex",
+                    data: [0, 32, 8, 16, 127, 0, 1, 0xF7]
+                },
+                bytes: [0xF0, 0x00, 0x20, 0x08, 0x10, 0x7F, 0x00, 0x01, 0xF7]
             },
-            songSelect: {
-                message:  "We should be able to decode a songSelect message.",
-                input:    [0xF3, 0x01],
-                expected: {
-                    "type": "songSelect",
-                    "value": 1
-                }
-            },
-            tuneRequest: {
-                message:  "We should be able to decode a tuneRequest message.",
-                input:    [0xF6],
-                expected: {
-                    "type": "tuneRequest"
-                }
-            },
-            clock: {
-                message:  "We should be able to decode a clock message.",
-                input:    [0xF8],
-                    expected: {
-                    "type": "clock"
-                }
-            },
-            start: {
-                message:  "We should be able to decode a start message.",
-                input:    [0xFA],
-                expected: {
-                    "type": "start"
-                }
-            },
-            continue: {
-                message:  "We should be able to decode a continue message.",
-                input:    [0xFB],
-                expected: {
-                    "type": "continue"
-                }
-            },
-            stop: {
-                message:  "We should be able to decode a stop message.",
-                input:    [0xFC],
-                expected: {
-                    "type": "stop"
-                }
-            },
-            reset: {
-                message:  "We should be able to decode a reset message.",
-                input:    [0xFF],
-                expected: {
-                    "type": "reset"
-                }
-            },
-            activeSense: {
-                message:  "We should be able to decode an activeSense message.",
-                input:    [0xFE],
-                expected: {
-                    "type": "activeSense"
-                }
+
+            "sysex with only the opening byte": {
+                messageSpec: {
+                    type: "sysex",
+                    data: [0xF0, 0, 32, 8, 16, 127, 0, 1]
+                },
+                bytes: [0xF0, 0x00, 0x20, 0x08, 0x10, 0x7F, 0x00, 0x01, 0xF7]
             }
-        };
-        fluid.each(decodingTestSpecs, testDecoding);
+        },
+
+        invokers: {
+            test: {
+                funcName: "flock.test.midi.encodingTests.testEncoding",
+                args: [
+                    "{that}",
+                    "{arguments}.0",
+                    "{arguments}.1"
+                ]
+            }
+        }
     });
 
-    environment.destroy();
+    flock.test.midi.encodingTests.testEncoding = function (that, testSpec, name) {
+        jqUnit.test("Encode a " + name + " message", function () {
+            var actual = flock.midi.write(testSpec.messageSpec);
+            jqUnit.assertDeepEq("The MIDI messageSpec have been correctly encoded as raw bytes.", new Uint8Array(testSpec.bytes), actual);
+        });
+    };
+
+    flock.test.midi.encodingTests();
+
+
+    fluid.defaults("flock.test.midi.decodingTests", {
+        gradeNames: "flock.test.midi.messageTests",
+
+        name: "MIDI decoding tests",
+
+        testSpecs: {
+            "note off as zero-velocity note on": {
+                messageSpec: {
+                    chan: 0,
+                    note: 60,
+                    type: "noteOff",
+                    velocity: 0
+                },
+                bytes: [0x90, 0x3C, 0x00]
+            }
+        },
+
+        invokers: {
+            test: {
+                funcName: "flock.test.midi.decodingTests.testDecoding",
+                args: [
+                    "{that}",
+                    "{arguments}.0",
+                    "{arguments}.1"
+                ]
+            }
+        }
+    });
+
+    flock.test.midi.decodingTests.testDecoding = function (that, testSpec, name) {
+        jqUnit.test("Decode a " + name + " message", function () {
+            var actual = flock.midi.read(testSpec.bytes);
+            jqUnit.assertDeepEq("The raw MIDI bytes should have been correctly decoded into a messageSpec object.", testSpec.messageSpec, actual);
+        });
+    };
+
+    flock.test.midi.decodingTests();
 }());
