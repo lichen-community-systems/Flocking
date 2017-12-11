@@ -223,7 +223,7 @@ var fluid = fluid || require("infusion"),
             "note on": {
                 messageSpec: {
                     type: "noteOn",
-                    chan: 0,
+                    channel: 0,
                     note: 60,
                     velocity: 69
                 },
@@ -232,7 +232,7 @@ var fluid = fluid || require("infusion"),
 
             "note off": {
                 messageSpec: {
-                    chan: 0,
+                    channel: 0,
                     note: 60,
                     type: "noteOff",
                     velocity: 0
@@ -243,7 +243,7 @@ var fluid = fluid || require("infusion"),
             "aftertouch (non-poly)": {
                 messageSpec: {
                     type: "aftertouch",
-                    chan: 0,
+                    channel: 0,
                     pressure: 87
                 },
                 bytes: [0xD0, 0x57]
@@ -252,7 +252,7 @@ var fluid = fluid || require("infusion"),
             "control": {
                 messageSpec: {
                     type: "control",
-                    chan: 2,
+                    channel: 2,
                     number: 74,
                     value: 116
                 },
@@ -262,7 +262,7 @@ var fluid = fluid || require("infusion"),
             "program change": {
                 messageSpec: {
                     program: 7,
-                    chan: 2,
+                    channel: 2,
                     type: "program"
                 },
                 bytes: [0xC2, 0x07]
@@ -270,9 +270,9 @@ var fluid = fluid || require("infusion"),
 
             "pitchbend": {
                 messageSpec: {
-                    "type": "pitchbend",
-                    "chan": 1,
-                    "value": 5888
+                    type: "pitchbend",
+                    channel: 1,
+                    value: 5888
                 },
                 bytes: [0xE1, 0x00, 0x2E]
             },
@@ -427,7 +427,7 @@ var fluid = fluid || require("infusion"),
         testSpecs: {
             "note off as zero-velocity note on": {
                 messageSpec: {
-                    chan: 0,
+                    channel: 0,
                     note: 60,
                     type: "noteOff",
                     velocity: 0
