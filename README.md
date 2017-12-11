@@ -347,6 +347,42 @@ If you need to, you can always schedule arbitrary events using plain old functio
 The Flocking scheduler is still under active development and its API will change as it evolves.
 
 
+Testing
+-------
+
+Flocking uses Testem and Vagrant to run its test suite across many of its supported environments. In particular, it can automatically test on Node.js and installed browsers, as well as in virtual machines running Windows and Linux.
+
+### Prerequisites
+1. [Vagrant](https://www.vagrantup.com/)
+2. [VirtualBox](https://www.virtualbox.org/)
+3. The GPII CI Plugin: 'vagrant plugin install vagrant-gpii-ci'
+
+### Running Flocking's Test Suite
+
+Run all tests on your host:
+* `npm test`
+
+Run only Node.js tests:
+* `npm run node-tests`
+
+Run only browser tests:
+* `npm run browser-test`
+
+Run all VM-based tests:
+* `npm run all-vm-test`
+
+Run all tests on a Vagrant-based Windows VM:
+* `npm run windows-vm-test`
+
+Run all tests on a Linux VM:
+* `npm run linux-vm-test`
+
+Stop all Vagrant VMs:
+* `vagrant halt`
+
+Destroy all Vagrant boxes, freeing up hard disk space:
+* `npm run destroy-vms`
+
 Compatibility
 -------------
 
@@ -372,7 +408,8 @@ huge influence on my work. I hope you find this library useful enough to create 
 beautiful and inspiring as Jim's _Flocking_.
 
 ### Thanks to:###
- * [Adam Tindale](http://adamtindale.com) for several of the Playground demos
+ * [Adam Tindale](http://adamtindale.com) for the tanh distortion unit generator, documentation improvements, and several of the Playground demos
+ * [Alfredo Matas](https://github.com/amatas) for test automation on Windows and Linux
  * [Johnny Taylor](https://github.com/abledaccess) for styling improvements to the Playground
  * [Dan Stowell](https://github.com/danstowell) for the Freeverb and Delay1 unit generators
  * [Mayank Sanganeria](http://github.com/e7mac) for the <code>flock.ugen.granulator</code> unit generator

@@ -456,7 +456,7 @@ var fluid = fluid || require("infusion"),
             clock: {
                 message:  "We should be able to decode a clock message.",
                 input:    [0xF8],
-                    expected: {
+                expected: {
                     "type": "clock"
                 }
             },
