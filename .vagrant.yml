@@ -1,0 +1,77 @@
+---
+
+env:
+  default: &default
+    cpu: 2                   # number of cpus
+    memory: 4096             # amount of RAM memory
+    clone: true              # use the linked_clone Vagrant feature
+    sound: true              # add a soundcard to the VM
+    autostart: false         # only start a VM when it's specfied in the command line
+  windows: &windows
+    <<: *default
+    tags:
+      - windows
+  linux: &linux
+    <<: *default
+    tags:
+      - linux
+  vms:
+    windows10:               # name of the VM
+      <<: *windows           # referece of the common part
+      box: inclusivedesign/windows10-eval-x64-Apps
+    fedora27:                # name of the VM
+      <<: *linux             # referece of the common part
+      box: inclusivedesign/fedora27
+
+
+stages:                # Stages to perform when 'ci test' command is invoked
+  - setup_win
+  - setup_linux
+  - test_win
+  - test_linux
+
+setup_win_job:
+  stage: setup_win     # name of the stage
+  tags:
+    - windows
+  script:              # Only one multiline script to execute
+    - |
+      choco upgrade firefox googlechrome -y
+      choco install -y nodejs python2 msbuild.extensionpack microsoft-build-tools
+      refreshenv
+    - |
+      npm config -g set msvs_version 2015
+      doit -c 'npm install -g node-gyp'
+      refreshenv
+    - |
+      npm install
+      refreshenv
+
+test_win_job:
+  stage: test_win     # name of the stage
+  tags:
+    - windows
+  script:              # Only one multiline script to execute
+    - do.ps1 -c "npm test"
+
+
+setup_linux_job:
+  stage: setup_linux   # name of the stage
+  tags:
+    - linux
+  script:
+    - |
+      sudo dnf install -y nodejs make automake gcc gcc-c++ nodejs-devel
+      sudo mkdir -p /var/tmp/vagrant/node_modules /vagrant/node_modules
+      sudo chown vagrant:vagrant /var/tmp/vagrant/node_modules
+      sudo mount -o bind /var/tmp/vagrant/node_modules /vagrant/node_modules
+      sudo npm install -g testem node-gyp
+      npm install
+
+test_linux_job:
+  stage: test_linux     # name of the stage
+  tags:
+    - linux
+  script:              # Only one multiline script to execute
+    - npm test
+

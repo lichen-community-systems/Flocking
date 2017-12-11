@@ -30,7 +30,8 @@
     "grunt-contrib-watch": "1.0.0",
     "sheep-benchmark": "colinbdclark/sheep.js",
     "node-jqunit": "1.1.4",
-    "requirejs": "2.3.5"
+    "requirejs": "2.3.5",
+    "testem": "1.18.4"
   },
   "dependencies": {
     "jquery": "3.2.1",
@@ -47,8 +48,12 @@
   },
   "scripts": {
     "test": "npm run node-test && npm run browser-test",
-    "browser-test": "testem ci --file tests/unit/testem.json",
+    "browser-test": "node node_modules/testem/testem.js ci --file tests/unit/testem.json",
     "node-test": "node tests/unit/nodejs/all-node-tests.js",
-    "linux-vm-test": "vagrant ssh -c 'cd /home/vagrant/sync/; npm install; DISPLAY=:0 npm run node-test'"
+    "linux-vm-test": "npm run clean-modules && vagrant up fedora27 && vagrant ci test fedora27",
+    "windows-vm-test": "npm run clean-modules && vagrant up windows10 && vagrant ci test windows10",
+    "clean-modules": "rm -r node_modules",
+    "all-vm-test": "npm run linux-vm-test && npm run windows-vm-test && vagrant halt",
+    "destroy-vms": "vagrant destroy -f"
   }
 }
