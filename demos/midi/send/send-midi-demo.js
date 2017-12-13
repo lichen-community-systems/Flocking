@@ -112,14 +112,7 @@
                 type: "flock.ui.midiConnector",
                 container: "{that}.dom.midiPortSelector",
                 options: {
-                    portType: "output",
-                    components: {
-                        connection: {
-                            options: {
-                                sysex: true
-                            }
-                        }
-                    }
+                    portType: "output"
                 }
             }
         },
@@ -145,12 +138,13 @@
                 }
             ]
         },
+
         selectors: {
-            type:             ".type",
-            channel:          ".channel",
-            note:             ".note",
-            velocity:         ".velocity",
-            sendButton:       "button.send",
+            type: ".type",
+            channel: ".channel",
+            note: ".note",
+            velocity: ".velocity",
+            sendButton: "button.send",
             midiPortSelector: "#midi-port-selector"
         }
     });
@@ -158,10 +152,20 @@
     flock.demo.MIDISender.sendCommand = function (that) {
         var command = {};
         // TODO: Discuss using gpii-binder here.
+        // (Sounds like a great idea!)
         fluid.each(["type", "channel", "note", "velocity"], function (param) {
             var element = that.locate(param);
             command[param] = JSON.parse(element.val());
         });
+
+        // TODO: This is a bit ugly...
+        // Channels in Flocking MIDI messageSpecs are currently
+        // 0-indexed (i.e. 0-15). But to make better UIs easier,
+        // should we automatically convert them to start at 1?
+        if (command.channel) {
+            command.channel = command.channel - 1;
+        }
+
         that.connector.connection.send(command);
     };
 }());
