@@ -48,7 +48,7 @@
   },
   "scripts": {
     "test": "npm run node-test && npm run browser-test",
-    "browser-test": "node node_modules/testem/testem.js ci --file tests/unit/testem.json",
+    "browser-test": "node node_modules/testem/testem.js ci --file tests/unit/testem.json --skip PhantomJS",
     "node-test": "node tests/unit/nodejs/all-node-tests.js",
     "linux-vm-test": "npm run clean-modules && vagrant up fedora27 && vagrant ci test fedora27",
     "windows-vm-test": "npm run clean-modules && vagrant up windows10 && vagrant ci test windows10",
