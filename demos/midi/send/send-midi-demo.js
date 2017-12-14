@@ -100,7 +100,7 @@
         return commands;
     };
 
-    fluid.defaults("flock.demo.MIDISender", {
+    fluid.defaults("flock.demo.midiSender", {
         gradeNames: "fluid.viewComponent",
 
         invokers: {
@@ -133,7 +133,7 @@
             onSend: [
                 {
                     priority: "last",
-                    funcName: "flock.demo.MIDISender.sendCommand",
+                    funcName: "flock.demo.midiSender.sendCommand",
                     args:     ["{that}"]
                 }
             ]
@@ -149,7 +149,7 @@
         }
     });
 
-    flock.demo.MIDISender.sendCommand = function (that) {
+    flock.demo.midiSender.sendCommand = function (that) {
         var command = {};
         // TODO: Discuss using gpii-binder here.
         // (Sounds like a great idea!)

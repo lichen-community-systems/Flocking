@@ -100,7 +100,7 @@
         return commands;
     };
 
-    fluid.defaults("flock.demo.rawMIDISender", {
+    fluid.defaults("flock.demo.rawMidiSender", {
         gradeNames: "fluid.viewComponent",
 
         commandDelay: 0.1,
@@ -113,7 +113,7 @@
             target: "commandScore",
             singleTransform: {
                 type: "fluid.transforms.free",
-                func: "flock.demo.rawMIDISender.schedulerScoreForCommands",
+                func: "flock.demo.rawMidiSender.schedulerScoreForCommands",
                 args: ["{that}.parser.model.commands", "{that}"]
             }
         },
@@ -171,7 +171,7 @@
                 },
                 {
                     priority: "last",
-                    funcName: "flock.demo.rawMIDISender.enqueueMIDICommands",
+                    funcName: "flock.demo.rawMidiSender.enqueueMIDICommands",
                     args: ["{that}.model.commandScore", "{that}"]
                 }
             ]
@@ -184,23 +184,23 @@
         }
     });
 
-    flock.demo.rawMIDISender.sendCommand = function (command, that) {
+    flock.demo.rawMidiSender.sendCommand = function (command, that) {
         that.connector.connection.sendRaw(command);
     };
 
-    flock.demo.rawMIDISender.schedulerScoreForCommands = function (commands, that) {
+    flock.demo.rawMidiSender.schedulerScoreForCommands = function (commands, that) {
         return fluid.transform(commands, function (command, i) {
             return {
                 interval: "once",
                 time: i * that.options.commandDelay,
                 change: function () {
-                    flock.demo.rawMIDISender.sendCommand(command, that);
+                    flock.demo.rawMidiSender.sendCommand(command, that);
                 }
             };
         });
     };
 
-    flock.demo.rawMIDISender.enqueueMIDICommands = function (commandScore, that) {
+    flock.demo.rawMidiSender.enqueueMIDICommands = function (commandScore, that) {
         if (commandScore.length < 1 || !that.connector.connection) {
             return;
         }
