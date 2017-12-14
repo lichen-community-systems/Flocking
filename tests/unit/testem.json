@@ -1,7 +1,7 @@
 {
     "test_page": "tests/unit/all-tests.html",
     "timeout": 300,
-    "skip": "IE",
+    "skip": "PhantomJS,IE",
     "browser_args": {
         "Chrome": [
             "--no-sandbox"
