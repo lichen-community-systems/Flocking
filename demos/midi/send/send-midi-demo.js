@@ -3,7 +3,7 @@
 (function () {
     "use strict";
 
-    fluid.defaults("flock.demo.MIDIInputView", {
+    fluid.defaults("flock.demo.midiInputView", {
         gradeNames: "fluid.codeMirror",
 
         codeMirrorOptions: {
@@ -21,7 +21,7 @@
 
         invokers: {
             updateContent: {
-                funcName: "flock.demo.MIDIInputView.updatedContentModel",
+                funcName: "flock.demo.midiInputView.updatedContentModel",
                 args: ["{that}"]
             }
         },
@@ -31,12 +31,12 @@
         }
     });
 
-    flock.demo.MIDIInputView.updatedContentModel = function (that) {
+    flock.demo.midiInputView.updatedContentModel = function (that) {
         var content = that.getContent();
         that.applier.change("content", content);
     };
 
-    fluid.defaults("flock.demo.MIDIParser", {
+    fluid.defaults("flock.demo.midiHexStringParser", {
         gradeNames: "fluid.modelComponent",
 
         model: {
@@ -47,13 +47,13 @@
             target: "commands",
             singleTransform: {
                 type: "fluid.transforms.free",
-                func: "flock.demo.MIDIParser.parseMIDICommands",
+                func: "flock.demo.midiHexStringParser.parseMidiCommands",
                 args: ["{midiInputView}.model.content"]
             }
         }
     });
 
-    flock.demo.MIDIParser.parseMIDIByteString = function (byteString, i) {
+    flock.demo.midiHexStringParser.parseMidiByteString = function (byteString, i) {
         if (byteString.length < 1) {
             return;
         }
@@ -68,7 +68,7 @@
         return byte;
     };
 
-    flock.demo.MIDIParser.parseMIDICommand = function (commandString) {
+    flock.demo.midiHexStringParser.parseMidiCommand = function (commandString) {
         if (commandString.length < 1) {
             return;
         }
@@ -77,7 +77,7 @@
             bytes = [];
 
         fluid.each(midiByteStrings, function (byteString, i) {
-            var byte = flock.demo.MIDIParser.parseMIDIByteString(byteString, i);
+            var byte = flock.demo.midiHexStringParser.parseMidiByteString(byteString, i);
             if (byte) {
                 bytes.push(byte);
             }
@@ -86,12 +86,12 @@
         return new Uint8Array(bytes);
     };
 
-    flock.demo.MIDIParser.parseMIDICommands = function (midiString) {
+    flock.demo.midiHexStringParser.parseMidiCommands = function (midiString) {
         var commandStrings = midiString.split("\n"),
             commands = [];
 
         fluid.each(commandStrings, function (commandString) {
-            var command = flock.demo.MIDIParser.parseMIDICommand(commandString);
+            var command = flock.demo.midiHexStringParser.parseMidiCommand(commandString);
             if (command) {
                 commands.push(command);
             }

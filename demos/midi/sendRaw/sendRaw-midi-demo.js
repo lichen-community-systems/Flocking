@@ -3,7 +3,7 @@
 (function () {
     "use strict";
 
-    fluid.defaults("flock.demo.rawMIDIInputView", {
+    fluid.defaults("flock.demo.rawMidiInputView", {
         gradeNames: "fluid.codeMirror",
 
         codeMirrorOptions: {
@@ -21,7 +21,7 @@
 
         invokers: {
             updateContent: {
-                funcName: "flock.demo.rawMIDIInputView.updatedContentModel",
+                funcName: "flock.demo.rawMidiInputView.updatedContentModel",
                 args: ["{that}"]
             }
         },
@@ -31,12 +31,12 @@
         }
     });
 
-    flock.demo.rawMIDIInputView.updatedContentModel = function (that) {
+    flock.demo.rawMidiInputView.updatedContentModel = function (that) {
         var content = that.getContent();
         that.applier.change("content", content);
     };
 
-    fluid.defaults("flock.demo.rawMIDIParser", {
+    fluid.defaults("flock.demo.rawMidiParser", {
         gradeNames: "fluid.modelComponent",
 
         model: {
@@ -47,13 +47,13 @@
             target: "commands",
             singleTransform: {
                 type: "fluid.transforms.free",
-                func: "flock.demo.rawMIDIParser.parseMIDICommands",
+                func: "flock.demo.rawMidiParser.parseMidiCommands",
                 args: ["{midiInputView}.model.content"]
             }
         }
     });
 
-    flock.demo.rawMIDIParser.parseMIDIByteString = function (byteString, i) {
+    flock.demo.rawMidiParser.parseMidiByteString = function (byteString, i) {
         if (byteString.length < 1) {
             return;
         }
@@ -68,7 +68,7 @@
         return byte;
     };
 
-    flock.demo.rawMIDIParser.parseMIDICommand = function (commandString) {
+    flock.demo.rawMidiParser.parseMidiCommand = function (commandString) {
         if (commandString.length < 1) {
             return;
         }
@@ -77,7 +77,7 @@
             bytes = [];
 
         fluid.each(midiByteStrings, function (byteString, i) {
-            var byte = flock.demo.rawMIDIParser.parseMIDIByteString(byteString, i);
+            var byte = flock.demo.rawMidiParser.parseMidiByteString(byteString, i);
             if (byte) {
                 bytes.push(byte);
             }
@@ -86,12 +86,12 @@
         return new Uint8Array(bytes);
     };
 
-    flock.demo.rawMIDIParser.parseMIDICommands = function (midiString) {
+    flock.demo.rawMidiParser.parseMidiCommands = function (midiString) {
         var commandStrings = midiString.split("\n"),
             commands = [];
 
         fluid.each(commandStrings, function (commandString) {
-            var command = flock.demo.rawMIDIParser.parseMIDICommand(commandString);
+            var command = flock.demo.rawMidiParser.parseMidiCommand(commandString);
             if (command) {
                 commands.push(command);
             }
@@ -138,12 +138,12 @@
                 }
             },
             parser: {
-                type: "flock.demo.rawMIDIParser"
+                type: "flock.demo.rawMidiParser"
             },
 
             midiInputView: {
-                type: "flock.demo.rawMIDIInputView",
-                container: "{that}.dom.rawMIDIArea"
+                type: "flock.demo.rawMidiInputView",
+                container: "{that}.dom.rawMidiArea"
             },
 
             scheduler: {
@@ -171,14 +171,14 @@
                 },
                 {
                     priority: "last",
-                    funcName: "flock.demo.rawMidiSender.enqueueMIDICommands",
+                    funcName: "flock.demo.rawMidiSender.enqueueMidiCommands",
                     args: ["{that}.model.commandScore", "{that}"]
                 }
             ]
         },
 
         selectors: {
-            rawMIDIArea: "#code",
+            rawMidiArea: "#code",
             sendButton: "button.send",
             midiPortSelector: "#midi-port-selector"
         }
@@ -200,7 +200,7 @@
         });
     };
 
-    flock.demo.rawMidiSender.enqueueMIDICommands = function (commandScore, that) {
+    flock.demo.rawMidiSender.enqueueMidiCommands = function (commandScore, that) {
         if (commandScore.length < 1 || !that.connector.connection) {
             return;
         }

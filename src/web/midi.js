@@ -497,10 +497,6 @@ var fluid = fluid || require("infusion"),
     });
 
 
-    flock.midi.getFirstByte  = function (channel, statusInt) {
-        return (statusInt << 4) + channel;
-    };
-
     flock.midi.arrayToUint8TypedArray = function (array) {
         return new Uint8Array(array);
     };
@@ -523,13 +519,13 @@ var fluid = fluid || require("infusion"),
         switch (midiMessage.type) {
             case "noteOn":
                 return flock.midi.arrayToUint8TypedArray([
-                    flock.midi.getFirstByte(channel, 9),
+                    flock.midi.write.statusByte(channel, 9),
                     midiMessage.note,
                     midiMessage.velocity
                 ]);
             case "noteOff":
                 return flock.midi.arrayToUint8TypedArray([
-                    flock.midi.getFirstByte(channel, 8),
+                    flock.midi.write.statusByte(channel, 8),
                     midiMessage.note,
                     midiMessage.velocity
                 ]);
@@ -537,7 +533,7 @@ var fluid = fluid || require("infusion"),
                 // polyAfterTouch
                 if (midiMessage.note) {
                     return flock.midi.arrayToUint8TypedArray([
-                        flock.midi.getFirstByte(channel, 10),
+                        flock.midi.write.statusByte(channel, 10),
                         midiMessage.note,
                         midiMessage.velocity
                     ]);
@@ -545,53 +541,57 @@ var fluid = fluid || require("infusion"),
                 // afterTouch
                 else {
                     return flock.midi.arrayToUint8TypedArray([
-                        flock.midi.getFirstByte(channel, 13),
+                        flock.midi.write.statusByte(channel, 13),
                         midiMessage.pressure
                     ]);
                 }
                 break;
             case "control":
                 return flock.midi.arrayToUint8TypedArray([
-                    flock.midi.getFirstByte(channel, 11),
+                    flock.midi.write.statusByte(channel, 11),
                     midiMessage.number,
                     midiMessage.value
                 ]);
             case "program":
                 return flock.midi.arrayToUint8TypedArray([
-                    flock.midi.getFirstByte(channel, 12),
+                    flock.midi.write.statusByte(channel, 12),
                     midiMessage.program
                 ]);
             case "pitchbend":
                 return flock.midi.arrayToUint8TypedArray(
-                    [flock.midi.getFirstByte(channel, 14)].concat(flock.midi.write.valueToTwoByteArray(midiMessage.value))
+                    [flock.midi.write.statusByte(channel, 14)].concat(flock.midi.write.valueToTwoByteArray(midiMessage.value))
                 );
             case "sysex":
                 return flock.midi.write.sysex(midiMessage);
             case "songPointer":
                 return flock.midi.arrayToUint8TypedArray(
-                    [flock.midi.getFirstByte(2, 15)].concat(flock.midi.write.valueToTwoByteArray(midiMessage.value))
+                    [flock.midi.write.statusByte(2, 15)].concat(flock.midi.write.valueToTwoByteArray(midiMessage.value))
                 );
             case "songSelect":
                 return flock.midi.arrayToUint8TypedArray(
-                    [flock.midi.getFirstByte(3, 15)].concat(flock.midi.write.valueToTwoByteArray(midiMessage.value))
+                    [flock.midi.write.statusByte(3, 15)].concat(flock.midi.write.valueToTwoByteArray(midiMessage.value))
                 );
             case "tuneRequest":
-                return flock.midi.arrayToUint8TypedArray([flock.midi.getFirstByte(6, 15)]);
+                return flock.midi.arrayToUint8TypedArray([flock.midi.write.statusByte(6, 15)]);
             case "clock":
-                return flock.midi.arrayToUint8TypedArray([flock.midi.getFirstByte(8, 15)]);
+                return flock.midi.arrayToUint8TypedArray([flock.midi.write.statusByte(8, 15)]);
             case "start":
-                return flock.midi.arrayToUint8TypedArray([flock.midi.getFirstByte(10, 15)]);
+                return flock.midi.arrayToUint8TypedArray([flock.midi.write.statusByte(10, 15)]);
             case "continue":
-                return flock.midi.arrayToUint8TypedArray([flock.midi.getFirstByte(11, 15)]);
+                return flock.midi.arrayToUint8TypedArray([flock.midi.write.statusByte(11, 15)]);
             case "stop":
-                return flock.midi.arrayToUint8TypedArray([flock.midi.getFirstByte(12, 15)]);
+                return flock.midi.arrayToUint8TypedArray([flock.midi.write.statusByte(12, 15)]);
             case "activeSense":
-                return flock.midi.arrayToUint8TypedArray([flock.midi.getFirstByte(14, 15)]);
+                return flock.midi.arrayToUint8TypedArray([flock.midi.write.statusByte(14, 15)]);
             case "reset":
-                return flock.midi.arrayToUint8TypedArray([flock.midi.getFirstByte(15, 15)]);
+                return flock.midi.arrayToUint8TypedArray([flock.midi.write.statusByte(15, 15)]);
             default:
                 flock.fail("Cannot handle MIDI message of type '" + midiMessage.type + "'.");
         }
+    };
+
+    flock.midi.write.statusByte = function (channel, statusInt) {
+        return (statusInt << 4) + channel;
     };
 
     /**
