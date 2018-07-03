@@ -672,16 +672,17 @@ var fluid = fluid || require("infusion"),
         array[offset + 1] = (value >> 7) & 0x7f; // MSB
     };
 
-    // TODO: Improve performance:
-    //    This algorithm requires a complete memory copy
-    //    of "data" into "framedData", which is slow.
-    //    We could perhaps avoid this entirely if we
-    //    mandate either that:
-    //      a) users always do their own framing,
-    //      b) they always omit the framing bytes
-    //         (since it's cheaper to create a subview
-    //         of the incoming bytes in flock.midi.read
-    //         than to do what we're doing here).
+
+    /**
+     *
+     * Convert a MIDI Message represented as a Javascript Object into a Sysex message represented as a Uint8Array.
+     *
+     * NOTE: This function does not accept framing, i.e. a leading 0xF0 and/or trailing 0xF7, and will fail if called
+     * with either.
+     *
+     * @param {Object} midiMessage - The MIDI message represented as a Javascript Object.
+     * @return {Uint8Array} - The sysex message.
+     */
     flock.midi.write.sysex = function (midiMessage) {
         if (midiMessage.data[0] === 0xF0 || midiMessage.data[midiMessage.data.length - 1] === 0xF7) {
             flock.fail("Sysex payloads should not include framing bytes.");
