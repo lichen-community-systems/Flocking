@@ -277,10 +277,10 @@ var fluid = fluid || require("infusion"),
                 bytes: [0xE1, 0x00, 0x2E]
             },
 
-            "sysex with framing bytes included": {
+            "sysex without framing bytes included": {
                 messageSpec: {
                     type: "sysex",
-                    data: [0xF0, 0, 32, 8, 16, 127, 0, 1, 0xF7]
+                    data: [0, 32, 8, 16, 127, 0, 1]
                 },
                 bytes: [0xF0, 0x00, 0x20, 0x08, 0x10, 0x7F, 0x00, 0x01, 0xF7]
             },
@@ -387,7 +387,7 @@ var fluid = fluid || require("infusion"),
                     type: "sysex",
                     data: [0, 32, 8, 16, 127, 0, 1, 0xF7]
                 },
-                bytes: [0xF0, 0x00, 0x20, 0x08, 0x10, 0x7F, 0x00, 0x01, 0xF7]
+                shouldFail: true
             },
 
             "sysex with only the opening byte": {
@@ -395,7 +395,15 @@ var fluid = fluid || require("infusion"),
                     type: "sysex",
                     data: [0xF0, 0, 32, 8, 16, 127, 0, 1]
                 },
-                bytes: [0xF0, 0x00, 0x20, 0x08, 0x10, 0x7F, 0x00, 0x01, 0xF7]
+                shouldFail: true
+            },
+
+            "sysex with both opening and closing bytes": {
+                messageSpec: {
+                    type: "sysex",
+                    data: [0xF0, 0, 32, 8, 16, 127, 0, 1, 0xF7]
+                },
+                shouldFail: true
             }
         },
 
@@ -413,8 +421,23 @@ var fluid = fluid || require("infusion"),
 
     flock.test.midi.encodingTests.testEncoding = function (that, testSpec, name) {
         jqUnit.test("Encode a " + name + " message", function () {
-            var actual = flock.midi.write(testSpec.messageSpec);
-            jqUnit.assertDeepEq("The MIDI messageSpec have been correctly encoded as raw bytes.", new Uint8Array(testSpec.bytes), actual);
+            try {
+                var actual = flock.midi.write(testSpec.messageSpec);
+                if (testSpec.shouldFail) {
+                    jqUnit.fail("The write call should not have succeeded.");
+                }
+                else {
+                    jqUnit.assertDeepEq("The MIDI messageSpec have been correctly encoded as raw bytes.", new Uint8Array(testSpec.bytes), actual);
+                }
+            }
+            catch (error) {
+                if (testSpec.shouldFail) {
+                    jqUnit.assert("The call failed, as expected.");
+                }
+                else {
+                    jqUnit.fail("The call should have failed, but did not.");
+                }
+            }
         });
     };
 

@@ -259,9 +259,11 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.midi.read.sysex = function (data) {
+        var leadingOffset = data[0] === 0xF0 ? 1 : 0;
+        var trailingOffset = data[data.length - 1] === 0XF7 ? 1 : 0;
         return {
             type: "sysex",
-            data: data
+            data: data.slice(leadingOffset, data.length - trailingOffset)
         };
     };
 
@@ -659,9 +661,9 @@ var fluid = fluid || require("infusion"),
      *
      * Convert a large numeric value to an array of two separate bytes.
      *
-     * @param value {Number} A 14-bit integer to convert
-     * @param array {Unit8TypedArray} - An array to write value to.
-     * @param offset {Integer} - The offset in the array to start writing at.
+     * @param {Number} value - A 14-bit integer to convert
+     * @param {Unit8TypedArray} array - An array to write the value to.
+     * @param {Integer} offset - The optional offset in the array to start writing at.  Defaults to 0.
      *
      */
     flock.midi.write.writeValueToTwoBytesInArray =  function (value, array, offset) {
@@ -681,25 +683,17 @@ var fluid = fluid || require("infusion"),
     //         of the incoming bytes in flock.midi.read
     //         than to do what we're doing here).
     flock.midi.write.sysex = function (midiMessage) {
-        var data = midiMessage.data,
-            len = data.length,
-            framedData = new Uint8Array(data);
-
-        // TODO: Reduce duplication.
-        if (data[0] !== 0xF0 && data[len - 1] !== 0xF7) {
-            framedData = new Uint8Array(len + 2);
-            framedData[0] = 0xF0;
-            framedData[len + 1] = 0xF7;
-            framedData.set(data, 1);
-        } else if (data[0] !== 0xF0) {
-            framedData = new Uint8Array(len + 1);
-            framedData[0] = 0xF0;
-            framedData.set(data, 1);
-        } else if (data[len - 1] !== 0xF7) {
-            framedData = new Uint8Array(len + 1);
-            framedData[len] = 0xF7;
-            framedData.set(data, 0);
+        if (midiMessage.data[0] === 0xF0 || midiMessage.data[midiMessage.data.length - 1] === 0xF7) {
+            flock.fail("Sysex payloads should not include framing bytes.");
         }
+
+        var data = midiMessage.data,
+            len = data.length;
+
+        var framedData = new Uint8Array(len + 2);
+        framedData[0] = 0xF0;
+        framedData[len + 1] = 0xF7;
+        framedData.set(data, 1);
 
         return framedData;
     };
