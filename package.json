@@ -40,7 +40,7 @@
     "jsplumb": "1.7.9",
     "dagre": "0.7.4",
     "normalize.css": "3.0.3",
-    "atob": "2.0.3"
+    "atob": "2.1.0"
   },
   "optionalDependencies": {
     "midi": "0.9.5",
