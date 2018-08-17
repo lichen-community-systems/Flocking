@@ -194,16 +194,6 @@ module.exports = function(grunt) {
             }
         },
 
-        watch: {
-            scripts: {
-                files: ["src/**/*.js", "third-party/**/*.js", "Gruntfile.js"],
-                tasks: ["default"],
-                options: {
-                    spawn: false
-                }
-            }
-        },
-
         flock: {
             banners: {
                 short: "/*! Flocking <%= pkg.version %>, Copyright <%= grunt.template.today('yyyy') %> Colin Clark | flockingjs.org */\n\n"
@@ -217,7 +207,6 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks("grunt-contrib-clean");
     grunt.loadNpmTasks("grunt-contrib-copy");
     grunt.loadNpmTasks("grunt-contrib-jshint");
-    grunt.loadNpmTasks("grunt-contrib-watch");
 
     grunt.registerTask("default", ["jshint", "clean", "concat", "uglify", "copy"]);
 };

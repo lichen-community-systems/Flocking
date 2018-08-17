@@ -4,11 +4,9 @@
     "skip": "IE",
     "browser_args": {
         "Chrome": [
-            "--no-sandbox",
             "--autoplay-policy=no-user-gesture-required"
         ],
         "Chrome Canary": [
-            "--no-sandbox",
             "--autoplay-policy=no-user-gesture-required"
         ]
     }
