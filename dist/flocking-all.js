@@ -1,7 +1,7 @@
-/*! Flocking 0.2.0, Copyright 2017 Colin Clark | flockingjs.org */
+/*! Flocking 0.2.0, Copyright 2018 Colin Clark | flockingjs.org */
 
 /*!
- * jQuery JavaScript Library v3.2.1
+ * jQuery JavaScript Library v3.3.1
  * https://jquery.com/
  *
  * Includes Sizzle.js
@@ -11,7 +11,7 @@
  * Released under the MIT license
  * https://jquery.org/license
  *
- * Date: 2017-03-20T18:59Z
+ * Date: 2018-01-20T17:24Z
  */
 ( function( global, factory ) {
 
@@ -73,16 +73,57 @@ var ObjectFunctionString = fnToString.call( Object );
 
 var support = {};
 
+var isFunction = function isFunction( obj ) {
+
+      // Support: Chrome <=57, Firefox <=52
+      // In some browsers, typeof returns "function" for HTML <object> elements
+      // (i.e., `typeof document.createElement( "object" ) === "function"`).
+      // We don't want to classify *any* DOM node as a function.
+      return typeof obj === "function" && typeof obj.nodeType !== "number";
+  };
 
 
-	function DOMEval( code, doc ) {
+var isWindow = function isWindow( obj ) {
+		return obj != null && obj === obj.window;
+	};
+
+
+
+
+	var preservedScriptAttributes = {
+		type: true,
+		src: true,
+		noModule: true
+	};
+
+	function DOMEval( code, doc, node ) {
 		doc = doc || document;
 
-		var script = doc.createElement( "script" );
+		var i,
+			script = doc.createElement( "script" );
 
 		script.text = code;
+		if ( node ) {
+			for ( i in preservedScriptAttributes ) {
+				if ( node[ i ] ) {
+					script[ i ] = node[ i ];
+				}
+			}
+		}
 		doc.head.appendChild( script ).parentNode.removeChild( script );
 	}
+
+
+function toType( obj ) {
+	if ( obj == null ) {
+		return obj + "";
+	}
+
+	// Support: Android <=2.3 only (functionish RegExp)
+	return typeof obj === "object" || typeof obj === "function" ?
+		class2type[ toString.call( obj ) ] || "object" :
+		typeof obj;
+}
 /* global Symbol */
 // Defining this global in .eslintrc.json would create a danger of using the global
 // unguarded in another place, it seems safer to define global only for this module
@@ -90,7 +131,7 @@ var support = {};
 
 
 var
-	version = "3.2.1",
+	version = "3.3.1",
 
 	// Define a local copy of jQuery
 	jQuery = function( selector, context ) {
@@ -102,16 +143,7 @@ var
 
 	// Support: Android <=4.0 only
 	// Make sure we trim BOM and NBSP
-	rtrim = /^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g,
-
-	// Matches dashed string for camelizing
-	rmsPrefix = /^-ms-/,
-	rdashAlpha = /-([a-z])/g,
-
-	// Used by jQuery.camelCase as callback to replace()
-	fcamelCase = function( all, letter ) {
-		return letter.toUpperCase();
-	};
+	rtrim = /^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g;
 
 jQuery.fn = jQuery.prototype = {
 
@@ -211,7 +243,7 @@ jQuery.extend = jQuery.fn.extend = function() {
 	}
 
 	// Handle case when target is a string or something (possible in deep copy)
-	if ( typeof target !== "object" && !jQuery.isFunction( target ) ) {
+	if ( typeof target !== "object" && !isFunction( target ) ) {
 		target = {};
 	}
 
@@ -277,28 +309,6 @@ jQuery.extend( {
 
 	noop: function() {},
 
-	isFunction: function( obj ) {
-		return jQuery.type( obj ) === "function";
-	},
-
-	isWindow: function( obj ) {
-		return obj != null && obj === obj.window;
-	},
-
-	isNumeric: function( obj ) {
-
-		// As of jQuery 3.0, isNumeric is limited to
-		// strings and numbers (primitives or objects)
-		// that can be coerced to finite numbers (gh-2662)
-		var type = jQuery.type( obj );
-		return ( type === "number" || type === "string" ) &&
-
-			// parseFloat NaNs numeric-cast false positives ("")
-			// ...but misinterprets leading-number strings, particularly hex literals ("0x...")
-			// subtraction forces infinities to NaN
-			!isNaN( obj - parseFloat( obj ) );
-	},
-
 	isPlainObject: function( obj ) {
 		var proto, Ctor;
 
@@ -332,27 +342,9 @@ jQuery.extend( {
 		return true;
 	},
 
-	type: function( obj ) {
-		if ( obj == null ) {
-			return obj + "";
-		}
-
-		// Support: Android <=2.3 only (functionish RegExp)
-		return typeof obj === "object" || typeof obj === "function" ?
-			class2type[ toString.call( obj ) ] || "object" :
-			typeof obj;
-	},
-
 	// Evaluates a script in a global context
 	globalEval: function( code ) {
 		DOMEval( code );
-	},
-
-	// Convert dashed to camelCase; used by the css and data modules
-	// Support: IE <=9 - 11, Edge 12 - 13
-	// Microsoft forgot to hump their vendor prefix (#9572)
-	camelCase: function( string ) {
-		return string.replace( rmsPrefix, "ms-" ).replace( rdashAlpha, fcamelCase );
 	},
 
 	each: function( obj, callback ) {
@@ -475,37 +467,6 @@ jQuery.extend( {
 	// A global GUID counter for objects
 	guid: 1,
 
-	// Bind a function to a context, optionally partially applying any
-	// arguments.
-	proxy: function( fn, context ) {
-		var tmp, args, proxy;
-
-		if ( typeof context === "string" ) {
-			tmp = fn[ context ];
-			context = fn;
-			fn = tmp;
-		}
-
-		// Quick check to determine if target is callable, in the spec
-		// this throws a TypeError, but we will just return undefined.
-		if ( !jQuery.isFunction( fn ) ) {
-			return undefined;
-		}
-
-		// Simulated bind
-		args = slice.call( arguments, 2 );
-		proxy = function() {
-			return fn.apply( context || this, args.concat( slice.call( arguments ) ) );
-		};
-
-		// Set the guid of unique handler to the same of original handler, so it can be removed
-		proxy.guid = fn.guid = fn.guid || jQuery.guid++;
-
-		return proxy;
-	},
-
-	now: Date.now,
-
 	// jQuery.support is not used in Core but other projects attach their
 	// properties to it so it needs to exist.
 	support: support
@@ -528,9 +489,9 @@ function isArrayLike( obj ) {
 	// hasOwn isn't used here due to false negatives
 	// regarding Nodelist length in IE
 	var length = !!obj && "length" in obj && obj.length,
-		type = jQuery.type( obj );
+		type = toType( obj );
 
-	if ( type === "function" || jQuery.isWindow( obj ) ) {
+	if ( isFunction( obj ) || isWindow( obj ) ) {
 		return false;
 	}
 
@@ -2850,11 +2811,9 @@ var rsingleTag = ( /^<([a-z][^\/\0>:\x20\t\r\n\f]*)[\x20\t\r\n\f]*\/?>(?:<\/\1>|
 
 
 
-var risSimple = /^.[^:#\[\.,]*$/;
-
 // Implement the identical functionality for filter and not
 function winnow( elements, qualifier, not ) {
-	if ( jQuery.isFunction( qualifier ) ) {
+	if ( isFunction( qualifier ) ) {
 		return jQuery.grep( elements, function( elem, i ) {
 			return !!qualifier.call( elem, i, elem ) !== not;
 		} );
@@ -2874,16 +2833,8 @@ function winnow( elements, qualifier, not ) {
 		} );
 	}
 
-	// Simple selector that can be filtered directly, removing non-Elements
-	if ( risSimple.test( qualifier ) ) {
-		return jQuery.filter( qualifier, elements, not );
-	}
-
-	// Complex selector, compare the two sets, removing non-Elements
-	qualifier = jQuery.filter( qualifier, elements );
-	return jQuery.grep( elements, function( elem ) {
-		return ( indexOf.call( qualifier, elem ) > -1 ) !== not && elem.nodeType === 1;
-	} );
+	// Filtered directly for both simple and complex selectors
+	return jQuery.filter( qualifier, elements, not );
 }
 
 jQuery.filter = function( expr, elems, not ) {
@@ -3004,7 +2955,7 @@ var rootjQuery,
 						for ( match in context ) {
 
 							// Properties of context are called as methods if possible
-							if ( jQuery.isFunction( this[ match ] ) ) {
+							if ( isFunction( this[ match ] ) ) {
 								this[ match ]( context[ match ] );
 
 							// ...and otherwise set as attributes
@@ -3047,7 +2998,7 @@ var rootjQuery,
 
 		// HANDLE: $(function)
 		// Shortcut for document ready
-		} else if ( jQuery.isFunction( selector ) ) {
+		} else if ( isFunction( selector ) ) {
 			return root.ready !== undefined ?
 				root.ready( selector ) :
 
@@ -3362,11 +3313,11 @@ jQuery.Callbacks = function( options ) {
 
 					( function add( args ) {
 						jQuery.each( args, function( _, arg ) {
-							if ( jQuery.isFunction( arg ) ) {
+							if ( isFunction( arg ) ) {
 								if ( !options.unique || !self.has( arg ) ) {
 									list.push( arg );
 								}
-							} else if ( arg && arg.length && jQuery.type( arg ) !== "string" ) {
+							} else if ( arg && arg.length && toType( arg ) !== "string" ) {
 
 								// Inspect recursively
 								add( arg );
@@ -3481,11 +3432,11 @@ function adoptValue( value, resolve, reject, noValue ) {
 	try {
 
 		// Check for promise aspect first to privilege synchronous behavior
-		if ( value && jQuery.isFunction( ( method = value.promise ) ) ) {
+		if ( value && isFunction( ( method = value.promise ) ) ) {
 			method.call( value ).done( resolve ).fail( reject );
 
 		// Other thenables
-		} else if ( value && jQuery.isFunction( ( method = value.then ) ) ) {
+		} else if ( value && isFunction( ( method = value.then ) ) ) {
 			method.call( value, resolve, reject );
 
 		// Other non-thenables
@@ -3543,14 +3494,14 @@ jQuery.extend( {
 						jQuery.each( tuples, function( i, tuple ) {
 
 							// Map tuples (progress, done, fail) to arguments (done, fail, progress)
-							var fn = jQuery.isFunction( fns[ tuple[ 4 ] ] ) && fns[ tuple[ 4 ] ];
+							var fn = isFunction( fns[ tuple[ 4 ] ] ) && fns[ tuple[ 4 ] ];
 
 							// deferred.progress(function() { bind to newDefer or newDefer.notify })
 							// deferred.done(function() { bind to newDefer or newDefer.resolve })
 							// deferred.fail(function() { bind to newDefer or newDefer.reject })
 							deferred[ tuple[ 1 ] ]( function() {
 								var returned = fn && fn.apply( this, arguments );
-								if ( returned && jQuery.isFunction( returned.promise ) ) {
+								if ( returned && isFunction( returned.promise ) ) {
 									returned.promise()
 										.progress( newDefer.notify )
 										.done( newDefer.resolve )
@@ -3604,7 +3555,7 @@ jQuery.extend( {
 										returned.then;
 
 									// Handle a returned thenable
-									if ( jQuery.isFunction( then ) ) {
+									if ( isFunction( then ) ) {
 
 										// Special processors (notify) just wait for resolution
 										if ( special ) {
@@ -3700,7 +3651,7 @@ jQuery.extend( {
 							resolve(
 								0,
 								newDefer,
-								jQuery.isFunction( onProgress ) ?
+								isFunction( onProgress ) ?
 									onProgress :
 									Identity,
 								newDefer.notifyWith
@@ -3712,7 +3663,7 @@ jQuery.extend( {
 							resolve(
 								0,
 								newDefer,
-								jQuery.isFunction( onFulfilled ) ?
+								isFunction( onFulfilled ) ?
 									onFulfilled :
 									Identity
 							)
@@ -3723,7 +3674,7 @@ jQuery.extend( {
 							resolve(
 								0,
 								newDefer,
-								jQuery.isFunction( onRejected ) ?
+								isFunction( onRejected ) ?
 									onRejected :
 									Thrower
 							)
@@ -3763,8 +3714,15 @@ jQuery.extend( {
 					// fulfilled_callbacks.disable
 					tuples[ 3 - i ][ 2 ].disable,
 
+					// rejected_handlers.disable
+					// fulfilled_handlers.disable
+					tuples[ 3 - i ][ 3 ].disable,
+
 					// progress_callbacks.lock
-					tuples[ 0 ][ 2 ].lock
+					tuples[ 0 ][ 2 ].lock,
+
+					// progress_handlers.lock
+					tuples[ 0 ][ 3 ].lock
 				);
 			}
 
@@ -3834,7 +3792,7 @@ jQuery.extend( {
 
 			// Use .then() to unwrap secondary thenables (cf. gh-3000)
 			if ( master.state() === "pending" ||
-				jQuery.isFunction( resolveValues[ i ] && resolveValues[ i ].then ) ) {
+				isFunction( resolveValues[ i ] && resolveValues[ i ].then ) ) {
 
 				return master.then();
 			}
@@ -3962,7 +3920,7 @@ var access = function( elems, fn, key, value, chainable, emptyGet, raw ) {
 		bulk = key == null;
 
 	// Sets many values
-	if ( jQuery.type( key ) === "object" ) {
+	if ( toType( key ) === "object" ) {
 		chainable = true;
 		for ( i in key ) {
 			access( elems, fn, i, key[ i ], true, emptyGet, raw );
@@ -3972,7 +3930,7 @@ var access = function( elems, fn, key, value, chainable, emptyGet, raw ) {
 	} else if ( value !== undefined ) {
 		chainable = true;
 
-		if ( !jQuery.isFunction( value ) ) {
+		if ( !isFunction( value ) ) {
 			raw = true;
 		}
 
@@ -4014,6 +3972,23 @@ var access = function( elems, fn, key, value, chainable, emptyGet, raw ) {
 
 	return len ? fn( elems[ 0 ], key ) : emptyGet;
 };
+
+
+// Matches dashed string for camelizing
+var rmsPrefix = /^-ms-/,
+	rdashAlpha = /-([a-z])/g;
+
+// Used by camelCase as callback to replace()
+function fcamelCase( all, letter ) {
+	return letter.toUpperCase();
+}
+
+// Convert dashed to camelCase; used by the css and data modules
+// Support: IE <=9 - 11, Edge 12 - 15
+// Microsoft forgot to hump their vendor prefix (#9572)
+function camelCase( string ) {
+	return string.replace( rmsPrefix, "ms-" ).replace( rdashAlpha, fcamelCase );
+}
 var acceptData = function( owner ) {
 
 	// Accepts only:
@@ -4076,14 +4051,14 @@ Data.prototype = {
 		// Handle: [ owner, key, value ] args
 		// Always use camelCase key (gh-2257)
 		if ( typeof data === "string" ) {
-			cache[ jQuery.camelCase( data ) ] = value;
+			cache[ camelCase( data ) ] = value;
 
 		// Handle: [ owner, { properties } ] args
 		} else {
 
 			// Copy the properties one-by-one to the cache object
 			for ( prop in data ) {
-				cache[ jQuery.camelCase( prop ) ] = data[ prop ];
+				cache[ camelCase( prop ) ] = data[ prop ];
 			}
 		}
 		return cache;
@@ -4093,7 +4068,7 @@ Data.prototype = {
 			this.cache( owner ) :
 
 			// Always use camelCase key (gh-2257)
-			owner[ this.expando ] && owner[ this.expando ][ jQuery.camelCase( key ) ];
+			owner[ this.expando ] && owner[ this.expando ][ camelCase( key ) ];
 	},
 	access: function( owner, key, value ) {
 
@@ -4141,9 +4116,9 @@ Data.prototype = {
 
 				// If key is an array of keys...
 				// We always set camelCase keys, so remove that.
-				key = key.map( jQuery.camelCase );
+				key = key.map( camelCase );
 			} else {
-				key = jQuery.camelCase( key );
+				key = camelCase( key );
 
 				// If a key with the spaces exists, use it.
 				// Otherwise, create an array by matching non-whitespace
@@ -4289,7 +4264,7 @@ jQuery.fn.extend( {
 						if ( attrs[ i ] ) {
 							name = attrs[ i ].name;
 							if ( name.indexOf( "data-" ) === 0 ) {
-								name = jQuery.camelCase( name.slice( 5 ) );
+								name = camelCase( name.slice( 5 ) );
 								dataAttr( elem, name, data[ name ] );
 							}
 						}
@@ -4536,8 +4511,7 @@ var swap = function( elem, options, callback, args ) {
 
 
 function adjustCSS( elem, prop, valueParts, tween ) {
-	var adjusted,
-		scale = 1,
+	var adjusted, scale,
 		maxIterations = 20,
 		currentValue = tween ?
 			function() {
@@ -4555,30 +4529,33 @@ function adjustCSS( elem, prop, valueParts, tween ) {
 
 	if ( initialInUnit && initialInUnit[ 3 ] !== unit ) {
 
+		// Support: Firefox <=54
+		// Halve the iteration target value to prevent interference from CSS upper bounds (gh-2144)
+		initial = initial / 2;
+
 		// Trust units reported by jQuery.css
 		unit = unit || initialInUnit[ 3 ];
-
-		// Make sure we update the tween properties later on
-		valueParts = valueParts || [];
 
 		// Iteratively approximate from a nonzero starting point
 		initialInUnit = +initial || 1;
 
-		do {
+		while ( maxIterations-- ) {
 
-			// If previous iteration zeroed out, double until we get *something*.
-			// Use string for doubling so we don't accidentally see scale as unchanged below
-			scale = scale || ".5";
-
-			// Adjust and apply
-			initialInUnit = initialInUnit / scale;
+			// Evaluate and update our best guess (doubling guesses that zero out).
+			// Finish if the scale equals or crosses 1 (making the old*new product non-positive).
 			jQuery.style( elem, prop, initialInUnit + unit );
+			if ( ( 1 - scale ) * ( 1 - ( scale = currentValue() / initial || 0.5 ) ) <= 0 ) {
+				maxIterations = 0;
+			}
+			initialInUnit = initialInUnit / scale;
 
-		// Update scale, tolerating zero or NaN from tween.cur()
-		// Break the loop if scale is unchanged or perfect, or if we've just had enough.
-		} while (
-			scale !== ( scale = currentValue() / initial ) && scale !== 1 && --maxIterations
-		);
+		}
+
+		initialInUnit = initialInUnit * 2;
+		jQuery.style( elem, prop, initialInUnit + unit );
+
+		// Make sure we update the tween properties later on
+		valueParts = valueParts || [];
 	}
 
 	if ( valueParts ) {
@@ -4696,7 +4673,7 @@ var rcheckableType = ( /^(?:checkbox|radio)$/i );
 
 var rtagName = ( /<([a-z][^\/\0>\x20\t\r\n\f]+)/i );
 
-var rscriptType = ( /^$|\/(?:java|ecma)script/i );
+var rscriptType = ( /^$|^module$|\/(?:java|ecma)script/i );
 
 
 
@@ -4778,7 +4755,7 @@ function buildFragment( elems, context, scripts, selection, ignored ) {
 		if ( elem || elem === 0 ) {
 
 			// Add nodes directly
-			if ( jQuery.type( elem ) === "object" ) {
+			if ( toType( elem ) === "object" ) {
 
 				// Support: Android <=4.0 only, PhantomJS 1 only
 				// push.apply(_, arraylike) throws on ancient WebKit
@@ -5288,7 +5265,7 @@ jQuery.event = {
 			enumerable: true,
 			configurable: true,
 
-			get: jQuery.isFunction( hook ) ?
+			get: isFunction( hook ) ?
 				function() {
 					if ( this.originalEvent ) {
 							return hook( this.originalEvent );
@@ -5423,7 +5400,7 @@ jQuery.Event = function( src, props ) {
 	}
 
 	// Create a timestamp if incoming event doesn't have one
-	this.timeStamp = src && src.timeStamp || jQuery.now();
+	this.timeStamp = src && src.timeStamp || Date.now();
 
 	// Mark it as fixed
 	this[ jQuery.expando ] = true;
@@ -5622,14 +5599,13 @@ var
 
 	/* eslint-enable */
 
-	// Support: IE <=10 - 11, Edge 12 - 13
+	// Support: IE <=10 - 11, Edge 12 - 13 only
 	// In IE/Edge using regex groups here causes severe slowdowns.
 	// See https://connect.microsoft.com/IE/feedback/details/1736512/
 	rnoInnerhtml = /<script|<style|<link/i,
 
 	// checked="checked" or checked
 	rchecked = /checked\s*(?:[^=]|=\s*.checked.)/i,
-	rscriptTypeMasked = /^true\/(.*)/,
 	rcleanScript = /^\s*<!(?:\[CDATA\[|--)|(?:\]\]|--)>\s*$/g;
 
 // Prefer a tbody over its parent table for containing new rows
@@ -5637,7 +5613,7 @@ function manipulationTarget( elem, content ) {
 	if ( nodeName( elem, "table" ) &&
 		nodeName( content.nodeType !== 11 ? content : content.firstChild, "tr" ) ) {
 
-		return jQuery( ">tbody", elem )[ 0 ] || elem;
+		return jQuery( elem ).children( "tbody" )[ 0 ] || elem;
 	}
 
 	return elem;
@@ -5649,10 +5625,8 @@ function disableScript( elem ) {
 	return elem;
 }
 function restoreScript( elem ) {
-	var match = rscriptTypeMasked.exec( elem.type );
-
-	if ( match ) {
-		elem.type = match[ 1 ];
+	if ( ( elem.type || "" ).slice( 0, 5 ) === "true/" ) {
+		elem.type = elem.type.slice( 5 );
 	} else {
 		elem.removeAttribute( "type" );
 	}
@@ -5718,15 +5692,15 @@ function domManip( collection, args, callback, ignored ) {
 		l = collection.length,
 		iNoClone = l - 1,
 		value = args[ 0 ],
-		isFunction = jQuery.isFunction( value );
+		valueIsFunction = isFunction( value );
 
 	// We can't cloneNode fragments that contain checked, in WebKit
-	if ( isFunction ||
+	if ( valueIsFunction ||
 			( l > 1 && typeof value === "string" &&
 				!support.checkClone && rchecked.test( value ) ) ) {
 		return collection.each( function( index ) {
 			var self = collection.eq( index );
-			if ( isFunction ) {
+			if ( valueIsFunction ) {
 				args[ 0 ] = value.call( this, index, self.html() );
 			}
 			domManip( self, args, callback, ignored );
@@ -5780,14 +5754,14 @@ function domManip( collection, args, callback, ignored ) {
 						!dataPriv.access( node, "globalEval" ) &&
 						jQuery.contains( doc, node ) ) {
 
-						if ( node.src ) {
+						if ( node.src && ( node.type || "" ).toLowerCase()  !== "module" ) {
 
 							// Optional AJAX dependency, but won't run scripts if not present
 							if ( jQuery._evalUrl ) {
 								jQuery._evalUrl( node.src );
 							}
 						} else {
-							DOMEval( node.textContent.replace( rcleanScript, "" ), doc );
+							DOMEval( node.textContent.replace( rcleanScript, "" ), doc, node );
 						}
 					}
 				}
@@ -6067,8 +6041,6 @@ jQuery.each( {
 		return this.pushStack( ret );
 	};
 } );
-var rmargin = ( /^margin/ );
-
 var rnumnonpx = new RegExp( "^(" + pnum + ")(?!px)[a-z%]+$", "i" );
 
 var getStyles = function( elem ) {
@@ -6085,6 +6057,8 @@ var getStyles = function( elem ) {
 		return view.getComputedStyle( elem );
 	};
 
+var rboxStyle = new RegExp( cssExpand.join( "|" ), "i" );
+
 
 
 ( function() {
@@ -6098,25 +6072,33 @@ var getStyles = function( elem ) {
 			return;
 		}
 
+		container.style.cssText = "position:absolute;left:-11111px;width:60px;" +
+			"margin-top:1px;padding:0;border:0";
 		div.style.cssText =
-			"box-sizing:border-box;" +
-			"position:relative;display:block;" +
+			"position:relative;display:block;box-sizing:border-box;overflow:scroll;" +
 			"margin:auto;border:1px;padding:1px;" +
-			"top:1%;width:50%";
-		div.innerHTML = "";
-		documentElement.appendChild( container );
+			"width:60%;top:1%";
+		documentElement.appendChild( container ).appendChild( div );
 
 		var divStyle = window.getComputedStyle( div );
 		pixelPositionVal = divStyle.top !== "1%";
 
 		// Support: Android 4.0 - 4.3 only, Firefox <=3 - 44
-		reliableMarginLeftVal = divStyle.marginLeft === "2px";
-		boxSizingReliableVal = divStyle.width === "4px";
+		reliableMarginLeftVal = roundPixelMeasures( divStyle.marginLeft ) === 12;
 
-		// Support: Android 4.0 - 4.3 only
+		// Support: Android 4.0 - 4.3 only, Safari <=9.1 - 10.1, iOS <=7.0 - 9.3
 		// Some styles come back with percentage values, even though they shouldn't
-		div.style.marginRight = "50%";
-		pixelMarginRightVal = divStyle.marginRight === "4px";
+		div.style.right = "60%";
+		pixelBoxStylesVal = roundPixelMeasures( divStyle.right ) === 36;
+
+		// Support: IE 9 - 11 only
+		// Detect misreporting of content dimensions for box-sizing:border-box elements
+		boxSizingReliableVal = roundPixelMeasures( divStyle.width ) === 36;
+
+		// Support: IE 9 only
+		// Detect overflow:scroll screwiness (gh-3699)
+		div.style.position = "absolute";
+		scrollboxSizeVal = div.offsetWidth === 36 || "absolute";
 
 		documentElement.removeChild( container );
 
@@ -6125,7 +6107,12 @@ var getStyles = function( elem ) {
 		div = null;
 	}
 
-	var pixelPositionVal, boxSizingReliableVal, pixelMarginRightVal, reliableMarginLeftVal,
+	function roundPixelMeasures( measure ) {
+		return Math.round( parseFloat( measure ) );
+	}
+
+	var pixelPositionVal, boxSizingReliableVal, scrollboxSizeVal, pixelBoxStylesVal,
+		reliableMarginLeftVal,
 		container = document.createElement( "div" ),
 		div = document.createElement( "div" );
 
@@ -6140,26 +6127,26 @@ var getStyles = function( elem ) {
 	div.cloneNode( true ).style.backgroundClip = "";
 	support.clearCloneStyle = div.style.backgroundClip === "content-box";
 
-	container.style.cssText = "border:0;width:8px;height:0;top:0;left:-9999px;" +
-		"padding:0;margin-top:1px;position:absolute";
-	container.appendChild( div );
-
 	jQuery.extend( support, {
-		pixelPosition: function() {
-			computeStyleTests();
-			return pixelPositionVal;
-		},
 		boxSizingReliable: function() {
 			computeStyleTests();
 			return boxSizingReliableVal;
 		},
-		pixelMarginRight: function() {
+		pixelBoxStyles: function() {
 			computeStyleTests();
-			return pixelMarginRightVal;
+			return pixelBoxStylesVal;
+		},
+		pixelPosition: function() {
+			computeStyleTests();
+			return pixelPositionVal;
 		},
 		reliableMarginLeft: function() {
 			computeStyleTests();
 			return reliableMarginLeftVal;
+		},
+		scrollboxSize: function() {
+			computeStyleTests();
+			return scrollboxSizeVal;
 		}
 	} );
 } )();
@@ -6191,7 +6178,7 @@ function curCSS( elem, name, computed ) {
 		// but width seems to be reliably pixels.
 		// This is against the CSSOM draft spec:
 		// https://drafts.csswg.org/cssom/#resolved-values
-		if ( !support.pixelMarginRight() && rnumnonpx.test( ret ) && rmargin.test( name ) ) {
+		if ( !support.pixelBoxStyles() && rnumnonpx.test( ret ) && rboxStyle.test( name ) ) {
 
 			// Remember the original values
 			width = style.width;
@@ -6296,87 +6283,120 @@ function setPositiveNumber( elem, value, subtract ) {
 		value;
 }
 
-function augmentWidthOrHeight( elem, name, extra, isBorderBox, styles ) {
-	var i,
-		val = 0;
+function boxModelAdjustment( elem, dimension, box, isBorderBox, styles, computedVal ) {
+	var i = dimension === "width" ? 1 : 0,
+		extra = 0,
+		delta = 0;
 
-	// If we already have the right measurement, avoid augmentation
-	if ( extra === ( isBorderBox ? "border" : "content" ) ) {
-		i = 4;
-
-	// Otherwise initialize for horizontal or vertical properties
-	} else {
-		i = name === "width" ? 1 : 0;
+	// Adjustment may not be necessary
+	if ( box === ( isBorderBox ? "border" : "content" ) ) {
+		return 0;
 	}
 
 	for ( ; i < 4; i += 2 ) {
 
-		// Both box models exclude margin, so add it if we want it
-		if ( extra === "margin" ) {
-			val += jQuery.css( elem, extra + cssExpand[ i ], true, styles );
+		// Both box models exclude margin
+		if ( box === "margin" ) {
+			delta += jQuery.css( elem, box + cssExpand[ i ], true, styles );
 		}
 
-		if ( isBorderBox ) {
+		// If we get here with a content-box, we're seeking "padding" or "border" or "margin"
+		if ( !isBorderBox ) {
 
-			// border-box includes padding, so remove it if we want content
-			if ( extra === "content" ) {
-				val -= jQuery.css( elem, "padding" + cssExpand[ i ], true, styles );
+			// Add padding
+			delta += jQuery.css( elem, "padding" + cssExpand[ i ], true, styles );
+
+			// For "border" or "margin", add border
+			if ( box !== "padding" ) {
+				delta += jQuery.css( elem, "border" + cssExpand[ i ] + "Width", true, styles );
+
+			// But still keep track of it otherwise
+			} else {
+				extra += jQuery.css( elem, "border" + cssExpand[ i ] + "Width", true, styles );
 			}
 
-			// At this point, extra isn't border nor margin, so remove border
-			if ( extra !== "margin" ) {
-				val -= jQuery.css( elem, "border" + cssExpand[ i ] + "Width", true, styles );
-			}
+		// If we get here with a border-box (content + padding + border), we're seeking "content" or
+		// "padding" or "margin"
 		} else {
 
-			// At this point, extra isn't content, so add padding
-			val += jQuery.css( elem, "padding" + cssExpand[ i ], true, styles );
+			// For "content", subtract padding
+			if ( box === "content" ) {
+				delta -= jQuery.css( elem, "padding" + cssExpand[ i ], true, styles );
+			}
 
-			// At this point, extra isn't content nor padding, so add border
-			if ( extra !== "padding" ) {
-				val += jQuery.css( elem, "border" + cssExpand[ i ] + "Width", true, styles );
+			// For "content" or "padding", subtract border
+			if ( box !== "margin" ) {
+				delta -= jQuery.css( elem, "border" + cssExpand[ i ] + "Width", true, styles );
 			}
 		}
 	}
 
-	return val;
+	// Account for positive content-box scroll gutter when requested by providing computedVal
+	if ( !isBorderBox && computedVal >= 0 ) {
+
+		// offsetWidth/offsetHeight is a rounded sum of content, padding, scroll gutter, and border
+		// Assuming integer scroll gutter, subtract the rest and round down
+		delta += Math.max( 0, Math.ceil(
+			elem[ "offset" + dimension[ 0 ].toUpperCase() + dimension.slice( 1 ) ] -
+			computedVal -
+			delta -
+			extra -
+			0.5
+		) );
+	}
+
+	return delta;
 }
 
-function getWidthOrHeight( elem, name, extra ) {
+function getWidthOrHeight( elem, dimension, extra ) {
 
 	// Start with computed style
-	var valueIsBorderBox,
-		styles = getStyles( elem ),
-		val = curCSS( elem, name, styles ),
-		isBorderBox = jQuery.css( elem, "boxSizing", false, styles ) === "border-box";
+	var styles = getStyles( elem ),
+		val = curCSS( elem, dimension, styles ),
+		isBorderBox = jQuery.css( elem, "boxSizing", false, styles ) === "border-box",
+		valueIsBorderBox = isBorderBox;
 
-	// Computed unit is not pixels. Stop here and return.
+	// Support: Firefox <=54
+	// Return a confounding non-pixel value or feign ignorance, as appropriate.
 	if ( rnumnonpx.test( val ) ) {
-		return val;
+		if ( !extra ) {
+			return val;
+		}
+		val = "auto";
 	}
 
 	// Check for style in case a browser which returns unreliable values
 	// for getComputedStyle silently falls back to the reliable elem.style
-	valueIsBorderBox = isBorderBox &&
-		( support.boxSizingReliable() || val === elem.style[ name ] );
+	valueIsBorderBox = valueIsBorderBox &&
+		( support.boxSizingReliable() || val === elem.style[ dimension ] );
 
-	// Fall back to offsetWidth/Height when value is "auto"
+	// Fall back to offsetWidth/offsetHeight when value is "auto"
 	// This happens for inline elements with no explicit setting (gh-3571)
-	if ( val === "auto" ) {
-		val = elem[ "offset" + name[ 0 ].toUpperCase() + name.slice( 1 ) ];
+	// Support: Android <=4.1 - 4.3 only
+	// Also use offsetWidth/offsetHeight for misreported inline dimensions (gh-3602)
+	if ( val === "auto" ||
+		!parseFloat( val ) && jQuery.css( elem, "display", false, styles ) === "inline" ) {
+
+		val = elem[ "offset" + dimension[ 0 ].toUpperCase() + dimension.slice( 1 ) ];
+
+		// offsetWidth/offsetHeight provide border-box values
+		valueIsBorderBox = true;
 	}
 
-	// Normalize "", auto, and prepare for extra
+	// Normalize "" and auto
 	val = parseFloat( val ) || 0;
 
-	// Use the active box-sizing model to add/subtract irrelevant styles
+	// Adjust for the element's box model
 	return ( val +
-		augmentWidthOrHeight(
+		boxModelAdjustment(
 			elem,
-			name,
+			dimension,
 			extra || ( isBorderBox ? "border" : "content" ),
 			valueIsBorderBox,
-			styles
+			styles,
+
+			// Provide the current computed size to request scroll gutter calculation (gh-3589)
+			val
 		)
 	) + "px";
 }
@@ -6417,9 +6437,7 @@ jQuery.extend( {
 
 	// Add in properties whose names you wish to fix before
 	// setting or getting the value
-	cssProps: {
-		"float": "cssFloat"
-	},
+	cssProps: {},
 
 	// Get and set the style property on a DOM Node
 	style: function( elem, name, value, extra ) {
@@ -6431,7 +6449,7 @@ jQuery.extend( {
 
 		// Make sure that we're working with the right name
 		var ret, type, hooks,
-			origName = jQuery.camelCase( name ),
+			origName = camelCase( name ),
 			isCustomProp = rcustomProp.test( name ),
 			style = elem.style;
 
@@ -6499,7 +6517,7 @@ jQuery.extend( {
 
 	css: function( elem, name, extra, styles ) {
 		var val, num, hooks,
-			origName = jQuery.camelCase( name ),
+			origName = camelCase( name ),
 			isCustomProp = rcustomProp.test( name );
 
 		// Make sure that we're working with the right name. We don't
@@ -6537,8 +6555,8 @@ jQuery.extend( {
 	}
 } );
 
-jQuery.each( [ "height", "width" ], function( i, name ) {
-	jQuery.cssHooks[ name ] = {
+jQuery.each( [ "height", "width" ], function( i, dimension ) {
+	jQuery.cssHooks[ dimension ] = {
 		get: function( elem, computed, extra ) {
 			if ( computed ) {
 
@@ -6554,29 +6572,41 @@ jQuery.each( [ "height", "width" ], function( i, name ) {
 					// in IE throws an error.
 					( !elem.getClientRects().length || !elem.getBoundingClientRect().width ) ?
 						swap( elem, cssShow, function() {
-							return getWidthOrHeight( elem, name, extra );
+							return getWidthOrHeight( elem, dimension, extra );
 						} ) :
-						getWidthOrHeight( elem, name, extra );
+						getWidthOrHeight( elem, dimension, extra );
 			}
 		},
 
 		set: function( elem, value, extra ) {
 			var matches,
-				styles = extra && getStyles( elem ),
-				subtract = extra && augmentWidthOrHeight(
+				styles = getStyles( elem ),
+				isBorderBox = jQuery.css( elem, "boxSizing", false, styles ) === "border-box",
+				subtract = extra && boxModelAdjustment(
 					elem,
-					name,
+					dimension,
 					extra,
-					jQuery.css( elem, "boxSizing", false, styles ) === "border-box",
+					isBorderBox,
 					styles
 				);
+
+			// Account for unreliable border-box dimensions by comparing offset* to computed and
+			// faking a content-box to get border and padding (gh-3699)
+			if ( isBorderBox && support.scrollboxSize() === styles.position ) {
+				subtract -= Math.ceil(
+					elem[ "offset" + dimension[ 0 ].toUpperCase() + dimension.slice( 1 ) ] -
+					parseFloat( styles[ dimension ] ) -
+					boxModelAdjustment( elem, dimension, "border", false, styles ) -
+					0.5
+				);
+			}
 
 			// Convert to pixels if value adjustment is needed
 			if ( subtract && ( matches = rcssNum.exec( value ) ) &&
 				( matches[ 3 ] || "px" ) !== "px" ) {
 
-				elem.style[ name ] = value;
-				value = jQuery.css( elem, name );
+				elem.style[ dimension ] = value;
+				value = jQuery.css( elem, dimension );
 			}
 
 			return setPositiveNumber( elem, value, subtract );
@@ -6620,7 +6650,7 @@ jQuery.each( {
 		}
 	};
 
-	if ( !rmargin.test( prefix ) ) {
+	if ( prefix !== "margin" ) {
 		jQuery.cssHooks[ prefix + suffix ].set = setPositiveNumber;
 	}
 } );
@@ -6791,7 +6821,7 @@ function createFxNow() {
 	window.setTimeout( function() {
 		fxNow = undefined;
 	} );
-	return ( fxNow = jQuery.now() );
+	return ( fxNow = Date.now() );
 }
 
 // Generate parameters to create a standard animation
@@ -6895,9 +6925,10 @@ function defaultPrefilter( elem, props, opts ) {
 	// Restrict "overflow" and "display" styles during box animations
 	if ( isBox && elem.nodeType === 1 ) {
 
-		// Support: IE <=9 - 11, Edge 12 - 13
+		// Support: IE <=9 - 11, Edge 12 - 15
 		// Record all 3 overflow attributes because IE does not infer the shorthand
-		// from identically-valued overflowX and overflowY
+		// from identically-valued overflowX and overflowY and Edge just mirrors
+		// the overflowX value there.
 		opts.overflow = [ style.overflow, style.overflowX, style.overflowY ];
 
 		// Identify a display type, preferring old show/hide data over the CSS cascade
@@ -7005,7 +7036,7 @@ function propFilter( props, specialEasing ) {
 
 	// camelCase, specialEasing and expand cssHook pass
 	for ( index in props ) {
-		name = jQuery.camelCase( index );
+		name = camelCase( index );
 		easing = specialEasing[ name ];
 		value = props[ index ];
 		if ( Array.isArray( value ) ) {
@@ -7130,9 +7161,9 @@ function Animation( elem, properties, options ) {
 	for ( ; index < length; index++ ) {
 		result = Animation.prefilters[ index ].call( animation, elem, props, animation.opts );
 		if ( result ) {
-			if ( jQuery.isFunction( result.stop ) ) {
+			if ( isFunction( result.stop ) ) {
 				jQuery._queueHooks( animation.elem, animation.opts.queue ).stop =
-					jQuery.proxy( result.stop, result );
+					result.stop.bind( result );
 			}
 			return result;
 		}
@@ -7140,7 +7171,7 @@ function Animation( elem, properties, options ) {
 
 	jQuery.map( props, createTween, animation );
 
-	if ( jQuery.isFunction( animation.opts.start ) ) {
+	if ( isFunction( animation.opts.start ) ) {
 		animation.opts.start.call( elem, animation );
 	}
 
@@ -7173,7 +7204,7 @@ jQuery.Animation = jQuery.extend( Animation, {
 	},
 
 	tweener: function( props, callback ) {
-		if ( jQuery.isFunction( props ) ) {
+		if ( isFunction( props ) ) {
 			callback = props;
 			props = [ "*" ];
 		} else {
@@ -7205,9 +7236,9 @@ jQuery.Animation = jQuery.extend( Animation, {
 jQuery.speed = function( speed, easing, fn ) {
 	var opt = speed && typeof speed === "object" ? jQuery.extend( {}, speed ) : {
 		complete: fn || !fn && easing ||
-			jQuery.isFunction( speed ) && speed,
+			isFunction( speed ) && speed,
 		duration: speed,
-		easing: fn && easing || easing && !jQuery.isFunction( easing ) && easing
+		easing: fn && easing || easing && !isFunction( easing ) && easing
 	};
 
 	// Go to the end state if fx are off
@@ -7234,7 +7265,7 @@ jQuery.speed = function( speed, easing, fn ) {
 	opt.old = opt.complete;
 
 	opt.complete = function() {
-		if ( jQuery.isFunction( opt.old ) ) {
+		if ( isFunction( opt.old ) ) {
 			opt.old.call( this );
 		}
 
@@ -7398,7 +7429,7 @@ jQuery.fx.tick = function() {
 		i = 0,
 		timers = jQuery.timers;
 
-	fxNow = jQuery.now();
+	fxNow = Date.now();
 
 	for ( ; i < timers.length; i++ ) {
 		timer = timers[ i ];
@@ -7751,7 +7782,7 @@ jQuery.each( [
 
 
 	// Strip and collapse whitespace according to HTML spec
-	// https://html.spec.whatwg.org/multipage/infrastructure.html#strip-and-collapse-whitespace
+	// https://infra.spec.whatwg.org/#strip-and-collapse-ascii-whitespace
 	function stripAndCollapse( value ) {
 		var tokens = value.match( rnothtmlwhite ) || [];
 		return tokens.join( " " );
@@ -7762,20 +7793,30 @@ function getClass( elem ) {
 	return elem.getAttribute && elem.getAttribute( "class" ) || "";
 }
 
+function classesToArray( value ) {
+	if ( Array.isArray( value ) ) {
+		return value;
+	}
+	if ( typeof value === "string" ) {
+		return value.match( rnothtmlwhite ) || [];
+	}
+	return [];
+}
+
 jQuery.fn.extend( {
 	addClass: function( value ) {
 		var classes, elem, cur, curValue, clazz, j, finalValue,
 			i = 0;
 
-		if ( jQuery.isFunction( value ) ) {
+		if ( isFunction( value ) ) {
 			return this.each( function( j ) {
 				jQuery( this ).addClass( value.call( this, j, getClass( this ) ) );
 			} );
 		}
 
-		if ( typeof value === "string" && value ) {
-			classes = value.match( rnothtmlwhite ) || [];
+		classes = classesToArray( value );
 
+		if ( classes.length ) {
 			while ( ( elem = this[ i++ ] ) ) {
 				curValue = getClass( elem );
 				cur = elem.nodeType === 1 && ( " " + stripAndCollapse( curValue ) + " " );
@@ -7804,7 +7845,7 @@ jQuery.fn.extend( {
 		var classes, elem, cur, curValue, clazz, j, finalValue,
 			i = 0;
 
-		if ( jQuery.isFunction( value ) ) {
+		if ( isFunction( value ) ) {
 			return this.each( function( j ) {
 				jQuery( this ).removeClass( value.call( this, j, getClass( this ) ) );
 			} );
@@ -7814,9 +7855,9 @@ jQuery.fn.extend( {
 			return this.attr( "class", "" );
 		}
 
-		if ( typeof value === "string" && value ) {
-			classes = value.match( rnothtmlwhite ) || [];
+		classes = classesToArray( value );
 
+		if ( classes.length ) {
 			while ( ( elem = this[ i++ ] ) ) {
 				curValue = getClass( elem );
 
@@ -7846,13 +7887,14 @@ jQuery.fn.extend( {
 	},
 
 	toggleClass: function( value, stateVal ) {
-		var type = typeof value;
+		var type = typeof value,
+			isValidValue = type === "string" || Array.isArray( value );
 
-		if ( typeof stateVal === "boolean" && type === "string" ) {
+		if ( typeof stateVal === "boolean" && isValidValue ) {
 			return stateVal ? this.addClass( value ) : this.removeClass( value );
 		}
 
-		if ( jQuery.isFunction( value ) ) {
+		if ( isFunction( value ) ) {
 			return this.each( function( i ) {
 				jQuery( this ).toggleClass(
 					value.call( this, i, getClass( this ), stateVal ),
@@ -7864,12 +7906,12 @@ jQuery.fn.extend( {
 		return this.each( function() {
 			var className, i, self, classNames;
 
-			if ( type === "string" ) {
+			if ( isValidValue ) {
 
 				// Toggle individual class names
 				i = 0;
 				self = jQuery( this );
-				classNames = value.match( rnothtmlwhite ) || [];
+				classNames = classesToArray( value );
 
 				while ( ( className = classNames[ i++ ] ) ) {
 
@@ -7928,7 +7970,7 @@ var rreturn = /\r/g;
 
 jQuery.fn.extend( {
 	val: function( value ) {
-		var hooks, ret, isFunction,
+		var hooks, ret, valueIsFunction,
 			elem = this[ 0 ];
 
 		if ( !arguments.length ) {
@@ -7957,7 +7999,7 @@ jQuery.fn.extend( {
 			return;
 		}
 
-		isFunction = jQuery.isFunction( value );
+		valueIsFunction = isFunction( value );
 
 		return this.each( function( i ) {
 			var val;
@@ -7966,7 +8008,7 @@ jQuery.fn.extend( {
 				return;
 			}
 
-			if ( isFunction ) {
+			if ( valueIsFunction ) {
 				val = value.call( this, i, jQuery( this ).val() );
 			} else {
 				val = value;
@@ -8108,18 +8150,24 @@ jQuery.each( [ "radio", "checkbox" ], function() {
 // Return jQuery for attributes-only inclusion
 
 
-var rfocusMorph = /^(?:focusinfocus|focusoutblur)$/;
+support.focusin = "onfocusin" in window;
+
+
+var rfocusMorph = /^(?:focusinfocus|focusoutblur)$/,
+	stopPropagationCallback = function( e ) {
+		e.stopPropagation();
+	};
 
 jQuery.extend( jQuery.event, {
 
 	trigger: function( event, data, elem, onlyHandlers ) {
 
-		var i, cur, tmp, bubbleType, ontype, handle, special,
+		var i, cur, tmp, bubbleType, ontype, handle, special, lastElement,
 			eventPath = [ elem || document ],
 			type = hasOwn.call( event, "type" ) ? event.type : event,
 			namespaces = hasOwn.call( event, "namespace" ) ? event.namespace.split( "." ) : [];
 
-		cur = tmp = elem = elem || document;
+		cur = lastElement = tmp = elem = elem || document;
 
 		// Don't do events on text and comment nodes
 		if ( elem.nodeType === 3 || elem.nodeType === 8 ) {
@@ -8171,7 +8219,7 @@ jQuery.extend( jQuery.event, {
 
 		// Determine event propagation path in advance, per W3C events spec (#9951)
 		// Bubble up to document, then to window; watch for a global ownerDocument var (#9724)
-		if ( !onlyHandlers && !special.noBubble && !jQuery.isWindow( elem ) ) {
+		if ( !onlyHandlers && !special.noBubble && !isWindow( elem ) ) {
 
 			bubbleType = special.delegateType || type;
 			if ( !rfocusMorph.test( bubbleType + type ) ) {
@@ -8191,7 +8239,7 @@ jQuery.extend( jQuery.event, {
 		// Fire handlers on the event path
 		i = 0;
 		while ( ( cur = eventPath[ i++ ] ) && !event.isPropagationStopped() ) {
-
+			lastElement = cur;
 			event.type = i > 1 ?
 				bubbleType :
 				special.bindType || type;
@@ -8223,7 +8271,7 @@ jQuery.extend( jQuery.event, {
 
 				// Call a native DOM method on the target with the same name as the event.
 				// Don't do default actions on window, that's where global variables be (#6170)
-				if ( ontype && jQuery.isFunction( elem[ type ] ) && !jQuery.isWindow( elem ) ) {
+				if ( ontype && isFunction( elem[ type ] ) && !isWindow( elem ) ) {
 
 					// Don't re-trigger an onFOO event when we call its FOO() method
 					tmp = elem[ ontype ];
@@ -8234,7 +8282,17 @@ jQuery.extend( jQuery.event, {
 
 					// Prevent re-triggering of the same event, since we already bubbled it above
 					jQuery.event.triggered = type;
+
+					if ( event.isPropagationStopped() ) {
+						lastElement.addEventListener( type, stopPropagationCallback );
+					}
+
 					elem[ type ]();
+
+					if ( event.isPropagationStopped() ) {
+						lastElement.removeEventListener( type, stopPropagationCallback );
+					}
+
 					jQuery.event.triggered = undefined;
 
 					if ( tmp ) {
@@ -8280,31 +8338,6 @@ jQuery.fn.extend( {
 } );
 
 
-jQuery.each( ( "blur focus focusin focusout resize scroll click dblclick " +
-	"mousedown mouseup mousemove mouseover mouseout mouseenter mouseleave " +
-	"change select submit keydown keypress keyup contextmenu" ).split( " " ),
-	function( i, name ) {
-
-	// Handle event binding
-	jQuery.fn[ name ] = function( data, fn ) {
-		return arguments.length > 0 ?
-			this.on( name, null, data, fn ) :
-			this.trigger( name );
-	};
-} );
-
-jQuery.fn.extend( {
-	hover: function( fnOver, fnOut ) {
-		return this.mouseenter( fnOver ).mouseleave( fnOut || fnOver );
-	}
-} );
-
-
-
-
-support.focusin = "onfocusin" in window;
-
-
 // Support: Firefox <=44
 // Firefox doesn't have focus(in | out) events
 // Related ticket - https://bugzilla.mozilla.org/show_bug.cgi?id=687787
@@ -8348,7 +8381,7 @@ if ( !support.focusin ) {
 }
 var location = window.location;
 
-var nonce = jQuery.now();
+var nonce = Date.now();
 
 var rquery = ( /\?/ );
 
@@ -8406,7 +8439,7 @@ function buildParams( prefix, obj, traditional, add ) {
 			}
 		} );
 
-	} else if ( !traditional && jQuery.type( obj ) === "object" ) {
+	} else if ( !traditional && toType( obj ) === "object" ) {
 
 		// Serialize object item.
 		for ( name in obj ) {
@@ -8428,7 +8461,7 @@ jQuery.param = function( a, traditional ) {
 		add = function( key, valueOrFunction ) {
 
 			// If value is a function, invoke it and use its return value
-			var value = jQuery.isFunction( valueOrFunction ) ?
+			var value = isFunction( valueOrFunction ) ?
 				valueOrFunction() :
 				valueOrFunction;
 
@@ -8546,7 +8579,7 @@ function addToPrefiltersOrTransports( structure ) {
 			i = 0,
 			dataTypes = dataTypeExpression.toLowerCase().match( rnothtmlwhite ) || [];
 
-		if ( jQuery.isFunction( func ) ) {
+		if ( isFunction( func ) ) {
 
 			// For each dataType in the dataTypeExpression
 			while ( ( dataType = dataTypes[ i++ ] ) ) {
@@ -9018,7 +9051,7 @@ jQuery.extend( {
 		if ( s.crossDomain == null ) {
 			urlAnchor = document.createElement( "a" );
 
-			// Support: IE <=8 - 11, Edge 12 - 13
+			// Support: IE <=8 - 11, Edge 12 - 15
 			// IE throws exception on accessing the href property if url is malformed,
 			// e.g. http://example.com:80x/
 			try {
@@ -9076,8 +9109,8 @@ jQuery.extend( {
 			// Remember the hash so we can put it back
 			uncached = s.url.slice( cacheURL.length );
 
-			// If data is available, append data to url
-			if ( s.data ) {
+			// If data is available and should be processed, append data to url
+			if ( s.data && ( s.processData || typeof s.data === "string" ) ) {
 				cacheURL += ( rquery.test( cacheURL ) ? "&" : "?" ) + s.data;
 
 				// #9682: remove data so that it's not used in an eventual retry
@@ -9314,7 +9347,7 @@ jQuery.each( [ "get", "post" ], function( i, method ) {
 	jQuery[ method ] = function( url, data, callback, type ) {
 
 		// Shift arguments if data argument was omitted
-		if ( jQuery.isFunction( data ) ) {
+		if ( isFunction( data ) ) {
 			type = type || callback;
 			callback = data;
 			data = undefined;
@@ -9352,7 +9385,7 @@ jQuery.fn.extend( {
 		var wrap;
 
 		if ( this[ 0 ] ) {
-			if ( jQuery.isFunction( html ) ) {
+			if ( isFunction( html ) ) {
 				html = html.call( this[ 0 ] );
 			}
 
@@ -9378,7 +9411,7 @@ jQuery.fn.extend( {
 	},
 
 	wrapInner: function( html ) {
-		if ( jQuery.isFunction( html ) ) {
+		if ( isFunction( html ) ) {
 			return this.each( function( i ) {
 				jQuery( this ).wrapInner( html.call( this, i ) );
 			} );
@@ -9398,10 +9431,10 @@ jQuery.fn.extend( {
 	},
 
 	wrap: function( html ) {
-		var isFunction = jQuery.isFunction( html );
+		var htmlIsFunction = isFunction( html );
 
 		return this.each( function( i ) {
-			jQuery( this ).wrapAll( isFunction ? html.call( this, i ) : html );
+			jQuery( this ).wrapAll( htmlIsFunction ? html.call( this, i ) : html );
 		} );
 	},
 
@@ -9493,7 +9526,8 @@ jQuery.ajaxTransport( function( options ) {
 					return function() {
 						if ( callback ) {
 							callback = errorCallback = xhr.onload =
-								xhr.onerror = xhr.onabort = xhr.onreadystatechange = null;
+								xhr.onerror = xhr.onabort = xhr.ontimeout =
+									xhr.onreadystatechange = null;
 
 							if ( type === "abort" ) {
 								xhr.abort();
@@ -9533,7 +9567,7 @@ jQuery.ajaxTransport( function( options ) {
 
 				// Listen to events
 				xhr.onload = callback();
-				errorCallback = xhr.onerror = callback( "error" );
+				errorCallback = xhr.onerror = xhr.ontimeout = callback( "error" );
 
 				// Support: IE 9 only
 				// Use onreadystatechange to replace onabort
@@ -9687,7 +9721,7 @@ jQuery.ajaxPrefilter( "json jsonp", function( s, originalSettings, jqXHR ) {
 	if ( jsonProp || s.dataTypes[ 0 ] === "jsonp" ) {
 
 		// Get callback name, remembering preexisting value associated with it
-		callbackName = s.jsonpCallback = jQuery.isFunction( s.jsonpCallback ) ?
+		callbackName = s.jsonpCallback = isFunction( s.jsonpCallback ) ?
 			s.jsonpCallback() :
 			s.jsonpCallback;
 
@@ -9738,7 +9772,7 @@ jQuery.ajaxPrefilter( "json jsonp", function( s, originalSettings, jqXHR ) {
 			}
 
 			// Call if it was a function and we have a response
-			if ( responseContainer && jQuery.isFunction( overwritten ) ) {
+			if ( responseContainer && isFunction( overwritten ) ) {
 				overwritten( responseContainer[ 0 ] );
 			}
 
@@ -9830,7 +9864,7 @@ jQuery.fn.load = function( url, params, callback ) {
 	}
 
 	// If it's a function
-	if ( jQuery.isFunction( params ) ) {
+	if ( isFunction( params ) ) {
 
 		// We assume that it's the callback
 		callback = params;
@@ -9938,7 +9972,7 @@ jQuery.offset = {
 			curLeft = parseFloat( curCSSLeft ) || 0;
 		}
 
-		if ( jQuery.isFunction( options ) ) {
+		if ( isFunction( options ) ) {
 
 			// Use jQuery.extend here to allow modification of coordinates argument (gh-1848)
 			options = options.call( elem, i, jQuery.extend( {}, curOffset ) );
@@ -9961,6 +9995,8 @@ jQuery.offset = {
 };
 
 jQuery.fn.extend( {
+
+	// offset() relates an element's border box to the document origin
 	offset: function( options ) {
 
 		// Preserve chaining for setter
@@ -9972,7 +10008,7 @@ jQuery.fn.extend( {
 				} );
 		}
 
-		var doc, docElem, rect, win,
+		var rect, win,
 			elem = this[ 0 ];
 
 		if ( !elem ) {
@@ -9987,50 +10023,52 @@ jQuery.fn.extend( {
 			return { top: 0, left: 0 };
 		}
 
+		// Get document-relative position by adding viewport scroll to viewport-relative gBCR
 		rect = elem.getBoundingClientRect();
-
-		doc = elem.ownerDocument;
-		docElem = doc.documentElement;
-		win = doc.defaultView;
-
+		win = elem.ownerDocument.defaultView;
 		return {
-			top: rect.top + win.pageYOffset - docElem.clientTop,
-			left: rect.left + win.pageXOffset - docElem.clientLeft
+			top: rect.top + win.pageYOffset,
+			left: rect.left + win.pageXOffset
 		};
 	},
 
+	// position() relates an element's margin box to its offset parent's padding box
+	// This corresponds to the behavior of CSS absolute positioning
 	position: function() {
 		if ( !this[ 0 ] ) {
 			return;
 		}
 
-		var offsetParent, offset,
+		var offsetParent, offset, doc,
 			elem = this[ 0 ],
 			parentOffset = { top: 0, left: 0 };
 
-		// Fixed elements are offset from window (parentOffset = {top:0, left: 0},
-		// because it is its only offset parent
+		// position:fixed elements are offset from the viewport, which itself always has zero offset
 		if ( jQuery.css( elem, "position" ) === "fixed" ) {
 
-			// Assume getBoundingClientRect is there when computed position is fixed
+			// Assume position:fixed implies availability of getBoundingClientRect
 			offset = elem.getBoundingClientRect();
 
 		} else {
-
-			// Get *real* offsetParent
-			offsetParent = this.offsetParent();
-
-			// Get correct offsets
 			offset = this.offset();
-			if ( !nodeName( offsetParent[ 0 ], "html" ) ) {
-				parentOffset = offsetParent.offset();
-			}
 
-			// Add offsetParent borders
-			parentOffset = {
-				top: parentOffset.top + jQuery.css( offsetParent[ 0 ], "borderTopWidth", true ),
-				left: parentOffset.left + jQuery.css( offsetParent[ 0 ], "borderLeftWidth", true )
-			};
+			// Account for the *real* offset parent, which can be the document or its root element
+			// when a statically positioned element is identified
+			doc = elem.ownerDocument;
+			offsetParent = elem.offsetParent || doc.documentElement;
+			while ( offsetParent &&
+				( offsetParent === doc.body || offsetParent === doc.documentElement ) &&
+				jQuery.css( offsetParent, "position" ) === "static" ) {
+
+				offsetParent = offsetParent.parentNode;
+			}
+			if ( offsetParent && offsetParent !== elem && offsetParent.nodeType === 1 ) {
+
+				// Incorporate borders into its offset, since they are outside its content origin
+				parentOffset = jQuery( offsetParent ).offset();
+				parentOffset.top += jQuery.css( offsetParent, "borderTopWidth", true );
+				parentOffset.left += jQuery.css( offsetParent, "borderLeftWidth", true );
+			}
 		}
 
 		// Subtract parent offsets and element margins
@@ -10072,7 +10110,7 @@ jQuery.each( { scrollLeft: "pageXOffset", scrollTop: "pageYOffset" }, function( 
 
 			// Coalesce documents and windows
 			var win;
-			if ( jQuery.isWindow( elem ) ) {
+			if ( isWindow( elem ) ) {
 				win = elem;
 			} else if ( elem.nodeType === 9 ) {
 				win = elem.defaultView;
@@ -10130,7 +10168,7 @@ jQuery.each( { Height: "height", Width: "width" }, function( name, type ) {
 			return access( this, function( elem, type, value ) {
 				var doc;
 
-				if ( jQuery.isWindow( elem ) ) {
+				if ( isWindow( elem ) ) {
 
 					// $( window ).outerWidth/Height return w/h including scrollbars (gh-1729)
 					return funcName.indexOf( "outer" ) === 0 ?
@@ -10164,6 +10202,28 @@ jQuery.each( { Height: "height", Width: "width" }, function( name, type ) {
 } );
 
 
+jQuery.each( ( "blur focus focusin focusout resize scroll click dblclick " +
+	"mousedown mouseup mousemove mouseover mouseout mouseenter mouseleave " +
+	"change select submit keydown keypress keyup contextmenu" ).split( " " ),
+	function( i, name ) {
+
+	// Handle event binding
+	jQuery.fn[ name ] = function( data, fn ) {
+		return arguments.length > 0 ?
+			this.on( name, null, data, fn ) :
+			this.trigger( name );
+	};
+} );
+
+jQuery.fn.extend( {
+	hover: function( fnOver, fnOut ) {
+		return this.mouseenter( fnOver ).mouseleave( fnOut || fnOver );
+	}
+} );
+
+
+
+
 jQuery.fn.extend( {
 
 	bind: function( types, data, fn ) {
@@ -10185,6 +10245,37 @@ jQuery.fn.extend( {
 	}
 } );
 
+// Bind a function to a context, optionally partially applying any
+// arguments.
+// jQuery.proxy is deprecated to promote standards (specifically Function#bind)
+// However, it is not slated for removal any time soon
+jQuery.proxy = function( fn, context ) {
+	var tmp, args, proxy;
+
+	if ( typeof context === "string" ) {
+		tmp = fn[ context ];
+		context = fn;
+		fn = tmp;
+	}
+
+	// Quick check to determine if target is callable, in the spec
+	// this throws a TypeError, but we will just return undefined.
+	if ( !isFunction( fn ) ) {
+		return undefined;
+	}
+
+	// Simulated bind
+	args = slice.call( arguments, 2 );
+	proxy = function() {
+		return fn.apply( context || this, args.concat( slice.call( arguments ) ) );
+	};
+
+	// Set the guid of unique handler to the same of original handler, so it can be removed
+	proxy.guid = fn.guid = fn.guid || jQuery.guid++;
+
+	return proxy;
+};
+
 jQuery.holdReady = function( hold ) {
 	if ( hold ) {
 		jQuery.readyWait++;
@@ -10195,6 +10286,26 @@ jQuery.holdReady = function( hold ) {
 jQuery.isArray = Array.isArray;
 jQuery.parseJSON = JSON.parse;
 jQuery.nodeName = nodeName;
+jQuery.isFunction = isFunction;
+jQuery.isWindow = isWindow;
+jQuery.camelCase = camelCase;
+jQuery.type = toType;
+
+jQuery.now = Date.now;
+
+jQuery.isNumeric = function( obj ) {
+
+	// As of jQuery 3.0, isNumeric is limited to
+	// strings and numbers (primitives or objects)
+	// that can be coerced to finite numbers (gh-2662)
+	var type = jQuery.type( obj );
+	return ( type === "number" || type === "string" ) &&
+
+		// parseFloat NaNs numeric-cast false positives ("")
+		// ...but misinterprets leading-number strings, particularly hex literals ("0x...")
+		// subtraction forces infinities to NaN
+		!isNaN( obj - parseFloat( obj ) );
+};
 
 
 
@@ -10462,8 +10573,10 @@ var fluid = fluid || fluid_3_0_0;
      * Signals an error to the framework. The default behaviour is to log a structured error message and throw an exception. This strategy may be configured using the legacy
      * API <code>fluid.pushSoftFailure</code> or else by adding and removing suitably namespaced listeners to the special event <code>fluid.failureEvent</code>
      *
-     * @param {String} message the error message to log
-     * @param ... Additional arguments, suitable for being sent to the native console.log function
+     * @param {String} message - The error message to log.
+     *
+     * All arguments after the first are passed on to (and should be suitable to pass on to) the native console.log
+     * function.
      */
     fluid.fail = function (/* message, ... */) {
         var args = fluid.makeArray(arguments);
@@ -10488,29 +10601,41 @@ var fluid = fluid || fluid_3_0_0;
 
     // Logging
 
-    /** Returns whether logging is enabled **/
+    /** Returns whether logging is enabled - legacy method
+     * @return {Boolean} `true` if the current logging level exceeds `fluid.logLevel.IMPORTANT`
+     */
     fluid.isLogging = function () {
         return logLevelStack[0].priority > fluid.logLevel.IMPORTANT.priority;
     };
 
-    /** Determines whether the supplied argument is a valid logLevel marker **/
+    /** Determines whether the supplied argument is a valid logLevel marker
+     * @param {Any} arg - The value to be tested
+     * @return {Boolean} `true` if the supplied argument is a logLevel marker
+     */
     fluid.isLogLevel = function (arg) {
         return fluid.isMarker(arg) && arg.priority !== undefined;
     };
 
-    /** Accepts one of the members of the <code>fluid.logLevel</code> structure. Returns <code>true</code> if
-     *  a message supplied at that log priority would be accepted at the current logging level. Clients who
+    /** Check whether the current framework logging level would cause a message logged with the specified level to be
+     * logged. Clients who
      *  issue particularly expensive log payload arguments are recommended to guard their logging statements with this
-     *  function */
+     *  function
+     * @param {LogLevel} testLogLevel - The logLevel value which the current logging level will be tested against.
+     * Accepts one of the members of the <code>fluid.logLevel</code> structure.
+     * @return {Boolean} Returns <code>true</code> if a message supplied at that log priority would be accepted at the current logging level.
+     */
 
     fluid.passLogLevel = function (testLogLevel) {
         return testLogLevel.priority <= logLevelStack[0].priority;
     };
 
-    /** Method to allow user to control the logging level. Accepts either a boolean, for which <code>true</code>
-      * represents <code>fluid.logLevel.INFO</code> and <code>false</code> represents <code>fluid.logLevel.IMPORTANT</code> (the default),
-      * or else any other member of the structure <code>fluid.logLevel</code>
-      * Messages whose priority is strictly less than the current logging level will not be shown*/
+    /** Method to allow user to control the current framework logging level. The supplied level will be pushed onto a stack
+     * of logging levels which may be popped via `fluid.popLogging`.
+     * @param {Boolean|LogLevel} enabled - Either a boolean, for which <code>true</code>
+     * represents <code>fluid.logLevel.INFO</code> and <code>false</code> represents <code>fluid.logLevel.IMPORTANT</code> (the default),
+     * or else any other member of the structure <code>fluid.logLevel</code>
+     * Messages whose priority is strictly less than the current logging level will not be shown by `fluid.log`
+     */
     fluid.setLogging = function (enabled) {
         var logLevel;
         if (typeof enabled === "boolean") {
@@ -10526,14 +10651,16 @@ var fluid = fluid || fluid_3_0_0;
 
     fluid.setLogLevel = fluid.setLogging;
 
-    /** Undo the effect of the most recent "setLogging", returning the logging system to its previous state **/
+    /** Undo the effect of the most recent "setLogging", returning the logging system to its previous state
+     * @return {LogLevel} The logLevel that was just popped
+     */
     fluid.popLogging = function () {
         var togo = logLevelStack.length === 1 ? logLevelStack[0] : logLevelStack.shift();
         fluid.defeatLogging = !fluid.isLogging();
         return togo;
     };
 
-    /** Actually do the work of logging <code>args</code> to the environment's console. If the standard "console"
+    /* Actually do the work of logging <code>args</code> to the environment's console. If the standard "console"
      * stream is available, the message will be sent there.
      */
     fluid.doLog = function (args) {
@@ -10546,7 +10673,7 @@ var fluid = fluid || fluid_3_0_0;
         }
     };
 
-    /** Log a message to a suitable environmental console. If the first argument to fluid.log is
+    /* Log a message to a suitable environmental console. If the first argument to fluid.log is
      * one of the members of the <code>fluid.logLevel</code> structure, this will be taken as the priority
      * of the logged message - else if will default to <code>fluid.logLevel.INFO</code>. If the logged message
      * priority does not exceed that set by the most recent call to the <code>fluid.setLogging</code> function,
@@ -10569,12 +10696,18 @@ var fluid = fluid || fluid_3_0_0;
 
     // Type checking functions
 
-    /** Returns true if the argument is a value other than null or undefined **/
+    /** Check whether the argument is a value other than null or undefined
+     * @param {Any} value - The value to be tested
+     * @return {Boolean} `true` if the supplied value is other than null or undefined
+     */
     fluid.isValue = function (value) {
         return value !== undefined && value !== null;
     };
 
-    /** Returns true if the argument is a primitive type **/
+    /** Check whether the argument is a primitive type
+     * @param {Any} value - The value to be tested
+     * @return {Boolean} `true` if the supplied value is a JavaScript (ES5) primitive
+     */
     fluid.isPrimitive = function (value) {
         var valueType = typeof (value);
         return !value || valueType === "string" || valueType === "boolean" || valueType === "number" || valueType === "function";
@@ -10584,6 +10717,8 @@ var fluid = fluid || fluid_3_0_0;
      * approach taken from an earlier version of jQuery - detecting whether the toString() version
      * of the object agrees with the textual form [object Array], or else whether the object is a
      * jQuery object (the most common source of "fake arrays").
+     * @param {Any} totest - The value to be tested
+     * @return {Boolean} `true` if the supplied value is an array
      */
     fluid.isArrayable = function (totest) {
         return totest && (totest.jquery || Object.prototype.toString.call(totest) === "[object Array]");
@@ -10591,8 +10726,9 @@ var fluid = fluid || fluid_3_0_0;
 
     /** Determines whether the supplied object is a plain JSON-forming container - that is, it is either a plain Object
      * or a plain Array. Note that this differs from jQuery's isPlainObject which does not pass Arrays.
-     * @param totest {Any} The object to be tested
-     * @param strict {Boolean} (optional) If `true`, plain Arrays will fail the test rather than passing.
+     * @param {Any} totest - The object to be tested
+     * @param {Boolean} [strict] - (optional) If `true`, plain Arrays will fail the test rather than passing.
+     * @return {Boolean} - `true` if `totest` is a plain object, `false` otherwise.
      */
     fluid.isPlainObject = function (totest, strict) {
         var string = Object.prototype.toString.call(totest);
@@ -10604,8 +10740,11 @@ var fluid = fluid || fluid_3_0_0;
         return !totest.constructor || !totest.constructor.prototype || Object.prototype.hasOwnProperty.call(totest.constructor.prototype, "isPrototypeOf");
     };
 
-    /** Returns <code>primitive</code>, <code>array</code> or <code>object</code> depending on whether the supplied object has
+    /** Returns a string typeCode representing the type of the supplied value at a coarse level.
+     * Returns <code>primitive</code>, <code>array</code> or <code>object</code> depending on whether the supplied object has
      * one of those types, by use of the <code>fluid.isPrimitive</code>, <code>fluid.isPlainObject</code> and <code>fluid.isArrayable</code> utilities
+     * @param {Any} totest - The value to be tested
+     * @return {String} Either `primitive`, `array` or `object` depending on the type of the supplied value
      */
     fluid.typeCode = function (totest) {
         return fluid.isPrimitive(totest) || !fluid.isPlainObject(totest) ? "primitive" :
@@ -10635,30 +10774,26 @@ var fluid = fluid || fluid_3_0_0;
         return totest.apply && typeof(totest.apply) === "function";
     };
 
-    /** A basic utility that returns its argument unchanged */
-
+    /* A basic utility that returns its argument unchanged */
     fluid.identity = function (arg) {
         return arg;
     };
 
     /** A function which raises a failure if executed */
-
     fluid.notImplemented = function () {
         fluid.fail("This operation is not implemented");
     };
 
     /** Returns the first of its arguments if it is not `undefined`, otherwise returns the second.
-     * @param a {Any} The first argument to be tested for being `undefined`
-     * @param b {Any} The fallback argument, to be returned if `a` is `undefined`
+     * @param {Any} a - The first argument to be tested for being `undefined`
+     * @param {Any} b - The fallback argument, to be returned if `a` is `undefined`
      * @return {Any} `a` if it is not `undefined`, else `b`.
      */
-
     fluid.firstDefined = function (a, b) {
         return a === undefined ? b : a;
     };
 
-    /** Return an empty container as the same type as the argument (either an
-     * array or hash */
+    /* Return an empty container as the same type as the argument (either an array or hash). */
     fluid.freshContainer = function (tocopy) {
         return fluid.isArrayable(tocopy) ? [] : {};
     };
@@ -10680,9 +10815,9 @@ var fluid = fluid || fluid_3_0_0;
         }
     };
 
-    /** Performs a deep copy (clone) of its argument. This will guard against cloning a circular object by terminating if it reaches a path depth
+    /* Performs a deep copy (clone) of its argument. This will guard against cloning a circular object by terminating if it reaches a path depth
      * greater than <code>fluid.strategyRecursionBailout</code>
-     **/
+     */
 
     fluid.copy = function (tocopy) {
         return fluid.copyRecurse(tocopy, []);
@@ -10691,8 +10826,8 @@ var fluid = fluid || fluid_3_0_0;
     // TODO: Coming soon - reimplementation of $.extend using strategyRecursionBailout
     fluid.extend = $.extend;
 
-    /** Corrected version of jQuery makeArray that returns an empty array on undefined rather than crashing.
-      * We don't deal with as many pathological cases as jQuery **/
+    /* Corrected version of jQuery makeArray that returns an empty array on undefined rather than crashing.
+     * We don't deal with as many pathological cases as jQuery */
     fluid.makeArray = function (arg) {
         var togo = [];
         if (arg !== null && arg !== undefined) {
@@ -10710,9 +10845,9 @@ var fluid = fluid || fluid_3_0_0;
 
     /** Pushes an element or elements onto an array, initialising the array as a member of a holding object if it is
      * not already allocated.
-     * @param holder {Array or Object} The holding object whose member is to receive the pushed element(s).
-     * @param member {String} The member of the <code>holder</code> onto which the element(s) are to be pushed
-     * @param topush {Array or Object} If an array, these elements will be added to the end of the array using Array.push.apply. If an object, it will be pushed to the end of the array using Array.push.
+     * @param {Array|Object} holder - The holding object whose member is to receive the pushed element(s).
+     * @param {String} member - The member of the <code>holder</code> onto which the element(s) are to be pushed
+     * @param {Array|Object} topush - If an array, these elements will be added to the end of the array using Array.push.apply. If an object, it will be pushed to the end of the array using Array.push.
      */
     fluid.pushArray = function (holder, member, topush) {
         var array = holder[member] ? holder[member] : (holder[member] = []);
@@ -10734,14 +10869,14 @@ var fluid = fluid || fluid_3_0_0;
     /** Return an array or hash of objects, transformed by one or more functions. Similar to
      * jQuery.map, only will accept an arbitrary list of transformation functions and also
      * works on non-arrays.
-     * @param source {Array or Object} The initial container of objects to be transformed. If the source is
+     * @param {Array|Object} source - The initial container of objects to be transformed. If the source is
      * neither an array nor an object, it will be returned untransformed
-     * @param fn1, fn2, etc. {Function} An arbitrary number of optional further arguments,
+     * @param {...Function} fn1, fn2, etc. - An arbitrary number of optional further arguments,
      * all of type Function, accepting the signature (object, index), where object is the
      * structure member to be transformed, and index is its key or index. Each function will be
      * applied in turn to each structure member, which will be replaced by the return value
      * from the function.
-     * @return The finally transformed list, where each member has been replaced by the
+     * @return {Array|Object} - The finally transformed list, where each member has been replaced by the
      * original member acted on by the function or functions.
      */
     fluid.transform = function (source) {
@@ -10761,10 +10896,9 @@ var fluid = fluid || fluid_3_0_0;
         return togo;
     };
 
-    /** Better jQuery.each which works on hashes as well as having the arguments
-     * the right way round.
-     * @param source {Arrayable or Object} The container to be iterated over
-     * @param func {Function} A function accepting (value, key) for each iterated
+    /** Better jQuery.each which works on hashes as well as having the arguments the right way round.
+     * @param {Arrayable|Object} source - The container to be iterated over
+     * @param {Function} func - A function accepting (value, key) for each iterated
      * object.
      */
     fluid.each = function (source, func) {
@@ -10804,16 +10938,16 @@ var fluid = fluid || fluid_3_0_0;
 
     /** Scan through an array or hash of objects, terminating on the first member which
      * matches a predicate function.
-     * @param source {Arrayable or Object} The array or hash of objects to be searched.
-     * @param func {Function} A predicate function, acting on a member. A predicate which
+     * @param {Arrayable|Object} source - The array or hash of objects to be searched.
+     * @param {Function} func - A predicate function, acting on a member. A predicate which
      * returns any value which is not <code>undefined</code> will terminate
      * the search. The function accepts (object, index).
-     * @param deflt {Object} A value to be returned in the case no predicate function matches
+     * @param {Object} deflt - A value to be returned in the case no predicate function matches
      * a structure member. The default will be the natural value of <code>undefined</code>
      * @return The first return value from the predicate function which is not <code>undefined</code>
      */
     fluid.find = fluid.make_find(false);
-    /** The same signature as fluid.find, only the return value is the actual element for which the
+    /* The same signature as fluid.find, only the return value is the actual element for which the
      * predicate returns a value different from <code>false</code>
      */
     fluid.find_if = fluid.make_find(true);
@@ -10821,11 +10955,11 @@ var fluid = fluid || fluid_3_0_0;
     /** Scan through an array of objects, "accumulating" a value over them
      * (may be a straightforward "sum" or some other chained computation). "accumulate" is the name derived
      * from the C++ STL, other names for this algorithm are "reduce" or "fold".
-     * @param list {Array} The list of objects to be accumulated over.
-     * @param fn {Function} An "accumulation function" accepting the signature (object, total, index) where
+     * @param {Array} list - The list of objects to be accumulated over.
+     * @param {Function} fn - An "accumulation function" accepting the signature (object, total, index) where
      * object is the list member, total is the "running total" object (which is the return value from the previous function),
      * and index is the index number.
-     * @param arg {Object} The initial value for the "running total" object.
+     * @param {Object} arg - The initial value for the "running total" object.
      * @return {Object} the final running total object as returned from the final invocation of the function on the last list member.
      */
     fluid.accumulate = function (list, fn, arg) {
@@ -10836,8 +10970,8 @@ var fluid = fluid || fluid_3_0_0;
     };
 
     /** Returns the sum of its two arguments. A useful utility to combine with fluid.accumulate to compute totals
-     * @param a {Number|Boolean} The first operand to be added
-     * @param b {Number|Boolean} The second operand to be added
+     * @param {Number|Boolean} a - The first operand to be added
+     * @param {Number|Boolean} b - The second operand to be added
      * @return {Number} The sum of the two operands
      **/
     fluid.add = function (a, b) {
@@ -10847,14 +10981,14 @@ var fluid = fluid || fluid_3_0_0;
     /** Scan through an array or hash of objects, removing those which match a predicate. Similar to
      * jQuery.grep, only acts on the list in-place by removal, rather than by creating
      * a new list by inclusion.
-     * @param source {Array|Object} The array or hash of objects to be scanned over. Note that in the case this is an array,
+     * @param {Array|Object} source - The array or hash of objects to be scanned over. Note that in the case this is an array,
      * the iteration will proceed from the end of the array towards the front.
-     * @param fn {Function} A predicate function determining whether an element should be
+     * @param {Function} fn - A predicate function determining whether an element should be
      * removed. This accepts the standard signature (object, index) and returns a "truthy"
      * result in order to determine that the supplied object should be removed from the structure.
-     * @param target {Array|Object} (optional) A target object of the same type as <code>source</code>, which will
+     * @param {Array|Object} [target] - (optional) A target object of the same type as <code>source</code>, which will
      * receive any objects removed from it.
-     * @return <code>target</code>, containing the removed elements, if it was supplied, or else <code>source</code>
+     * @return {Array|Object} - <code>target</code>, containing the removed elements, if it was supplied, or else <code>source</code>
      * modified by the operation of removing the matched elements.
      */
     fluid.remove_if = function (source, fn, target) {
@@ -10881,9 +11015,9 @@ var fluid = fluid || fluid_3_0_0;
     };
 
     /** Fills an array of given size with copies of a value or result of a function invocation
-     * @param n {Number} The size of the array to be filled
-     * @param generator {Object|Function} Either a value to be replicated or function to be called
-     * @param applyFunc {Boolean} If true, treat the generator value as a function to be invoked with
+     * @param {Number} n - The size of the array to be filled
+     * @param {Object|Function} generator - Either a value to be replicated or function to be called
+     * @param {Boolean} applyFunc - If true, treat the generator value as a function to be invoked with
      * argument equal to the index position
      */
 
@@ -10896,8 +11030,8 @@ var fluid = fluid || fluid_3_0_0;
     };
 
     /** Returns an array of size count, filled with increasing integers, starting at 0 or at the index specified by first.
-     * @param count {Number} Size of the filled array to be returned
-     * @param first {Number} (optional, defaults to 0) First element to appear in the array
+     * @param {Number} count - Size of the filled array to be returned
+     * @param {Number} [first] - (optional, defaults to 0) First element to appear in the array
      */
 
     fluid.iota = function (count, first) {
@@ -10910,10 +11044,10 @@ var fluid = fluid || fluid_3_0_0;
     };
 
     /** Extracts a particular member from each top-level member of a container, returning a new container of the same type
-     * @param holder {Array|Object} The container to be filtered
-     * @param name {String|Array of String} An EL path to be fetched from each top-level member
+     * @param {Array|Object} holder - The container to be filtered
+     * @param {String|String[]} name - An EL path to be fetched from each top-level member
+     * @return {Object} - The desired member component.
      */
-
     fluid.getMembers = function (holder, name) {
         return fluid.transform(holder, function (member) {
             return fluid.get(member, name);
@@ -10922,27 +11056,25 @@ var fluid = fluid || fluid_3_0_0;
 
     /** Accepts an object to be filtered, and an array of keys. Either all keys not present in
      * the array are removed, or only keys present in the array are returned.
-     * @param toFilter {Array|Object} The object to be filtered - this will be NOT modified by the operation (current implementation
+     * @param {Array|Object} toFilter - The object to be filtered - this will be NOT modified by the operation (current implementation
      * passes through $.extend shallow algorithm)
-     * @param keys {Array of String} The array of keys to operate with
-     * @param exclude {boolean} If <code>true</code>, the keys listed are removed rather than included
-     * @return the filtered object (the same object that was supplied as <code>toFilter</code>
+     * @param {String[]} keys - The array of keys to operate with
+     * @param {Boolean} exclude - If <code>true</code>, the keys listed are removed rather than included
+     * @return {Object} the filtered object (the same object that was supplied as <code>toFilter</code>
      */
-
     fluid.filterKeys = function (toFilter, keys, exclude) {
         return fluid.remove_if($.extend({}, toFilter), function (value, key) {
             return exclude ^ (keys.indexOf(key) === -1);
         });
     };
 
-    /** A convenience wrapper for <code>fluid.filterKeys</code> with the parameter <code>exclude</code> set to <code>true</code>
+    /* A convenience wrapper for <code>fluid.filterKeys</code> with the parameter <code>exclude</code> set to <code>true</code>
      *  Returns the supplied object with listed keys removed */
-
     fluid.censorKeys = function (toCensor, keys) {
         return fluid.filterKeys(toCensor, keys, true);
     };
 
-    /** Return the keys in the supplied object as an array. Note that this will return keys found in the prototype chain as well as "own properties", unlike Object.keys() **/
+    /* Return the keys in the supplied object as an array. Note that this will return keys found in the prototype chain as well as "own properties", unlike Object.keys() */
     fluid.keys = function (obj) {
         var togo = [];
         for (var key in obj) {
@@ -10951,7 +11083,7 @@ var fluid = fluid || fluid_3_0_0;
         return togo;
     };
 
-    /** Return the values in the supplied object as an array **/
+    /* Return the values in the supplied object as an array */
     fluid.values = function (obj) {
         var togo = [];
         for (var key in obj) {
@@ -10960,7 +11092,7 @@ var fluid = fluid || fluid_3_0_0;
         return togo;
     };
 
-    /**
+    /*
      * Searches through the supplied object, and returns <code>true</code> if the supplied value
      * can be found
      */
@@ -10974,8 +11106,8 @@ var fluid = fluid || fluid_3_0_0;
 
     /**
      * Searches through the supplied object for the first value which matches the one supplied.
-     * @param obj {Object} the Object to be searched through
-     * @param value {Object} the value to be found. This will be compared against the object's
+     * @param {Object} obj - the Object to be searched through
+     * @param {Object} value - the value to be found. This will be compared against the object's
      * member using === equality.
      * @return {String} The first key whose value matches the one supplied
      */
@@ -10988,7 +11120,7 @@ var fluid = fluid || fluid_3_0_0;
     };
 
     /** Converts an array into an object whose keys are the elements of the array, each with the value "true"
-     * @param array {Array of String} The array to be converted to a hash
+     * @param {String[]} array - The array to be converted to a hash
      * @return hash {Object} An object with value <code>true</code> for each key taken from a member of <code>array</code>
      */
 
@@ -11003,8 +11135,8 @@ var fluid = fluid || fluid_3_0_0;
     /** Applies a stable sorting algorithm to the supplied array and comparator (note that Array.sort in JavaScript is not specified
      * to be stable). The algorithm used will be an insertion sort, which whilst quadratic in time, will perform well
      * on small array sizes.
-     * @param array {Array} The array to be sorted. This input array will be modified in place.
-     * @param func {Function} A comparator returning >0, 0, or <0 on pairs of elements representing their sort order (same contract as Array.sort comparator)
+     * @param {Array} array - The array to be sorted. This input array will be modified in place.
+     * @param {Function} func - A comparator returning >0, 0, or <0 on pairs of elements representing their sort order (same contract as Array.sort comparator)
      */
 
     fluid.stableSort = function (array, func) {
@@ -11017,7 +11149,7 @@ var fluid = fluid || fluid_3_0_0;
         }
     };
 
-    /** Converts a hash into an object by hoisting out the object's keys into an array element via the supplied String "key", and then transforming via an optional further function, which receives the signature
+    /* Converts a hash into an object by hoisting out the object's keys into an array element via the supplied String "key", and then transforming via an optional further function, which receives the signature
      * (newElement, oldElement, key) where newElement is the freshly cloned element, oldElement is the original hash's element, and key is the key of the element.
      * If the function is not supplied, the old element is simply deep-cloned onto the new element (same effect as transform fluid.transforms.deindexIntoArrayByKey).
      * The supplied hash will not be modified, unless the supplied function explicitly does so by modifying its 2nd argument.
@@ -11037,7 +11169,7 @@ var fluid = fluid || fluid_3_0_0;
         return togo;
     };
 
-    /** Converts an array consisting of a mixture of arrays and non-arrays into the concatenation of any inner arrays
+    /* Converts an array consisting of a mixture of arrays and non-arrays into the concatenation of any inner arrays
      * with the non-array elements
      */
     fluid.flatten = function (array) {
@@ -11055,7 +11187,7 @@ var fluid = fluid || fluid_3_0_0;
     /**
      * Clears an object or array of its contents. For objects, each property is deleted.
      *
-     * @param {Object|Array} target the target to be cleared
+     * @param {Object|Array} target - the target to be cleared
      */
     fluid.clear = function (target) {
         if (fluid.isArrayable(target)) {
@@ -11068,8 +11200,9 @@ var fluid = fluid || fluid_3_0_0;
     };
 
    /**
-    * @param boolean ascending <code>true</code> if a comparator is to be returned which
-    * sorts strings in descending order of length
+    * @param {Boolean} ascending <code>true</code> if a comparator is to be returned which
+    * sorts strings in descending order of length.
+    * @return {Function} - A comparison function.
     */
     fluid.compareStringLength = function (ascending) {
         return ascending ? function (a, b) {
@@ -11081,7 +11214,8 @@ var fluid = fluid || fluid_3_0_0;
 
     /**
      * Returns the converted integer if the input string can be converted to an integer. Otherwise, return NaN.
-     * @param {String} a string to be returned in integer
+     * @param {String} string - A string to be returned in integer form.
+     * @return {Number|NaN} - The numeric value if the string can be converted, otherwise, returns NaN.
      */
     fluid.parseInteger = function (string) {
         return isFinite(string) && ((string % 1) === 0) ? Number(string) : NaN;
@@ -11101,7 +11235,7 @@ var fluid = fluid || fluid_3_0_0;
      *
      * @param {Number} num - the number to be rounded
      * @param {Number} scale - the maximum number of decimal places to round to.
-     * @param {String} method - (optional) Request a rounding method to use ("round", "ceil", "floor").
+     * @param {String} [method] - (optional) Request a rounding method to use ("round", "ceil", "floor").
      *                          If nothing or an invalid method is provided, it will default to "round".
      * @return {Number} The num value rounded to the specified number of decimal places.
      */
@@ -11122,11 +11256,12 @@ var fluid = fluid || fluid_3_0_0;
     /**
      * Copied from Underscore.js 1.4.3 - see licence at head of this file
      *
-     * Will execute the passed in function after the specified about of time since it was last executed.
+     * Will execute the passed in function after the specified amount of time since it was last executed.
      * @param {Function} func - the function to execute
      * @param {Number} wait - the number of milliseconds to wait before executing the function
      * @param {Boolean} immediate - Whether to trigger the function at the start (true) or end (false) of
      *                              the wait interval.
+     * @return {Function} - A function that can be called as though it were the original function.
      */
     fluid.debounce = function (func, wait, immediate) {
         var timeout, result;
@@ -11149,7 +11284,8 @@ var fluid = fluid || fluid_3_0_0;
     };
 
     /** Calls Object.freeze at each level of containment of the supplied object
-     * @return The supplied argument, recursively frozen
+     * @param {Any} tofreeze  - The material to freeze.
+     * @return {Any} - The supplied argument, recursively frozen.
      */
     fluid.freezeRecursive = function (tofreeze) {
         if (fluid.isPlainObject(tofreeze)) {
@@ -11162,11 +11298,11 @@ var fluid = fluid || fluid_3_0_0;
         }
     };
 
-    /** A set of special "marker values" used in signalling in function arguments and return values,
-      * to partially compensate for JavaScript's lack of distinguished types. These should never appear
-      * in JSON structures or other kinds of static configuration. An API specifically documents if it
-      * accepts or returns any of these values, and if so, what its semantic is  - most are of private
-      * use internal to the framework **/
+    /* A set of special "marker values" used in signalling in function arguments and return values,
+     * to partially compensate for JavaScript's lack of distinguished types. These should never appear
+     * in JSON structures or other kinds of static configuration. An API specifically documents if it
+     * accepts or returns any of these values, and if so, what its semantic is  - most are of private
+     * use internal to the framework */
 
     fluid.marker = function () {};
 
@@ -11177,19 +11313,19 @@ var fluid = fluid || fluid_3_0_0;
         return Object.freeze(togo);
     };
 
-    /** A special "marker object" representing that a distinguished
+    /* A special "marker object" representing that a distinguished
      * (probably context-dependent) value should be substituted.
      */
     fluid.VALUE = fluid.makeMarker("VALUE");
 
-    /** A special "marker object" representing that no value is present (where
+    /* A special "marker object" representing that no value is present (where
      * signalling using the value "undefined" is not possible - e.g. the return value from a "strategy") */
     fluid.NO_VALUE = fluid.makeMarker("NO_VALUE");
 
-    /** A marker indicating that a value requires to be expanded after component construction begins **/
+    /* A marker indicating that a value requires to be expanded after component construction begins */
     fluid.EXPAND = fluid.makeMarker("EXPAND");
 
-    /** Determine whether an object is any marker, or a particular marker - omit the
+    /* Determine whether an object is any marker, or a particular marker - omit the
      * 2nd argument to detect any marker
      */
     fluid.isMarker = function (totest, type) {
@@ -11211,7 +11347,7 @@ var fluid = fluid || fluid_3_0_0;
         "TRACE":     20
     };
 
-    /** A structure holding all supported log levels as supplied as a possible first argument to fluid.log
+    /* A structure holding all supported log levels as supplied as a possible first argument to fluid.log
      * Members with a higher value of the "priority" field represent lower priority logging levels */
     // Moved down here since it uses fluid.transform and fluid.makeMarker on startup
     fluid.logLevel = fluid.transform(fluid.logLevelsSpec, function (value, key) {
@@ -11223,15 +11359,15 @@ var fluid = fluid || fluid_3_0_0;
     // Model functions
     fluid.model = {}; // cannot call registerNamespace yet since it depends on fluid.model
 
-    /** Copy a source "model" onto a target **/
+    /* Copy a source "model" onto a target */
     fluid.model.copyModel = function (target, source) {
         fluid.clear(target);
         $.extend(true, target, source);
     };
 
     /** Parse an EL expression separated by periods (.) into its component segments.
-     * @param {String} EL The EL expression to be split
-     * @return {Array of String} the component path expressions.
+     * @param {String} EL - The EL expression to be split
+     * @return {String[]} the component path expressions.
      * TODO: This needs to be upgraded to handle (the same) escaping rules (as RSF), so that
      * path segments containing periods and backslashes etc. can be processed, and be harmonised
      * with the more complex implementations in fluid.pathUtil(data binding).
@@ -11240,40 +11376,39 @@ var fluid = fluid || fluid_3_0_0;
         return EL === "" ? [] : String(EL).split(".");
     };
 
-    /** Compose an EL expression from two separate EL expressions. The returned
+    /* Compose an EL expression from two separate EL expressions. The returned
      * expression will be the one that will navigate the first expression, and then
      * the second, from the value reached by the first. Either prefix or suffix may be
-     * the empty string **/
-
+     * the empty string */
     fluid.model.composePath = function (prefix, suffix) {
         return prefix === "" ? suffix : (suffix === "" ? prefix : prefix + "." + suffix);
     };
 
-    /** Compose any number of path segments, none of which may be empty **/
+    /* Compose any number of path segments, none of which may be empty */
     fluid.model.composeSegments = function () {
         return fluid.makeArray(arguments).join(".");
     };
 
-    /** Returns the index of the last occurrence of the period character . in the supplied string */
+    /* Returns the index of the last occurrence of the period character . in the supplied string */
     fluid.lastDotIndex = function (path) {
         return path.lastIndexOf(".");
     };
 
-    /** Returns all of an EL path minus its final segment - if the path consists of just one segment, returns "" -
+    /* Returns all of an EL path minus its final segment - if the path consists of just one segment, returns "" -
      * WARNING - this method does not follow escaping rules */
     fluid.model.getToTailPath = function (path) {
         var lastdot = fluid.lastDotIndex(path);
         return lastdot === -1 ? "" : path.substring(0, lastdot);
     };
 
-    /** Returns the very last path component of an EL path
+    /* Returns the very last path component of an EL path
      * WARNING - this method does not follow escaping rules */
     fluid.model.getTailPath = function (path) {
         var lastdot = fluid.lastDotIndex(path);
         return path.substring(lastdot + 1);
     };
 
-    /** Helpful alias for old-style API **/
+    /* Helpful alias for old-style API */
     fluid.path = fluid.model.composeSegments;
     fluid.composePath = fluid.model.composePath;
 
@@ -11359,7 +11494,7 @@ var fluid = fluid || fluid_3_0_0;
         fluid.model.accessSimple(root, EL, newValue, environment, initSegs, false);
     };
 
-    /** Optimised version of fluid.get for uncustomised configurations **/
+    /* Optimised version of fluid.get for uncustomised configurations */
 
     fluid.model.getSimple = function (root, EL, environment, initSegs) {
         if (EL === null || EL === undefined || EL.length === 0) {
@@ -11368,7 +11503,7 @@ var fluid = fluid || fluid_3_0_0;
         return fluid.model.accessSimple(root, EL, fluid.NO_VALUE, environment, initSegs, false);
     };
 
-    /** Even more optimised version which assumes segs are parsed and no configuration **/
+    /* Even more optimised version which assumes segs are parsed and no configuration */
     fluid.getImmediate = function (root, segs, i) {
         var limit = (i === undefined ? segs.length : i + 1);
         for (var j = 0; j < limit; ++j) {
@@ -11396,10 +11531,10 @@ var fluid = fluid || fluid_3_0_0;
 
     /** Evaluates an EL expression by fetching a dot-separated list of members
      * recursively from a provided root.
-     * @param root The root data structure in which the EL expression is to be evaluated
-     * @param {string/array} EL The EL expression to be evaluated, or an array of path segments
-     * @param config An optional configuration or environment structure which can customise the fetch operation
-     * @return The fetched data value.
+     * @param {Object} root - The root data structure in which the EL expression is to be evaluated
+     * @param {String|Array} EL - The EL expression to be evaluated, or an array of path segments
+     * @param {Object} [config] - An optional configuration or environment structure which can customise the fetch operation
+     * @return {Any} The fetched data value.
      */
 
     fluid.get = function (root, EL, config, initSegs) {
@@ -11418,9 +11553,10 @@ var fluid = fluid || fluid_3_0_0;
 
     /**
      * Allows for the binding to a "this-ist" function
-     * @param {Object} obj, "this-ist" object to bind to
-     * @param {Object} fnName, the name of the function to call
-     * @param {Object} args, arguments to call the function with
+     * @param {Object} obj - "this-ist" object to bind to
+     * @param {Object} fnName - The name of the function to call.
+     * @param {Object} args - Arguments to call the function with.
+     * @return {Any} - The return value (if any) of the underlying function.
      */
     fluid.bind = function (obj, fnName, args) {
         return obj[fnName].apply(obj, fluid.makeArray(args));
@@ -11430,7 +11566,8 @@ var fluid = fluid || fluid_3_0_0;
      * Allows for the calling of a function from an EL expression "functionPath", with the arguments "args", scoped to an framework version "environment".
      * @param {Object} functionPath - An EL expression
      * @param {Object} args - An array of arguments to be applied to the function, specified in functionPath
-     * @param {Object} environment - (optional) The object to scope the functionPath to  (typically the framework root for version control)
+     * @param {Object} [environment] - (optional) The object to scope the functionPath to  (typically the framework root for version control)
+     * @return {Any} - The return value from the invoked function.
      */
     fluid.invokeGlobalFunction = function (functionPath, args, environment) {
         var func = fluid.getGlobalValue(functionPath, environment);
@@ -11441,8 +11578,7 @@ var fluid = fluid || fluid_3_0_0;
         }
     };
 
-    /** Registers a new global function at a given path
-     */
+    /* Registers a new global function at a given path */
 
     fluid.registerGlobalFunction = function (functionPath, func, env) {
         env = env || fluid.environment;
@@ -11451,8 +11587,8 @@ var fluid = fluid || fluid_3_0_0;
 
     fluid.setGlobalValue = fluid.registerGlobalFunction;
 
-    /** Ensures that an entry in the global namespace exists. If it does not, a new entry is created as {} and returned. If an existing
-     * value is found, it is returned instead **/
+    /* Ensures that an entry in the global namespace exists. If it does not, a new entry is created as {} and returned. If an existing
+     * value is found, it is returned instead */
     fluid.registerNamespace = function (naimspace, env) {
         env = env || fluid.environment;
         var existing = fluid.getGlobalValue(naimspace, env);
@@ -11480,8 +11616,8 @@ var fluid = fluid || fluid_3_0_0;
 
     var fluid_guid = 1;
 
-    /** Allocate a string value that will be unique within this Infusion instance (frame or process), and
-     * globally unique with high probability (50% chance of collision after a million trials) **/
+    /* Allocate a string value that will be unique within this Infusion instance (frame or process), and
+     * globally unique with high probability (50% chance of collision after a million trials) */
 
     fluid.allocateGuid = function () {
         return fluid_prefix + (fluid_guid++);
@@ -11621,10 +11757,10 @@ var fluid = fluid || fluid_3_0_0;
     };
 
     /** Parse a hash containing prioritised records (for example, as found in a ContextAwareness record) and return a sorted array of these records in priority order.
-     * @param records {Object} A hash of key names to prioritised records. Each record may contain an member `namespace` - if it does not, the namespace will be taken from the
+     * @param {Object} records - A hash of key names to prioritised records. Each record may contain an member `namespace` - if it does not, the namespace will be taken from the
      * record's key. It may also contain a `String` member `priority` encoding a priority with respect to these namespaces as document at http://docs.fluidproject.org/infusion/development/Priorities.html .
-     * @param name {String} A human-readable name describing the supplied records, which will be incorporated into the message of any error encountered when resolving the priorities
-     * @return [Array] An array of the same elements supplied to `records`, sorted into priority order. The supplied argument `records` will not be modified.
+     * @param {String} name - A human-readable name describing the supplied records, which will be incorporated into the message of any error encountered when resolving the priorities
+     * @return {Array} An array of the same elements supplied to `records`, sorted into priority order. The supplied argument `records` will not be modified.
      */
     fluid.parsePriorityRecords = function (records, name) {
         var array = fluid.hashToArray(records, "namespace", function (newElement, oldElement, index) {
@@ -11683,7 +11819,7 @@ var fluid = fluid || fluid_3_0_0;
         return listener;
     };
 
-    /** Generate a name for a component for debugging purposes */
+    /* Generate a name for a component for debugging purposes */
     fluid.nameComponent = function (that) {
         return that ? "component with typename " + that.typeName + " and id " + that.id : "[unknown component]";
     };
@@ -11701,6 +11837,7 @@ var fluid = fluid || fluid_3_0_0;
      *     {Boolean} preventable - If <code>true</code> the return value of each handler will
      * be checked for <code>false</code> in which case further listeners will be shortcircuited, and this
      * will be the return value of fire()
+     * @return {Object} - The newly-created event firer.
      */
     fluid.makeEventFirer = function (options) {
         options = options || {};
@@ -11714,12 +11851,14 @@ var fluid = fluid || fluid_3_0_0;
             // arguments after 3rd are not part of public API
             // listener as Object is used only by ChangeApplier to tunnel path, segs, etc as part of its "spec"
             /** Adds a listener to this event.
-              * @param listener {Function|String} The listener function to be added, or a global name resolving to a function. The signature of the function is arbitrary and matches that sent to event.fire()
-              * @param namespace {String} (Optional) A namespace for this listener. At most one listener with a particular namespace can be active on an event at one time. Removing successively added listeners with a particular
-              * namespace will expose previously added ones in a stack idiom
-              * @param priority {String|Number} A priority for the listener relative to others, perhaps expressed with a constraint relative to the namespace of another - see
-              * http://docs.fluidproject.org/infusion/development/Priorities.html
-              */
+             * @param {Function|String} listener - The listener function to be added, or a global name resolving to a function. The signature of the function is arbitrary and matches that sent to event.fire()
+             * @param {String} namespace - (Optional) A namespace for this listener. At most one listener with a particular namespace can be active on an event at one time. Removing successively added listeners with a particular
+             * namespace will expose previously added ones in a stack idiom
+             * @param {String|Number} priority - A priority for the listener relative to others, perhaps expressed with a constraint relative to the namespace of another - see
+             * http://docs.fluidproject.org/infusion/development/Priorities.html
+             * @param {String} softNamespace - An unsupported internal option that is not part of the public API.
+             * @param {String} listenerId - An unsupported internal option that is not part of the public API.
+             */
             that.addListener = function (listener, namespace, priority, softNamespace, listenerId) {
                 var record;
                 if (that.destroyed) {
@@ -11769,7 +11908,7 @@ var fluid = fluid || fluid_3_0_0;
                 lazyInit.apply(null, arguments);
             },
             /** Removes a listener previously registered with this event.
-              * @param toremove {Function|String} Either the listener function, the namespace of a listener (in which case a previous listener with that namespace may be uncovered) or an id sent to the undocumented
+              * @param {Function|String} toremove - Either the listener function, the namespace of a listener (in which case a previous listener with that namespace may be uncovered) or an id sent to the undocumented
               * `listenerId` argument of `addListener
               */
             // Can be supplied either listener, namespace, or id (which may match either listener function's guid or original listenerId argument)
@@ -11809,7 +11948,7 @@ var fluid = fluid || fluid_3_0_0;
                 }
                 that.sortedListeners = fluid.event.sortListeners(that.listeners);
             },
-            /** Fires this event to all listeners which are active. They will be notified in order of priority. The signature of this method is free **/
+            /* Fires this event to all listeners which are active. They will be notified in order of priority. The signature of this method is free. */
             fire: function () {
                 var listeners = that.sortedListeners;
                 if (!listeners || that.destroyed) { return; }
@@ -11957,7 +12096,7 @@ var fluid = fluid || fluid_3_0_0;
         return errors;
     };
 
-    /** Removes duplicated and empty elements from an already sorted array **/
+    /* Removes duplicated and empty elements from an already sorted array. */
     fluid.unique = function (array) {
         return fluid.remove_if(array, function (element, i) {
             return !element || i > 0 && element === array[i - 1];
@@ -11977,8 +12116,7 @@ var fluid = fluid || fluid_3_0_0;
 
     /**
      * Configure the behaviour of fluid.fail by pushing or popping a disposition record onto a stack.
-     * @param {Number|Function} condition
-     & Supply either a function, which will be called with two arguments, args (the complete arguments to
+     * @param {Number|Function} condition - Supply either a function, which will be called with two arguments, args (the complete arguments to
      * fluid.fail) and activity, an array of strings describing the current framework invocation state.
      * Or, the argument may be the number <code>-1</code> indicating that the previously supplied disposition should
      * be popped off the stack
@@ -12117,12 +12255,11 @@ var fluid = fluid || fluid_3_0_0;
 
     // unsupported, NON-API function
     /** Upgrades an element of an IoC record which designates a function to prepare for a {func, args} representation.
-     * @param rec {Any} If the record is of a primitive type,
-     * @param key {String} The key in the returned record to hold the function, this will default to `funcName` if `rec` is a `string` *not*
+     * @param {Any} rec - If the record is of a primitive type,
+     * @param {String} key - The key in the returned record to hold the function, this will default to `funcName` if `rec` is a `string` *not*
      * holding an IoC reference, or `func` otherwise
      * @return {Object} The original `rec` if it was not of primitive type, else a record holding { key : rec } if it was of primitive type.
      */
-
     fluid.upgradePrimitiveFunc = function (rec, key) {
         if (rec && fluid.isPrimitive(rec)) {
             var togo = {};
@@ -12190,10 +12327,10 @@ var fluid = fluid || fluid_3_0_0;
     };
 
     /** Evaluates an index specification over all the defaults records registered into the system.
-     * @param indexName {String} The name of this index record (currently ignored)
-     * @param indexSpec {Object} Specification of the index to be performed - fields:
-     *     gradeNames: {String/Array of String} List of grades that must be matched by this indexer
-     *     indexFunc:  {String/Function} An index function which accepts a defaults record and returns an array of keys
+     * @param {String} indexName - The name of this index record (currently ignored)
+     * @param {Object} indexSpec - Specification of the index to be performed - fields:
+     *     gradeNames: {String|String[]} List of grades that must be matched by this indexer
+     *     indexFunc:  {String|Function} An index function which accepts a defaults record and returns an array of keys
      * @return A structure indexing keys to arrays of matched gradenames
      */
     // The expectation is that this function is extremely rarely used with respect to registration of defaults
@@ -12210,10 +12347,11 @@ var fluid = fluid || fluid_3_0_0;
 
     /**
      * Retrieves and stores a grade's configuration centrally.
-     * @param {String} gradeName the name of the grade whose options are to be read or written
-     * @param {Object} (optional) an object containing the options to be set
+     * @param {String} componentName - The name of the grade whose options are to be read or written
+     * @param {Object} [options] - An (optional) object containing the options to be set
+     * @return {Object|undefined} - If `options` is omitted, returns the defaults for `componentName`.  Otherwise,
+     * creates an instance of the named component with the supplied options.
      */
-
     fluid.defaults = function (componentName, options) {
         if (options === undefined) {
             return fluid.getMergedDefaults(componentName);
@@ -12511,13 +12649,13 @@ var fluid = fluid || fluid_3_0_0;
      * directly.
      * The behaviour of this function is explained more fully on
      * the page http://wiki.fluidproject.org/display/fluid/Options+Merging+for+Fluid+Components .
-     * @param policy {Object/String} A "policy object" specifiying the type of merge to be performed.
+     * @param {Object|String} policy - A "policy object" specifiying the type of merge to be performed.
      * If policy is of type {String} it should take on the value "replace" representing
      * a static policy. If it is an
      * Object, it should contain a mapping of EL paths onto these String values, representing a
      * fine-grained policy. If it is an Object, the values may also themselves be EL paths
      * representing that a default value is to be taken from that path.
-     * @param options1, options2, .... {Object} an arbitrary list of options structure which are to
+     * @param {...Object} options1, options2, .... - an arbitrary list of options structure which are to
      * be merged together. These will not be modified.
      */
 
@@ -12640,8 +12778,8 @@ var fluid = fluid || fluid_3_0_0;
     };
 
     /** Delete the value in the supplied object held at the specified path
-     * @param target {Object} The object holding the value to be deleted (possibly empty)
-     * @param segs {Array of String} the path of the value to be deleted
+     * @param {Object} target - The object holding the value to be deleted (possibly empty)
+     * @param {String[]} segs - the path of the value to be deleted
      */
     // unsupported, NON-API function
     fluid.destroyValue = function (target, segs) {
@@ -12654,11 +12792,11 @@ var fluid = fluid || fluid_3_0_0;
      * Merges the component's declared defaults, as obtained from fluid.defaults(),
      * with the user's specified overrides.
      *
-     * @param {Object} that the instance to attach the options to
-     * @param {String} componentName the unique "name" of the component, which will be used
+     * @param {Object} that - the instance to attach the options to
+     * @param {String} componentName - the unique "name" of the component, which will be used
      * to fetch the default options from store. By recommendation, this should be the global
      * name of the component's creator function.
-     * @param {Object} userOptions the user-specified configuration options for this component
+     * @param {Object} userOptions - the user-specified configuration options for this component
      */
     // unsupported, NON-API function
     fluid.mergeComponentOptions = function (that, componentName, userOptions, localOptions) {
@@ -12766,14 +12904,13 @@ var fluid = fluid || fluid_3_0_0;
 
     /** Invoke a global function by name and named arguments. A courtesy to allow declaratively encoded function calls
      * to use named arguments rather than bare arrays.
-     * @param name {String} A global name which can be resolved to a Function. The defaults for this name must
+     * @param {String} name - A global name which can be resolved to a Function. The defaults for this name must
      * resolve onto a grade including "fluid.function". The defaults record should also contain an entry
      * <code>argumentMap</code>, a hash of argument names onto indexes.
-     * @param spec {Object} A named hash holding the argument values to be sent to the function. These will be looked
+     * @param {Object} spec - A named hash holding the argument values to be sent to the function. These will be looked
      * up in the <code>argumentMap</code> and resolved into a flat list of arguments.
      * @return {Any} The return value from the function
      */
-
     fluid.invokeGradedFunction = function (name, spec) {
         var defaults = fluid.defaults(name);
         if (!defaults || !defaults.argumentMap || !fluid.hasGrade(defaults, "fluid.function")) {
@@ -12890,10 +13027,9 @@ var fluid = fluid || fluid_3_0_0;
         gradeNames: ["fluid.component"]
     });
 
-    /** Compute a "nickname" given a fully qualified typename, by returning the last path
+    /* Compute a "nickname" given a fully qualified typename, by returning the last path
      * segment.
      */
-
     fluid.computeNickName = function (typeName) {
         var segs = fluid.model.parseEL(typeName);
         return segs[segs.length - 1];
@@ -12902,7 +13038,6 @@ var fluid = fluid || fluid_3_0_0;
     /** A specially recognised grade tag which directs the IoC framework to instantiate this component first amongst
      * its set of siblings, since it is likely to bear a context-forming type name. This will be removed from the framework
      * once we have implemented FLUID-4925 "wave of explosions" */
-
     fluid.defaults("fluid.typeFount", {
         gradeNames: ["fluid.component"]
     });
@@ -12912,8 +13047,8 @@ var fluid = fluid || fluid_3_0_0;
      * This method is a convenience for creating small objects that have options but don't require full
      * View-like features such as the DOM Binder or events
      *
-     * @param {Object} name the name of the little component to create
-     * @param {Object} options user-supplied options to merge with the defaults
+     * @param {Object} name - The name of the little component to create
+     * @param {Object} options - User-supplied options to merge with the defaults
      */
     // NOTE: the 3rd argument localOptions is NOT to be advertised as part of the stable API, it is present
     // just to allow backward compatibility whilst grade specifications are not mandatory - similarly for 4th arg "receiver"
@@ -12956,8 +13091,7 @@ var fluid = fluid || fluid_3_0_0;
         };
     };
 
-    /** Returns <code>true</code> if the supplied reference holds a component which has been destroyed **/
-
+    /* Returns <code>true</code> if the supplied reference holds a component which has been destroyed */
     fluid.isDestroyed = function (that) {
         return that.lifecycleStatus === "destroyed";
     };
@@ -13106,32 +13240,90 @@ var fluid = fluid || fluid_3_0_0;
 
     // Message resolution and templating
 
-   /**
-    * Converts a string to a regexp with the specified flags given in parameters
-    * @param {String} a string that has to be turned into a regular expression
-    * @param {String} the flags to provide to the reg exp
-    */
-    // TODO: this is an abominably inefficient technique for something that could simply be done by means of indexOf and slice
-    fluid.stringToRegExp = function (str, flags) {
-        return new RegExp(str.replace(/[\-\[\]{}()*+?.,\\\^$|#\s]/g, "\\$&"), flags);
+    /**
+     *
+     * Take an original object and represent it using top-level sub-elements whose keys are EL Paths.  For example,
+     * `originalObject` might look like:
+     *
+     * ```
+     * {
+     *   deep: {
+     *     path: {
+     *       value: "foo",
+     *       emptyObject: {},
+     *       array: [ "peas", "porridge", "hot"]
+     *     }
+     *   }
+     * }
+     * ```
+     *
+     * Calling `fluid.flattenObjectKeys` on this would result in a new object that looks like:
+     *
+     * ```
+     * {
+     *   "deep": "[object Object]",
+     *   "deep.path": "[object Object]",
+     *   "deep.path.value": "foo",
+     *   "deep.path.array": "peas,porridge,hot",
+     *   "deep.path.array.0": "peas",
+     *   "deep.path.array.1": "porridge",
+     *   "deep.path.array.2": "hot"
+     * }
+     * ```
+     *
+     * This function preserves the previous functionality of displaying an entire object using its `toString` function,
+     * which is why many of the paths above resolve to "[object Object]".
+     *
+     * This function is an unsupported non-API function that is used in by `fluid.stringTemplate` (see below).
+     *
+     * @param {Object} originalObject - An object.
+     * @return {Object} A representation of the original object that only contains top-level sub-elements whose keys are EL Paths.
+     *
+     */
+    // unsupported, non-API function
+    fluid.flattenObjectPaths = function (originalObject) {
+        var flattenedObject = {};
+        fluid.each(originalObject, function (value, key) {
+            if (value !== null && typeof value === "object") {
+                var flattenedSubObject = fluid.flattenObjectPaths(value);
+                fluid.each(flattenedSubObject, function (subValue, subKey) {
+                    flattenedObject[key + "." + subKey] = subValue;
+                });
+                if (typeof fluid.get(value, "toString") === "function") {
+                    flattenedObject[key] = value.toString();
+                }
+            }
+            else {
+                flattenedObject[key] = value;
+            }
+        });
+        return flattenedObject;
     };
 
     /**
-     * Simple string template system.
-     * Takes a template string containing tokens in the form of "%value".
-     * Returns a new string with the tokens replaced by the specified values.
-     * Keys and values can be of any data type that can be coerced into a string.
      *
-     * @param {String}    template    a string (can be HTML) that contains tokens embedded into it
-     * @param {object}    values      a collection of token keys and values
+     * Simple string template system.  Takes a template string containing tokens in the form of "%value" or
+     * "%deep.path.to.value".  Returns a new string with the tokens replaced by the specified values.  Keys and values
+     * can be of any data type that can be coerced into a string.
+     *
+     * @param {String} template - A string (can be HTML) that contains tokens embedded into it.
+     * @param {Object} values - A collection of token keys and values.
+     * @return {String} A string whose tokens have been replaced with values.
+     *
      */
     fluid.stringTemplate = function (template, values) {
-        var keys = fluid.keys(values);
+        var flattenedValues = fluid.flattenObjectPaths(values);
+        var keys = fluid.keys(flattenedValues);
         keys = keys.sort(fluid.compareStringLength());
         for (var i = 0; i < keys.length; ++i) {
             var key = keys[i];
-            var re = fluid.stringToRegExp("%" + key, "g");
-            template = template.replace(re, values[key]);
+            var templatePlaceholder = "%" + key;
+            var replacementValue = flattenedValues[key];
+
+            var indexOfPlaceHolder = -1;
+            while ((indexOfPlaceHolder = template.indexOf(templatePlaceholder)) !== -1) {
+                template = template.slice(0, indexOfPlaceHolder) + replacementValue + template.slice(indexOfPlaceHolder + templatePlaceholder.length);
+            }
         }
         return template;
     };
@@ -13161,8 +13353,8 @@ var fluid = fluid || fluid_3_0_0;
     "use strict";
 
     /** Render a timestamp from a Date object into a helpful fixed format for debug logs to millisecond accuracy
-     * @param date {Date} The date to be rendered
-     * @return {String} A string format consisting of hours:minutes:seconds.millis for the datestamp padded to fixed with
+     * @param {Date} date - The date to be rendered
+     * @return {String} - A string format consisting of hours:minutes:seconds.millis for the datestamp padded to fixed with
      */
 
     fluid.renderTimestamp = function (date) {
@@ -13300,8 +13492,8 @@ var fluid = fluid || fluid_3_0_0;
     };
 
     /** Generates a string for padding purposes by replicating a character a given number of times
-     * @param c {Character} A character to be used for padding
-     * @param count {Integer} The number of times to repeat the character
+     * @param {Character} c - A character to be used for padding
+     * @param {Integer} count - The number of times to repeat the character
      * @return A string of length <code>count</code> consisting of repetitions of the supplied character
      */
     // UNOPTIMISED
@@ -13384,10 +13576,11 @@ var fluid = fluid || fluid_3_0_0;
     }
 
     /** Render a complex JSON object into a nicely indented format suitable for human readability.
-     * @param obj {Object} The object to be rendered
-     * @param options {Object} An options structure governing the rendering process. This supports the following options:
+     * @param {Object} obj - The object to be rendered
+     * @param {Object} options - An options structure governing the rendering process. This supports the following options:
      *     <code>indent</code> {Integer} the number of space characters to be used to indent each level of containment (default value: 4)
      *     <code>maxRenderChars</code> {Integer} rendering the object will cease once this number of characters has been generated
+     * @return {String} - The generated output.
      */
     fluid.prettyPrintJSON = function (obj, options) {
         options = $.extend({indent: 4, stack: [], output: ""}, options);
@@ -13400,8 +13593,8 @@ var fluid = fluid || fluid_3_0_0;
      * Dumps a DOM element into a readily recognisable form for debugging - produces a
      * "semi-selector" summarising its tag name, class and id, whichever are set.
      *
-     * @param {jQueryable} element The element to be dumped
-     * @return A string representing the element.
+     * @param {jQueryable} element - The element to be dumped
+     * @return {String} - A string representing the element.
      */
     fluid.dumpEl = function (element) {
         var togo;
@@ -13458,7 +13651,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
 
     /** NOTE: The contents of this file are by default NOT PART OF THE PUBLIC FLUID API unless explicitly annotated before the function **/
 
-    /** The Fluid "IoC System proper" - resolution of references and
+    /* The Fluid "IoC System proper" - resolution of references and
      * completely automated instantiation of declaratively defined
      * component trees */
 
@@ -13806,11 +13999,11 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
     };
 
     /** Query for all components matching a selector in a particular tree
-     * @param root {Component} The root component at which to start the search
-     * @param selector {String} An IoCSS selector, in form of a string. Note that since selectors supplied to this function implicitly
+     * @param {Component} root - The root component at which to start the search
+     * @param {String} selector - An IoCSS selector, in form of a string. Note that since selectors supplied to this function implicitly
      * match downwards, they need not contain the "head context" followed by whitespace required in the distributeOptions form. E.g.
      * simply <code>"fluid.viewComponent"</code> will match all viewComponents below the root.
-     * @param flat {Boolean} [Optional] <code>true</code> if the search should just be performed at top level of the component tree
+     * @param {Boolean} flat - [Optional] <code>true</code> if the search should just be performed at top level of the component tree
      * Note that with <code>flat=true</code> this search will scan every component in the tree and may well be very slow.
      */
     // supported, PUBLIC API function
@@ -14787,9 +14980,12 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
      * is published as part of the Fluid API, it should not be called by general users and may not remain stable. It is
      * currently the only mechanism provided for instantiating components whose definitions are dynamic, and will be
      * replaced in time by dedicated declarative framework described by FLUID-5022.
-     * @param that {Component} the parent component for which the subcomponent is to be instantiated
-     * @param name {String} the name of the component - the index of the options block which configures it as part of the
+     * @param {Component} that - The parent component for which the subcomponent is to be instantiated
+     * @param {String} name - The name of the component - the index of the options block which configures it as part of the
      * <code>components</code> section of its parent's options
+     * @param {Object} [localRecord] - A local scope record keyed by context names which should specially be in scope for this
+     * construction, e.g. `arguments`. Primarily for internal framework use.
+     * @return {Component} The constructed subcomponent
      */
     fluid.initDependent = function (that, name, localRecord) {
         if (that[name]) { return; } // TODO: move this into strategy
@@ -14917,12 +15113,14 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
     };
 
 
-    /** BEGIN NEXUS METHODS **/
+    /* == BEGIN NEXUS METHODS == */
 
-    /** Given a component reference, returns the path of that component within its component tree
-     * @param component {Component} A reference to a component
-     * @param instantiator {Instantiator} (optional) An instantiator to use for the lookup
-     * @return {Array of String} An array of path segments of the component within its tree, or `null` if the reference does not hold a live component
+    /**
+     * Given a component reference, returns the path of that component within its component tree.
+     *
+     * @param {Component} component - A reference to a component.
+     * @param {Instantiator} [instantiator] - (optional) An instantiator to use for the lookup.
+     * @return {String[]} An array of {String} path segments of the component within its tree, or `null` if the reference does not hold a live component.
      */
     fluid.pathForComponent = function (component, instantiator) {
         instantiator = instantiator || fluid.getInstantiator(component) || fluid.globalInstantiator;
@@ -14934,9 +15132,10 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
     };
 
     /** Construct a component with the supplied options at the specified path in the component tree. The parent path of the location must already be a component.
-     * @param path {String|Array of String} Path where the new component is to be constructed, represented as a string or array of segments
-     * @param options {Object} Top-level options supplied to the component - must at the very least include a field <code>type</code> holding the component's type
-     * @param instantiator {Instantiator} [optional] The instantiator holding the component to be created - if blank, the global instantiator will be used
+     * @param {String|String[]} path - Path where the new component is to be constructed, represented as a string or array of string segments
+     * @param {Object} options - Top-level options supplied to the component - must at the very least include a field <code>type</code> holding the component's type
+     * @param {Instantiator} [instantiator] - [optional] The instantiator holding the component to be created - if blank, the global instantiator will be used
+     * @return {Object} The constructed component.
      */
     fluid.construct = function (path, options, instantiator) {
         var record = fluid.destroy(path, instantiator);
@@ -14949,8 +15148,9 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
     };
 
     /** Destroys a component held at the specified path. The parent path must represent a component, although the component itself may be nonexistent
-     * @param path {String|Array of String} Path where the new component is to be destroyed, represented as a string or array of segments
-     * @param instantiator {Instantiator} [optional] The instantiator holding the component to be destroyed - if blank, the global instantiator will be used
+     * @param {String|String[]} path - Path where the new component is to be destroyed, represented as a string or array of string segments
+     * @param {Instantiator} [instantiator] - [optional] The instantiator holding the component to be destroyed - if blank, the global instantiator will be used.
+     * @return {Object} - An object containing a reference to the parent of the destroyed element, and the member name of the destroyed component.
      */
     fluid.destroy = function (path, instantiator) {
         instantiator = instantiator || fluid.globalInstantiator;
@@ -14973,9 +15173,9 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
     };
 
    /** Construct an instance of a component as a child of the specified parent, with a well-known, unique name derived from its typeName
-    * @param parentPath {String|Array of String} Parent of path where the new component is to be constructed, represented as a string or array of segments
-    * @param options {String|Object} Options encoding the component to be constructed. If this is of type String, it is assumed to represent the component's typeName with no options
-    * @param instantiator {Instantiator} [optional] The instantiator holding the component to be created - if blank, the global instantiator will be used
+    * @param {String|String[]} parentPath - Parent of path where the new component is to be constructed, represented as a {String} or array of {String} segments
+    * @param {String|Object} options - Options encoding the component to be constructed. If this is of type String, it is assumed to represent the component's typeName with no options
+    * @param {Instantiator} [instantiator] - [optional] The instantiator holding the component to be created - if blank, the global instantiator will be used
     */
     fluid.constructSingle = function (parentPath, options, instantiator) {
         instantiator = instantiator || fluid.globalInstantiator;
@@ -15002,9 +15202,9 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
     };
 
     /** Destroy an instance created by `fluid.constructSingle`
-     * @param parentPath {String|Array of String} Parent of path where the new component is to be constructed, represented as a string or array of segments
-     * @param typeName {String} The type name used to construct the component (either `type` or `singleRootType` of the `options` argument to `fluid.constructSingle`
-     * @param instantiator {Instantiator} [optional] The instantiator holding the component to be created - if blank, the global instantiator will be used
+     * @param {String|String[]} parentPath - Parent of path where the new component is to be constructed, represented as a {String} or array of {String} segments
+     * @param {String} typeName - The type name used to construct the component (either `type` or `singleRootType` of the `options` argument to `fluid.constructSingle`
+     * @param {Instantiator} [instantiator] - [optional] The instantiator holding the component to be created - if blank, the global instantiator will be used
     */
     fluid.destroySingle = function (parentPath, typeName, instantiator) {
         instantiator = instantiator || fluid.globalInstantiator;
@@ -15016,9 +15216,9 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
 
     /** Registers and constructs a "linkage distribution" which will ensure that wherever a set of "input grades" co-occur, they will
      * always result in a supplied "output grades" in the component where they co-occur.
-     * @param linkageName {String} The name of the grade which will broadcast the resulting linkage. If required, this linkage can be destroyed by supplying this name to `fluid.destroySingle`.
-     * @param inputNames {Array of String} An array of grade names which will be tested globally for co-occurrence
-     * @param outputNames {String|Array of String} A single name or array of grade names which will be output into the co-occuring component
+     * @param {String} linkageName - The name of the grade which will broadcast the resulting linkage. If required, this linkage can be destroyed by supplying this name to `fluid.destroySingle`.
+     * @param {String[]} inputNames - An array of grade names which will be tested globally for co-occurrence
+     * @param {String|String[]} outputNames - A single grade name or array of grade names which will be output into the co-occuring component
      */
     fluid.makeGradeLinkage = function (linkageName, inputNames, outputNames) {
         fluid.defaults(linkageName, {
@@ -15032,8 +15232,8 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
     };
 
     /** Retrieves a component by global path.
-    * @param path {String|Array of String} The global path of the component to look up
-    * @return The component at the specified path, or undefined if none is found
+    * @param {String|String[]} path - The global path of the component to look up, expressed as a string or as an array of segments.
+    * @return {Object} - The component at the specified path, or undefined if none is found.
     */
     fluid.componentForPath = function (path) {
         return fluid.globalInstantiator.pathToComponent[fluid.isArrayable(path) ? path.join(".") : path];
@@ -15543,9 +15743,9 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
     };
 
     /** Parse the string form of a contextualised IoC reference into an object.
-     * @param reference {String} The reference to be parsed. The character at position `index` is assumed to be `{`
-     * @param index {String} [optional] The index into the string to start parsing at, if omitted, defaults to 0
-     * @param delimiter {Character} [optional] A character which will delimit the end of the context expression. If omitted, the expression continues to the end of the string.
+     * @param {String} reference - The reference to be parsed. The character at position `index` is assumed to be `{`
+     * @param {String} [index] - [optional] The index into the string to start parsing at, if omitted, defaults to 0
+     * @param {Character} [delimiter] - [optional] A character which will delimit the end of the context expression. If omitted, the expression continues to the end of the string.
      * @return {ParsedContext} A structure holding the parsed structure, with members
      *    context {String|ParsedContext} The context portion of the reference. This will be a `string` for a flat reference, or a further `ParsedContext` for a recursive reference
      *    path {String} The string portion of the reference
@@ -15877,10 +16077,10 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
         }
     };
 
-    /** "light" expanders, starting with the default expander invokeFunc,
+    /* "light" expanders, starting with the default expander invokeFunc,
          which makes an arbitrary function call (after expanding arguments) and are then replaced in
          the configuration with the call results. These will probably be abolished and replaced with
-         equivalent model transformation machinery **/
+         equivalent model transformation machinery */
 
     // This one is now positioned as the "universal expander" - default if no type supplied
     fluid.invokeFunc = function (deliverer, source, options) {
@@ -15983,7 +16183,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
         return root;
     };
 
-    /** Returns both the value and the path of the value held at the supplied EL path **/
+    /* Returns both the value and the path of the value held at the supplied EL path */
     fluid.model.getValueAndSegments = function (root, EL, config, initSegs) {
         return fluid.model.accessWithStrategy(root, EL, fluid.NO_VALUE, config, initSegs, true);
     };
@@ -16074,7 +16274,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
 
     var globalAccept = []; // TODO: reentrancy risk here. This holder is here to allow parseEL to make two returns without an allocation.
 
-    /** A version of fluid.model.parseEL that apples escaping rules - this allows path segments
+    /* A version of fluid.model.parseEL that apples escaping rules - this allows path segments
      * to contain period characters . - characters "\" and "}" will also be escaped. WARNING -
      * this current implementation is EXTREMELY slow compared to fluid.model.parseEL and should
      * not be used in performance-sensitive applications */
@@ -16104,15 +16304,13 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
         return prefix;
     };
 
-    /** Escapes a single path segment by replacing any character ".", "\" or "}" with
-     * itself prepended by \
-     */
+    /* Escapes a single path segment by replacing any character ".", "\" or "}" with itself prepended by \ */
     // supported, PUBLIC API function
     fluid.pathUtil.escapeSegment = function (segment) {
         return fluid.pathUtil.composeSegment("", segment);
     };
 
-    /**
+    /*
      * Compose a prefix and suffix EL path, where the prefix is already escaped.
      * Prefix may be empty, but not null. The suffix will become escaped.
      */
@@ -16124,7 +16322,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
         return fluid.pathUtil.composeSegment(prefix, suffix);
     };
 
-    /**
+    /*
      * Compose a set of path segments supplied as arguments into an escaped EL expression. Escaped version
      * of fluid.model.composeSegments
      */
@@ -16138,9 +16336,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
         return path;
     };
 
-    /** Helpful utility for use in resolvers - matches a path which has already been
-     * parsed into segments **/
-
+    /* Helpful utility for use in resolvers - matches a path which has already been parsed into segments */
     fluid.pathUtil.matchSegments = function (toMatch, segs, start, end) {
         if (end - start !== toMatch.length) {
             return false;
@@ -16185,6 +16381,62 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
     fluid.model.escapedSetConfig = {
         parser: fluid.model.escapedParser,
         strategies: [fluid.model.defaultFetchStrategy, fluid.model.defaultCreatorStrategy]
+    };
+
+    /** CONNECTED COMPONENTS AND TOPOLOGICAL SORTING **/
+
+    // Following "tarjan" at https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
+
+    /** Compute the strongly connected components of a graph, specified as a list of vertices and an accessor function.
+     * Returns an array of arrays of strongly connected vertices, with each component in topologically sorted order.
+     * @param {Vertex[]} vertices - An array of vertices of the graph to be processed. Each vertex object will be polluted
+     * with three extra fields: `tarjanIndex`, `lowIndex` and `onStack`.
+     * @param {Function} accessor - A function that returns the accessor vertex or vertices.
+     * @return {Array.<Vertex[]>} - An array of arrays of vertices.
+     */
+    fluid.stronglyConnected = function (vertices, accessor) {
+        var that = {
+            stack: [],
+            accessor: accessor,
+            components: [],
+            index: 0
+        };
+        vertices.forEach(function (vertex) {
+            if (vertex.tarjanIndex === undefined) {
+                fluid.stronglyConnectedOne(vertex, that);
+            }
+        });
+        return that.components;
+    };
+
+    // Perform one round of the Tarjan search algorithm using the state structure generated in fluid.stronglyConnected
+    fluid.stronglyConnectedOne = function (vertex, that) {
+        vertex.tarjanIndex = that.index;
+        vertex.lowIndex = that.index;
+        ++that.index;
+        that.stack.push(vertex);
+        vertex.onStack = true;
+        var outEdges = that.accessor(vertex);
+        outEdges.forEach(function (outVertex) {
+            if (outVertex.tarjanIndex === undefined) {
+                // Successor has not yet been visited; recurse on it
+                fluid.stronglyConnectedOne(outVertex, that);
+                vertex.lowIndex = Math.min(vertex.lowIndex, outVertex.lowIndex);
+            } else if (outVertex.onStack) {
+                // Successor is on the stack and hence in the current component
+                vertex.lowIndex = Math.min(vertex.lowIndex, outVertex.tarjanIndex);
+            }
+        });
+        // If vertex is a root node, pop the stack back as far as it and generate a component
+        if (vertex.lowIndex === vertex.tarjanIndex) {
+            var component = [], outVertex;
+            do {
+                outVertex = that.stack.pop();
+                outVertex.onStack = false;
+                component.push(outVertex);
+            } while (outVertex !== vertex);
+            that.components.push(component);
+        }
     };
 
     /** MODEL COMPONENT HIERARCHY AND RELAY SYSTEM **/
@@ -16241,11 +16493,45 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
         });
     };
 
+    /** Compute relay dependency out arcs for a group of initialising components.
+     * @param {Object} transacs - Hash of component id to local ChangeApplier transaction.
+     * @param {Object} mrec - Hash of component id to enlisted component record.
+     * @return {Object} - Hash of component id to list of enlisted component record.
+     */
+    fluid.computeInitialOutArcs = function (transacs, mrec) {
+        return fluid.transform(mrec, function (recel, id) {
+            var oneOutArcs = {};
+            var listeners = recel.that.applier.listeners.sortedListeners;
+            fluid.each(listeners, function (listener) {
+                if (listener.isRelay && !fluid.isExcludedChangeSource(transacs[id], listener.cond)) {
+                    var targetId = listener.targetId;
+                    if (targetId !== id) {
+                        oneOutArcs[targetId] = true;
+                    }
+                }
+            });
+            var oneOutArcList = Object.keys(oneOutArcs);
+            var togo = oneOutArcList.map(function (id) {
+                return mrec[id];
+            });
+            // No edge if the component is not enlisted - it will sort to the end via "completeOnInit"
+            fluid.remove_if(togo, function (rec) {
+                return rec === undefined;
+            });
+            return togo;
+        });
+    };
+
     fluid.sortCompleteLast = function (reca, recb) {
         return (reca.completeOnInit ? 1 : 0) - (recb.completeOnInit ? 1 : 0);
     };
 
-    // Operate all coordinated transactions by bringing models to their respective initial values, and then commit them all
+
+    /** Operate all coordinated transactions by bringing models to their respective initial values, and then commit them all
+     * @param {Component} that - A representative component of the collection for which the initial transaction is to be operated
+     * @param {Object} mrec - The global model transaction record for the init transaction. This is a hash indexed by component id
+     * to a model transaction record, as registered in `fluid.enlistModelComponent`. This has members `that`, `applier`, `complete`.
+     */
     fluid.operateInitialTransaction = function (that, mrec) {
         var transId = fluid.allocateGuid();
         var transRec = fluid.getModelTransactionRec(that, transId);
@@ -16257,8 +16543,28 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
         });
         // TODO: This sort has very little effect in any current test (can be replaced by no-op - see FLUID-5339) - but
         // at least can't be performed in reverse order ("FLUID-3674 event coordination test" will fail) - need more cases
-        var recs = fluid.values(mrec).sort(fluid.sortCompleteLast);
-        fluid.each(recs, function (recel) {
+
+        // Compute the graph of init transaction relays for FLUID-6234 - one day we will have to do better than this, since there
+        // may be finer structure than per-component - it may be that each piece of model area participates in this relation
+        // differently. But this will require even more ambitious work such as fragmenting all the initial model values along
+        // these boundaries.
+        var outArcs = fluid.computeInitialOutArcs(transacs, mrec);
+        var arcAccessor = function (mrec) {
+            return outArcs[mrec.that.id];
+        };
+        var recs = fluid.values(mrec);
+        var components = fluid.stronglyConnected(recs, arcAccessor);
+        var priorityIndex = 0;
+        components.forEach(function (component) {
+            component.forEach(function (recel) {
+                recel.initPriority = recel.completeOnInit ? Math.Infinity : priorityIndex++;
+            });
+        });
+
+        recs.sort(function (reca, recb) {
+            return reca.initPriority - recb.initPriority;
+        });
+        recs.forEach(function (recel) {
             var that = recel.that;
             var transac = transacs[that.id];
             if (recel.completeOnInit) {
@@ -16312,22 +16618,22 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
      * detects "references into model material" by looking for the first path segment in the path reference which holds the value "model". Some of its workflow is bypassed
      * in the special case of a reference representing an implicit model relay. In this case, ref will definitely be a String, and if it does not refer to model material, rather than
      * raising an error, the return structure will include a field <code>nonModel: true</code>
-     * @param that {Component} The component holding the reference
-     * @param name {String} A human-readable string representing the type of block holding the reference - e.g. "modelListeners"
-     * @param ref {String|ModelReference} The model reference to be parsed. This may have already been partially parsed at the original site - that is, a ModelReference is a
+     * @param {Component} that - The component holding the reference
+     * @param {String} name - A human-readable string representing the type of block holding the reference - e.g. "modelListeners"
+     * @param {String|ModelReference} ref - The model reference to be parsed. This may have already been partially parsed at the original site - that is, a ModelReference is a
      * structure containing
-     *     segs: {Array of String} An array of model path segments to be dereferenced in the target component (will become `modelSegs` in the final return)
+     *     segs: {String[]} An array of model path segments to be dereferenced in the target component (will become `modelSegs` in the final return)
      *     context: {String} An IoC reference to the component holding the model
-     * @param implicitRelay {Boolean} <code>true</code> if the reference was being resolved for an implicit model relay - that is,
+     * @param {Boolean} implicitRelay - <code>true</code> if the reference was being resolved for an implicit model relay - that is,
      * whether it occured within the `model` block itself. In this case, references to non-model material are not a failure and will simply be resolved
      * (by the caller) onto their targets (as constants). Otherwise, this function will issue a failure on discovering a reference to non-model material.
-     * @return A structure holding:
+     * @return {Object} - A structure holding:
      *    that {Component} The component whose model is the target of the reference. This may end up being constructed as part of the act of resolving the reference
      *    applier {Component} The changeApplier for the component <code>that</code>. This may end up being constructed as part of the act of resolving the reference
-     *    modelSegs {Array of String} An array of path segments into the model of the component
+     *    modelSegs {String[]} An array of path segments into the model of the component
      *    path {String} the value of <code>modelSegs</code> encoded as an EL path (remove client uses of this in time)
      *    nonModel {Boolean} Set if <code>implicitRelay</code> was true and the reference was not into a model (modelSegs/path will not be set in this case)
-     *    segs {Array of String} Holds the full array of path segments found by parsing the original reference - only useful in <code>nonModel</code> case
+     *    segs {String[]} Holds the full array of path segments found by parsing the original reference - only useful in <code>nonModel</code> case
      */
     fluid.parseValidModelReference = function (that, name, ref, implicitRelay) {
         var reject = function () {
@@ -16424,6 +16730,24 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
         fluid.recordListener(applier.modelChanged, sourceListener, shadow, listenerId);
     };
 
+    /** Called when a relay listener registered using `fluid.registerDirectChangeRelay` enlists in a transaction. Opens a local
+     * representative of this transaction on `targetApplier`, creates and stores a "transaction element" within the global transaction
+     * record keyed by the target applier's id. The transaction element is also pushed onto the `relays` member of the global transaction record - they
+     * will be sorted by priority here when changes are fired.
+     * @param {TransactionRecord} transRec - The global record for the current ChangeApplier transaction as retrieved from `fluid.getModelTransactionRec`
+     * @param {ChangeApplier} targetApplier - The ChangeApplier to which outgoing changes will be applied. A local representative of the transaction will be opened on this applier and returned.
+     * @param {String} transId - The global id of this transaction
+     * @param {Object} options - The `options` argument supplied to `fluid.registerDirectChangeRelay`. This will be stored in the returned transaction element
+     * - note that only the member `update` is ever used in `fluid.model.updateRelays` - TODO: We should thin this out
+     * @param {Object} npOptions - Namespace and priority options
+     *    namespace {String} [optional] The namespace attached to this relay definition
+     *    priority {String} [optional] The (unparsed) priority attached to this relay definition
+     * @return {Object} A "transaction element" holding information relevant to this relay's enlistment in the current transaction. This includes fields:
+     *     transaction {Transaction} The local representative of this transaction created on `targetApplier`
+     *     relayCount {Integer} The number of times this relay has been activated in this transaction
+     *     namespace {String} [optional] Namespace for this relay definition
+     *     priority {Priority} The parsed priority definition for this relay
+     */
     fluid.registerRelayTransaction = function (transRec, targetApplier, transId, options, npOptions) {
         var newTrans = targetApplier.initiate("relay", null, transId); // non-top-level transaction will defeat postCommit
         var transEl = transRec[targetApplier.applierId] = {transaction: newTrans, relayCount: 0, namespace: npOptions.namespace, priority: npOptions.priority, options: options};
@@ -16453,12 +16777,33 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
     // required within the "overall" transaction whilst genuine (external) changes continue to arrive.
 
     // TODO: Vast overcomplication and generation of closure garbage. SURELY we should be able to convert this into an externalised, arg-ist form
+    /** Registers a listener operating one leg of a model relay relation, connecting the source and target. Called once or twice from `fluid.connectModelRelay` -
+     * see the comment there for the three cases involved. Note that in its case iii)B) the applier to bind to is not the one attached to `target` but is instead
+     * held in `options.targetApplier`.
+     * @param {Object} target - The target component at the end of the relay.
+     * @param {String[]} targetSegs - String segments representing the path in the target where outgoing changes are to be fired
+     * @param {Component|null} source - The source component from where changes will be listened to. May be null if the change source is a relay document.
+     * @param {String[]} sourceSegs - String segments representing the path in the source component's model at which changes will be listened to
+     * @param {String} linkId - The unique id of this relay arc. This will be used as a key within the active transaction record to look up dynamic information about
+     *     activation of the link within that transaction (currently just an activation count)
+     * @param {Function|null} transducer - A function which will be invoked when a change is to be relayed. This is one of the adapters constructed in "makeTransformPackage"
+     *     and is set in all cases other than iii)B) (collecting changes to contextualised relay). Note that this will have a member `cond` as returned from
+     *    `fluid.model.parseRelayCondition` encoding the condition whereby changes should be excluded from the transaction. The rule encoded by the condition
+     *    will be applied by the function within `transducer`.
+     * @param {Object} options -
+     *    transactional {Boolean} `true` in case iii) - although this only represents `half-transactions`, `false` in others since these are resolved immediately with no granularity
+     *    targetApplier {ChangeApplier} [optional] in case iii)B) holds the applier for the contextualised relay document which outgoing changes should be applied to
+     *    sourceApplier {ChangeApplier} [optional] in case ii) holds the applier for the contextualised relay document on which we listen for outgoing changes
+     * @param {Object} npOptions - Namespace and priority options
+     *    namespace {String} [optional] The namespace attached to this relay definition
+     *    priority {String} [optional] The (unparsed) priority attached to this relay definition
+     */
     fluid.registerDirectChangeRelay = function (target, targetSegs, source, sourceSegs, linkId, transducer, options, npOptions) {
-        var targetApplier = options.targetApplier || target.applier; // implies the target is a relay document
-        var sourceApplier = options.sourceApplier || source.applier; // implies the source is a relay document - listener will be transactional
+        var targetApplier = options.targetApplier || target.applier; // first branch implies the target is a relay document
+        var sourceApplier = options.sourceApplier || source.applier; // first branch implies the source is a relay document - listener will be transactional
         var applierId = targetApplier.applierId;
         targetSegs = fluid.makeArray(targetSegs);
-        sourceSegs = sourceSegs ? fluid.makeArray(sourceSegs) : sourceSegs; // take copies since originals will be trashed
+        sourceSegs = fluid.makeArray(sourceSegs); // take copies since originals will be trashed
         var sourceListener = function (newValue, oldValue, path, changeRequest, trans, applier) {
             var transId = trans.id;
             var transRec = fluid.getModelTransactionRec(target, transId);
@@ -16483,7 +16828,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
                     // the "forwardAdapter"
                     transducer(existing.transaction, options.sourceApplier ? undefined : newValue, sourceSegs, targetSegs, changeRequest);
                 } else {
-                    if (!options.noRelayDeletesDirect && changeRequest && changeRequest.type === "DELETE") {
+                    if (changeRequest && changeRequest.type === "DELETE") {
                         existing.transaction.fireChangeRequest({type: "DELETE", segs: targetSegs});
                     }
                     if (newValue !== undefined) {
@@ -16492,17 +16837,17 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
                 }
             }
         };
-        var spec;
-        if (sourceSegs) {
-            spec = sourceApplier.modelChanged.addListener({
-                isRelay: true,
-                segs: sourceSegs,
-                transactional: options.transactional
-            }, sourceListener);
-            if (fluid.passLogLevel(fluid.logLevel.TRACE)) {
-                fluid.log(fluid.logLevel.TRACE, "Adding relay listener with listenerId " + spec.listenerId + " to source applier with id " +
-                    sourceApplier.applierId + " from target applier with id " + applierId + " for target component with id " + target.id);
-            }
+        var spec = sourceApplier.modelChanged.addListener({
+            isRelay: true,
+            cond: transducer && transducer.cond,
+            targetId: target.id, // these two fields for debuggability
+            targetApplierId: targetApplier.id,
+            segs: sourceSegs,
+            transactional: options.transactional
+        }, sourceListener);
+        if (fluid.passLogLevel(fluid.logLevel.TRACE)) {
+            fluid.log(fluid.logLevel.TRACE, "Adding relay listener with listenerId " + spec.listenerId + " to source applier with id " +
+                sourceApplier.applierId + " from target applier with id " + applierId + " for target component with id " + target.id);
         }
         if (source) { // TODO - we actually may require to register on THREE sources in the case modelRelay is attached to a
             // component which is neither source nor target. Note there will be problems if source, say, is destroyed and recreated,
@@ -16514,9 +16859,39 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
         }
     };
 
-    // When called during parsing a contextualised model relay document, these arguments are reversed - "source" refers to the
-    // current component, and "target" refers successively to the various "source" components.
-    // "options" will be transformPackage
+    /** Connect a model relay relation between model material. This is called in three scenarios:
+     * i) from `fluid.parseModelRelay` when parsing an uncontextualised model relay (one with a static transform document), to
+     * directly connect the source and target of the relay
+     * ii) from `fluid.parseModelRelay` when parsing a contextualised model relay (one whose transform document depends on other model
+     * material), to connect updates emitted from the transform document's applier onto the relay ends (both source and target)
+     * iii) from `fluid.parseImplicitRelay` when parsing model references found within contextualised model relay to bind changes emitted
+     * from the target of the reference onto the transform document's applier. These may apply directly to another component's model (in its case
+     * A) or apply to a relay document (in its case B)
+     *
+     * This function will make one or two calls to `fluid.registerDirectChangeRelay` in order to set up each leg of any required relay.
+     * Note that in case iii)B) the component referred to as our argument `target` is actually the "source" of the changes (that is, the one encountered
+     * while traversing the transform document), and our argument `source` is the component holding the transform, and so
+     * the call to `fluid.registerDirectChangeRelay` will have `source` and `target` reversed (`fluid.registerDirectChangeRelay` will bind to the `targetApplier`
+     * in the options rather than source's applier).
+     * @param {Component} source - The component holding the material giving rise to the relay, or the one referred to by the `source` member
+     *   of the configuration in case ii), if there is one
+     * @param {Array|null} sourceSegs - An array of parsed string segments of the `source` relay reference in case i), or the offset into the transform
+     *   document of the reference component in case iii), otherwise `null` (case ii))
+     * @param {Component} target - The component holding the model relay `target` in cases i) and ii), or the component at the other end of
+     *   the model reference in case iii) (in this case in fact a "source" for the changes.
+     * @param {Array} targetSegs - An array of parsed string segments of the `target` reference in cases i) and ii), or of the model reference in
+     *   case iii)
+     * @param {Object} options - A structure describing the relay, allowing discrimination of the various cases above. This is derived from the return from
+     * `fluid.makeTransformPackage` but will have some members filtered in different cases. This contains members:
+     *    update {Function} A function to be called at the end of a "half-transaction" when all pending updates have been applied to the document's applier.
+     *        This discriminates case iii)
+     *    targetApplier {ChangeApplier} The ChangeApplier for the relay document, in case iii)B)
+     *    forwardApplier (ChangeApplier} The ChangeApplier for the relay document, in cases ii) and iii)B) (only used in latter case)
+     *    forwardAdapter {Adapter} A function accepting (transaction, newValue) to pass through the forward leg of the relay. Contains a member `cond` holding the parsed relay condition.
+     *    backwardAdapter {Adapter} A function accepting (transaction, newValue) to pass through the backward leg of the relay. Contains a member `cond` holding the parsed relay condition.
+     *    namespace {String} Namespace for any relay definition
+     *    priority {String} Priority for any relay definition or synthetic "first" for iii)A)
+     */
     fluid.connectModelRelay = function (source, sourceSegs, target, targetSegs, options) {
         var linkId = fluid.allocateGuid();
         function enlistComponent(component) {
@@ -16530,28 +16905,26 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
             }
         }
         enlistComponent(target);
-        enlistComponent(source); // role of "source" and "target" may have been swapped in a modelRelay document
+        enlistComponent(source); // role of "source" and "target" are swapped in case iii)B)
         var npOptions = fluid.filterKeys(options, ["namespace", "priority"]);
 
-        if (options.update) { // it is a call via parseImplicitRelay for a relay document
-            if (options.targetApplier) {
-                // register changes from the model onto changes to the model relay document
+        if (options.update) { // it is a call for a relay document - ii) or iii)B)
+            if (options.targetApplier) { // case iii)B)
+                // We are in the middle of parsing a contextualised relay, and this call has arrived via its parseImplicitRelay.
+                // register changes from the target model onto changes to the model relay document
                 fluid.registerDirectChangeRelay(source, sourceSegs, target, targetSegs, linkId, null, {
                     transactional: false,
                     targetApplier: options.targetApplier,
                     update: options.update
                 }, npOptions);
-            } else {
-                // We are in the middle of parsing a contextualised relay, and this call has arrived via its parseImplicitRelay.
+            } else { // case ii), contextualised relay overall output
                 // Rather than bind source-source, instead register the "half-transactional" listener which binds changes
-                // from the relay itself onto the target
+                // from the relay document itself onto the target
                 fluid.registerDirectChangeRelay(target, targetSegs, source, [], linkId + "-transform", options.forwardAdapter, {transactional: true, sourceApplier: options.forwardApplier}, npOptions);
             }
-        } else { // more efficient branch where relay is uncontextualised
+        } else { // case i) or iii)A): more efficient, old-fashioned branch where relay is uncontextualised
             fluid.registerDirectChangeRelay(target, targetSegs, source, sourceSegs, linkId, options.forwardAdapter, {transactional: false}, npOptions);
-            if (sourceSegs) {
-                fluid.registerDirectChangeRelay(source, sourceSegs, target, targetSegs, linkId, options.backwardAdapter, {transactional: false}, npOptions);
-            }
+            fluid.registerDirectChangeRelay(source, sourceSegs, target, targetSegs, linkId, options.backwardAdapter, {transactional: false}, npOptions);
         }
     };
 
@@ -16561,6 +16934,12 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
         return targetSpec;
     };
 
+    /** Determines whether the supplied transaction should have changes not propagated into it as a result of being excluded by a
+     * condition specification.
+     * @param {Transaction} transaction - A local ChangeApplier transaction, with member `fullSources` holding all currently active sources
+     * @param {ConditionSpec} spec - A parsed relay condition specification, as returned from `fluid.model.parseRelayCondition`.
+     * @return {Boolean} `true` if changes should be excluded from the supplied transaction according to the supplied specification
+     */
     fluid.isExcludedChangeSource = function (transaction, spec) {
         if (!spec || !spec.excludeSource) { // mergeModelListeners initModelEvent fabricates a fake spec that bypasses processing
             return false;
@@ -16622,6 +17001,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
             }
             fluid.model.guardedAdapter(transaction, forwardCond, that.forwardAdapterImpl, arguments);
         };
+        that.forwardAdapter.cond = forwardCond; // Used when parsing graph in init transaction
         // fired from fluid.model.updateRelays via invalidator event
         that.runTransform = function (trans) {
             trans.commit(); // this will reach the special "half-transactional listener" registered in fluid.connectModelRelay,
@@ -16633,10 +17013,12 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
         that.forwardApplier.isRelayApplier = true; // special annotation so these can be discovered in the transaction record
         that.invalidator = fluid.makeEventFirer({name: "Invalidator for model relay with applier " + that.forwardApplier.applierId});
         if (sourcePath !== null) {
+            // TODO: backwardApplier is unused
             that.backwardApplier = fluid.makeHolderChangeApplier(that.backwardHolder);
             that.backwardAdapter = function (transaction) {
                 fluid.model.guardedAdapter(transaction, backwardCond, that.backwardAdapterImpl, arguments);
             };
+            that.backwardAdapter.cond = backwardCond;
         }
         that.update = that.invalidator.fire; // necessary so that both routes to fluid.connectModelRelay from here hit the first branch
         var implicitOptions = {
@@ -16673,11 +17055,18 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
         always:   {}
     };
 
+    /** Parse a relay condition specification, e.g. of the form `{includeSource: "init"}` or `never` into a hash representation
+     * suitable for rapid querying.
+     * @param {String|Object} condition - A relay condition specification, appearing in the section `forward` or `backward` of a
+     * relay definition
+     * @return {RelayCondition} The parsed condition, holding members `includeSource` and `excludeSource` each with a hash to `true`
+     * of referenced sources
+     */
     fluid.model.parseRelayCondition = function (condition) {
         if (condition === "initOnly") {
             fluid.log(fluid.logLevel.WARN, "The relay condition \"initOnly\" is deprecated: Please use the form 'includeSource: \"init\"' instead");
         } else if (condition === "liveOnly") {
-            fluid.log(fluid.logLevel.WARN, "The relay condition \"initOnly\" is deprecated: Please use the form 'excludeSource: \"init\"' instead");
+            fluid.log(fluid.logLevel.WARN, "The relay condition \"liveOnly\" is deprecated: Please use the form 'excludeSource: \"init\"' instead");
         }
         var exclusionRec;
         if (!condition) {
@@ -16693,6 +17082,14 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
         return fluid.parseSourceExclusionSpec({}, exclusionRec);
     };
 
+    /** Parse a single model relay record as appearing nested within the `modelRelay` block in a model component's
+     * options. By various calls to `fluid.connectModelRelay` this will set up the structure operating the live
+     * relay during the component#s lifetime.
+     * @param {Component} that - The component holding the record, currently instantiating
+     * @param {Object} mrrec - The model relay record. This must contain either a member `singleTransform` or `transform` and may also contain
+     * members `namespace`, `path`, `priority`, `forward` and `backward`
+     * @param {String} key -
+     */
     fluid.parseModelRelay = function (that, mrrec, key) {
         var parsedSource = mrrec.source !== undefined ? fluid.parseValidModelReference(that, "modelRelay record member \"source\"", mrrec.source) :
             {path: null, modelSegs: null};
@@ -16706,22 +17103,42 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
         var forwardCond = fluid.model.parseRelayCondition(mrrec.forward), backwardCond = fluid.model.parseRelayCondition(mrrec.backward);
 
         var transformPackage = fluid.makeTransformPackage(that, transform, parsedSource.path, parsedTarget.path, forwardCond, backwardCond, namespace, mrrec.priority);
-        var noRelayDeletes = {noRelayDeletesDirect : true}; // DELETE relay is handled in the transducer itself
         if (transformPackage.refCount === 0) { // There were no implicit relay elements found in the relay document - it can be relayed directly
-            // This first call binds changes emitted from the relay ends to each other, synchronously
+            // Case i): Bind changes emitted from the relay ends to each other, synchronously
             fluid.connectModelRelay(parsedSource.that || that, parsedSource.modelSegs, parsedTarget.that, parsedTarget.modelSegs,
             // Primarily, here, we want to get rid of "update" which is what signals to connectModelRelay that this is a invalidatable relay
-                fluid.filterKeys(transformPackage, ["forwardAdapter", "backwardAdapter", "namespace", "priority"])
-                , noRelayDeletes);
+                fluid.filterKeys(transformPackage, ["forwardAdapter", "backwardAdapter", "namespace", "priority"]));
         } else {
             if (parsedSource.modelSegs) {
                 fluid.fail("Error in model relay definition: If a relay transform has a model dependency, you can not specify a \"source\" entry - please instead enter this as \"input\" in the transform specification. Definition was ", mrrec, " for component ", that);
             }
-            // This second call binds changes emitted from the relay document itself onto the relay ends (using the "half-transactional system")
-            fluid.connectModelRelay(parsedSource.that || that, parsedSource.modelSegs, parsedTarget.that, parsedTarget.modelSegs, transformPackage);
+            // Case ii): Binds changes emitted from the relay document itself onto the relay ends (using the "half-transactional system")
+            fluid.connectModelRelay(that, null, parsedTarget.that, parsedTarget.modelSegs, transformPackage);
         }
     };
 
+    /** Traverses a model document written within a component's options, parsing any IoC references looking for
+     * i) references to general material, which will be fetched and interpolated now, and ii) "implicit relay" references to the
+     * model areas of other components, which will be used to set up live synchronisation between the area in this component where
+     * they appear and their target, as well as setting up initial synchronisation to compute the initial contents.
+     * This is called in two situations: A) parsing the `model` configuration option for a model component, and B) parsing the
+     * `transform` member (perhaps derived from `singleTransform`) of a `modelRelay` block for a model component. It calls itself
+     * recursively as it progresses through the model document material with updated `segs`
+     * @param {Component} that - The component holding the model document
+     * @param {Any} modelRec - The model document specification to be parsed
+     * @param {String[]} segs - The array of string path segments from the root of the entire model document to the point of current parsing
+     * @param {Object} options - Configuration options (mutable) governing this parse. This is primarily used to hand as the 5th argument to
+     * `fluid.connectModelRelay` for any model references found, and contains members
+     *    refCount {Integer} An count incremented for every call to `fluid.connectModelRelay` setting up a synchronizing relay for every
+     * reference to model material encountered
+     *    priority {String} The unparsed priority member attached to this record, or `first` for a parse of `model` (case A)
+     *    namespace {String} [optional] A namespace attached to this transform, if we are parsing a transform
+     *    targetApplier {ChangeApplier} [optional] The ChangeApplier for this transform document, if it is a transform, empty otherwise
+     *    update {Function} [optional] A function to be called on conclusion of a "half-transaction" where all currently pending updates have been applied
+     * to this transform document. This function will update/regenerate the relay transform functions used to relay changes between the transform
+     * ends based on the updated document.
+     * @return {Any} - The resulting model value.
+     */
     fluid.parseImplicitRelay = function (that, modelRec, segs, options) {
         var value;
         if (fluid.isIoCReference(modelRec)) {
@@ -16963,7 +17380,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
 
     /** CHANGE APPLIER **/
 
-    /** Dispatches a list of changes to the supplied applier */
+    /* Dispatches a list of changes to the supplied applier */
     fluid.fireChanges = function (applier, changes) {
         for (var i = 0; i < changes.length; ++i) {
             applier.fireChangeRequest(changes[i]);
@@ -17109,7 +17526,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
      * not contain circular links.
      * @param modela The first model to be compared
      * @param modelb The second model to be compared
-     * @param options {Object} If supplied, will receive a map and summary of the change content between the objects. Structure is:
+     * @param {Object} options - If supplied, will receive a map and summary of the change content between the objects. Structure is:
      *     changeMap: {Object/String} An isomorphic map of the object structures to values "ADD" or "DELETE" indicating
      * that values have been added/removed at that location. Note that in the case the object structure differs at the root, <code>changeMap</code> will hold
      * the plain String value "ADD" or "DELETE"
@@ -17351,12 +17768,15 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
                     spec.segsArray = [spec.segs];
                 }
             }
-            fluid.parseSourceExclusionSpec(spec, spec);
-            spec.wildcard = fluid.accumulate(fluid.transform(spec.segsArray, function (segs) {
-                return fluid.contains(segs, "*");
-            }), fluid.add, 0);
-            if (spec.wildcard && spec.segsArray.length > 1) {
-                fluid.fail("Error in model listener specification ", spec, " - you may not supply a wildcard pattern as one of a set of multiple paths to be matched");
+            if (!spec.isRelay) {
+                // This acts for listeners registered externally. For relays, the exclusion spec is stored in "cond"
+                fluid.parseSourceExclusionSpec(spec, spec);
+                spec.wildcard = fluid.accumulate(fluid.transform(spec.segsArray, function (segs) {
+                    return fluid.contains(segs, "*");
+                }), fluid.add, 0);
+                if (spec.wildcard && spec.segsArray.length > 1) {
+                    fluid.fail("Error in model listener specification ", spec, " - you may not supply a wildcard pattern as one of a set of multiple paths to be matched");
+                }
             }
             var firer = that[spec.transactional ? "transListeners" : "listeners"];
             firer.addListener(spec);
@@ -17371,12 +17791,14 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
             ation.fireChangeRequest(changeRequest);
             ation.commit();
         };
+
         /**
          * Initiate a fresh transaction on this applier, perhaps coordinated with other transactions sharing the same id across the component tree
          * Arguments all optional
-         * localSource {String}: "local", "relay" or null Local source identifiers only good for transaction's representative on this applier
-         *  globalSources: {String|Array of String|Object String->true} Global source identifiers common across this transaction
-         *  transactionId: {String} Global transaction id to enlist with
+         * @param {String} localSource  - "local", "relay" or null Local source identifiers only good for transaction's representative on this applier
+         * @param {String|Array|Object} globalSources - Global source identifiers common across this transaction, expressed as a single string, an array of strings, or an object with a "toString" method.
+         * @param {String} transactionId - Global transaction id to enlist with.
+         * @return {Object} - The component initiating the change.
          */
         that.initiate = function (localSource, globalSources, transactionId) {
             localSource = globalSources === "init" ? null : (localSource || "local"); // supported values for localSource are "local" and "relay" - globalSource of "init" defeats defaulting of localSource to "local"
@@ -17441,10 +17863,10 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
      * applied at a non-root path in a model). The returned array of
      * change records may be used with fluid.fireChanges().
      *
-     * @param value {Any} Model value to compare
-     * @param oldValue {Any} Model value to compare
-     * @param changePathPrefix {String|Array of String} [optional] Path prefix to prepend to change record paths
-     * @return {Array of Object} An array of change records
+     * @param {Any} value - Model value to compare.
+     * @param {Any} oldValue - Model value to compare.
+     * @param {String|Array} [changePathPrefix] - [optional] Path prefix to prepend to change record paths, expressed as a string or an array of string segments.
+     * @return {Array} - An array of change record objects.
      */
     fluid.modelPairToChanges = function (value, oldValue, changePathPrefix) {
         changePathPrefix = changePathPrefix || "";
@@ -17472,11 +17894,11 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
      * the model, our path from the root of the model is recorded in
      * the 'changeSegs' argument.
      *
-     * @param value {Any} Model value
-     * @param changePathPrefixSegs {Array of String} Path prefix to prepend to change record paths
-     * @param changeMap {String|Object} The changeMap structure from fluid.model.diff()
-     * @param changeSegs {Array of String} Our path relative to the model value root
-     * @param changes {Array of Object} The accumulated change records
+     * @param {Any} value - Model value
+     * @param {String[]} changePathPrefixSegs - Path prefix to prepend to change record paths, expressed as an array of string segments.
+     * @param {String|Object} changeMap - The changeMap structure from fluid.model.diff().
+     * @param {String[]} changeSegs - Our path relative to the model value root, expressed as an array of string segments.
+     * @param {Object[]} changes - The accumulated change record objects.
      */
     fluid.modelPairToChangesImpl = function (value, changePathPrefixSegs, changeMap, changeSegs, changes) {
         if (changeMap === "ADD") {
@@ -17599,7 +18021,7 @@ var fluid = fluid || fluid_3_0_0;
         };
     };
 
-    /** Accepts two fully escaped paths, either of which may be empty or null **/
+    /* Accepts two fully escaped paths, either of which may be empty or null */
     fluid.model.composePaths = function (prefix, suffix) {
         prefix = prefix === 0 ? "0" : prefix || "";
         suffix = suffix === 0 ? "0" : suffix || "";
@@ -17782,31 +18204,31 @@ var fluid = fluid || fluid_3_0_0;
 
     fluid.registerNamespace("fluid.pathUtil");
 
-    /** Parses a path segment, following escaping rules, starting from character index i in the supplied path */
+    /* Parses a path segment, following escaping rules, starting from character index i in the supplied path */
     fluid.pathUtil.getPathSegment = function (path, i) {
         fluid.pathUtil.getPathSegmentImpl(globalAccept, path, i);
         return globalAccept[0];
     };
-    /** Returns just the head segment of an EL path */
+    /* Returns just the head segment of an EL path */
     fluid.pathUtil.getHeadPath = function (path) {
         return fluid.pathUtil.getPathSegment(path, 0);
     };
 
-    /** Returns all of an EL path minus its first segment - if the path consists of just one segment, returns "" */
+    /* Returns all of an EL path minus its first segment - if the path consists of just one segment, returns "" */
     fluid.pathUtil.getFromHeadPath = function (path) {
         var firstdot = fluid.pathUtil.getPathSegmentImpl(null, path, 0);
         return firstdot === path.length ? "" : path.substring(firstdot + 1);
     };
+
     /** Determines whether a particular EL path matches a given path specification.
      * The specification consists of a path with optional wildcard segments represented by "*".
-     * @param spec (string) The specification to be matched
-     * @param path (string) The path to be tested
-     * @param exact (boolean) Whether the path must exactly match the length of the specification in
+     * @param {String} spec - The specification to be matched
+     * @param {String} path - The path to be tested
+     * @param {Boolean} exact - Whether the path must exactly match the length of the specification in
      * terms of path segments in order to count as match. If exact is falsy, short specifications will
      * match all longer paths as if they were padded out with "*" segments
-     * @return (array of string) The path segments which matched the specification, or <code>null</code> if there was no match
+     * @return {Array|null} - An array of {String} path segments which matched the specification, or <code>null</code> if there was no match.
      */
-
     fluid.pathUtil.matchPath = function (spec, path, exact) {
         var togo = [];
         while (true) {
@@ -17929,12 +18351,10 @@ var fluid = fluid || fluid_3_0_0;
         if (multiInput) {
             fluid.model.transform.accumulateMultiInputPaths(defaults.inputVariables, transformSpec, transformer, transformer.inputPaths);
         }
-        if (!multiInput && !standardInput) {
-            var collector = defaults.collectInputPaths;
-            if (collector) {
-                var collected = fluid.makeArray(fluid.invokeGlobalFunction(collector, [transformSpec, transformer]));
-                Array.prototype.push.apply(transformer.inputPaths, collected); // push all elements of collected onto inputPaths
-            }
+        var collector = defaults.collectInputPaths;
+        if (collector) {
+            var collected = fluid.makeArray(fluid.invokeGlobalFunction(collector, [transformSpec, transformer]));
+            Array.prototype.push.apply(transformer.inputPaths, collected); // push all elements of collected onto inputPaths
         }
     };
 
@@ -18018,7 +18438,7 @@ var fluid = fluid || fluid_3_0_0;
      * defined via their individual invertConfiguration functions, or else `fluid.model.transform.uninvertibleTransform`
      * if any of them do not.
      * Note that this algorithm will give faulty results in many cases of compound transformation documents.
-     * @param rules {Transform} The model transformation document to be inverted
+     * @param {Transform} rules - The model transformation document to be inverted
      * @return {Transform} The inverse transformation document if it can be computed easily, or
      * `fluid.model.transform.uninvertibleTransform` if it is clear that it cannot.
      */
@@ -18035,8 +18455,9 @@ var fluid = fluid || fluid_3_0_0;
     };
 
     /** Compute the paths which will be read from the input document of the supplied transformation if it were operated.
-     * @param rules {Transform} The transformation for which the input paths are to be computed
-     * @return {Array of String} An array of paths which will be read by the document.
+     *
+     * @param {Transform} rules - The transformation for which the input paths are to be computed.
+     * @return {Array} - An array of paths which will be read by the document.
      */
     fluid.model.transform.collectInputPaths = function (rules) {
         var transformer = {
@@ -18044,7 +18465,9 @@ var fluid = fluid || fluid_3_0_0;
         };
         fluid.model.transform.makeStrategy(transformer, fluid.model.transform.handleCollectStrategy);
         transformer.expand(rules);
-        return transformer.inputPaths;
+        // Deduplicate input paths
+        var inputPathHash = fluid.arrayToHash(transformer.inputPaths);
+        return Object.keys(inputPathHash);
     };
 
     // unsupported, NON-API function
@@ -18097,7 +18520,7 @@ var fluid = fluid || fluid_3_0_0;
         };
     };
 
-    /** Transforms a model by a sequence of rules. Parameters as for fluid.model.transform,
+    /* Transforms a model by a sequence of rules. Parameters as for fluid.model.transform,
      * only with an array accepted for "rules"
      */
     fluid.model.transform.sequence = function (source, rules, options) {
@@ -18112,8 +18535,7 @@ var fluid = fluid || fluid_3_0_0;
         return pdiff === 0 ? changea.sequence - changeb.sequence : pdiff;
     };
 
-   /** Fires an accumulated set of change requests in increasing order of target pathlength
-     */
+    /* Fires an accumulated set of change requests in increasing order of target pathlength */
     fluid.model.fireSortedChanges = function (changes, applier) {
         changes.sort(fluid.model.compareByPathLength);
         fluid.fireChanges(applier, changes);
@@ -18131,13 +18553,14 @@ var fluid = fluid || fluid_3_0_0;
      *       }
      *   }
      *
-     * @param {Object} source the model to transform
-     * @param {Object} rules a rules object containing instructions on how to transform the model
-     * @param {Object} options a set of rules governing the transformations. At present this may contain
+     * @param {Object} source - the model to transform
+     * @param {Object} rules - a rules object containing instructions on how to transform the model
+     * @param {Object} options - a set of rules governing the transformations. At present this may contain
      * the values <code>isomorphic: true</code> indicating that the output model is to be governed by the
      * same schema found in the input model, or <code>flatSchema</code> holding a flat schema object which
      * consists of a hash of EL path specifications with wildcards, to the values "array"/"object" defining
      * the schema to be used to construct missing trunk values.
+     * @return {Any} The transformed model.
      */
     fluid.model.transformWithRules = function (source, rules, options) {
         options = options || {};
@@ -18192,7 +18615,7 @@ var fluid = fluid || fluid_3_0_0;
     $.extend(fluid.model.transformWithRules, fluid.model.transform);
     fluid.model.transform = fluid.model.transformWithRules;
 
-    /** Utility function to produce a standard options transformation record for a single set of rules **/
+    /* Utility function to produce a standard options transformation record for a single set of rules */
     fluid.transformOne = function (rules) {
         return {
             transformOptions: {
@@ -18202,7 +18625,7 @@ var fluid = fluid || fluid_3_0_0;
         };
     };
 
-    /** Utility function to produce a standard options transformation record for multiple rules to be applied in sequence **/
+    /* Utility function to produce a standard options transformation record for multiple rules to be applied in sequence */
     fluid.transformMany = function (rules) {
         return {
             transformOptions: {
@@ -18441,7 +18864,7 @@ var fluid = fluid || fluid_2_0_0;
     };
 
     fluid.defaults("fluid.transforms.valueMapper", {
-        gradeNames: ["fluid.transformFunction", "fluid.lens"],
+        gradeNames: ["fluid.lens"],
         invertConfiguration: "fluid.transforms.valueMapper.invert",
         collectInputPaths: "fluid.transforms.valueMapper.collect"
     });
@@ -18552,7 +18975,7 @@ var fluid = fluid || fluid_2_0_0;
 
     fluid.transforms.valueMapper.collect = function (transformSpec, transformer) {
         var togo = [];
-        fluid.model.transform.accumulateInputPath(transformSpec.defaultInputPath, transformer, togo);
+        fluid.model.transform.accumulateStandardInputPath("defaultInput", transformSpec, transformer, togo);
         fluid.each(transformSpec.match, function (option) {
             fluid.model.transform.accumulateInputPath(option.inputPath, transformer, togo);
         });
@@ -18594,7 +19017,7 @@ var fluid = fluid || fluid_2_0_0;
         return output;
     };
 
-    /**
+    /*
      * NON-API function; Copies the entire transformSpec with the following modifications:
      * * A new type is set (from argument)
      * * each [key]=value entry in the options is swapped to be: [value]=key
@@ -18651,7 +19074,7 @@ var fluid = fluid || fluid_2_0_0;
 
     /* -------- deindexIntoArrayByKey and indexArrayByKey -------------------- */
 
-    /**
+    /*
      * Transforms the given array to an object.
      * Uses the transformSpec.options.key values from each object within the array as new keys.
      *
@@ -18716,16 +19139,16 @@ var fluid = fluid || fluid_2_0_0;
         invertConfiguration: "fluid.transforms.indexArrayByKey.invert"
     });
 
-    /** Transforms an array of objects into an object of objects, by indexing using the option "key" which must be supplied within the transform specification.
-    * The key of each element will be taken from the value held in each each original object's member derived from the option value in "key" - this member should
-    * exist in each array element. The member with name agreeing with "key" and its value will be removed from each original object before inserting into the returned
-    * object.
-    * For example,
-    * <code>fluid.transforms.indexArrayByKey([{k: "e1", b: 1, c: 2}, {k: "e2", b: 2: c: 3}], {key: "k"})</code> will output the object
-    * <code>{e1: {b: 1, c: 2}, e2: {b: 2: c, 3}</code>
-    * Note: This transform frequently arises in the context of data which arose in XML form, which often represents "morally indexed" data in repeating array-like
-    * constructs where the indexing key is held, for example, in an attribute.
-    */
+    /* Transforms an array of objects into an object of objects, by indexing using the option "key" which must be supplied within the transform specification.
+     * The key of each element will be taken from the value held in each each original object's member derived from the option value in "key" - this member should
+     * exist in each array element. The member with name agreeing with "key" and its value will be removed from each original object before inserting into the returned
+     * object.
+     * For example,
+     * <code>fluid.transforms.indexArrayByKey([{k: "e1", b: 1, c: 2}, {k: "e2", b: 2: c: 3}], {key: "k"})</code> will output the object
+     * <code>{e1: {b: 1, c: 2}, e2: {b: 2: c, 3}</code>
+     * Note: This transform frequently arises in the context of data which arose in XML form, which often represents "morally indexed" data in repeating array-like
+     * constructs where the indexing key is held, for example, in an attribute.
+     */
     fluid.transforms.indexArrayByKey = function (arr, transformSpec, transformer) {
         if (transformSpec.key === undefined) {
             fluid.fail("indexArrayByKey requires a 'key' option.", transformSpec);
@@ -18782,7 +19205,7 @@ var fluid = fluid || fluid_2_0_0;
         invertConfiguration: "fluid.transforms.deindexIntoArrayByKey.invert"
     });
 
-    /**
+    /*
      * Transforms an object of objects into an array of objects, by deindexing by the option "key" which must be supplied within the transform specification.
      * The key of each object will become split out into a fresh value in each array element which will be given the key held in the transformSpec option "key".
      * For example:
@@ -18931,14 +19354,15 @@ var fluid = fluid || fluid_2_0_0;
     };
 
     fluid.defaults("fluid.transforms.quantize", {
-        gradeNames: "fluid.standardTransformFunction"
+        gradeNames: "fluid.standardTransformFunction",
+        collectInputPaths: "fluid.transforms.quantize.collect"
     });
 
-    /**
+    /*
      * Quantize function maps a continuous range into discrete values. Given an input, it will
      * be matched into a discrete bucket and the corresponding output will be done.
      */
-    fluid.transforms.quantize = function (value, transformSpec, transform) {
+    fluid.transforms.quantize = function (value, transformSpec, transformer) {
         if (!transformSpec.ranges || !transformSpec.ranges.length) {
             fluid.fail("fluid.transforms.quantize should have a key called ranges containing an array defining ranges to quantize");
         }
@@ -18946,9 +19370,17 @@ var fluid = fluid || fluid_2_0_0;
         for (var i = 0; i < transformSpec.ranges.length; i++) {
             var rangeSpec = transformSpec.ranges[i];
             if (value <= rangeSpec.upperBound || rangeSpec.upperBound === undefined && value >= Number.NEGATIVE_INFINITY) {
-                return fluid.isPrimitive(rangeSpec.output) ? rangeSpec.output : transform.expand(rangeSpec.output);
+                return fluid.isPrimitive(rangeSpec.output) ? rangeSpec.output : transformer.expand(rangeSpec.output);
             }
         }
+    };
+
+    fluid.transforms.quantize.collect = function (transformSpec, transformer) {
+        transformSpec.ranges.forEach(function (rangeSpec) {
+            if (!fluid.isPrimitive(rangeSpec.output)) {
+                transformer.expand(rangeSpec.output);
+            }
+        });
     };
 
     /**
@@ -18976,8 +19408,8 @@ var fluid = fluid || fluid_2_0_0;
      *
      * Everything else is true.
      *
-     * @param value {String} The value to be interpreted.
-     * @returns {Boolean} The interpreted value.
+     * @param {String} value - The value to be interpreted.
+     * @return {Boolean} The interpreted value.
      */
     fluid.transforms.stringToBoolean = function (value) {
         if (value) {
@@ -19004,8 +19436,8 @@ var fluid = fluid || fluid_2_0_0;
      * true (1, true, "non empty string", {}, et. cetera) returns "true".  Anything else (0, false, null, et. cetera)
      * returns "false".
      *
-     * @param value - The value to be converted to a stringified Boolean.
-     * @returns {string} - A stringified boolean representation of the value.
+     * @param {Any} value - The value to be converted to a stringified Boolean.
+     * @return {String} - A stringified boolean representation of the value.
      */
     fluid.transforms.booleanToString = function (value) {
         return value ? "true" : "false";
@@ -19025,7 +19457,8 @@ var fluid = fluid || fluid_2_0_0;
      *
      * Transform stringified JSON to an object using `JSON.parse`.  Returns `undefined` if the JSON string is invalid.
      *
-     * @param value {String} - The stringified JSON to be converted to an object.
+     * @param {String} value - The stringified JSON to be converted to an object.
+     * @return {Any} - The parsed value of the string, or `undefined` if it can't be parsed.
      */
     fluid.transforms.JSONstringToObject = function (value) {
         try {
@@ -19063,7 +19496,9 @@ var fluid = fluid || fluid_2_0_0;
      *
      * The default value for `space` is 0, which disables spacing and line breaks.
      *
-     * @param value {Object} - An object to be converted to stringified JSON.
+     * @param {Object} value - An object to be converted to stringified JSON.
+     * @param {Object} transformSpec - An object describing the transformation spec, see above.
+     * @return {String} - A string representation of the object.
      *
      */
     fluid.transforms.objectToJSONString = function (value, transformSpec) {
@@ -19098,8 +19533,8 @@ var fluid = fluid || fluid_2_0_0;
      *
      * http://docs.fluidproject.org/infusion/development/FrameworkConcepts.html#model-objects
      *
-     * @param value - The String value to be transformed into a Date object.
-     * @returns {Date} - A date object, or `undefined`.
+     * @param {String} value - The String value to be transformed into a Date object.
+     * @return {Date} - A date object, or `undefined`.
      *
      */
     fluid.transforms.stringToDate = function (value) {
@@ -19137,8 +19572,8 @@ var fluid = fluid || fluid_2_0_0;
      *
      * http://docs.fluidproject.org/infusion/development/FrameworkConcepts.html#model-objects
      *
-     * @param value - The Date object to be transformed into an ISO 8601 string.
-     * @returns {String} - A {String} value representing the date, or `undefined` if the date is invalid.
+     * @param {Date} value - The Date object to be transformed into an ISO 8601 string.
+     * @return {String} - A {String} value representing the date, or `undefined` if the date is invalid.
      *
      */
     fluid.transforms.dateToString = function (value) {
@@ -19180,8 +19615,8 @@ var fluid = fluid || fluid_2_0_0;
      *
      * http://docs.fluidproject.org/infusion/development/FrameworkConcepts.html#model-objects
      *
-     * @param value - The Date object to be transformed into an ISO 8601 string.
-     * @returns {String} - A {String} value representing the date and time, or `undefined` if the date/time are invalid.
+     * @param {Date} value - The Date object to be transformed into an ISO 8601 string.
+     * @return {String} - A {String} value representing the date and time, or `undefined` if the date/time are invalid.
      *
      */
     fluid.transforms.dateTimeToString = function (value) {
@@ -19258,16 +19693,16 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
     /**
      * Takes an object whose keys are check context names and whose values are check records, designating a collection of context markers which might be registered at a location
      * in the component tree.
-
-     * @param checkHash {Object} The keys in this structure are the context names to be supplied if the check passes, and the values are check records.
+     *
+     * @param {Object} checkHash - The keys in this structure are the context names to be supplied if the check passes, and the values are check records.
      * A check record contains:
      *    ONE OF:
      *    value {Any} [optional] A literal value name to be attached to the context
      *    func {Function} [optional] A zero-arg function to be called to compute the value
      *    funcName {String} [optional] The name of a zero-arg global function which will compute the value
      * If the check record consists of a Number or Boolean, it is assumed to be the value given to "value".
-     * @param path {String|Array} [optional] The path in the component tree at which the check markers are to be registered. If omitted, "" is assumed
-     * @param instantiator {Instantiator} [optional] The instantiator holding the component tree which will receive the markers. If omitted, use `fluid.globalInstantiator`.
+     * @param {String|Array} [path] - [optional] The path in the component tree at which the check markers are to be registered. If omitted, "" is assumed
+     * @param {Instantiator} [instantiator] - [optional] The instantiator holding the component tree which will receive the markers. If omitted, use `fluid.globalInstantiator`.
      */
     fluid.contextAware.makeChecks = function (checkHash, path, instantiator) {
         var checkOptions = fluid.contextAware.performChecks(checkHash);
@@ -19276,9 +19711,10 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
 
     /**
      * Forgets a check made at a particular level of the component tree.
-     * @param markerNames {Array of String} The marker typeNames whose check values are to be forgotten
-     * @param path {String|Array} [optional] The path in the component tree at which the check markers are to be removed. If omitted, "" is assumed
-     * @param instantiator {Instantiator} [optional] The instantiator holding the component tree the markers are to be removed from. If omitted, use `fluid.globalInstantiator`.
+     *
+     * @param {String[]} markerNames - The marker typeNames whose check values are to be forgotten.
+     * @param {String|String[]} [path] - [optional] The path in the component tree at which the check markers are to be removed. If omitted, "" is assumed
+     * @param {Instantiator} [instantiator] - [optional] The instantiator holding the component tree the markers are to be removed from. If omitted, use `fluid.globalInstantiator`.
      */
     fluid.contextAware.forgetChecks = function (markerNames, path, instantiator) {
         instantiator = instantiator || fluid.globalInstantiator;
@@ -19314,7 +19750,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
             //         gradeNames: gradeNames which will be output,
             //         priority: String/Number for priority of check [optional]
             //         equals: Value to be compared to contextValue [optional - default is `true`]
-            //     defaultGradeNames: // String or Array of String holding default gradeNames which will be output if no check matches [optional]
+            //     defaultGradeNames: // String or String[] holding default gradeNames which will be output if no check matches [optional]
             //     priority: // Number or String encoding priority relative to other records (same format as with event listeners) [optional]
             // }
         },
@@ -19373,7 +19809,9 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
      *  checkName {String} the name of the check within the contextAwareness record to receive the record - this will be a simple string
      *  record {Object} the record to be broadcast into contextAwareness - should contain entries
      *      contextValue {IoC expression} the context value to be checked to activate the adaptation
-     *      gradeNames {String/Array of String} the grade names to be supplied to the adapting target (matching advisedName)
+     *      gradeNames {String/String[]} the grade names to be supplied to the adapting target (matching advisedName)
+     *
+     * @param {Object} options - The options to use when making an adaptation.  See above for supported sub-options.
      */
     fluid.contextAware.makeAdaptation = function (options) {
         fluid.expect("fluid.contextAware.makeAdaptation", options, ["distributionName", "targetName", "adaptationName", "checkName", "record"]);
@@ -19498,7 +19936,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
     // Private constants.
     var NAMESPACE_KEY = "fluid-scoped-data";
 
-    /**
+    /*
      * Gets stored state from the jQuery instance's data map.
      * This function is unsupported: It is not really intended for use by implementors.
      */
@@ -19507,7 +19945,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
         return data ? data[key] : undefined;
     };
 
-    /**
+    /*
      * Stores state in the jQuery instance's data map. Unlike jQuery's version,
      * accepts multiple-element jQueries.
      * This function is unsupported: It is not really intended for use by implementors.
@@ -19604,8 +20042,8 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
      * Note: when using jQuery val() function to change the node value, the change event would
      * not be fired automatically, it requires to be initiated by the user.
      *
-     * @param node {A jQueryable DOM element} A selector, a DOM node, or a jQuery instance
-     * @param value {String|Number|Array} A string of text, a number, or an array of strings
+     * @param {A jQueryable DOM element} node - A selector, a DOM node, or a jQuery instance
+     * @param {String|Number|Array} value - A string of text, a number, or an array of strings
      * corresponding to the value of each matched element to set in the node
      */
     fluid.changeElementValue = function (node, value) {
@@ -19663,10 +20101,12 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
      * Reorderer component. General clients of the framework should use this method with caution if at all, and
      * the performance issues should be reassessed when we have time.
      *
-     * @param {Element} node the node to start walking from
-     * @param {Function} acceptor the function to invoke with each DOM element
-     * @param {Boolean} allnodes Use <code>true</code> to call acceptor on all nodes,
-     * rather than just element nodes (type 1)
+     * @param {Element} node - The node to start walking from.
+     * @param {Function} acceptor - The function to invoke with each DOM element.
+     * @param {Boolean} allNodes - Use <code>true</code> to call acceptor on all nodes, rather than just element nodes
+     * (type 1).
+     * @return {Object|undefined} - Returns `undefined` if the run completed successfully.  If a node stopped the run,
+     * that node is returned.
      */
     fluid.dom.iterateDom = function (node, acceptor, allNodes) {
         var currentNode = {node: node, depth: 0};
@@ -19698,8 +20138,9 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
     /**
      * Checks if the specified container is actually the parent of containee.
      *
-     * @param {Element} container the potential parent
-     * @param {Element} containee the child in question
+     * @param {Element} container - the potential parent
+     * @param {Element} containee - the child in question
+     * @return {Boolean} - `true` if `container` contains `containee`, `false` otherwise.
      */
     fluid.dom.isContainer = function (container, containee) {
         for (; containee; containee = containee.parentNode) {
@@ -19710,7 +20151,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
         return false;
     };
 
-    /** Return the element text from the supplied DOM node as a single String.
+    /* Return the element text from the supplied DOM node as a single String.
      * Implementation note - this is a special-purpose utility used in the framework in just one
      * position in the Reorderer. It only performs a "shallow" traversal of the text and was intended
      * as a quick and dirty means of extracting element labels where the user had not explicitly provided one.
@@ -19808,8 +20249,9 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
      * it ensures to wrap a null or otherwise falsy argument to itself, rather than the
      * often unhelpful jQuery default of returning the overall document node.
      *
-     * @param {Object} obj the object to wrap in a jQuery
-     * @param {jQuery} userJQuery the jQuery object to use for the wrapping, optional - use the current jQuery if absent
+     * @param {Object} obj - the object to wrap in a jQuery
+     * @param {jQuery} [userJQuery] - the jQuery object to use for the wrapping, optional - use the current jQuery if absent
+     * @return {jQuery} - The wrapped object.
      */
     fluid.wrap = function (obj, userJQuery) {
         userJQuery = userJQuery || $;
@@ -19819,7 +20261,8 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
     /**
      * If obj is a jQuery, this function will return the first DOM element within it. Otherwise, the object will be returned unchanged.
      *
-     * @param {jQuery} obj the jQuery instance to unwrap into a pure DOM element
+     * @param {jQuery} obj - The jQuery instance to unwrap into a pure DOM element.
+     * @return {Object} - The unwrapped object.
      */
     fluid.unwrap = function (obj) {
         return obj && obj.jquery ? obj[0] : obj;
@@ -19828,9 +20271,10 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
     /**
      * Fetches a single container element and returns it as a jQuery.
      *
-     * @param {String||jQuery||element} containerSpec an id string, a single-element jQuery, or a DOM element specifying a unique container
-     * @param {Boolean} fallible <code>true</code> if an empty container is to be reported as a valid condition
-     * @return a single-element jQuery of container
+     * @param {String|jQuery|element} containerSpec - an id string, a single-element jQuery, or a DOM element specifying a unique container
+     * @param {Boolean} fallible - <code>true</code> if an empty container is to be reported as a valid condition
+     * @param {jQuery} [userJQuery] - the jQuery object to use for the wrapping, optional - use the current jQuery if absent
+     * @return {jQuery} - A single-element jQuery container.
      */
     fluid.container = function (containerSpec, fallible, userJQuery) {
         var selector = containerSpec.selector || containerSpec;
@@ -19869,8 +20313,9 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
     /**
      * Creates a new DOM Binder instance, used to locate elements in the DOM by name.
      *
-     * @param {Object} container the root element in which to locate named elements
-     * @param {Object} selectors a collection of named jQuery selectors
+     * @param {Object} container - the root element in which to locate named elements
+     * @param {Object} selectors - a collection of named jQuery selectors
+     * @return {Object} - The new DOM binder.
      */
     fluid.createDomBinder = function (container, selectors) {
         // don't put on a typename to avoid confusing primitive visitComponentChildren
@@ -19949,7 +20394,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
         return that;
     };
 
-    /** Expect that jQuery selector query has resulted in a non-empty set of
+    /* Expect that jQuery selector query has resulted in a non-empty set of
      * results. If none are found, this function will fail with a diagnostic message,
      * with the supplied message prepended.
      */
@@ -19965,14 +20410,15 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
      * component. This function automatically merges user options with defaults,
      * attaches a DOM Binder to the instance, and configures events.
      *
-     * @param {String} componentName The unique "name" of the component, which will be used
+     * @param {String} componentName - The unique "name" of the component, which will be used
      * to fetch the default options from store. By recommendation, this should be the global
      * name of the component's creator function.
-     * @param {jQueryable} container A specifier for the single root "container node" in the
+     * @param {jQueryable} containerSpec - A specifier for the single root "container node" in the
      * DOM which will house all the markup for this component.
-     * @param {Object} userOptions The configuration options for this component.
+     * @param {Object} userOptions - The user configuration options for this component.
+     * @param {Object} localOptions - The local configuration options for this component.  Unsupported, see comments for initLittleComponent.
+     * @return {Object|null} - The newly created component, or `null` id the container does not exist.
      */
-     // 4th argument is NOT SUPPORTED, see comments for initLittleComponent
     fluid.initView = function (componentName, containerSpec, userOptions, localOptions) {
         var container = fluid.container(containerSpec, true);
         fluid.expectFilledSelector(container, "Error instantiating component with name \"" + componentName);
@@ -20002,7 +20448,9 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
     /**
      * Creates a new DOM Binder instance for the specified component and mixes it in.
      *
-     * @param {Object} that the component instance to attach the new DOM Binder to
+     * @param {Object} that - The component instance to attach the new DOM Binder to.
+     * @param {Object} selectors - a collection of named jQuery selectors
+     * @return {Object} - The DOM for the component.
      */
     fluid.initDomBinder = function (that, selectors) {
         if (!that.container) {
@@ -20019,9 +20467,9 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
 
     /**
      * Finds the nearest ancestor of the element that matches a predicate
-     * @param {Element} element DOM element
-     * @param {Function} test A function (predicate) accepting a DOM element, returning a truthy value representing a match
-     * @return The first element parent for which the predicate returns truthy - or undefined if no parent matches
+     * @param {Element} element - DOM element
+     * @param {Function} test - A function (predicate) accepting a DOM element, returning a truthy value representing a match
+     * @return {Element|undefined} - The first element parent for which the predicate returns truthy - or undefined if no parent matches
      */
     fluid.findAncestor = function (element, test) {
         element = fluid.unwrap(element);
@@ -20039,7 +20487,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
         });
     };
 
-    /** A utility with the same signature as jQuery.text and jQuery.html, but without the API irregularity
+    /* A utility with the same signature as jQuery.text and jQuery.html, but without the API irregularity
      * that treats a single argument of undefined as different to no arguments */
     // in jQuery 1.7.1, jQuery pulled the same dumb trick with $.text() that they did with $.val() previously,
     // see comment in fluid.value below
@@ -20050,7 +20498,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
         };
     });
 
-    /** A generalisation of jQuery.val to correctly handle the case of acquiring and
+    /* A generalisation of jQuery.val to correctly handle the case of acquiring and
      * setting the value of clustered radio button/checkbox sets, potentially, given
      * a node corresponding to just one element.
      */
@@ -20104,7 +20552,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
 
     fluid.BINDING_ROOT_KEY = "fluid-binding-root";
 
-    /** Recursively find any data stored under a given name from a node upwards
+    /* Recursively find any data stored under a given name from a node upwards
      * in its DOM hierarchy **/
 
     fluid.findData = function (elem, name) {
@@ -20128,8 +20576,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
         return record ? record.EL : null;
     };
 
-   /** "Automatically" apply to whatever part of the data model is
-     * relevant, the changed value received at the given DOM node*/
+    /* relevant, the changed value received at the given DOM node */
     fluid.applyBoundChange = function (node, newValue, applier) {
         node = fluid.unwrap(node);
         if (newValue === undefined) {
@@ -20159,7 +20606,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
     };
 
 
-    /**
+    /*
      * Returns a jQuery object given the id of a DOM node. In the case the element
      * is not found, will return an empty list.
      */
@@ -20175,9 +20622,9 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
     /**
      * Returns an DOM element quickly, given an id
      *
-     * @param {Object} id the id of the DOM node to find
-     * @param {Document} dokkument the document in which it is to be found (if left empty, use the current document)
-     * @return The DOM element with this id, or null, if none exists in the document.
+     * @param {Object} id - the id of the DOM node to find
+     * @param {Document} dokkument - the document in which it is to be found (if left empty, use the current document)
+     * @return {Object} - The DOM element with this id, or null, if none exists in the document.
      */
     fluid.byId = function (id, dokkument) {
         dokkument = dokkument && dokkument.nodeType === 9 ? dokkument : document;
@@ -20198,17 +20645,17 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
     /**
      * Returns the id attribute from a jQuery or pure DOM element.
      *
-     * @param {jQuery||Element} element the element to return the id attribute for
+     * @param {jQuery|Element} element - the element to return the id attribute for.
+     * @return {String} - The id attribute of the element.
      */
     fluid.getId = function (element) {
         return fluid.unwrap(element).id;
     };
 
-    /**
+    /*
      * Allocate an id to the supplied element if it has none already, by a simple
      * scheme resulting in ids "fluid-id-nnnn" where nnnn is an increasing integer.
      */
-
     fluid.allocateSimpleId = function (element) {
         element = fluid.unwrap(element);
         if (!element || fluid.isPrimitive(element)) {
@@ -20225,8 +20672,8 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
     /**
      * Returns the document to which an element belongs, or the element itself if it is already a document
      *
-     * @param {jQuery||Element} element The element to return the document for
-     * @return {Document} dokkument The document in which it is to be found
+     * @param {jQuery|Element} element - The element to return the document for
+     * @return {Document} - The document in which it is to be found
      */
     fluid.getDocument = function (element) {
         var node = fluid.unwrap(element);
@@ -20284,7 +20731,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
         return that;
     };
 
-    /** Manages an ARIA-mediated label attached to a given DOM element. An
+    /* Manages an ARIA-mediated label attached to a given DOM element. An
      * aria-labelledby attribute and target node is fabricated in the document
      * if they do not exist already, and a "little component" is returned exposing a method
      * "update" that allows the text to be updated. */
@@ -20301,7 +20748,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
         return that;
     };
 
-    /** "Global Dismissal Handler" for the entire page. Attaches a click handler to the
+    /* "Global Dismissal Handler" for the entire page. Attaches a click handler to the
      * document root that will cause dismissal of any elements (typically dialogs) which
      * have registered themselves. Dismissal through this route will automatically clean up
      * the record - however, the dismisser themselves must take care to deregister in the case
@@ -20325,7 +20772,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
     });
     // TODO: extend a configurable equivalent of the above dealing with "focusin" events
 
-    /** Accepts a free hash of nodes and an optional "dismissal function".
+    /* Accepts a free hash of nodes and an optional "dismissal function".
      * If dismissFunc is set, this "arms" the dismissal system, such that when a click
      * is received OUTSIDE any of the hierarchy covered by "nodes", the dismissal function
      * will be executed.
@@ -20345,7 +20792,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
         });
     };
 
-    /** Provides an abstraction for determing the current time.
+    /* Provides an abstraction for determing the current time.
      * This is to provide a fix for FLUID-4762, where IE6 - IE8
      * do not support Date.now().
      */
@@ -20354,7 +20801,7 @@ var fluid_3_0_0 = fluid_3_0_0 || {};
     };
 
 
-    /** Sets an interation on a target control, which morally manages a "blur" for
+    /* Sets an interation on a target control, which morally manages a "blur" for
      * a possibly composite region.
      * A timed blur listener is set on the control, which waits for a short period of
      * time (options.delay, defaults to 150ms) to discover whether the reason for the

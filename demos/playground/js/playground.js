@@ -60,6 +60,24 @@ var fluid = fluid || require("infusion"),
                 type: "flock.playground.demoSelector",
                 container: "{that}.dom.demoSelector",
                 options: {
+                    components: {
+                        selectBox: {
+                            options: {
+                                // TODO: This is hack to work around issues
+                                // in recent Infusions
+                                // (after 3.0.0-dev.20171121T212609Z.9b4fde781)
+                                // where a simpler "{demos}.model" distribution
+                                // fails.
+                                // The "potentia II" branch fixes this,
+                                // but exposes other issues in Flocking.
+                                model: {
+                                    groups: "{demos}.model.groups",
+                                    defaultOption: "{demos}.model.groups"
+                                }
+                            }
+                        }
+                    },
+
                     listeners: {
                         afterDemoLoaded: "{editor}.setContent({arguments}.0)",
 
