@@ -807,49 +807,13 @@ var fluid = fluid || require("infusion"),
     });
 
 
-    fluid.defaults("flock.test.synth.genReporter", {
-        gradeNames: ["flock.synth"],
-
-        model: {
-            didGen: false
-        },
-
-        members: {
-            genFn: "{that}.gen"
-        },
-
+    fluid.defaults("flock.test.silentSynth", {
+        gradeNames: "flock.synth",
         synthDef: {
             ugen: "flock.ugen.silence"
-        },
-
-        invokers: {
-            gen: {
-                changePath: "didGen",
-                value: true
-            },
-
-            reset: {
-                changePath: "didGen",
-                value: false
-            }
         }
     });
 
-    flock.test.synth.genReporter.assertWasEvaluated = function (synth) {
-        jqUnit.assertTrue("The synth should have been added to the environment.",
-        synth.isPlaying());
-
-        jqUnit.assertTrue("The synth should have been evaluated.",
-        synth.model.didGen);
-    };
-
-    flock.test.synth.genReporter.assertWasNotEvaluated = function (synth) {
-        jqUnit.assertFalse("The synth should have been added to the environment.",
-        synth.isPlaying());
-
-        jqUnit.assertFalse("The synth should have been evaluated.",
-        synth.model.didGen);
-    };
 
     flock.test.synthDefs = {
         amplitudeModulation: {

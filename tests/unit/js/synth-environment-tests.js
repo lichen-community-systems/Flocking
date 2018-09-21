@@ -15,12 +15,6 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    flock.test.synth.testEnviroGraph = function (fn) {
-        setTimeout(function () {
-            fn();
-        }, 2000);
-    };
-
     fluid.defaults("flock.test.synth.environmental.autoAddTests", {
         gradeNames: "flock.test.module.runOnCreate",
 
@@ -29,12 +23,12 @@ var fluid = fluid || require("infusion"),
         components: {
             autoAddedSynth: {
                 createOnEvent: "afterEnvironmentCreated",
-                type: "flock.test.synth.genReporter"
+                type: "flock.test.silentSynth"
             },
 
             notAutoAddedSynth: {
                 createOnEvent: "afterEnvironmentCreated",
-                type: "flock.test.synth.genReporter",
+                type: "flock.test.silentSynth",
                 options: {
                     addToEnvironment: false
                 }
@@ -50,17 +44,9 @@ var fluid = fluid || require("infusion"),
     });
 
     flock.test.synth.environmental.autoAddTests.run = function (module) {
-        jqUnit.asyncTest("Auto add to the environment", function () {
-            module.environment.start();
-
-            flock.test.synth.testEnviroGraph(function () {
-                flock.test.synth.genReporter.assertWasEvaluated(module.autoAddedSynth);
-            });
-
-            flock.test.synth.testEnviroGraph(function () {
-                flock.test.synth.genReporter.assertWasNotEvaluated(module.notAutoAddedSynth);
-                jqUnit.start();
-            });
+        jqUnit.test("Auto add to the environment", function () {
+            jqUnit.assertTrue("A synth with default options should be automatically added to the environment at creation time.", module.environment.nodeList.nodes.includes(module.autoAddedSynth));
+            jqUnit.assertFalse("A synth with addToEnvironment set to false should not be automatically added to the environment at creation time.", module.environment.nodeList.nodes.includes(module.notAutoAddedSynth));
         });
     };
 
