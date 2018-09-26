@@ -242,6 +242,10 @@ var fluid = fluid || require("infusion"),
 
     // TODO: Remove this condition when Safari fixes its
     // MediaElementAudioSourceNode implementation.
+    // Note: probably this test will always fail in Safari
+    // because of its user interaction requirements.
+    // It's worth considering if this is in fact a valuable
+    // and stable unit test.
     if (!flock.platform.browser.safari) {
         environment = flock.silentEnviro();
 

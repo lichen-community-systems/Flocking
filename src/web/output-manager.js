@@ -28,7 +28,7 @@ var fluid = fluid || require("infusion"),
 
         model: {
             isGenerating: false,
-            shouldInitIOS: flock.platform.isIOS,
+            shouldInitSafari: flock.platform.browser.safari,
             audioSettings: {}
         },
 
@@ -66,7 +66,7 @@ var fluid = fluid || require("infusion"),
                 {
                     // TODO: Replace this with some progressive enhancement action.
                     priority: "last",
-                    funcName: "flock.webAudio.outputManager.iOSStart",
+                    funcName: "flock.webAudio.outputManager.safariStart",
                     args: [
                         "{that}",
                         "{audioSystem}.context",
@@ -172,16 +172,17 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    flock.webAudio.outputManager.iOSStart = function (that, ctx, jsNode) {
-        // Work around a bug in iOS Safari where it now requires a noteOn()
-        // message to be invoked before sound will work at all. Just connecting a
-        // ScriptProcessorNode inside a user event handler isn't sufficient.
-        if (that.model.shouldInitIOS) {
-            var s = ctx.createBufferSource();
-            s.connect(jsNode);
-            s.start(0);
-            s.disconnect(0);
-            that.applier.change("shouldInitIOS", false);
+    flock.webAudio.outputManager.safariStart = function (that, ctx, jsNode) {
+        // Satisfy Safari's user interaction requirement,
+        // where it requires an AudioContext to be explicitly
+        // resumed within a user touch event of some kind.
+        // For this to work, the Flocking environment must be
+        // started within a user-triggered event handler,
+        // such as is the case with Flocking's built-in
+        // flock.ui.enviroPlayButton user interface component.
+        if (that.model.shouldInitSafari) {
+            ctx.resume();
+            that.applier.change("shouldInitSafari", false);
         }
     };
 }());
