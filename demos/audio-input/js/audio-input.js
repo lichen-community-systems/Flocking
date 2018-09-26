@@ -1,14 +1,10 @@
-/*global fluid, flock*/
+/*global fluid*/
 (function () {
     "use strict";
 
-    flock.init({
-        bufferSize: 256
-    });
+    fluid.defaults("flock.demo.audioInSynth", {
+        gradeNames: "flock.synth",
 
-    var demo = fluid.registerNamespace("demo");
-
-    var synth = flock.synth({
         synthDef: {
             ugen: "flock.ugen.audioIn",
             mul: {
@@ -29,12 +25,19 @@
             }
         }
     });
-    
-    demo.audioInput = function () {
-        return {
-            synth: synth,
-            playButton: flock.ui.enviroPlayButton("#play")
-        };
-    };
 
+    fluid.defaults("flock.demo.audioIn", {
+        gradeNames: "fluid.component",
+
+        components: {
+            synth: {
+                type: "flock.demo.audioInSynth"
+            },
+
+            playButton: {
+                type: "flock.ui.enviroPlayButton",
+                container: "#play"
+            }
+        }
+    });
 }());

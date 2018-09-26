@@ -4,6 +4,15 @@
         <title>Media Element Input Demo</title>
         <meta charset="UTF-8" />
         <link rel="stylesheet" type="text/css" href="../shared/css/demos.css" />
+        <link rel="stylesheet" type="text/css" href="../../src/ui/shared/css/flocking-icon-font.css" />
+        <link rel="stylesheet" type="text/css" href="../../src/ui/play-button/css/play-button.css" />
+        <style>
+            #play {
+                float: none;
+                margin-left: 0;
+                margin-bottom: 1em;
+            }
+        </style>
 
         <script src="../../node_modules/jquery/dist/jquery.js"></script>
 
@@ -36,6 +45,7 @@
         <script src="../../src/ugens/granular.js"></script>
         <script src="../../src/ugens/oscillators.js"></script>
         <script src="../../src/ugens/browser.js"></script>
+        <script src="../../src/ui/play-button/js/play-button.js"></script>
 
         <script src="js/media-element-input.js"></script>
     </head>
@@ -43,16 +53,22 @@
     <body>
         <h1>Processing Audio from an HTML5 Media Element</h1>
 
-        <div id="sounds">
+        <div id="demo-controls">
             <div>
-                <audio id="regular" src="../shared/audio/hillier-first-chord.wav" loop="true" controls="true" autoplay></audio>
+                <button id="play">Play</button>
             </div>
-            <div>
-                <audio id="slow" src="../shared/audio/hillier-first-chord.wav" loop="true" controls="true" autoplay></audio>
+
+            <div id="sounds">
+                <div>
+                    <audio id="regular" src="../shared/audio/hillier-first-chord.wav" loop="true" controls></audio>
+                </div>
+                <div>
+                    <audio id="slow" src="../shared/audio/hillier-first-chord.wav" loop="true" controls></audio>
+                </div>
             </div>
         </div>
         <script>
-            window.demo = flock.demo.mediaElementInput("#sounds");
+            window.demo = flock.demo.mediaElementInput("#demo-controls");
         </script>
     </body>
 </html>
