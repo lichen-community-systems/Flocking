@@ -29408,9 +29408,13 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.webAudio.outputManager.safariStart = function (that, ctx, jsNode) {
-        // Work around Safari's user interaction requirement,
-        // where it  requires an AudioContext to be resume()'ed
-        // within the context of a touch event of some kind.
+        // Satisfy Safari's user interaction requirement,
+        // where it requires an AudioContext to be explicitly
+        // resumed within a user touch event of some kind.
+        // For this to work, the Flocking environment must be
+        // started within a user-triggered event handler,
+        // such as is the case with Flocking's built-in
+        // flock.ui.enviroPlayButton user interface component.
         if (that.model.shouldInitSafari) {
             ctx.resume();
             that.applier.change("shouldInitSafari", false);
