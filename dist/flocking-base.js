@@ -1,4 +1,4 @@
-/*! Flocking 0.2.0, Copyright 2017 Colin Clark | flockingjs.org */
+/*! Flocking 0.2.0, Copyright 2018 Colin Clark | flockingjs.org */
 
 // -*- mode: javascript; tab-width: 2; indent-tabs-mode: nil; -*-
 //------------------------------------------------------------------------------
@@ -6931,19 +6931,28 @@ var fluid = fluid || require("infusion"),
         });
     };
 
-    flock.webAudio.mediaStreamFailure = function () {
-        flock.fail("Media Capture and Streams are not supported on this browser.");
+    flock.webAudio.mediaStreamFailure = function (onError) {
+        var msg = "This browser does not support getUserMedia() or the Media Streams API.";
+
+        if (!onError) {
+            fluid.log(fluid.logLevel.IMPORTANT, msg);
+        } else {
+            onError(new Error(msg));
+        }
     };
 
     var webAudioShims = {
         AudioContext: window.AudioContext || window.webkitAudioContext,
 
-        // TODO: Shim navigator.mediaDevices.getUserMedia
-        getUserMediaImpl: navigator.getUserMedia || navigator.webkitGetUserMedia ||
-            navigator.mozGetUserMedia || navigator.msGetUserMedia || flock.webAudio.mediaStreamFailure,
-
-        getUserMedia: function () {
-            flock.shim.getUserMediaImpl.apply(navigator, arguments);
+        getUserMedia: function (constraints, onAccess, onError) {
+            if (navigator.mediaDevices) {
+                var p = navigator.mediaDevices.getUserMedia(constraints);
+                p.then(onAccess).catch(onError);
+            } else if (navigator.getUserMedia) {
+                navigator.getUserMedia(constraints, onAccess, onError);
+            } else {
+                flock.webAudio.mediaStreamFailure(onError);
+            }
         },
 
         getMediaDevicesImpl: navigator.getMediaDevices ? navigator.getMediaDevices :
@@ -7357,9 +7366,11 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.midi.read.sysex = function (data) {
+        var leadingOffset = data[0] === 0xF0 ? 1 : 0;
+        var trailingOffset = data[data.length - 1] === 0XF7 ? 1 : 0;
         return {
             type: "sysex",
-            data: data
+            data: data.slice(leadingOffset, data.length - trailingOffset)
         };
     };
 
@@ -7594,15 +7605,6 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-
-    flock.midi.getFirstByte  = function (channel, statusInt) {
-        return (statusInt << 4) + channel;
-    };
-
-    flock.midi.arrayToUint8TypedArray = function (array) {
-        return new Uint8Array(array);
-    };
-
     /**
      *
      * Take a MIDI messages object and convert it to an array of raw bytes suitable for sending to a MIDI device.
@@ -7618,127 +7620,188 @@ var fluid = fluid || require("infusion"),
     flock.midi.write = function (midiMessage) {
         var channel        = midiMessage.channel ? midiMessage.channel : 0;
 
-        switch (midiMessage.type) {
+        if (midiMessage.type === "sysex") {
+            return flock.midi.write.sysex(midiMessage);
+        }
+        else {
+            var byteArray = new Uint8Array(flock.midi.write.getByteCount(midiMessage.type, midiMessage.note));
+            switch (midiMessage.type) {
+                case "noteOn":
+                    byteArray[0] = flock.midi.write.statusByte(channel, 9);
+                    byteArray[1] = midiMessage.note;
+                    byteArray[2] = midiMessage.velocity;
+                    break;
+                case "noteOff":
+                    byteArray[0] = flock.midi.write.statusByte(channel, 8);
+                    byteArray[1] = midiMessage.note;
+                    byteArray[2] = midiMessage.velocity;
+                    break;
+                case "aftertouch":
+                    // TODO: Keep going with literal array sets below.
+                    // polyAfterTouch
+                    if (midiMessage.note) {
+                        byteArray[0] = flock.midi.write.statusByte(channel, 10);
+                        byteArray[1] = midiMessage.note;
+                        byteArray[2] = midiMessage.velocity;
+                    }
+                    // afterTouch
+                    else {
+                        byteArray[0] = flock.midi.write.statusByte(channel, 13);
+                        byteArray[1] = midiMessage.pressure;
+                    }
+                    break;
+                case "control":
+                    byteArray[0] = flock.midi.write.statusByte(channel, 11);
+                    byteArray[1] = midiMessage.number;
+                    byteArray[2] = midiMessage.value;
+                    break;
+                case "program":
+                    byteArray[0] = flock.midi.write.statusByte(channel, 12);
+                    byteArray[1] = midiMessage.program;
+                    break;
+                case "pitchbend":
+                    byteArray[0] = flock.midi.write.statusByte(channel, 14);
+                    flock.midi.write.writeValueToTwoBytesInArray(midiMessage.value, byteArray, 1);
+                    break;
+                case "songPointer":
+                    byteArray[0] = flock.midi.write.statusByte(2, 15);
+                    flock.midi.write.writeValueToTwoBytesInArray(midiMessage.value, byteArray, 1);
+                    break;
+                case "songSelect":
+                    byteArray[0] = flock.midi.write.statusByte(3, 15);
+                    flock.midi.write.writeValueToTwoBytesInArray(midiMessage.value, byteArray, 1);
+                    break;
+                case "tuneRequest":
+                    byteArray[0] = flock.midi.write.statusByte(6, 15);
+                    break;
+                case "clock":
+                    byteArray[0] = flock.midi.write.statusByte(8, 15);
+                    break;
+                case "start":
+                    byteArray[0] = flock.midi.write.statusByte(10, 15);
+                    break;
+                case "continue":
+                    byteArray[0] = flock.midi.write.statusByte(11, 15);
+                    break;
+                case "stop":
+                    byteArray[0] = flock.midi.write.statusByte(12, 15);
+                    break;
+                case "activeSense":
+                    byteArray[0] = flock.midi.write.statusByte(14, 15);
+                    break;
+                case "reset":
+                    byteArray[0] = flock.midi.write.statusByte(15, 15);
+                    break;
+                default:
+                    flock.fail("Cannot handle MIDI message of type '" + midiMessage.type + "'.");
+            }
+            return byteArray;
+        }
+    };
+
+    /**
+     *
+     * Determine the number of bytes in the message based on the message type and note (required for aftertouch).
+     *
+     * @param {String} type - The type of message, i.e. "noteOn".
+     * @param {Number} note -
+     * @return {Integer} The number of bytes in the outgoing message.
+     */
+    flock.midi.write.getByteCount = function (type, note) {
+        switch (type) {
             case "noteOn":
-                return flock.midi.arrayToUint8TypedArray([
-                    flock.midi.getFirstByte(channel, 9),
-                    midiMessage.note,
-                    midiMessage.velocity
-                ]);
+                return 3;
             case "noteOff":
-                return flock.midi.arrayToUint8TypedArray([
-                    flock.midi.getFirstByte(channel, 8),
-                    midiMessage.note,
-                    midiMessage.velocity
-                ]);
+                return 3;
             case "aftertouch":
                 // polyAfterTouch
-                if (midiMessage.note) {
-                    return flock.midi.arrayToUint8TypedArray([
-                        flock.midi.getFirstByte(channel, 10),
-                        midiMessage.note,
-                        midiMessage.velocity
-                    ]);
+                if (note) {
+                    return 3;
                 }
                 // afterTouch
                 else {
-                    return flock.midi.arrayToUint8TypedArray([
-                        flock.midi.getFirstByte(channel, 13),
-                        midiMessage.pressure
-                    ]);
+                    return 2;
                 }
                 break;
             case "control":
-                return flock.midi.arrayToUint8TypedArray([
-                    flock.midi.getFirstByte(channel, 11),
-                    midiMessage.number,
-                    midiMessage.value
-                ]);
+                return 3;
             case "program":
-                return flock.midi.arrayToUint8TypedArray([
-                    flock.midi.getFirstByte(channel, 12),
-                    midiMessage.program
-                ]);
+                return 2;
             case "pitchbend":
-                return flock.midi.arrayToUint8TypedArray(
-                    [flock.midi.getFirstByte(channel, 14)].concat(flock.midi.write.valueToTwoByteArray(midiMessage.value))
-                );
-            case "sysex":
-                return flock.midi.write.sysex(midiMessage);
+                return 3;
             case "songPointer":
-                return flock.midi.arrayToUint8TypedArray(
-                    [flock.midi.getFirstByte(2, 15)].concat(flock.midi.write.valueToTwoByteArray(midiMessage.value))
-                );
+                return 3;
             case "songSelect":
-                return flock.midi.arrayToUint8TypedArray(
-                    [flock.midi.getFirstByte(3, 15)].concat(flock.midi.write.valueToTwoByteArray(midiMessage.value))
-                );
+                return 3;
             case "tuneRequest":
-                return flock.midi.arrayToUint8TypedArray([flock.midi.getFirstByte(6, 15)]);
+                return 1;
             case "clock":
-                return flock.midi.arrayToUint8TypedArray([flock.midi.getFirstByte(8, 15)]);
+                return 1;
             case "start":
-                return flock.midi.arrayToUint8TypedArray([flock.midi.getFirstByte(10, 15)]);
+                return 1;
             case "continue":
-                return flock.midi.arrayToUint8TypedArray([flock.midi.getFirstByte(11, 15)]);
+                return 1;
             case "stop":
-                return flock.midi.arrayToUint8TypedArray([flock.midi.getFirstByte(12, 15)]);
+                return 1;
             case "activeSense":
-                return flock.midi.arrayToUint8TypedArray([flock.midi.getFirstByte(14, 15)]);
+                return 1;
             case "reset":
-                return flock.midi.arrayToUint8TypedArray([flock.midi.getFirstByte(15, 15)]);
+                return 1;
             default:
-                flock.fail("Cannot handle MIDI message of type '" + midiMessage.type + "'.");
+                flock.fail("Cannot handle MIDI message of type '" + type + "'.");
         }
+    };
+
+    /**
+     *
+     * Output a status byte based on the channel and status.
+     *
+     * @param {Number} channel - The MIDI channel.
+     * @param {Number} statusInt - The status.
+     * @return {Byte} A status byte that combines the two inputs.
+     */
+    flock.midi.write.statusByte = function (channel, statusInt) {
+        return (statusInt << 4) + channel;
     };
 
     /**
      *
      * Convert a large numeric value to an array of two separate bytes.
      *
-     * @param value {Number} A 14-bit integer to convert
-     * @returns {Array} - An array of two 7-bit values
+     * @param {Number} value - A 14-bit integer to convert
+     * @param {Unit8TypedArray} array - An array to write the value to.
+     * @param {Integer} offset - The optional offset in the array to start writing at.  Defaults to 0.
      *
      */
-    // TODO: Also avoid memory allocation if possible here
-    // by taking data, offset arguments.
-    flock.midi.write.valueToTwoByteArray =  function (value) {
-        return [
-            value & 0x7f,       // LSB
-            (value >> 7) & 0x7f // MSB
-        ];
+    flock.midi.write.writeValueToTwoBytesInArray =  function (value, array, offset) {
+        offset = offset || 0;
+        array[offset] = value & 0x7f; // LSB
+        array[offset + 1] = (value >> 7) & 0x7f; // MSB
     };
 
-    // TODO: Improve performance:
-    //    This algorithm requires a complete memory copy
-    //    of "data" into "framedData", which is slow.
-    //    We could perhaps avoid this entirely if we
-    //    mandate either that:
-    //      a) users always do their own framing,
-    //      b) they always omit the framing bytes
-    //         (since it's cheaper to create a subview
-    //         of the incoming bytes in flock.midi.read
-    //         than to do what we're doing here).
-    flock.midi.write.sysex = function (midiMessage) {
-        var data = midiMessage.data,
-            len = data.length,
-            framedData = new Uint8Array(data);
 
-        // TODO: Reduce duplication.
-        if (data[0] !== 0xF0 && data[len - 1] !== 0xF7) {
-            framedData = new Uint8Array(len + 2);
-            framedData[0] = 0xF0;
-            framedData[len + 1] = 0xF7;
-            framedData.set(data, 1);
-        } else if (data[0] !== 0xF0) {
-            framedData = new Uint8Array(len + 1);
-            framedData[0] = 0xF0;
-            framedData.set(data, 1);
-        } else if (data[len - 1] !== 0xF7) {
-            framedData = new Uint8Array(len + 1);
-            framedData[len] = 0xF7;
-            framedData.set(data, 0);
+    /**
+     *
+     * Convert a MIDI Message represented as a Javascript Object into a Sysex message represented as a Uint8Array.
+     *
+     * NOTE: This function does not accept framing, i.e. a leading 0xF0 and/or trailing 0xF7, and will fail if called
+     * with either.
+     *
+     * @param {Object} midiMessage - The MIDI message represented as a Javascript Object.
+     * @return {Uint8Array} - The sysex message.
+     */
+    flock.midi.write.sysex = function (midiMessage) {
+        if (midiMessage.data[0] === 0xF0 || midiMessage.data[midiMessage.data.length - 1] === 0xF7) {
+            flock.fail("Sysex payloads should not include framing bytes.");
         }
+
+        var data = midiMessage.data,
+            len = data.length;
+
+        var framedData = new Uint8Array(len + 2);
+        framedData[0] = 0xF0;
+        framedData[len + 1] = 0xF7;
+        framedData.set(data, 1);
 
         return framedData;
     };
@@ -8524,7 +8587,7 @@ var fluid = fluid || require("infusion"),
 
         model: {
             isGenerating: false,
-            shouldInitIOS: flock.platform.isIOS,
+            shouldInitSafari: flock.platform.browser.safari,
             audioSettings: {}
         },
 
@@ -8562,7 +8625,7 @@ var fluid = fluid || require("infusion"),
                 {
                     // TODO: Replace this with some progressive enhancement action.
                     priority: "last",
-                    funcName: "flock.webAudio.outputManager.iOSStart",
+                    funcName: "flock.webAudio.outputManager.safariStart",
                     args: [
                         "{that}",
                         "{audioSystem}.context",
@@ -8668,16 +8731,17 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    flock.webAudio.outputManager.iOSStart = function (that, ctx, jsNode) {
-        // Work around a bug in iOS Safari where it now requires a noteOn()
-        // message to be invoked before sound will work at all. Just connecting a
-        // ScriptProcessorNode inside a user event handler isn't sufficient.
-        if (that.model.shouldInitIOS) {
-            var s = ctx.createBufferSource();
-            s.connect(jsNode);
-            s.start(0);
-            s.disconnect(0);
-            that.applier.change("shouldInitIOS", false);
+    flock.webAudio.outputManager.safariStart = function (that, ctx, jsNode) {
+        // Satisfy Safari's user interaction requirement,
+        // where it requires an AudioContext to be explicitly
+        // resumed within a user touch event of some kind.
+        // For this to work, the Flocking environment must be
+        // started within a user-triggered event handler,
+        // such as is the case with Flocking's built-in
+        // flock.ui.enviroPlayButton user interface component.
+        if (that.model.shouldInitSafari) {
+            ctx.resume();
+            that.applier.change("shouldInitSafari", false);
         }
     };
 }());

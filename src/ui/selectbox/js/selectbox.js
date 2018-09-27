@@ -60,7 +60,6 @@ var fluid = fluid || require("infusion"),
         },
 
         invokers: {
-            // TODO: This should be named refreshView;
             refreshView: "{that}.events.onRender.fire()",
 
             select: {

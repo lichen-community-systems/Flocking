@@ -4,7 +4,10 @@
     "skip": "PhantomJS,IE",
     "browser_args": {
         "Chrome": [
-            "--no-sandbox"
+            "--autoplay-policy=no-user-gesture-required"
+        ],
+        "Chrome Canary": [
+            "--autoplay-policy=no-user-gesture-required"
         ]
     }
 }

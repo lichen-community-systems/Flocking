@@ -22,13 +22,12 @@ var fluid = fluid || require("infusion"),
     fluid.defaults("flock.playground.demoSelector", {
         gradeNames: ["fluid.viewComponent"],
 
+        model: {},
+
         components: {
             selectBox: {
                 type: "flock.ui.selectBox",
-                container: "{that}.container",
-                options: {
-                    model: "{demos}.model"
-                }
+                container: "{that}.container"
             }
         },
 

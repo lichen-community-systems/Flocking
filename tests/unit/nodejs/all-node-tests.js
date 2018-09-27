@@ -54,21 +54,17 @@ var testIncludes = [
     "../js/scheduler-tests.js",
     "../js/scheduler-timing-tests.js",
     "../js/scheduling-ugen-tests.js",
-    "../js/synth-tests.js",
     "../js/synth-environment-tests.js",
     "../js/synth-evaluation-tests.js",
     "../js/synth-group-tests.js",
     "../js/synth-instantiation-tests.js",
     "../js/synth-note-target-tests.js",
+    "../js/synth-removal-tests.js",
     "../js/synth-scheduled-tests.js",
+    "../js/synth-tests.js",
     "../js/trigger-ugen-tests.js",
     "../js/ugen-tests.js",
-    "../js/writebuffer-ugen-tests.js",
-
-    // This test file is wildly unstable when run in Node.js,
-    // perhaps due to node-speaker or just because it contains
-    // terribly-designed tests?
-    // "../js/synth-removal-tests.js"
+    "../js/writebuffer-ugen-tests.js"
 ];
 
 testIncludes.forEach(function (path) {

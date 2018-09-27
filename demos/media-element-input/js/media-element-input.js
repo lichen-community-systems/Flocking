@@ -10,13 +10,39 @@
 (function () {
     "use strict";
 
-    flock.init({
-        chans: 2,
-        numInputBuses: 2
+    fluid.defaults("flock.demo.playableAudioElement", {
+        gradeNames: "fluid.viewComponent",
+
+        model: {
+            speed: 1.0
+        },
+
+        listeners: {
+            "{playButton}.events.onPlay": {
+                "this": "{that}.container.0",
+                method: "play"
+            },
+
+            "{playButton}.events.onPause": {
+                "this": "{that}.container.0",
+                method: "pause"
+            }
+        },
+
+        modelListeners: {
+            "speed": {
+                funcName: "flock.demo.playableAudioElement.setSpeed",
+                args: ["{that}.container.0", "{change}.value"]
+            }
+        }
     });
 
+    flock.demo.playableAudioElement.setSpeed = function (audioEl, speed) {
+        audioEl.playbackRate = speed;
+    };
+
     fluid.defaults("flock.demo.mediaElementInput", {
-        gradeNames: ["flock.band", "fluid.viewComponent"],
+        gradeNames: ["fluid.viewComponent"],
 
         granulatorDef: {
             ugen: "flock.ugen.granulator",
@@ -61,35 +87,57 @@
         },
 
         components: {
+            enviro: {
+                type: "flock.enviro"
+            },
+
+            regularAudio: {
+                type: "flock.demo.playableAudioElement",
+                container: "{that}.dom.regular",
+                options: {
+                    model: {
+                        speed: 1.0
+                    }
+                }
+            },
+
+            slowAudio: {
+                type: "flock.demo.playableAudioElement",
+                container: "{that}.dom.slow",
+                options: {
+                    model: {
+                        speed: 0.5
+                    }
+                }
+            },
+
+            playButton: {
+                type: "flock.ui.enviroPlayButton",
+                container: "{that}.dom.playButton",
+                options: {
+                    components: {
+                        enviro: "{mediaElementInput}.enviro"
+                    }
+                }
+            },
+
             synth: {
                 type: "flock.synth",
                 options: {
-                    synthDef: "{mediaElementInput}.options.synthDef"
+                    synthDef: "{mediaElementInput}.options.synthDef",
+                    components: {
+                        enviro: "{mediaElementInput}.enviro"
+                    }
                 }
             }
         },
 
-        listeners: {
-            onCreate: [
-                {
-                    funcName: "flock.demo.mediaElementInput.setHalfSpeed",
-                    args: ["{that}.dom.slow"]
-                },
-                {
-                    func: "{that}.play"
-                }
-            ]
-        },
-
         selectors: {
+            playButton: "#play",
             regular: "#regular",
             slow: "#slow"
         }
     });
-
-    flock.demo.mediaElementInput.setHalfSpeed = function (audio) {
-        audio[0].playbackRate = 0.5;
-    };
 
     flock.demo.mediaElementInput.granulators = function (def, elementSelectors) {
         return fluid.transform(elementSelectors, function (element) {
