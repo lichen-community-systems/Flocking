@@ -109,8 +109,6 @@ var fluid = fluid || require("infusion"),
             channel = status & 0xf,
             fn;
 
-        // TODO: Factor this into a lookup table by providing a generic
-        // flock.midi.read.note that determines if it should be forwarded to noteOn/Off.
         switch (type) {
             case 8:
                 fn = flock.midi.read.noteOff;
@@ -213,7 +211,6 @@ var fluid = fluid || require("infusion"),
         }
 
         var fn;
-        // TODO: Factor this into a lookup table.
         switch (status) {
             case 0:
                 fn = flock.midi.read.sysex;
@@ -259,11 +256,17 @@ var fluid = fluid || require("infusion"),
     };
 
     flock.midi.read.sysex = function (data) {
-        var leadingOffset = data[0] === 0xF0 ? 1 : 0;
-        var trailingOffset = data[data.length - 1] === 0XF7 ? 1 : 0;
+        var begin = data[0] === 0xF0 ? 1 : 0,
+            end = data.length - (data[data.length - 1] === 0xF7 ? 1 : 0);
+
+        // Avoid copying the data if we're working with a typed array.
+        var trimmedData = data instanceof Uint8Array ?
+            data.subarray(begin, end) :
+            data.slice(begin, end);
+
         return {
             type: "sysex",
-            data: data.slice(leadingOffset, data.length - trailingOffset)
+            data: trimmedData
         };
     };
 
@@ -433,7 +436,7 @@ var fluid = fluid || require("infusion"),
 
             send: {
                 funcName: "flock.midi.connection.send",
-                args:     ["{that}", "{arguments}.0"]
+                args: ["{that}", "{arguments}.0"]
             },
 
             open: {
@@ -500,173 +503,127 @@ var fluid = fluid || require("infusion"),
 
     /**
      *
-     * Take a MIDI messages object and convert it to an array of raw bytes suitable for sending to a MIDI device.
+     * Take a MIDI messageSpec object and convert it to an array of raw bytes suitable for sending to a MIDI device.
      *
      * @param {Object} midiMessage a MIDI messageSpec object
      * @returns {Uint8Array} - an array containing the encoded MIDI message's bytes
      *
      */
-    // TODO: We should reduce the amount of garbage produced by
-    // this function by allocating a 3-byte Uint8Array at the start
-    // and creating subviews if necessary for smaller messages or
-    // special casing the various system messages.
     flock.midi.write = function (midiMessage) {
-        var channel        = midiMessage.channel ? midiMessage.channel : 0;
-
         if (midiMessage.type === "sysex") {
             return flock.midi.write.sysex(midiMessage);
         }
-        else {
-            var byteArray = new Uint8Array(flock.midi.write.getByteCount(midiMessage.type, midiMessage.note));
-            switch (midiMessage.type) {
-                case "noteOn":
-                    byteArray[0] = flock.midi.write.statusByte(channel, 9);
-                    byteArray[1] = midiMessage.note;
-                    byteArray[2] = midiMessage.velocity;
-                    break;
-                case "noteOff":
-                    byteArray[0] = flock.midi.write.statusByte(channel, 8);
-                    byteArray[1] = midiMessage.note;
-                    byteArray[2] = midiMessage.velocity;
-                    break;
-                case "aftertouch":
-                    // TODO: Keep going with literal array sets below.
-                    // polyAfterTouch
-                    if (midiMessage.note) {
-                        byteArray[0] = flock.midi.write.statusByte(channel, 10);
-                        byteArray[1] = midiMessage.note;
-                        byteArray[2] = midiMessage.velocity;
-                    }
-                    // afterTouch
-                    else {
-                        byteArray[0] = flock.midi.write.statusByte(channel, 13);
-                        byteArray[1] = midiMessage.pressure;
-                    }
-                    break;
-                case "control":
-                    byteArray[0] = flock.midi.write.statusByte(channel, 11);
-                    byteArray[1] = midiMessage.number;
-                    byteArray[2] = midiMessage.value;
-                    break;
-                case "program":
-                    byteArray[0] = flock.midi.write.statusByte(channel, 12);
-                    byteArray[1] = midiMessage.program;
-                    break;
-                case "pitchbend":
-                    byteArray[0] = flock.midi.write.statusByte(channel, 14);
-                    flock.midi.write.writeValueToTwoBytesInArray(midiMessage.value, byteArray, 1);
-                    break;
-                case "songPointer":
-                    byteArray[0] = flock.midi.write.statusByte(2, 15);
-                    flock.midi.write.writeValueToTwoBytesInArray(midiMessage.value, byteArray, 1);
-                    break;
-                case "songSelect":
-                    byteArray[0] = flock.midi.write.statusByte(3, 15);
-                    flock.midi.write.writeValueToTwoBytesInArray(midiMessage.value, byteArray, 1);
-                    break;
-                case "tuneRequest":
-                    byteArray[0] = flock.midi.write.statusByte(6, 15);
-                    break;
-                case "clock":
-                    byteArray[0] = flock.midi.write.statusByte(8, 15);
-                    break;
-                case "start":
-                    byteArray[0] = flock.midi.write.statusByte(10, 15);
-                    break;
-                case "continue":
-                    byteArray[0] = flock.midi.write.statusByte(11, 15);
-                    break;
-                case "stop":
-                    byteArray[0] = flock.midi.write.statusByte(12, 15);
-                    break;
-                case "activeSense":
-                    byteArray[0] = flock.midi.write.statusByte(14, 15);
-                    break;
-                case "reset":
-                    byteArray[0] = flock.midi.write.statusByte(15, 15);
-                    break;
-                default:
-                    flock.fail("Cannot handle MIDI message of type '" + midiMessage.type + "'.");
-            }
-            return byteArray;
-        }
-    };
 
-    /**
-     *
-     * Determine the number of bytes in the message based on the message type and note (required for aftertouch).
-     *
-     * @param {String} type - The type of message, i.e. "noteOn".
-     * @param {Number} note -
-     * @return {Integer} The number of bytes in the outgoing message.
-     */
-    flock.midi.write.getByteCount = function (type, note) {
-        switch (type) {
+        switch (midiMessage.type) {
             case "noteOn":
-                return 3;
+                return flock.midi.write.note(9, midiMessage);
             case "noteOff":
-                return 3;
+                return flock.midi.write.note(8, midiMessage);
             case "aftertouch":
-                // polyAfterTouch
-                if (note) {
-                    return 3;
-                }
-                // afterTouch
-                else {
-                    return 2;
-                }
-                break;
+                return flock.midi.write.aftertouch(midiMessage);
             case "control":
-                return 3;
+                return flock.midi.write.controlChange(midiMessage);
             case "program":
-                return 2;
+                return flock.midi.write.programChange(midiMessage);
             case "pitchbend":
-                return 3;
+                return flock.midi.write.largeValueMessage(14, midiMessage.channel, midiMessage);
             case "songPointer":
-                return 3;
+                return flock.midi.write.largeValueMessage(15, 2, midiMessage);
             case "songSelect":
-                return 3;
+                return flock.midi.write.largeValueMessage(15, 3, midiMessage);
             case "tuneRequest":
-                return 1;
+                return flock.midi.write.singleByteMessage(15, 6);
             case "clock":
-                return 1;
+                return flock.midi.write.singleByteMessage(15, 8);
             case "start":
-                return 1;
+                return flock.midi.write.singleByteMessage(15, 10);
             case "continue":
-                return 1;
+                return flock.midi.write.singleByteMessage(15, 11);
             case "stop":
-                return 1;
+                return flock.midi.write.singleByteMessage(15, 12);
             case "activeSense":
-                return 1;
+                return flock.midi.write.singleByteMessage(15, 14);
             case "reset":
-                return 1;
+                return flock.midi.write.singleByteMessage(15, 15);
             default:
-                flock.fail("Cannot handle MIDI message of type '" + type + "'.");
+                flock.fail("Cannot write an unrecognized MIDI message of type '" + midiMessage.type + "'.");
         }
+    };
+
+    flock.midi.write.note = function (status, midiMessage) {
+        return flock.midi.write.threeByteMessage(status, midiMessage.channel,
+            midiMessage.note, midiMessage.velocity);
+    };
+
+    flock.midi.write.controlChange = function (midiMessage) {
+        return flock.midi.write.threeByteMessage(11, midiMessage.channel,
+            midiMessage.number, midiMessage.value);
+    };
+
+    flock.midi.write.programChange = function (midiMessage) {
+        return flock.midi.write.twoByteMessage(12, midiMessage.channel, midiMessage.program);
+    };
+
+    flock.midi.write.aftertouch = function (midiMessage) {
+        // polyAfterTouch
+        if (midiMessage.note) {
+            return flock.midi.write.note(10, midiMessage);
+        }
+
+        // afterTouch
+        return flock.midi.write.twoByteMessage(13, midiMessage.channel, midiMessage.pressure);
+    };
+
+    flock.midi.write.singleByteMessage = function (msNibble, lsNibble) {
+        var data = new Uint8Array(1);
+        data[0] = flock.midi.write.statusByte(msNibble, lsNibble);
+        return data;
+    };
+
+    flock.midi.write.twoByteMessage = function (msNibble, lsNibble, data1) {
+        var data = new Uint8Array(2);
+        data[0] = flock.midi.write.statusByte(msNibble, lsNibble);
+        data[1] = data1;
+        return data;
+    };
+
+    flock.midi.write.threeByteMessage = function (msNibble, lsNibble, data1, data2) {
+        var data = new Uint8Array(3);
+        data[0] = flock.midi.write.statusByte(msNibble, lsNibble);
+        data[1] = data1;
+        data[2] = data2;
+        return data;
+    };
+
+    flock.midi.write.largeValueMessage = function (msNibble, lsNibble, midiMessage) {
+        var data = new Uint8Array(3);
+        data[0] = flock.midi.write.statusByte(msNibble, lsNibble);
+        flock.midi.write.twoByteValue(midiMessage.value, data, 1);
+        return data;
     };
 
     /**
      *
-     * Output a status byte based on the channel and status.
+     * Output a status byte.
      *
-     * @param {Number} channel - The MIDI channel.
-     * @param {Number} statusInt - The status.
+     * @param {Number} msNibble - the first nibble of the status byte (often the command code).
+     * @param {Number} lsNibble - the second nibble of the status byte (often the channel).
      * @return {Byte} A status byte that combines the two inputs.
      */
-    flock.midi.write.statusByte = function (channel, statusInt) {
-        return (statusInt << 4) + channel;
+    flock.midi.write.statusByte = function (msNibble, lsNibble) {
+        return (msNibble << 4) + lsNibble;
     };
 
     /**
      *
-     * Convert a large numeric value to an array of two separate bytes.
+     * Converts a 14-bit numeric value to two MIDI bytes.
      *
-     * @param {Number} value - A 14-bit integer to convert
+     * @param {Number} value - A 14-bit number to convert
      * @param {Unit8TypedArray} array - An array to write the value to.
      * @param {Integer} offset - The optional offset in the array to start writing at.  Defaults to 0.
      *
      */
-    flock.midi.write.writeValueToTwoBytesInArray =  function (value, array, offset) {
+    flock.midi.write.twoByteValue =  function (value, array, offset) {
         offset = offset || 0;
         array[offset] = value & 0x7f; // LSB
         array[offset + 1] = (value >> 7) & 0x7f; // MSB
