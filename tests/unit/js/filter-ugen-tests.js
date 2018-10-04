@@ -59,7 +59,8 @@ var fluid = fluid || require("infusion"),
                 };
 
             var delaySynth = flock.synth({
-                synthDef: delayLineDef
+                synthDef: delayLineDef,
+                addToEnvironment: false
             });
             var delay = delaySynth.nodeList.namedNodes.delay;
             flock.evaluate.synth(delaySynth);
