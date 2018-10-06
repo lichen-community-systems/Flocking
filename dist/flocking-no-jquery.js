@@ -16762,6 +16762,7 @@ var fluid = fluid || require("infusion"),
         return fn(channel, data);
     };
 
+    // Unsupported, non-API function.
     flock.midi.read.note = function (type, channel, data) {
         return {
             type: type,
@@ -16771,14 +16772,17 @@ var fluid = fluid || require("infusion"),
         };
     };
 
+    // Unsupported, non-API function.
     flock.midi.read.noteOn = function (channel, data) {
         return flock.midi.read.note("noteOn", channel, data);
     };
 
+    // Unsupported, non-API function.
     flock.midi.read.noteOff = function (channel, data) {
         return flock.midi.read.note("noteOff", channel, data);
     };
 
+    // Unsupported, non-API function.
     flock.midi.read.polyAftertouch = function (channel, data) {
         return {
             type: "aftertouch",
@@ -16788,6 +16792,7 @@ var fluid = fluid || require("infusion"),
         };
     };
 
+    // Unsupported, non-API function.
     flock.midi.read.controlChange = function (channel, data) {
         return {
             type: "control",
@@ -16797,6 +16802,7 @@ var fluid = fluid || require("infusion"),
         };
     };
 
+    // Unsupported, non-API function.
     flock.midi.read.programChange = function (channel, data) {
         return {
             type: "program",
@@ -16805,6 +16811,7 @@ var fluid = fluid || require("infusion"),
         };
     };
 
+    // Unsupported, non-API function.
     flock.midi.read.channelAftertouch = function (channel, data) {
         return {
             type: "aftertouch",
@@ -16813,10 +16820,12 @@ var fluid = fluid || require("infusion"),
         };
     };
 
+    // Unsupported, non-API function.
     flock.midi.read.twoByteValue = function (data) {
         return (data[2] << 7) | data[1];
     };
 
+    // Unsupported, non-API function.
     flock.midi.read.pitchbend = function (channel, data) {
         return {
             type: "pitchbend",
@@ -16825,6 +16834,7 @@ var fluid = fluid || require("infusion"),
         };
     };
 
+    // Unsupported, non-API function.
     flock.midi.read.system = function (status, data) {
         if (status === 1) {
             return flock.midi.messageFailure("quarter frame MTC");
@@ -16870,11 +16880,13 @@ var fluid = fluid || require("infusion"),
         return fn(data);
     };
 
+    // Unsupported, non-API function.
     flock.midi.messageFailure = function (type) {
         flock.fail("Flocking does not currently support MIDI " + type + " messages.");
         return;
     };
 
+    // Unsupported, non-API function.
     flock.midi.read.sysex = function (data) {
         var begin = data[0] === 0xF0 ? 1 : 0,
             end = data.length - (data[data.length - 1] === 0xF7 ? 1 : 0);
@@ -16890,6 +16902,7 @@ var fluid = fluid || require("infusion"),
         };
     };
 
+    // Unsupported, non-API function.
     flock.midi.read.valueMessage = function (type, value) {
         return {
             type: type,
@@ -16897,15 +16910,18 @@ var fluid = fluid || require("infusion"),
         };
     };
 
+    // Unsupported, non-API function.
     flock.midi.read.songPointer = function (data) {
         var val = flock.midi.read.twoByteValue(data);
         return flock.midi.read.valueMessage("songPointer", val);
     };
 
+    // Unsupported, non-API function.
     flock.midi.read.songSelect = function (data) {
         return flock.midi.read.valueMessage("songSelect", data[1]);
     };
 
+    // Unsupported, non-API function.
     flock.midi.read.tuneRequest = function () {
         return {
             type: "tuneRequest"
@@ -16922,6 +16938,7 @@ var fluid = fluid || require("infusion"),
         "reset"
     ];
 
+    // Unsupported, non-API function.
     flock.midi.createSystemRealtimeMessageReaders = function (systemRealtimeMessages) {
         fluid.each(systemRealtimeMessages, function (type) {
             flock.midi.read[type] = function () {
@@ -16932,6 +16949,7 @@ var fluid = fluid || require("infusion"),
         });
     };
 
+    // Unsupported, non-API function.
     flock.midi.createSystemRealtimeMessageReaders(flock.midi.systemRealtimeMessages);
 
     /**
@@ -17134,6 +17152,9 @@ var fluid = fluid || require("infusion"),
             return flock.midi.write.sysex(midiMessage);
         }
 
+        // MIDI status nibbles are helpfully documented in this
+        // SparkFun article:
+        // https://learn.sparkfun.com/tutorials/midi-tutorial/all#messages
         switch (midiMessage.type) {
             case "noteOn":
                 return flock.midi.write.note(9, midiMessage);
@@ -17170,20 +17191,24 @@ var fluid = fluid || require("infusion"),
         }
     };
 
+    // Unsupported, non-API function.
     flock.midi.write.note = function (status, midiMessage) {
         return flock.midi.write.threeByteMessage(status, midiMessage.channel,
             midiMessage.note, midiMessage.velocity);
     };
 
+    // Unsupported, non-API function.
     flock.midi.write.controlChange = function (midiMessage) {
         return flock.midi.write.threeByteMessage(11, midiMessage.channel,
             midiMessage.number, midiMessage.value);
     };
 
+    // Unsupported, non-API function.
     flock.midi.write.programChange = function (midiMessage) {
         return flock.midi.write.twoByteMessage(12, midiMessage.channel, midiMessage.program);
     };
 
+    // Unsupported, non-API function.
     flock.midi.write.aftertouch = function (midiMessage) {
         // polyAfterTouch
         if (midiMessage.note) {
@@ -17194,12 +17219,14 @@ var fluid = fluid || require("infusion"),
         return flock.midi.write.twoByteMessage(13, midiMessage.channel, midiMessage.pressure);
     };
 
+    // Unsupported, non-API function.
     flock.midi.write.singleByteMessage = function (msNibble, lsNibble) {
         var data = new Uint8Array(1);
         data[0] = flock.midi.write.statusByte(msNibble, lsNibble);
         return data;
     };
 
+    // Unsupported, non-API function.
     flock.midi.write.twoByteMessage = function (msNibble, lsNibble, data1) {
         var data = new Uint8Array(2);
         data[0] = flock.midi.write.statusByte(msNibble, lsNibble);
@@ -17207,6 +17234,7 @@ var fluid = fluid || require("infusion"),
         return data;
     };
 
+    // Unsupported, non-API function.
     flock.midi.write.threeByteMessage = function (msNibble, lsNibble, data1, data2) {
         var data = new Uint8Array(3);
         data[0] = flock.midi.write.statusByte(msNibble, lsNibble);
@@ -17215,6 +17243,7 @@ var fluid = fluid || require("infusion"),
         return data;
     };
 
+    // Unsupported, non-API function.
     flock.midi.write.largeValueMessage = function (msNibble, lsNibble, midiMessage) {
         var data = new Uint8Array(3);
         data[0] = flock.midi.write.statusByte(msNibble, lsNibble);
@@ -17230,6 +17259,7 @@ var fluid = fluid || require("infusion"),
      * @param {Number} lsNibble - the second nibble of the status byte (often the channel).
      * @return {Byte} A status byte that combines the two inputs.
      */
+    // Unsupported, non-API function.
     flock.midi.write.statusByte = function (msNibble, lsNibble) {
         return (msNibble << 4) + lsNibble;
     };
@@ -17243,12 +17273,12 @@ var fluid = fluid || require("infusion"),
      * @param {Integer} offset - The optional offset in the array to start writing at.  Defaults to 0.
      *
      */
+    // Unsupported, non-API function.
     flock.midi.write.twoByteValue =  function (value, array, offset) {
         offset = offset || 0;
         array[offset] = value & 0x7f; // LSB
         array[offset + 1] = (value >> 7) & 0x7f; // MSB
     };
-
 
     /**
      *
@@ -17260,6 +17290,7 @@ var fluid = fluid || require("infusion"),
      * @param {Object} midiMessage - The MIDI message represented as a Javascript Object.
      * @return {Uint8Array} - The sysex message.
      */
+    // Unsupported, non-API function.
     flock.midi.write.sysex = function (midiMessage) {
         if (midiMessage.data[0] === 0xF0 || midiMessage.data[midiMessage.data.length - 1] === 0xF7) {
             flock.fail("Sysex payloads should not include framing bytes.");
