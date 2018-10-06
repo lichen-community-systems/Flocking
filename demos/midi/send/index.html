@@ -4,18 +4,10 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <style>
-            .cm-s-flockingcm.CodeMirror {
-                width: 55em;
-            }
-        </style>
-
-        <title>Flocking Raw MIDI Send Demo</title>
+        <title>Flocking MIDI Send Demo</title>
 
         <link rel="stylesheet" type="text/css" href="../../shared/css/demos.css" />
         <link rel="stylesheet" type="text/css" href="../../../src/ui/shared/css/flocking-icon-font.css" />
-        <link rel="stylesheet" href="../../../node_modules/codemirror/lib/codemirror.css" />
-        <link rel="stylesheet" type="text/css" href="../../../src/ui/editor/css/editor.css" />
 
         <script src="../../../node_modules/jquery/dist/jquery.js"></script>
 
@@ -32,10 +24,6 @@
 
         <script src="../../../third-party/webarraymath/js/webarraymath.js"></script>
         <script src="../../../third-party/simjs/js/random-0.26.js"></script>
-
-        <script src="../../../node_modules/codemirror/lib/codemirror.js"></script>
-        <script src="../../../node_modules/codemirror-infusion/src/codemirror-infusion.js"></script>
-
 
         <script src="../../../src/core.js"></script>
         <script src="../../../src/node-list.js"></script>
@@ -71,15 +59,85 @@
 
     <body>
         <main>
-            <h1>Flocking Raw MIDI Send Demo</h1>
-            <p class="instructions">This demo allows you to send raw MIDI messages to a device.</p>
+            <h1>Flocking MIDI Send Demo</h1>
+            <p class="instructions">This demo allows you to send noteOn and noteOff MIDI messages to a connected device.</p>
             <div id="midi-port-selector"></div>
-            <div id="code"></div>
+
+            <hr />
+            <table>
+                <tbody>
+                    <tr>
+                        <th>Message Type</th>
+                        <td>
+                            <select class="type">
+                                <option value='"noteOn"'>Note On</option>
+                                <option value='"noteOff"'>Note Off</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Channel (0-16)</th>
+                        <td>
+                            <select class="channel">
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                                <option value="7">7</option>
+                                <option value="8">8</option>
+                                <option value="9">9</option>
+                                <option value="10">10</option>
+                                <option value="11">11</option>
+                                <option value="12">12</option>
+                                <option value="13">13</option>
+                                <option value="14">14</option>
+                                <option value="15">15</option>
+                                <option value="16">16</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Note</th>
+                        <td>
+                            <select class="note">
+                                <option value="60">C3</option>
+                                <option value="59">B2</option>
+                                <option value="58">A#2</option>
+                                <option value="57">A2</option>
+                                <option value="56">G#2</option>
+                                <option value="55">G2</option>
+                                <option value="54">F#2</option>
+                                <option value="53">F2</option>
+                                <option value="52">E2</option>
+                                <option value="51">D#2</option>
+                                <option value="50">D2</option>
+                                <option value="49">C#2</option>
+                                <option value="48">C2</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Velocity</th>
+                        <td>
+                            <select class="velocity">
+                                <option value="0">0</option>
+                                <option value="32">32</option>
+                                <option value="64">64</option>
+                                <option value="76">76</option>
+                                <option value="127">127</option>
+                            </select>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
             <p><button class="send">Send</button></p>
         </main>
 
         <script>
-            window.rawMIDISender = flock.demo.rawMIDISender("main");
+            window.midiSender = flock.demo.midiSender("main");
         </script>
     </body>
 </html>

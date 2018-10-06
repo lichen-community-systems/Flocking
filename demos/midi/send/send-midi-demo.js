@@ -3,7 +3,7 @@
 (function () {
     "use strict";
 
-    fluid.defaults("flock.demo.rawMIDIInputView", {
+    fluid.defaults("flock.demo.midiInputView", {
         gradeNames: "fluid.codeMirror",
 
         codeMirrorOptions: {
@@ -21,7 +21,7 @@
 
         invokers: {
             updateContent: {
-                funcName: "flock.demo.rawMIDIInputView.updatedContentModel",
+                funcName: "flock.demo.midiInputView.updatedContentModel",
                 args: ["{that}"]
             }
         },
@@ -31,12 +31,12 @@
         }
     });
 
-    flock.demo.rawMIDIInputView.updatedContentModel = function (that) {
+    flock.demo.midiInputView.updatedContentModel = function (that) {
         var content = that.getContent();
         that.applier.change("content", content);
     };
 
-    fluid.defaults("flock.demo.rawMIDIParser", {
+    fluid.defaults("flock.demo.midiHexStringParser", {
         gradeNames: "fluid.modelComponent",
 
         model: {
@@ -47,13 +47,13 @@
             target: "commands",
             singleTransform: {
                 type: "fluid.transforms.free",
-                func: "flock.demo.rawMIDIParser.parseMIDICommands",
+                func: "flock.demo.midiHexStringParser.parseMidiCommands",
                 args: ["{midiInputView}.model.content"]
             }
         }
     });
 
-    flock.demo.rawMIDIParser.parseMIDIByteString = function (byteString, i) {
+    flock.demo.midiHexStringParser.parseMidiByteString = function (byteString, i) {
         if (byteString.length < 1) {
             return;
         }
@@ -68,7 +68,7 @@
         return byte;
     };
 
-    flock.demo.rawMIDIParser.parseMIDICommand = function (commandString) {
+    flock.demo.midiHexStringParser.parseMidiCommand = function (commandString) {
         if (commandString.length < 1) {
             return;
         }
@@ -77,7 +77,7 @@
             bytes = [];
 
         fluid.each(midiByteStrings, function (byteString, i) {
-            var byte = flock.demo.rawMIDIParser.parseMIDIByteString(byteString, i);
+            var byte = flock.demo.midiHexStringParser.parseMidiByteString(byteString, i);
             if (byte) {
                 bytes.push(byte);
             }
@@ -86,12 +86,12 @@
         return new Uint8Array(bytes);
     };
 
-    flock.demo.rawMIDIParser.parseMIDICommands = function (midiString) {
+    flock.demo.midiHexStringParser.parseMidiCommands = function (midiString) {
         var commandStrings = midiString.split("\n"),
             commands = [];
 
         fluid.each(commandStrings, function (commandString) {
-            var command = flock.demo.rawMIDIParser.parseMIDICommand(commandString);
+            var command = flock.demo.midiHexStringParser.parseMidiCommand(commandString);
             if (command) {
                 commands.push(command);
             }
@@ -100,23 +100,8 @@
         return commands;
     };
 
-    fluid.defaults("flock.demo.rawMIDISender", {
+    fluid.defaults("flock.demo.midiSender", {
         gradeNames: "fluid.viewComponent",
-
-        commandDelay: 0.1,
-
-        model: {
-            commandScore: []
-        },
-
-        modelRelay: {
-            target: "commandScore",
-            singleTransform: {
-                type: "fluid.transforms.free",
-                func: "flock.demo.rawMIDISender.schedulerScoreForCommands",
-                args: ["{that}.parser.model.commands", "{that}"]
-            }
-        },
 
         invokers: {
             send: "{that}.events.onSend.fire"
@@ -127,28 +112,8 @@
                 type: "flock.ui.midiConnector",
                 container: "{that}.dom.midiPortSelector",
                 options: {
-                    portType: "output",
-                    components: {
-                        connection: {
-                            options: {
-                                sysex: true
-                            }
-                        }
-                    }
+                    portType: "output"
                 }
-            },
-
-            parser: {
-                type: "flock.demo.rawMIDIParser"
-            },
-
-            midiInputView: {
-                type: "flock.demo.rawMIDIInputView",
-                container: "{that}.dom.rawMIDIArea"
-            },
-
-            scheduler: {
-                type: "flock.scheduler.async"
             }
         },
 
@@ -167,47 +132,40 @@
 
             onSend: [
                 {
-                    priority: "first",
-                    func: "{midiInputView}.updateContent"
-                },
-                {
                     priority: "last",
-                    funcName: "flock.demo.rawMIDISender.enqueueMIDICommands",
-                    args: ["{that}.model.commandScore", "{that}"]
+                    funcName: "flock.demo.midiSender.sendCommand",
+                    args:     ["{that}"]
                 }
             ]
         },
 
         selectors: {
-            rawMIDIArea: "#code",
+            type: ".type",
+            channel: ".channel",
+            note: ".note",
+            velocity: ".velocity",
             sendButton: "button.send",
             midiPortSelector: "#midi-port-selector"
         }
     });
 
-    flock.demo.rawMIDISender.sendCommand = function (command, that) {
-        that.connector.connection.sendRaw(command);
-    };
-
-    flock.demo.rawMIDISender.schedulerScoreForCommands = function (commands, that) {
-        return fluid.transform(commands, function (command, i) {
-            return {
-                interval: "once",
-                time: i * that.options.commandDelay,
-                change: function () {
-                    flock.demo.rawMIDISender.sendCommand(command, that);
-                }
-            };
+    flock.demo.midiSender.sendCommand = function (that) {
+        var command = {};
+        // TODO: Discuss using gpii-binder here.
+        // (Sounds like a great idea!)
+        fluid.each(["type", "channel", "note", "velocity"], function (param) {
+            var element = that.locate(param);
+            command[param] = JSON.parse(element.val());
         });
-    };
 
-    flock.demo.rawMIDISender.enqueueMIDICommands = function (commandScore, that) {
-        if (commandScore.length < 1 || !that.connector.connection) {
-            return;
+        // TODO: This is a bit ugly...
+        // Channels in Flocking MIDI messageSpecs are currently
+        // 0-indexed (i.e. 0-15). But to make better UIs easier,
+        // should we automatically convert them to start at 1?
+        if (command.channel) {
+            command.channel = command.channel - 1;
         }
 
-        // Stop any currently-queued MIDI commands prior to sending new ones.
-        that.scheduler.clearAll();
-        that.scheduler.schedule(commandScore);
+        that.connector.connection.send(command);
     };
 }());
