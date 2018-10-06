@@ -34,12 +34,12 @@
   },
   "dependencies": {
     "jquery": "3.3.1",
-    "infusion": "3.0.0-dev.20180801T212157Z.09bf3d438",
+    "infusion": "3.0.0-dev.20180924T230735Z.05b2dbfdc",
     "codemirror-infusion": "2.2.0",
     "jsplumb": "1.7.9",
     "dagre": "0.8.2",
     "normalize.css": "8.0.0",
-    "atob": "2.1.1"
+    "atob": "2.1.2"
   },
   "optionalDependencies": {
     "midi": "0.9.5",
