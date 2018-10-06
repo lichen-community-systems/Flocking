@@ -410,7 +410,17 @@ var fluid = fluid || require("infusion"),
             control: null,
             program: null,
             aftertouch: null,
-            pitchbend: null
+            pitchbend: null,
+            sysex: null,
+            songPointer: null,
+            songSelect: null,
+            tuneRequest: null,
+            clock: null,
+            start: null,
+            continue: null,
+            stop: null,
+            activeSense: null,
+            reset: null
         }
     });
 
