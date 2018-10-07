@@ -1,6 +1,6 @@
 /*
  * Flocking Playground
- *   Copyright 2014-2015, Colin Clark
+ *   Copyright 2014-2018, Colin Clark
  *
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
@@ -54,6 +54,11 @@ var fluid = fluid || require("infusion"),
                         onEvaluationError: "{playground}.events.onError"
                     }
                 }
+            },
+
+            errorConsole: {
+                type: "flock.playground.errorConsole",
+                container: "{that}.dom.errorConsole"
             },
 
             demoSelector: {
@@ -117,7 +122,8 @@ var fluid = fluid || require("infusion"),
         selectors: {
             editor: "#source-view",
             playButton: "#playButton",
-            demoSelector: "#demos"
+            demoSelector: "#demos",
+            errorConsole: "#error-console"
         }
     });
 

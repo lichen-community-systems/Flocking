@@ -10910,13 +10910,11 @@ Random.prototype.weibull = function (alpha, beta) {
 if (typeof window === "undefined" && typeof module !== "undefined" && module.exports) {
     module.exports = Random;
 }
-;/*! Flocking 0.1, Copyright 2011-2014 Colin Clark | flockingjs.org */
-
-/*
+;/*
  * Flocking - Creative audio synthesis for the Web!
  * http://github.com/colinbdclark/flocking
  *
- * Copyright 2011-2015, Colin Clark
+ * Copyright 2011-2018, Colin Clark
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
 
@@ -11561,11 +11559,12 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    flock.fail = function (msg) {
+    flock.fail = function (e) {
         if (flock.debug.failHard) {
-            throw new Error(msg);
+            e = e instanceof Error ? e : new Error(e);
+            throw e;
         } else {
-            flock.log.fail(msg);
+            flock.log.fail(e);
         }
     };
 
