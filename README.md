@@ -31,7 +31,7 @@ Clark, C. and Tindale, Adam. "[Flocking: A Framework for Declarative Music-Makin
 in Georgaki, A. and Kouroupetroglou (eds.). _The Joint Proceedings of the ICMC and SMC_, (2014).
 _[slides](colinclark.org/presentations/flocking-icmc-2014-slides.pdf)_
 
-
+Flocking does not currently support the Web Audio API's new [AudioWorklet](https://www.w3.org/TR/webaudio/#audioworklet) specification, which allows for JavaScript-based signal processing code to run in a separate, real-time thread. This means that Flocking is not currently well-suited to applications that involve a lot of graphics rendering or user interaction. Work is underway on a new core for Flocking, called [Signaletic](https://github.com/colinbdclark/signaletic/tree/gh-1), which will provide full support for all Web Audio native nodes as well as the use of AudioWorklets.
 
 Community
 ---------
@@ -58,8 +58,6 @@ is documented in the wiki. Plans include:
  * A new format for specifying connections between unit generators
  * A "live data merging" environment for live coding
  * Graphical editing of Flocking synth defs
- * A block-accurate scheduler and more sample-accurate scheduling unit generators
- * Multichannel expansion
 
 Unplanned features, bug fixes, and contributions are welcome and appreciated, of course. The Flocking project adheres to the [Contributor Covenant guidelines](http://contributor-covenant.org/version/1/2/0/), and is an open and welcoming community.
 
@@ -281,58 +279,6 @@ and if sample-level accuracy is needed, unit generators such as <code>flock.ugen
 A block-accurate scheduler is planned for an upcoming release of Flocking.
 In the meantime the asynchronous scheduler does a decent job of keeping "pleasantly inaccurate" time.
 
-Here's an example of how to use the Flocking scheduler declaratively:
-
-    // Create a Band containing two components:
-    //   1. a synth named "sinSynth," on which we will schedule changes.
-    //   2. an asynchronous scheduler
-    var band = flock.band({
-        components: {
-            sinSynth: {
-                type: "flock.synth",
-                options: {
-                    synthDef: {
-                        id: "carrier",
-                        ugen: "flock.ugen.sinOsc",
-                        freq: 220,
-                        mul: {
-                            ugen: "flock.ugen.line",
-                            start: 0,
-                            end: 0.25,
-                            duration: 1.0
-                        }
-                    }
-                }
-            },
-
-            scheduler: {
-                type: "flock.scheduler.async",
-                options: {
-                    components: {
-                        synthContext: "{sinSynth}"
-                    },
-
-                    score: [
-                        {
-                            interval: "repeat",
-                            time: 1.0,
-                            change: {
-                                values: {
-                                    "carrier.freq": {
-                                        synthDef: {
-                                            ugen: "flock.ugen.sequence",
-                                            values: [330, 440, 550, 660, 880, 990, 1100, 1210]
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    ]
-                }
-            }
-        }
-    });
-
 If you need to, you can always schedule arbitrary events using plain old functions:
 
     // Fade out after 8 seconds.
@@ -344,7 +290,7 @@ If you need to, you can always schedule arbitrary events using plain old functio
         });
     });
 
-The Flocking scheduler is still under active development and its API will change as it evolves.
+The Flocking scheduler, in future releases, will be removed and replaced with [Bergson](https://github.com/colinbdclark/bergson), a highly accurate scheduler written specifically for audio and video applications.
 
 
 Testing
@@ -387,7 +333,9 @@ Compatibility
 -------------
 
 Flocking is currently tested on the latest versions of Firefox, Chrome, Safari, and Microsoft Edge
-on Mac, Windows, Linux, iOS, and Android. Node.js 6.x is also supported.
+on Mac, Windows, Linux, iOS, and Android.
+
+Node.js 8.x is also supported, but support for Node.js may be removed in future releases.
 
 
 License
