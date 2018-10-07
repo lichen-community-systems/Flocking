@@ -1,10 +1,8 @@
-/*! Flocking 0.1, Copyright 2011-2014 Colin Clark | flockingjs.org */
-
 /*
  * Flocking - Creative audio synthesis for the Web!
  * http://github.com/colinbdclark/flocking
  *
- * Copyright 2011-2015, Colin Clark
+ * Copyright 2011-2018, Colin Clark
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
 

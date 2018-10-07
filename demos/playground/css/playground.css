@@ -11,7 +11,7 @@ html, body, .everything {
 }
 
 select {
-    font-family: "Lucida Grande", monospace;
+    font-family: "Lucida Grande";
     font-size: 0.8em;
 }
 
@@ -98,6 +98,6 @@ label {
     width: 100%;
     position: fixed;
     bottom: 0px;
-    font-family: "Lucida Console";
+    font-family: "Lucida Console", monospace;
     font-size: 0.75em;
 }

@@ -1,6 +1,6 @@
 /*
  * Flocking Playground Error Console
- *   Copyright 2014-2015, Colin Clark
+ *   Copyright 2018, Colin Clark
  *
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
