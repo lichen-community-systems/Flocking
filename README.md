@@ -83,7 +83,7 @@ are included in the [dist directory](dist/). Flocking can also be built manually
 
 Here's how to include Flocking's development file in your HTML page:
 
-    <!-- This includes Flocking and all its dependencies, including jQuery 2.x and Infusion -->
+    <!-- This includes Flocking and all its dependencies, including jQuery and Infusion -->
     <script src="flocking/dist/flocking-all.js"></script>
 
 
@@ -355,7 +355,7 @@ a composer, thinker, and early pioneer of computer music who was my composition 
 huge influence on my work. I hope you find this library useful enough to create projects as
 beautiful and inspiring as Jim's _Flocking_.
 
-### Thanks to:###
+### Thanks to:
  * [Adam Tindale](http://adamtindale.com) for the tanh distortion unit generator, documentation improvements, and several of the Playground demos
  * [Alfredo Matas](https://github.com/amatas) for test automation on Windows and Linux
  * [Johnny Taylor](https://github.com/abledaccess) for styling improvements to the Playground
