@@ -56,6 +56,11 @@ var fluid = fluid || require("infusion"),
                 }
             },
 
+            errorConsole: {
+                type: "flock.playground.errorConsole",
+                container: "{that}.dom.errorConsole"
+            },
+
             demoSelector: {
                 type: "flock.playground.demoSelector",
                 container: "{that}.dom.demoSelector",
@@ -117,7 +122,8 @@ var fluid = fluid || require("infusion"),
         selectors: {
             editor: "#source-view",
             playButton: "#playButton",
-            demoSelector: "#demos"
+            demoSelector: "#demos",
+            errorConsole: "#error-console"
         }
     });
 

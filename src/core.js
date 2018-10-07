@@ -649,11 +649,12 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    flock.fail = function (msg) {
+    flock.fail = function (e) {
         if (flock.debug.failHard) {
-            throw new Error(msg);
+            e = e instanceof Error ? e : new Error(e);
+            throw e;
         } else {
-            flock.log.fail(msg);
+            flock.log.fail(e);
         }
     };
 

@@ -84,6 +84,13 @@ var fluid = fluid || require("infusion"),
             onParseError: null,
             afterEvaluated: null,
             onEvaluationError: null
+        },
+
+        listeners: {
+            "onEvaluationError.failOnError": {
+                funcName: "flock.fail",
+                args: ["{arguments}.0"]
+            }
         }
     });
 

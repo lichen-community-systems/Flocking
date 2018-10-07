@@ -6,11 +6,24 @@
     width: 40%;
 }
 
+#source-view {
+    border-right: 0px;
+    height: 95%;
+    border-bottom: 1px solid #aaa;
+}
+
+.CodeMirror {
+    height: 100%;
+    border-bottom: 0px;
+}
+
 #visual-view {
     color: #fff;
     overflow: auto;
     position: relative;
     float: right;
+    height: 95%;
+    border-bottom: 1px solid #aaa;
 }
 
 .node {
