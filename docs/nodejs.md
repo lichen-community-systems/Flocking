@@ -102,8 +102,6 @@ Then start your application by running <code>node .</code> from your project's r
 
 ## Advanced: Using Flocking with Infusion in Node.js ##
 
-*Note: These instructions will only work with the unreleased Flocking 0.2.0 version.*
-
 A Flocking Node.js project is typically laid out in the following directory structure:
 
     lib/                <-- Contains your project's primary JavaScript files

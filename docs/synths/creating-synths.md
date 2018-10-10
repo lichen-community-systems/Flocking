@@ -180,5 +180,3 @@ You can also define custom synths that override any aspect of a base grade. Here
         });
 
 Grades are very dynamic: you can even override or add further grades to a particular instance of a component when you instantiate it on the fly.
-
-A simpler means to define custom components, <code>flock.define()</code> will be introduced in Flocking 0.2.0.

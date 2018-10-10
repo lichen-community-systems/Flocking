@@ -19,7 +19,7 @@ However, it is generally safe to assume that these formats will work across the 
 
 Flocking also provides an optional pure JavaScript decoder library that supports WAVE and AIFF files, and is used in with its Node.js backend. This library is not included in the default Flocking concatenated builds, but can be included in your pages if support for AIFF files or unusual bit rates is required. To do so, simply import <code>flocking-audiofile-compatibility.js</code>.
 
-As of Flocking version 0.2.0, audio buffers can be exported as WAVE files. Flocking ships with a custom exporter that is capable of exporting a wide variety of sample formats and bit rates.
+Flocking audio buffers can be exported as WAVE files, and supports a wide variety of sample formats and bit rates.
 
 
 ## Buffer Definitions ##
@@ -286,8 +286,6 @@ The data container of a Buffer Description object contains the actual raw sample
 
 ## Exporting Audio Files ##
 
-_Note: This section applies to the Flocking 0.2.0 release, which is still under development._
-
 Flocking provides a means to export buffers from the Environment as sound files. Currently, only WAVE files are supported. Unlike many other solutions available for recording and exporting Web Audio, Flocking's exporter supports extended formats such as 32-bit floats and channel counts greater than two.
 
 ### Saving Audio Files ###
@@ -340,7 +338,7 @@ Buffers can be encoded into the WAVE format using the <code>flock.audio.encode.w
 1. <code>bufDesc</code>: a buffer to encode
 2. <code>format</code>: a format string that specifies the format to encode this buffer as _(defaults to <code>int16</code>)_
 
-The return value is an <code>ArrayBuffer</code> object containing the encoded sound file. Encoding currently occurs synchronously on the main thread, so it will block. This will be addressed prior to the 0.2.0 release.
+The return value is an <code>ArrayBuffer</code> object containing the encoded sound file. Encoding currently occurs synchronously on the main thread, so it will block.
 
 Currently, Flocking supports the following WAVE file formats:
 

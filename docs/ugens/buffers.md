@@ -380,8 +380,6 @@ None.
 
 ## flock.ugen.writeBuffer ##
 
-_Note: This section applies to the Flocking 0.2.0 release, which is still under development._
-
 The <code>writeBuffer</code> unit generator writes its <code>sources</code> input to the specified <code>buffer</code> input. The buffer is specified as a Buffer Definition object or as a raw Buffer Description. Typically, users will record into a global environment buffer and then export an encoded sound file using the Environment's <code>saveBuffer()</code> method, which is described in the [buffer overview documentation](../buffers/about-buffers.md).
 
 ### Inputs ###
