@@ -104,7 +104,7 @@ var fluid = fluid || require("infusion"),
             bufferDefs: [
                 {
                     id: "honey",
-                    url: flock.test.pathForResource("../../../demos/shared/audio/hillier-first-chord.wav")
+                    url: flock.test.urlForResource("../../../demos/shared/audio/hillier-first-chord.wav")
                 }
             ],
             listeners: {

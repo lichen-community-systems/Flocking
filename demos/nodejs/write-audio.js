@@ -19,7 +19,7 @@ var granularDef = {
     ugen: "flock.ugen.triggerGrains",
     buffer: {
         id: "hillier-first-chord",
-        url: currentDir + "/../../demos/shared/audio/hillier-first-chord.wav"
+        url: "file:///" + currentDir + "/../../demos/shared/audio/hillier-first-chord.wav"
     },
     centerPos: {
         ugen: "flock.ugen.lfNoise",

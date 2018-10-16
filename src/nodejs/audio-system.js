@@ -43,16 +43,17 @@ fluid.defaults("flock.nodejs.audioSystem", {
 fluid.registerNamespace("flock.file");
 
 flock.file.readFromPath = function (options) {
-    var path = options.src;
+    var path = options.src,
+        fileURL = new url.URL(path);
 
-    fs.exists(path, function (exists) {
+    fs.exists(fileURL, function (exists) {
         if (!exists && options.error) {
             options.error(path + " doesn't exist.");
             return;
         }
 
-        fs.stat(path, function (error, stats) {
-            fs.open(path, "r", function (error, fd) {
+        fs.stat(fileURL, function (error, stats) {
+            fs.open(fileURL, "r", function (error, fd) {
                 var buf = new Buffer(stats.size);
 
                 fs.read(fd, buf, 0, buf.length, null, function () {
@@ -80,7 +81,7 @@ flock.audio.loadBuffer.readerForSource = function (src) {
     }
     var parsed = url.parse(src);
     return parsed.protocol === "data:" ? flock.file.readBufferFromDataUrl :
-        !parsed.protocol ? flock.file.readFromPath : flock.net.readBufferFromUrl;
+        !parsed.protocol || parsed.protocol === "file:" ? flock.file.readFromPath : flock.net.readBufferFromUrl;
 };
 
 fluid.registerNamespace("flock.audio.decode");

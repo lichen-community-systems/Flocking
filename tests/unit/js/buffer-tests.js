@@ -234,7 +234,7 @@ var fluid = fluid || require("infusion"),
             },
             {
                 id: "fish",
-                url: flock.test.pathForResource("../../../demos/shared/audio/hillier-first-chord.wav")
+                url: flock.test.urlForResource("../../../demos/shared/audio/hillier-first-chord.wav")
             }
         ];
 
