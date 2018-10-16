@@ -81,8 +81,10 @@ flock.audio.loadBuffer.readerForSource = function (src) {
     }
     var parsed = url.parse(src);
     return parsed.protocol === "data:" ? flock.file.readBufferFromDataUrl :
-        !parsed.protocol || parsed.protocol === "file:" ? flock.file.readFromPath : flock.net.readBufferFromUrl;
+        flock.audio.loadBuffer.remoteProtocols.indexOf(parsed.protocol) < 0 ? flock.file.readFromPath : flock.net.readBufferFromUrl;
 };
+
+flock.audio.loadBuffer.remoteProtocols = ["http", "https"];
 
 fluid.registerNamespace("flock.audio.decode");
 
