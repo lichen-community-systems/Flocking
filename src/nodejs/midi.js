@@ -135,6 +135,13 @@ flock.midi.nodejs.requestAccess = function (sysex, onAccessGranted, onError) {
     }
 };
 
+flock.midi.nodejs.collectPorts = function (type, access, ports) {
+    var portsForType = ports[type] = ports[type] || [];
+    portsForType.concat(access[type]());
+
+    return ports;
+};
+
 flock.midi.nodejs.openPort = function (port) {
     port.open();
 };
@@ -143,3 +150,4 @@ flock.midi.nodejs.openPort = function (port) {
 // TODO: Replace this with something more civilized!
 flock.midi.requestAccess = flock.midi.nodejs.requestAccess;
 flock.midi.connection.openPort = flock.midi.nodejs.openPort;
+flock.midi.collectPorts = flock.midi.nodejs.collectPorts;
