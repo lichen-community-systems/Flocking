@@ -27,13 +27,13 @@ var fluid = fluid || require("infusion"),
         return new Float32Array(blockSize * 2);
     };
 
-    flock.test.pathForResource = function (path) {
-        return flock.platform.isBrowser ? path : __dirname + "/" + path;
+    flock.test.urlForResource = function (path) {
+        return flock.platform.isBrowser ? path : "file:///" + __dirname + "/" + path;
     };
 
     flock.test.audioFilePath = function (fileName) {
         var relativePath = "../../shared/audio/" + fileName;
-        return flock.test.pathForResource(relativePath);
+        return flock.test.urlForResource(relativePath);
     };
 
     // TODO: Promote this to core.

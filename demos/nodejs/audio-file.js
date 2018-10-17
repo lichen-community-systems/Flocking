@@ -21,7 +21,7 @@ flock.synth({
         ugen: "flock.ugen.playBuffer",
         buffer: {
             id: "hillier-first-chord",
-            url: currentDir + "/../../demos/shared/audio/hillier-first-chord.wav"
+            url: "file:///" + currentDir + "/../../demos/shared/audio/hillier-first-chord.wav"
         },
         loop: 1,
         speed: {
