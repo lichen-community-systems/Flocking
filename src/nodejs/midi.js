@@ -136,8 +136,10 @@ flock.midi.nodejs.requestAccess = function (sysex, onAccessGranted, onError) {
 };
 
 flock.midi.nodejs.collectPorts = function (type, access, ports) {
-    var portsForType = ports[type] = ports[type] || [];
-    portsForType.concat(access[type]());
+    var portsForType = ports[type] || [],
+        accessPorts = access[type]();
+
+    ports[type] = portsForType.concat(accessPorts);
 
     return ports;
 };
