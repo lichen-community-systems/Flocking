@@ -2,7 +2,7 @@
  * Flocking Node.js Web MIDI Polyfill/Monkeypatch
  * http://github.com/colinbdclark/flocking
  *
- * Copyright 2014-2015, Colin Clark
+ * Copyright 2014-2018, Colin Clark
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
 
@@ -135,6 +135,15 @@ flock.midi.nodejs.requestAccess = function (sysex, onAccessGranted, onError) {
     }
 };
 
+flock.midi.nodejs.collectPorts = function (type, access, ports) {
+    var portsForType = ports[type] || [],
+        accessPorts = access[type]();
+
+    ports[type] = portsForType.concat(accessPorts);
+
+    return ports;
+};
+
 flock.midi.nodejs.openPort = function (port) {
     port.open();
 };
@@ -143,3 +152,4 @@ flock.midi.nodejs.openPort = function (port) {
 // TODO: Replace this with something more civilized!
 flock.midi.requestAccess = flock.midi.nodejs.requestAccess;
 flock.midi.connection.openPort = flock.midi.nodejs.openPort;
+flock.midi.collectPorts = flock.midi.nodejs.collectPorts;
