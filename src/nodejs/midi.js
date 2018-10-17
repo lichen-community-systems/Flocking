@@ -2,7 +2,7 @@
  * Flocking Node.js Web MIDI Polyfill/Monkeypatch
  * http://github.com/colinbdclark/flocking
  *
- * Copyright 2014-2015, Colin Clark
+ * Copyright 2014-2018, Colin Clark
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
 
