@@ -115,6 +115,10 @@ var fluid = fluid || require("infusion"),
 
             playButtonManager: {
                 type: "flock.playground.playToggler"
+            },
+
+            demos: {
+                type: "flock.playground.demos.live"
             }
         },
 
