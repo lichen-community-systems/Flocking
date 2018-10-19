@@ -639,6 +639,13 @@ var fluid = fluid || require("infusion"),
         that.events.afterRender.fire();
     };
 
+    flock.ui.nodeRenderer.createUndraggableEndpoint = function (plumb, node, options) {
+        var endpoint = plumb.addEndpoint(node, options);
+        endpoint.setEnabled(false);
+
+        return endpoint;
+    };
+
     flock.ui.nodeRenderer.synth.renderEdges = function (plumb, edges) {
         fluid.each(edges, function (edge, idx) {
             // TODO: Get rid of this conditional.
@@ -646,7 +653,7 @@ var fluid = fluid || require("infusion"),
                 return;
             }
 
-            var sourceEndpoint = plumb.addEndpoint(edge.target, {
+            var sourceEndpoint = flock.ui.nodeRenderer.createUndraggableEndpoint(plumb, edge.target, {
                 anchor: "Bottom",
                 width: 2,
                 endpoint: [
@@ -656,9 +663,8 @@ var fluid = fluid || require("infusion"),
                     }
                 ]
             });
-            sourceEndpoint.setEnabled(false);
 
-            var targetEndpoint = plumb.addEndpoint(edge.source, {
+            var targetEndpoint = flock.ui.nodeRenderer.createUndraggableEndpoint(plumb, edge.source, {
                 endpoint: [
                     "Dot",
                     {
