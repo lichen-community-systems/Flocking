@@ -646,31 +646,37 @@ var fluid = fluid || require("infusion"),
                 return;
             }
 
+            var sourceEndpoint = plumb.addEndpoint(edge.target, {
+                anchor: "Bottom",
+                width: 2,
+                endpoint: [
+                    "Dot",
+                    {
+                        radius: 4
+                    }
+                ]
+            });
+            sourceEndpoint.setEnabled(false);
+
+            var targetEndpoint = plumb.addEndpoint(edge.source, {
+                endpoint: [
+                    "Dot",
+                    {
+                        radius: 4
+                    }
+                ],
+                anchor: [
+                    "Perimeter",
+                    {
+                        shape: "Rectangle",
+                    }
+                ]
+            });
+            targetEndpoint.setEnabled(false);
+
             plumb.connect({
-                source: plumb.addEndpoint(edge.target, {
-                    anchor: "Bottom",
-                    width: 2,
-                    endpoint: [
-                        "Dot",
-                        {
-                            radius: 4
-                        }
-                    ]
-                }),
-                target: plumb.addEndpoint(edge.source, {
-                    endpoint: [
-                        "Dot",
-                        {
-                            radius: 4
-                        }
-                    ],
-                    anchor: [
-                        "Perimeter",
-                        {
-                            shape: "Rectangle",
-                        }
-                    ]
-                }),
+                source: sourceEndpoint,
+                target: targetEndpoint,
                 connector: "Straight",
                 overlays: [
                     [
