@@ -643,6 +643,13 @@ var fluid = fluid || require("infusion"),
         that.events.afterRender.fire();
     };
 
+    flock.ui.nodeRenderer.createUndraggableEndpoint = function (plumb, node, options) {
+        var endpoint = plumb.addEndpoint(node, options);
+        endpoint.setEnabled(false);
+
+        return endpoint;
+    };
+
     flock.ui.nodeRenderer.synth.renderEdges = function (plumb, edges) {
         fluid.each(edges, function (edge, idx) {
             // TODO: Get rid of this conditional.
@@ -650,31 +657,36 @@ var fluid = fluid || require("infusion"),
                 return;
             }
 
+            var sourceEndpoint = flock.ui.nodeRenderer.createUndraggableEndpoint(plumb, edge.target, {
+                anchor: "Bottom",
+                width: 2,
+                endpoint: [
+                    "Dot",
+                    {
+                        radius: 4
+                    }
+                ]
+            });
+
+            var targetEndpoint = flock.ui.nodeRenderer.createUndraggableEndpoint(plumb, edge.source, {
+                endpoint: [
+                    "Dot",
+                    {
+                        radius: 4
+                    }
+                ],
+                anchor: [
+                    "Perimeter",
+                    {
+                        shape: "Rectangle",
+                    }
+                ]
+            });
+            targetEndpoint.setEnabled(false);
+
             plumb.connect({
-                source: plumb.addEndpoint(edge.target, {
-                    anchor: "Bottom",
-                    width: 2,
-                    endpoint: [
-                        "Dot",
-                        {
-                            radius: 4
-                        }
-                    ]
-                }),
-                target: plumb.addEndpoint(edge.source, {
-                    endpoint: [
-                        "Dot",
-                        {
-                            radius: 4
-                        }
-                    ],
-                    anchor: [
-                        "Perimeter",
-                        {
-                            shape: "Rectangle",
-                        }
-                    ]
-                }),
+                source: sourceEndpoint,
+                target: targetEndpoint,
                 connector: "Straight",
                 overlays: [
                     [
