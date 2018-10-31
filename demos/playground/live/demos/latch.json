@@ -18,7 +18,7 @@
                 "mul": 500,
                 "add": 600
             },
-            "trig": {
+            "trigger": {
                 "ugen": "flock.ugen.impulse",
                 "rate": "control",
                 "freq": 10

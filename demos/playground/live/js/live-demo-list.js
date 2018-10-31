@@ -125,6 +125,10 @@ var fluid = fluid || require("infusion");
                             "name": "Read buffer with phasor"
                         },
                         {
+                            "id": "chop-buffer",
+                            "name": "Chop a buffer"
+                        },
+                        {
                             "id": "audio-in",
                             "name": "Live audio input"
                         },
@@ -152,7 +156,7 @@ var fluid = fluid || require("infusion");
                         },
                         {
                             "id": "bandreject-filter",
-                            "name": "Band pass filter"
+                            "name": "Band reject filter"
                         },
                         {
                             "id": "delay",
@@ -274,6 +278,10 @@ var fluid = fluid || require("infusion");
                             "name": "Sequencer"
                         },
                         {
+                            "id": "declarative-scheduling",
+                            "name": "Declarative scheduling"
+                        },
+                        {
                             "id": "sample-accurate-scheduling",
                             "name": "Sample-accurate scheduling"
                         }
@@ -282,7 +290,7 @@ var fluid = fluid || require("infusion");
 
             ],
 
-            defaultOption: "granulator"
+            defaultOption: "bandpass-filter"
         }
     });
 }());
