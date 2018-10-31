@@ -1,4 +1,4 @@
-/*! Flocking 0.2.0, Copyright 2018 Colin Clark | flockingjs.org */
+/*! Flocking 1.0.0, Copyright 2018 Colin Clark | flockingjs.org */
 
 // -*- mode: javascript; tab-width: 2; indent-tabs-mode: nil; -*-
 //------------------------------------------------------------------------------
