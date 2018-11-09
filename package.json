@@ -46,6 +46,7 @@
     "speaker": "github:colinbdclark/node-speaker#c3f0740482864f3e750ebf4d4da8c49a407edbae"
   },
   "scripts": {
+    "prepare": "node_modules/.bin/grunt",
     "test": "npm run node-test && npm run browser-test",
     "browser-test": "node_modules/.bin/testem ci --file tests/unit/testem.json",
     "node-test": "node tests/unit/nodejs/all-node-tests.js",
