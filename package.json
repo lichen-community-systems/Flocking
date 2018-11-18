@@ -1,7 +1,7 @@
 {
   "name": "flocking",
-  "version": "1.0.0",
-  "description": "Creative audio synthesis for the Web and Node.js",
+  "version": "2.0.0",
+  "description": "Creative audio synthesis for the Web ",
   "author": "Colin Clark",
   "homepage": "http://flockingjs.org/",
   "repository": {
@@ -19,7 +19,7 @@
     "synthesis"
   ],
   "readmeFilename": "README.md",
-  "main": "index.js",
+  "browser": "dist/flocking-all.js",
   "devDependencies": {
     "grunt": "1.0.3",
     "grunt-contrib-clean": "1.1.0",
@@ -28,7 +28,6 @@
     "grunt-contrib-copy": "1.0.0",
     "grunt-contrib-jshint": "1.1.0",
     "sheep-benchmark": "colinbdclark/sheep.js",
-    "node-jqunit": "1.1.4",
     "requirejs": "2.3.5",
     "testem": "2.9.3"
   },
@@ -41,15 +40,9 @@
     "normalize.css": "8.0.0",
     "atob": "2.1.2"
   },
-  "optionalDependencies": {
-    "midi": "0.9.5",
-    "speaker": "github:colinbdclark/node-speaker#c3f0740482864f3e750ebf4d4da8c49a407edbae"
-  },
   "scripts": {
     "prepare": "node_modules/.bin/grunt",
-    "test": "npm run node-test && npm run browser-test",
-    "browser-test": "node_modules/.bin/testem ci --file tests/unit/testem.json",
-    "node-test": "node tests/unit/nodejs/all-node-tests.js",
+    "test": "node_modules/.bin/testem ci --file tests/unit/testem.json",
     "linux-vm-test": "npm run clean-modules && vagrant up fedora27 && vagrant ci test fedora27",
     "windows-vm-test": "npm run clean-modules && vagrant up windows10 && vagrant ci test windows10",
     "clean-modules": "rm -r node_modules",

@@ -106,7 +106,6 @@ module.exports = function(grunt) {
                 "src/*.js",
                 "demos/**/*.js",
                 "tests/**/*.js",
-                "nodejs/**/*.js",
                 "!**/third-party/**"
             ],
             options: {

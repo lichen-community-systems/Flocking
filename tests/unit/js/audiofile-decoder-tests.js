@@ -175,14 +175,10 @@ var fluid = fluid || require("infusion"),
     flock.test.audioFile.testDecoder(specifyDecoderType(flock.audio.decode.sync,
         decoderTestSpecs), module);
 
-    // Currently, there is no asynchronous decoding on Node.js,
-    // hence this test is only run if we're in a browser.
-    if (flock.platform.isBrowser) {
-        module = flock.test.module({
-            name: "flock.audio.decode() pure JavaScript async decoder tests"
-        });
+    module = flock.test.module({
+        name: "flock.audio.decode() pure JavaScript async decoder tests"
+    });
 
-        flock.test.audioFile.testDecoder(specifyDecoderType(flock.audio.decode.workerAsync,
-            decoderTestSpecs), module);
-    }
+    flock.test.audioFile.testDecoder(specifyDecoderType(flock.audio.decode.workerAsync,
+        decoderTestSpecs), module);
 }());
