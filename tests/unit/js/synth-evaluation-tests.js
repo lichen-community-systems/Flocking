@@ -66,7 +66,7 @@ flock = fluid.registerNamespace("flock");
                         name: "Synth.set(): correct node evaluation order",
                         sequence: [
                             {
-                                func: "{synth}.genFn",
+                                func: "{synth}.generate",
                                 args: [
                                     "{synth}.nodeList.nodes",
                                     "{synth}.model"
@@ -91,7 +91,7 @@ flock = fluid.registerNamespace("flock");
                                 }]
                             },
                             {
-                                func: "{synth}.genFn",
+                                func: "{synth}.generate",
                                 args: [
                                     "{synth}.nodeList.nodes",
                                     "{synth}.model"
@@ -111,7 +111,7 @@ flock = fluid.registerNamespace("flock");
                                 args: ["pass.source", 1.0]
                             },
                             {
-                                func: "{synth}.genFn",
+                                func: "{synth}.generate",
                                 args: [
                                     "{synth}.nodeList.nodes",
                                     "{synth}.model"
@@ -136,7 +136,7 @@ flock = fluid.registerNamespace("flock");
                                 }]
                             },
                             {
-                                func: "{synth}.genFn",
+                                func: "{synth}.generate",
                                 args: [
                                     "{synth}.nodeList.nodes",
                                     "{synth}.model"

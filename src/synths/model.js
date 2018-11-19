@@ -48,7 +48,7 @@ var fluid = fluid || require("infusion"),
 
         listeners: {
             onEvaluate: [
-                "{that}.genFn({that}.nodeList.nodes)",
+                "{that}.generate({that}.nodeList.nodes)",
 
                 {
                     changePath: "value",

@@ -34,7 +34,7 @@ fluid.defaults("flock.synth", {
         audioSettings: "{that}.enviro.audioSystem.model", // TODO: Move this.
         nodeList: "@expand:flock.nodeList()",
         out: "{that}.options.ugens",
-        genFn: "@expand:fluid.getGlobalValue(flock.evaluate.ugens)"
+        generate: "@expand:fluid.getGlobalValue(flock.evaluate.ugens)"
     },
 
     model: {

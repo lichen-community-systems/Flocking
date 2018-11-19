@@ -22,7 +22,7 @@ var fluid = fluid || require("infusion"),
 
     flock.evaluate = {
         synth: function (synth) {
-            synth.genFn(synth.nodeList.nodes);
+            synth.generate(synth.nodeList.nodes);
 
             // Update the synth's model.
             if (synth.out) {

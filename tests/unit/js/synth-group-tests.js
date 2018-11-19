@@ -21,7 +21,7 @@ var fluid = fluid || require("infusion"),
 
     var assertNodesHaveInputValue = function (nodes, ugenName, inputName, expected) {
         fluid.each(nodes, function (node, i) {
-            var actual = node.nodeList.namedNodes[ugenName].input(inputName);
+            var actual = node.nodeList.namedNodes[ugenName].get(inputName);
             QUnit.equal(expected, actual, "Node #" + i + " should have the correct value.");
         });
     };
@@ -40,7 +40,7 @@ var fluid = fluid || require("infusion"),
         },
 
         invokers: {
-            genFn: {
+            generate: {
                 changePath: "didGen",
                 value: true
             }
@@ -84,21 +84,17 @@ var fluid = fluid || require("infusion"),
         QUnit.equal(group.nodeList.nodes.length, 2,
             "Both synths should have been added to the group.");
 
-        var inputVal = group.input("mock.freq");
-        QUnit.equal(inputVal, 220,
-            "Getting an input on the group with input() should return the tail synth's value.");
-
-        inputVal = group.get("mock.freq");
+        var inputVal = group.get("mock.freq");
         QUnit.equal(inputVal, 220,
             "Getting an input on the group with get() should return the tail synth's value.");
 
-        group.input("mock.freq", 440);
+        group.set("mock.freq", 440);
         assertNodesHaveInputValue(group.nodeList.nodes, "mock", "freq", 440);
 
         group.set("mock.mul", 0.5);
         assertNodesHaveInputValue(group.nodeList.nodes, "mock", "mul", 0.5);
 
-        group.genFn(group.nodeList.nodes, group.model);
+        group.generate(group.nodeList.nodes, group.model);
 
         QUnit.ok(synth1.model.didGen && synth2.model.didGen,
             "All nodes should recieve the gen() method when it is called on the group.");
@@ -111,7 +107,7 @@ var fluid = fluid || require("infusion"),
     var assertVoiceInputValues = function (synth, voiceName, expectedValues, msg) {
         var voice = synth.voiceAllocator.activeVoices[voiceName],
             keys = Object.keys(expectedValues),
-            inputVals = voice.input(keys);
+            inputVals = voice.get(keys);
 
         QUnit.deepEqual(inputVals, expectedValues, msg);
     };

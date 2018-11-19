@@ -29,7 +29,7 @@ var fluid = fluid || require("infusion"),
 
         members: {
             nodeList: "@expand:flock.nodeList()",
-            genFn: "@expand:fluid.getGlobalValue(flock.evaluate.synths)"
+            generate: "@expand:fluid.getGlobalValue(flock.evaluate.synths)"
         },
 
         invokers: {
@@ -42,13 +42,7 @@ var fluid = fluid || require("infusion"),
             insert: "flock.synth.group.insert({arguments}.0, {arguments}.1, {that})",
             before: "flock.synth.group.before({arguments}.0, {arguments}.1, {that})",
             after: "flock.synth.group.after({arguments}.0, {arguments}.1, {that})",
-            remove: "{that}.events.onRemove.fire",
-
-            // Deprecated. Use set() instead.
-            input: {
-                funcName: "flock.synth.group.input",
-                args: ["{arguments}", "{that}.get", "{that}.events.onSet.fire"]
-            }
+            remove: "{that}.events.onRemove.fire"
         },
 
         events: {
