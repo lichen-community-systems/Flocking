@@ -54,7 +54,7 @@ flock.file.readFromPath = function (options) {
 
         fs.stat(fileURL, function (error, stats) {
             fs.open(fileURL, "r", function (error, fd) {
-                var buf = new Buffer(stats.size);
+                var buf = Buffer.alloc(stats.size);
 
                 fs.read(fd, buf, 0, buf.length, null, function () {
                     var type = flock.file.parseFileExtension(path);

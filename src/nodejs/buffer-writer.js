@@ -31,7 +31,7 @@ fluid.defaults("flock.nodejs.bufferWriter", {
 flock.nodejs.bufferWriter.saveBuffer = function (o) {
     var encoded = flock.audio.encode.wav(o.buffer);
 
-    fs.writeFile(o.path, new Buffer(encoded), function (err) {
+    fs.writeFile(o.path, Buffer.alloc(encoded), function (err) {
         if (err) {
             if (!o.error) {
                 flock.fail("There was an error while writing a buffer named " +

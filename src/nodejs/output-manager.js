@@ -125,7 +125,7 @@ flock.nodejs.outputManager.makeSampleWriter = function (that, buses, nodeList) {
             bytesPerSample = that.options.bytesPerSample,
             nodes = nodeList.nodes,
             krPeriods = numBytes / m.bytesPerBlock,
-            out = new Buffer(numBytes);
+            out = Buffer.alloc(numBytes);
 
         if (numBytes < m.bytesPerBlock) {
             return;
