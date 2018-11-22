@@ -12,9 +12,9 @@
 
 "use strict";
 
-var fluid = require("infusion"),
-    flock = require(__dirname + "/../../index.js"), //jshint ignore:line
-    enviro = flock.init();
+const fluid = require("infusion");
+const flock = require("flocking");
+const enviro = flock.init();
 
 fluid.registerNamespace("flock.demo");
 

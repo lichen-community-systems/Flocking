@@ -10,16 +10,16 @@
 
 "use strict";
 
-var currentDir = __dirname,
-    flock = require(currentDir + "/../../index.js"),
-    enviro = flock.init();
+
+const flock = require("flocking");
+const enviro = flock.init();
 
 var granularDef = {
     id: "granulator",
     ugen: "flock.ugen.triggerGrains",
     buffer: {
         id: "hillier-first-chord",
-        url: "file:///" + currentDir + "/../../demos/shared/audio/hillier-first-chord.wav"
+        url: "file:///" + __dirname + "/../../demos/shared/audio/hillier-first-chord.wav"
     },
     centerPos: {
         ugen: "flock.ugen.lfNoise",

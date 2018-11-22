@@ -12,16 +12,15 @@
 
 "use strict";
 
-var currentDir = __dirname, //jshint ignore:line
-    flock = require(currentDir + "/../../index.js"),
-    enviro = flock.init();
+const flock = require("flocking");
+const enviro = flock.init();
 
 flock.synth({
     synthDef: {
         ugen: "flock.ugen.playBuffer",
         buffer: {
             id: "hillier-first-chord",
-            url: "file:///" + currentDir + "/../../demos/shared/audio/hillier-first-chord.wav"
+            url: "file:///" + __dirname + "/../../demos/shared/audio/hillier-first-chord.wav"
         },
         loop: 1,
         speed: {

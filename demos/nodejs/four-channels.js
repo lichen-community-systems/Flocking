@@ -18,9 +18,9 @@
 // this should be replaced by a Node.js demo loader
 // so that we can share most demos between both platforms.
 
-var currentDir = __dirname, //jshint ignore:line
-    flock = require(currentDir + "/../../index.js"),
-    enviro = flock.init({
+
+const flock = require("flocking");
+const enviro = flock.init({
         chans: 4
     });
 

@@ -12,8 +12,8 @@
 
 "use strict";
 
-var flock = require(__dirname + "/../../index.js"), //jshint ignore:line
-    enviro = flock.init();
+const flock = require("flocking");
+const enviro = flock.init();
 
 var synth = flock.synth({
     id: "noise-sine-synth",
