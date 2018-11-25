@@ -55,7 +55,7 @@ flock.demo.nodeTest = function () {
             newInterval = flock.choose(weightedIntervals),
             newFreq = fundamental * newInterval;
         fluid.log(newFreq);
-        intervalSynth.input("carrier.freq", newFreq);
+        intervalSynth.set("carrier.freq", newFreq);
     });
 
     return synth;

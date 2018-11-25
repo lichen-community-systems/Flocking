@@ -41,11 +41,14 @@ var fluid = fluid || require("infusion"),
 
         invokers: {
             generate: {
-                changePath: "didGen",
-                value: true
+                funcName: "flock.test.synthGroup.base.generateFunc"
             }
         }
     });
+
+    flock.test.synthGroup.base.generateFunc = function (that) {
+        that.applier.change("didGen", true);
+    };
 
     fluid.defaults("flock.test.synthGroup.synth1", {
         gradeNames: "flock.test.synthGroup.base",
@@ -94,10 +97,10 @@ var fluid = fluid || require("infusion"),
         group.set("mock.mul", 0.5);
         assertNodesHaveInputValue(group.nodeList.nodes, "mock", "mul", 0.5);
 
-        group.generate(group.nodeList.nodes, group.model);
+        group.generate();
 
         QUnit.ok(synth1.model.didGen && synth2.model.didGen,
-            "All nodes should recieve the gen() method when it is called on the group.");
+            "All nodes should recieve the generate() message when it is called on the group.");
     });
 
 

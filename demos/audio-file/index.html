@@ -118,7 +118,7 @@
 
             // Dynamically change the playback speed of the playBuffer ugen based on changes to the slider.
             document.querySelector("#playbackSpeed").addEventListener("change", function (e) {
-                synth.input("player.speed", Number(e.target.value));
+                synth.set("player.speed", Number(e.target.value));
                 e.preventDefault();
                 e.stopPropagation();
             }, false);

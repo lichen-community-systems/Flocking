@@ -26,7 +26,8 @@ var fluid = fluid || require("infusion"),
         gradeNames: "flock.synth",
 
         model: {
-            inputs: {}
+            inputs: {},
+            value: undefined
         },
 
         modelListeners: {
@@ -39,22 +40,9 @@ var fluid = fluid || require("infusion"),
         },
 
         invokers: {
-            value: "{that}.events.onEvaluate.fire()"
-        },
-
-        events: {
-            onEvaluate: null
-        },
-
-        listeners: {
-            onEvaluate: [
-                "{that}.generate({that}.nodeList.nodes)",
-
-                {
-                    changePath: "value",
-                    value: "{that}.out.model.value"
-                }
-            ]
+            generate: {
+                funcName: "flock.evaluate.synthModel"
+            }
         }
     });
 

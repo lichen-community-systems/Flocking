@@ -20,6 +20,7 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
+    // TODO: We need a proper, not overly-specific Synth base grade.
     fluid.defaults("flock.synth.group", {
         gradeNames: ["flock.node", "flock.noteTarget"],
 
@@ -28,8 +29,7 @@ var fluid = fluid || require("infusion"),
         },
 
         members: {
-            nodeList: "@expand:flock.nodeList()",
-            generate: "@expand:fluid.getGlobalValue(flock.evaluate.synths)"
+            nodeList: "@expand:flock.nodeList()"
         },
 
         invokers: {
@@ -42,7 +42,11 @@ var fluid = fluid || require("infusion"),
             insert: "flock.synth.group.insert({arguments}.0, {arguments}.1, {that})",
             before: "flock.synth.group.before({arguments}.0, {arguments}.1, {that})",
             after: "flock.synth.group.after({arguments}.0, {arguments}.1, {that})",
-            remove: "{that}.events.onRemove.fire"
+            remove: "{that}.events.onRemove.fire",
+            generate: {
+                funcName: "flock.evaluate.synthGroup",
+                args: ["{that}"]
+            }
         },
 
         events: {

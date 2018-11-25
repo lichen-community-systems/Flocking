@@ -33,8 +33,7 @@ fluid.defaults("flock.synth", {
         rate: "{that}.options.rate",
         audioSettings: "{that}.enviro.audioSystem.model", // TODO: Move this.
         nodeList: "@expand:flock.nodeList()",
-        out: "{that}.options.ugens",
-        generate: "@expand:fluid.getGlobalValue(flock.evaluate.ugens)"
+        out: "{that}.options.ugens"
     },
 
     model: {
@@ -56,7 +55,7 @@ fluid.defaults("flock.synth", {
         },
 
         /**
-         * Gets the value of the ugen at the specified path.
+         * Gets the value of a ugen at the specified path.
          *
          * @param {String} path the ugen's path within the synth graph
          * @return {Number|UGen} a scalar value in the case of a value ugen, otherwise the ugen itself
@@ -64,6 +63,11 @@ fluid.defaults("flock.synth", {
         get: {
             funcName: "flock.input.get",
             args: ["{that}.nodeList.namedNodes", "{arguments}.0"]
+        },
+
+        generate: {
+            funcName: "flock.evaluate.synth",
+            args: ["{that}"]
         }
     }
 });

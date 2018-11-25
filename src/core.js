@@ -1213,8 +1213,8 @@ var fluid = fluid || require("infusion"),
             /**
              * Generates a block of samples by evaluating all registered nodes.
              */
-            gen: {
-                funcName: "flock.enviro.gen",
+            generate: {
+                funcName: "flock.enviro.generate",
                 args: ["{busManager}.buses", "{audioSystem}.model", "{that}.nodeList.nodes"]
             },
 
@@ -1344,7 +1344,7 @@ var fluid = fluid || require("infusion"),
         return audioSystem.bufferWriter.save(o, o.buffer);
     };
 
-    flock.enviro.gen = function (buses, audioSettings, nodes) {
+    flock.enviro.generate = function (buses, audioSettings, nodes) {
         flock.evaluate.clearBuses(buses,
             audioSettings.numBuses, audioSettings.blockSize);
         flock.evaluate.synths(nodes);
@@ -1423,6 +1423,10 @@ var fluid = fluid || require("infusion"),
 
         model: {},
 
+        members: {
+            generatorFunc: "@expand:fluid.getGlobalValue({that}.options.invokers.generate.funcName)"
+        },
+
         components: {
             enviro: "{flock.enviro}"
         },
@@ -1473,6 +1477,10 @@ var fluid = fluid || require("infusion"),
             isPlaying: {
                 funcName: "flock.nodeList.isNodeActive",
                 args:["{that}.enviro.nodeList", "{that}"]
+            },
+
+            generate: {
+                funcName: "fluid.identity"
             }
         },
 
