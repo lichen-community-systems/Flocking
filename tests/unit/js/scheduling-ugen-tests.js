@@ -142,7 +142,7 @@ var fluid = fluid || require("infusion"),
     flock.test.sequencer.generateAndCatchError = function (s) {
         var errorRaised = false;
         try {
-            s.genFn(s.nodeList.nodes);
+            s.generate();
             errorRaised = false;
         } catch (error) {
             errorRaised = error.message.indexOf(

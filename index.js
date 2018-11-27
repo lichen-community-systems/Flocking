@@ -19,6 +19,8 @@ var fluid = require("infusion"),
 require("./src/core.js");
 require("./src/node-list.js");
 require("./src/evaluators.js");
+require("./src/synths/synth.js");
+require("./src/synths/value.js");
 require("./src/synths/model.js");
 require("./src/synths/group.js");
 require("./src/synths/polyphonic.js");

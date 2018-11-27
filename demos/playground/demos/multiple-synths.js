@@ -32,5 +32,5 @@ var fundamental = 440,
 clock.repeat(1, function () {
     var intervalSynth = flock.choose(synths),
         newInterval = flock.choose(weightedIntervals);
-    intervalSynth.input("carrier.freq", fundamental * newInterval);
+    intervalSynth.set("carrier.freq", fundamental * newInterval);
 });

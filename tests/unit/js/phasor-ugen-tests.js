@@ -35,7 +35,7 @@ var fluid = fluid || require("infusion"),
         for (var i = 0; i < tests.length; i++) {
             var test = tests[i];
             if (test.trigger !== undefined) {
-                ugen.input("trigger", test.trigger);
+                ugen.set("trigger", test.trigger);
             }
             flock.evaluate.synth(synth);
             QUnit.deepEqual(ugen.output, test.expected, test.msg);

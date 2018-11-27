@@ -161,11 +161,11 @@ var fluid = fluid || require("infusion"),
             "The model listener's change spec should reflect the change.");
     };
 
-    QUnit.test("value() updates the synth's model", function () {
+    QUnit.test("generate() updates the synth's model", function () {
         QUnit.expect(2);
 
         var s = flock.test.modelSynth.valueSynth();
-        s.value();
+        s.generate();
     });
 
 }());

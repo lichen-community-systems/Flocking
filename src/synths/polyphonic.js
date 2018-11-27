@@ -171,7 +171,7 @@ var fluid = fluid || require("infusion"),
                 normalizer(voice, ampKey);
             } else if (normalizer === "static") {
                 normValue = 1.0 / options.maxVoices;
-                voice.input(ampKey, normValue);
+                voice.set(ampKey, normValue);
             }
             // TODO: Implement dynamic voice normalization.
         }

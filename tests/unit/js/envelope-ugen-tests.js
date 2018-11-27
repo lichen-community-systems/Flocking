@@ -155,7 +155,7 @@ var fluid = fluid || require("infusion"),
                 "When the gate is open at the beginning, the envelope's output should be 0.0.");
 
             // Trigger the attack stage.
-            asr.input("gate", 1.0);
+            asr.set("gate", 1.0);
             asr.gen(64);
             flock.test.ugen.asr.testEnvelopeStage(asr.output, 64, 0.0, 1.0, "attack");
 
@@ -165,7 +165,7 @@ var fluid = fluid || require("infusion"),
                 "While the gate is open, the envelope should hold at the sustain level.");
 
             // Release the gate and test the release stage.
-            asr.input("gate", 0.0);
+            asr.set("gate", 0.0);
             asr.gen(64);
             flock.test.ugen.asr.testEnvelopeStage(asr.output, 64, 1.0, 0.0, "release");
 
@@ -175,24 +175,24 @@ var fluid = fluid || require("infusion"),
                 "When the gate is closed and the release stage has completed, the envelope's output should be 0.0.");
 
             // Trigger the attack stage again.
-            asr.input("gate", 1.0);
+            asr.set("gate", 1.0);
             asr.gen(64);
             flock.test.ugen.asr.testEnvelopeStage(asr.output, 64, 0.0, 1.0, "second attack");
 
             // And the release stage again.
-            asr.input("gate", 0.0);
+            asr.set("gate", 0.0);
             asr.gen(64);
             flock.test.ugen.asr.testEnvelopeStage(asr.output, 64, 1.0, 0.0, "second release");
         });
 
         QUnit.test("Release midway through attack", function () {
             var asr = flock.test.ugen.asr.makeUGen(module);
-            asr.input("gate", 1.0);
+            asr.set("gate", 1.0);
             asr.gen(32);
             flock.test.ugen.asr.testEnvelopeStage(asr.output.subarray(0, 32), 32, 0.0, 0.4920634925365448, "halfway through the attack");
 
             // If the gate closes during the attack stage, the remaining portion of the attack stage should be output before the release stage starts.
-            asr.input("gate", 0.0);
+            asr.set("gate", 0.0);
             asr.gen(32);
             flock.test.ugen.asr.testEnvelopeStage(asr.output.subarray(0, 32), 32, 0.5079365372657776, 1.0, "rest of the attack");
 
@@ -205,17 +205,17 @@ var fluid = fluid || require("infusion"),
             var asr = flock.test.ugen.asr.makeUGen(module);
 
             // Trigger the attack stage, then the release stage immediately.
-            asr.input("gate", 1.0);
+            asr.set("gate", 1.0);
             asr.gen(64);
             flock.test.ugen.asr.testEnvelopeStage(asr.output, 64, 0.0, 1.0, "attack");
-            asr.input("gate", 0.0);
+            asr.set("gate", 0.0);
             asr.gen(32);
             flock.test.ugen.asr.testEnvelopeStage(flock.copyBuffer(asr.output, 0, 32), 32, 1.0, 0.5079365372657776, "halfway release");
 
             // Then trigger a new attack halfway through the release stage.
             // The envelope should immediately pick up the attack phase from the current level
             // TODO: Note that there will be a one-increment lag before turning direction to the attack phase in this case. Is this a noteworthy bug?
-            asr.input("gate", 1.0);
+            asr.set("gate", 1.0);
             asr.gen(32);
             flock.test.ugen.asr.testEnvelopeStage(flock.copyBuffer(asr.output, 0, 32), 32, 0.4920634925365448, 0.7420005202293396, "attack after halfway release");
 
@@ -240,7 +240,7 @@ var fluid = fluid || require("infusion"),
             flock.test.arraySilent(asr.output,
                 "Before the gate has been opened, the output should be silent");
 
-            asr.input("gate", 1.0);
+            asr.set("gate", 1.0);
             asr.gen(64);
             QUnit.deepEqual(asr.output, flock.generateBufferWithValue(64, 0.25),
                 "When the gate is opened the target sustain level is reached immediately");
@@ -249,7 +249,7 @@ var fluid = fluid || require("infusion"),
             QUnit.deepEqual(asr.output, flock.generateBufferWithValue(64, 0.25),
                 "While the envelope is sustaining, it continues to output at the target level");
 
-            asr.input("gate", 0.0);
+            asr.set("gate", 0.0);
             asr.gen(64);
             flock.test.arraySilent(asr.output,
                 "As soon as the gate is closed, the envelope should be silent.");

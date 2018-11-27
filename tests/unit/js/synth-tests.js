@@ -108,7 +108,7 @@ var fluid = fluid || require("infusion"),
                                 args: [
                                     "{synth}",
                                     "mod",
-                                    "A ugen returned from synth.input() should have a gen() method."
+                                    "A ugen returned from synth.get() should have a gen() method."
                                 ]
                             }
                         ]
@@ -405,12 +405,12 @@ var fluid = fluid || require("infusion"),
 
         var ugen = synth.get("mock");
 
-        synth.input("mock.cat");
+        synth.get("mock.cat");
         jqUnit.assertFalse("The onInputChanged event should not fire when an input is read.", ugen.didOnInputChangedFire);
 
         ugen.reset();
 
-        synth.input("mock.cat", 42);
+        synth.set("mock.cat", 42);
         jqUnit.assertTrue("The onInputChanged event should fire when an input is changed.", ugen.didOnInputChangedFire);
     });
 

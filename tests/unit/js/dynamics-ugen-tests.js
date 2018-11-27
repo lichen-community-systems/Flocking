@@ -53,7 +53,7 @@ var fluid = fluid || require("infusion"),
         QUnit.deepEqual(normalizer.output, expected,
             "The signal should be normalized to 1.0.");
 
-        normalizer.input("max", 0.5);
+        normalizer.set("max", 0.5);
         normalizer.gen(64);
         expected = flock.normalize(flock.test.ascendingBuffer(64, -31), 0.5);
         QUnit.deepEqual(normalizer.output, expected,

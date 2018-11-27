@@ -22,23 +22,34 @@ var fluid = fluid || require("infusion"),
 
     flock.evaluate = {
         synth: function (synth) {
-            synth.genFn(synth.nodeList.nodes);
-
-            // Update the synth's model.
-            if (synth.out) {
-                synth.model.value = synth.out.model.value;
-            }
+            flock.evaluate.ugens(synth.nodeList.nodes);
         },
 
         synthValue: function (synth) {
             flock.evaluate.synth(synth);
-            return synth.model.value;
+
+            // Update the synth's model.
+            if (synth.out) {
+                synth.value = synth.out.model.value;
+            }
+
+            return synth.value;
+        },
+
+        synthModel: function (synth) {
+            var value = flock.evaluate.synthValue(synth);
+            synth.applier.change("value", value);
         },
 
         synths: function (synths) {
             for (var i = 0; i < synths.length; i++) {
-                flock.evaluate.synth(synths[i]);
+                var synth = synths[i];
+                synth.generatorFunc(synth);
             }
+        },
+
+        synthGroup: function (group) {
+            flock.evaluate.synths(group.nodeList.nodes);
         },
 
         // TODO: Move this elsewhere?

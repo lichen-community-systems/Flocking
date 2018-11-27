@@ -66,11 +66,7 @@ flock = fluid.registerNamespace("flock");
                         name: "Synth.set(): correct node evaluation order",
                         sequence: [
                             {
-                                func: "{synth}.genFn",
-                                args: [
-                                    "{synth}.nodeList.nodes",
-                                    "{synth}.model"
-                                ]
+                                func: "{synth}.generate"
                             },
                             {
                                 funcName: "flock.test.synth.evaluation.tester.assertSynthUGenOutput",
@@ -91,11 +87,7 @@ flock = fluid.registerNamespace("flock");
                                 }]
                             },
                             {
-                                func: "{synth}.genFn",
-                                args: [
-                                    "{synth}.nodeList.nodes",
-                                    "{synth}.model"
-                                ]
+                                func: "{synth}.generate"
                             },
                             {
                                 funcName: "flock.test.synth.evaluation.tester.assertSynthUGenOutput",
@@ -111,11 +103,7 @@ flock = fluid.registerNamespace("flock");
                                 args: ["pass.source", 1.0]
                             },
                             {
-                                func: "{synth}.genFn",
-                                args: [
-                                    "{synth}.nodeList.nodes",
-                                    "{synth}.model"
-                                ]
+                                func: "{synth}.generate"
                             },
                             {
                                 funcName: "flock.test.synth.evaluation.tester.assertSynthUGenOutput",
@@ -136,11 +124,7 @@ flock = fluid.registerNamespace("flock");
                                 }]
                             },
                             {
-                                func: "{synth}.genFn",
-                                args: [
-                                    "{synth}.nodeList.nodes",
-                                    "{synth}.model"
-                                ]
+                                func: "{synth}.generate"
                             },
                             {
                                 funcName: "flock.test.synth.evaluation.tester.assertSynthUGenOutput",
@@ -172,30 +156,22 @@ flock = fluid.registerNamespace("flock");
     fluid.test.runTests("flock.test.synth.evaluationTestEnvironment");
 
 
-    fluid.registerNamespace("flock.test.synth.modelEvaluation");
+    fluid.registerNamespace("flock.test.synth.valueGeneration");
 
-    jqUnit.module("Synth evaluation - model values are updated");
+    jqUnit.module("Synth evaluation - value is updated");
 
-    jqUnit.test("flock.synth 'model' updates", function () {
-        var synth = flock.synth({
-            synthDef: flock.test.synthDefs.sequencer
-        });
-
-        flock.test.synth.modelEvaluation.test(synth, 3);
-    });
-
-    jqUnit.test("flock.synth.value 'model' updates", function () {
+    jqUnit.test("flock.synth.value value updates", function () {
         var synth = flock.synth.value({
             synthDef: flock.test.synthDefs.sequencer
         });
 
-        flock.test.synth.modelEvaluation.test(synth, 3);
+        flock.test.synth.valueGeneration.test(synth, 3);
     });
 
-    flock.test.synth.modelEvaluation.test = function (synth, numBlocksToGen) {
+    flock.test.synth.valueGeneration.test = function (synth, numBlocksToGen) {
         for (var i = 1; i <= numBlocksToGen; i++) {
-            flock.evaluate.synth(synth);
-            jqUnit.assertEquals("The model value should have been correctly updated.", i, synth.model.value);
+            synth.generatorFunc(synth);
+            jqUnit.assertEquals("The synth's value should have been correctly updated.", i, synth.value);
         }
     };
 }());
