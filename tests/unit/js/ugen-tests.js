@@ -333,7 +333,7 @@ var fluid = fluid || require("infusion"),
         });
 
         for (i = 0; i < numRuns; i++) {
-            environment.gen();
+            environment.generate();
             QUnit.deepEqual(environment.busManager.buses[bus], expectedOutput, i + ": " + msg);
         }
 
@@ -399,7 +399,7 @@ var fluid = fluid || require("infusion"),
             synthDef: inSynthDef
         });
 
-        inSynth.enviro.gen();
+        inSynth.enviro.generate();
         var actual = inSynth.nodeList.namedNodes["in"].output;
         QUnit.deepEqual(actual, inSynth.enviro.busManager.buses[62],
             "With a single source input, the output of flock.ugen.in should make a copy of the bus referenced.");
@@ -433,7 +433,7 @@ var fluid = fluid || require("infusion"),
             synthDef: multiInDef
         });
 
-        inSynth.enviro.gen();
+        inSynth.enviro.generate();
         var actual = inSynth.nodeList.namedNodes["in"].output;
         var expected = flock.generateBuffer(64, function (i) {
             return (i + 1) * 2;
