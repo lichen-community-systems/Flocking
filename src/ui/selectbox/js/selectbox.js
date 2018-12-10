@@ -90,46 +90,51 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onCreate: [
-                {
-                    "this": "{that}.container",
-                    method: "change",
-                    args: ["{that}.handleChange"]
-                },
-                {
-                    funcName: "{that}.events.onRender.fire"
-                }
-            ],
+            "onCreate.bindChangeHandler": {
+                "this": "{that}.container",
+                method: "change",
+                args: ["{that}.handleChange"]
+            },
+            "onCreate.fireOnRender": {
+                priority: "after:bindChangeHandler",
+                func: "{that}.events.onRender.fire"
+            },
 
-            onRender: [
-                {
-                    funcName: "flock.ui.selectBox.clearContainer",
-                    args: "{that}.container"
-                },
-                {
-                    funcName: "flock.ui.selectBox.renderGroups",
-                    args: [
-                        "{that}.container",
-                        "{that}.model.groups",
-                        "{that}.options.markup"
-                    ]
-                },
-                {
-                    funcName: "flock.ui.selectBox.renderOptions",
-                    args: [
-                        "{that}.container",
-                        "{that}.model.options",
-                        "{that}.options.markup"
-                    ]
-                },
-                {
-                    funcName: "flock.ui.selectBox.selectInitial",
-                    args: "{that}"
-                },
-                {
-                    func: "{that}.events.afterRender.fire"
-                }
-            ]
+            "onRender.clearContainer": {
+                funcName: "flock.ui.selectBox.clearContainer",
+                args: "{that}.container"
+            },
+
+            "onRender.renderGroups": {
+                priority: "after:clearContainer",
+                funcName: "flock.ui.selectBox.renderGroups",
+                args: [
+                    "{that}.container",
+                    "{that}.model.groups",
+                    "{that}.options.markup"
+                ]
+            },
+
+            "onRender.renderOptions": {
+                priority: "after:renderGroups",
+                funcName: "flock.ui.selectBox.renderOptions",
+                args: [
+                    "{that}.container",
+                    "{that}.model.options",
+                    "{that}.options.markup"
+                ]
+            },
+
+            "onRender.selectInitial": {
+                priority: "after:renderOptions",
+                funcName: "flock.ui.selectBox.selectInitial",
+                args: "{that}"
+            },
+
+            "onRender.fireAfterRender": {
+                priority: "last",
+                func: "{that}.events.afterRender.fire"
+            }
         }
     });
 

@@ -245,22 +245,21 @@ JavScript:
             listeners: {
                 // Listen for the event that fires when this component has been fully
                 // instantiated.
-                onCreate: [
-                    // The first time the user clicks, start the Flocking environment.
-                    {
-                        "this": "{that}.container",
-                        method: "one",
-                        args: ["click", "{synth}.play"]
-                    },
 
+                "onCreate.playSynth": {
+                    // The first time the user clicks, start the Flocking environment.
+                    "this": "{that}.container",
+                    method: "one",
+                    args: ["click", "{synth}.play"]
+                },
+
+                "onCreate.bindClickHandler": {
                     // Bind a click handler to our container
                     // that will invoke the "fireRandomLine" method.
-                    {
-                        "this": "{that}.container",
-                        method: "click",
-                        args: "{that}.handleClick"
-                    }
-                ]
+                    "this": "{that}.container",
+                    method: "click",
+                    args: "{that}.handleClick"
+                }
             }
         });
 

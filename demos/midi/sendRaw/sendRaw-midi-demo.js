@@ -27,7 +27,10 @@
         },
 
         listeners: {
-            onCreate: "{that}.setContent({that}.model.content)"
+            "onCreate.setContentFromModel": {
+                func: "{that}.setContent",
+                args: ["{that}.model.content"]
+            }
         }
     });
 
@@ -156,25 +159,22 @@
         },
 
         listeners: {
-            onCreate: [
-                {
-                    "this": "{that}.dom.sendButton",
-                    method: "click",
-                    args: ["{that}.send"]
-                }
-            ],
+            "onCreate.bindSendButton": {
+                "this": "{that}.dom.sendButton",
+                method: "click",
+                args: ["{that}.send"]
+            },
 
-            onSend: [
-                {
-                    priority: "first",
-                    func: "{midiInputView}.updateContent"
-                },
-                {
-                    priority: "last",
-                    funcName: "flock.demo.rawMidiSender.enqueueMidiCommands",
-                    args: ["{that}.model.commandScore", "{that}"]
-                }
-            ]
+            "onSend.updateContent": {
+                priority: "first",
+                func: "{midiInputView}.updateContent"
+            },
+
+            "onSend.sendMidiCommands": {
+                priority: "last",
+                funcName: "flock.demo.rawMidiSender.enqueueMidiCommands",
+                args: ["{that}.model.commandScore", "{that}"]
+            }
         },
 
         selectors: {

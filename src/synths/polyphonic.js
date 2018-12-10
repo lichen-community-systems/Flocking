@@ -46,7 +46,7 @@ var fluid = fluid || require("infusion"),
             amplitudeKey: "{polyphonic}.options.amplitudeKey",
 
             listeners: {
-                onCreateVoice: {
+                "onCreateVoice.addVoiceToTail": {
                     funcName: "flock.nodeList.tail",
                     args: ["{polyphonic}.nodeList", "{arguments}.0"]
                 }

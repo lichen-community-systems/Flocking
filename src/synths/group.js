@@ -59,36 +59,38 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onInsert: [
-                {
-                    funcName: "flock.synth.group.bindMethods",
-                    args: [
-                        "{arguments}.0", // The newly added node.
-                        "{that}.options.methodEventMap",
-                        "{that}.events",
-                        "addListener"
-                    ]
-                },
+            "onInsert.bindMethods": {
+                funcName: "flock.synth.group.bindMethods",
+                args: [
+                    "{arguments}.0", // The newly added node.
+                    "{that}.options.methodEventMap",
+                    "{that}.events",
+                    "addListener"
+                ]
+            },
 
-                "flock.synth.group.removeNodeFromEnvironment({arguments}.0)"
-            ],
+            "onInsert.removeNode": {
+                priority: "after:bindMethods",
+                funcName: "flock.synth.group.removeNodeFromEnvironment",
+                args: ["{arguments}.0"]
+            },
 
-            onRemove: [
-                {
-                    funcName: "flock.synth.group.bindMethods",
-                    args: [
-                        "{arguments}.0", // The removed node.
-                        "{that}.options.methodEventMap",
-                        "{that}.events",
-                        "removeListener"
-                    ]
-                },
-                {
-                    "this": "{that}.nodeList",
-                    method: "remove",
-                    args: ["{arguments}.0"]
-                }
-            ]
+            "onRemove.bindMethods": {
+                funcName: "flock.synth.group.bindMethods",
+                args: [
+                    "{arguments}.0", // The removed node.
+                    "{that}.options.methodEventMap",
+                    "{that}.events",
+                    "removeListener"
+                ]
+            },
+
+            "onRemove.removeNode": {
+                priority: "after:bindMethods",
+                "this": "{that}.nodeList",
+                method: "remove",
+                args: ["{arguments}.0"]
+            }
         }
     });
 

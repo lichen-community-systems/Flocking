@@ -23,7 +23,7 @@ var fluid = fluid || require("infusion"),
         name: "flock.ugen.delay",
 
         listeners: {
-            onCreate: {
+            "onCreate.runTests": {
                 funcName: "flock.test.ugen.delay.runTests",
                 args: "{that}"
             }
@@ -120,7 +120,7 @@ var fluid = fluid || require("infusion"),
         ],
 
         listeners: {
-            onCreate: {
+            "onCreate.runTests": {
                 funcName: "flock.test.ugen.filter.runTests",
                 args: "{that}"
             }

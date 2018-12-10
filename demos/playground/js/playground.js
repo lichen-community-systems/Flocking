@@ -84,11 +84,14 @@ var fluid = fluid || require("infusion"),
                     },
 
                     listeners: {
-                        afterDemoLoaded: "{editor}.setContent({arguments}.0)",
+                        "afterDemoLoaded.setEditorContent": {
+                            func: "{editor}.setContent",
+                            args: ["{arguments}.0"],
+                        },
 
-                        onSelect: [
-                            "{playButton}.pause()"
-                        ]
+                        "onSelect.pause": {
+                            func: "{playButton}.pause"
+                        }
                     }
                 }
             },
@@ -110,13 +113,9 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onCreate: [
-                "{demoSelector}.loadDemoFromURL()"
-            ],
+            "onCreate.loadDemo": "{demoSelector}.loadDemoFromURL()",
 
-            onError: [
-                "flock.fail({arguments}.0)"
-            ]
+            "onError.fail": "flock.fail({arguments}.0)"
         },
 
         selectors: {
@@ -136,10 +135,12 @@ var fluid = fluid || require("infusion"),
         gradeNames: ["flock.playground"],
 
         listeners: {
-            onEvaluateDemo: [
-                "{that}.parse()",
-                "{evaluator}.evaluate()"
-            ]
+            "onEvaluateDemo.parse": "{that}.parse()",
+
+            "onEvaluateDemo.evaluate": {
+                priority: "after:parse",
+                func: "{evaluator}.evaluate"
+            }
         }
     });
 }());

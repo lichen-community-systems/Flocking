@@ -33,7 +33,7 @@ var fluid = fluid || require("infusion");
             target: "{/ flock.midi.connection}.options",
             record: {
                 listeners: {
-                    message: {
+                    "message.logMIDI": {
                         func: "flock.ui.midiMessageView.logMIDI",
                         args: [
                             "{midiMessageView}",

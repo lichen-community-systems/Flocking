@@ -82,10 +82,10 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            control: "{that}.mapControl({arguments}.0)",
-            note: "{that}.mapNote(note, {arguments}.0)",
-            noteOn: "{that}.mapNote(noteOn, {arguments}.0)",
-            noteOff: "{that}.mapNote(noteOff, {arguments}.0)"
+            "control.map": "{that}.mapControl({arguments}.0)",
+            "note.map": "{that}.mapNote(note, {arguments}.0)",
+            "noteOn.map": "{that}.mapNote(noteOn, {arguments}.0)",
+            "noteOff.map": "{that}.mapNote(noteOff, {arguments}.0)"
         }
     });
 

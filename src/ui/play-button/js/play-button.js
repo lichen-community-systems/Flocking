@@ -65,54 +65,53 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onCreate: [
-                {
-                    funcName: "flock.ui.toggleButton.render",
-                    args: ["{that}"]
-                },
+            "onCreate.renderToggleButton": {
+                funcName: "flock.ui.toggleButton.render",
+                args: ["{that}"]
+            },
 
-                {
-                    "this": "{that}.container",
-                    method: "click",
-                    args: "{that}.toggle"
-                }
-            ],
+            "onCreate.bindToggleButtonClick": {
+                priority: "after:renderToggleButton",
+                "this": "{that}.container",
+                method: "click",
+                args: "{that}.toggle"
+            },
 
-            on: [
-                {
-                    "this": "{that}.container",
-                    method: "addClass",
-                    args: ["{that}.options.styles.on"]
-                },
-                {
-                    "this": "{that}.container",
-                    method: "removeClass",
-                    args: ["{that}.options.styles.off"]
-                },
-                {
-                    "this": "{that}.container",
-                    method: "html",
-                    args: "{that}.options.strings.on"
-                }
-            ],
+            "on.addEnabledStyling": {
+                "this": "{that}.container",
+                method: "addClass",
+                args: ["{that}.options.styles.on"]
+            },
 
-            off: [
-                {
-                    "this": "{that}.container",
-                    method: "addClass",
-                    args: ["{that}.options.styles.off"]
-                },
-                {
-                    "this": "{that}.container",
-                    method: "removeClass",
-                    args: ["{that}.options.styles.on"]
-                },
-                {
-                    "this": "{that}.container",
-                    method: "html",
-                    args: "{that}.options.strings.off"
-                }
-            ]
+            "on.removeDisabledStyling": {
+                "this": "{that}.container",
+                method: "removeClass",
+                args: ["{that}.options.styles.off"]
+            },
+
+            "on.updateLabel": {
+                "this": "{that}.container",
+                method: "html",
+                args: "{that}.options.strings.on"
+            },
+
+            "off.addDisabledStyle": {
+                "this": "{that}.container",
+                method: "addClass",
+                args: ["{that}.options.styles.off"]
+            },
+
+            "off.removeEnabledStyle": {
+                "this": "{that}.container",
+                method: "removeClass",
+                args: ["{that}.options.styles.on"]
+            },
+
+            "off.updateLabel": {
+                "this": "{that}.container",
+                method: "html",
+                args: "{that}.options.strings.off"
+            }
         },
 
         modelListeners: {
@@ -208,18 +207,18 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onCreate: [
-                {
-                    "this": "{that}.container",
-                    method: "addClass",
-                    args: "{that}.options.styles.playButton"
-                },
-                {
-                    "this": "{that}.container",
-                    method: "addClass",
-                    args: "{that}.options.styles.iconFont"
-                }
-            ]
+            "onCreate.addButtonStyle": {
+                "this": "{that}.container",
+                method: "addClass",
+                args: "{that}.options.styles.playButton"
+            },
+
+            "onCreate.addIconFontStyle": {
+                priority: "after:addButtonStyle",
+                "this": "{that}.container",
+                method: "addClass",
+                args: "{that}.options.styles.iconFont"
+            }
         },
 
         strings: {
@@ -267,32 +266,38 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onFadeIn: [
-                "{that}.enviro.start()",
-                "{fader}.fadeIn(1.0)"
-            ],
+            "onFadeIn.startEnviro": "{that}.enviro.start()",
 
-            onFadeOut: [
-                "{fader}.fadeTo(0.0)",
-                "flock.ui.enviroPlayButton.disableForFadeOut({that}.model, {that}.applier)",
-                {
-                    funcName: "flock.ui.enviroPlayButton.renableAfterFadeOutDelay",
-                    args: [
-                        "{that}.enviro",
-                        "{that}.model",
-                        "{that}.applier",
-                        "{that}.resetTime",
-                        "{that}.events.afterFadeOut.fire"
-                    ]
-                }
-            ],
+            "onFadeIn.fadeIn": {
+                priority: "after:startEnviro",
+                func: "{fader}.fadeIn",
+                args: [1.0]
+            },
 
-            afterFadeOut: [
-                {
-                    func: "{that}.enviro.stop",
-                    namespace: "stopEnviro"
-                }
-            ]
+            "onFadeOut.fadeOut": "{fader}.fadeTo(0.0)",
+
+            "onFadeOut.disableButton": {
+                priority: "after:fadeOut",
+                funcName: "flock.ui.enviroPlayButton.disableForFadeOut",
+                args: ["{that}.model", "{that}.applier"]
+            },
+
+            "onFadeOut.renableAfterFade": {
+                priority: "after:disableButton",
+                funcName: "flock.ui.enviroPlayButton.renableAfterFadeOutDelay",
+                args: [
+                    "{that}.enviro",
+                    "{that}.model",
+                    "{that}.applier",
+                    "{that}.resetTime",
+                    "{that}.events.afterFadeOut.fire"
+                ]
+            },
+
+            "afterFadeOut.stopEnviro": {
+                func: "{that}.enviro.stop",
+                namespace: "stopEnviro"
+            }
         },
 
         modelListeners: {
@@ -346,12 +351,10 @@ var fluid = fluid || require("infusion"),
         gradeNames: ["flock.ui.enviroPlayButton"],
 
         listeners: {
-            afterFadeOut: [
-                {
-                    func: "{that}.enviro.reset",
-                    priority: "after:stopEnviro"
-                }
-            ]
+            "afterFadeOut.resetEnviro": {
+                func: "{that}.enviro.reset",
+                priority: "after:stopEnviro"
+            }
         }
     });
 

@@ -144,6 +144,13 @@ module.exports = function(grunt) {
                     files.flockingBase
                 ),
                 dest: "dist/<%= pkg.name %>-base.js"
+            },
+
+            customInfusion: {
+                src: [].concat(
+                    files.infusion, files.infusionViews
+                ),
+                dest: "dist/infusion-for-flocking.js"
             }
         },
 

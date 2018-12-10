@@ -59,31 +59,31 @@ var fluid = fluid || require("infusion"),
         },
 
         events: {
-            onSelect: "{selectBox}.events.onSelect",    // Fires when the user selects a demo.
+            onSelect: "{selectBox}.events.onSelect", // Fires when the user selects a demo.
             onURLHashChange: null,
             afterDemoLoaded: null
         },
 
         listeners: {
-            onCreate: {
+            "onCreate.bindHashChangeListener": {
                 funcName: "flock.playground.demoSelector.listenForHashChanges",
                 args: ["{that}.events.onURLHashChange.fire"]
             },
 
-            onURLHashChange: {
+            "onURLHashChange.loadDemo": {
                 func: "{that}.loadDemoFromURL"
             },
 
-            onSelect: [
-                {
-                    funcName: "{that}.updateURL",
-                    args: ["{arguments}.0"]
-                },
-                {
+            "onSelect.updateURL": {
+                funcName: "{that}.updateURL",
+                args: ["{arguments}.0"]
+            },
+
+            "onSelect.loadDemo": {
+                    priority: "after:updateURL",
                     funcName: "{that}.loadDemo",
                     args: ["{arguments}.0"]
                 }
-            ]
         }
     });
 

@@ -81,7 +81,7 @@ Here is an example of an HTML page that uses Flocking, which you can use as a te
         // which is one of the built-in lifecycle events for Infusion.
         // When onCreate fires, we start the Flocking environment.
         listeners: {
-            "onCreate.startEnvironment: {
+            "onCreate.startEnvironment": {
                 func: "{environment}.start"
             }
         }
