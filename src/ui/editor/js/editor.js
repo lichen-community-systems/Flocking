@@ -65,7 +65,7 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onValidatedContentChange: {
+            "onValidatedContentChange.throttleContentValidation": {
                 funcName: "flock.ui.codeMirror.throttleContentValidation",
                 args: [
                     "{arguments}.1", // Is valid?

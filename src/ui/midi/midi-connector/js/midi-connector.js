@@ -60,9 +60,9 @@ var fluid = fluid || require("infusion");
                     },
 
                     listeners: {
-                        onCreate: [
-                            "{midiConnector}.events.afterConnectionOpen.fire()"
-                        ]
+                        "onCreate.fireAfterConnectionOpen": {
+                            func: "{midiConnector}.events.afterConnectionOpen.fire"
+                        }
                     }
                 }
             }

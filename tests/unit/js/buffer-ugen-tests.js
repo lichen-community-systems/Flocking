@@ -108,7 +108,7 @@ var fluid = fluid || require("infusion"),
                 }
             ],
             listeners: {
-                afterBuffersLoaded: function () {
+                "afterBuffersLoaded.runTest": function () {
                     flock.evaluate.synth(s);
                     flock.test.unbrokenAudioSignalInRange(chopper.output, -1, 1);
                     QUnit.start();

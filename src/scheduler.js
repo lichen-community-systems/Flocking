@@ -230,7 +230,7 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onCreate: {
+            "onCreate.initClock": {
                 funcName: "flock.scheduler.webWorkerClock.init",
                 args: ["{that}"]
             },
@@ -497,13 +497,21 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onScheduled: [
-                "{that}.addIntervalListener({arguments}.0, {arguments}.1)",
-                "{that}.clock.schedule({arguments}.0)"
-            ],
-            onFinished: [
-                "{that}.removeIntervalListener({arguments}.0, {arguments}.1)"
-            ]
+            "onScheduled.addIntervalListener": {
+                func: "{that}.addIntervalListener",
+                args: ["{arguments}.0", "{arguments}.1"]
+            },
+
+            "onScheduled.scheduleEvent": {
+                priority: "after:addIntervalListener",
+                func: "{that}.clock.schedule",
+                args: ["{arguments}.0"]
+            },
+
+            "onFinished.removeIntervalListener": {
+                func: "{that}.removeIntervalListener",
+                args: ["{arguments}.0", "{arguments}.1"]
+            }
         }
     });
 
@@ -613,21 +621,21 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onScheduled: [
-                {
-                    funcName: "flock.scheduler.addListener",
-                    args: [
-                        "{arguments}.1", // The listener.
-                        "{that}.listeners", // All registered listeners.
-                        "{that}.clock.events.tick.addListener"
-                    ]
-                },
-                {
-                    func: "{that}.clock.schedule",
-                    args: ["{arguments}.0"]
-                }
-            ],
-            onFinished: {
+            "onScheduled.addListener": {
+                funcName: "flock.scheduler.addListener",
+                args: [
+                    "{arguments}.1", // The listener.
+                    "{that}.listeners", // All registered listeners.
+                    "{that}.clock.events.tick.addListener"
+                ]
+            },
+
+            "onScheduled.scheduleEvent": {
+                func: "{that}.clock.schedule",
+                args: ["{arguments}.0"]
+            },
+
+            "onFinished.removeListener": {
                 funcName: "flock.scheduler.removeListener",
                 args: [
                     "{arguments}.0",    // The listener.
@@ -790,8 +798,8 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onCreate: "{that}.schedule({that}.options.score)",
-            onEnd: "{that}.clearAll"
+            "onCreate.scheduleScore": "{that}.schedule({that}.options.score)",
+            "onEnd.clearAllEvents": "{that}.clearAll"
         }
     });
 

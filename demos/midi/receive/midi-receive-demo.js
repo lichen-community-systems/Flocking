@@ -29,7 +29,7 @@
                     },
 
                     listeners: {
-                        noteOn: {
+                        "noteOn.forwardToSynth": {
                             func: "{synth}.noteOn",
                             args: [
                                 "{arguments}.0.note",
@@ -40,7 +40,10 @@
                             ]
                         },
 
-                        noteOff: "{synth}.noteOff({arguments}.0.note)"
+                        "noteOff.forwardToSynth": {
+                            func: "{synth}.noteOff",
+                            args: ["{arguments}.0.note"]
+                        }
                     }
                 }
             },
@@ -51,9 +54,7 @@
         },
 
         listeners: {
-            onCreate: [
-                "{that}.enviro.start()"
-            ]
+            "onCreate.startEnviro": "{that}.enviro.start()"
         },
 
         selectors: {

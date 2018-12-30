@@ -1279,25 +1279,44 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onCreate: [
-                "flock.enviro.registerGlobalSingleton({that})"
-            ],
+            "onCreate.registerSingleton": {
+                funcName: "flock.enviro.registerGlobalSingleton",
+                args: ["{that}"]
+            },
 
-            onStart: [
-                "{that}.applier.change(isPlaying, true)",
-            ],
+            "onStart.updatePlayState": {
+                changePath: "isPlaying",
+                value: true
+            },
 
-            onStop: [
-                "{that}.applier.change(isPlaying, false)"
-            ],
+            "onStop.updatePlayState": {
+                changePath: "isPlaying",
+                value: false
+            },
 
-            onReset: [
-                "{that}.stop()",
-                "{asyncScheduler}.clearAll()",
-                "flock.nodeList.clearAll({that}.nodeList)",
-                "{busManager}.reset()",
-                "fluid.clear({that}.buffers)"
-            ]
+            "onReset.stop": "{that}.stop()",
+
+            "onReset.clearScheduler": {
+                priority: "after:stop",
+                func: "{asyncScheduler}.clearAll"
+            },
+
+            "onReset.clearAllNodes": {
+                priority: "after:clearScheduler",
+                func: "flock.nodeList.clearAll",
+                args: ["{that}.nodeList"]
+            },
+
+            "onReset.resetBusManager": {
+                priority: "after:clearAllNodes",
+                func: "{busManager}.reset"
+            },
+
+            "onReset.clearBuffers": {
+                priority: "after:resetBusManager",
+                funcName: "fluid.clear",
+                args: ["{that}.buffers"]
+            }
         }
     });
 
@@ -1397,9 +1416,10 @@ var fluid = fluid || require("infusion"),
         gradeNames: "flock.enviro",
 
         listeners: {
-            onCreate: [
-                "flock.silentEnviro.insertOutputGainNode({that})"
-            ]
+            "onCreate.insertGainNode": {
+                funcName: "flock.silentEnviro.insertOutputGainNode",
+                args: "{that}"
+            }
         }
     });
 
@@ -1485,13 +1505,14 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onCreate: [
-                "{that}.addToEnvironment({that}.options.addToEnvironment)"
-            ],
+            "onCreate.addToEnvironment": {
+                func: "{that}.addToEnvironment",
+                args: ["{that}.options.addToEnvironment"]
+            },
 
-            onDestroy: [
-                "{that}.removeFromEnvironment()"
-            ]
+            "onDestroy.removeFromEnvironment": {
+                func: "{that}.removeFromEnvironment"
+            }
         }
     });
 

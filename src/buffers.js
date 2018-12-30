@@ -245,7 +245,7 @@ var fluid = fluid || require("infusion"),
                 type: "flock.promise",
                 options: {
                     listeners: {
-                        onCreate: {
+                        "onCreate.bindPromiseEvents": {
                             "this": "{that}.promise",
                             method: "then",
                             args: ["{bufferSource}.events.afterFetch.fire", "{bufferSource}.events.onError.fire"]
@@ -273,34 +273,37 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onCreate: {
+            "onCreate.fireRefresh": {
                 funcName: "{that}.events.onRefreshPromise.fire"
             },
 
-            onRefreshPromise: {
+            "onRefreshPromise.updateState": {
                 changePath: "state",
                 value: "start"
             },
 
-            onFetch: {
+            "onFetch.updateState": {
                 changePath: "state",
                 value: "in-progress"
             },
 
-            afterFetch: [
-                {
-                    changePath: "state",
-                    value: "fetched"
-                },
-                {
-                    funcName: "{that}.events.onBufferUpdated.fire", // TODO: Replace with boiling?
-                    args: ["{arguments}.0"]
-                }
-            ],
+            "afterFetch.updateState": {
+                changePath: "state",
+                value: "fetched"
+            },
 
-            onBufferUpdated: "{enviro}.registerBuffer({arguments}.0)",
+            "afterFetch.fireBufferUpdated": {
+                priority: "after:updateState",
+                funcName: "{that}.events.onBufferUpdated.fire", // TODO: Replace with boiling?
+                args: ["{arguments}.0"]
+            },
 
-            onError: {
+            "onBufferUpdated.registerBuffer": {
+                func: "{enviro}.registerBuffer",
+                args: ["{arguments}.0"],
+            },
+
+            "onError.updateState": {
                 changePath: "state",
                 value: "error"
             }

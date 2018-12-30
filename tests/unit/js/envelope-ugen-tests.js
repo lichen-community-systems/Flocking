@@ -36,7 +36,7 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onCreate: {
+            "onCreate.runTests": {
                 funcName: "flock.test.ugen.line.runTests",
                 args: "{that}"
             }
@@ -110,7 +110,7 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onCreate: {
+            "onCreate.runTests": {
                 funcName: "flock.test.ugen.asr.runTests",
                 args: "{that}"
             }

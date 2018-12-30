@@ -372,17 +372,27 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onCreate: {
+            "onCreate.requestAccess": {
                 func: "{that}.requestAccess"
             },
 
-            onAccessGranted: [
-                "flock.midi.system.setAccess({that}, {arguments}.0)",
-                "{that}.refreshPorts()",
-                "{that}.events.onReady.fire({that}.ports)"
-            ],
+            "onAccessGranted.setAccess": {
+                func: "flock.midi.system.setAccess",
+                args: ["{that}", "{arguments}.0"]
+            },
 
-            onAccessError: {
+            "onAccessGranted.refreshPorts": {
+                priority: "after:setAccess",
+                func: "{that}.refreshPorts"
+            },
+
+            "onAccessGranted.fireOnReady": {
+                priority: "after:refreshPorts",
+                func: "{that}.events.onReady.fire",
+                args: ["{that}.ports)"]
+            },
+
+            "onAccessError.logError": {
                 funcName: "fluid.log",
                 args: [fluid.logLevel.WARN, "MIDI Access Error: ", "{arguments}.0"]
             }
@@ -506,26 +516,24 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onPortsAvailable: {
+            "onPortsAvailable.open": {
                 funcName: "flock.midi.connection.autoOpen",
                 args: [
                     "{that}.options.openImmediately", "{that}.open"
                 ]
             },
 
-            onError: {
+            "onError.logError": {
                 funcName: "fluid.log",
                 args: [fluid.logLevel.WARN, "{arguments}.0"]
             },
 
-            raw: {
+            "raw.fireMidiEvent": {
                 funcName: "flock.midi.connection.fireEvent",
                 args: ["{arguments}.0", "{that}.events"]
             },
 
-            onDestroy: [
-                "{that}.close()"
-            ]
+            "onDestroy.close": "{that}.close()"
         }
     });
 

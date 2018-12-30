@@ -58,9 +58,10 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onCreate: [
-                "flock.webAudio.audioSystem.configureDestination({that}.context, {that}.model.chans)"
-            ]
+            "onCreate.configureDestination": {
+                funcName: "flock.webAudio.audioSystem.configureDestination",
+                args: ["{that}.context", "{that}.model.chans"]
+            }
         }
     });
 

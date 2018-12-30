@@ -79,22 +79,20 @@ fluid.defaults("flock.demo.nodejs.midiConnection", {
     },
 
     listeners: {
-        onError: {
+        "onError.logToConsole": {
             "this": "console",
             method: "log"
         },
 
-        message: {
+        "message.logToConsole": {
             "this": "console",
             method: "log"
         },
 
-        control: [
-            {
-                changePath: "controlValue",
-                value: "{arguments}.0.value"
-            }
-        ]
+        "control.updateModel": {
+            changePath: "controlValue",
+            value: "{arguments}.0.value"
+        }
     }
 });
 

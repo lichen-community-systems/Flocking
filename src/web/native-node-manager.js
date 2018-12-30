@@ -154,71 +154,86 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onCreate: [
-                "{that}.events.onCreateScriptProcessor.fire()",
-                {
-                    func: "{that}.insertOutput",
-                    args: "{scriptProcessor}.node"
-                }
-            ],
-
-            onStart: [
-                "{that}.connect()"
-            ],
-
-            onConnect: [
-                {
-                    "this": "{merger}.node",
-                    method: "connect",
-                    args: ["{scriptProcessor}.node"]
-                },
-                {
-                    "this": "{that}.outputNode",
-                    method: "connect",
-                    args: ["{audioSystem}.context.destination"]
-                },
-                {
-                    funcName: "flock.webAudio.nativeNodeManager.connectOutput",
-                    args: ["{scriptProcessor}.node", "{that}.outputNode"]
-                }
-            ],
-
-            onStop: [
-                "{that}.disconnect()"
-            ],
-
-            onDisconnectNodes: [
-                {
-                    "this": "{merger}.node",
-                    method: "disconnect",
-                    args: [0]
-                },
-                {
-                    "this": "{scriptProcessor}.node",
-                    method: "disconnect",
-                    args: [0]
-                },
-                {
-                    "this": "{that}.outputNode",
-                    method: "disconnect",
-                    args: [0]
-                }
-            ],
-
-            "onDisconnect.onDisconnectNodes": {
-                 func: "{that}.events.onDisconnectNodes.fire",
+            "onCreate.fireOnCreateScriptProcessor": {
+                func:"{that}.events.onCreateScriptProcessor.fire"
             },
 
-            onReset: [
-                "{that}.removeAllInputs()",
-                "{that}.events.onCreateScriptProcessor.fire()"
-            ],
+            "onCreate.insertOutputNode": {
+                priority: "after:fireOnCreateScriptProcessor",
+                func: "{that}.insertOutput",
+                args: "{scriptProcessor}.node"
+            },
 
-            onDestroy: [
-                "{that}.events.onDisconnectNodes.fire()",
-                "{that}.removeAllInputs()",
-                "flock.webAudio.nativeNodeManager.disconnectOutput({that})"
-            ]
+            "onStart.connect": "{that}.connect()",
+
+            "onConnect.connectMergerNode": {
+                "this": "{merger}.node",
+                method: "connect",
+                args: ["{scriptProcessor}.node"]
+            },
+
+            "onConnect.connectOutputNode": {
+                priority: "after:connectMergerNode",
+                "this": "{that}.outputNode",
+                method: "connect",
+                args: ["{audioSystem}.context.destination"]
+            },
+
+            "onConnect.connectOutput": {
+                priority: "after:connectOutputNode",
+                funcName: "flock.webAudio.nativeNodeManager.connectOutput",
+                args: ["{scriptProcessor}.node", "{that}.outputNode"]
+            },
+
+            "onStop.disconnect": "{that}.disconnect()",
+
+
+            "onDisconnect.fireOnDisconnectNodes": {
+                func: "{that}.events.onDisconnectNodes.fire",
+            },
+
+            "onDisconnectNodes.disconnectMergerNode": {
+                "this": "{merger}.node",
+                method: "disconnect",
+                args: [0]
+            },
+
+            "onDisconnect.disconnectScriptProcessorNode": {
+                priority: "after:disconnectMergerNode",
+                "this": "{scriptProcessor}.node",
+                method: "disconnect",
+                args: [0]
+            },
+
+            "onDisconnectNodes.disconnectOuptutNode": {
+                priority: "after:disconnectScriptProcessorNode",
+                "this": "{that}.outputNode",
+                method: "disconnect",
+                args: [0]
+            },
+
+            "onReset.removeAllInputs": {
+                func: "{that}.removeAllInputs"
+            },
+
+            "onReset.fireOnCreateScriptProcessor": {
+                func: "{that}.events.onCreateScriptProcessor.fire"
+            },
+
+            "onDestroy.fireOnDisconnectNodes": {
+                func: "{that}.events.onDisconnectNodes.fire"
+            },
+
+            "onDestroy.removeAllInputs": {
+                priority: "after:fireOnDisconnectNodes",
+                func: "{that}.removeAllInputs"
+            },
+
+            "onDestroy.disconnectOutput": {
+                priority: "after:removeAllInputs",
+                func: "flock.webAudio.nativeNodeManager.disconnectOutput",
+                args: ["{that}"]
+            }
         }
     });
 

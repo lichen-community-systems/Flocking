@@ -38,13 +38,11 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onCreate: [
-                {
-                    "this": "{that}.plumb",
-                    method: "ready",
-                    args: "{that}.events.onReady.fire"
-                }
-            ]
+            "onCreate.bindJSPlumbReady": {
+                "this": "{that}.plumb",
+                method: "ready",
+                args: "{that}.events.onReady.fire"
+            }
         }
     });
 
@@ -132,13 +130,9 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onSourceUpdated: [
-                "{that}.parse()"
-            ],
+            "onSourceUpdated.parse": "{that}.parse()",
 
-            onEvaluateDemo: [
-                "{evaluator}.evaluate()"
-            ]
+            "onEvaluateDemo.evaluate": "{evaluator}.evaluate()"
         }
     });
 
@@ -216,10 +210,14 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onRender: [
-                "{that}.prepareRenderModel()",
-                "{that}.render()"
-            ]
+            "onRender.prepareRenderModel": {
+                func: "{that}.prepareRenderModel"
+            },
+
+            "onRender.render": {
+                priority: "after:prepareRenderModel",
+                func: "{that}.render"
+            }
         },
 
         markup: {
@@ -417,7 +415,7 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onCreate: {
+            "onCreate.refreshView": {
                 func: "{that}.refreshView"
             }
         },

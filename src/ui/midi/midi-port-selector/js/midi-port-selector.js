@@ -70,56 +70,56 @@ var fluid = fluid || require("infusion"),
         },
 
         listeners: {
-            onCreate: [
-                "{that}.refreshView()"
-            ],
+            "onCreate.refreshView": "{that}.refreshView()",
 
             // TODO: Move the selectBox portions of this to the selectBox component.
-            onRender: [
-                {
-                    funcName: "flock.ui.midiPortSelector.render",
-                    args: [
-                        "{that}.container",
-                        "{that}.options.markup.label",
-                        "{that}.options.selectBoxStrings"
-                    ]
-                },
-                {
-                    funcName: "flock.ui.midiPortSelector.render",
-                    args: [
-                        "{that}.container",
-                        "{that}.options.markup.selectBox",
-                        "{that}.options.selectBoxStrings"
-                    ]
-                },
-                {
-                    funcName: "flock.ui.midiPortSelector.renderRefreshButton",
-                    args: [
-                        "{that}.container",
-                        "{that}.options.markup.refreshButton",
-                        "{that}.options.strings",
-                        "{that}.events.onRefresh.fire"
-                    ]
-                },
-                {
-                    func: "{that}.events.afterRender.fire"
-                }
-            ],
+            "onRender.renderLabel": {
+                funcName: "flock.ui.midiPortSelector.render",
+                args: [
+                    "{that}.container",
+                    "{that}.options.markup.label",
+                    "{that}.options.selectBoxStrings"
+                ]
+            },
 
-            onRefresh: [
-                "{midiSystem}.refreshPorts()"
-            ],
+            "onRender.renderSelectBox": {
+                priority: "after:renderLabel",
+                funcName: "flock.ui.midiPortSelector.render",
+                args: [
+                    "{that}.container",
+                    "{that}.options.markup.selectBox",
+                    "{that}.options.selectBoxStrings"
+                ]
+            },
 
-            onPortsAvailable: [
-                {
-                    changePath: "ports",
-                    type: "DELETE"
-                },
-                {
-                    funcName: "flock.ui.midiPortSelector.updatePortsModel",
-                    args: ["{that}.options.portType", "{arguments}.0", "{that}"]
-                }
-            ]
+            "onRender.renderRefreshButton": {
+                priority: "after:renderSelectBox",
+                funcName: "flock.ui.midiPortSelector.renderRefreshButton",
+                args: [
+                    "{that}.container",
+                    "{that}.options.markup.refreshButton",
+                    "{that}.options.strings",
+                    "{that}.events.onRefresh.fire"
+                ]
+            },
+
+            "onRender.fireAfterRender": {
+                priority: "last",
+                func: "{that}.events.afterRender.fire"
+            },
+
+            "onRefresh.refreshSystemPorts": "{midiSystem}.refreshPorts()",
+
+            "onPortsAvailable.deleteOldPorts": {
+                changePath: "ports",
+                type: "DELETE"
+            },
+
+            "onPortsAvailable.updatePortsModel": {
+                priority: "after:deleteOldPorts",
+                funcName: "flock.ui.midiPortSelector.updatePortsModel",
+                args: ["{that}.options.portType", "{arguments}.0", "{that}"]
+            }
         },
 
         markup: {
