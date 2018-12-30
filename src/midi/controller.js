@@ -1,6 +1,6 @@
 /*
  * Flocking MIDI Controller
- * http://github.com/colinbdclark/flocking
+ * https://github.com/colinbdclark/flocking
  *
  * Copyright 2014-2016, Colin Clark
  * Dual licensed under the MIT and GPL Version 2 licenses.

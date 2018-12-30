@@ -1,6 +1,6 @@
 /*
  * Flocking Modelized Synth
- * http://github.com/colinbdclark/flocking
+ * https://github.com/colinbdclark/flocking
  *
  * Copyright 2013-2015, Colin Clark
  * Copyright 2015, OCAD University

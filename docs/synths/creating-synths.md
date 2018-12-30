@@ -128,7 +128,7 @@ the [<code>flock.nodeListComponent</code> API](../../src//core.js#L1083) provide
 
 In many cases, you will want to define your own custom type of synth so that you can easily create different instances of it with different values.
 
-In Flocking, "types" are referred to as [_grades_](https://github.com/fluid-project/infusion-docs/blob/master/src/documents/ComponentGrades.md). This is approach and terminology is based on [Fluid Infusion](https://github.com/fluid-project/infusion-docs/blob/master/src/documents/README.md), the application framework with which Flocking is built. A grade is a JSON object that describes how a particular component should be created and configured. At instantiation time, all of a component's grade documents are gathered and merged (or [mixed in](http://en.wikipedia.org/wiki/Mixin)) together.
+In Flocking, "types" are referred to as [_grades_](https://github.com/fluid-project/infusion-docs/blob/master/src/documents/ComponentGrades.md). This is approach and terminology is based on [Fluid Infusion](https://github.com/fluid-project/infusion-docs/blob/master/src/documents/README.md), the application framework with which Flocking is built. A grade is a JSON object that describes how a particular component should be created and configured. At instantiation time, all of a component's grade documents are gathered and merged (or [mixed in](https://en.wikipedia.org/wiki/Mixin)) together.
 
 ### Namespaces
 

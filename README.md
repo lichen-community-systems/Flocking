@@ -21,7 +21,7 @@ and extended by others without forcing them to fork or cut and paste your code.
 This declarative approach will also help make it easier to create new authoring,
 performance, metaprogramming, and social tools on top of Flocking.
 
-Flocking was inspired by the [SuperCollider](http://supercollider.sourceforge.net/)
+Flocking was inspired by the [SuperCollider](https://supercollider.github.io/)
 desktop synthesis environment. If you're familiar with SuperCollider,
 you'll feel at home with Flocking.
 
@@ -40,7 +40,7 @@ Flocking has an inclusive and supportive community with several forums where you
 and share the projects you're working on.
 
 ### Mailing List
-The [flocking mailing list](http://lists.idrc.ocadu.ca/mailman/listinfo/flocking)
+The [flocking mailing list](https://lists.idrc.ocadu.ca/mailman/listinfo/flocking)
 is the place to ask questions, share code, and request new features.
 
 ### Chat
@@ -59,18 +59,15 @@ is documented in the wiki. Plans include:
  * A "live data merging" environment for live coding
  * Graphical editing of Flocking synth defs
 
-Unplanned features, bug fixes, and contributions are welcome and appreciated, of course. The Flocking project adheres to the [Contributor Covenant guidelines](http://contributor-covenant.org/version/1/2/0/), and is an open and welcoming community.
+Unplanned features, bug fixes, and contributions are welcome and appreciated, of course. The Flocking project adheres to the [Contributor Covenant guidelines](https://contributor-covenant.org/version/1/2/0/), and is an open and welcoming community.
 
 
 Documentation and Demos
 -----------------------
 
 * Flocking's [documentation](docs/) is in the repository
-* Demos can be found in the Flocking Playground
-    * [Latest stable release](http://flockingjs.org/demos/interactive/html/playground.html)
-    * [Unreleased development version](http://flockingjs.org/next/demos/playground/)
-    * [Preview of the new graphical playground](http://flockingjs.org/next/demos/playground/live/)
-* Other examples are located in the [examples repository](http://github.com/colinbdclark/flocking-examples)
+* Demos can be found in the [Flocking Playground](https://flockingjs.org/demos/interactive/html/playground.html)
+* Other examples are located in the [examples repository](https://github.com/colinbdclark/flocking-examples)
 
 
 Getting Started
@@ -350,7 +347,7 @@ Credits
 -------
 
 Flocking is developed by Colin Clark and the community.
-It was named after a composition by [James Tenney](http://www.plainsound.org/JTwork.html),
+It was named after a composition by [James Tenney](https://www.plainsound.org/JTwork.html),
 a composer, thinker, and early pioneer of computer music who was my composition teacher and a
 huge influence on my work. I hope you find this library useful enough to create projects as
 beautiful and inspiring as Jim's _Flocking_.
@@ -360,7 +357,7 @@ beautiful and inspiring as Jim's _Flocking_.
  * [Alfredo Matas](https://github.com/amatas) for test automation on Windows and Linux
  * [Johnny Taylor](https://github.com/abledaccess) for styling improvements to the Playground
  * [Dan Stowell](https://github.com/danstowell) for the Freeverb and Delay1 unit generators
- * [Mayank Sanganeria](http://github.com/e7mac) for the <code>flock.ugen.granulator</code> unit generator
+ * [Mayank Sanganeria](https://github.com/e7mac) for the <code>flock.ugen.granulator</code> unit generator
  * [Vitus](https://github.com/derDoc) for his contributions to the original version of the interactive Playground
  * [Myles Borins](https://github.com/thealphanerd) for pushing the limits of Flocking early in its development
  * [Antranig Basman](https://github.com/amb26) for code review, architectural advice, and help with maths

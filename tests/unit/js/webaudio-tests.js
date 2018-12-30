@@ -1,6 +1,6 @@
 /*!
 * Flocking - Creative audio synthesis for the Web!
-* http://github.com/colinbdclark/flocking
+* https://github.com/colinbdclark/flocking
 *
 * Copyright 2011, Colin Clark
 * Dual licensed under the MIT or GPL Version 2 licenses.

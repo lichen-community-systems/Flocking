@@ -1,6 +1,6 @@
 /*
 * Flocking Audio File Benchmark Tests
-* http://github.com/colinbdclark/flocking
+* https://github.com/colinbdclark/flocking
 *
 * Copyright 2012-2014, Colin Clark
 * Dual licensed under the MIT and GPL Version 2 licenses.

@@ -1,6 +1,6 @@
 /*
 * Flocking Audio Buffers
-* http://github.com/colinbdclark/flocking
+* https://github.com/colinbdclark/flocking
 *
 * Copyright 2013-14, Colin Clark
 * Dual licensed under the MIT and GPL Version 2 licenses.

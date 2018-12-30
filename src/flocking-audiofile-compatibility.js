@@ -4,7 +4,7 @@
 
 /*
  * PolyDataView, a better polyfill for DataView.
- * http://github.com/colinbdclark/PolyDataView
+ * https://github.com/colinbdclark/PolyDataView
  *
  * Copyright 2012, Colin Clark
  * Dual licensed under the MIT and GPL Version 2 licenses.
@@ -272,7 +272,7 @@ funcscope: false*/
 
 /*
  * Flocking Audio File Decoder Library
- * http://github.com/colinbdclark/flocking
+ * https://github.com/colinbdclark/flocking
  *
  * Copyright 2011-2014, Colin Clark
  * Dual licensed under the MIT and GPL Version 2 licenses.
