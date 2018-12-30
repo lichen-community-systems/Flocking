@@ -65,6 +65,11 @@
 
         var byte = parseInt(byteString, 16);
 
+        if (isNaN(byte)) {
+            flock.fail("A non-numeric value was found at token index " + i + ": " + byteString);
+            return;
+        }
+
         return byte;
     };
 
@@ -78,7 +83,7 @@
 
         fluid.each(midiByteStrings, function (byteString, i) {
             var byte = flock.demo.rawMidiParser.parseMidiByteString(byteString, i);
-            if (byte) {
+            if (byte !== undefined) {
                 bytes.push(byte);
             }
         });
