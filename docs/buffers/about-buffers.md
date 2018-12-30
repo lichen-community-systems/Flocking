@@ -17,7 +17,7 @@ However, it is generally safe to assume that these formats will work across the 
 * MP3
 * AAC in the MP4 container
 
-Flocking also provides an optional pure JavaScript decoder library that supports WAVE and AIFF files, and is used in with its Node.js backend. This library is not included in the default Flocking concatenated builds, but can be included in your pages if support for AIFF files or unusual bit rates is required. To do so, simply import <code>flocking-audiofile-compatibility.js</code>.
+Flocking also provides an optional pure JavaScript decoder library that supports WAVE and AIFF files. This library is not included in the default Flocking concatenated builds, but can be included in your pages if support for AIFF files or unusual bit rates is required. To do so, simply import <code>flocking-audiofile-compatibility.js</code>.
 
 Flocking audio buffers can be exported as WAVE files, and supports a wide variety of sample formats and bit rates.
 
@@ -320,7 +320,7 @@ The <code>saveBuffer()</code> method supports a variety of options:
     </tr>
     <tr>
         <td>path</td>
-        <td>The file name; on platforms that support it (e.g. Node.js), this can be a file path</td>
+        <td>The file name</td>
         <td>The buffer's ID plus the specified file type (e.g. <code>my-buffer.wav</code>)</td>
     </tr>
     <tr>
@@ -328,8 +328,6 @@ The <code>saveBuffer()</code> method supports a variety of options:
         <td>A buffer ID (as a String) or a buffer description object to save</td>
     </tr>
 </table>
-
-On Node.js, <code>saveBuffer()</code> will save the file to the path specified in the <code>path</code> option.
 
 ### Manually Encoding Buffers ###
 

@@ -6,7 +6,7 @@ What is Flocking?
 
 Flocking is a JavaScript audio synthesis framework designed for artists and musicians
 who are building creative and experimental Web-based sound projects.
-It supports Firefox, Chrome, Safari, and Node.js on
+It supports Firefox, Chrome, Safari on
 Mac OS X, Windows, Linux, iOS, and Android.
 
 Unlike comparable tools, Flocking is declarative. Its goal is to promote a uniquely
@@ -87,9 +87,6 @@ Here's how to include Flocking's development file in your HTML page:
 For more information on using Flocking in a browser,
 read the [Getting Started](docs/getting-started.md) tutorial.
 If module loaders are your thing, Flocking also supports the CommonJS and AMD styles.
-
-If you're interested in using Flocking with Node.js,
-read the [Flocking in Node.js](docs/nodejs.md) tutorial.
 
 
 Using Flocking
@@ -293,7 +290,7 @@ The Flocking scheduler, in future releases, will be removed and replaced with [B
 Testing
 -------
 
-Flocking uses Testem and Vagrant to run its test suite across many of its supported environments. In particular, it can automatically test on Node.js and installed browsers, as well as in virtual machines running Windows and Linux.
+Flocking uses Testem and Vagrant to run its test suite across many of its supported environments, both on the host and in virtual machines running Windows and Linux.
 
 ### Prerequisites
 1. [Vagrant](https://www.vagrantup.com/)
@@ -304,9 +301,6 @@ Flocking uses Testem and Vagrant to run its test suite across many of its suppor
 
 Run all tests on your host:
 * `npm test`
-
-Run only Node.js tests:
-* `npm run node-tests`
 
 Run only browser tests:
 * `npm run browser-test`
@@ -331,9 +325,6 @@ Compatibility
 
 Flocking is currently tested on the latest versions of Firefox, Chrome, Safari, and Microsoft Edge
 on Mac, Windows, Linux, iOS, and Android.
-
-Node.js 8.x is also supported, but support for Node.js may be removed in future releases.
-
 
 License
 ---------

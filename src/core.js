@@ -113,7 +113,7 @@ var fluid = fluid || require("infusion"),
     flock.platform.isMobile = flock.platform.isAndroid || flock.platform.isIOS;
     flock.platform.browser = flock.browser();
     flock.platform.isWebAudio = typeof AudioContext !== "undefined" || typeof webkitAudioContext !== "undefined";
-    flock.platform.audioEngine = flock.platform.isBrowser ? "webAudio" : "nodejs";
+    flock.platform.audioEngine = flock.platform.isBrowser ? "webAudio" : "unknown";
 
     if (flock.platform.browser && flock.platform.browser.version !== undefined) {
         var dotIdx = flock.platform.browser.version.indexOf(".");
@@ -1409,8 +1409,6 @@ var fluid = fluid || require("infusion"),
      * An environment grade that is configured to always output
      * silence using a Web Audio GainNode. This is useful for unit testing,
      * where failures could produce painful or unexpected output.
-     *
-     * Note: this grade does not currently function in Node.js
      */
     fluid.defaults("flock.silentEnviro", {
         gradeNames: "flock.enviro",
@@ -1424,8 +1422,6 @@ var fluid = fluid || require("infusion"),
     });
 
     flock.silentEnviro.insertOutputGainNode = function (that) {
-        // TODO: Add some kind of pre-output gain Control
-        // for the Node.js audioSystem.
         if (that.audioSystem.nativeNodeManager) {
             that.audioSystem.nativeNodeManager.createOutputNode({
                 node: "Gain",
