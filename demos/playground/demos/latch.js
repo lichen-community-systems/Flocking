@@ -1,5 +1,5 @@
 /*
-  David Michael Cottle's first Latch example from http://www.mat.ucsb.edu/275/CottleSC3.pdf
+  David Michael Cottle's first Latch example from http://rhoadley.net/courses/tech_resources/supercollider/tutorials/cottle/CMSC7105.pdf
 
  "The patterns that emerge are more varied than a single sequence,
   but more cohesive than an LFNoise control.

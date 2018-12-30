@@ -1,6 +1,6 @@
 /*
  * Flocking Filters
- * http://github.com/colinbdclark/flocking
+ * https://github.com/colinbdclark/flocking
  *
  * Copyright 2011-2015, Colin Clark
  * Dual licensed under the MIT and GPL Version 2 licenses.
@@ -325,7 +325,7 @@ var fluid = fluid || require("infusion"),
         },
 
         // From Robert Brisow-Johnston's Filter Cookbook:
-        // http://dspwiki.com/index.php?title=Cookbook_Formulae_for_audio_EQ_biquad_filter_coefficients
+        // https://dspwiki.com/index.php?title=Cookbook_Formulae_for_audio_EQ_biquad_filter_coefficients
         rbj: {
             sizes: {
                 a: 2,
@@ -772,7 +772,7 @@ var fluid = fluid || require("infusion"),
         }
     });
 
-    
+
     flock.ugen.decay = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 

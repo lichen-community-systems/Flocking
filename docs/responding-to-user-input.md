@@ -158,7 +158,7 @@ Note that if you're not a fan of jQuery, you can use plain DOM methods like ``ad
 
 ## Using  Infusion Views and Events ##
 
-[Infusion](http://fluidproject.org/products/infusion) provides a robust system for defining "views" and events. It provides a highly declarative way of binding Flocking instruments up to any source of user input, from individual buttons and sliders to larger-scale interfaces like [pianos](http://github.com/thealphanerd/Piano) and even [physical input devices](https://github.com/colinbdclark/flocking-osc-fm-synth). Here's an example of how an Infusion View can be created, which will listen for click events on an element and dynamically update a synth's inputs.
+[Infusion](https://fluidproject.org/products/infusion) provides a robust system for defining "views" and events. It provides a highly declarative way of binding Flocking instruments up to any source of user input, from individual buttons and sliders to larger-scale interfaces like [pianos](https://github.com/thealphanerd/Piano) and even [physical input devices](https://github.com/colinbdclark/flocking-osc-fm-synth). Here's an example of how an Infusion View can be created, which will listen for click events on an element and dynamically update a synth's inputs.
 
 HTML:
 
@@ -173,7 +173,7 @@ HTML:
         </head>
 
         <body>
-            <img id="clickTarget" src="http://wanna-joke.com/wp-content/uploads/2014/01/funny-picture-new-year-doge.jpg" />
+            <img id="clickTarget" src="https://wanna-joke.com/wp-content/uploads/2014/01/funny-picture-new-year-doge.jpg" />
 
             <script>
                 userInputDemo.clickSource("#clickTarget");

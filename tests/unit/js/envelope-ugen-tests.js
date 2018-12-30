@@ -1,6 +1,6 @@
 /*!
 * Flocking Envelope Unit Generator Tests
-* http://github.com/colinbdclark/flocking
+* https://github.com/colinbdclark/flocking
 *
 * Copyright 2014-2017, Colin Clark
 * Dual licensed under the MIT or GPL Version 2 licenses.

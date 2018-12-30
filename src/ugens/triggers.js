@@ -1,6 +1,6 @@
 /*
  * Flocking Trigger Unit Generators
- * http://github.com/colinbdclark/flocking
+ * https://github.com/colinbdclark/flocking
  *
  * Copyright 2011-2015, Colin Clark
  * Dual licensed under the MIT and GPL Version 2 licenses.

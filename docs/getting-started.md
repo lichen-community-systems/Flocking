@@ -2,7 +2,7 @@
 
 Flocking is distributed as an [npm](https://npmjs.com) package, which includes prebuilt files in the <code>dist</code> directory that can be used in most common cases. [Custom builds can be generated](building-flocking.md) if needed.
 
-To use Flocking, make sure have [Node.js](http://nodejs.org) installed, and then include Flocking as a dependency in your <code>package.json</code> file:
+To use Flocking, make sure have [Node.js](https://nodejs.org) installed, and then include Flocking as a dependency in your <code>package.json</code> file:
 
     {
         "name": "my-project",

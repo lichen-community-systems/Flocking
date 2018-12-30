@@ -1,6 +1,6 @@
 /*
  * Flocking Web Audio Buffer Writer
- * http://github.com/colinbdclark/flocking
+ * https://github.com/colinbdclark/flocking
  *
  * Copyright 2013-2015, Colin Clark
  * Dual licensed under the MIT and GPL Version 2 licenses.
@@ -62,7 +62,7 @@ var fluid = fluid || require("infusion"),
         // Although Firefox apparently supports it, this method of
         // programmatically clicking the link doesn't seem to have an
         // effect in it.
-        // http://caniuse.com/#feat=download
+        // https://caniuse.com/#feat=download
         a.href = dataURL;
         a.download = fileName;
         click.initEvent("click", true, true);
