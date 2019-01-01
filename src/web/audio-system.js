@@ -42,6 +42,9 @@ var fluid = fluid || require("infusion"),
             channelInterpretation: "discrete"
         },
 
+        // TODO: Move these into a new AudioContext component,
+        // perhaps borrowed from the SJRK's transcribing audio recorder:
+        // https://github.com/colinbdclark/transcribingRecorder/blob/componentization/src/js/proto-signaletic/audio-context.js
         modelListeners: {
             chans: {
                 funcName: "flock.webAudio.audioSystem.configureDestination",
