@@ -15,7 +15,6 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    var atob = typeof (window) !== "undefined" ? window.atob : require("atob");
     var QUnit = fluid.registerNamespace("QUnit");
     var $ = fluid.registerNamespace("jQuery");
 

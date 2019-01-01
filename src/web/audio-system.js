@@ -36,6 +36,41 @@ var fluid = fluid || require("infusion"),
         model: {
             rates: {
                 audio: "{that}.context.sampleRate"
+            },
+
+            channelCountMode: "explicit",
+            channelInterpretation: "discrete"
+        },
+
+        // TODO: Move these into a new AudioContext component,
+        // perhaps borrowed from the SJRK's transcribing audio recorder:
+        // https://github.com/colinbdclark/transcribingRecorder/blob/componentization/src/js/proto-signaletic/audio-context.js
+        modelListeners: {
+            chans: {
+                funcName: "flock.webAudio.audioSystem.configureDestination",
+                args: [
+                    "{that}.context.destination",
+                    "channelCount",
+                    "{change}.value"
+                ]
+            },
+
+            channelCountMode: {
+                funcName: "flock.webAudio.audioSystem.configureDestination",
+                args: [
+                    "{that}.context.destination",
+                    "channelCountMode",
+                    "{change}.value"
+                ]
+            },
+
+            channelInterpretation: {
+                funcName: "flock.webAudio.audioSystem.configureDestination",
+                args: [
+                    "{that}.context.destination",
+                    "channelInterpretation",
+                    "{change}.value"
+                ]
             }
         },
 
@@ -54,13 +89,6 @@ var fluid = fluid || require("infusion"),
 
             bufferWriter: {
                 type: "flock.webAudio.bufferWriter"
-            }
-        },
-
-        listeners: {
-            "onCreate.configureDestination": {
-                funcName: "flock.webAudio.audioSystem.configureDestination",
-                args: ["{that}.context", "{that}.model.chans"]
             }
         }
     });
@@ -83,14 +111,12 @@ var fluid = fluid || require("infusion"),
         return flock.platform.browser.safari ? 2 : 1;
     };
 
-    flock.webAudio.audioSystem.configureDestination = function (context, chans) {
+    flock.webAudio.audioSystem.configureDestination = function (destination, propName, value) {
         // Safari will throw an InvalidStateError DOM Exception 11 when
         // attempting to set channelCount on the audioContext's destination.
         // TODO: Remove this conditional when Safari adds support for multiple channels.
-        if (!flock.platform.browser.safari) {
-            context.destination.channelCount = chans;
-            context.destination.channelCountMode = "explicit";
-            context.destination.channelInterpretation = "discrete";
+        if (!flock.platform.browser.safari && value !== undefined) {
+            destination[propName] = value;
         }
     };
 

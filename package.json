@@ -22,23 +22,22 @@
   "browser": "dist/flocking-all.js",
   "devDependencies": {
     "grunt": "1.0.3",
-    "grunt-contrib-clean": "1.1.0",
+    "grunt-contrib-clean": "2.0.0",
     "grunt-contrib-concat": "1.0.1",
-    "grunt-contrib-uglify": "3.4.0",
+    "grunt-contrib-uglify": "4.0.0",
     "grunt-contrib-copy": "1.0.0",
-    "grunt-contrib-jshint": "1.1.0",
+    "grunt-contrib-jshint": "2.0.0",
     "sheep-benchmark": "colinbdclark/sheep.js",
-    "requirejs": "2.3.5",
-    "testem": "2.9.3"
+    "requirejs": "2.3.6",
+    "testem": "2.14.0"
   },
   "dependencies": {
     "jquery": "3.3.1",
-    "infusion": "3.0.0-dev.20180924T230735Z.05b2dbfdc",
+    "infusion": "3.0.0-dev.20181204T213346Z.2ca90f6e6",
     "codemirror-infusion": "2.2.0",
     "jsplumb": "1.7.9",
-    "dagre": "0.8.2",
-    "normalize.css": "8.0.0",
-    "atob": "2.1.2"
+    "dagre": "0.8.4",
+    "normalize.css": "8.0.1"
   },
   "scripts": {
     "prepare": "node_modules/.bin/grunt",
