@@ -1197,7 +1197,7 @@ var fluid = fluid || require("infusion"),
             },
 
             audioSystem: {
-                type: "flock.audioSystem"
+                type: "flock.webAudio.audioSystem"
             },
 
             busManager: {
@@ -1406,31 +1406,23 @@ var fluid = fluid || require("infusion"),
 
 
     /**
-     * An environment grade that is configured to always output
-     * silence using a Web Audio GainNode. This is useful for unit testing,
-     * where failures could produce painful or unexpected output.
+     * An Environment without a concrete audioSystem backend,
+     * which is intended to be driven manually by some external clock
+     * or other process.
+     *
+     * This can be used for mock testing, or when using Flocking in a
+     * non-audio setting such as when modulating video parameters, etc.
      */
-    fluid.defaults("flock.silentEnviro", {
+    fluid.defaults("flock.enviro.manual", {
         gradeNames: "flock.enviro",
 
-        listeners: {
-            "onCreate.insertGainNode": {
-                funcName: "flock.silentEnviro.insertOutputGainNode",
-                args: "{that}"
+        components: {
+            audioSystem: {
+                type: "flock.audioSystem"
             }
         }
     });
 
-    flock.silentEnviro.insertOutputGainNode = function (that) {
-        if (that.audioSystem.nativeNodeManager) {
-            that.audioSystem.nativeNodeManager.createOutputNode({
-                node: "Gain",
-                params: {
-                    gain: 0
-                }
-            });
-        }
-    };
 
     fluid.defaults("flock.node", {
         gradeNames: ["flock.autoEnviro", "fluid.modelComponent"],

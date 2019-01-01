@@ -50,6 +50,7 @@ module.exports = function(grunt) {
             // to reduce the size of the default Flocking build.
             "src/scheduler.js",
             "src/web/webaudio-core.js",
+            "src/web/silent-environment.js",
             "src/web/audio-system.js",
             "src/web/buffer-writer.js",
             "src/web/input-device-manager.js",

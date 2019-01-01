@@ -119,22 +119,4 @@ var fluid = fluid || require("infusion"),
             destination[propName] = value;
         }
     };
-
-    fluid.defaults("flock.webAudio.enviroContextDistributor", {
-        gradeNames: ["fluid.component"],
-
-        distributeOptions: [
-            {
-                target: "{/ flock.enviro > audioSystem}.options",
-                record: {
-                    gradeNames: "flock.webAudio.audioSystem"
-                }
-            }
-        ]
-    });
-
-    fluid.constructSingle([], {
-        singleRootType: "flock.enviroContextDistributor",
-        type: "flock.webAudio.enviroContextDistributor"
-    });
 }());

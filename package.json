@@ -41,7 +41,7 @@
   },
   "scripts": {
     "prepare": "node_modules/.bin/grunt",
-    "test": "node_modules/.bin/testem ci --file tests/unit/testem.json",
+    "test": "npm run prepare && node_modules/.bin/testem ci --file tests/unit/testem.json",
     "linux-vm-test": "npm run clean-modules && vagrant up fedora27 && vagrant ci test fedora27",
     "windows-vm-test": "npm run clean-modules && vagrant up windows10 && vagrant ci test windows10",
     "clean-modules": "rm -r node_modules",
