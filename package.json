@@ -29,7 +29,7 @@
     "grunt-contrib-jshint": "2.0.0",
     "sheep-benchmark": "colinbdclark/sheep.js",
     "requirejs": "2.3.6",
-    "testem": "2.9.3"
+    "testem": "2.14.0"
   },
   "dependencies": {
     "jquery": "3.3.1",
