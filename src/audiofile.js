@@ -21,8 +21,6 @@ var fluid = fluid || require("infusion"),
 
     "use strict";
 
-    var atob = typeof (window) !== "undefined" ? window.atob : require("atob");
-
     /**
      * Applies the specified function in the next round of the event loop.
      */

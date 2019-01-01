@@ -28,7 +28,6 @@ var fluid = fluid || require("infusion"),
 
         model: {
             isGenerating: false,
-            shouldInitSafari: flock.platform.browser.safari,
             audioSettings: {}
         },
 
@@ -64,14 +63,17 @@ var fluid = fluid || require("infusion"),
                     args: ["isGenerating", true]
                 },
                 {
-                    // TODO: Replace this with some progressive enhancement action.
+                    // Satisfy Safari and Chrome's user interaction
+                    // requirement, where it requires an AudioContext
+                    // to be explicitly resumed within a user action
+                    // event of some kind. For this to work,
+                    // the Flocking environment must be started within
+                    // a user-triggered event handler,
+                    // such as with Flocking's built-in
+                    // flock.ui.enviroPlayButton UI component.
                     priority: "last",
-                    funcName: "flock.webAudio.outputManager.safariStart",
-                    args: [
-                        "{that}",
-                        "{audioSystem}.context",
-                        "{nativeNodeManager}.scriptProcessor.node"
-                    ]
+                    "this": "{audioSystem}.context",
+                    method: "resume"
                 }
             ],
 
@@ -169,20 +171,6 @@ var fluid = fluid || require("infusion"),
                     outBuf[samp + offset] = sourceBuf[samp];
                 }
             }
-        }
-    };
-
-    flock.webAudio.outputManager.safariStart = function (that, ctx, jsNode) {
-        // Satisfy Safari's user interaction requirement,
-        // where it requires an AudioContext to be explicitly
-        // resumed within a user touch event of some kind.
-        // For this to work, the Flocking environment must be
-        // started within a user-triggered event handler,
-        // such as is the case with Flocking's built-in
-        // flock.ui.enviroPlayButton user interface component.
-        if (that.model.shouldInitSafari) {
-            ctx.resume();
-            that.applier.change("shouldInitSafari", false);
         }
     };
 }());
