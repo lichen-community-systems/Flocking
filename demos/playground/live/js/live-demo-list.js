@@ -278,10 +278,6 @@ var fluid = fluid || require("infusion");
                             "name": "Sequencer"
                         },
                         {
-                            "id": "declarative-scheduling",
-                            "name": "Declarative scheduling"
-                        },
-                        {
                             "id": "sample-accurate-scheduling",
                             "name": "Sample-accurate scheduling"
                         }
