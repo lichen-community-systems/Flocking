@@ -249,7 +249,11 @@ var fluid = fluid || require("infusion"),
         },
 
         components: {
-            enviro: "{flock.enviro}",
+            enviro: "{enviro}",
+
+            scheduler: {
+                type: "flock.ui.enviroPlayButton.scheduler",
+            },
 
             fader: {
                 type: "flock.webAudio.outputFader",
@@ -274,29 +278,30 @@ var fluid = fluid || require("infusion"),
                 args: [1.0]
             },
 
+            "onFadeOut.startScheduler": {
+                priority: "before:fadeOut",
+                func: "{that}.scheduler.start"
+            },
+
             "onFadeOut.fadeOut": "{fader}.fadeTo(0.0)",
 
             "onFadeOut.disableButton": {
                 priority: "after:fadeOut",
                 funcName: "flock.ui.enviroPlayButton.disableForFadeOut",
-                args: ["{that}.model", "{that}.applier"]
+                args: ["{that}"]
             },
 
-            "onFadeOut.renableAfterFade": {
+            "onFadeOut.reenableAfterFade": {
                 priority: "after:disableButton",
-                funcName: "flock.ui.enviroPlayButton.renableAfterFadeOutDelay",
-                args: [
-                    "{that}.enviro",
-                    "{that}.model",
-                    "{that}.applier",
-                    "{that}.resetTime",
-                    "{that}.events.afterFadeOut.fire"
-                ]
+                funcName: "flock.ui.enviroPlayButton.reenableAfterFadeOutDelay",
+                args: ["{that}"]
             },
 
-            "afterFadeOut.stopEnviro": {
-                func: "{that}.enviro.stop",
-                namespace: "stopEnviro"
+            "afterFadeOut.stopEnviro": "{that}.enviro.stop()",
+
+            "afterFadeOut.stopScheduler": {
+                priority: "after:stopEnviro",
+                func: "{that}.scheduler.stop"
             }
         },
 
@@ -327,25 +332,43 @@ var fluid = fluid || require("infusion"),
         }
     };
 
-    flock.ui.enviroPlayButton.disableForFadeOut = function (model, applier) {
-        var didSelfDisable = model.isEnabled;
-        applier.change("didSelfDisable", didSelfDisable);
-        applier.change("isEnabled", false);
+    flock.ui.enviroPlayButton.disableForFadeOut = function (that) {
+        var didSelfDisable = that.model.isEnabled;
+        that.applier.change("didSelfDisable", didSelfDisable);
+        that.applier.change("isEnabled", false);
     };
 
-    flock.ui.enviroPlayButton.renableAfterFadeOutDelay = function (enviro, model, applier, resetTime, afterFadeOut) {
-        enviro.asyncScheduler.once(resetTime, function () {
-            afterFadeOut();
-
-            if (model.didSelfDisable) {
-                applier.change("isEnabled", true);
+    flock.ui.enviroPlayButton.reenableAfterFadeOutDelay = function (that) {
+        that.scheduler.schedule({
+            type: "once",
+            time: that.resetTime,
+            callback: function () {
+                that.events.afterFadeOut.fire();
+                if (that.model.didSelfDisable) {
+                    that.applier.change("isEnabled", true);
+                }
             }
         });
     };
 
+
+    fluid.defaults("flock.ui.enviroPlayButton.scheduler", {
+        gradeNames: "berg.scheduler",
+
+        components: {
+            clock: {
+                type: "berg.clock.setInterval",
+                options: {
+                    freq: 10
+                }
+            }
+        }
+    });
+
+
     /**
      * An enviroPlayButton that completely resets the environment
-     * whenever it is paused, destroying any all
+     * whenever it is paused, destroying all nodes and scheduled events.
      */
     fluid.defaults("flock.ui.resetEnviroPlayButton", {
         gradeNames: ["flock.ui.enviroPlayButton"],

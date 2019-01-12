@@ -32,7 +32,9 @@ var fluid = fluid || require("infusion"),
         },
 
         components: {
-            enviro: "{environment}",
+            enviro: {
+                type: "flock.enviro.withScheduler"
+            },
 
             demos: {
                 type: "flock.playground.demos"

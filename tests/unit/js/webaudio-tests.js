@@ -51,8 +51,16 @@ var fluid = fluid || require("infusion"),
     var environment;
     QUnit.module("flock.ugen.mediaIn", {
         setup: function () {
-            environment = flock.init({
-                numInputBuses: 4
+            environment = flock.enviro.withScheduler({
+                components: {
+                    audioSystem: {
+                        options: {
+                            model: {
+                                numInputBuses: 4
+                            }
+                        }
+                    }
+                }
             });
 
             environment.audioSystem.nativeNodeManager.createOutputNode({
@@ -105,12 +113,15 @@ var fluid = fluid || require("infusion"),
             audioEl.play();
             synth.play();
 
-            environment.asyncScheduler.once(duration, function () {
-                audioEl.pause();
-                synth.pause();
-
-                testFn(audioEl, synth);
-                QUnit.start();
+            environment.scheduler.schedule({
+                type: "once",
+                time: duration,
+                callback: function () {
+                    audioEl.pause();
+                    synth.pause();
+                    testFn(audioEl, synth);
+                    QUnit.start();
+                }
             });
         });
     };
@@ -177,9 +188,17 @@ var fluid = fluid || require("infusion"),
     });
 
     QUnit.test("Audio settings are correctly pushed from the Web Audio context.", function () {
-        var environment = flock.init({
-            chans: flock.ALL_CHANNELS,
-            sampleRate: 192000
+        var environment = flock.enviro.withScheduler({
+            components: {
+                audioSystem: {
+                    options: {
+                        model: {
+                            chans: flock.ALL_CHANNELS,
+                            sampleRate: 192000
+                        }
+                    }
+                }
+            }
         });
 
         QUnit.equal(environment.audioSystem.model.rates.audio,

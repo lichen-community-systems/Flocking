@@ -93,7 +93,7 @@ Using Flocking
 --------------
 
 Flocking consists of a handful of primary components that are configured using JSON
-specifications. These include: Unit Generators (ugens), Synths, Schedulers, and the Environment.
+specifications. These include: Unit Generators (ugens), Synths, and the Environment.
 
 ### Unit Generators ##
 
@@ -260,32 +260,27 @@ To add a synth to the tail of the graph so that it will be evaluated after all o
 
     enviro.tail(mySynth);
 
-### Schedulers ###
+### Scheduling ###
 
-A scheduler allows you to schedule changes to Synths at a particular time.
-Currently, there is one type of Scheduler, the asynchronous scheduler.
-Unfortunately, it is driven by the browser's notoriously inaccurate setTimeout() and setInterval() clocks,
-which means that it will drift by up to 75 ms depending on the browser's load.
-In practice, however, this drift is sufficient for scheduling many kinds of changes,
-and if sample-level accuracy is needed, unit generators such as <code>flock.ugen.sequence</code>,
-<code>flock.ugen.change</code> and  <code>flock.ugen.random</code> can be used.
+Flocking uses the Bergson scheduling library. See [Bergson's documentation](https://github.com/colinbdclark/bergson/blob/master/README.md) for more information about how to schedule actions with Bergson. For convenience, Flocking includes a built-in Environment grade, <code>flock.enviro.withScheduler</code> that includes a built-in scheduler.
 
-A block-accurate scheduler is planned for an upcoming release of Flocking.
-In the meantime the asynchronous scheduler does a decent job of keeping "pleasantly inaccurate" time.
+    var environment = flock.enviro.withScheduler();
+    environment.start();
 
-If you need to, you can always schedule arbitrary events using plain old functions:
-
-    // Fade out after 8 seconds.
-    band.scheduler.once(8, function () {
-        band.sinSynth.set({
-            "carrier.mul.start": 0.25,
-            "carrier.mul.end": 0.0,
-            "carrier.mul.duration": 1.0
-        });
+    environment.scheduler.schedule({
+        type: "once",
+        time: 8, // 8 seconds from now.
+        callback: function () {
+            band.sinSynth.set({
+                "carrier.mul.start": 0.25,
+                "carrier.mul.end": 0.0,
+                "carrier.mul.duration": 1.0
+            });
+        }
     });
 
-The Flocking scheduler, in future releases, will be removed and replaced with [Bergson](https://github.com/colinbdclark/bergson), a highly accurate scheduler written specifically for audio and video applications.
-
+If sample-level scheduling accuracy is needed, unit generators such as <code>flock.ugen.sequence</code>,
+<code>flock.ugen.change</code> and  <code>flock.ugen.random</code> can be used.
 
 Testing
 -------

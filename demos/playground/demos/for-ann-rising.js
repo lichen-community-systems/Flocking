@@ -1,10 +1,11 @@
 // James Tenney's For Ann Rising.
 
-var sked = flock.environment.asyncScheduler,
+// Outside of the Playground, you'll need to
+// specify a flock.enviro.withScheduler or
+// define your own Scheduler.
+var scheduler = flock.environment.scheduler,
     numSynths = 240,
-    synths = [],
-	nextSynthIdx = 0,
-	synthToRemoveIdx = 0;
+    synths = [];
 
 var forAnnSynthDef = {
     ugen: "flock.ugen.sinOsc",
@@ -43,27 +44,32 @@ for (var i = 0; i < numSynths; i++) {
 
 // Use the scheduler to start a new synth playing
 // every 2.8 seconds.
-var adder = sked.repeat(2.8, function () {
-    var synth = synths[nextSynthIdx];
-    synth.addToEnvironment("tail");
-
-    nextSynthIdx++;
-    if (nextSynthIdx >= numSynths) {
-        sked.clear(adder);
+var nextSynthIdx = 0;
+scheduler.schedule({
+    type: "repeat",
+    freq: 1/2.8,
+    end: 2.8 * numSynths,
+    callback: function () {
+        var synth = synths[nextSynthIdx];
+        synth.addToEnvironment("tail");
+        nextSynthIdx++;
     }
 });
 
 // Remove each synth after its envelope has reached its target.
 // (Flocking doesn't yet have "done actions" like in SuperCollider).
-sked.repeat(34, function () {
-    var synth = synths[synthToRemoveIdx];
+var synthToRemoveIdx = 0;
+scheduler.schedule({
+    type: "repeat",
+    freq: 1/34,
+    time: 34,
+    callback: function () {
+        var synth = synths[synthToRemoveIdx];
+        synth.pause();
 
-    // Destroying a synth will remove it from the environment as well,
-    // but means that it can't be reused later.
-    synth.destroy();
-
-    synthToRemoveIdx++;
-    if (synthToRemoveIdx >= numSynths) {
-        sked.clearAll();
+        synthToRemoveIdx++;
+        if (synthToRemoveIdx === numSynths - 1) {
+            scheduler.clearAll();
+        }
     }
 });

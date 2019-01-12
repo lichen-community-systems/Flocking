@@ -23,14 +23,16 @@ var fundamental = 440,
     baseIntervals = [1/1, 5/4, 3/2],
     weightedIntervals = baseIntervals.concat([4/3, 6/5, 7/6, 2/1]).concat(baseIntervals),
     synths = makeIntervallicSynths(fundamental, baseIntervals),
-    clock = flock.scheduler.async.tempo({
-        bpm: 60
-    });
+    scheduler = flock.environment.scheduler;
 
 // Every second, change one of the intervals by randomly choosing a synth
 // and assigning it a new frequency from the list of intervals.
-clock.repeat(1, function () {
-    var intervalSynth = flock.choose(synths),
-        newInterval = flock.choose(weightedIntervals);
-    intervalSynth.set("carrier.freq", fundamental * newInterval);
+scheduler.schedule({
+    type: "repeat",
+    freq: 1,
+    callback: function () {
+        var intervalSynth = flock.choose(synths),
+            newInterval = flock.choose(weightedIntervals);
+        intervalSynth.set("carrier.freq", fundamental * newInterval);
+    }
 });

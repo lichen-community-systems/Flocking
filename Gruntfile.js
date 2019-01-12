@@ -33,7 +33,9 @@ module.exports = function(grunt) {
             // Marcus Geelnard's WebArrayMath polyfill
             "third-party/webarraymath/js/webarraymath.js",
             // Sim.js' random distribution library.
-            "third-party/simjs/js/random-0.26.js"
+            "third-party/simjs/js/random-0.26.js",
+            // The Bergson scheduler.
+            "node_modules/bergson/dist/bergson-only.js"
         ],
 
         flockingBase: [
@@ -48,7 +50,6 @@ module.exports = function(grunt) {
             "src/audiofile-encoder.js",
             // flocking-audiofile-compatibility.js is intentionally omitted
             // to reduce the size of the default Flocking build.
-            "src/scheduler.js",
             "src/web/webaudio-core.js",
             "src/web/audio-system.js",
             "src/web/buffer-writer.js",

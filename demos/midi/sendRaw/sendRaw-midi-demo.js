@@ -131,6 +131,15 @@
         },
 
         components: {
+            enviro: {
+                type: "flock.enviro.withScheduler",
+                options: {
+                    listeners: {
+                        "onCreate.startEnviro": "{that}.start()"
+                    }
+                }
+            },
+
             connector: {
                 type: "flock.ui.midiConnector",
                 container: "{that}.dom.midiPortSelector",
@@ -152,10 +161,6 @@
             midiInputView: {
                 type: "flock.demo.rawMidiInputView",
                 container: "{that}.dom.rawMidiArea"
-            },
-
-            scheduler: {
-                type: "flock.scheduler.async"
             }
         },
 
@@ -196,9 +201,9 @@
     flock.demo.rawMidiSender.schedulerScoreForCommands = function (commands, that) {
         return fluid.transform(commands, function (command, i) {
             return {
-                interval: "once",
+                type: "once",
                 time: i * that.options.commandDelay,
-                change: function () {
+                callback: function () {
                     flock.demo.rawMidiSender.sendCommand(command, that);
                 }
             };
@@ -211,7 +216,7 @@
         }
 
         // Stop any currently-queued MIDI commands prior to sending new ones.
-        that.scheduler.clearAll();
-        that.scheduler.schedule(commandScore);
+        that.enviro.scheduler.clearAll();
+        that.enviro.scheduler.schedule(commandScore);
     };
 }());

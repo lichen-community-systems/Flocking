@@ -32,11 +32,12 @@
     "testem": "2.14.0"
   },
   "dependencies": {
-    "jquery": "3.3.1",
-    "infusion": "3.0.0-dev.20181204T213346Z.2ca90f6e6",
+    "bergson": "0.15.0-dev.20190108T045554Z.6728e52.gh-15",
     "codemirror-infusion": "2.2.0",
-    "jsplumb": "1.7.9",
     "dagre": "0.8.4",
+    "infusion": "3.0.0-dev.20181204T213346Z.2ca90f6e6",
+    "jquery": "3.3.1",
+    "jsplumb": "1.7.9",
     "normalize.css": "8.0.1"
   },
   "scripts": {

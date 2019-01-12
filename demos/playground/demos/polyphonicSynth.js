@@ -56,12 +56,20 @@ var score = [
     }
 ];
 
+
+// Outside of the Playground, you'll need to
+// specify a flock.enviro.withScheduler or
+// define your own Scheduler.
 var idx = 0;
-polySynth.enviro.asyncScheduler.repeat(0.5, function () {
-    if (idx >= score.length) {
-        idx = 0;
+flock.environment.scheduler.schedule({
+    type: "repeat",
+    interval: 0.5,
+    callback: function () {
+        if (idx >= score.length) {
+            idx = 0;
+        }
+        var event = score[idx];
+        polySynth[event.action](event.noteName, event.change);
+        idx++;
     }
-    var event = score[idx];
-    polySynth[event.action](event.noteName, event.change);
-    idx++;
 });

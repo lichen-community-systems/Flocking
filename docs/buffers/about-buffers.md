@@ -357,11 +357,12 @@ If you're manually encoding buffers using <code>flock.audio.encode.wav()</code>,
 
 Flocking provides a unit generator for writing audio streams to buffers. <code>flock.ugen.writeBuffer</code> is typically used at the end of a signal graph in order to record other unit generators specified as its <code>sources</code> input. Documentation for <code>flock.ugen.writeBuffer</code> is available in the [Buffer UGens reference documentation](../ugens/buffers.md).
 
-Typically, you want to record into a buffer and then use the [Flocking Scheduler](../scheduling.md) to stop the environment and export the buffer as an audio file. Here's an example:
+Typically, you want to record into a buffer and then use a [Bergson Scheduler](../scheduling.md) to stop the environment and export the buffer as an audio file. Here's an example:
 
     // Initialize Flocking and hold onto a reference
     // to the environment.
-    var environment = flock.init();
+    var environment = flock.enviro.withScheduler();
+    environment.start();
 
     // Record a 30 second, 4-channel audio file.
     var synth = flock.synth({
@@ -389,14 +390,18 @@ Typically, you want to record into a buffer and then use the [Flocking Scheduler
         }
     });
 
-    environment.asyncScheduler.once(30, function () {
-        environment.stop();
-        environment.saveBuffer({
-            type: "wav",
-            format: "float32",
-            buffer: "recording",
-            path: "my-recording.wav"
-        });
+    environment.scheduler.schedule({
+        type: "once",
+        time: 30,
+        callback: function () {
+            environment.stop();
+            environment.saveBuffer({
+                type: "wav",
+                format: "float32",
+                buffer: "recording",
+                path: "my-recording.wav"
+            });
+        }
     });
 
 Multiple synths can be recorded by using Flocking's interconnect bus feature, where a dedicated "recorder" synth will receive its input from an interconnect bus that multiple synths are writing to. For example:

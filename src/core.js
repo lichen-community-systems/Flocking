@@ -1174,6 +1174,7 @@ var fluid = fluid || require("infusion"),
         }
     });
 
+
     // TODO: Factor out buffer logic into a separate component.
     fluid.defaults("flock.enviro", {
         gradeNames: [
@@ -1192,10 +1193,6 @@ var fluid = fluid || require("infusion"),
         },
 
         components: {
-            asyncScheduler: {
-                type: "flock.scheduler.async"
-            },
-
             audioSystem: {
                 type: "flock.audioSystem"
             },
@@ -1296,13 +1293,8 @@ var fluid = fluid || require("infusion"),
 
             "onReset.stop": "{that}.stop()",
 
-            "onReset.clearScheduler": {
-                priority: "after:stop",
-                func: "{asyncScheduler}.clearAll"
-            },
-
             "onReset.clearAllNodes": {
-                priority: "after:clearScheduler",
+                priority: "after:stop",
                 func: "flock.nodeList.clearAll",
                 args: ["{that}.nodeList"]
             },
@@ -1316,7 +1308,8 @@ var fluid = fluid || require("infusion"),
                 priority: "after:resetBusManager",
                 funcName: "fluid.clear",
                 args: ["{that}.buffers"]
-            }
+            },
+
         }
     });
 
@@ -1389,6 +1382,41 @@ var fluid = fluid || require("infusion"),
         }
         return bufs;
     };
+
+
+    fluid.defaults("flock.enviroScheduler", {
+        gradeNames: "berg.scheduler",
+
+        components: {
+            clock: {
+                // TODO: This should be changed to a custom clock
+                // that is driven by Flocking's main audio callback,
+                // or at very least change the scheduler to a
+                // workerProxy.
+                type: "berg.clock.workerSetInterval",
+                options: {
+                    freq: 100
+                }
+            }
+        }
+    });
+
+
+    fluid.defaults("flock.enviro.withScheduler", {
+        gradeNames: "flock.enviro",
+
+        components: {
+            scheduler: {
+                type: "flock.enviroScheduler"
+            }
+        },
+
+        listeners: {
+            "onStart.startScheduler": "{that}.scheduler.start()",
+            "onStop.stopScheduler": "{that}.scheduler.stop()",
+            "onReset.clearScheduler": "{that}.scheduler.clearAll()"
+        }
+    });
 
 
     fluid.defaults("flock.autoEnviro", {
