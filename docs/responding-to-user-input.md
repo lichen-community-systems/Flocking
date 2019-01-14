@@ -181,7 +181,7 @@ HTML:
         </body>
     </html>
 
-JavScript:
+JavaScript:
 
     (function () {
 
