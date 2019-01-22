@@ -85,8 +85,17 @@ var fluid = fluid || require("infusion"),
         },
 
         modelListeners: {
-            groups: "{that}.refreshView()",
-            options: "{that}.refreshView()"
+            groups: {
+                namespace: "refreshView",
+                excludeSource: "init",
+                func: "{that}.refreshView"
+            },
+
+            options: {
+                namespace: "refreshView",
+                excludeSource: "init",
+                func: "{that}.refreshView"
+            }
         },
 
         listeners: {
