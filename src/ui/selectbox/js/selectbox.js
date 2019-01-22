@@ -85,8 +85,17 @@ var fluid = fluid || require("infusion"),
         },
 
         modelListeners: {
-            groups: "{that}.refreshView()",
-            options: "{that}.refreshView()"
+            groups: {
+                namespace: "refreshView",
+                excludeSource: "init",
+                func: "{that}.refreshView"
+            },
+
+            options: {
+                namespace: "refreshView",
+                excludeSource: "init",
+                func: "{that}.refreshView"
+            }
         },
 
         listeners: {
@@ -95,6 +104,7 @@ var fluid = fluid || require("infusion"),
                 method: "change",
                 args: ["{that}.handleChange"]
             },
+
             "onCreate.fireOnRender": {
                 priority: "after:bindChangeHandler",
                 func: "{that}.events.onRender.fire"

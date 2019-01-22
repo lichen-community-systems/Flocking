@@ -368,7 +368,8 @@ var fluid = fluid || require("infusion"),
             onAccessGranted: null,
             onAccessError: null,
             onReady: null,
-            onPortsAvailable: null
+            onPortsAvailable: null,
+            onPortsChanged: null
         },
 
         listeners: {
@@ -379,6 +380,16 @@ var fluid = fluid || require("infusion"),
             "onAccessGranted.setAccess": {
                 func: "flock.midi.system.setAccess",
                 args: ["{that}", "{arguments}.0"]
+            },
+
+            "onAccessGranted.bindOnPortsChanged": {
+                priority: "after:setAccess",
+                "this": "{that}.access",
+                method: "addEventListener",
+                args: [
+                    "statechange",
+                    "{that}.events.onPortsChanged.fire"
+                ]
             },
 
             "onAccessGranted.refreshPorts": {
@@ -395,7 +406,9 @@ var fluid = fluid || require("infusion"),
             "onAccessError.logError": {
                 funcName: "fluid.log",
                 args: [fluid.logLevel.WARN, "MIDI Access Error: ", "{arguments}.0"]
-            }
+            },
+
+            "onPortsChanged.refreshPorts": "{that}.refreshPorts()"
 
             // TODO: Provide an onDestroy listener
             // that will close any ports that are open.

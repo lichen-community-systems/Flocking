@@ -123,8 +123,8 @@ var fluid = fluid || require("infusion"),
         },
 
         markup: {
-            label: "<label for='%selectBoxID'>%selectBoxLabel:</label>",
-            selectBox: "<select class='flock-midi-selector-selectBox' id='%selectBoxId'></select>",
+            label: "<label for='%selectBoxID'>%selectBoxLabel</label>",
+            selectBox: "<select class='flock-midi-selector-selectBox' id='%selectBoxID'></select>",
             refreshButton: "<button name='refresh'>%refreshButtonLabel</button>"
         },
 
@@ -135,7 +135,7 @@ var fluid = fluid || require("infusion"),
         },
 
         strings: {
-            selectBoxLabel: "MIDI Port",
+            selectBoxLabel: "MIDI Port:",
             refreshButtonLabel: "Refresh"
         },
 
