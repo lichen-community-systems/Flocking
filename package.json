@@ -32,7 +32,7 @@
     "testem": "2.14.0"
   },
   "dependencies": {
-    "jquery": "3.3.1",
+    "jquery": "3.4.0",
     "infusion": "3.0.0-dev.20181204T213346Z.2ca90f6e6",
     "codemirror-infusion": "2.2.0",
     "jsplumb": "1.7.9",
