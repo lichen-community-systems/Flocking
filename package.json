@@ -1,6 +1,6 @@
 {
   "name": "flocking",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Creative audio synthesis for the Web",
   "author": "Colin Clark",
   "homepage": "https://flockingjs.org/",
@@ -21,20 +21,20 @@
   "readmeFilename": "README.md",
   "browser": "dist/flocking-all.js",
   "devDependencies": {
-    "grunt": "1.0.3",
+    "grunt": "1.0.4",
     "grunt-contrib-clean": "2.0.0",
     "grunt-contrib-concat": "1.0.1",
-    "grunt-contrib-uglify": "4.0.0",
+    "grunt-contrib-uglify": "4.0.1",
     "grunt-contrib-copy": "1.0.0",
-    "grunt-contrib-jshint": "2.0.0",
+    "grunt-contrib-jshint": "2.1.0",
     "sheep-benchmark": "colinbdclark/sheep.js",
     "requirejs": "2.3.6",
-    "testem": "2.14.0"
+    "testem": "2.15.1"
   },
   "dependencies": {
-    "jquery": "3.3.1",
-    "infusion": "3.0.0-dev.20181204T213346Z.2ca90f6e6",
-    "codemirror-infusion": "2.2.0",
+    "jquery": "3.4.1",
+    "infusion": "3.0.0-dev.20190328T144119Z.ec44dbfab",
+    "codemirror-infusion": "2.2.1",
     "jsplumb": "1.7.9",
     "dagre": "0.8.4",
     "normalize.css": "8.0.1"

@@ -102,7 +102,7 @@ var fluid = fluid || require("infusion"),
                                 msg: "There should be no NaN values"
                             },
                             {
-                                funcName: "deepEqual",
+                                funcName: "QUnit.deepEqual",
                                 args: [
                                     {
                                         expander: {
