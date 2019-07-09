@@ -37,7 +37,8 @@
     "codemirror-infusion": "2.2.1",
     "jsplumb": "1.7.9",
     "dagre": "0.8.4",
-    "normalize.css": "8.0.1"
+    "normalize.css": "8.0.1",
+    "snyk": "^1.192.4"
   },
   "scripts": {
     "prepare": "node_modules/.bin/grunt",
@@ -46,6 +47,9 @@
     "windows-vm-test": "npm run clean-modules && vagrant up windows10 && vagrant ci test windows10",
     "clean-modules": "rm -r node_modules",
     "all-vm-test": "npm run linux-vm-test && npm run windows-vm-test && vagrant halt",
-    "destroy-vms": "vagrant destroy -f"
-  }
+    "destroy-vms": "vagrant destroy -f",
+    "snyk-protect": "snyk protect",
+    "prepublish": "npm run snyk-protect"
+  },
+  "snyk": true
 }
