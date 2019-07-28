@@ -20,8 +20,6 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    var Filter = flock.requireModule("webarraymath", "Filter");
-
     flock.ugen.lag = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 

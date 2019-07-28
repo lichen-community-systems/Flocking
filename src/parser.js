@@ -6,7 +6,7 @@
 * Dual licensed under the MIT and GPL Version 2 licenses.
 */
 
-/*global require, Float32Array*/
+/*global require, Float32Array, jQuery*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,
@@ -20,7 +20,7 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    var $ = fluid.registerNamespace("jQuery");
+    var $ = jQuery;
     fluid.registerNamespace("flock.parse");
 
     flock.parse.synthDef = function (ugenDef, enviro, options) {

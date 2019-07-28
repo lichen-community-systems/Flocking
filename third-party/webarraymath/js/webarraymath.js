@@ -29,538 +29,515 @@
 // interface ArrayMath
 //------------------------------------------------------------------------------
 
+var ArrayMath = {};
 
-(function () {
-  var context = typeof (window) !== "undefined" ? window :
-    typeof (self) !== "undefined" ? self :
-    typeof module !== "undefined" && module.exports ? module.exports :
-    global;
+ArrayMath.add = function (dst, x, y) {
+  var k;
+  if (x instanceof Float32Array)
+    for (k = Math.min(dst.length, x.length, y.length) - 1; k >= 0; --k)
+      dst[k] = x[k] + y[k];
+  else
+    for (k = Math.min(dst.length, y.length) - 1; k >= 0; --k)
+      dst[k] = x + y[k];
+};
 
-  if (context.ArrayMath) return;
+ArrayMath.sub = function (dst, x, y) {
+  var k;
+  if (x instanceof Float32Array)
+    for (k = Math.min(dst.length, x.length, y.length) - 1; k >= 0; --k)
+      dst[k] = x[k] - y[k];
+  else
+    for (k = Math.min(dst.length, y.length) - 1; k >= 0; --k)
+      dst[k] = x - y[k];
+};
 
-  var ArrayMath = {};
+ArrayMath.mul = function (dst, x, y) {
+  var k;
+  if (x instanceof Float32Array)
+    for (k = Math.min(dst.length, x.length, y.length) - 1; k >= 0; --k)
+      dst[k] = x[k] * y[k];
+  else
+    for (k = Math.min(dst.length, y.length) - 1; k >= 0; --k)
+      dst[k] = x * y[k];
+};
 
-  ArrayMath.add = function (dst, x, y) {
-    var k;
-    if (x instanceof Float32Array)
-      for (k = Math.min(dst.length, x.length, y.length) - 1; k >= 0; --k)
-        dst[k] = x[k] + y[k];
-    else
-      for (k = Math.min(dst.length, y.length) - 1; k >= 0; --k)
-        dst[k] = x + y[k];
-  };
-
-  ArrayMath.sub = function (dst, x, y) {
-    var k;
-    if (x instanceof Float32Array)
-      for (k = Math.min(dst.length, x.length, y.length) - 1; k >= 0; --k)
-        dst[k] = x[k] - y[k];
-    else
-      for (k = Math.min(dst.length, y.length) - 1; k >= 0; --k)
-        dst[k] = x - y[k];
-  };
-
-  ArrayMath.mul = function (dst, x, y) {
-    var k;
-    if (x instanceof Float32Array)
-      for (k = Math.min(dst.length, x.length, y.length) - 1; k >= 0; --k)
-        dst[k] = x[k] * y[k];
-    else
-      for (k = Math.min(dst.length, y.length) - 1; k >= 0; --k)
-        dst[k] = x * y[k];
-  };
-
-  ArrayMath.mulCplx = function (dstReal, dstImag, xReal, xImag, yReal, yImag) {
-    var k, xr, xi, yr, yi;
-    if (xReal instanceof Float32Array)
-      for (k = Math.min(dstReal.length, dstImag.length, xReal.length, xImag.length, yReal.length, yImag.length) - 1; k >= 0; --k) {
-        xr = xReal[k], xi = xImag[k], yr = yReal[k], yi = yImag[k];
-        dstReal[k] = xr * yr - xi * yi;
-        dstImag[k] = xr * yi + xi * yr;
-      }
-    else
-      for (k = Math.min(dstReal.length, dstImag.length, yReal.length, yImag.length) - 1; k >= 0; --k) {
-        yr = yReal[k], yi = yImag[k];
-        dstReal[k] = xReal * yr - xImag * yi;
-        dstImag[k] = xReal * yi + xImag * yr;
-      }
-  };
-
-  ArrayMath.div = function (dst, x, y) {
-    var k;
-    if (x instanceof Float32Array)
-      for (k = Math.min(dst.length, x.length, y.length) - 1; k >= 0; --k)
-        dst[k] = x[k] / y[k];
-    else
-      for (k = Math.min(dst.length, y.length) - 1; k >= 0; --k)
-        dst[k] = x / y[k];
-  };
-
-  ArrayMath.divCplx = function (dstReal, dstImag, xReal, xImag, yReal, yImag) {
-    var k, xr, xi, yr, yi, denom;
-    if (xReal instanceof Float32Array)
-      for (k = Math.min(dstReal.length, dstImag.length, xReal.length, xImag.length, yReal.length, yImag.length) - 1; k >= 0; --k) {
-        xr = xReal[k], xi = xImag[k], yr = yReal[k], yi = yImag[k];
-        denom = 1 / (yr * yr + yi * yi);
-        dstReal[k] = (xr * yr + xi * yi) * denom;
-        dstImag[k] = (xi * yr - xr * yi) * denom;
-      }
-    else {
-      for (k = Math.min(dstReal.length, dstImag.length, yReal.length, yImag.length) - 1; k >= 0; --k) {
-        yr = yReal[k], yi = yImag[k];
-        denom = 1 / (yr * yr + yi * yi);
-        dstReal[k] = (xReal * yr + xImag * yi) * denom;
-        dstImag[k] = (xImag * yr - xReal * yi) * denom;
-      }
+ArrayMath.mulCplx = function (dstReal, dstImag, xReal, xImag, yReal, yImag) {
+  var k, xr, xi, yr, yi;
+  if (xReal instanceof Float32Array)
+    for (k = Math.min(dstReal.length, dstImag.length, xReal.length, xImag.length, yReal.length, yImag.length) - 1; k >= 0; --k) {
+      xr = xReal[k], xi = xImag[k], yr = yReal[k], yi = yImag[k];
+      dstReal[k] = xr * yr - xi * yi;
+      dstImag[k] = xr * yi + xi * yr;
     }
-  };
-
-  ArrayMath.madd = function (dst, x, y, z) {
-    var k;
-    if (x instanceof Float32Array)
-      for (k = Math.min(dst.length, x.length, y.length, z.length) - 1; k >= 0; --k)
-        dst[k] = x[k] * y[k] + z[k];
-    else
-      for (k = Math.min(dst.length, y.length, z.length) - 1; k >= 0; --k)
-        dst[k] = x * y[k] + z[k];
-  };
-
-  ArrayMath.abs = function (dst, x) {
-    for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
-      dst[k] = Math.abs(x[k]);
-  };
-
-  ArrayMath.absCplx = function (dst, real, imag) {
-    for (var k = Math.min(dst.length, real.length, imag.length) - 1; k >= 0; --k)
-      dst[k] = Math.sqrt(real[k] * real[k] + imag[k] * imag[k]);
-  };
-
-  ArrayMath.acos = function (dst, x) {
-    for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
-      dst[k] = Math.acos(x[k]);
-  };
-
-  ArrayMath.asin = function (dst, x) {
-    for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
-      dst[k] = Math.asin(x[k]);
-  };
-
-  ArrayMath.atan = function (dst, x) {
-    for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
-      dst[k] = Math.atan(x[k]);
-  };
-
-  ArrayMath.atan2 = function (dst, y, x) {
-    for (var k = Math.min(dst.length, x.length, y.length) - 1; k >= 0; --k)
-      dst[k] = Math.atan2(y[k], x[k]);
-  };
-
-  ArrayMath.ceil = function (dst, x) {
-    for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
-      dst[k] = Math.ceil(x[k]);
-  };
-
-  ArrayMath.cos = function (dst, x) {
-    for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
-      dst[k] = Math.cos(x[k]);
-  };
-
-  ArrayMath.exp = function (dst, x) {
-    for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
-      dst[k] = Math.exp(x[k]);
-  };
-
-  ArrayMath.floor = function (dst, x) {
-    for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
-      dst[k] = Math.floor(x[k]);
-  };
-
-  ArrayMath.log = function (dst, x) {
-    for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
-      dst[k] = Math.log(x[k]);
-  };
-
-  ArrayMath.max = function (x) {
-    var ret = -Infinity;
-    for (var k = x.length - 1; k >= 0; --k) {
-      var val = x[k];
-      if (val > ret)
-        ret = val;
+  else
+    for (k = Math.min(dstReal.length, dstImag.length, yReal.length, yImag.length) - 1; k >= 0; --k) {
+      yr = yReal[k], yi = yImag[k];
+      dstReal[k] = xReal * yr - xImag * yi;
+      dstImag[k] = xReal * yi + xImag * yr;
     }
-    return ret;
-  };
+};
 
-  ArrayMath.min = function (x) {
-    var ret = Infinity;
-    for (var k = x.length - 1; k >= 0; --k) {
-      var val = x[k];
-      if (val < ret)
-        ret = val;
+ArrayMath.div = function (dst, x, y) {
+  var k;
+  if (x instanceof Float32Array)
+    for (k = Math.min(dst.length, x.length, y.length) - 1; k >= 0; --k)
+      dst[k] = x[k] / y[k];
+  else
+    for (k = Math.min(dst.length, y.length) - 1; k >= 0; --k)
+      dst[k] = x / y[k];
+};
+
+ArrayMath.divCplx = function (dstReal, dstImag, xReal, xImag, yReal, yImag) {
+  var k, xr, xi, yr, yi, denom;
+  if (xReal instanceof Float32Array)
+    for (k = Math.min(dstReal.length, dstImag.length, xReal.length, xImag.length, yReal.length, yImag.length) - 1; k >= 0; --k) {
+      xr = xReal[k], xi = xImag[k], yr = yReal[k], yi = yImag[k];
+      denom = 1 / (yr * yr + yi * yi);
+      dstReal[k] = (xr * yr + xi * yi) * denom;
+      dstImag[k] = (xi * yr - xr * yi) * denom;
     }
-    return ret;
-  };
-
-  ArrayMath.pow = function (dst, x, y) {
-    var k;
-    if (y instanceof Float32Array)
-      for (k = Math.min(dst.length, x.length, y.length) - 1; k >= 0; --k)
-        dst[k] = Math.pow(x[k], y[k]);
-    else {
-      for (k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
-        dst[k] = Math.pow(x[k], y);
+  else {
+    for (k = Math.min(dstReal.length, dstImag.length, yReal.length, yImag.length) - 1; k >= 0; --k) {
+      yr = yReal[k], yi = yImag[k];
+      denom = 1 / (yr * yr + yi * yi);
+      dstReal[k] = (xReal * yr + xImag * yi) * denom;
+      dstImag[k] = (xImag * yr - xReal * yi) * denom;
     }
-  };
+  }
+};
 
-  ArrayMath.random = function (dst, low, high) {
-    if (!low)
-      low = 0;
-    if (isNaN(parseFloat(high)))
-      high = 1;
-    var scale = high - low;
-    for (var k = dst.length - 1; k >= 0; --k)
-      dst[k] = Math.random() * scale + low;
-  };
+ArrayMath.madd = function (dst, x, y, z) {
+  var k;
+  if (x instanceof Float32Array)
+    for (k = Math.min(dst.length, x.length, y.length, z.length) - 1; k >= 0; --k)
+      dst[k] = x[k] * y[k] + z[k];
+  else
+    for (k = Math.min(dst.length, y.length, z.length) - 1; k >= 0; --k)
+      dst[k] = x * y[k] + z[k];
+};
 
-  ArrayMath.round = function (dst, x) {
-    for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
-      dst[k] = Math.round(x[k]);
-  };
+ArrayMath.abs = function (dst, x) {
+  for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
+    dst[k] = Math.abs(x[k]);
+};
 
-  ArrayMath.sin = function (dst, x) {
-    for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
-      dst[k] = Math.sin(x[k]);
-  };
+ArrayMath.absCplx = function (dst, real, imag) {
+  for (var k = Math.min(dst.length, real.length, imag.length) - 1; k >= 0; --k)
+    dst[k] = Math.sqrt(real[k] * real[k] + imag[k] * imag[k]);
+};
 
-  ArrayMath.sqrt = function (dst, x) {
-    for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
-      dst[k] = Math.sqrt(x[k]);
-  };
+ArrayMath.acos = function (dst, x) {
+  for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
+    dst[k] = Math.acos(x[k]);
+};
 
-  ArrayMath.tan = function (dst, x) {
-    for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
-      dst[k] = Math.tan(x[k]);
-  };
+ArrayMath.asin = function (dst, x) {
+  for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
+    dst[k] = Math.asin(x[k]);
+};
 
-  ArrayMath.clamp = function (dst, x, xMin, xMax) {
-    for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k) {
-      var val = x[k];
-      dst[k] = val < xMin ? xMin : val > xMax ? xMax : val;
-    }
-  };
+ArrayMath.atan = function (dst, x) {
+  for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
+    dst[k] = Math.atan(x[k]);
+};
 
-  ArrayMath.fract = function (dst, x) {
-    for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k) {
-      var val = x[k];
-      dst[k] = val - Math.floor(val);
-    }
-  };
+ArrayMath.atan2 = function (dst, y, x) {
+  for (var k = Math.min(dst.length, x.length, y.length) - 1; k >= 0; --k)
+    dst[k] = Math.atan2(y[k], x[k]);
+};
 
-  ArrayMath.fill = function (dst, value) {
-    for (var k = dst.length - 1; k >= 0; --k) {
-      dst[k] = value;
-    }
-  };
+ArrayMath.ceil = function (dst, x) {
+  for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
+    dst[k] = Math.ceil(x[k]);
+};
 
-  ArrayMath.ramp = function (dst, first, last) {
-    var maxIdx = dst.length - 1;
-    if (maxIdx >= 0)
-      dst[0] = first;
-    if (maxIdx > 0) {
-      var step = (last - first) / maxIdx;
-      for (var k = 1; k <= maxIdx; ++k)
-        dst[k] = first + step * k;
-    }
-  };
+ArrayMath.cos = function (dst, x) {
+  for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
+    dst[k] = Math.cos(x[k]);
+};
 
-  ArrayMath.sign = function (dst, x) {
-    for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
-      dst[k] = x[k] < 0 ? -1 : 1;
-  };
+ArrayMath.exp = function (dst, x) {
+  for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
+    dst[k] = Math.exp(x[k]);
+};
 
-  ArrayMath.sum = function (x) {
-    // TODO(m): We should use pairwise summation or similar here.
-    var ret = 0;
-    for (var k = x.length - 1; k >= 0; --k)
-      ret += x[k];
-    return ret;
-  };
+ArrayMath.floor = function (dst, x) {
+  for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
+    dst[k] = Math.floor(x[k]);
+};
 
-  ArrayMath.sampleLinear = function (dst, x, t) {
-    var xLen = x.length, maxIdx = xLen - 1;
-    for (var k = Math.min(dst.length, t.length) - 1; k >= 0; --k) {
-      var t2 = t[k];
-      t2 = t2 < 0 ? 0 : t2 > maxIdx ? maxIdx : t2;
-      var idx = Math.floor(t2);
-      var w = t2 - idx;
-      var p1 = x[idx];
-      var p2 = x[idx < maxIdx ? idx + 1 : maxIdx];
-      dst[k] = p1 + w * (p2 - p1);
-    }
-  };
+ArrayMath.log = function (dst, x) {
+  for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
+    dst[k] = Math.log(x[k]);
+};
 
-  ArrayMath.sampleLinearRepeat = function (dst, x, t) {
-    var xLen = x.length, maxIdx = xLen - 1;
-    for (var k = Math.min(dst.length, t.length) - 1; k >= 0; --k) {
-      var t2 = t[k];
-      t2 = t2 - Math.floor(t2/xLen) * xLen;
-      var idx = Math.floor(t2);
-      var w = t2 - idx;
-      var p1 = x[idx];
-      var p2 = x[idx < maxIdx ? idx + 1 : 0];
-      dst[k] = p1 + w * (p2 - p1);
-    }
-  };
+ArrayMath.max = function (x) {
+  var ret = -Infinity;
+  for (var k = x.length - 1; k >= 0; --k) {
+    var val = x[k];
+    if (val > ret)
+      ret = val;
+  }
+  return ret;
+};
 
-  ArrayMath.sampleCubic = function (dst, x, t) {
-    var xLen = x.length, maxIdx = xLen - 1;
-    for (var k = Math.min(dst.length, t.length) - 1; k >= 0; --k) {
-      var t2 = t[k];
-      t2 = t2 < 0 ? 0 : t2 > maxIdx ? maxIdx : t2;
-      var idx = Math.floor(t2);
-      var w = t2 - idx;
-      var w2 = w * w;
-      var w3 = w2 * w;
-      var h2 = -2*w3 + 3*w2;
-      var h1 = 1 - h2;
-      var h4 = w3 - w2;
-      var h3 = h4 - w2 + w;
-      var p1 = x[idx > 0 ? idx - 1 :  0];
-      var p2 = x[idx];
-      var p3 = x[idx < maxIdx ? idx + 1 : maxIdx];
-      var p4 = x[idx < maxIdx - 1 ? idx + 2 : maxIdx];
-      dst[k] = h1 * p2 + h2 * p3 + 0.5 * (h3 * (p3 - p1) + h4 * (p4 - p2));
-    }
-  };
+ArrayMath.min = function (x) {
+  var ret = Infinity;
+  for (var k = x.length - 1; k >= 0; --k) {
+    var val = x[k];
+    if (val < ret)
+      ret = val;
+  }
+  return ret;
+};
 
-  ArrayMath.sampleCubicRepeat = function (dst, x, t) {
-    var xLen = x.length, maxIdx = xLen - 1;
-    for (var k = Math.min(dst.length, t.length) - 1; k >= 0; --k) {
-      var t2 = t[k];
-      t2 = t2 - Math.floor(t2/xLen) * xLen;
-      var idx = Math.floor(t2);
-      var w = t2 - idx;
-      var w2 = w * w;
-      var w3 = w2 * w;
-      var h2 = -2*w3 + 3*w2;
-      var h1 = 1 - h2;
-      var h4 = w3 - w2;
-      var h3 = h4 - w2 + w;
-      var p1 = x[idx > 0 ? idx - 1 : maxIdx];
-      var p2 = x[idx];
-      var p3 = x[idx < maxIdx ? idx + 1 : 0];
-      var p4 = x[idx < maxIdx - 1 ? idx + 2 : (idx + 2 - Math.floor((idx + 2)/xLen) * xLen)];
-      dst[k] = h1 * p2 + h2 * p3 + 0.5 * (h3 * (p3 - p1) + h4 * (p4 - p2));
-    }
-  };
+ArrayMath.pow = function (dst, x, y) {
+  var k;
+  if (y instanceof Float32Array)
+    for (k = Math.min(dst.length, x.length, y.length) - 1; k >= 0; --k)
+      dst[k] = Math.pow(x[k], y[k]);
+  else {
+    for (k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
+      dst[k] = Math.pow(x[k], y);
+  }
+};
 
-  ArrayMath.pack = function (dst, offset, stride, src1, src2, src3, src4) {
-    var dstCount = Math.floor(Math.max(0, (dst.length - offset)) / stride);
-    var count = Math.min(dstCount, src1.length);
-    if (src2) {
-      var count = Math.min(count, src2.length);
-      if (src3) {
-        var count = Math.min(count, src3.length);
-        if (src4) {
-          var count = Math.min(count, src4.length);
-          for (var k = 0; k < count; ++k) {
-            dst[offset] = src1[k];
-            dst[offset + 1] = src2[k];
-            dst[offset + 2] = src3[k];
-            dst[offset + 3] = src4[k];
-            offset += stride;
-          }
+ArrayMath.random = function (dst, low, high) {
+  if (!low)
+    low = 0;
+  if (isNaN(parseFloat(high)))
+    high = 1;
+  var scale = high - low;
+  for (var k = dst.length - 1; k >= 0; --k)
+    dst[k] = Math.random() * scale + low;
+};
+
+ArrayMath.round = function (dst, x) {
+  for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
+    dst[k] = Math.round(x[k]);
+};
+
+ArrayMath.sin = function (dst, x) {
+  for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
+    dst[k] = Math.sin(x[k]);
+};
+
+ArrayMath.sqrt = function (dst, x) {
+  for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
+    dst[k] = Math.sqrt(x[k]);
+};
+
+ArrayMath.tan = function (dst, x) {
+  for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
+    dst[k] = Math.tan(x[k]);
+};
+
+ArrayMath.clamp = function (dst, x, xMin, xMax) {
+  for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k) {
+    var val = x[k];
+    dst[k] = val < xMin ? xMin : val > xMax ? xMax : val;
+  }
+};
+
+ArrayMath.fract = function (dst, x) {
+  for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k) {
+    var val = x[k];
+    dst[k] = val - Math.floor(val);
+  }
+};
+
+ArrayMath.fill = function (dst, value) {
+  for (var k = dst.length - 1; k >= 0; --k) {
+    dst[k] = value;
+  }
+};
+
+ArrayMath.ramp = function (dst, first, last) {
+  var maxIdx = dst.length - 1;
+  if (maxIdx >= 0)
+    dst[0] = first;
+  if (maxIdx > 0) {
+    var step = (last - first) / maxIdx;
+    for (var k = 1; k <= maxIdx; ++k)
+      dst[k] = first + step * k;
+  }
+};
+
+ArrayMath.sign = function (dst, x) {
+  for (var k = Math.min(dst.length, x.length) - 1; k >= 0; --k)
+    dst[k] = x[k] < 0 ? -1 : 1;
+};
+
+ArrayMath.sum = function (x) {
+  // TODO(m): We should use pairwise summation or similar here.
+  var ret = 0;
+  for (var k = x.length - 1; k >= 0; --k)
+    ret += x[k];
+  return ret;
+};
+
+ArrayMath.sampleLinear = function (dst, x, t) {
+  var xLen = x.length, maxIdx = xLen - 1;
+  for (var k = Math.min(dst.length, t.length) - 1; k >= 0; --k) {
+    var t2 = t[k];
+    t2 = t2 < 0 ? 0 : t2 > maxIdx ? maxIdx : t2;
+    var idx = Math.floor(t2);
+    var w = t2 - idx;
+    var p1 = x[idx];
+    var p2 = x[idx < maxIdx ? idx + 1 : maxIdx];
+    dst[k] = p1 + w * (p2 - p1);
+  }
+};
+
+ArrayMath.sampleLinearRepeat = function (dst, x, t) {
+  var xLen = x.length, maxIdx = xLen - 1;
+  for (var k = Math.min(dst.length, t.length) - 1; k >= 0; --k) {
+    var t2 = t[k];
+    t2 = t2 - Math.floor(t2/xLen) * xLen;
+    var idx = Math.floor(t2);
+    var w = t2 - idx;
+    var p1 = x[idx];
+    var p2 = x[idx < maxIdx ? idx + 1 : 0];
+    dst[k] = p1 + w * (p2 - p1);
+  }
+};
+
+ArrayMath.sampleCubic = function (dst, x, t) {
+  var xLen = x.length, maxIdx = xLen - 1;
+  for (var k = Math.min(dst.length, t.length) - 1; k >= 0; --k) {
+    var t2 = t[k];
+    t2 = t2 < 0 ? 0 : t2 > maxIdx ? maxIdx : t2;
+    var idx = Math.floor(t2);
+    var w = t2 - idx;
+    var w2 = w * w;
+    var w3 = w2 * w;
+    var h2 = -2*w3 + 3*w2;
+    var h1 = 1 - h2;
+    var h4 = w3 - w2;
+    var h3 = h4 - w2 + w;
+    var p1 = x[idx > 0 ? idx - 1 :  0];
+    var p2 = x[idx];
+    var p3 = x[idx < maxIdx ? idx + 1 : maxIdx];
+    var p4 = x[idx < maxIdx - 1 ? idx + 2 : maxIdx];
+    dst[k] = h1 * p2 + h2 * p3 + 0.5 * (h3 * (p3 - p1) + h4 * (p4 - p2));
+  }
+};
+
+ArrayMath.sampleCubicRepeat = function (dst, x, t) {
+  var xLen = x.length, maxIdx = xLen - 1;
+  for (var k = Math.min(dst.length, t.length) - 1; k >= 0; --k) {
+    var t2 = t[k];
+    t2 = t2 - Math.floor(t2/xLen) * xLen;
+    var idx = Math.floor(t2);
+    var w = t2 - idx;
+    var w2 = w * w;
+    var w3 = w2 * w;
+    var h2 = -2*w3 + 3*w2;
+    var h1 = 1 - h2;
+    var h4 = w3 - w2;
+    var h3 = h4 - w2 + w;
+    var p1 = x[idx > 0 ? idx - 1 : maxIdx];
+    var p2 = x[idx];
+    var p3 = x[idx < maxIdx ? idx + 1 : 0];
+    var p4 = x[idx < maxIdx - 1 ? idx + 2 : (idx + 2 - Math.floor((idx + 2)/xLen) * xLen)];
+    dst[k] = h1 * p2 + h2 * p3 + 0.5 * (h3 * (p3 - p1) + h4 * (p4 - p2));
+  }
+};
+
+ArrayMath.pack = function (dst, offset, stride, src1, src2, src3, src4) {
+  var dstCount = Math.floor(Math.max(0, (dst.length - offset)) / stride);
+  var count = Math.min(dstCount, src1.length);
+  if (src2) {
+    var count = Math.min(count, src2.length);
+    if (src3) {
+      var count = Math.min(count, src3.length);
+      if (src4) {
+        var count = Math.min(count, src4.length);
+        for (var k = 0; k < count; ++k) {
+          dst[offset] = src1[k];
+          dst[offset + 1] = src2[k];
+          dst[offset + 2] = src3[k];
+          dst[offset + 3] = src4[k];
+          offset += stride;
         }
-        else
-          for (var k = 0; k < count; ++k) {
-            dst[offset] = src1[k];
-            dst[offset + 1] = src2[k];
-            dst[offset + 2] = src3[k];
-            offset += stride;
-          }
       }
       else
         for (var k = 0; k < count; ++k) {
           dst[offset] = src1[k];
           dst[offset + 1] = src2[k];
+          dst[offset + 2] = src3[k];
           offset += stride;
         }
     }
     else
       for (var k = 0; k < count; ++k) {
         dst[offset] = src1[k];
+        dst[offset + 1] = src2[k];
         offset += stride;
       }
-  };
+  }
+  else
+    for (var k = 0; k < count; ++k) {
+      dst[offset] = src1[k];
+      offset += stride;
+    }
+};
 
-  ArrayMath.unpack = function (src, offset, stride, dst1, dst2, dst3, dst4) {
-    var srcCount = Math.floor(Math.max(0, (src.length - offset)) / stride);
-    var count = Math.min(srcCount, dst1.length);
-    if (dst2) {
-      var count = Math.min(count, dst2.length);
-      if (dst3) {
-        var count = Math.min(count, dst3.length);
-        if (dst4) {
-          var count = Math.min(count, dst4.length);
-          for (var k = 0; k < count; ++k) {
-            dst1[k] = src[offset];
-            dst2[k] = src[offset + 1];
-            dst3[k] = src[offset + 2];
-            dst4[k] = src[offset + 3];
-            offset += stride;
-          }
+ArrayMath.unpack = function (src, offset, stride, dst1, dst2, dst3, dst4) {
+  var srcCount = Math.floor(Math.max(0, (src.length - offset)) / stride);
+  var count = Math.min(srcCount, dst1.length);
+  if (dst2) {
+    var count = Math.min(count, dst2.length);
+    if (dst3) {
+      var count = Math.min(count, dst3.length);
+      if (dst4) {
+        var count = Math.min(count, dst4.length);
+        for (var k = 0; k < count; ++k) {
+          dst1[k] = src[offset];
+          dst2[k] = src[offset + 1];
+          dst3[k] = src[offset + 2];
+          dst4[k] = src[offset + 3];
+          offset += stride;
         }
-        else
-          for (var k = 0; k < count; ++k) {
-            dst1[k] = src[offset];
-            dst2[k] = src[offset + 1];
-            dst3[k] = src[offset + 2];
-            offset += stride;
-          }
       }
       else
         for (var k = 0; k < count; ++k) {
           dst1[k] = src[offset];
           dst2[k] = src[offset + 1];
+          dst3[k] = src[offset + 2];
           offset += stride;
         }
     }
     else
       for (var k = 0; k < count; ++k) {
         dst1[k] = src[offset];
+        dst2[k] = src[offset + 1];
         offset += stride;
       }
-  };
-
-  context.ArrayMath = ArrayMath;
-})();
+  }
+  else
+    for (var k = 0; k < count; ++k) {
+      dst1[k] = src[offset];
+      offset += stride;
+    }
+};
 
 
 //------------------------------------------------------------------------------
 // interface Filter
 //------------------------------------------------------------------------------
 
-(function () {
-  var context = typeof (window) !== "undefined" ? window :
-    typeof (self) !== "undefined" ? self :
-    typeof module !== "undefined" && module.exports ? module.exports :
-    global;
+var Filter = function (bSize, aSize) {
+  if (isNaN(parseFloat(bSize)) || !isFinite(bSize))
+    bSize = 1;
+  if (!aSize)
+    aSize = 0;
+  this._b = new Float32Array(bSize);
+  this._b[0] = 1;
+  this._a = new Float32Array(aSize);
+  this._bHist = new Float32Array(bSize);
+  this._aHist = new Float32Array(aSize);
+};
 
-  if (context.Filter) return;
+Filter.prototype.filter = function (dst, x) {
+  // Put commonly accessed objects and properties in local variables
+  var a = this._a, aLen = a.length,
+      b = this._b, bLen = b.length,
+      aHist = this._aHist, bHist = this._bHist,
+      xLen = x.length, dstLen = dst.length;
 
-  var Filter = function (bSize, aSize) {
-    if (isNaN(parseFloat(bSize)) || !isFinite(bSize))
-      bSize = 1;
-    if (!aSize)
-      aSize = 0;
-    this._b = new Float32Array(bSize);
-    this._b[0] = 1;
-    this._a = new Float32Array(aSize);
-    this._bHist = new Float32Array(bSize);
-    this._aHist = new Float32Array(aSize);
-  };
+  // Perform run-in part using the history (slow)
+  var bHistRunIn = bLen - 1;
+  var aHistRunIn = aLen;
+  var k;
+  for (k = 0; (bHistRunIn || aHistRunIn) && k < xLen; ++k) {
+    var m, noHistLen;
 
-  Filter.prototype.filter = function (dst, x) {
-    // Put commonly accessed objects and properties in local variables
-    var a = this._a, aLen = a.length,
-        b = this._b, bLen = b.length,
-        aHist = this._aHist, bHist = this._bHist,
-        xLen = x.length, dstLen = dst.length;
+    // FIR part
+    noHistLen = bLen - bHistRunIn;
+    bHistRunIn && bHistRunIn--;
+    var res = b[0] * x[k];
+    for (m = 1; m < noHistLen; ++m)
+      res += b[m] * x[k - m];
+    for (; m < bLen; ++m)
+      res += b[m] * bHist[m - noHistLen];
 
-    // Perform run-in part using the history (slow)
-    var bHistRunIn = bLen - 1;
-    var aHistRunIn = aLen;
-    var k;
-    for (k = 0; (bHistRunIn || aHistRunIn) && k < xLen; ++k) {
-      var m, noHistLen;
+    // Recursive part
+    noHistLen = aLen - aHistRunIn;
+    aHistRunIn && aHistRunIn--;
+    for (m = 0; m < noHistLen; ++m)
+      res -= a[m] * dst[k - 1 - m];
+    for (; m < aLen; ++m)
+      res -= a[m] * aHist[m - noHistLen];
+
+    dst[k] = res;
+  }
+
+  // Perform history-free part (fast)
+  if (bLen == 3 && aLen == 2) {
+    // Optimized special case: biquad filter
+    var b0 = b[0], b1 = b[1], b2 = b[2], a1 = a[0], a2 = a[1];
+    var x0 = x[k-1], x1 = x[k-2], x2;
+    var y0 = dst[k-1], y1 = dst[k-2], y2;
+    for (; k < xLen; ++k) {
+      x2 = x1;
+      x1 = x0;
+      x0 = x[k];
+      y2 = y1;
+      y1 = y0;
+      y0 = b0 * x0 + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+      dst[k] = y0;
+    }
+  }
+  else {
+    // Generic case
+    for (; k < xLen; ++k) {
+      var m;
 
       // FIR part
-      noHistLen = bLen - bHistRunIn;
-      bHistRunIn && bHistRunIn--;
       var res = b[0] * x[k];
-      for (m = 1; m < noHistLen; ++m)
+      for (m = 1; m < bLen; ++m)
         res += b[m] * x[k - m];
-      for (; m < bLen; ++m)
-        res += b[m] * bHist[m - noHistLen];
 
       // Recursive part
-      noHistLen = aLen - aHistRunIn;
-      aHistRunIn && aHistRunIn--;
-      for (m = 0; m < noHistLen; ++m)
+      for (m = 0; m < aLen; ++m)
         res -= a[m] * dst[k - 1 - m];
-      for (; m < aLen; ++m)
-        res -= a[m] * aHist[m - noHistLen];
 
       dst[k] = res;
     }
+  }
 
-    // Perform history-free part (fast)
-    if (bLen == 3 && aLen == 2) {
-      // Optimized special case: biquad filter
-      var b0 = b[0], b1 = b[1], b2 = b[2], a1 = a[0], a2 = a[1];
-      var x0 = x[k-1], x1 = x[k-2], x2;
-      var y0 = dst[k-1], y1 = dst[k-2], y2;
-      for (; k < xLen; ++k) {
-        x2 = x1;
-        x1 = x0;
-        x0 = x[k];
-        y2 = y1;
-        y1 = y0;
-        y0 = b0 * x0 + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
-        dst[k] = y0;
-      }
-    }
-    else {
-      // Generic case
-      for (; k < xLen; ++k) {
-        var m;
+  // Update history state
+  var histCopy = Math.min(bLen - 1, xLen);
+  for (k = bLen - 2; k >= histCopy; --k)
+    bHist[k] = bHist[k - histCopy];
+  for (k = 0; k < histCopy; ++k)
+    bHist[k] = x[xLen - 1 - k];
+  histCopy = Math.min(aLen, dstLen);
+  for (k = aLen - 1; k >= histCopy; --k)
+    aHist[k] = aHist[k - histCopy];
+  for (k = 0; k < histCopy; ++k)
+    aHist[k] = dst[xLen - 1 - k];
+};
 
-        // FIR part
-        var res = b[0] * x[k];
-        for (m = 1; m < bLen; ++m)
-          res += b[m] * x[k - m];
+Filter.prototype.clearHistory = function () {
+  for (var k = this._bHist.length - 1; k >= 0; --k)
+    this._bHist[k] = 0;
+  for (var k = this._aHist.length - 1; k >= 0; --k)
+    this._aHist[k] = 0;
+};
 
-        // Recursive part
-        for (m = 0; m < aLen; ++m)
-          res -= a[m] * dst[k - 1 - m];
+Filter.prototype.setB = function (values) {
+  var len = Math.min(this._b.length, values.length);
+  for (var k = 0; k < len; ++k)
+    this._b[k] = values[k];
+};
 
-        dst[k] = res;
-      }
-    }
-
-    // Update history state
-    var histCopy = Math.min(bLen - 1, xLen);
-    for (k = bLen - 2; k >= histCopy; --k)
-      bHist[k] = bHist[k - histCopy];
-    for (k = 0; k < histCopy; ++k)
-      bHist[k] = x[xLen - 1 - k];
-    histCopy = Math.min(aLen, dstLen);
-    for (k = aLen - 1; k >= histCopy; --k)
-      aHist[k] = aHist[k - histCopy];
-    for (k = 0; k < histCopy; ++k)
-      aHist[k] = dst[xLen - 1 - k];
-  };
-
-  Filter.prototype.clearHistory = function () {
-    for (var k = this._bHist.length - 1; k >= 0; --k)
-      this._bHist[k] = 0;
-    for (var k = this._aHist.length - 1; k >= 0; --k)
-      this._aHist[k] = 0;
-  };
-
-  Filter.prototype.setB = function (values) {
-    var len = Math.min(this._b.length, values.length);
-    for (var k = 0; k < len; ++k)
-      this._b[k] = values[k];
-  };
-
-  Filter.prototype.setA = function (values) {
-    var len = Math.min(this._a.length, values.length);
-    for (var k = 0; k < len; ++k)
-      this._a[k] = values[k];
-  };
-
-  context.Filter = Filter;
-})();
+Filter.prototype.setA = function (values) {
+  var len = Math.min(this._a.length, values.length);
+  for (var k = 0; k < len; ++k)
+    this._a[k] = values[k];
+};
 
 
 //------------------------------------------------------------------------------
@@ -575,14 +552,8 @@
 // factorized into factors 2, 3, 4 and 5.
 //------------------------------------------------------------------------------
 
+var FFT;
 (function () {
-  var context = typeof (window) !== "undefined" ? window :
-    typeof (self) !== "undefined" ? self :
-    typeof module !== "undefined" && module.exports ? module.exports :
-    global;
-    
-  if (context.FFT) return;
-
   var butterfly2 = function (outRe, outIm, outIdx, stride, twRe, twIm, m) {
     var scratch0Re, scratch0Im,
         out0Re, out0Im, out1Re, out1Im,
@@ -1064,6 +1035,10 @@
     // FIXME: Optimize this case (real output signal)
     this.inverseCplx(dst, new Float32Array(this.size), xReal, xImag);
   };
-
-  context.FFT = FFT;
 })();
+
+if (typeof window === "undefined" && typeof module !== "undefined" && module.exports) {
+  module.exports.ArrayMath = ArrayMath;
+  module.exports.Filter = Filter;
+  module.exports.FFT = Filter;
+}

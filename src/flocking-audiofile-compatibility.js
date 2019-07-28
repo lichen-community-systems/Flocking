@@ -426,9 +426,9 @@ var fluid = typeof (fluid) !== "undefined" ? fluid : typeof (require) !== "undef
     flock.audio.decode.workerAsync.findUrl.flockingFileNames = [
         "flocking-audiofile-compatibilty.js",
         "flocking-all.js",
-        "flocking-all.min.js",
+        "flocking-all.js",
         "flocking-no-jquery.js",
-        "flocking-no-jquery.min.js",
+        "flocking-no-jquery.js",
         "audiofile.js",
         "core.js"
     ];

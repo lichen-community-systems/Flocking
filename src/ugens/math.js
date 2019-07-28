@@ -20,8 +20,6 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    var ArrayMath = flock.requireModule("webarraymath", "ArrayMath");
-
     flock.ugen.math = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
         that.expandedRight = new Float32Array(that.options.audioSettings.blockSize);

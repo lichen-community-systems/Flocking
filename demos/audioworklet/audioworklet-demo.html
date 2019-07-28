@@ -1,0 +1,67 @@
+<html>
+    <head>
+        <title>Flocking AudioWorklet Demo</title>
+        <script src="../../src/audioworklet/flocking-audioworkletnode.js"></script>
+    </head>
+
+    <body>
+        <button>Play</button>
+    </body>
+
+    <script>
+        var flock = flock || {};
+
+        let ctx,
+            flockingNode;
+
+        flock.createAudioWorkletNode = function (ctx, synthDef) {
+            let node = new FlockingAudioWorkletNode(ctx);
+            node.port.onmessage = function (evt) {
+                console.log("Message received from AudioWorklet:", evt.data);
+            };
+
+            node.port.postMessage(synthDef);
+
+            return node;
+        };
+
+        document.querySelector("button").onclick = function () {
+            if (!ctx) {
+                ctx = new (AudioContext || webkitAudioContext)();
+            }
+
+            if (flockingNode) {
+                flockingNode.disconnect();
+                flockingNode = null;
+            }
+
+            ctx.audioWorklet.addModule("../../src/audioworklet/flocking-processor.js").then(() => {
+                flockingNode = flock.createAudioWorkletNode(ctx, {
+                    ugen: "flock.ugen.sinOsc",
+                    freq: {
+                        ugen: "flock.ugen.math",
+                        source: 440,
+                        div: {
+                            ugen: "flock.ugen.sinOsc",
+                            freq: 1,
+                            add: 2
+                        },
+                    },
+                    mul: {
+                        ugen: "flock.ugen.sinOsc",
+                        freq: {
+                            ugen: "flock.ugen.triOsc",
+                            freq: 1 / 4.4,
+                            mul: 22,
+                            add: 22.44
+                        },
+                        mul: 0.25,
+                        add: 0.25
+                    }
+                });
+
+                flockingNode.connect(ctx.destination);
+            });
+        };
+    </script>
+</html>

@@ -1,6 +1,6 @@
 {
   "name": "flocking",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "Creative audio synthesis for the Web",
   "author": "Colin Clark",
   "homepage": "https://flockingjs.org/",
@@ -24,7 +24,6 @@
     "grunt": "1.0.4",
     "grunt-contrib-clean": "2.0.0",
     "grunt-contrib-concat": "1.0.1",
-    "grunt-contrib-uglify": "4.0.1",
     "grunt-contrib-copy": "1.0.0",
     "grunt-contrib-jshint": "2.1.0",
     "sheep-benchmark": "colinbdclark/sheep.js",

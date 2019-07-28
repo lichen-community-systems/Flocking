@@ -75,8 +75,8 @@ Getting Started
 
 The latest stable release of Flocking can be downloaded from the [Flocking releases](https://github.com/colinbdclark/Flocking/releases) page.
 
-Concatenated and minified Flocking builds, suitable for development and production respectively,
-are included in the [dist directory](dist/). Flocking can also be built manually using Grunt.
+Concatenated Flocking builds are included in the [dist directory](dist/).
+Flocking can also be built manually using Grunt.
 
 Here's how to include Flocking's development file in your HTML page:
 

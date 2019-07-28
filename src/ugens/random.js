@@ -20,8 +20,6 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    var Random = flock.requireModule("Random");
-
     flock.ugen.dust = function (inputs, output, options) {
         var that = flock.ugen(inputs, output, options);
 

@@ -20,8 +20,7 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    var $ = fluid.registerNamespace("jQuery"),
-        ArrayMath = flock.requireModule("webarraymath", "ArrayMath");
+    var $ = jQuery;
 
     /*********************
      * Envelope Creators *

@@ -10,7 +10,7 @@ module.exports = function(grunt) {
         ],
 
         jQueryStandalone: [
-            "node_modules/infusion/src/framework/core/js/jquery.standalone.js"
+            "src/audioworklet/jquery.standalone-worklet.js"
         ],
 
         infusion: [
@@ -60,6 +60,14 @@ module.exports = function(grunt) {
             "src/ugens/core.js"
         ],
 
+        flockingAudioWorklet: [
+            "src/core.js",
+            "src/parser.js",
+            "src/node-list.js",
+            "src/evaluators.js",
+            "src/ugens/core.js"
+        ],
+
         flockingUGens: [
             "src/ugens/bandlimited.js",
             "src/ugens/buffer.js",
@@ -91,6 +99,10 @@ module.exports = function(grunt) {
 
         amdFooter: [
             "build-support/js/amd-footer.js"
+        ],
+
+        esModuleFooter: [
+            "build-support/js/es-module-footer.js"
         ]
     };
 
@@ -137,6 +149,18 @@ module.exports = function(grunt) {
                 dest: "dist/<%= pkg.name %>-no-jquery.js"
             },
 
+            audioWorklet: {
+                src: [].concat(
+                    files.jQueryStandalone,
+                    files.infusion,
+                    files.miscDeps,
+                    files.flockingAudioWorklet,
+                    files.flockingUGens,
+                    files.esModuleFooter
+                ),
+                dest: "dist/<%= pkg.name %>-audioworklet.js"
+            },
+
             base: {
                 src: [].concat(
                     files.miscDeps,
@@ -150,26 +174,6 @@ module.exports = function(grunt) {
                     files.infusion, files.infusionViews
                 ),
                 dest: "dist/infusion-for-flocking.js"
-            }
-        },
-
-        uglify: {
-            options: {
-                banner: "<%= flock.banners.short %>",
-                beautify: {
-                    ascii_only: true
-                }
-            },
-            all: {
-                files: [
-                    {
-                        expand: true,
-                        cwd: "dist/",
-                        src: ["*.js"],
-                        dest: "dist/",
-                        ext: ".min.js",
-                    }
-                ]
             }
         },
 
@@ -206,10 +210,9 @@ module.exports = function(grunt) {
 
     // Load relevant Grunt plugins.
     grunt.loadNpmTasks("grunt-contrib-concat");
-    grunt.loadNpmTasks("grunt-contrib-uglify");
     grunt.loadNpmTasks("grunt-contrib-clean");
     grunt.loadNpmTasks("grunt-contrib-copy");
     grunt.loadNpmTasks("grunt-contrib-jshint");
 
-    grunt.registerTask("default", ["jshint", "clean", "concat", "uglify", "copy"]);
+    grunt.registerTask("default", ["jshint", "clean", "concat", "copy"]);
 };

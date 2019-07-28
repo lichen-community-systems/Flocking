@@ -7,12 +7,11 @@
 */
 
 /*jshint browser:true, node:true*/
-/*global require*/
+/*global require, ArrayMath*/
 
 var fluid = fluid || require("infusion"),
     jqUnit = jqUnit || fluid.require("node-jqunit"),
-    flock = fluid.registerNamespace("flock"),
-    ArrayMath = flock.requireModule("webarraymath", "ArrayMath");
+    flock = fluid.registerNamespace("flock");
 
 (function () {
     "use strict";

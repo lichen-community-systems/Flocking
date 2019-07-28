@@ -64,7 +64,6 @@ var fluid = fluid || require("infusion"),
 
         ugens: function (ugens) {
             var ugen;
-
             for (var i = 0; i < ugens.length; i++) {
                 ugen = ugens[i];
                 if (ugen.gen !== undefined) {

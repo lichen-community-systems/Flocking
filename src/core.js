@@ -6,7 +6,7 @@
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
 
-/*global require, Float32Array, window, AudioContext, webkitAudioContext*/
+/*global require, Float32Array, window, AudioContext, webkitAudioContext, jQuery*/
 /*jshint white: false, newcap: true, regexp: true, browser: true,
     forin: false, nomen: true, bitwise: false, maxerr: 100,
     indent: 4, plusplus: false, curly: true, eqeqeq: true,
@@ -20,7 +20,7 @@ var fluid = fluid || require("infusion"),
 (function () {
     "use strict";
 
-    var $ = fluid.registerNamespace("jQuery");
+    var $ = jQuery;
 
     flock.fluid = fluid;
 
@@ -106,7 +106,7 @@ var fluid = fluid || require("infusion"),
     fluid.registerNamespace("flock.platform");
     flock.platform.isBrowser = typeof window !== "undefined";
     flock.platform.hasRequire = typeof require !== "undefined";
-    flock.platform.os = flock.platform.isBrowser ? window.navigator.platform : require("os").platform();
+    flock.platform.os = flock.platform.isBrowser ? window.navigator.platform : "unknown";
     flock.platform.isLinux = flock.platform.os.indexOf("Linux") > -1;
     flock.platform.isAndroid = flock.platform.isLinux && flock.platform.os.indexOf("arm") > -1;
     flock.platform.isIOS = flock.platform.os === "iPhone" || flock.platform.os === "iPad" || flock.platform.os === "iPod";
@@ -127,25 +127,6 @@ var fluid = fluid || require("infusion"),
         URL: flock.platform.isBrowser ? (window.URL || window.webkitURL || window.msURL) : undefined
     };
 
-    flock.requireModule = function (moduleName, globalName) {
-        if (flock.platform.isBrowser) {
-            return window[globalName || moduleName];
-        }
-
-        if (!flock.platform.hasRequire) {
-            return undefined;
-        }
-
-        var resolvedName = flock.requireModule.paths[moduleName] || moduleName;
-        var togo = require(resolvedName);
-
-        return globalName ? togo[globalName] : togo;
-    };
-
-    flock.requireModule.paths = {
-        webarraymath: "../third-party/webarraymath/js/webarraymath.js",
-        Random: "../third-party/simjs/js/random-0.26.js"
-    };
 
     /*************
      * Utilities *
