@@ -1,0 +1,11 @@
+{
+    "test_page": "tests/unit/all-tests.html",
+    "browser_args": {
+        "Chrome": [
+            "--autoplay-policy=no-user-gesture-required"
+        ],
+        "Chrome Canary": [
+            "--autoplay-policy=no-user-gesture-required"
+        ]
+    }
+}
