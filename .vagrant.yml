@@ -19,9 +19,9 @@ env:
     windows10:               # name of the VM
       <<: *windows           # referece of the common part
       box: inclusivedesign/windows10-eval-x64-Apps
-    fedora27:                # name of the VM
+    fedora31:                # name of the VM
       <<: *linux             # referece of the common part
-      box: inclusivedesign/fedora27
+      box: inclusivedesign/fedora31
 
 
 stages:                # Stages to perform when 'ci test' command is invoked
