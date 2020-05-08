@@ -21,7 +21,7 @@
   "readmeFilename": "README.md",
   "browser": "dist/flocking-all.js",
   "devDependencies": {
-    "grunt": "1.0.4",
+    "grunt": "1.1.0",
     "grunt-contrib-clean": "2.0.0",
     "grunt-contrib-concat": "1.0.1",
     "grunt-contrib-uglify": "4.0.1",
@@ -29,14 +29,14 @@
     "grunt-contrib-jshint": "2.1.0",
     "sheep-benchmark": "colinbdclark/sheep.js",
     "requirejs": "2.3.6",
-    "testem": "2.15.1"
+    "testem": "3.1.0"
   },
   "dependencies": {
-    "jquery": "3.4.1",
+    "jquery": "3.5.1",
     "infusion": "3.0.0-dev.20190328T144119Z.ec44dbfab",
     "codemirror-infusion": "2.2.1",
     "jsplumb": "1.7.9",
-    "dagre": "0.8.4",
+    "dagre": "0.8.5",
     "normalize.css": "8.0.1"
   },
   "scripts": {
