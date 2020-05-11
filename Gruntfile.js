@@ -53,8 +53,6 @@ module.exports = function(grunt) {
             "src/web/audio-system.js",
             "src/web/buffer-writer.js",
             "src/web/input-device-manager.js",
-            "src/web/midi.js",
-            "src/midi/controller.js",
             "src/web/native-node-manager.js",
             "src/web/output-manager.js",
             "src/ugens/core.js"
