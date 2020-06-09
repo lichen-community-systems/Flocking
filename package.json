@@ -6,9 +6,9 @@
   "homepage": "https://flockingjs.org/",
   "repository": {
     "type": "git",
-    "url": "git://github.com/colinbdclark/Flocking.git"
+    "url": "git://github.com/continuing-creativity/Flocking.git"
   },
-  "bugs": "https://github.com/colinbdclark/Flocking/issues",
+  "bugs": "https://github.com/continuing-creativity/Flocking/issues",
   "license": "(MIT OR GPL-2.0)",
   "keywords": [
     "Flocking",

@@ -1,6 +1,6 @@
 /*
  * Flocking Model Synth Tests
- * https://github.com/colinbdclark/flocking
+ * https://github.com/continuing-creativity/flocking
  *
  * Copyright 2015, OCAD University
  * Dual licensed under the MIT or GPL Version 2 licenses.

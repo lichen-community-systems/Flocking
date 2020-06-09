@@ -1,6 +1,6 @@
 /*!
 * Flocking Module Require Tests
-* https://github.com/colinbdclark/flocking
+* https://github.com/continuing-creativity/flocking
 *
 * Copyright 2013-16, Colin Clark
 * Dual licensed under the MIT or GPL Version 2 licenses.

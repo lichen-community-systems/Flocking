@@ -1,6 +1,6 @@
 /*!
  * Flocking Buffer Tests
- * https://github.com/colinbdclark/flocking
+ * https://github.com/continuing-creativity/flocking
  *
  * Copyright 2015-2017, Colin Clark
  * Dual licensed under the MIT or GPL Version 2 licenses.

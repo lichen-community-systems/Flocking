@@ -1,6 +1,6 @@
 /*!
 * Flocking - Audio File Data URLs
-* https://github.com/colinbdclark/flocking
+* https://github.com/continuing-creativity/flocking
 *
 * Copyright 2012, Colin Clark
 * Dual licensed under the MIT or GPL Version 2 licenses.

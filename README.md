@@ -52,7 +52,7 @@ Status and Roadmap
 
 Flocking is in active development. It has bugs and it is growing quickly.
 
-The project's [development roadmap](https://github.com/colinbdclark/Flocking/wiki/Release-Plan)
+The project's [development roadmap](https://github.com/continuing-creativity/Flocking/wiki/Release-Plan)
 is documented in the wiki. Plans include:
  * Better support for interleaving Flocking unit generators with Web Audio API nodes
  * A new format for specifying connections between unit generators
@@ -73,7 +73,7 @@ Documentation and Demos
 Getting Started
 ---------------
 
-The latest stable release of Flocking can be downloaded from the [Flocking releases](https://github.com/colinbdclark/Flocking/releases) page.
+The latest stable release of Flocking can be downloaded from the [Flocking releases](https://github.com/continuing-creativity/Flocking/releases) page.
 
 Concatenated and minified Flocking builds, suitable for development and production respectively,
 are included in the [dist directory](dist/). Flocking can also be built manually using Grunt.
