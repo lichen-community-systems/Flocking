@@ -34,7 +34,7 @@
   "dependencies": {
     "jquery": "3.5.1",
     "infusion": "3.0.0-dev.20190328T144119Z.ec44dbfab",
-    "codemirror-infusion": "2.2.1",
+    "codemirror-infusion": "2.2.2",
     "jsplumb": "1.7.9",
     "dagre": "0.8.5",
     "normalize.css": "8.0.1"
