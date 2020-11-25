@@ -39,7 +39,7 @@ var fluid = fluid || require("infusion"),
             "extraKeys"
         ],
 
-        mode: "application/json",
+        mode: "application/json5",
         autoCloseBrackets: true,
         matchBrackets: true,
         smartIndent: true,

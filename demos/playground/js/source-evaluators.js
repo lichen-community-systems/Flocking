@@ -139,7 +139,7 @@ var fluid = fluid || require("infusion"),
 
     flock.sourceEvaluator.json.tryParse = function (source, onParseError) {
         try {
-            return JSON.parse(source);
+            return JSON5.parse(source);
         } catch (e) {
             onParseError(e, source);
         }

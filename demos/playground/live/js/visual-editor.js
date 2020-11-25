@@ -98,7 +98,7 @@ var fluid = fluid || require("infusion"),
         components: {
             editor: {
                 options: {
-                    mode: "application/json"
+                    mode: "application/json5"
                 }
             },
 
@@ -347,7 +347,7 @@ var fluid = fluid || require("infusion"),
     });
 
     flock.ui.nodeRenderer.list.prepareRenderModel = function (that) {
-        var displayName = JSON.stringify(that.model.node.def);
+        var displayName = JSON5.stringify(that.model.node.def);
         that.applier.change("node.displayName", displayName);
     };
 
