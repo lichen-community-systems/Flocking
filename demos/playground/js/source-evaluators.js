@@ -5,7 +5,7 @@
  * Dual licensed under the MIT and GPL Version 2 licenses.
  */
 
-/*global require*/
+/*global require, JSON5*/
 
 var fluid = fluid || require("infusion"),
     flock = fluid.registerNamespace("flock");

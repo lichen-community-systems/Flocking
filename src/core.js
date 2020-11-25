@@ -997,7 +997,7 @@ var fluid = fluid || require("infusion"),
 
     flock.audioSystem.clampNumBuses = function (numBuses, outputBusRange, chans, numInputBuses) {
         var numInOut = numInputBuses + chans;
-        numBuses = Math.max(numBuses, numInOut)
+        numBuses = Math.max(numBuses, numInOut);
         numBuses = Math.max(numBuses, Math.max(chans, outputBusRange.min));
         numBuses = Math.min(numBuses, outputBusRange.max);
 
