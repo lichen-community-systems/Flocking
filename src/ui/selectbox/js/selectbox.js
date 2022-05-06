@@ -55,7 +55,7 @@ var fluid = fluid || require("infusion"),
         },
 
         markup: {
-            group: "<optgroup label='%label'></optgroup",
+            group: "<optgroup label='%label'></optgroup>",
             option: "<option value='%value'>%label</option>"
         },
 
