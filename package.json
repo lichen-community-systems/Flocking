@@ -21,20 +21,20 @@
   "readmeFilename": "README.md",
   "browser": "dist/flocking-all.js",
   "devDependencies": {
-    "grunt": "1.3.0",
-    "grunt-contrib-clean": "2.0.0",
-    "grunt-contrib-concat": "1.0.1",
-    "grunt-contrib-uglify": "5.0.0",
+    "grunt": "1.5.2",
+    "grunt-contrib-clean": "2.0.1",
+    "grunt-contrib-concat": "2.1.0",
+    "grunt-contrib-uglify": "5.2.1",
     "grunt-contrib-copy": "1.0.0",
-    "grunt-contrib-jshint": "3.0.0",
+    "grunt-contrib-jshint": "3.2.0",
     "sheep-benchmark": "colinbdclark/sheep.js",
     "requirejs": "2.3.6",
-    "testem": "3.2.0"
+    "testem": "3.6.0"
   },
   "dependencies": {
-    "jquery": "3.5.1",
-    "infusion": "3.0.0-dev.20200326T173810Z.24ddb2718",
-    "codemirror-infusion": "2.4.0",
+    "jquery": "3.6.0",
+    "infusion": "3.0.0",
+    "codemirror-infusion": "2.4.1",
     "jsplumb": "1.7.9",
     "dagre": "0.8.5",
     "normalize.css": "8.0.1"
