@@ -57,7 +57,7 @@ Getting Started
 
 See the [Getting Started](docs/getting-started.md) documentation for more details on how to install Flocking.
 
-The latest stable release of Flocking can be installed using npm or your favourite JavaScript package manager. Add it as a dependency in your package.json run ```npm install``. Installing Flocking will create concatenated and minified Flocking builds, suitable for development and production respectively,
+The latest stable release of Flocking can be installed using npm or your favourite JavaScript package manager. Add it as a dependency in your package.json run ```npm install```. Installing Flocking will create concatenated and minified Flocking builds, suitable for development and production respectively,
 in the ```dist``` directory. Flocking can also be built manually using Grunt.
 
 After installing it with npm, here's how to include Flocking's development file in your HTML page:
