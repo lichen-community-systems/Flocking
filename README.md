@@ -33,33 +33,15 @@ _[slides](colinclark.org/presentations/flocking-icmc-2014-slides.pdf)_
 
 Flocking does not currently support the Web Audio API's new [AudioWorklet](https://www.w3.org/TR/webaudio/#audioworklet) specification, which allows for JavaScript-based signal processing code to run in a separate, real-time thread. This means that Flocking is not currently well-suited to applications that involve a lot of graphics rendering or user interaction. Work is underway on a new core for Flocking, called [Signaletic](https://github.com/colinbdclark/signaletic/tree/gh-1), which will provide full support for all Web Audio native nodes as well as the use of AudioWorklets.
 
-Community
----------
-
-Flocking has an inclusive and supportive community with several forums where you can ask for help
-and share the projects you're working on.
-
-### Mailing List
-The [flocking mailing list](https://lists.idrc.ocadu.ca/mailman/listinfo/flocking)
-is the place to ask questions, share code, and request new features.
-
-### Chat
-Flocking has an IRC channel. Join <code>#flocking</code> on <code>irc.freenode.net</code>.
-
 
 Status and Roadmap
 ------------------
 
-Flocking is in active development. It has bugs and it is growing quickly.
+Flocking is no longer actively maintained, but it continues to be very important to me. I'll try to fix things if they're fixable. In most cases, I don't recommend using it, especially if you feel most comfortable following conventions and "best practices" from Big Tech.
 
-The project's [development roadmap](https://github.com/continuing-creativity/Flocking/wiki/Release-Plan)
-is documented in the wiki. Plans include:
- * Better support for interleaving Flocking unit generators with Web Audio API nodes
- * A new format for specifying connections between unit generators
- * A "live data merging" environment for live coding
- * Graphical editing of Flocking synth defs
+Please note that Flocking might not work with your modern build toolchain unless you understand how your tools work and can ensure that Flocking is loaded as a classic JavaScript dependency in the timeless way of the ```<script>``` tag.
 
-Unplanned features, bug fixes, and contributions are welcome and appreciated, of course. The Flocking project adheres to the [Contributor Covenant guidelines](https://contributor-covenant.org/version/1/2/0/), and is an open and welcoming community.
+The Flocking project adheres to the [Contributor Covenant guidelines](https://contributor-covenant.org/version/1/2/0/), and is an open and welcoming community.
 
 
 Documentation and Demos
@@ -73,21 +55,19 @@ Documentation and Demos
 Getting Started
 ---------------
 
-The latest stable release of Flocking can be downloaded from the [Flocking releases](https://github.com/continuing-creativity/Flocking/releases) page.
+See the [Getting Started](docs/getting-started.md) documentation for more details on how to install Flocking.
 
-Concatenated and minified Flocking builds, suitable for development and production respectively,
-are included in the [dist directory](dist/). Flocking can also be built manually using Grunt.
+The latest stable release of Flocking can be installed using npm or your favourite JavaScript package manager. Add it as a dependency in your package.json run ```npm install``. Installing Flocking will create concatenated and minified Flocking builds, suitable for development and production respectively,
+in the ```dist``` directory. Flocking can also be built manually using Grunt.
 
-Here's how to include Flocking's development file in your HTML page:
+After installing it with npm, here's how to include Flocking's development file in your HTML page:
 
     <!-- This includes Flocking and all its dependencies, including jQuery and Infusion -->
-    <script src="flocking/dist/flocking-all.js"></script>
-
+    <script src="npm_modules/flocking/dist/flocking-all.js"></script>
 
 For more information on using Flocking in a browser,
 read the [Getting Started](docs/getting-started.md) tutorial.
-If module loaders are your thing, Flocking also supports the CommonJS and AMD styles.
-
+If old-fashioned module loaders are your thing, Flocking also supports the CommonJS and AMD styles. Modern ES6 modules and build tools likely will require manual intervention to work correctly.
 
 Using Flocking
 --------------
@@ -95,7 +75,7 @@ Using Flocking
 Flocking consists of a handful of primary components that are configured using JSON
 specifications. These include: Unit Generators (ugens), Synths, Schedulers, and the Environment.
 
-### Unit Generators ##
+### Unit Generators ###
 
 Unit generators, or _ugens_ for short, are the basic building blocks of synthesis;
 they do the work of generating or processing audio signals in Flocking.
