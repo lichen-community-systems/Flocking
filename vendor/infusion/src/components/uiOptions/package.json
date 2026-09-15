@@ -1,0 +1,16 @@
+{
+    "name": "fluid-ui-options",
+    "description": "An instance of a preference editor created by the Infusion Preferences Framework. Users customize their preferences and needs for viewing content.",
+    "version": "3.0.0",
+    "license": "(BSD-3-Clause OR ECL-2.0)",
+    "infusion": {
+        "jsCommonFiles": [
+            "./js/UIOptions.js"
+        ]
+    },
+    "dependencies": {
+        "jquery": "3.6.0",
+        "fluid-framework": "3.0.0",
+        "fluid-preferences": "3.0.0"
+    }
+}

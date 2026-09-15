@@ -1,0 +1,63 @@
+// Contains a utility function for changing font family
+// !important is used for all styles to ensure that Preferences Framework's enactors are able to override the pages default styles.
+
+$fonts: (
+    ".fl-font-arial": "Arial",
+    ".fl-font-verdana": "Verdana",
+    ".fl-font-times": "Georgia, Times, Times New Roman, serif",
+    ".fl-font-comic-sans": "Comic Sans MS, sans-serif",
+    ".fl-font-open-dyslexic": "OpenDyslexic, sans-serif",
+);
+
+// Defines any @font-face definitions needed by the enactors
+$fontFaces: (
+    openDyslexic: (
+        fontDirectory: "../../../lib/open-dyslexic/fonts/",
+        fontFamily: "OpenDyslexic",
+        definitions: (
+            normal: (
+                filename:"OpenDyslexic-Regular.woff",
+                fontWeight: normal,
+                fontStyle: normal,
+            ),
+            bold: (
+                filename:"OpenDyslexic-Bold.woff",
+                fontWeight: 600,
+                fontStyle: normal,
+            ),
+            italic: (
+                filename:"OpenDyslexic-Italic.woff",
+                fontWeight: normal,
+                fontStyle: italic,
+            ),
+            boldItalic: (
+                filename:"OpenDyslexic-BoldItalic.woff",
+                fontWeight: 600,
+                fontStyle: italic,
+            )
+        )
+    )
+);
+
+@mixin build-fonts-Enactors($textFont, $textFontFaces) {
+    // Build any necessary @font-face definitions
+    @each $key, $properties in $fontFaces {
+        @each $key, $definition in map-get($properties, "definitions") {
+            @font-face {
+                font-family: map-get($properties, "fontFamily");
+                font-style: map-get($definition, "fontStyle");
+                font-weight: map-get($definition, "fontWeight");
+                src: url(#{map-get($properties, "fontDirectory")}#{map-get($definition, "filename")});
+            }
+        }
+    }
+
+    @each $fontFamilyClass, $fontFamily in $textFont {
+        #{$fontFamilyClass},
+        #{$fontFamilyClass} * {
+            &:not([class*='icon']) {
+                font-family: #{$fontFamily} !important;
+            }
+        }
+    }
+}

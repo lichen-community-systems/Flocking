@@ -1,0 +1,15 @@
+{
+    "name": "fluid-text-to-speech",
+    "description": "A wrapper around the Web Speech API for Speech Synthesis",
+    "version": "3.0.0",
+    "license": "(BSD-3-Clause OR ECL-2.0)",
+    "infusion": {
+        "jsCommonFiles": [
+            "./js/TextToSpeech.js"
+        ]
+    },
+    "dependencies": {
+        "jquery": "3.6.0",
+        "fluid-framework": "3.0.0"
+    }
+}

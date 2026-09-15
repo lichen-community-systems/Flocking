@@ -1,0 +1,19 @@
+{
+    "description": "Filtering white noise with the mouse.",
+    "synthDef": {
+        "ugen": "flock.ugen.filter.biquad.bp",
+        "source": {
+            "ugen": "flock.ugen.whiteNoise",
+            "mul": 0.5
+        },
+        "freq": {
+            "ugen": "flock.ugen.mouse.cursor",
+            "mul": 1660,
+            "add": 40,
+            "options": {
+                "interoplation": "exponential"
+            }
+        },
+        "q": 2.0
+    }
+}

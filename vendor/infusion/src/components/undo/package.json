@@ -1,0 +1,15 @@
+{
+    "name": "fluid-undo",
+    "description": "Step-back for model-based interactions.",
+    "version": "3.0.0",
+    "license": "(BSD-3-Clause OR ECL-2.0)",
+    "infusion": {
+        "jsCommonFiles": [
+            "./js/Undo.js"
+        ]
+    },
+    "dependencies": {
+        "jquery": "3.6.0",
+        "fluid-framework": "3.0.0"
+    }
+}

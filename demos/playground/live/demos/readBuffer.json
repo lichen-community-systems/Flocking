@@ -1,0 +1,16 @@
+{
+    "description": "Modulates the playback rate of a sound file with a sine wave oscillator.",
+    "synthDef": {
+        "ugen": "flock.ugen.readBuffer",
+        "buffer": {
+            "id": "chord",
+            "url": "../../shared/audio/hillier-first-chord.wav"
+        },
+        "phase": {
+            "ugen": "flock.ugen.sin",
+            "freq": 0.2,
+            "mul": 0.5,
+            "add": 0.5
+        }
+    }
+}

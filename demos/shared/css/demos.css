@@ -1,0 +1,79 @@
+@import url(https://fonts.googleapis.com/css?family=Nunito);
+body {
+    font-family: "Nunito", sans-serif;
+    background: #eee;
+}
+
+th, td {
+    background-color: #DDDDDD;
+    padding: 10px;
+}
+
+th {
+    text-align: left;
+    width: 130px;
+}
+
+td {
+    width: 50px;
+}
+
+.playButton {
+    border: none;
+    height: 77px;
+    width: 77px;
+    float: left;
+    margin: 5% 0% 0% 2%;
+    color: transparent;
+}
+
+.playButton.playing {
+    background: transparent url("../../../images/pause.png") no-repeat center center;
+    background-size: cover;
+}
+
+.playButton.paused {
+    background: transparent url("../../../images/play.png") no-repeat center center;
+    background-size: cover;
+}
+
+.fileSelector label {
+    display: none;
+}
+
+.fileSelector .fileBrowser {
+    display: none;
+    padding: 10px;
+}
+
+.fileSelector .filePath {
+    font-family: courier, monospace;
+    font-size: 80%;
+    padding-top: 2.5%;
+    padding-right: 3%;
+    padding-left: 3%;
+}
+
+.fileSelector .browse {
+    border: 2px solid #888;
+    border-radius: 10px;
+    font-size: 100%;
+    font-style: italic;
+    background: #fff;
+    padding: 1.5%;
+}
+
+.instructions {
+    font-style: italic;
+    font-size: 80%;
+}
+
+label {
+    font-family: serif;
+}
+
+select {
+    margin-left: 0.5em;
+    margin-right: 0.5em;
+    min-width: 20em;
+}

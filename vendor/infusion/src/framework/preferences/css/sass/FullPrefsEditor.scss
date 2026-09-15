@@ -1,0 +1,64 @@
+// UI Option styles for full page layouts both with and without preview
+
+// Control section headers
+.fl-prefsEditor {
+    // Save, reset, cancel buttons
+    .fl-prefsEditor-buttons {
+        float: left;
+        margin-top: 1em;
+        width: 100%;
+
+        input {
+            background-color: #f0f0f0;
+            border: 2px solid #cecece;
+            font-size: 1em;
+            font-weight: bold;
+            height: 2.5em;
+            margin-right: 3px;
+            padding: 5px;
+            text-decoration: underline;
+            text-transform: uppercase;
+        }
+    }
+
+    // Section header icons
+    h2 {
+        align-items: center;
+        clear: both;
+        color: #444;
+        display: flex;
+        font-size: 1.29em;
+        font-weight: bold;
+        justify-content: flex-start;
+        padding: 14px 0 5px 25px;
+        white-space: nowrap;
+        white-space: normal;
+
+        [class*='fl-icon-'] {
+            margin: 0 0.3em 0 0;
+        }
+    }
+
+    // Text controls
+    .fl-prefsEditor-text ul li {
+        clear: left;
+        height: 3.5em;
+    }
+
+    // Theme radio buttons
+    .fl-choices {
+        justify-content: flex-start;
+    }
+
+    // Stepper
+    // Custom styling for the textfield stepper when used in the prefs framework
+    .fl-textfieldStepper {
+        justify-content: flex-start;
+    }
+
+    // Switch
+    // Custom styling for the switch when used in the prefs framework
+    .fl-prefsEditor-onoff .fl-switchUI {
+        justify-content: flex-start;
+    }
+}

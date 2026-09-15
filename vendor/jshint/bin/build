@@ -1,0 +1,37 @@
+#!/usr/bin/env node
+
+"use strict";
+
+var fs         = require("fs");
+var path       = require("path");
+var build      = require("../scripts/build");
+
+var distDir    = path.join(__dirname, "../dist");
+
+if (!fs.existsSync(distDir))
+  fs.mkdirSync(distDir);
+
+build("web", function(err, version, src) {
+  if (err) {
+    console.error(err);
+    process.exit(1);
+  }
+
+  fs.writeFileSync(distDir + "/jshint.js", src, "utf8");
+  console.log("Built: " + version + " (web)");
+});
+
+build("rhino", function(err, version, src) {
+  var dest;
+
+  if (err) {
+    console.error(err);
+    process.exit(1);
+  }
+
+  dest  = distDir + "/jshint-rhino.js";
+
+  fs.writeFileSync(dest, src, "utf8");
+  fs.chmodSync(dest, "0775");
+  console.log("Built: " + version + " (Rhino)");
+});

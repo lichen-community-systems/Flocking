@@ -1,0 +1,31 @@
+{
+    "description": "A 24db low pass Moog-style filter",
+    "synthDef": {
+        "ugen": "flock.ugen.filter.moog",
+        "cutoff": {
+            "ugen": "flock.ugen.sinOsc",
+            "freq": 0.25,
+            "mul": 5000,
+            "add": 7000
+        },
+        "resonance": {
+            "ugen": "flock.ugen.sinOsc",
+            "freq": 0.5,
+            "mul": 1.5,
+            "add": 1.5
+        },
+        "source": {
+            "ugen": "flock.ugen.saw",
+            "freq": {
+                "ugen": "flock.ugen.sequence",
+                "freq": 0.5,
+                "loop": 1,
+                "values": [220, 275, 220, 330, 293.34, 220],
+                "options": {
+                    "interpolation": "linear"
+                }
+            }
+        },
+        "mul": 0.5
+    }
+}

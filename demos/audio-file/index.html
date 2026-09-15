@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Audio File Decoding Demo</title>
+        <meta charset="UTF-8" />
+        <link rel="stylesheet" type="text/css" href="../shared/css/demos.css" />
+        <link rel="stylesheet" type="text/css" href="css/audiofile.css" />
+
+        <script src="../../vendor/jquery/dist/jquery.js"></script>
+
+        <script src="../../vendor/infusion/src/framework/core/js/Fluid.js"></script>
+        <script src="../../vendor/infusion/src/framework/core/js/FluidIoC.js"></script>
+        <script src="../../vendor/infusion/src/framework/core/js/DataBinding.js"></script>
+        <script src="../../vendor/infusion/src/framework/core/js/ModelTransformation.js"></script>
+        <script src="../../vendor/infusion/src/framework/core/js/ModelTransformationTransforms.js"></script>
+        <script src="../../vendor/infusion/src/framework/enhancement/js/ContextAwareness.js"></script>
+
+        <script src="../../src/core.js"></script>
+        <script src="../../src/node-list.js"></script>
+        <script src="../../src/synths/synth.js"></script>
+        <script src="../../src/evaluators.js"></script>
+        <script src="../../src/scheduler.js"></script>
+        <script src="../../src/buffers.js"></script>
+        <script src="../../src/audiofile.js"></script>
+        <script src="../../src/flocking-audiofile-converters.js"></script>
+        <script src="../../src/audiofile-encoder.js"></script>
+        <script src="../../src/flocking-audiofile-compatibility.js"></script>
+        <script src="../../src/web/webaudio-core.js"></script>
+        <script src="../../src/web/audio-system.js"></script>
+        <script src="../../src/web/buffer-writer.js"></script>
+        <script src="../../src/web/input-device-manager.js"></script>
+        <script src="../../src/web/native-node-manager.js"></script>
+        <script src="../../src/web/output-manager.js"></script>
+        <script src="../../src/parser.js"></script>
+        <script src="../../src/gfx.js"></script>
+
+        <script src="../../src/ugens/core.js"></script>
+        <script src="../../src/ugens/buffer.js"></script>
+        <script src="../../src/ugens/browser.js"></script>
+
+        <script src="../shared/js/demo-utils.js"></script>
+    </head>
+
+    <body>
+        <h1>Audio File Decoding Demo</h1>
+
+        <div class="controls">
+            <div class="selectors">
+                <form class="fileSelector">
+                    <label for="fileBrowser">Choose a sound file</label>
+                    <input class="fileBrowser" type="file" />
+                    <button class="browse">Choose a sound file...</button>
+                    <span class="filePath"></span>
+                </form>
+
+                <form class="dataUrlSelector">
+                    <label for="dataUrlField">...or paste in a data URL:</label>
+                    <textarea id="dataUrlField"></textarea>
+                </form>
+            </div>
+            <button class="playButton">Play</button>
+        </div>
+        <div class="view">
+            <canvas id="waveform" height="200" width="960"></canvas>
+        </div>
+        <div class="speedSelector">
+            <label for="playbackSpeed">Playback speed:</label>
+            <input type="range" name="playbackSpeed" id="playbackSpeed" min="0.5" max="2.0" step="0.1" value="1.0" />
+        </div>
+
+        <script>
+            var environment = flock.init();
+
+            var synth = flock.synth({
+                synthDef: {
+                    ugen: "flock.ugen.scope",
+
+                    // The playBuffer ugen plays back audio buffers loaded from a url or file.
+                    // Currently, Flocking has support for .wav and .aiff files.
+                    source: {
+                        id: "player",
+                        ugen: "flock.ugen.playBuffer",
+                        buffer: {
+                            id: "selectedSound",                    // The sound file will be loaded into an environment buffer named "selectedSound."
+                            selector: ".fileSelector .fileBrowser"  // The File object selected by the #fileBrowser input element will be read.
+                        },
+                        speed: 1.0,
+                        loop: 1.0
+                    },
+
+                    options: {
+                        canvas: "#waveform",
+                        styles: {
+                            strokeColor: "#888",
+                            strokeWidth: 1
+                        }
+                    }
+                }
+            }),
+
+            fileSelectorView = demo.fileSelectorView(synth, {
+                playerId: "player",
+                selectors: {
+                    input: ".fileSelector .fileBrowser",
+                    button: ".fileSelector .browse",
+                    fileName: ".fileSelector .filePath"
+                }
+            }),
+
+            dataUrlSelectorView = demo.dataUrlSelectorView(synth, {
+                playerId: "player",
+                selectors: {
+                    field: "#dataUrlField"
+                }
+            }),
+
+            playButtonView = demo.toggleButtonView(synth, ".playButton");
+
+            // Dynamically change the playback speed of the playBuffer ugen based on changes to the slider.
+            document.querySelector("#playbackSpeed").addEventListener("change", function (e) {
+                synth.set("player.speed", Number(e.target.value));
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        </script>
+    </body>
+</html>

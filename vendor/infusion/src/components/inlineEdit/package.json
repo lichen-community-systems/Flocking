@@ -1,0 +1,22 @@
+{
+    "name": "fluid-inline-edit",
+    "description": "Edit text without changing context.",
+    "version": "3.0.0",
+    "license": "(BSD-3-Clause OR ECL-2.0)",
+    "infusion": {
+        "cssFiles": [
+            "./css/InlineEdit.css"
+        ],
+        "jsCommonFiles": [
+            "./js/InlineEdit.js",
+            "./js/InlineEditIntegrations.js"
+        ]
+    },
+    "dependencies": {
+        "jquery": "3.6.0",
+        "jquery-ui": "1.12.1",
+        "fluid-framework": "3.0.0",
+        "fluid-undo": "3.0.0",
+        "fluid-tooltip": "3.0.0"
+    }
+}

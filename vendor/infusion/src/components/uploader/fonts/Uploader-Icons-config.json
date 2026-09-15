@@ -1,0 +1,20 @@
+{
+    "src": [
+        "svg/infusion/infusion-uploader-button-01.svg",
+        "svg/infusion/infusion-uploader-button-02.svg",
+        "svg/infusion/infusion-uploader-button-03.svg",
+        "svg/infusion/infusion-uploader-button-04.svg"
+    ],
+    "options": {
+        "font": "Uploader-Icons",
+        "codepoints": {
+            "infusion-uploader-button-01": "0xE001",
+            "infusion-uploader-button-02": "0xE000",
+            "infusion-uploader-button-03": "0xE002",
+            "infusion-uploader-button-04": "0xE003"
+        },
+        "templateOptions": {
+            "classPrefix": "fl-icon-"
+        }
+    }
+}

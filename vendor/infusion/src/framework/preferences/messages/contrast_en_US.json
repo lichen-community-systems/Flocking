@@ -1,0 +1,13 @@
+{
+    "contrast-default": "Default",
+    "contrast-bw": "Black on white",
+    "contrast-wb": "White on black",
+    "contrast-by": "Black on yellow",
+    "contrast-yb": "Yellow on black",
+    "contrast-lgdg": "Light gray on dark gray",
+    "contrast-gd": "Gray on dark",
+    "contrast-gw": "Gray on white",
+    "contrast-bbr": "Black on brown",
+    "label": "Contrast",
+    "description": "Change text and background colors"
+}

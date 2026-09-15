@@ -1,0 +1,19 @@
+{
+    "description": "Frequency modulation controlled by an exponential line",
+    "synthDef": {
+        "ugen": "flock.ugen.sinOsc",
+        "freq": {
+            "ugen": "flock.ugen.sinOsc",
+            "freq": {
+                "ugen": "flock.ugen.xLine",
+                "rate": "control",
+                "start": 1,
+                "end": 1000,
+                "duration": 9
+            },
+            "mul": 200,
+            "add": 800
+        },
+        "mul": 0.25
+    }
+}

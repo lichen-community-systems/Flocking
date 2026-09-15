@@ -1,0 +1,19 @@
+{
+    "name": "fluid-enhancement",
+    "description": "Provides support for progressively enhancing components based on the capabilities of the browser.",
+    "version": "3.0.0",
+    "license": "(BSD-3-Clause OR ECL-2.0)",
+    "infusion": {
+        "cssFiles": [
+            "./css/ProgressiveEnhancement.css"
+        ],
+        "jsCommonFiles": [
+            "./js/ContextAwareness.js",
+            "./js/ProgressiveEnhancement.js"
+        ]
+    },
+    "dependencies": {
+        "jquery": "3.6.0",
+        "fluid-framework": "3.0.0"
+    }
+}

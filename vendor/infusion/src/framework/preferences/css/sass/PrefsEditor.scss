@@ -1,0 +1,408 @@
+/* General Preferences Editor styles, used for all layouts */
+@font-face {
+    font-family: 'PrefsFramework-Icons';
+    src: url('../fonts/PrefsFramework-Icons.woff');
+}
+
+$icon-font: 'PrefsFramework-Icons';
+
+.fl-prefsEditor {
+    font-family: "Myriad Pro", Helvetica, Arial, sans-serif;
+
+    // Controls
+    .fl-prefsEditor-panels {
+        margin-left: 0;
+        padding: 0;
+
+        li {
+            list-style: none;
+        }
+    }
+
+    label {
+        font-size: 1.2em;
+    }
+
+    input {
+        &[type="text"] {
+            font-size: 1em;
+            width: 2em;
+        }
+
+        // Check boxes
+        &[type="checkbox"] {
+            border: 1px solid black;
+            margin-right: 10px;
+        }
+    }
+
+    // Fieldset (remove default browser visual styling)
+    fieldset {
+        border: 0 transparent;
+        margin: 0;
+        padding: 0;
+    }
+
+    // Legend
+    legend {
+        display: block;
+        margin: 0 0 1em 0;
+        padding: 0;
+    }
+
+    // Drop downs
+    select {
+        border: 2px solid #ebebeb;
+        font-family: inherit;
+        font-size: 100%;
+
+        &#textFont {
+            display: block;
+            font-weight: bold;
+            margin: 0 auto;
+
+            option {
+                &.fl-font-times {
+                    font-family: "Times New Roman", serif;
+                }
+
+                &.fl-font-comic {
+                    font-family: "Comic Sans MS", cursive, sans-serif;
+                }
+
+                &.fl-font-arial {
+                    font-family: Arial, sans-serif;
+                }
+
+                &.fl-font-verdana {
+                    font-family: Verdana, sans-serif;
+                }
+
+                &.fl-font-open-dyslexic {
+                    font-family: OpenDyslexic, sans-serif;
+                }
+            }
+        }
+
+        &#theme {
+            font-weight: bold;
+            text-transform: uppercase;
+
+            option.fl-prefsEditor-default-theme {
+                background-color: #efefef !important;
+                color: #000 !important;
+            }
+        }
+    }
+
+    // Text and display controls
+    .fl-prefsEditor-text {
+        label {
+            display: block;
+        }
+
+        .fl-inputs {
+            font-size: 1em;
+        }
+    }
+
+    .fl-prefsEditor-layout div,
+    .fl-prefsEditor-links div {
+        margin-left: 25px;
+    }
+
+    .fl-inputs div[class*='fl-icon-'] {
+        font-size: 1.5em;
+        margin-top: -0.15em;
+    }
+
+    // Theme radio buttons
+    .fl-choices {
+        display: flex;
+        justify-content: center;
+
+        .fl-choice {
+            input.fl-hidden-accessible {
+                left: 1rem;
+                // These overrides to the default behaviour of .fl-hidden-accessible are required to keep the
+                // radio button hidden from view, accessible and allow the input to be scrolled into view when tab
+                // focused. Using position fixed or absolute does not scroll the input into view when focused.
+                // See: FLUID-6228 ( https://issues.fluidproject.org/browse/FLUID-6228 )
+                position: relative;
+                top: 1rem;
+
+                // position behind label
+                z-index: -2;
+            }
+
+            label {
+                border: 1px solid black;
+                border-radius: 5px;
+                display: inline-block;
+                height: 2.5em;
+                line-height: 2.2em !important;
+                margin-right: 5px;
+                overflow: hidden;
+                padding: 2px;
+                text-align: center;
+                vertical-align: middle;
+                width: 2.5em;
+            }
+
+            &:last-child label {
+                margin-right: 0;
+            }
+
+            .fl-preview-A {
+                font-size: 1.7em;
+                letter-spacing: normal // prevents the preview content from shifting when letter-spacing is set
+            }
+
+            // Pseudo content to prevent AT from reading display 'a'
+            .fl-preview-A::before {
+                content: "a";
+            }
+
+            input:focus ~ label {
+                outline: 2px solid var(--fl-fgColor, black);
+            }
+        }
+    }
+
+    // Stepper
+    // Custom styling for the textfield stepper when used in the prefs framework
+
+    .fl-textfieldStepper {
+        align-items: center;
+        display: flex;
+        justify-content: center;
+    }
+
+    .fl-textfieldStepper-focusContainer {
+        padding: 0.2em;
+    }
+
+    .fl-textfieldStepper *:focus {
+        outline: none;
+    }
+
+    .fl-textfieldStepper-focus {
+        outline: solid 0.2em #000;
+    }
+
+    /* height and width specified in ems instead of rems
+       to respond to emphasize links preferences */
+    .fl-textfieldStepper .fl-textfieldStepper-textField {
+        -moz-appearance: textfield;
+        font-family: inherit;
+        font-size: 100%;
+        height: 2em;
+        margin: 0 0.5em;
+        text-align: center;
+        width: 4em;
+    }
+
+    .fl-textfieldStepper .fl-textfieldStepper-textField::-webkit-inner-spin-button,
+    .fl-textfieldStepper .fl-textfieldStepper-textField::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    .fl-textfieldStepper .fl-textfieldStepper-button {
+        background-color: #fff;
+        border: 2px solid #000;
+        border-radius: 0.4rem;
+        font-family: inherit;
+        font-size: 100%;
+        height: 2.4375em;
+        width: 2.4375em;
+    }
+
+    .fl-textfieldStepper .fl-textfieldStepper-button:disabled {
+        opacity: 0.3;
+    }
+
+    // ON/OFF Switch
+    .fl-prefsEditor-onoff {
+        @import "../../../../components/switch/css/Switch";
+    }
+
+    // Font Icons
+    .fl-icon-indicator,
+    .fl-icon-crossout,
+    .fl-icon-big-a,
+    .fl-icon-small-a,
+    .fl-icon-line-space-expanded,
+    .fl-icon-line-space-condensed,
+    .fl-icon-contrast,
+    .fl-icon-undo,
+    .fl-icon-line-space,
+    .fl-icon-inputs,
+    .fl-icon-simplify,
+    .fl-icon-font,
+    .fl-icon-size,
+    .fl-icon-text-to-speech,
+    .fl-icon-toc,
+    .fl-icon-letter-space,
+    .fl-icon-letter-space-expanded,
+    .fl-icon-letter-space-condensed,
+    .fl-icon-captions,
+    .fl-icon-word-space,
+    .fl-icon-word-space-condensed,
+    .fl-icon-word-space-expanded,
+    .fl-icon-syllabification,
+    .fl-icon-language {
+        font-family: $icon-font;
+        font-size: 1.5em;
+        -webkit-font-smoothing: antialiased;
+        font-style: normal;
+        font-variant: normal;
+        font-weight: normal;
+        margin-right: 0.3em;
+        speak: none;
+        text-transform: none;
+    }
+
+    // control icons
+
+    .fl-icon-crossout::before,
+    .fl-choice .fl-prefsEditor-themePicker-defaultThemeLabel .fl-crossout::before {
+        content: "\e004";
+    }
+
+    .fl-icon-big-a::before {
+        content: "\e006";
+    }
+
+    .fl-icon-small-a::before {
+        content: "\e007";
+    }
+
+    .fl-icon-letter-space-expanded::before {
+        content: "\e000";
+    }
+
+    .fl-icon-letter-space-condensed::before {
+        content: "\e001";
+    }
+
+    .fl-icon-line-space-expanded::before {
+        content: "\e009";
+    }
+
+    .fl-icon-line-space-condensed::before {
+        content: "\e00a";
+    }
+
+    .fl-icon-indicator::before,
+    .fl-choice input:checked + div::before {
+        content: "\e003";
+    }
+
+    .fl-choice {
+        .fl-indicator {
+            font-family: $icon-font !important;
+            font-size: 1.25em;
+            height: 1em;
+            margin-top: -1.5em;
+            text-align: center;
+            width: calc(100% - 5px); // deduct the right margin from the calculation
+        }
+
+        &:last-child .fl-indicator {
+            width: 100%;
+        }
+
+        .fl-prefsEditor-themePicker-defaultThemeLabel .fl-crossout {
+            background-color: transparent !important;
+            font-family: $icon-font !important;
+            font-size: 2.2em;
+            margin-top: -1.05em;
+        }
+
+        label.fl-theme-prefsEditor-default,
+        label.fl-theme-prefsEditor-default span,
+        label.fl-prefsEditor-themePicker-defaultThemeLabel .fl-crossout {
+            background-color: #fff !important;
+            border-color: #433f3d !important;
+            color: #433f3d !important;
+        }
+    }
+
+    // header icons
+    .fl-icon-letter-space::before {
+        content: "\e002";
+    }
+
+    .fl-icon-contrast::before {
+        content: "\e005";
+    }
+
+    .fl-icon-line-space::before {
+        content: "\e00b";
+    }
+
+    .fl-icon-inputs::before {
+        content: "\e00c";
+    }
+
+    .fl-icon-simplify::before {
+        content: "\e00d";
+    }
+
+    .fl-icon-settings::before {
+        content: "\e00e";
+    }
+
+    .fl-icon-font::before {
+        content: "\e00f";
+    }
+
+    .fl-icon-size::before {
+        content: "\e010";
+    }
+
+    .fl-icon-text-to-speech::before {
+        content: "\e011";
+    }
+
+    .fl-icon-toc::before {
+        content: "\e012";
+    }
+
+    .fl-icon-captions::before {
+        content: "\e013";
+    }
+
+    .fl-icon-word-space::before {
+        content: "\e014";
+    }
+
+    .fl-icon-word-space-condensed::before {
+        content: "\e015";
+    }
+
+    .fl-icon-word-space-expanded::before {
+        content: "\e016";
+    }
+
+    .fl-icon-syllabification::before {
+        content: "\e017";
+    }
+
+    .fl-icon-language::before {
+        content: "\e018";
+    }
+}
+// Theming
+[class*="fl-theme"]:not(.fl-theme-prefsEditor-default) {
+    .fl-prefsEditor .fl-choice label {
+        &,
+        span,
+        .fl-crossout {
+            background-color: var(--fl-bgColor) !important;
+            border-color: var(--fl-fgColor) !important;
+            color: var(--fl-fgColor) !important;
+        }
+    }
+}

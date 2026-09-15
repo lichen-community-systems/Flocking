@@ -1,0 +1,7 @@
+The code in this directory has either been
+
+i) forked from the code CodeMirror repository at https://github.com/codemirror/codemirror or
+ii) is expected to be contributed back there in due time
+
+Therefore it is excluded from the repository's linting tasks
+ 

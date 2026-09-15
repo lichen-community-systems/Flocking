@@ -1,0 +1,53 @@
+{
+    "type": "flock.band",
+    "options": {
+        "components": {
+            "left": {
+                "type": "flock.synth",
+                "options": {
+                    "synthDef": {
+                        "ugen": "flock.ugen.out",
+                        "bus": 0,
+                        "expand": 1,
+                        "sources": [
+                            {
+                                "ugen": "flock.ugen.sinOsc",
+                                "freq": {
+                                    "ugen": "flock.ugen.sequence",
+                                    "values": [1, 1.333333, 1.25],
+                                    "loop": 1,
+                                    "freq": 3,
+                                    "mul": 440
+                                },
+                                "mul": 0.5
+                            }
+                        ]
+                    }
+                }
+            },
+            "right": {
+                "type": "flock.synth",
+                "options": {
+                    "synthDef": {
+                        "ugen": "flock.ugen.out",
+                        "bus": 1,
+                        "expand": 1,
+                        "sources": [
+                            {
+                                "ugen": "flock.ugen.sinOsc",
+                                "freq": {
+                                    "ugen": "flock.ugen.sequence",
+                                    "values": [1, 1.5],
+                                    "loop": 1,
+                                    "freq": 2,
+                                    "mul": 220
+                                },
+                                "mul": 0.5
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    }
+}

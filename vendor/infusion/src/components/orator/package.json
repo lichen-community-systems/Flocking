@@ -1,0 +1,19 @@
+{
+    "name": "fluid-orator",
+    "description": "A user interface for self voicing web pages.",
+    "version": "3.0.0",
+    "license": "(BSD-3-Clause OR ECL-2.0)",
+    "infusion": {
+        "cssFiles": [
+            "./css/Orator.css"
+        ],
+        "jsCommonFiles": [
+            "./js/Orator.js"
+        ]
+    },
+    "dependencies": {
+        "jquery": "3.6.0",
+        "fluid-framework": "3.0.0",
+        "fluid-text-to-speech": "3.0.0"
+    }
+}

@@ -1,0 +1,51 @@
+/* Default Textfield Stepper styling */
+
+.fl-textfieldStepper {
+    align-items: center;
+    display: flex;
+    flex-basis: auto;
+    justify-content: center;
+}
+
+.fl-textfieldStepper *:focus {
+    outline: none;
+}
+
+.fl-textfieldStepper-focus {
+    outline: solid 0.2rem #000;
+}
+
+.fl-textfieldStepper-focusContainer {
+    margin: 0 0.5rem;
+    padding: 0.2rem;
+}
+
+/* Textfield Styling */
+
+.fl-textfieldStepper .fl-textfieldStepper-textField {
+    -moz-appearance: textfield;
+    font-family: inherit;
+    font-size: 100%;
+    margin: 0 0.5rem;
+    text-align: center;
+    width: 7rem;
+}
+
+.fl-textfieldStepper .fl-textfieldStepper-textField::-webkit-inner-spin-button,
+.fl-textfieldStepper .fl-textfieldStepper-textField::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Textfield Button Styling */
+
+.fl-textfieldStepper .fl-textfieldStepper-button {
+    border: 2px solid #000;
+    border-radius: 0.4rem;
+    height: 2.4375rem;
+    width: 2.4375rem;
+}
+
+.fl-textfieldStepper .fl-textfieldStepper-button:disabled {
+    opacity: 0.3;
+}

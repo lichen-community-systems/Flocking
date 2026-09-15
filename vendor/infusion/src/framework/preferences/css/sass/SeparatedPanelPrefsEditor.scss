@@ -1,0 +1,165 @@
+$icon-font: 'PrefsFramework-Icons';
+
+@font-face {
+    font-family: 'OpenSans';
+    font-style: normal;
+    font-weight: 300;
+    src: url('../../../lib/opensans/fonts/OpenSans-Light.woff');
+}
+
+@font-face {
+    font-family: 'OpenSans';
+    font-style: normal;
+    font-weight: normal;
+    src: url('../../../lib/opensans/fonts/OpenSans-Regular.woff');
+}
+
+@font-face {
+    font-family: 'OpenSans';
+    font-style: normal;
+    font-weight: 600;
+    src: url('../../../lib/opensans/fonts/OpenSans-SemiBold.woff');
+}
+
+body {
+    margin: 0;
+}
+
+// Top bar and show/hide button
+.fl-prefsEditor-separatedPanel {
+    display: flex;
+    flex-direction: column;
+
+    .fl-panelBar {
+        background-color: var(--fl-bgColor, #fff);
+        border-bottom: 1px solid var(--fl-fgColor, #ccc);
+        box-shadow: 0 2px 3px 0 #6f6f6f;
+        color: var(--fl-fgColor);
+        font-size: 1.6rem;
+        width: 100%;
+
+        // panelBar for desktop view
+        &.fl-panelBar-wideScreen {
+            display: none;
+        }
+
+        .fl-prefsEditor-buttons {
+            align-items: center;
+            display: flex;
+            flex-wrap: nowrap;
+            height: 66px; // fixed height so the buttons won't push down the sliding panel as the text size is changed
+            justify-content: space-between;
+            line-height: 1; // fixed line height so it doesn't scale with the Preferences Editor line space scaling.
+            width: 100%;
+        }
+    }
+
+    .fl-prefsEditor-showHide,
+    .fl-prefsEditor-reset {
+        background-color: var(--fl-bgColor, #fff);
+        border: none;
+        color: var(--fl-fgColor, #2f2b2a);
+        font-family: 'OpenSans', "Myriad Pro", Helvetica, Arial, sans-serif;
+        overflow: hidden;
+        padding: 0;
+        text-align: center;
+        text-overflow: ellipsis;
+        text-transform: lowercase;
+        white-space: nowrap;
+    }
+
+    .fl-prefsEditor-showHide {
+        flex-grow: 1;
+        flex-shrink: 2;
+        padding-left: 16px; // fixed padding to save space on mobile when text size adjustments are applied
+        text-align: left;
+    }
+
+    .fl-prefsEditor-reset {
+        border-left: 2px solid var(--fl-fgColor, #ccc);
+        flex-shrink: 1;
+        padding-right: 16px; // fixed padding to save space on mobile when text size adjustments are applied
+    }
+
+    // Font icon for reset tab
+    .fl-icon-undo {
+        font-family: $icon-font;
+        font-size: 1.2rem;
+        -webkit-font-smoothing: antialiased;
+        font-style: normal;
+        font-variant: normal;
+        font-weight: normal;
+        speak: none;
+        text-transform: none;
+    }
+
+    .fl-icon-undo::before {
+        content: "\e008";
+    }
+
+    // large screen / desktop view
+    @media screen and (min-width: 40em) {
+        display: block;
+
+        .fl-panelBar {
+            box-shadow: none;
+            font-size: 1rem;
+
+            // panelBar for mobile view
+            &.fl-panelBar-smallScreen {
+                display: none;
+            }
+
+            // panelBar for desktop view
+            &.fl-panelBar-wideScreen {
+                display: block;
+            }
+
+            .fl-prefsEditor-buttons {
+                background-color: white;
+                border-bottom: 1px solid #ccc;
+                border-bottom-left-radius: 8px;
+                border-bottom-right-radius: 8px;
+                border-left: 1px solid #ccc;
+                border-right: 1px solid #ccc; //FLUID-4991: The shadow effect around the hide/show preferences bug fix. (Border right added)
+                box-shadow: 2px 2px 3px 0 #6f6f6f;
+                display: block;
+                float: right;
+                height: auto;
+                margin-right: 5%;
+                min-height: 2rem;
+                width: auto;
+
+                [class*="fl-theme"]:not(.fl-theme-prefsEditor-default) & {
+                    box-shadow: none;
+                }
+            }
+        }
+
+        .fl-prefsEditor-showHide,
+        .fl-prefsEditor-reset {
+            border: none;
+            font-size: 1.1rem;
+            font-weight: bold;
+            min-height: 1.8rem;
+            padding: 0;
+        }
+
+        .fl-prefsEditor-showHide {
+            margin: 0 0.5rem;
+        }
+
+        .fl-prefsEditor-reset {
+            margin-right: 0.5rem;
+            padding-left: 0.8rem;
+        }
+    }
+}
+
+// IFrame
+.fl-prefsEditor-separatedPanel-iframe {
+    background-color: #fff;
+    border: 0;
+    height: 0;
+    width: 100%;
+}

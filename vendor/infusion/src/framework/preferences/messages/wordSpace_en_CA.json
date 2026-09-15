@@ -1,0 +1,6 @@
+{
+    "label": "Word Spacing",
+    "description": "Adjust the spacing between words",
+    "increaseLabel": "increase word spacing",
+    "decreaseLabel": "decrease word spacing"
+}

@@ -1,0 +1,21 @@
+{
+    "name": "fluid-textfield-controls",
+    "description": "A collection of UI widgets that synchronize a control with a textfield.",
+    "version": "3.0.0",
+    "license": "(BSD-3-Clause OR ECL-2.0)",
+    "infusion": {
+        "cssFiles": [
+            "./css/TextfieldSlider.css",
+            "./css/TextfieldStepper.css"
+        ],
+        "jsCommonFiles": [
+            "./js/Textfield.js",
+            "./js/TextfieldSlider.js",
+            "./js/TextfieldStepper.js"
+        ]
+    },
+    "dependencies": {
+        "jquery": "3.6.0",
+        "fluid-framework": "3.0.0"
+    }
+}

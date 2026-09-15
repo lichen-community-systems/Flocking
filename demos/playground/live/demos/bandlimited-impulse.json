@@ -1,0 +1,26 @@
+{
+    "description": "Comparison between regular and band-limited impulse generators. The left channel aliases at high frequencies (you'll hear it wobble). The right channel is band-limited, and thus smooth throughout the spectrum.",
+    "synthDef": [
+        {
+            "ugen": "flock.ugen.impulse",
+            "freq": {
+                "ugen": "flock.ugen.xLine",
+                "start": 10000,
+                "end": 20,
+                "duration": 10
+            },
+            "mul": 0.5
+        },
+
+        {
+            "ugen": "flock.ugen.blit",
+            "freq": {
+                "ugen": "flock.ugen.xLine",
+                "start": 10000,
+                "end": 20,
+                "duration": 10
+            },
+            "mul": 0.5
+        }
+    ]
+}

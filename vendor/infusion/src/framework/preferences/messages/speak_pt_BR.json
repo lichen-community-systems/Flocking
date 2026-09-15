@@ -1,0 +1,6 @@
+{
+    "label": "Síntese de falar",
+    "description": "Deixar o computador ler o conteúdo do site em voz alta",
+    "switchOn": "LIGAR",
+    "switchOff": "DESLIGAR"
+}

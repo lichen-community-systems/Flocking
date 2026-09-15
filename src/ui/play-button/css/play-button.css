@@ -1,0 +1,33 @@
+.flock-playButton {
+    height: 1.75em;
+    width: 1.75em;
+    padding: 0;
+    border: 0 none;
+    border-radius: 2em;
+    font-size: 125%;
+    float: left;
+    background-color: #777;
+    color: #fff;
+    text-align: center;
+    margin-left: 0.5em;
+    margin-top: 0;
+}
+
+.flock-playButton.paused {
+    padding-left: 0.45em;
+    padding-right: 0.45em;
+}
+
+.flock-playButton:disabled {
+    color: #888;
+}
+
+.flock-playButton:focus {
+    padding-left: 0.3em;
+    border: 0.1em solid #ddd;
+    outline: none;
+}
+
+.flock-playButton.playing:focus {
+    padding-left: 0em;
+}

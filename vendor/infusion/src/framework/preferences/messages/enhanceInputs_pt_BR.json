@@ -1,0 +1,6 @@
+{
+    "label": "Melhorar entradas",
+    "description": "Enfatizar links, botões, menus, campos de texto, e outras entradas",
+    "switchOn": "LIGAR",
+    "switchOff": "DESLIGAR"
+}

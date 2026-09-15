@@ -1,0 +1,10 @@
+{
+    "textFont-default": "پیش فرض",
+    "textFont-times": "Times New Roman",
+    "textFont-comic": "Comic Sans",
+    "textFont-arial": "Arial",
+    "textFont-verdana": "Verdana",
+    "textFont-open-dyslexic": "Open Dyslexic",
+    "textFontLabel": "نوع فونت",
+    "textFontDescr": "تغییر فونت استفاده شده "
+}

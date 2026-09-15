@@ -1,0 +1,101 @@
+{
+    "packages": [{
+        "name": "fast-xml-pull",
+        "description": "A fast XML pull parser based on source code from the XML for Script project. Used by the Renderer to parse templates.",
+        "infusion": {
+            "dir": "./fastXmlPull",
+            "jsCommonFiles": [
+                "./js/fastXmlPull.js"
+            ]
+        }
+    }, {
+        "name": "hypher",
+        "description": "A small and fast JavaScript hyphenation engine.",
+        "infusion": {
+            "dir": "./hypher",
+            "jsCommonFiles": [
+                "./jquery.hypher.js"
+            ]
+        },
+        "dependencies": {
+            "jquery": "3.6.0"
+        }
+    }, {
+        "name": "jquery",
+        "description": "The jQuery core JavaScript library, used as the foundation for Infusion.",
+        "infusion": {
+            "dir": "./jquery/core",
+            "jsCommonFiles": [
+                "./js/jquery.js"
+            ]
+        }
+    }, {
+        "name": "jquery.scrollto",
+        "description": "Provides a way to scroll the browser's view to a specific element or location on the page.",
+        "infusion": {
+            "dir": "./jquery/plugins/scrollTo",
+            "jsCommonFiles": [
+                "./js/jquery.scrollTo.js"
+            ]
+        },
+        "dependencies": {
+            "jquery": "3.6.0"
+        }
+    }, {
+        "name": "jquery-ui",
+        "description": "jQuery UI Widgets and Interactions. Includes the following: Core; Interactions: draggable, resizable; Widgets: button, checkboxradio, controlgroup, dialog, mouse, slider, tabs, and tooltip.",
+        "infusion": {
+            "dir": "./jquery/ui",
+            "jsCommonFiles": [
+                "./js/version.js",
+                "./js/widget.js",
+                "./js/plugin.js",
+                "./js/safe-active-element.js",
+                "./js/safe-blur.js",
+                "./js/scroll-parent.js",
+                "./js/position.js",
+                "./js/data.js",
+                "./js/keycode.js",
+                "./js/unique-id.js",
+                "./js/mouse.js",
+                "./js/draggable.js",
+                "./js/tooltip.js"
+            ]
+        },
+        "dependencies": {
+            "jquery": "3.6.0"
+        }
+    }, {
+        "name": "jquery-ui-touch-punch",
+        "description": "Provides touch event support for jQuery UI.",
+        "infusion": {
+            "dir": "./jquery/plugins/touchPunch",
+            "jsCommonFiles": [
+                "./js/jquery.ui.touch-punch.js"
+            ]
+        },
+        "dependencies": {
+            "jquery": "3.6.0",
+            "jquery-ui": "1.12.1"
+        }
+    }, {
+        "name": "open-dyslexic",
+        "description": "Open Dyslexic web font.",
+        "infusion": {
+            "dir": "./open-dyslexic"
+        }
+    }, {
+        "name": "opensans-webkit",
+        "description": "Open Sans web font.",
+        "infusion": {
+            "dir": "./opensans"
+        }
+    }, {
+        "name": "roboto-fontface",
+        "description": "Roboto web font.",
+        "infusion": {
+            "dir": "./roboto"
+        }
+    }]
+}
+

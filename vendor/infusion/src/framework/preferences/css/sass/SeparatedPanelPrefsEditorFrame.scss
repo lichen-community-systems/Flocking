@@ -1,0 +1,224 @@
+@font-face {
+    font-family: "OpenSans";
+    font-style: normal;
+    font-weight: 300;
+    src: url("../../../lib/opensans/fonts/OpenSans-Light.woff");
+}
+
+@font-face {
+    font-family: 'OpenSans';
+    font-style: normal;
+    font-weight: normal;
+    src: url('../../../lib/opensans/fonts/OpenSans-Regular.woff');
+}
+
+@font-face {
+    font-family: 'OpenSans';
+    font-style: normal;
+    font-weight: 600;
+    src: url('../../../lib/opensans/fonts/OpenSans-SemiBold.woff');
+}
+
+html {
+    overflow: hidden;
+
+    // overriding .fl-hiddem-accessible to preserve
+    // propper iframe scrolling in iOS
+    .fl-hidden-accessible {
+        position: fixed;
+    }
+}
+
+/* Preferences Editor Separated Panel styles */
+.fl-prefsEditor-separatedPanel {
+    background-color: #bcb5ad;
+    background-image: none;
+    color: #5d5652;
+    height: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    .fl-prefsEditor {
+        font-family: 'OpenSans', "Myriad Pro", Helvetica, Arial, sans-serif;
+        line-height: 1.2 !important; // FLUID-4959: fix the line height so it doesn't scale with the Preferences Editor line space scaling.
+        min-width: 100%;
+        overflow-x: scroll;
+
+        // Required to force the iframe to fit the device width and scroll on iOS
+        width: 1px;
+    }
+
+    // Preference Panels
+    .fl-prefsEditor-panels {
+        display: table;
+        margin: 0;
+        white-space: nowrap;
+
+        .fl-prefsEditor-panel {
+            background-color: #fff;
+            border: 1px solid #615e59;
+            display: table-cell;
+            // minus 2px because of borders
+            min-width: calc(100vw - 2px);
+            padding: 16px 0.5rem;
+            white-space: normal;
+
+            h2 {
+                align-items: center;
+                display: flex;
+                justify-content: space-between;
+                min-height: 3.6rem;
+                pointer-events: none;
+                text-transform: lowercase;
+                white-space: nowrap;
+                width: 100%;
+
+                [class*='fl-icon-'] {
+                    display: none;
+                }
+
+                .fl-heading-text {
+                    font-size: 1.3em;
+                    font-weight: 600;
+                    text-align: center;
+                }
+
+                // for right and left arrows
+                &::before,
+                &::after {
+                    font-family: "Times New Roman", Georgia, Times, serif !important;
+                    font-size: 3rem;
+                    -webkit-font-smoothing: antialiased;
+                    font-style: normal;
+                    font-variant: normal;
+                    font-weight: normal;
+                    pointer-events: auto;
+                    speak: none;
+                    text-transform: none;
+                }
+
+                // Single Left-Pointing Angle Quotation Mark
+                &::before {
+                    content: "\2039";
+                    margin-left: 1rem;
+                }
+
+                // Single Right-Pointing Angle Quotation Mark
+                &::after {
+                    content: "\203a";
+                    margin-right: 1rem;
+                }
+            }
+
+            // hiding arrows from IE 11, as the current method for making them interactive does
+            // not work in IE. The media query used here is a hack to target only IE
+            @media screen and (-ms-high-contrast: active), screen and (-ms-high-contrast: none) {
+                h2 {
+                    display: block;
+                    text-align: center;
+
+                    &::before,
+                    &::after {
+                        content: none;
+                    }
+                }
+            }
+
+            // hide left arrow from first panel
+            // hide right arrow from last panel
+            &:first-of-type h2::before,
+            &:last-of-type h2::after {
+                visibility: hidden;
+            }
+
+            // visually hide descriptions in mobile view.
+            // this style declaration is essentially a copy of
+            // .fl-hidden-accessible
+            .fl-prefsEditor-panel-descr {
+                border: 0;
+                clip: rect(0 0 0 0);
+                height: 1px;
+                margin: -1px;
+                overflow: hidden;
+                padding: 0;
+                position: fixed;
+                width: 1px;
+            }
+
+            label {
+                font-size: 1rem;
+            }
+
+            // Stepper
+            .fl-textfieldStepper {
+                [class*='fl-icon-'] {
+                    display: none;
+                }
+
+                .fl-textfieldStepper-focusContainer {
+                    align-items: center;
+                    display: flex;
+                    justify-content: center;
+                }
+            }
+        }
+    }
+
+    // large screen / desktop view
+    @media screen and (min-width: 40em) {
+        margin: 0;
+        padding: 1px 0;
+
+        // Preference Panels
+        .fl-prefsEditor-panels {
+            border-spacing: 20px 0;
+            margin: 1rem auto;
+
+            .fl-prefsEditor-panel {
+                border-radius: 5px;
+                box-shadow: 2px 2px #7a766d;
+                min-width: 25rem;
+                padding: 1.5rem;
+                padding-top: 1rem;
+
+                h2 {
+                    border-bottom: solid #ccc 1px;
+                    box-shadow: 0 6px 7px -6px rgba(0, 0, 0, 0.3);
+                    font-size: 1.2rem;
+                    height: 3rem;
+                    justify-content: flex-start;
+                    margin: 0 0 1.8rem 0;
+                    white-space: normal;
+
+                    [class*='fl-icon-'] {
+                        display: inline;
+                    }
+
+                    &::before,
+                    &::after {
+                        content: none;
+                    }
+                }
+
+                .fl-prefsEditor-panel-descr {
+                    height: auto;
+                    margin: 0;
+                    margin-bottom: 1rem;
+                    overflow: visible;
+                    position: inherit;
+                    width: 100%;
+                }
+
+                // Stepper icons
+                .fl-textfieldStepper {
+                    [class*='fl-icon-'] {
+                        display: inline;
+                        font-size: 1.4em;
+                        margin: 0 0.3em;
+                        padding-top: 0.3em;
+                    }
+                }
+            }
+        }
+    }
+}

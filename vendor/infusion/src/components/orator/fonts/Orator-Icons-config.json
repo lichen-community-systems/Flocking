@@ -1,0 +1,18 @@
+{
+    "src": [
+        "svg/infusion/infusion-text-to-speech-read.svg",
+        "svg/infusion/infusion-play.svg",
+        "svg/infusion/infusion-pause.svg"
+    ],
+    "options": {
+        "font": "Orator-Icons",
+        "codepoints": {
+            "infusion-text-to-speech-read": "0xE000",
+            "infusion-play": "0xE001",
+            "infusion-pause": "0xE002"
+        },
+        "templateOptions": {
+            "classPrefix": "fl-icon-"
+        }
+    }
+}

@@ -1,0 +1,7 @@
+{
+    "slidingPanelShowText": "+ Show Preferences",
+    "slidingPanelHideText": "- Hide Preferences",
+    "showTextAriaLabel": "Show Display Preferences",
+    "hideTextAriaLabel": "Hide Display Preferences",
+    "slidingPanelPanelLabel": "User Preferences"
+}

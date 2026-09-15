@@ -1,0 +1,62 @@
+{
+    "name": "fluid-preferences",
+    "description": "Framework for implementing user preference editing and persistence.",
+    "version": "3.0.0",
+    "license": "(BSD-3-Clause OR ECL-2.0)",
+    "infusion": {
+        "cssFiles": [
+            "./css/Enactors.css",
+            "./css/PrefsEditor.css"
+        ],
+        "jsCommonFiles": [
+            "./js/Store.js",
+            "./js/UIEnhancer.js",
+            "./js/PrefsEditor.js",
+            "./js/Panels.js",
+            "./js/CaptionsPanel.js",
+            "./js/LetterSpacePanel.js",
+            "./js/SelfVoicingPanel.js",
+            "./js/SyllabificationPanel.js",
+            "./js/LocalizationPanel.js",
+            "./js/WordSpacePanel.js",
+            "./js/Enactors.js",
+            "./js/CaptionsEnactor.js",
+            "./js/LetterSpaceEnactor.js",
+            "./js/SelfVoicingEnactor.js",
+            "./js/SyllabificationEnactor.js",
+            "./js/LocalizationEnactor.js",
+            "./js/WordSpaceEnactor.js",
+            "./js/StarterGrades.js",
+            "./js/ArrowScrolling.js",
+            "./js/SeparatedPanelPrefsEditor.js",
+            "./js/FullNoPreviewPrefsEditor.js",
+            "./js/FullPreviewPrefsEditor.js",
+            "./js/PrimaryBuilder.js",
+            "./js/AuxBuilder.js",
+            "./js/StarterSchemas.js",
+            "./js/CaptionsSchemas.js",
+            "./js/LetterSpaceSchemas.js",
+            "./js/SelfVoicingSchemas.js",
+            "./js/SyllabificationSchemas.js",
+            "./js/LocalizationSchemas.js",
+            "./js/LocalizationPrefsEditor.js",
+            "./js/WordSpaceSchemas.js",
+            "./js/Builder.js"
+        ]
+    },
+    "dependencies": {
+        "jquery": "3.6.0",
+        "jquery-ui": "1.12.1",
+        "hypher": "0.2.5",
+        "opensans-webkit": "1.1.0",
+        "open-dyslexic": "1.0.3",
+        "fluid-framework": "3.0.0",
+        "fluid-enhancement": "3.0.0",
+        "fluid-renderer": "3.0.0",
+        "fluid-sliding-panel": "3.0.0",
+        "fluid-textfield-controls": "3.0.0",
+        "fluid-switch": "3.0.0",
+        "fluid-table-of-contents": "3.0.0",
+        "fluid-orator": "3.0.0"
+    }
+}

@@ -1,0 +1,19 @@
+{
+    "name": "fluid-table-of-contents",
+    "description": "Present an automatic table of contents from any HTML page.",
+    "version": "3.0.0",
+    "license": "(BSD-3-Clause OR ECL-2.0)",
+    "infusion": {
+        "cssFiles": [
+            "./css/TableOfContents.css"
+        ],
+        "jsCommonFiles": [
+            "./js/TableOfContents.js"
+        ]
+    },
+    "dependencies": {
+        "jquery": "3.6.0",
+        "fluid-framework": "3.0.0",
+        "fluid-renderer": "3.0.0"
+    }
+}

@@ -1,0 +1,6 @@
+{
+    "label": "Text-to-Speech",
+    "description": "Let the computer read site content out loud",
+    "switchOn": "ON",
+    "switchOff": "OFF"
+}

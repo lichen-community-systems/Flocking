@@ -1,0 +1,43 @@
+@import url(https://fonts.googleapis.com/css?family=Nunito);
+body {
+    margin-left: 2%;
+}
+
+.view {
+    clear: both;
+}
+
+.selectors,#waveform {
+    border: solid #888 5px;
+    border-radius: 25px;
+}
+
+.selectors {
+    margin-bottom: 1.5%;
+    float: left;
+    padding: 2%;
+    width: 40%;
+}
+
+.dataUrlSelector {
+    margin-top: 5%;
+}
+
+.dataUrlSelector label {
+    float: left;
+    margin-right: 2%;
+    margin-top: 7%;
+}
+
+#dataUrlField {
+    width:50%;
+    height: 100px;
+}
+
+.speedSelector {
+    padding-top: 1%;
+}
+
+.speedSelector label {
+    padding-right: 1%;
+}

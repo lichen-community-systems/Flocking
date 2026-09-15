@@ -1,0 +1,6 @@
+{
+    "label": "Legendas",
+    "description": "Solicitar que os vídeos embutidos do YouTube mostrem legendas.",
+    "switchOn": "LIGAR",
+    "switchOff": "DESLIGAR"
+}

@@ -1,0 +1,6 @@
+{
+    "label": "Espacement des mots",
+    "description": "Ajuster l'espacement entre les mots",
+    "increaseLabel": "Séparer les mots",
+    "decreaseLabel": "Rapprocher les mots"
+}

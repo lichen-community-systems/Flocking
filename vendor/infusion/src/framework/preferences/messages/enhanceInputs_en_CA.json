@@ -1,0 +1,6 @@
+{
+    "label": "Enhance Inputs",
+    "description": "Emphasize links, buttons, menus, textfields, and other inputs",
+    "switchOn": "ON",
+    "switchOff": "OFF"
+}

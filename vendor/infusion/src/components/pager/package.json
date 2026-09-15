@@ -1,0 +1,22 @@
+{
+    "name": "fluid-pager",
+    "description": "Sort and organize large amounts of data.",
+    "version": "3.0.0",
+    "license": "(BSD-3-Clause OR ECL-2.0)",
+    "infusion": {
+        "cssFiles": [
+            "./css/Pager.css"
+        ],
+        "jsCommonFiles": [
+            "./js/Pager.js",
+            "./js/Table.js",
+            "./js/PagedTable.js"
+        ]
+    },
+    "dependencies": {
+        "jquery": "3.6.0",
+        "fluid-framework": "3.0.0",
+        "fluid-renderer": "3.0.0",
+        "fluid-tooltip": "3.0.0"
+    }
+}

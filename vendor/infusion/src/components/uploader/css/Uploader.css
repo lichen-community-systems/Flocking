@@ -1,0 +1,518 @@
+@font-face {
+    font-family: 'InfusionIcons';
+    src: url('../fonts/Uploader-Icons.woff');
+}
+
+/*
+ * Uploader container
+ */
+.fl-uploader {
+    clear: both;
+    position: relative;
+    width: 29.5rem;
+}
+
+/* Header table */
+table .fl-uploader-header {
+    border-bottom: 1px solid #999;
+    color: #333;
+    display: block;
+    font-size: 0.9em;
+    font-weight: bold;
+    width: 100%;
+}
+
+.fl-uploader-header tr {
+    width: 100%;
+}
+
+.fl-uploader-header th {
+    border: none;
+    padding: 0 6px;
+}
+
+.fl-uploader-header th.fl-uploader-file-name {
+    text-align: left;
+    width: 26em;
+}
+
+.fl-uploader-header th.fl-uploader-file-size {
+    white-space: nowrap;
+    width: 6em;
+}
+
+/* Initial instructions */
+.fl-uploader-browse-instructions {
+    background-color: #f0f9ff;
+    color: #666;
+    padding: 6px;
+    text-align: center;
+}
+
+/* Scrollable file queue table */
+.fl-scrollable-scroller {
+    display: block;
+    max-height: 160px;
+    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    position: relative;
+}
+
+.fl-scrollable-inner {
+    overflow: hidden;
+    position: relative;
+}
+
+/* File queue table */
+table.fl-uploader-queue {
+    border-spacing: 0;
+    margin: 0;
+    table-layout: fixed;
+    width: 100%;
+}
+
+.fl-uploader-queue tbody tr.fl-uploader-dim {
+    color: #666;
+}
+
+.fl-uploader-queue tbody {
+    display: block;
+    font-size: 0.9em;
+    z-index: 6;
+}
+
+.fl-uploader-queue tbody tr:focus,
+.fl-uploader-queue tbody tr.fl-uploader-file-state-ready:hover {
+    background-color: #fff9dc;
+}
+
+.fl-uploader-queue tbody td {
+    border: none;
+    border-bottom: 1px solid #c5c5c5;
+    margin: 0;
+    padding: 3px 6px;
+    text-align: left;
+}
+
+.fl-uploader-queue tbody td.fl-uploader-file-name {
+    font-weight: normal;
+    max-width: 26em;
+    overflow: hidden;
+    width: 26em;
+    word-wrap: break-word;
+}
+
+.fl-uploader-queue tbody .fl-uploader-file-size {
+    text-align: right;
+    white-space: nowrap;
+    width: 6em;
+}
+
+/* file queue action column */
+.fl-uploader-queue tbody .fl-uploader-file-actions,
+.fl-uploader-header thead .fl-uploader-file-actions {
+    padding-right: 15px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.fl-uploader-queue tbody .fl-uploader-file-actions .fl-uploader-dim {
+    background-color: transparent;
+    border: 1px solid transparent;
+    cursor: auto;
+}
+
+/* general action buttons */
+.fl-uploader-file-actions button {
+    background-attachment: scroll;
+    background-color: transparent;
+    background-position: 1px 1px;
+    background-repeat: no-repeat;
+    border: 1px solid transparent;
+    height: 22px;
+    margin: 0;
+    overflow: hidden;
+    padding: 0;
+    width: 29px;
+}
+
+/* remove button */
+.fl-uploader-file-actions .fl-uploader-file-action-remove {
+    cursor: pointer;
+    font-family: 'InfusionIcons'; /* stylelint-disable-line font-family-no-missing-generic-family-keyword */
+    font-size: 1.4em;
+    -webkit-font-smoothing: antialiased;
+}
+
+.fl-uploader-file-actions .fl-uploader-file-action-remove::before {
+    bottom: 1px;
+    color: #ed3820;
+    content: "\e000";
+    position: relative;
+    right: 1px;
+}
+
+.fl-uploader-file-actions .fl-uploader-file-action-remove:hover,
+tr:focus .fl-uploader-file-actions .fl-uploader-file-action-remove {
+    background-color: #fff;
+    border: 1px solid #ccc;
+}
+
+/* uploaded row */
+tr.fl-uploader-file-state-uploaded .fl-uploader-file-name {
+    border-left: 4px solid #74b74a;
+    color: #5e7a5e;
+}
+
+tr.fl-uploader-file-state-uploaded button {
+    font-family: 'InfusionIcons';  /* stylelint-disable-line font-family-no-missing-generic-family-keyword */
+    font-size: 1.2em;
+    -webkit-font-smoothing: antialiased;
+}
+
+tr.fl-uploader-file-state-uploaded button::before {
+    color: #42b447;
+    content: "\e002";
+    left: -2px;
+    position: relative;
+}
+
+/*
+ * Status footer
+ */
+.fl-uploader-queue-footer {
+    background-color: #f7f7f7;
+    border-top: 1px solid #999;
+    color: #4d4d4d;
+    font-size: 1.07em;
+    font-weight: bold;
+    padding: 8px 6px;
+    position: relative;
+    vertical-align: middle;
+    z-index: 6;
+}
+
+.fl-uploader span.fl-uploader-browse {
+    border: none;
+    white-space: nowrap;
+}
+
+.fl-uploader .fl-uploader-button-browse-text {
+    color: #005ebc;
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+.fl-uploader .fl-infusionIcon-plus {
+    font-family: 'InfusionIcons'; /* stylelint-disable-line font-family-no-missing-generic-family-keyword */
+    font-size: 1.2em;
+    -webkit-font-smoothing: antialiased;
+}
+
+.fl-uploader .fl-infusionIcon-plus::before {
+    color: #42b447;
+    content: "\e001";
+    left: 2px;
+    position: relative;
+    top: 3px;
+}
+
+.fl-uploader-queue-footer .fl-uploader-total-progress-text {
+    padding-top: 6px;
+}
+
+/*
+ * Browse files/Add more buttons
+ */
+
+/* Special note about .fl-uploader-browse, .fl-uploader-browse.fl-uploader-browseMore, .fl-uploader-browse input
+ *
+ * Because of the inconsistencies in affecting <input type="file"> styling across browsers, we've used the following hack:
+ * 1. Create a fake "Browse files"/"Add more" button
+ * 2. Make the real button invisible
+ * 3. Put the real, invisible button on top of the fake button
+ */
+
+/* Fake add files button wrapper ("Browse files") */
+.fl-uploader-browse {
+    cursor: default;
+    display: block;
+    height: 2em;
+    overflow: hidden;
+    width: 7em;
+}
+
+/* Fake add files button wrapper ("Add more")
+ * Same as above, but width-adjusted for shorter text */
+.fl-uploader-browse.fl-uploader-browseMore {
+    width: 7em;
+}
+
+/* Actual, real add files button (invisible) */
+.fl-uploader-browse input {
+    bottom: 2em;
+    filter: progid:dximagetransform.microsoft.alpha(opacity=0);
+    float: right;
+
+    /* Make the real button big enough to cover the fake button */
+    height: 3em;
+    left: 10px;
+    letter-spacing: 5px;
+
+    /* Make the button invisible */
+    -moz-opacity: 0;
+    opacity: 0;
+    overflow: hidden;
+    position: relative;
+}
+
+html > body .fl-uploader span.fl-uploader-browse {
+    border: 1px solid transparent;
+}
+
+.fl-uploader span.fl-uploader-browse:hover {
+    background-color: #fff;
+    border: 1px solid #ccc;
+}
+
+.fl-uploader span.fl-uploader-browse:focus,
+.fl-uploader span.fl-uploader-browse.focus {
+    background-color: #fff;
+    outline: 2px solid #142b8c;
+}
+
+.fl-uploader-browse-overlay {
+    left: 320px;
+    position: absolute;
+    top: 8px;
+    z-index: 7;
+}
+
+/*
+ * Upload/Stop Upload buttons
+ */
+
+.fl-uploader-buttons {
+    margin-top: 1em;
+    text-align: right;
+}
+
+/* general button */
+.fl-uploader-buttons button {
+    border-style: solid;
+    border-width: 1px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 1em; /* Bug on FF on Mac needs explicit declaration to scale font properly. */
+    font-weight: bold;
+    height: 32px;
+    outline: none;
+    padding: 0;
+    width: 8.4em;
+}
+
+.fl-uploader-buttons button:focus {
+    outline: 2px solid #142b8c;
+}
+
+/* upload button */
+.fl-uploader-buttons .fl-uploader-button-upload {
+    background-color: #468600;
+    border-color: #006838;
+}
+
+.fl-uploader-buttons .fl-uploader-button-upload:hover {
+    background-color: #438600;
+    border-color: #142b8c;
+}
+
+/* stop upload button */
+.fl-uploader-buttons .fl-uploader-button-stop {
+    background-color: #007dba;
+    border-color: #2a3990;
+}
+
+.fl-uploader-buttons .fl-uploader-button-stop:hover {
+    background-color: #115f8f;
+}
+
+/* disabled button */
+.fl-uploader-buttons .fl-uploader-dim,
+.fl-uploader-buttons .fl-uploader-dim:hover {
+    background-color: #767676;
+    border-color: #666;
+    cursor: auto;
+}
+
+/*
+ * Progess bars
+ */
+.fl-uploader-file-progress,
+.fl-uploader-total-progress-okay,
+.fl-uploader-total-progress-errored {
+    background-attachment: scroll;
+    background-position: bottom left;
+    background-repeat: repeat-x;
+    display: none;
+    height: 100%;
+    left: -1px;
+    overflow: hidden;
+    position: absolute;
+    top: 0;
+    z-index: -1;
+}
+
+/* file progress */
+.fl-uploader-file-progress {
+    background-color: #d1d6dd;
+    background-image: url('../images/gradient-file-green.png');
+    border-right: 1px solid #9fce7f;
+}
+
+/* Upload Queue errors */
+
+.fl-uploader-queue .fl-uploader-file-state-error {
+    background-color: #fcfbe6;
+    border-bottom-width: 0;
+    border-left: 4px solid #f5e392;
+}
+
+.fl-uploader-file-error {
+    margin-top: 1em;
+}
+
+/* Error feedback messages */
+.fl-uploader-errorsPanel {
+    border-top: 1px solid #d2d2d2;
+    color: #3da6e5;
+    float: left;
+    font-size: 0.9em;
+    margin-top: 0.5em;
+    width: 100%;
+}
+
+.fl-uploader-errorsPanel-header {
+    color: #000;
+    display: inline-block;
+    font-size: 1.1em;
+    font-weight: bold;
+    margin-bottom: 10px;
+    padding: 6px 0 6px 0;
+}
+
+.fl-infusionIcon-warning {
+    display: inline-block;
+    font-family: 'InfusionIcons';  /* stylelint-disable-line font-family-no-missing-generic-family-keyword */
+    -webkit-font-smoothing: antialiased;
+}
+
+.fl-infusionIcon-warning::before {
+    color: #d38c1b;
+    content: "\e003";
+    font-size: 1.3em;
+}
+
+.fl-uploader-errorPanel-section-wrapper {
+    float: left;
+    width: 90%;
+}
+
+.fl-uploader-errorPanel-section-title {
+    color: #333;
+    font-weight: normal;
+    width: 90%; /* set a width so that the text wraps properly in the container */
+}
+
+/* Remove error message button */
+.fl-uploader-errorPanel-section-removeButton {
+    background: none; /* Work-around Chrome user-agent styling that applies a grey background color. */
+    border-width: 0;
+    font-family: 'InfusionIcons'; /* stylelint-disable-line font-family-no-missing-generic-family-keyword */
+    -webkit-font-smoothing: antialiased;
+    height: 18px;
+    margin-right: 9px;
+    padding: 0;
+    width: 18px;
+}
+
+.fl-uploader-errorPanel-section-removeButton::before {
+    color: #4d4d4d;
+    content: "\e000";
+    font-size: 1.4em;
+    position: relative;
+}
+
+.fl-uploader-errorPanel-section-removeButton:hover::before {
+    color: #d2d2d2;
+}
+
+/* Show Hide Error Details */
+.fl-uploader-errorPanel-section-toggleDetails {
+    background-color: #f7f7f7;
+    border: none;
+    color: #008be0;
+    cursor: pointer;
+    height: 1em;
+    margin: 0 0 1.5em 0;
+    padding: 0;
+    position: relative;
+    text-decoration: underline;
+
+    /* left: -3px; This would make "Show files" flush to rest of text in FF, but causes
+    it to be misaligned in Safari-Mac. */
+}
+
+/* Error Details */
+
+.fl-uploader-errorPanel-section-details {
+    clear: both;
+    color: #666;
+    font-weight: normal;
+}
+
+.fl-uploader-errorPanel-section-details p {
+    line-height: 1.7em;
+    margin-bottom: 0;
+    margin-top: 0.5em;
+}
+
+/*
+ * Misc
+ */
+
+/* button for no-js basic version */
+.fl-uploader-basic-save {
+    display: block;
+    margin-top: 0.6em;
+}
+
+/* hidden */
+.fl-uploader-hidden {
+    display: none;
+}
+
+/* dimmed */
+.fl-uploader span.fl-uploader-browse.fl-uploader-dim {
+    background-color: #f7f7f7;
+    outline: none;
+}
+
+.fl-uploader span.fl-uploader-browse.fl-uploader-dim .fl-uploader-button-browse-text {
+    color: #d2d2d2;
+}
+
+.fl-uploader span.fl-uploader-browse.fl-uploader-dim .fl-infusionIcon-plus::before {
+    color: #d2d2d2;
+    content: "\e001";
+}
+
+/* an alternative way to hide the Uploader because of a bug in Opera,
+ * described in FLUID-2789 */
+.hideUploaderForOpera {
+    height: 0;
+    overflow: hidden;
+    padding: 0;
+    visibility: hidden;
+    width: 0;
+}

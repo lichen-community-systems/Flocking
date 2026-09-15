@@ -1,0 +1,19 @@
+[
+    "../framework/core/js/jquery.standalone.js",
+    "../framework/core/js/Fluid.js",
+    "../framework/core/js/FluidDebugging.js",
+    "../framework/core/js/FluidPromises.js",
+    "../framework/core/js/FluidIoC.js",
+    "../framework/core/js/FluidRequests.js",
+    "../framework/core/js/DataBinding.js",
+    "../framework/core/js/JavaProperties.js",
+    "../framework/core/js/MessageResolver.js",
+    "../framework/enhancement/js/ContextAwareness.js",
+    "../framework/core/js/ModelTransformation.js",
+    "../framework/core/js/ModelTransformationTransforms.js",
+    "../lib/fastXmlPull/js/fastXmlPull.js",
+    "../framework/renderer/js/fluidParser.js",
+    "../framework/renderer/js/fluidRenderer.js",
+    "../framework/renderer/js/RendererUtilities.js",
+    "./module.js"
+]

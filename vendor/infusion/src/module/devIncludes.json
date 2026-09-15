@@ -1,0 +1,5 @@
+[
+    "../../tests/lib/qunit/js/qunit.js",
+    "../../tests/test-core/jqUnit/js/jqUnit.js",
+    "../../tests/test-core/utils/js/IoCTestUtils.js"
+]

@@ -1,0 +1,20 @@
+{
+    "description": "Phase modulation with sine waves. Demo courtesty of Adam Tindale (http://www.adamtindale.com/).",
+    "synthDef": {
+        "id": "carrier",
+        "ugen": "flock.ugen.sinOsc",
+        "freq": 440,
+        "phase": {
+            "id": "mod",
+            "ugen": "flock.ugen.sinOsc",
+            "freq": 34.0,
+            "mul": {
+                "ugen": "flock.ugen.sinOsc",
+                "freq": 0.05,
+                "mul": 3.141592653589793
+            },
+            "add": 3.141592653589793
+        },
+        "mul": 0.25
+    }
+}

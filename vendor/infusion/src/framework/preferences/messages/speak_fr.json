@@ -1,0 +1,6 @@
+{
+    "label": "Synthèse vocale",
+    "description": "Faire l'ordinateur lire le contenu du site à haute voix",
+    "switchOn": "ACTIF",
+    "switchOff": "ÉTEINT"
+}

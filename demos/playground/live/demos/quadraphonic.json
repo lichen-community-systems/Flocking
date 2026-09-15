@@ -1,0 +1,94 @@
+{
+    "synthDef": [
+        {
+            "ugen": "flock.ugen.sinOsc",
+            "freq": {
+                "ugen": "flock.ugen.xLine",
+                "start": 60,
+                "end": 90,
+                "duration": 120
+            },
+            "mul": {
+                "ugen": "flock.ugen.sinOsc",
+                "freq": {
+                    "ugen": "flock.ugen.xLine",
+                    "start": 0.00833333,
+                    "end": 0.5,
+                    "duration": 120
+                },
+                "mul": 0.125,
+                "add": 0.125
+            }
+        },
+        {
+            "ugen": "flock.ugen.sinOsc",
+            "freq": {
+                "ugen": "flock.ugen.xLine",
+                "start": 90,
+                "end": 60,
+                "duration": 90
+            },
+            "mul": {
+                "ugen": "flock.ugen.sinOsc",
+                "freq": {
+                    "ugen": "flock.ugen.lfNoise",
+                    "freq": {
+                        "ugen": "flock.ugen.xLine",
+                        "start": 0.00416667,
+                        "end": 0.00833333,
+                        "duration": 90
+                    },
+                    "mul": 0.03333333,
+                    "add": 0.03333333
+                },
+                "mul": 0.125,
+                "add": 0.125
+            }
+        },
+        {
+            "ugen": "flock.ugen.sinOsc",
+            "freq": {
+                "ugen": "flock.ugen.xLine",
+                "start": 270,
+                "end": 240,
+                "duration": 120
+            },
+            "mul": {
+                "ugen": "flock.ugen.sinOsc",
+                "freq": {
+                    "ugen": "flock.ugen.xLine",
+                    "start": 0.00833333,
+                    "end": 0.5,
+                    "duration": 120
+                },
+                "mul": 0.125,
+                "add": 0.125
+            }
+        },
+        {
+            "ugen": "flock.ugen.sinOsc",
+            "freq": {
+                "ugen": "flock.ugen.xLine",
+                "start": 210,
+                "end": 180,
+                "duration": 90
+            },
+            "mul": {
+                "ugen": "flock.ugen.sinOsc",
+                "freq": {
+                    "ugen": "flock.ugen.lfNoise",
+                    "freq": {
+                        "ugen": "flock.ugen.xLine",
+                        "start": 0.00416667,
+                        "end": 0.00833333,
+                        "duration": 180
+                    },
+                    "mul": 0.01666667,
+                    "add": 0.01666667
+                },
+                "mul": 0.125,
+                "add": 0.125
+            }
+        }
+    ]
+}

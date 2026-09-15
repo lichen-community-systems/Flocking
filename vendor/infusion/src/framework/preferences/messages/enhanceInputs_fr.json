@@ -1,0 +1,6 @@
+{
+    "label": "Accentuer les contrôles",
+    "description": "Accentuer les liens, les boutons, les menus, les champs de saisie, et d'autres contrôles",
+    "switchOn": "ACTIF",
+    "switchOff": "ÉTEINT"
+}

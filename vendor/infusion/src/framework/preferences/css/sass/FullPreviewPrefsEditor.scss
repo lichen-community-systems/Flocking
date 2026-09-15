@@ -1,0 +1,73 @@
+// UI Option styles for full page layout with preview
+
+.fl-prefsEditor-fullPreview {
+    min-width: 800px;
+
+    .fl-prefsEditor-fullPreview-adjusters {
+        width: 60%;
+    }
+
+    .fl-prefsEditor-fullPreview-previewContainer {
+        width: 35%;
+    }
+
+    // Control section headers
+    h2 {
+        border-top: 2px solid #ddd;
+        margin-bottom: 20px;
+    }
+
+    .fl-prefsEditor-category {
+        padding-bottom: 20px;
+    }
+
+    // Controls
+    ul {
+        margin-left: 0;
+
+        li {
+            clear: left;
+            list-style: none;
+            width: 100%;
+        }
+    }
+
+    // Slider
+    .fl-slider {
+        float: left;
+    }
+
+    // Text controls
+    label {
+        display: block;
+        width: 16em;
+    }
+
+    // Layout and link controls
+    .fl-prefsEditor-layout li,
+    .fl-prefsEditor-links li {
+        padding-bottom: 10px;
+    }
+
+    // Preview Area
+    .fl-prefsEditor-preview iframe {
+        border: 2px solid #d7d7d7;
+        height: 480px;
+        width: 100%;
+    }
+
+    .fl-prefsEditor-preview h2 {
+        color: #4d4d4d;
+        font-size: 1.8em;
+        font-weight: lighter;
+        padding: 18px 0 0 0;
+    }
+}
+
+.fl-prefsEditor .fl-inputs {
+    float: left;
+}
+
+.fl-prefsEditor input[type="text"] {
+    width: 2em;
+}

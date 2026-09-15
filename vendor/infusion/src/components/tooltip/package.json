@@ -1,0 +1,16 @@
+{
+    "name": "fluid-tooltip",
+    "description": "A wrapper for the jquery ui tooltip",
+    "version": "3.0.0",
+    "license": "(BSD-3-Clause OR ECL-2.0)",
+    "infusion": {
+        "jsCommonFiles": [
+            "./js/Tooltip.js"
+        ]
+    },
+    "dependencies": {
+        "jquery": "3.6.0",
+        "jquery-ui": "1.12.1",
+        "fluid-framework": "3.0.0"
+    }
+}

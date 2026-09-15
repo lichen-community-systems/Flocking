@@ -1,0 +1,83 @@
+/* focus */
+.fl-focus:focus,
+.fl-focus :focus {
+    outline: 2px solid black;
+}
+
+/* Container alignment */
+.fl-force-right {
+    float: right;
+}
+
+.fl-force-left {
+    float: left;
+}
+
+.fl-centered {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* The following styles are based on 3rd party software */
+
+/*
+ * The following styles are based on the Micro Clearfix solution:
+ * http://nicolasgallagher.com/micro-clearfix-hack/
+ */
+
+.fl-clearfix::before,
+.fl-clearfix::after {
+    content: "";
+    display: table;
+}
+
+.fl-clearfix::after {
+    clear: both;
+}
+
+/* End of Micro Clearfix based styles */
+
+/*
+ * The following styles are based on css from HTML5 Boilerplate v4.3:
+ * http://html5boilerplate.com
+ */
+
+/* Hide from both screenreaders and browsers */
+.fl-hidden {
+    display: none !important;
+    visibility: hidden;
+}
+
+/* Hide visually and from screenreaders, but maintain layout */
+.fl-hidden-invisible {
+    visibility: hidden;
+}
+
+/* Hide only visually, but have it available for screenreaders */
+.fl-hidden-accessible {
+    border: 0;
+    clip: rect(0 0 0 0);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    width: 1px;
+}
+
+/*
+ * Extends the .visuallyhidden class to allow the element to be focusable
+ * when navigated to via the keyboard
+ */
+.fl-hidden-accessible.fl-focus:active,
+.fl-hidden-accessible.fl-focus:focus {
+    clip: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    position: static;
+    width: auto;
+}
+
+/* End of HTML5 Boilerplate based styles */

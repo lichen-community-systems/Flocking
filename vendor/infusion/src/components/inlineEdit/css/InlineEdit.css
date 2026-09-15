@@ -1,0 +1,67 @@
+/* Themed Appearance + Themed States */
+
+.fl-inlineEdit-edit {
+    border: 2px solid #0085ff;
+    font-family: inherit;
+    font-size: 100%;
+    line-height: 1.15;
+    margin: 0 0 0 -1px;
+}
+
+.fl-inlineEdit-simple-editableText {
+    border-bottom: 1px dotted #0086d8;
+    padding: 2px 2px 1px 2px;
+}
+
+.fl-inlineEdit-textContainer {
+    display: inline-block;
+}
+
+.fl-inlineEdit-text {
+    background-image: url('../images/inline_edit_edit_button_16x16.png');
+    background-position: right center;
+    background-repeat: no-repeat;
+    display: inline;
+    padding-right: 20px;
+}
+
+.fl-inlineEdit-focus {
+    border: 1px solid #0085ff;
+    margin-bottom: 1px;
+    padding: 1px 0 0 1px;
+}
+
+/* Base Appearance & States Appearance */
+.fl-inlineEdit-tooltip {
+    background: #fffabb;
+    border: 1px solid #c9b857;
+    font: normal sans-serif;
+    padding: 3px 5px;
+    position: absolute;
+}
+
+/* Put keyboard focus instruction on a foreground layer */
+.fl-inlineEdit-editModeInstruction {
+    background: #0081c1;
+    color: #fff;
+    font: normal sans-serif;
+    max-width: 310px;
+    padding: 3px 5px;
+    position: absolute;
+    z-index: 1;
+}
+
+/* :hover */
+.fl-inlineEdit-invitation {
+    background: #e1edf5;
+    cursor: pointer;
+}
+
+.fl-inlineEdit-emptyText-invitation {
+    color: #9f9f9f;
+    font-style: italic;
+}
+
+.fl-inlineEdit-emptyDefaultViewText {
+    padding-top: 16px;
+}

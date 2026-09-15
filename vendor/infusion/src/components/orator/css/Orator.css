@@ -1,0 +1,229 @@
+@font-face {
+    font-family: 'Orator-Icons';
+    src: url("../fonts/Orator-Icons.woff");
+}
+
+/* controller */
+.fl-orator-controller {
+    box-sizing: border-box;
+    display: inline-flex;
+    font-size: 2.25rem;
+
+    /* set normal letter-spacing and line-height so that the prefs editor settings won't affect alignment */
+    letter-spacing: normal;
+    line-height: normal;
+    padding-bottom: 0.5rem;
+    padding-top: 0.5rem;
+}
+
+.fl-orator-controller * {
+    box-sizing: inherit;
+}
+
+.fl-orator-controller > * {
+    background-color: #666;
+    min-width: 3.6rem;
+    padding: 1px 6px;
+}
+
+.fl-orator-controller button {
+    font-family: inherit;
+    font-size: 100%;
+    margin: 0;
+}
+
+.fl-orator-controller > *:not(:first-child) {
+    border-left: 0.1rem solid #4e4e4e;
+}
+
+.fl-orator-controller > :first-child {
+    border: 0.1rem solid #4e4e4e;
+    border-bottom-left-radius: 0.3rem;
+    border-right: none;
+    border-top-left-radius: 0.3rem;
+}
+
+.fl-orator-controller > *:not(:first-child):hover,
+.fl-orator-controller-playToggle:hover::before {
+    background-color: #4e4e4e;
+}
+
+.fl-orator-controller > *:not(:first-child):focus {
+    border-color: #fff;
+}
+
+.fl-orator-controller > :last-child {
+    border: 0.1rem solid #4e4e4e;
+    border-bottom-right-radius: 0.3rem;
+    border-top-right-radius: 0.3rem;
+}
+
+.fl-orator-controller-playToggle {
+    color: #fff;
+    text-shadow: 0.1rem 0.2rem 0.2rem #4e4e4e;
+}
+
+.flc-orator-controller .fl-orator-controller-playToggle {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* selection reader */
+.fl-orator-selectionReader-control {
+    background: #666;
+    border: 0.1rem solid #4e4e4e;
+    border-radius: 0.2rem;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 1.2rem;
+    padding: 0.2rem 0.5rem;
+    position: absolute;
+    text-transform: uppercase;
+
+    /* Align down arrow to the beginning of the character that is first selected. */
+    transform: translate(-49%);
+
+    /*
+        Force the play button to the top of the stacking order (see: https://issues.fluidproject.org/browse/FLUID-6348)
+
+        The z-index can take an integer value (https://www.w3.org/TR/CSS22/visuren.html#z-index) but a max and min are
+        not specified. Here we make use of a value equal to the JavaScript `Number.MAX_SAFE_INTEGER`
+    */
+    z-index: 9007199254740991;
+}
+
+.fl-orator-selectionReader-control::after,
+.fl-orator-selectionReader-control::before {
+    border: solid transparent;
+    content: " ";
+    height: 0;
+    left: 50%;
+    pointer-events: none;
+    position: absolute;
+    width: 0;
+}
+
+.fl-orator-selectionReader-control::after {
+    border-color: rgba(136, 183, 213, 0);
+    border-width: 0.5rem;
+    margin-left: -0.5rem;
+}
+
+.fl-orator-selectionReader-control::before {
+    border-color: rgba(194, 225, 245, 0);
+    border-width: 0.7rem;
+    margin-left: -0.7rem;
+}
+
+.fl-orator-selectionReader-control:hover {
+    background: #1ea771;
+}
+
+/* Play above, pointing down */
+.fl-orator-selectionReader-control.fl-orator-selectionReader-above {
+    margin-top: -3rem;
+}
+
+.fl-orator-selectionReader-control.fl-orator-selectionReader-above::after,
+.fl-orator-selectionReader-control.fl-orator-selectionReader-above::before {
+    top: 100%;
+}
+
+.fl-orator-selectionReader-control.fl-orator-selectionReader-above::after {
+    border-top-color: #666;
+}
+
+.fl-orator-selectionReader-control.fl-orator-selectionReader-above:hover::after {
+    border-top-color: #1ea771;
+}
+
+.fl-orator-selectionReader-control.fl-orator-selectionReader-above::before {
+    border-top-color: #4e4e4e;
+}
+
+/* Play below, pointing up */
+.fl-orator-selectionReader-control.fl-orator-selectionReader-below {
+    margin-top: 0.7rem;
+}
+
+.fl-orator-selectionReader-control.fl-orator-selectionReader-below::after,
+.fl-orator-selectionReader-control.fl-orator-selectionReader-below::before {
+    bottom: 100%;
+}
+
+.fl-orator-selectionReader-control.fl-orator-selectionReader-below::after {
+    border-bottom-color: #666;
+}
+
+.fl-orator-selectionReader-control.fl-orator-selectionReader-below:hover::after {
+    border-bottom-color: #1ea771;
+}
+
+.fl-orator-selectionReader-control.fl-orator-selectionReader-below::before {
+    border-bottom-color: #4e4e4e;
+}
+
+/* highlight */
+.fl-orator-highlight {
+    background-color: #eed400;
+    color: #000;
+
+    /* Used to make the background appear larger so that it stands out in a block of text */
+    padding: 0.2rem 0;
+}
+
+/* Font Icons */
+.fl-icon-orator,
+.fl-icon-orator-playToggle {
+    font-family: 'Orator-Icons' !important; /* stylelint-disable-line font-family-no-missing-generic-family-keyword */
+    -webkit-font-smoothing: antialiased;
+    font-style: normal;
+    font-variant: normal;
+    font-weight: normal;
+    speak: none;
+    text-transform: none;
+}
+
+/* control icons */
+
+.fl-icon-orator::before {
+    -webkit-background-clip: text;
+    -moz-background-clip: text;
+    background-clip: text;
+
+    /* the following is to style the icon to appear inset */
+    background-color: #565656;
+    color: transparent;
+    content: "\e000";
+    text-shadow: 0 2px 0.5px rgba(255, 255, 255, 0.5);
+}
+
+.fl-icon-orator-playToggle::before {
+    content: "\e001";
+}
+
+.fl-orator-controller-play .fl-icon-orator-playToggle::before {
+    content: "\e002";
+}
+
+.fl-orator-controller .fl-icon-orator {
+    color: #4e4e4e;
+}
+
+.fl-orator-controller .fl-icon-orator,
+.fl-orator-controller .fl-icon-orator-playToggle {
+    align-items: center;
+    display: inline-flex;
+    justify-content: center;
+    padding-bottom: 0.5rem;
+    padding-top: 0.5rem;
+}
+
+.fl-orator-controller .fl-icon-orator-playToggle {
+    font-size: 1.5rem;
+}
+
+.fl-orator-selectionReader-control .fl-icon-orator {
+    color: #fff;
+    font-size: 1.5rem;
+    padding-right: 0.5rem;
+}

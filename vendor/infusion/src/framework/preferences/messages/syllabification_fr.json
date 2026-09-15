@@ -1,0 +1,6 @@
+{
+    "label": "Les Syllabes",
+    "description": "Affiche les mots séparés en syllabes.",
+    "switchOn": "ACTIF",
+    "switchOff": "ÉTEINT"
+}

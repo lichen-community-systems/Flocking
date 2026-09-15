@@ -1,0 +1,68 @@
+.fl-imageReorderer {
+    clear: both;
+}
+
+.fl-reorderer-horizontalLayout .fl-imageReorderer-item {
+    background-color: #000;
+    border: 1px solid #000;
+    cursor: move;
+    float: left;
+    height: 150px;
+    margin: 5px;
+    overflow: hidden;
+    position: relative;
+    text-align: center;
+    text-decoration: none;
+    width: 150px;
+}
+
+.fl-reorderer-horizontalLayout .fl-imageReorderer-item img {
+    display: block;
+    width: 100%;
+}
+
+.fl-reorderer-horizontalLayout .fl-imageReorderer-caption {
+    background-color: #000;
+    bottom: 0;
+    color: #fff;
+    left: 0;
+    padding: 5px;
+    position: absolute;
+    text-align: center;
+    width: 100%;
+}
+
+.fl-reorderer-horizontalLayout .fl-imageReorderer-item:hover {
+    background-color: #ff4200;
+    border-color: #ff4200;
+}
+
+.fl-reorderer-horizontalLayout .fl-imageReorderer-item:hover .fl-imageReorderer-caption {
+    background-color: #ff4200;
+    color: #000;
+}
+
+.fl-reorderer-horizontalLayout .fl-reorderer-movable-selected {
+    background-color: #ccc;
+    border-color: #ccc;
+}
+
+.fl-reorderer-horizontalLayout .fl-reorderer-movable-selected .fl-imageReorderer-caption {
+    background-color: #ccc;
+    color: #000;
+}
+
+.fl-reorderer-horizontalLayout .fl-reorderer-dropMarker {
+    float: left;
+    height: 150px;
+}
+
+.fl-reorderer-horizontalLayout .fl-reorderer-movable-dragging {
+    background-color: #ff4200;
+    border-color: #ff4200;
+}
+
+.fl-reorderer-horizontalLayout .fl-reorderer-movable-dragging .fl-imageReorderer-caption {
+    background-color: #ff4200;
+    color: #000;
+}

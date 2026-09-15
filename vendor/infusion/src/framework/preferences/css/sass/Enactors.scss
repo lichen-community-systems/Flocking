@@ -1,0 +1,33 @@
+/*
+ * General prefs editor styling used to apply preferences
+ * !important is used for all styles to ensure that Preferences Framework's enactors are able to override the page's default styles.
+ */
+@use "utils/fonts";
+@use "utils/themes";
+
+// Fonts
+@include fonts.build-fonts-Enactors(fonts.$fonts, fonts.$fontFaces);
+
+// UI Enhancer "Enlarge text" input/button options
+.fl-input-enhanced button,
+.fl-input-enhanced input,
+.fl-input-enhanced select,
+.fl-input-enhanced textarea,
+.fl-input-enhanced .fl-input-enhance {
+    font-size: 125% !important;
+}
+
+// UI Enhancer 'enhanced links' styling
+.fl-input-enhanced a {
+    font-size: 125% !important;
+    font-weight: bold !important;
+    text-decoration: underline !important;
+}
+
+.fl-syllabification-separator::before {
+    content: "\2027"; // HYPHENATION POINT
+}
+
+.fl-syllabification-softHyphenPlaceholder::before {
+    content: "\00AD"; // SOFT HYPHEN
+}

@@ -1,0 +1,6 @@
+{
+    "label": "Subtítulos",
+    "description": "Solicitar que los videos incrustados de YouTube muestren subtítulos.",
+    "switchOn": "en",
+    "switchOff": "apagado"
+}

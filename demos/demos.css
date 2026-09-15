@@ -1,0 +1,66 @@
+body {
+    width: 50%;
+    margin-left: 2%;
+}
+
+h1, h2 {
+    font-family: sans-serif;
+    margin-top: 9%;
+}
+
+h2 {
+    margin-bottom: 5%;
+}
+
+.button-list {
+    text-align: left;
+    list-style: none;
+    padding: 0;
+    width: 55%;
+}
+
+.button-list li {
+    display: block;
+    margin-bottom: 3%;
+}
+
+.button-list li a {
+    font-size: 125%;
+    font-family: sans-serif;
+    text-decoration: none;
+    font-weight: bold;
+    background-color: #eee;
+    display: block;
+    width: 100%;
+    border-radius: 10px 10px 10px 10px;
+    padding: 7%;
+}
+
+.button-list li:nth-child(2n) a {
+    background-color: #ccc;
+}
+
+.button-list li a:hover {
+    background-color: #999;
+    border-color: #aaa;
+    color: #fff;
+}
+
+a {
+    color: #333;
+}
+
+a:visited {
+    color: #555;
+    text-decoration: none;
+}
+
+a:hover {
+    color: #fff;
+    text-decoration: none;
+}
+
+a:active {
+    color: #ccc;
+    text-decoration: none;
+}

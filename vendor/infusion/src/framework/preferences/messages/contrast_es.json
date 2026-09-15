@@ -1,0 +1,13 @@
+{
+    "contrast-default": "Defecto",
+    "contrast-bw": "Negro sobre blanco",
+    "contrast-wb": "Blanco sobre negro",
+    "contrast-by": "Negro sobre amarillo",
+    "contrast-yb": "Amarillo sobre negro",
+    "contrast-lgdg": "Bajo contraste",
+    "contrast-gd": "Gris sobre oscuridado",
+    "contrast-gw": "Gris sobre blanco",
+    "contrast-bbr": "Negro sobre marrón",
+    "label": "color y contraste",
+    "description": "Cambiar texto y colores de fondo"
+}

@@ -1,0 +1,13 @@
+{
+    "contrast-default": "Padrão",
+    "contrast-bw": "Preto sobre branco",
+    "contrast-wb": "Branco sobre preto",
+    "contrast-by": "Preto sobre amarelo",
+    "contrast-yb": "Amarelo sobre preto",
+    "contrast-lgdg": "Cinza claro sobre cinza escuro",
+    "contrast-gd": "Cinza sobre escuro",
+    "contrast-gw": "Cinza sobre branco",
+    "contrast-bbr": "Preto sobre marrom",
+    "label": "Contraste",
+    "description": "Mudar texto e cores de fundo"
+}

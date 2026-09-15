@@ -1,0 +1,32 @@
+{
+    "description": "Use dust to trigger the delay unit generator as an envelope for a decaying whiteNoise source",
+    "synthDef": {
+        "ugen": "flock.ugen.delay",
+        "source": {
+            "ugen": "flock.ugen.decay",
+            "source": {
+                "ugen": "flock.ugen.dust",
+                "density": 1.0,
+                "mul": 0.5
+            },
+            "time": 0.3,
+            "mul": {
+                "ugen": "flock.ugen.whiteNoise"
+            }
+        },
+        "maxTime": 1.0,
+        "time": 0.2,
+        "add": {
+            "ugen": "flock.ugen.decay",
+            "source": {
+                "ugen": "flock.ugen.dust",
+                "density": 1.0,
+                "mul": 0.5
+            },
+            "time": 0.3,
+            "mul": {
+                "ugen": "flock.ugen.whiteNoise"
+            }
+        }
+    }
+}

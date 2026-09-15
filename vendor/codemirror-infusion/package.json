@@ -1,0 +1,40 @@
+{
+    "name": "codemirror-infusion",
+    "version": "2.4.1",
+    "description": "An Infusion component wrapper for CodeMirror",
+    "main": "src/codemirror-infusion.js",
+    "license": "(BSD-3-Clause OR ECL-2.0)",
+    "contributors": [
+        "Antranig Basman",
+        "Colin Clark",
+        "Tony Atkins"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/colinbdclark/codemirror-infusion.git"
+    },
+    "bugs": "http://github.com/colinbdclark/codemirror-infusion/issues",
+    "keywords": [
+        "codemirror",
+        "infusion"
+    ],
+    "readmeFilename": "README.md",
+    "dependencies": {
+        "codemirror": "5.65.3",
+        "infusion": "3.0.0",
+        "jquery": "3.6.0",
+        "json5": "2.2.1"
+    },
+    "devDependencies": {
+        "chromedriver": "^101.0.0",
+        "fluid-lint-all": "1.2.2",
+        "fluid-express": "1.0.18",
+        "fluid-webdriver": "1.1.2",
+        "kettle": "2.0.0",
+        "node-jqunit": "1.1.9"
+    },
+    "scripts": {
+        "prepare": "fluid-lint-all",
+        "test": "node tests/all-tests.js"
+    }
+}

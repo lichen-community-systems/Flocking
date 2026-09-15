@@ -1,0 +1,6 @@
+{
+    "label": "Mejorar las entradas",
+    "description": "Haga énfasis en enlaces, botones, menús, campos de texto y otras entradas",
+    "switchOn": "ENCENDIDO",
+    "switchOff": "APAGADO"
+}

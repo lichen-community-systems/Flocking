@@ -1,0 +1,4 @@
+/* Progressive Enhancement: JS will reverse the display setup if it is enabled */
+.fl-progEnhance-enhanced {
+    display: none;
+}

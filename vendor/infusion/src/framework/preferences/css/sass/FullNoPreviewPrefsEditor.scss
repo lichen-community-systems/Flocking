@@ -1,0 +1,48 @@
+// UI Option styles for Full page without preview
+
+body {
+    max-width: 60em;
+    min-width: 56em;
+}
+
+.fl-prefsEditor-fullNoPreview {
+    // Category separator
+    .fl-prefsEditor-category {
+        border-top: 2px solid #ddd;
+        break-inside: avoid;
+        clear: both;
+        -webkit-column-break-inside: avoid;
+        page-break-inside: avoid;
+
+        // Section header icons
+        h2 img {
+            margin-bottom: -4px;
+            padding-top: 10px;
+        }
+    }
+
+    // Save, reset, cancel buttons
+    .fl-prefsEditor-buttons {
+        text-align: right;
+    }
+
+    // Controls
+    .fl-prefsEditors-controls {
+        -webkit-columns: 15.625rem 4;
+        -moz-columns: 15.625rem 4;
+        columns: 15.625rem 4;
+    }
+
+    ul {
+        float: left;
+
+        li {
+            clear: left;
+        }
+    }
+
+    label,
+    .fl-inputs {
+        margin-bottom: 15px;        // adds space between label, inputs when browser window is narrow
+    }
+}

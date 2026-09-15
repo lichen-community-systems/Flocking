@@ -1,0 +1,6 @@
+{
+    "label": "Tamano del texto",
+    "description": "Ajustar el tamaño del texto",
+    "increaseLabel": "aumentar el tamaño del texto",
+    "decreaseLabel": "disminuir el tamaño del texto"
+}

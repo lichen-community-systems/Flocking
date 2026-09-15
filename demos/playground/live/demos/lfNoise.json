@@ -1,0 +1,8 @@
+{
+    "description": "Generating random audio noise with lfNoise.",
+    "synthDef": {
+        "ugen": "flock.ugen.lfNoise",
+        "freq": 1000,
+        "mul": 0.25
+    }
+}

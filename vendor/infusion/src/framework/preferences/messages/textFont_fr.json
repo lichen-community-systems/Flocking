@@ -1,0 +1,10 @@
+{
+    "textFont-default": "Défaut",
+    "textFont-times": "Times New Roman",
+    "textFont-comic": "Comic Sans",
+    "textFont-arial": "Arial",
+    "textFont-verdana": "Verdana",
+    "textFont-open-dyslexic": "Open Dyslexic",
+    "textFontLabel": "style du texte",
+    "textFontDescr": "Ajuster la police de caracteres utilisée"
+}

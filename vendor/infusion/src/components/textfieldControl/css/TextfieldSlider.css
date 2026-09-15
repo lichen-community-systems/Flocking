@@ -1,0 +1,123 @@
+.fl-textfieldSlider {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+}
+
+/* Textfield Stlying */
+
+.fl-textfieldSlider .fl-textfieldSlider-textField {
+    font-family: inherit;
+    font-size: 100%;
+    margin: 0;
+    margin-left: 1rem;
+    text-align: center;
+    width: 2.5rem;
+}
+
+/* Slider Styling */
+
+/*
+Native slider appearance based on techniques described at
+https://css-tricks.com/styling-cross-browser-compatible-range-inputs-css/
+and
+http://brennaobrien.com/blog/2014/05/style-input-type-range-in-every-browser.html
+*/
+
+.fl-textfieldSlider input[type=range].fl-slider {
+    -webkit-appearance: none;
+    flex-grow: 1;
+    margin: 0 1rem;
+}
+
+/* webkit browsers */
+.fl-textfieldSlider input[type=range].fl-slider::-webkit-slider-runnable-track {
+    animation-duration: 0.2s;
+    background: #dad6d3;
+    border: 1px solid #b3b3b3;
+    border-radius: 0.3rem;
+    cursor: pointer;
+    height: 1rem;
+}
+
+.fl-textfieldSlider input[type=range].fl-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    background-color: #fff;
+    background-image: linear-gradient(to bottom left, #fff 46%, #e9eaea 73%);
+    border: 1px solid #b3b3b3;
+    border-radius: 2rem;
+    box-shadow: 4px 2px 3px rgba(0, 0, 0, 0.3);
+    height: 1.5rem;
+    margin-top: -0.3rem;
+    width: 1.5rem;
+}
+
+/* Firefox */
+.fl-textfieldSlider input[type=range].fl-slider::-moz-range-track {
+    animation-duration: 0.2s;
+    background: #dad6d3;
+    border: 1px solid #b3b3b3;
+    border-radius: 0.3rem;
+    cursor: pointer;
+    height: 1rem;
+}
+
+.fl-textfieldSlider input[type=range].fl-slider::-moz-range-thumb {
+    background-color: #fff;
+    background-image: linear-gradient(to bottom left, #fff 46%, #e9eaea 73%);
+    border: 1px solid #b3b3b3;
+    border-radius: 2rem;
+    box-shadow: 4px 2px 3px rgba(0, 0, 0, 0.3);
+    height: 1.5rem;
+    width: 1.5rem;
+}
+
+/* ms browsers */
+.fl-textfieldSlider input[type=range].fl-slider::-ms-track {
+    animation-duration: 0.2s;
+    background: transparent;
+    border-color: transparent;
+    border-width: 0.5rem 0;
+    color: transparent;
+    height: 1rem;
+}
+
+.fl-textfieldSlider input[type=range].fl-slider::-ms-fill-lower {
+    background: #dad6d3;
+    border: 1px solid #b3b3b3;
+    border-radius: 0.3rem;
+}
+
+.fl-textfieldSlider input[type=range].fl-slider::-ms-fill-upper {
+    background: #dad6d3;
+    border: 1px solid #b3b3b3;
+    border-radius: 0.3rem;
+}
+
+.fl-textfieldSlider input[type=range].fl-slider::-ms-thumb {
+    background-color: #fff;
+    background-image: linear-gradient(to bottom left, #fff 46%, #e9eaea 73%);
+    border: 1px solid #b3b3b3;
+    border-radius: 2rem;
+    box-shadow: 4px 2px 3px rgba(0, 0, 0, 0.3);
+    height: 1.5rem;
+    width: 1.5rem;
+}
+
+/* Put focus on the slider thumb only */
+
+.fl-textfieldSlider input[type=range].fl-slider:focus {
+    outline: none;
+}
+
+.fl-textfieldSlider input[type=range].fl-slider:focus::-webkit-slider-thumb {
+    outline: 2px solid black;
+}
+
+.fl-textfieldSlider input[type=range].fl-slider:focus::-moz-range-thumb {
+    outline: 2px solid black;
+}
+
+.fl-textfieldSlider input[type=range].fl-slider:focus::-ms-thumb {
+    outline: 2px solid black;
+}

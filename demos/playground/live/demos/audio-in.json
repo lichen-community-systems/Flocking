@@ -1,0 +1,6 @@
+{
+    "description": "Plays back live audio from the microphone. Wear headphones to prevent feedback.",
+    "synthDef": {
+        "ugen": "flock.ugen.audioIn"
+    }
+}
